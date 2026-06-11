@@ -119,6 +119,117 @@ authRouter.post('/verify', async (c) => {
   }
 });
 
+// ── Google OAuth ──────────────────────────────────────────────────────────────
+// Flujo web clásico: /auth/google redirige a Google; /auth/google/callback
+// canjea el code, extrae el email verificado y abre sesión con la misma
+// lógica que el magic link. La sesión vuelve a la web en el fragment (#),
+// que no viaja en logs ni referers.
+
+const GOOGLE_AUTH_URL  = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const API_PUBLIC = process.env['API_BASE_URL'] ?? 'http://localhost:3000';
+
+authRouter.get('/google', (c) => {
+  const clientId = process.env['GOOGLE_CLIENT_ID'];
+  if (!clientId) return c.json({ error: 'google_not_configured' }, 503);
+
+  const deviceId = c.req.query('device_id') ?? '';
+  const state = Buffer.from(JSON.stringify({
+    d: deviceId,
+    n: randomBytes(8).toString('hex'),
+  })).toString('base64url');
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: `${API_PUBLIC}/auth/google/callback`,
+    response_type: 'code',
+    scope: 'openid email',
+    state,
+    prompt: 'select_account',
+  });
+  return c.redirect(`${GOOGLE_AUTH_URL}?${params}`);
+});
+
+authRouter.get('/google/callback', async (c) => {
+  const clientId = process.env['GOOGLE_CLIENT_ID'];
+  const clientSecret = process.env['GOOGLE_CLIENT_SECRET'];
+  const fail = (reason: string) => c.redirect(`${WEB_BASE}/login#error=${reason}`);
+
+  try {
+    if (!clientId || !clientSecret) return fail('google_not_configured');
+    const code = c.req.query('code');
+    if (!code) return fail('google_denied');
+
+    // deviceId del estado (para adoptar al usuario anónimo del dispositivo)
+    let deviceId = '';
+    try {
+      const st = JSON.parse(Buffer.from(c.req.query('state') ?? '', 'base64url').toString());
+      deviceId = typeof st.d === 'string' ? st.d : '';
+    } catch { /* estado ilegible → seguimos sin deviceId */ }
+
+    // Canjear el code por tokens
+    const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: `${API_PUBLIC}/auth/google/callback`,
+        grant_type: 'authorization_code',
+      }),
+    });
+    if (!tokenRes.ok) return fail('google_token');
+    const tokens = await tokenRes.json() as { id_token?: string };
+    if (!tokens.id_token) return fail('google_token');
+
+    // Email verificado del id_token (validamos audiencia y verificación)
+    const payload = JSON.parse(
+      Buffer.from(tokens.id_token.split('.')[1] ?? '', 'base64url').toString()
+    ) as { aud?: string; email?: string; email_verified?: boolean };
+    if (payload.aud !== clientId || !payload.email || payload.email_verified !== true) {
+      return fail('google_email');
+    }
+    const email = payload.email.toLowerCase();
+
+    // Misma lógica de cuenta que el magic link
+    let userRes = await db.query<{ id: string; status?: string }>(
+      `SELECT id, status FROM users WHERE LOWER(email) = $1`, [email]
+    );
+    if (userRes.rows[0]?.status === 'disabled') return fail('account_disabled');
+    let userId = userRes.rows[0]?.id;
+
+    if (!userId && deviceId) {
+      userRes = await db.query<{ id: string }>(
+        `UPDATE users SET email = $2, updated_at = NOW()
+         WHERE device_id = $1 AND email IS NULL RETURNING id`,
+        [deviceId, email]
+      );
+      userId = userRes.rows[0]?.id;
+    }
+    if (!userId) {
+      userRes = await db.query<{ id: string }>(
+        `INSERT INTO users (device_id, email) VALUES ($1, $2) RETURNING id`,
+        [deviceId || `email:${email}`, email]
+      );
+      userId = userRes.rows[0]!.id;
+    }
+
+    const session = newToken();
+    await db.query(
+      `UPDATE users SET session_token = $2, updated_at = NOW() WHERE id = $1`,
+      [userId, session]
+    );
+
+    return c.redirect(
+      `${WEB_BASE}/login#session=${encodeURIComponent(session)}&email=${encodeURIComponent(email)}`
+    );
+  } catch (err) {
+    console.error('[auth] google callback error:', err);
+    return fail('google_error');
+  }
+});
+
 /** GET /auth/me — sesión actual */
 authRouter.get('/me', async (c) => {
   const user = await userFromBearer(c.req.header('Authorization'));

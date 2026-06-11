@@ -90,7 +90,9 @@
     "upsell_body": "Crea un account gratuito in 5 secondi per sincronizzare le tue squadre tra i dispositivi e ricevere notifiche in diretta.",
     "upsell_google": "Crea account con Google",
     "upsell_email": "Registrati con email",
-    "upsell_guest": "Continua come ospite"
+    "upsell_guest": "Continua come ospite",
+    "google_failed": "Accesso con Google non riuscito. Riprova o usa il link via email.",
+    "account_disabled": "Questo account è disattivato. Se pensi sia un errore, contattaci."
   },
   "common": {
     "today": "Oggi",

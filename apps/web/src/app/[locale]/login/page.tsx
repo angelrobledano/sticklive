@@ -77,6 +77,54 @@ function LoginInner() {
       });
   }, [params, login, router]);
 
+  // ── Retorno de Google OAuth (#session=...&email=... en el fragment) ──────
+  useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const session = hash.get('session');
+    const userEmail = hash.get('email');
+    const oauthError = hash.get('error');
+    if (!session && !oauthError) return;
+
+    // Limpiar el fragment de la URL (no dejar la sesión a la vista)
+    window.history.replaceState(null, '', window.location.pathname);
+
+    if (oauthError || !session || !userEmail) {
+      setStatus('error');
+      setErrorMsg(oauthError === 'account_disabled'
+        ? t('auth.account_disabled')
+        : t('auth.google_failed'));
+      return;
+    }
+
+    login(session, userEmail);
+
+    // Fusionar favoritos anónimos con la cuenta (igual que el magic link)
+    let teams: string[] = [];
+    let leagues: string[] = [];
+    try {
+      teams = JSON.parse(localStorage.getItem('rink-favorites') ?? '[]');
+      leagues = JSON.parse(localStorage.getItem('rink-fav-leagues') ?? '[]');
+    } catch { /* noop */ }
+    fetch(`${API_URL}/auth/favorites/merge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+      body: JSON.stringify({ teams, leagues }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((merged: { teams?: string[]; leagues?: string[] } | null) => {
+        if (merged) {
+          try {
+            localStorage.setItem('rink-favorites', JSON.stringify(merged.teams ?? teams));
+            localStorage.setItem('rink-fav-leagues', JSON.stringify(merged.leagues ?? leagues));
+          } catch { /* noop */ }
+        }
+      })
+      .catch(() => { /* el merge puede reintentar en la próxima visita */ });
+
+    setStatus('welcome');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Pedir magic link ─────────────────────────────────────────────────────
   const requestLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,9 +194,15 @@ function LoginInner() {
         </p>
       </div>
 
-      {/* Google OAuth — pendiente de credenciales; visible y honesto */}
+      {/* Google OAuth — redirige al flujo de la API */}
       <button
-        onClick={() => { setErrorMsg('El acceso con Google estará disponible muy pronto. Mientras tanto, el enlace por email funciona igual de rápido.'); setStatus('error'); }}
+        onClick={() => {
+          track('login_link_requested');
+          const deviceId = (() => {
+            try { return localStorage.getItem('rink-device-id') ?? ''; } catch { return ''; }
+          })();
+          window.location.href = `${API_URL}/auth/google?device_id=${encodeURIComponent(deviceId)}`;
+        }}
         className="w-full min-h-[48px] flex items-center justify-center gap-2.5 rounded-xl
                    border border-slate-200 dark:border-slate-700 text-sm font-semibold
                    text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"

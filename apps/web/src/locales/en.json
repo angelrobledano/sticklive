@@ -90,7 +90,9 @@
     "upsell_body": "Create a free account in 5 seconds to sync your teams across devices and get live notifications.",
     "upsell_google": "Sign up with Google",
     "upsell_email": "Sign up with email",
-    "upsell_guest": "Continue as guest"
+    "upsell_guest": "Continue as guest",
+    "google_failed": "Google sign-in could not be completed. Try again or use the email link.",
+    "account_disabled": "This account is disabled. If you think this is a mistake, contact us."
   },
   "common": {
     "today": "Today",

@@ -90,7 +90,9 @@
     "upsell_body": "Créez un compte gratuit en 5 secondes pour synchroniser vos équipes entre vos appareils et recevoir des notifications en direct.",
     "upsell_google": "Créer un compte avec Google",
     "upsell_email": "S'inscrire par email",
-    "upsell_guest": "Continuer en invité"
+    "upsell_guest": "Continuer en invité",
+    "google_failed": "La connexion avec Google n'a pas pu aboutir. Réessayez ou utilisez le lien par email.",
+    "account_disabled": "Ce compte est désactivé. Si vous pensez qu'il s'agit d'une erreur, contactez-nous."
   },
   "common": {
     "today": "Aujourd'hui",
