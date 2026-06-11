@@ -49,9 +49,11 @@ function LoginInner() {
         // ── Migración crítica: fusionar favoritos anónimos con la cuenta ──
         let teams: string[] = [];
         let leagues: string[] = [];
+        let players: string[] = [];
         try {
           teams = JSON.parse(localStorage.getItem('rink-favorites') ?? '[]');
           leagues = JSON.parse(localStorage.getItem('rink-fav-leagues') ?? '[]');
+          players = JSON.parse(localStorage.getItem('rink-fav-players') ?? '[]');
         } catch { /* noop */ }
 
         const merged = await fetch(`${API_URL}/auth/favorites/merge`, {
