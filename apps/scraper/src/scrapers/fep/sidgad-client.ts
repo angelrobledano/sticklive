@@ -155,6 +155,13 @@ async function sidgadRequest(
       clearTimeout(timer);
 
       if (!response.ok) {
+        // 404 = el recurso no existe (acta sin publicar, endpoint que no aplica).
+        // Reintentar no lo arregla: fallo inmediato y a por el siguiente patrón.
+        if (response.status === 404) {
+          const err = new Error(`HTTP 404 en ${url}`);
+          log.debug({ url }, 'Recurso inexistente (404) — sin reintentos');
+          throw Object.assign(err, { noRetry: true });
+        }
         throw new Error(`HTTP ${response.status} en ${url}`);
       }
 
@@ -172,8 +179,10 @@ async function sidgadRequest(
       log.debug({ url, method, size: text.length }, 'Respuesta sidgad');
       return text;
     } catch (err) {
-      const isLast = attempt === retries;
-      log.warn({ url, attempt, err }, `Error en request sidgad (intento ${attempt}/${retries})`);
+      const isLast = attempt === retries || (err as { noRetry?: boolean }).noRetry === true;
+      if (!(err as { noRetry?: boolean }).noRetry) {
+        log.warn({ url, attempt, err }, `Error en request sidgad (intento ${attempt}/${retries})`);
+      }
       if (isLast) throw err;
       await sleep(retryDelayMs * attempt);
     }
