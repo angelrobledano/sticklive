@@ -720,7 +720,7 @@ const BADGE_STYLES = {
 interface RinkPlayer {
   jerseyNumber: number | null;
   playerName: string;
-  playerId: string | null;
+  playerId?: string | null;
   isGoalkeeper: boolean;
   isCaptain: boolean;
   photoUrl?: string | null;
