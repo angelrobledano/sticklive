@@ -838,8 +838,11 @@ export default function SettingsPage() {
       </SettingsBlock>
 
       {/* Pie */}
-      <div className="text-center pb-4">
+      <div className="text-center pb-4 space-y-1">
         <p className="text-[11px] text-slate-300 dark:text-slate-700">{t('settings.footer')}</p>
+        <Link href="/privacy" className="inline-block text-[11px] text-slate-400 dark:text-slate-600 underline hover:text-rink-passion">
+          {t('settings.privacy_link')}
+        </Link>
       </div>
     </div>
   );

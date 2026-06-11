@@ -255,7 +255,8 @@
     "quiet": "Silenzia di notte",
     "quiet_desc": "Le partite tardive non ti svegliano: il riepilogo arriva al mattino",
     "vapid_note": "Le notifiche push richiedono chiavi VAPID e Service Worker. La tua configurazione resta salvata e si attiverà quando il sistema sarà pronto.",
-    "footer": "Stick Live v1.0.0 · Fatto per gli appassionati di hockey"
+    "footer": "Stick Live v1.0.0 · Fatto per gli appassionati di hockey",
+    "privacy_link": "Informativa sulla privacy"
   },
   "team": {
     "calendar": "Calendario",

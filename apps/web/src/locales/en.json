@@ -255,7 +255,8 @@
     "quiet": "Silence at night",
     "quiet_desc": "Late games won't wake you: the recap arrives in the morning",
     "vapid_note": "Push notifications require VAPID keys and a Service Worker. Your settings are saved and will activate once the system is ready.",
-    "footer": "Stick Live v1.0.0 · Made for hockey lovers"
+    "footer": "Stick Live v1.0.0 · Made for hockey lovers",
+    "privacy_link": "Privacy policy"
   },
   "team": {
     "calendar": "Calendar",
