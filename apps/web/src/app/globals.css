@@ -2,6 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Estado vacío de partidos: la bola cruza la pista, gol y celebración */
+@keyframes rinkShot {
+  0%   { transform: translateX(0) scale(1); opacity: 1; }
+  10%  { transform: translateX(0) scale(0.92); }
+  55%  { transform: translateX(150px) scale(1); opacity: 1; }
+  62%  { transform: translateX(150px) scale(0); opacity: 0; }
+  100% { transform: translateX(150px) scale(0); opacity: 0; }
+}
+@keyframes rinkStick {
+  0%   { transform: rotate(0deg); }
+  8%   { transform: rotate(-24deg); }
+  14%  { transform: rotate(10deg); }
+  20%, 100% { transform: rotate(0deg); }
+}
+@keyframes rinkGoalFlash {
+  0%, 55% { opacity: 0; transform: scale(0.6); }
+  62%  { opacity: 1; transform: scale(1.15); }
+  72%  { opacity: 1; transform: scale(1); }
+  90%, 100% { opacity: 0; transform: scale(1); }
+}
+@keyframes rinkNet {
+  0%, 60% { transform: translateX(0); }
+  64% { transform: translateX(3px); }
+  68% { transform: translateX(-2px); }
+  72%, 100% { transform: translateX(0); }
+}
+
 /* Animaciones de toasts y bottom sheets */
 @keyframes fadeIn {
   from { opacity: 0; transform: translate(-50%, 6px); }

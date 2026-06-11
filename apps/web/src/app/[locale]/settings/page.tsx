@@ -671,11 +671,6 @@ export default function SettingsPage() {
           checked={isDark}
           onChange={toggleDark}
         />
-        <div className="py-3">
-          <p className="text-[11px] text-slate-300 dark:text-slate-700">
-            {t('settings.choice_saved')}
-          </p>
-        </div>
       </SettingsBlock>
 
       {/* ── Tarjeta de cuenta (autenticación progresiva) ───────────────────── */}
@@ -840,17 +835,6 @@ export default function SettingsPage() {
 
         </div>{/* fin del bloque condicionado al switch maestro */}
 
-        <div className="py-3">
-          <div className="flex gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-amber-500 shrink-0 mt-0.5">
-              <path d="M10.3 3.7L2.3 18a2 2 0 0 0 1.7 3h16a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0z" />
-              <path d="M12 9v4M12 17h.01" strokeLinecap="round" />
-            </svg>
-            <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
-              {t('settings.vapid_note')}
-            </p>
-          </div>
-        </div>
       </SettingsBlock>
 
       {/* Pie */}
