@@ -38,7 +38,11 @@ BEGIN
   SELECT s.id INTO po_season FROM seasons s WHERE s.competition_id = po_comp AND s.is_current = TRUE;
 
   IF liga_season IS NULL OR po_season IS NULL THEN
-    RAISE EXCEPTION 'No se encontró temporada current de liga (%) o playoff (%)', liga_season, po_season;
+    -- BD virgen (sin seed): no hay nada que fusionar. Los datos llegarán
+    -- por dump/seed ya fusionados; esta migración solo aplicaba al entorno
+    -- que tenía liga y playoff como competiciones separadas.
+    RAISE NOTICE 'Sin temporadas que fusionar (liga=%, playoff=%) — saltando', liga_season, po_season;
+    RETURN;
   END IF;
 
   -- 1. Ronda de fase playoff en la temporada de la liga
