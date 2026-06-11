@@ -39,8 +39,11 @@ competitionsRouter.get('/', async (c) => {
         (SELECT COUNT(*)::text FROM matches m WHERE m.season_id = s.id)       AS match_count
       FROM competitions comp
       JOIN LATERAL (
+        -- Última temporada CON partidos: las competiciones cuyo scraping
+        -- quedó vacío (sin calendario en la fuente) no se listan.
         SELECT id, name FROM seasons s2
         WHERE s2.competition_id = comp.id
+          AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s2.id)
         ORDER BY s2.is_current DESC, s2.start_date DESC NULLS LAST
         LIMIT 1
       ) s ON TRUE
@@ -90,8 +93,9 @@ competitionsRouter.get('/:id/seasons', async (c) => {
       start_date: Date | null;
     }>(`
       SELECT id, name, slug, is_current, start_date
-      FROM seasons
+      FROM seasons s
       WHERE competition_id = $1
+        AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s.id)
       ORDER BY start_date DESC NULLS LAST, name DESC
     `, [id]);
 
