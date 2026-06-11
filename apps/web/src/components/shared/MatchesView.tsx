@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import type { Match } from '@/lib/api/client';
 import { useFavorites } from '@/hooks/useFavorites';
 import { DateSelector, toDateKey } from '@/components/shared/DateSelector';
@@ -134,21 +134,39 @@ function FavoritesOnboarding() {
 
 export function MatchesView({ matches }: MatchesViewProps) {
   const todayKey = toDateKey(new Date());
-  const [selectedDate, setSelectedDate] = useState<string>(todayKey);
+  const [selectedDate, setSelectedDateState] = useState<string>(todayKey);
+
+  // El día elegido sobrevive al pull-to-refresh (sessionStorage: muere al
+  // cerrar la pestaña, así mañana la app vuelve a abrir en "hoy").
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('rink-selected-date');
+      if (saved && /^\d{4}-\d{2}-\d{2}$/.test(saved)) {
+        const diff = Math.round(
+          (new Date(`${saved}T12:00`).getTime() - new Date(`${todayKey}T12:00`).getTime()) / 86_400_000
+        );
+        if (Math.abs(diff) <= 7) setSelectedDateState(saved);
+      }
+    } catch { /* noop */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const setSelectedDate = useCallback((key: string) => {
+    setSelectedDateState(key);
+    try { sessionStorage.setItem('rink-selected-date', key); } catch { /* noop */ }
+  }, []);
   const [showAllFavs, setShowAllFavs] = useState(false);
   const { favorites, isFavorite } = useFavorites();
   const { t } = useT();
 
   // ── Swipe horizontal: día anterior / siguiente ─────────────────────────────
   const shiftDay = (delta: number) => {
-    setSelectedDate((prev) => {
-      const d = new Date(`${prev}T12:00:00`); // mediodía: inmune a DST
-      d.setDate(d.getDate() + delta);
-      // Mantenerse dentro de la ventana del DateSelector (hoy ± 7 días)
-      const diffDays = Math.round((d.getTime() - new Date(`${todayKey}T12:00:00`).getTime()) / 86_400_000);
-      if (Math.abs(diffDays) > 7) return prev;
-      return toDateKey(d);
-    });
+    const d = new Date(`${selectedDate}T12:00:00`); // mediodía: inmune a DST
+    d.setDate(d.getDate() + delta);
+    // Mantenerse dentro de la ventana del DateSelector (hoy ± 7 días)
+    const diffDays = Math.round((d.getTime() - new Date(`${todayKey}T12:00:00`).getTime()) / 86_400_000);
+    if (Math.abs(diffDays) > 7) return;
+    setSelectedDate(toDateKey(d));
   };
 
   const touchStart = useRef<{ x: number; y: number } | null>(null);
