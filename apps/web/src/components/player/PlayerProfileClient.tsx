@@ -6,6 +6,7 @@ import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { toTitleCase } from '@/lib/names';
 import { useT } from '@/lib/i18n';
 import { ShareButton } from '@/components/shared/ShareButton';
+import { FavoriteStar } from '@/components/shared/FavoriteStar';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -74,12 +75,18 @@ function PlayerHeader({ data }: { data: PlayerDetail }) {
           )}
         </div>
 
-        {/* Compartir jugador */}
-        <ShareButton
-          kind="player"
-          title={toTitleCase(`${player.firstName} ${player.lastName}`)}
-          className="absolute top-0 right-0"
-        />
+        {/* Seguir + compartir jugador */}
+        <div className="absolute top-0 right-0 flex items-center gap-0.5">
+          <ShareButton
+            kind="player"
+            title={toTitleCase(`${player.firstName} ${player.lastName}`)}
+          />
+          <FavoriteStar
+            id={player.id}
+            kind="player"
+            name={toTitleCase(`${player.firstName} ${player.lastName}`)}
+          />
+        </div>
 
         {/* Datos */}
         <div className="flex-1 min-w-0 space-y-1">

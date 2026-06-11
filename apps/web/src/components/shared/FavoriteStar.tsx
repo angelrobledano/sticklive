@@ -11,18 +11,24 @@ import { useT } from '@/lib/i18n';
  */
 export function FavoriteStar({ id, kind, name, className = '', variant = 'icon' }: {
   id: string;
-  kind: 'team' | 'league';
+  kind: 'team' | 'league' | 'player';
   /** Nombre para el toast ("Ahora sigues a Barça") */
   name?: string;
   className?: string;
   /** 'icon' = estrella sola · 'button' = pill "Seguir/Siguiendo" (cabeceras) */
   variant?: 'icon' | 'button';
 }) {
-  const { isFavorite, toggle, isLeagueFavorite, toggleLeague, mounted } = useFavorites();
+  const {
+    isFavorite, toggle, isLeagueFavorite, toggleLeague,
+    isPlayerFavorite, togglePlayer, mounted,
+  } = useFavorites();
   const { t } = useT();
   const [toast, setToast] = useState<string | null>(null);
 
-  const active = kind === 'team' ? isFavorite(id) : isLeagueFavorite(id);
+  const active =
+    kind === 'team' ? isFavorite(id)
+    : kind === 'league' ? isLeagueFavorite(id)
+    : isPlayerFavorite(id);
 
   useEffect(() => {
     if (!toast) return;
@@ -36,7 +42,9 @@ export function FavoriteStar({ id, kind, name, className = '', variant = 'icon' 
     e.preventDefault();
     e.stopPropagation();
     const wasActive = active;
-    if (kind === 'team') toggle(id); else toggleLeague(id);
+    if (kind === 'team') toggle(id);
+    else if (kind === 'league') toggleLeague(id);
+    else togglePlayer(id, name);
     setToast(t(wasActive ? 'favorites.toast_unfollowed' : 'favorites.toast_following', { name: name ?? '—' }));
 
     // Trigger de conversión: al marcar el TERCER favorito en anónimo,

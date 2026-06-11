@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useFavorites } from '@/hooks/useFavorites';
+import { useFavorites, getFavNames } from '@/hooks/useFavorites';
 import { useAuth } from '@/hooks/useAuth';
 import { useT, SUPPORTED_LOCALES, LOCALE_NAMES, type Locale } from '@/lib/i18n';
 import { usePremium } from '@/context/PremiumContext';
@@ -20,6 +20,8 @@ const API_URL     = process.env['NEXT_PUBLIC_API_URL']   ?? 'http://localhost:30
 const REDSYS_URL  = 'https://sis-t.redsys.es:25443/sis/realizarPago'; // entorno de pruebas
 /** Proveedor de pago activo: 'stripe' (por defecto) o 'redsys' */
 const PAYMENT_PROVIDER = process.env['NEXT_PUBLIC_PAYMENT_PROVIDER'] ?? 'stripe';
+/** Monetización oculta de momento: la app es gratis. Activar con NEXT_PUBLIC_PREMIUM_ENABLED=1 */
+const PREMIUM_ENABLED = process.env['NEXT_PUBLIC_PREMIUM_ENABLED'] === '1';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -576,7 +578,7 @@ function FavoriteRow({ href, name, fallback, logoSrc, onRemove }: {
 export default function SettingsPage() {
   const { t } = useT();
   const { isDark,    toggle: toggleDark, mounted: themeMounted }   = useDarkMode();
-  const { favorites, toggle: toggleFav, isFavorite, leagues, toggleLeague, mounted: favMounted } = useFavorites();
+  const { favorites, toggle: toggleFav, isFavorite, leagues, toggleLeague, players, togglePlayer, mounted: favMounted } = useFavorites();
   const { config,    set: setNotif,     mounted: notifMounted }    = useNotifConfig();
   const { isPremium, mounted: premiumMounted }                     = usePremium();
   const deviceId = useDeviceId();
@@ -597,6 +599,9 @@ export default function SettingsPage() {
 
   const myTeams   = teams.filter((tm) => isFavorite(tm.id));
   const myLeagues = comps.filter((cp) => leagues.includes(cp.id));
+  // Jugadores seguidos: el nombre se guardó al seguirlos (sin N fetches)
+  const favNames  = typeof window !== 'undefined' ? getFavNames() : {};
+  const myPlayers = players.map((id) => ({ id, name: favNames[id] ?? '—' }));
 
   useEffect(() => {
     if (!SEASON_ID) { setLoadingTeams(false); return; }
@@ -645,11 +650,9 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* ── Banner Premium ──────────────────────────────────────────────────── */}
-      {isPremium ? (
-        <PremiumActiveBadge />
-      ) : (
-        <PremiumBanner deviceId={deviceId} />
+      {/* ── Banner Premium (oculto mientras la app sea gratis) ─────────────── */}
+      {PREMIUM_ENABLED && (
+        isPremium ? <PremiumActiveBadge /> : <PremiumBanner deviceId={deviceId} />
       )}
 
       {/* ── Bloque A: Estilo de la pista ─────────────────────────────────── */}
@@ -754,6 +757,28 @@ export default function SettingsPage() {
               name={clubName(comp.name)}
               fallback={(comp.shortName ?? comp.name).slice(0, 2)}
               onRemove={() => toggleLeague(comp.id)}
+            />
+          ))}
+        </SettingsBlock>
+      )}
+
+      {/* ── Bloque B3: Mis jugadores (solo los que sigo) ───────────────────── */}
+      {myPlayers.length > 0 && (
+        <SettingsBlock
+          title={t('settings.my_players')}
+          icon={
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+              <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+            </svg>
+          }
+        >
+          {myPlayers.map((p) => (
+            <FavoriteRow
+              key={p.id}
+              href={`/players/${p.id}`}
+              name={p.name}
+              fallback={p.name.slice(0, 2)}
+              onRemove={() => togglePlayer(p.id)}
             />
           ))}
         </SettingsBlock>

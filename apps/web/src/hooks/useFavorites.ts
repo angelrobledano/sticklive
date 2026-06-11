@@ -73,7 +73,55 @@ export function useFavorites() {
     [leagues]
   );
 
-  return { favorites, toggle, isFavorite, leagues, toggleLeague, isLeagueFavorite, mounted };
+  // ── Jugadores favoritos (clave separada + mapa de nombres para listados) ──
+  const [players, setPlayers] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(PLAYERS_KEY);
+      if (stored) setPlayers(JSON.parse(stored) as string[]);
+    } catch { /* noop */ }
+  }, []);
+
+  const togglePlayer = useCallback((playerId: string, name?: string) => {
+    setPlayers((prev) => {
+      const adding = !prev.includes(playerId);
+      const next = adding
+        ? [...prev, playerId]
+        : prev.filter((id) => id !== playerId);
+      try {
+        localStorage.setItem(PLAYERS_KEY, JSON.stringify(next));
+        // Mapa id→nombre: permite listar "Mis jugadores" sin N fetches
+        const names = JSON.parse(localStorage.getItem(FAV_NAMES_KEY) ?? '{}') as Record<string, string>;
+        if (adding && name) names[playerId] = name;
+        if (!adding) delete names[playerId];
+        localStorage.setItem(FAV_NAMES_KEY, JSON.stringify(names));
+      } catch { /* noop */ }
+      track(adding ? 'favorite_added' : 'favorite_removed', {
+        kind: 'player', ref_id: playerId, total_favorites: next.length,
+      });
+      return next;
+    });
+  }, []);
+
+  const isPlayerFavorite = useCallback(
+    (playerId: string) => players.includes(playerId),
+    [players]
+  );
+
+  return {
+    favorites, toggle, isFavorite,
+    leagues, toggleLeague, isLeagueFavorite,
+    players, togglePlayer, isPlayerFavorite,
+    mounted,
+  };
+}
+
+/** Nombres de jugadores favoritos guardados al seguirlos (para listados) */
+export function getFavNames(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(FAV_NAMES_KEY) ?? '{}'); } catch { return {}; }
 }
 
 const LEAGUES_KEY = 'rink-fav-leagues';
+const PLAYERS_KEY = 'rink-fav-players';
+const FAV_NAMES_KEY = 'rink-fav-names';

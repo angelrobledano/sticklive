@@ -247,9 +247,10 @@ authRouter.post('/favorites/merge', async (c) => {
   if (!user) return c.json({ error: 'unauthorized' }, 401);
 
   try {
-    const { teams = [], leagues = [] } = await c.req.json<{ teams?: string[]; leagues?: string[] }>();
+    const { teams = [], leagues = [], players = [] } =
+      await c.req.json<{ teams?: string[]; leagues?: string[]; players?: string[] }>();
 
-    const insert = async (kind: 'team' | 'league', ids: string[]) => {
+    const insert = async (kind: 'team' | 'league' | 'player', ids: string[]) => {
       for (const id of ids) {
         if (!/^[0-9a-f-]{36}$/i.test(id)) continue;
         await db.query(
@@ -261,6 +262,7 @@ authRouter.post('/favorites/merge', async (c) => {
     };
     await insert('team', teams);
     await insert('league', leagues);
+    await insert('player', players);
 
     const all = await db.query<{ kind: string; ref_id: string }>(
       `SELECT kind, ref_id FROM user_favorites WHERE user_id = $1`, [user.id]
@@ -268,6 +270,7 @@ authRouter.post('/favorites/merge', async (c) => {
     return c.json({
       teams:   all.rows.filter((r) => r.kind === 'team').map((r) => r.ref_id),
       leagues: all.rows.filter((r) => r.kind === 'league').map((r) => r.ref_id),
+      players: all.rows.filter((r) => r.kind === 'player').map((r) => r.ref_id),
     });
   } catch (err) {
     console.error('[auth] merge error:', err);

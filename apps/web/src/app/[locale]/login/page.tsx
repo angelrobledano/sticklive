@@ -57,7 +57,7 @@ function LoginInner() {
         const merged = await fetch(`${API_URL}/auth/favorites/merge`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
-          body: JSON.stringify({ teams, leagues }),
+          body: JSON.stringify({ teams, leagues, players }),
         }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
 
         // El resultado fusionado vuelve al dispositivo (multi-dispositivo)
@@ -65,6 +65,7 @@ function LoginInner() {
           try {
             localStorage.setItem('rink-favorites', JSON.stringify(merged.teams ?? teams));
             localStorage.setItem('rink-fav-leagues', JSON.stringify(merged.leagues ?? leagues));
+            localStorage.setItem('rink-fav-players', JSON.stringify((merged as { players?: string[] }).players ?? players));
           } catch { /* noop */ }
         }
 
@@ -101,14 +102,16 @@ function LoginInner() {
     // Fusionar favoritos anónimos con la cuenta (igual que el magic link)
     let teams: string[] = [];
     let leagues: string[] = [];
+    let players: string[] = [];
     try {
       teams = JSON.parse(localStorage.getItem('rink-favorites') ?? '[]');
       leagues = JSON.parse(localStorage.getItem('rink-fav-leagues') ?? '[]');
+      players = JSON.parse(localStorage.getItem('rink-fav-players') ?? '[]');
     } catch { /* noop */ }
     fetch(`${API_URL}/auth/favorites/merge`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
-      body: JSON.stringify({ teams, leagues }),
+      body: JSON.stringify({ teams, leagues, players }),
     })
       .then((r) => (r.ok ? r.json() : null))
       .then((merged: { teams?: string[]; leagues?: string[] } | null) => {
@@ -116,6 +119,7 @@ function LoginInner() {
           try {
             localStorage.setItem('rink-favorites', JSON.stringify(merged.teams ?? teams));
             localStorage.setItem('rink-fav-leagues', JSON.stringify(merged.leagues ?? leagues));
+            localStorage.setItem('rink-fav-players', JSON.stringify((merged as { players?: string[] }).players ?? players));
           } catch { /* noop */ }
         }
       })
