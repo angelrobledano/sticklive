@@ -1,0 +1,11 @@
+version: '3.9'
+
+# Override para desarrollo: solo levanta Postgres, el resto corre en local
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: sports_results_dev
+      POSTGRES_USER: sports_user
+      POSTGRES_PASSWORD: sports_pass

@@ -1,0 +1,26 @@
+IDP: 34376
+HOME: ALU | AWAY: LUB
+scoreRaw: "2:2" | scoreSelector: ".scorer_score"
+homeScore: 2 | awayScore: 2
+classes: id_fede_ scorer_game scorer_game_final game_report game_mobile_link game_on_line club_729 club_435
+---HTML---
+				
+							
+			
+				<div style="display: inline-block; width: 100%;">
+					<div class="scorer_liga" style="display: none;">OK LIGA BRONCE ELIMINATORIA</div>
+					<div class="scorer_logo_left"><img src="https://sidgad.cloud/rfep/images/logos_clubes/729.png" width="15" style="max-height:15px"></div>
+					<div class="scorer_team_left">ALU</div>
+					<div class="scorer_score">
+																		
+						2:2						
+																	</div>
+					<div class="scorer_team_right">LUB</div>
+					<div class="scorer_logo_right"><img src="https://sidgad.cloud/rfep/images/logos_clubes/435.png" width="15" style="max-height:15px"></div>
+				</div>
+				<div style="display: inline-block; width: 100%;">
+					<div class="scorer_bot_left">07/06 12:30</div>
+					<div class="scorer_bot_center">FINAL</div>
+					<div class="scorer_bot_right" style="padding: 0px 0px 0px 0px;">Jor 1</div>
+				</div>
+							

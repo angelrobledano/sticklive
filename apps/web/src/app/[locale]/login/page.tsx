@@ -1,0 +1,221 @@
+'use client';
+
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
+import { useT } from '@/lib/i18n';
+import { BackLink } from '@/components/shared/BackLink';
+import { track } from '@/lib/analytics';
+
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
+
+type Status = 'idle' | 'sending' | 'sent' | 'verifying' | 'welcome' | 'error';
+
+function LoginInner() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const { login } = useAuth();
+  const { t } = useT();
+
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<Status>('idle');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [devLink, setDevLink] = useState<string | null>(null);
+
+  // ── Canjear magic link (?token=) ─────────────────────────────────────────
+  useEffect(() => {
+    const token = params.get('token');
+    if (!token) return;
+    setStatus('verifying');
+
+    const deviceId = (() => {
+      try { return localStorage.getItem('rink-device-id'); } catch { return null; }
+    })();
+
+    fetch(`${API_URL}/auth/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, deviceId }),
+    })
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.message ?? 'No se pudo verificar el enlace.');
+        return data as { session: string; email: string };
+      })
+      .then(async ({ session, email: userEmail }) => {
+        login(session, userEmail);
+
+        // ── Migración crítica: fusionar favoritos anónimos con la cuenta ──
+        let teams: string[] = [];
+        let leagues: string[] = [];
+        try {
+          teams = JSON.parse(localStorage.getItem('rink-favorites') ?? '[]');
+          leagues = JSON.parse(localStorage.getItem('rink-fav-leagues') ?? '[]');
+        } catch { /* noop */ }
+
+        const merged = await fetch(`${API_URL}/auth/favorites/merge`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+          body: JSON.stringify({ teams, leagues }),
+        }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
+        // El resultado fusionado vuelve al dispositivo (multi-dispositivo)
+        if (merged) {
+          try {
+            localStorage.setItem('rink-favorites', JSON.stringify(merged.teams ?? teams));
+            localStorage.setItem('rink-fav-leagues', JSON.stringify(merged.leagues ?? leagues));
+          } catch { /* noop */ }
+        }
+
+        // Bienvenida en vez de redirección seca — primer momento de marca
+        setStatus('welcome');
+      })
+      .catch((err: Error) => {
+        setStatus('error');
+        setErrorMsg(err.message);
+      });
+  }, [params, login, router]);
+
+  // ── Pedir magic link ─────────────────────────────────────────────────────
+  const requestLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    track('login_link_requested');
+    setStatus('sending');
+    setErrorMsg(null);
+    try {
+      const r = await fetch(`${API_URL}/auth/magic-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.message ?? 'No se pudo enviar el enlace.');
+      setDevLink(data.devLink ?? null);
+      setStatus('sent');
+    } catch (err) {
+      setStatus('error');
+      setErrorMsg(err instanceof Error ? err.message : 'Algo no fue bien — inténtalo de nuevo.');
+    }
+  };
+
+  if (status === 'verifying') {
+    return (
+      <div className="card p-8 text-center">
+        <p className="text-sm text-slate-500 dark:text-slate-400">Abriendo tu cuenta…</p>
+      </div>
+    );
+  }
+
+  if (status === 'welcome') {
+    return (
+      <div className="card p-8 text-center space-y-4">
+        <div className="mx-auto w-14 h-14 rounded-2xl bg-rink-passion flex items-center justify-center relative">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.2} className="w-7 h-7">
+            <path d="M7 3l7 12.5a3 3 0 0 1-2.6 4.5H8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400
+                           ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-50">
+            {t('auth.welcome_title')}
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+            {t('auth.welcome_body')}
+          </p>
+        </div>
+        <Link href="/favorites"
+              className="block w-full min-h-[48px] leading-[48px] rounded-xl bg-rink-passion text-white
+                         text-sm font-semibold hover:opacity-90 transition-opacity">
+          {t('auth.welcome_cta')}
+        </Link>
+        <Link href="/" className="block text-xs text-slate-400 dark:text-slate-500 hover:underline">
+          {t('auth.go_today')}
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card p-6 space-y-5">
+      <div className="text-center space-y-1.5">
+        <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-50">{t('auth.login_title')}</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+          {t('auth.login_subtitle')}
+        </p>
+      </div>
+
+      {/* Google OAuth — pendiente de credenciales; visible y honesto */}
+      <button
+        onClick={() => { setErrorMsg('El acceso con Google estará disponible muy pronto. Mientras tanto, el enlace por email funciona igual de rápido.'); setStatus('error'); }}
+        className="w-full min-h-[48px] flex items-center justify-center gap-2.5 rounded-xl
+                   border border-slate-200 dark:border-slate-700 text-sm font-semibold
+                   text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+      >
+        <svg viewBox="0 0 24 24" className="w-4.5 h-4.5 w-5 h-5"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1A6.6 6.6 0 0 1 5.5 12c0-.73.13-1.44.34-2.1V7.06H2.18A11 11 0 0 0 1 12c0 1.77.43 3.45 1.18 4.94l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.61 0 3.06.56 4.21 1.64l3.16-3.16A11 11 0 0 0 12 1 11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.3 9.14 5.38 12 5.38z"/></svg>
+        {t('auth.google')}
+      </button>
+
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
+        <span className="text-[10px] uppercase tracking-widest text-slate-400 dark:text-slate-600">{t('auth.or_email')}</span>
+        <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
+      </div>
+
+      {status === 'sent' ? (
+        <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-4 space-y-2">
+          <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">{t('auth.link_sent_title')}</p>
+          <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
+            {t('auth.link_sent_body')}
+          </p>
+          {devLink && (
+            <a href={devLink} className="block text-xs font-mono text-rink-passion underline break-all">
+              [dev] Abrir enlace directamente
+            </a>
+          )}
+        </div>
+      ) : (
+        <form onSubmit={requestLink} className="space-y-3">
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="tu@email.com"
+            className="w-full min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-slate-700
+                       bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
+                       placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion/40"
+          />
+          <button
+            type="submit"
+            disabled={status === 'sending'}
+            className="w-full min-h-[48px] rounded-xl bg-rink-passion text-white text-sm font-semibold
+                       hover:opacity-90 disabled:opacity-50 transition-opacity"
+          >
+            {status === 'sending' ? t('auth.sending') : t('auth.send_link')}
+          </button>
+        </form>
+      )}
+
+      {errorMsg && (
+        <p className="text-xs text-red-600 dark:text-red-400 leading-relaxed text-center">{errorMsg}</p>
+      )}
+
+      <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed text-center">
+        {t('auth.privacy')}
+      </p>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <div className="px-4 py-6 max-w-md mx-auto space-y-4">
+      <BackLink href="/" />
+      <Suspense fallback={null}>
+        <LoginInner />
+      </Suspense>
+    </div>
+  );
+}

@@ -1,0 +1,70 @@
+version: '3.9'
+
+services:
+  # ───────────────────────────────────────────
+  # Base de datos
+  # ───────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: sports_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sports_results
+      POSTGRES_USER: sports_user
+      POSTGRES_PASSWORD: sports_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../../packages/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sports_user -d sports_results"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ───────────────────────────────────────────
+  # Scraper
+  # ───────────────────────────────────────────
+  scraper:
+    build:
+      context: ../../
+      dockerfile: apps/scraper/Dockerfile
+    container_name: sports_scraper
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://sports_user:sports_pass@postgres:5432/sports_results
+      NODE_ENV: production
+    env_file:
+      - ../../.env
+    volumes:
+      - scraper_logs:/app/logs
+    # El scraper corre sus crons internamente; no expone puerto
+
+  # ───────────────────────────────────────────
+  # API
+  # ───────────────────────────────────────────
+  api:
+    build:
+      context: ../../
+      dockerfile: apps/api/Dockerfile
+    container_name: sports_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://sports_user:sports_pass@postgres:5432/sports_results
+      PORT: 3001
+      NODE_ENV: production
+    env_file:
+      - ../../.env
+    ports:
+      - "3001:3001"
+
+volumes:
+  postgres_data:
+  scraper_logs:

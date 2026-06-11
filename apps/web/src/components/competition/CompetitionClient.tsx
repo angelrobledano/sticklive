@@ -1,0 +1,804 @@
+'use client';
+
+import { useState, useMemo, useRef } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import type { SeasonOverview, SeasonStandingRow, SeasonMatch, SeasonRound, CompetitionSeason, SeasonStats, SeasonLeader } from '@/lib/api/client';
+import { buildSeries, groupByPhase, placementMatches, type PlayoffSeries } from '@/lib/playoff';
+import { PlayoffBracket } from '@/components/match/PlayoffBracket';
+import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
+import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
+import { FavoriteStar } from '@/components/shared/FavoriteStar';
+import { ShareButton } from '@/components/shared/ShareButton';
+import { useT } from '@/lib/i18n';
+import { TeamShield } from '@/components/shared/TeamShield';
+import { clubName } from '@/lib/names';
+
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+// Nombres adaptativos: sistema global en @/components/shared/TeamName
+
+function fmtTime(iso: string | null): string {
+  if (!iso) return '--:--';
+  return new Date(iso).toLocaleTimeString('es-ES', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid',
+  });
+}
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('es-ES', {
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Madrid',
+  });
+}
+
+// ─── Cabecera de la competición ───────────────────────────────────────────────
+
+function CompetitionHeader({ data, seasons, competitionId }: {
+  data: SeasonOverview;
+  seasons?: CompetitionSeason[];
+  competitionId?: string;
+}) {
+  const { season } = data;
+  const router = useRouter();
+  const { t } = useT();
+  const hasHistory = !!competitionId && (seasons?.length ?? 0) > 1;
+
+  return (
+    <div className="card px-4 py-3.5 flex items-center gap-3.5">
+      <div className="w-10 h-10 rounded-xl bg-rink-passion flex items-center justify-center shrink-0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} className="w-5 h-5">
+          <path d="M8 3h8v10a4 4 0 0 1-8 0V3Z" /><path d="M12 17v4M8 21h8" />
+        </svg>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+          {season.competitionShort ?? season.competitionName}
+        </p>
+        <h1 className="text-base font-bold text-slate-900 dark:text-slate-50 leading-tight truncate">
+          {season.competitionName}
+        </h1>
+        {/* Temporada: texto plano si no hay histórico; selector discreto si lo hay.
+            Decisión UX: la temporada actual es el 99% de las visitas — el
+            selector no compite visualmente, parece un subtítulo con caret. */}
+        {hasHistory ? (
+          <select
+            value={season.id}
+            onChange={(e) => router.push(`/competitions/${competitionId}?season=${e.target.value}`)}
+            className="mt-0.5 -ml-1 text-xs font-light text-slate-400 dark:text-slate-500 bg-transparent
+                       border-0 rounded-md px-1 py-0 pr-6 cursor-pointer appearance-auto
+                       hover:text-slate-600 dark:hover:text-slate-300
+                       focus:outline-none focus:ring-1 focus:ring-rink-passion/40"
+            aria-label="Cambiar temporada"
+          >
+            {seasons!.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}{s.isCurrent ? ` · ${t('common.current')}` : ''}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <p className="text-xs font-light text-slate-400 dark:text-slate-500">{season.name}</p>
+        )}
+      </div>
+
+      {/* Compartir + favorito de liga */}
+      <ShareButton kind="league" title={season.competitionName} className="shrink-0" />
+      <FavoriteStar
+        id={season.competitionId}
+        kind="league"
+        name={season.competitionShort ?? season.competitionName}
+        className="shrink-0"
+      />
+    </div>
+  );
+}
+
+// ─── Tab A: Clasificación ─────────────────────────────────────────────────────
+
+const PLAYOFF_SPOTS = 8;
+const RELEGATION_SPOTS = 2; // últimos 2 descienden en OK Liga
+
+function StandingsTab({ standings }: { standings: SeasonStandingRow[] }) {
+  const { t } = useT();
+  if (standings.length === 0) {
+    return (
+      <div className="card p-8 text-center opacity-60">
+        <p className="text-sm text-slate-400 dark:text-slate-600">{t('standings.no_data')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card overflow-hidden">
+      {/* Cabecera de la tabla — columnas de stats más estrechas para dar
+          espacio al nombre del equipo y evitar truncados */}
+      {/* border-l transparente: alinea la cabecera con las filas (que llevan
+          barra lateral de 2px de zona) — sin él hay un micro-desplazamiento */}
+      <div className="grid grid-cols-[24px_1fr_repeat(8,26px)] gap-x-1 px-3 py-1.5 border-l-2 border-l-transparent
+                      bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
+        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">#</span>
+        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('standings.team')}</span>
+        {[t('standings.cols.pts'), t('standings.cols.played'), t('standings.cols.won'), t('standings.cols.drawn'),
+          t('standings.cols.lost'), t('standings.cols.gf'), t('standings.cols.ga'), t('standings.cols.gd')].map((h) => (
+          <span key={h} className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">{h}</span>
+        ))}
+      </div>
+
+      {/* Filas */}
+      <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+        {standings.map((row, idx) => {
+          const pos = row.position ?? idx + 1;
+          const total = standings.length;
+          const isPlayoff    = pos <= PLAYOFF_SPOTS;
+          const isRelegation = total > 0 && pos > total - RELEGATION_SPOTS;
+          const isLast       = idx === total - 1;
+          const showPlayoffBorder    = isPlayoff    && pos === PLAYOFF_SPOTS    && !isLast;
+          const showRelegationBorder = isRelegation && pos === total - RELEGATION_SPOTS + 1;
+
+          return (
+            <div
+              key={row.id}
+              className={`grid grid-cols-[24px_1fr_repeat(8,26px)] gap-x-1 px-3 py-2 items-center border-l-2
+                ${showPlayoffBorder    ? 'border-b-2 border-dashed border-b-rink-passion/30 dark:border-b-red-400/40' : ''}
+                ${showRelegationBorder ? 'border-t-2 border-dashed border-t-orange-400/50 dark:border-t-orange-400/40' : ''}
+                ${isPlayoff            ? 'border-l-rink-passion dark:border-l-red-400 bg-rink-passion/[0.03] dark:bg-red-400/[0.06]' :
+                  isRelegation         ? 'border-l-orange-500 dark:border-l-orange-400 bg-orange-50/40 dark:bg-orange-400/[0.06]' :
+                                         'border-l-transparent'}
+              `}
+            >
+              {/* Posición — gris medio uniforme: la barra lateral ya marca la
+                  zona, y así el nombre y los puntos son lo que destaca */}
+              <span className="text-xs font-semibold text-center tabular-nums text-slate-500 dark:text-slate-400">
+                {pos}
+              </span>
+
+              {/* Equipo */}
+              <Link
+                href={`/teams/${row.teamId}`}
+                className="flex items-center gap-2 min-w-0 hover:opacity-75 transition-opacity"
+              >
+                <TeamShield teamId={row.teamId} teamName={row.teamName} size={20} />
+                {/* Estrella solo en escritorio: en móvil la tabla queda 100%
+                    limpia y se sigue desde el perfil del equipo o desde
+                    Gestionar favoritos */}
+                <FavoriteStar
+                  id={row.teamId}
+                  kind="team"
+                  name={row.teamShortName ?? row.teamName}
+                  className="shrink-0 !w-10 !h-10 !-m-2.5 !hidden md:!inline-flex"
+                />
+                <AdaptiveTeamName
+                  name={row.teamName}
+                  shortName={row.teamShortName}
+                  className="flex-1 min-w-0 text-xs font-semibold text-slate-800 dark:text-slate-200 truncate"
+                />
+              </Link>
+
+              {/* PT con penalización */}
+              <div className="flex items-baseline justify-center gap-0.5">
+                <span className="text-xs font-bold tabular-nums text-slate-900 dark:text-slate-50">
+                  {row.points}
+                </span>
+                {row.penalizationPoints < 0 && (
+                  <span className="text-[8px] font-bold text-red-500 tabular-nums leading-none">
+                    {row.penalizationPoints}
+                  </span>
+                )}
+              </div>
+
+              {/* PJ, PG, PE, PP, GF, GC, DG */}
+              {[row.played, row.won, row.drawn, row.lost, row.goalsFor, row.goalsAgainst].map((v, i) => (
+                <span key={i} className="text-[11px] text-slate-500 dark:text-slate-400 text-center tabular-nums">{v}</span>
+              ))}
+              <span className={`text-xs font-semibold text-center tabular-nums ${
+                row.goalDiff > 0 ? 'text-emerald-600 dark:text-emerald-400' :
+                row.goalDiff < 0 ? 'text-red-500' : 'text-slate-400'
+              }`}>
+                {row.goalDiff > 0 ? `+${row.goalDiff}` : row.goalDiff}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Leyenda — compacta y discreta: dots de color, gris medio neutro */}
+      <div className="px-3 py-1.5 flex flex-wrap gap-x-3 gap-y-0.5 border-t border-slate-100 dark:border-slate-800">
+        {/* Los dots replican EXACTAMENTE los colores de las barras laterales */}
+        <div className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-rink-passion dark:bg-red-400 shrink-0" />
+          <span className="text-[10px] text-slate-400 dark:text-slate-500">{t('standings.playoffs_zone')}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 dark:bg-orange-400 shrink-0" />
+          <span className="text-[10px] text-slate-400 dark:text-slate-500">{t('standings.relegation_zone')}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab B: Jornadas ──────────────────────────────────────────────────────────
+
+function MatchCard({ match }: { match: SeasonMatch }) {
+  const isLive     = match.status === 'live';
+  const isFinished = match.status === 'finished';
+  const showScore  = isLive || isFinished;
+  const ht = match.homeTeam;
+  const at = match.awayTeam;
+
+  return (
+    <Link
+      href={`/matches/${match.id}`}
+      className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+    >
+      {/* Local */}
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <TeamShield teamId={ht.id} teamName={ht.shortName ?? ht.name} size={24} />
+        <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
+          {ht.shortName ?? ht.name}
+        </span>
+      </div>
+
+      {/* Marcador / hora */}
+      <div className="shrink-0 flex flex-col items-center gap-0.5 min-w-[52px]">
+        {showScore ? (
+          <>
+            <span className="font-score text-base font-bold tabular-nums text-slate-900 dark:text-slate-50">
+              {match.score.home ?? 0} – {match.score.away ?? 0}
+            </span>
+            {isLive && (
+              <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 uppercase tracking-wide">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live
+              </span>
+            )}
+            {isFinished && (
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">Final</span>
+            )}
+          </>
+        ) : (
+          <span className="font-score text-sm font-semibold text-slate-500 dark:text-slate-400 tabular-nums">
+            {fmtTime(match.scheduledAt)}
+          </span>
+        )}
+      </div>
+
+      {/* Visitante */}
+      <div className="flex items-center gap-2 flex-1 min-w-0 flex-row-reverse">
+        <TeamShield teamId={at.id} teamName={at.shortName ?? at.name} size={24} />
+        <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate text-right">
+          {at.shortName ?? at.name}
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; matches: SeasonMatch[] }) {
+  const { t } = useT();
+  const regularRounds = rounds.filter((r) => r.roundType === 'regular');
+  const regularMatches = matches.filter((m) => m.roundType === 'regular');
+
+  // Determinar jornada activa (la más reciente con partidos jugados o la próxima)
+  const defaultRound = useMemo(() => {
+    const withFinished = regularMatches
+      .filter((m) => m.status === 'finished' || m.status === 'live')
+      .map((m) => m.roundNumber ?? 0);
+    if (withFinished.length > 0) return Math.max(...withFinished);
+    return regularRounds[0]?.number ?? 1;
+  }, [regularMatches, regularRounds]);
+
+  const [activeRound, setActiveRound] = useState(defaultRound);
+  const pillsRef = useRef<HTMLDivElement>(null);
+
+  const roundMatches = regularMatches.filter((m) => m.roundNumber === activeRound);
+  const currentRoundInfo = regularRounds.find((r) => r.number === activeRound);
+
+  // Fallback sin rounds en DB: agrupar los partidos por fecha.
+  // (El calendario de la fuente trae el nombre de jornada pero aún no se
+  // persiste en rounds — cuando se haga, este bloque deja de usarse.)
+  if (regularRounds.length === 0) {
+    if (regularMatches.length === 0) {
+      return (
+        <div className="card p-8 text-center opacity-60">
+          <p className="text-sm text-slate-400 dark:text-slate-600">{t('standings.no_fixtures')}</p>
+        </div>
+      );
+    }
+    const byDate = new Map<string, SeasonMatch[]>();
+    for (const m of regularMatches) {
+      const key = m.scheduledAt ? new Date(m.scheduledAt).toISOString().slice(0, 10) : 'Sin fecha';
+      if (!byDate.has(key)) byDate.set(key, []);
+      byDate.get(key)!.push(m);
+    }
+    const dates = [...byDate.keys()].sort();
+    return (
+      <div className="space-y-3">
+        {dates.map((d) => (
+          <div key={d} className="card overflow-hidden">
+            <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                {d === 'Sin fecha' ? d : fmtDate(d)}
+              </span>
+            </div>
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              {byDate.get(d)!.map((m) => <MatchCard key={m.id} match={m} />)}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Selector de jornadas — scroll horizontal */}
+      <div ref={pillsRef} className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-0">
+        {regularRounds.map((r) => (
+          <button
+            key={r.id}
+            onClick={() => setActiveRound(r.number)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors shrink-0 ${
+              activeRound === r.number
+                ? 'bg-rink-passion text-white'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            {r.name ?? `J${r.number}`}
+          </button>
+        ))}
+      </div>
+
+      {/* Partidos de la jornada */}
+      <div className="card overflow-hidden">
+        {currentRoundInfo && (
+          <div className="px-4 pt-4 pb-2">
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              {currentRoundInfo.name ?? `Jornada ${currentRoundInfo.number}`}
+            </p>
+          </div>
+        )}
+        {roundMatches.length === 0 ? (
+          <div className="px-4 py-6 text-center">
+            <p className="text-sm text-slate-400 dark:text-slate-600 opacity-60">Sin partidos en esta jornada</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+            {roundMatches.map((m) => <MatchCard key={m.id} match={m} />)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab C: Playoffs ──────────────────────────────────────────────────────────
+
+interface PlayoffSeed {
+  seed: number;
+  team: { id: string; name: string; shortName: string | null; logoUrl: string | null } | null;
+}
+
+function PlayoffMatchup({ home, away, match, label }: {
+  home: PlayoffSeed;
+  away: PlayoffSeed;
+  match: SeasonMatch | null;
+  label: string;
+}) {
+  const isFinished = match?.status === 'finished';
+  const isLive     = match?.status === 'live';
+
+  const content = (
+    <div className={`card overflow-hidden border ${isLive ? 'border-emerald-400/40' : 'border-slate-200 dark:border-slate-800'}`}>
+      <div className="px-3 pt-2.5 pb-1">
+        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</p>
+      </div>
+      {[home, away].map((side, idx) => {
+        const isHome = idx === 0;
+        const score = isHome
+          ? (isFinished || isLive) ? match?.score.home : null
+          : (isFinished || isLive) ? match?.score.away : null;
+        const team = side.team;
+        return (
+          <div key={idx} className={`flex items-center gap-2.5 px-3 py-2 ${idx === 0 ? 'border-b border-slate-100 dark:border-slate-800' : ''}`}>
+            <TeamShield teamId={team?.id ?? ''} teamName={team ? (team.shortName ?? team.name) : `${side.seed}o`} size={24} />
+            <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
+              {team ? (team.shortName ?? team.name) : `${side.seed}º clasificado`}
+            </span>
+            {(isFinished || isLive) && score !== undefined && score !== null && (
+              <span className="font-score text-base font-bold tabular-nums text-slate-900 dark:text-slate-50">{score}</span>
+            )}
+          </div>
+        );
+      })}
+      {(isFinished || isLive) && (
+        <div className="px-3 pb-2 pt-1">
+          <span className={`text-[9px] font-bold uppercase tracking-wider ${isLive ? 'text-emerald-500' : 'text-slate-400 dark:text-slate-500'}`}>
+            {isLive ? '🟢 En directo' : `Final · ${fmtDate(match?.finishedAt ?? match?.scheduledAt ?? null)}`}
+          </span>
+        </div>
+      )}
+      {!isFinished && !isLive && match && (
+        <div className="px-3 pb-2 pt-1">
+          <span className="text-[9px] text-slate-400 dark:text-slate-500">
+            {fmtDate(match.scheduledAt)} · {fmtTime(match.scheduledAt)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+
+  if (match) {
+    return <Link href={`/matches/${match.id}`} className="block hover:opacity-90 transition-opacity">{content}</Link>;
+  }
+  return content;
+}
+
+const PLAYOFF_PHASES = ['Cuartos', 'Semis', 'Final'] as const;
+type PlayoffPhase = typeof PLAYOFF_PHASES[number];
+
+// ─── Series de playoff (lógica compartida en @/lib/playoff) ─────────────────
+
+function SeriesCard({ serie, label }: { serie: PlayoffSeries; label: string }) {
+  const { t } = useT();
+  const hasLive = serie.games.some((g) => g.status === 'live');
+  const notStarted = serie.winsA === 0 && serie.winsB === 0 && !hasLive;
+  const rows = [
+    { team: serie.teamA, wins: serie.winsA, winner: serie.winsA > serie.winsB },
+    { team: serie.teamB, wins: serie.winsB, winner: serie.winsB > serie.winsA },
+  ];
+
+  return (
+    <div className={`card overflow-hidden border ${hasLive ? 'border-emerald-400/40' : 'border-slate-200 dark:border-slate-800'}`}>
+      <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
+        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</p>
+        {/* No mostramos "al mejor de N": el formato varía por torneo y no es
+            inferible de los partidos programados. Los badges de victorias ya
+            cuentan la serie por sí solos. */}
+        {hasLive && (
+          <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider">● {t('playoffs.live')}</span>
+        )}
+      </div>
+
+      {rows.map(({ team, wins, winner }, idx) => (
+        <div key={team.id}
+             className={`flex items-center gap-2.5 px-3 py-2 ${idx === 0 ? 'border-b border-slate-100 dark:border-slate-800' : ''}
+                         ${notStarted ? 'opacity-60' : ''}`}>
+          <TeamShield teamId={team.id} teamName={team.shortName ?? team.name} size={24} />
+          <Link href={`/teams/${team.id}`}
+                className={`flex-1 text-sm truncate hover:underline ${winner ? 'font-bold text-slate-900 dark:text-slate-50' : 'font-medium text-slate-700 dark:text-slate-300'}`}>
+            <AdaptiveTeamName name={team.name} shortName={team.shortName} mobile="abbr" />
+          </Link>
+          {/* Victorias de la serie — badge para diferenciarlo de un marcador de partido */}
+          <span className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1 rounded-md
+                            font-score text-sm font-bold tabular-nums ${
+            winner
+              ? 'bg-rink-passion text-white'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+          }`}>
+            {wins}
+          </span>
+        </div>
+      ))}
+
+      {/* Partidos de la serie — pills neutras, siglas siempre */}
+      <div className="flex flex-wrap gap-1.5 px-3 py-2">
+        {serie.games.map((g) => (
+          <Link key={g.id} href={`/matches/${g.id}`}
+                className={`text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full transition-colors ${
+                  g.status === 'live'
+                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                    : g.status === 'finished'
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-rink-passion'
+                      : 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600'
+                }`}>
+            {g.status === 'finished' || g.status === 'live'
+              ? `${(g.homeTeam.shortName ?? g.homeTeam.name).slice(0, 4)} ${g.score.home ?? '-'}-${g.score.away ?? '-'} ${(g.awayTeam.shortName ?? g.awayTeam.name).slice(0, 4)}`
+              : fmtDate(g.scheduledAt)}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+type PlayoffViewPhase = PlayoffPhase | '9º–10º';
+
+function PlayoffsTab({ matches }: { standings?: SeasonStandingRow[]; matches: SeasonMatch[] }) {
+  const { t } = useT();
+  const [activePhase, setActivePhase] = useState<PlayoffViewPhase>('Cuartos');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Fases por roundNumber (1=QF, 2=SF, 3=F — derivado por la API).
+  const byPhase = useMemo(() => groupByPhase(matches), [matches]);
+  // Serie de colocación 9º–10º (rn=0): fuera del cuadro por el título,
+  // pero decide la última plaza europea — fase propia, no se oculta.
+  const placement = useMemo(() => placementMatches(matches), [matches]);
+
+  const visiblePhases: PlayoffViewPhase[] = [
+    ...PLAYOFF_PHASES,
+    ...(placement.length > 0 ? (['9º–10º'] as const) : []),
+  ];
+
+  const renderPhase = (phase: PlayoffViewPhase) => {
+    if (phase === '9º–10º') {
+      const series = buildSeries(placement);
+      return (
+        <div className="space-y-3">
+          {/* Contexto: sin él, este cruce parece un descenso */}
+          <p className="px-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            {t('playoffs.placement_help')}
+          </p>
+          {series.map((serie, i) => (
+            <SeriesCard key={i} serie={serie} label={t('playoffs.placement_label')} />
+          ))}
+        </div>
+      );
+    }
+
+    const series = buildSeries(byPhase[phase]);
+    if (series.length === 0) {
+      return (
+        <div className="card p-6 text-center opacity-60">
+          <p className="text-sm text-slate-400 dark:text-slate-600">
+            {phase === 'Cuartos' ? t('playoffs.no_quarters') : phase === 'Semis' ? t('playoffs.pending_quarters') : t('playoffs.pending_semis')}
+          </p>
+        </div>
+      );
+    }
+    const labelOf = (i: number) => phase === 'Cuartos' ? t('playoffs.quarter_n', { n: i + 1 }) : phase === 'Semis' ? t('playoffs.semifinal_n', { n: i + 1 }) : t('playoffs.grand_final');
+    return (
+      <div className="space-y-3">
+        {series.map((serie, i) => (
+          <SeriesCard
+            key={i}
+            serie={serie}
+            label={labelOf(i)}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  const phaseLabel = (phase: PlayoffViewPhase) =>
+    phase === '9º–10º' ? t('playoffs.placement')
+    : phase === 'Cuartos' ? t('playoffs.quarters')
+    : phase === 'Semis' ? t('playoffs.semis')
+    : t('playoffs.final');
+
+  return (
+    <div className="space-y-3">
+      {/* Vista general del cuadro por el título — informativa, sin enlaces */}
+      <PlayoffBracket matches={matches} />
+
+      {/* Sub-pestañas horizontales */}
+      <div className="flex gap-0 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+        {visiblePhases.map((phase) => (
+          <button
+            key={phase}
+            onClick={() => setActivePhase(phase)}
+            className={`flex-1 py-2.5 text-sm font-semibold transition-colors whitespace-nowrap ${
+              activePhase === phase
+                ? 'bg-rink-passion text-white'
+                : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            {phaseLabel(phase)}
+          </button>
+        ))}
+      </div>
+
+      {/* Contenido de la fase activa */}
+      <div ref={scrollRef}>
+        {renderPhase(activePhase)}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab D: Líderes de temporada ─────────────────────────────────────────────
+
+const LEADERBOARD_PREVIEW = 5;
+
+function LeaderBoard({ title, leaders, valueLabel, extraLabel }: {
+  title: string;
+  leaders: SeasonLeader[];
+  valueLabel: string;
+  extraLabel?: string;
+}) {
+  const { t } = useT();
+  const [expanded, setExpanded] = useState(false);
+  if (leaders.length === 0) return null;
+
+  const visible = expanded ? leaders : leaders.slice(0, LEADERBOARD_PREVIEW);
+  const hiddenCount = leaders.length - LEADERBOARD_PREVIEW;
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800
+                      flex items-center justify-between">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{title}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          {valueLabel}{extraLabel ? ` / ${extraLabel}` : ''}
+        </span>
+      </div>
+      <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+        {visible.map((l, idx) => (
+          <div key={`${l.playerId ?? l.playerName}-${idx}`} className="flex items-center gap-2.5 px-3 py-2">
+            <span className="w-5 text-xs font-semibold text-slate-400 dark:text-slate-500 tabular-nums text-center">{idx + 1}</span>
+            <PlayerAvatar
+              photoUrl={l.photoUrl}
+              name={toLeaderName(l.playerName)}
+              className="w-8 h-8 rounded-full shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              {l.playerId ? (
+                <Link href={`/players/${l.playerId}`}
+                      className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate hover:text-rink-passion hover:underline block">
+                  {toLeaderName(l.playerName)}
+                </Link>
+              ) : (
+                <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate block">{toLeaderName(l.playerName)}</span>
+              )}
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 truncate block">{clubName(l.teamName ?? l.teamShort ?? '')}</span>
+            </div>
+            <span className="text-sm font-bold tabular-nums text-slate-900 dark:text-slate-50">{l.value}</span>
+            {extraLabel && (
+              <span className="w-6 text-xs text-slate-500 dark:text-slate-400 tabular-nums text-right">{l.extra}</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {hiddenCount > 0 && (
+        <button
+          onClick={() => setExpanded((e) => !e)}
+          className="w-full py-2.5 min-h-[44px] text-xs font-semibold text-rink-passion
+                     border-t border-slate-100 dark:border-slate-800
+                     hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+        >
+          {expanded ? t('common.show_less') : t('common.show_more', { n: hiddenCount })}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** "ALABART GONZALEZ IGNACIO" o "Ferran Font Sánchez" → "Ignacio Alabart" estilo natural */
+function toLeaderName(raw: string): string {
+  const clean = raw.replace(/\s+/g, ' ').trim();
+  const isUpper = clean === clean.toUpperCase();
+  const parts = clean.split(' ');
+  const title = (s: string) => s.toLowerCase().replace(/(^|\s|-)\p{L}/gu, (m) => m.toUpperCase());
+  if (!isUpper || parts.length === 1) return title(clean);
+  // Formato fuente "APELLIDO APELLIDO NOMBRE" → "Nombre Apellido"
+  return title(`${parts[parts.length - 1]} ${parts[0]}`);
+}
+
+function StatsLeadersTab({ stats }: { stats: SeasonStats }) {
+  const { t } = useT();
+  const empty = stats.topScorers.length === 0 && stats.topAssists.length === 0 && stats.topCards.length === 0;
+  if (empty) {
+    return (
+      <div className="card p-8 text-center opacity-60">
+        <p className="text-sm text-slate-400 dark:text-slate-600">{t('leaders.no_data')}</p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      <LeaderBoard title={t('hockey_stats.top_scorers')} leaders={stats.topScorers} valueLabel={t('leaders.goals_short')} extraLabel={t('leaders.assists_short')} />
+      <LeaderBoard title={t('hockey_stats.top_assisters')} leaders={stats.topAssists} valueLabel={t('hockey_stats.assists')} extraLabel={t('leaders.goals_short')} />
+      <LeaderBoard title={t('hockey_stats.cards_leaderboard')} leaders={stats.topCards} valueLabel={t('leaders.blues_short')} extraLabel={t('leaders.reds_short')} />
+
+      {/* Eficiencia a bola parada por equipo (la fuente no identifica al
+          lanzador de las FD falladas, así que por jugador sería engañoso) */}
+      {(stats.setPieces?.length ?? 0) > 0 && (
+        <div className="card overflow-hidden">
+          <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800
+                          flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+              {t('hockey_stats.efficiency')}
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              {t('leaders.directs_penalties')}
+            </span>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+            {stats.setPieces!.map((tm) => (
+              <div key={tm.teamId}
+                   className="grid grid-cols-[1fr_84px_84px] items-center gap-2 px-3 py-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <TeamShield teamId={tm.teamId} teamName={tm.teamShort ?? tm.teamName ?? ''} size={20} />
+                  <Link href={`/teams/${tm.teamId}`}
+                        className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate hover:text-rink-passion hover:underline">
+                    <AdaptiveTeamName name={tm.teamName ?? ''} shortName={tm.teamShort} />
+                  </Link>
+                </div>
+                {[tm.directFouls, tm.penalties].map((m, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_auto] items-baseline gap-x-1.5 text-right">
+                    <span className="text-xs font-normal tabular-nums text-slate-600 dark:text-slate-300">
+                      {m.total > 0 ? `${m.scored}/${m.total}` : '—'}
+                    </span>
+                    <span className={`w-9 text-xs font-bold tabular-nums ${
+                      m.pct !== null && m.pct >= 50
+                        ? 'text-emerald-700 dark:text-emerald-400'
+                        : 'text-slate-700 dark:text-slate-200'
+                    }`}>
+                      {m.pct !== null ? `${m.pct}%` : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+const MAIN_TABS = ['Clasificación', 'Jornadas', 'Playoffs', 'Estadísticas'] as const;
+type MainTab = typeof MAIN_TABS[number];
+// Etiquetas i18n (los valores internos siguen siendo estables en ES)
+const MAIN_TAB_KEYS: Record<MainTab, string> = {
+  'Clasificación': 'match_tabs.standing',
+  'Jornadas':      'match_tabs.fixtures',
+  'Playoffs':      'match_tabs.playoffs',
+  'Estadísticas':  'match_tabs.stats',
+};
+
+export function CompetitionClient({ data, seasons, competitionId, stats }: {
+  data: SeasonOverview;
+  seasons?: CompetitionSeason[];
+  competitionId?: string;
+  stats?: SeasonStats | null;
+}) {
+  // Pestañas según los datos: una eliminatoria pura (playoff) no tiene
+  // clasificación, y una liga sin fase final no necesita pestaña Playoffs.
+  const visibleTabs = useMemo<MainTab[]>(() => {
+    const tabs: MainTab[] = [];
+    if (data.standings.length > 0) tabs.push('Clasificación');
+    if (data.matches.some((m) => m.roundType === 'regular')) tabs.push('Jornadas');
+    if (data.matches.some((m) => m.roundType === 'playoff')) tabs.push('Playoffs');
+    if (stats && (stats.topScorers.length > 0 || stats.topAssists.length > 0 || stats.topCards.length > 0)) {
+      tabs.push('Estadísticas');
+    }
+    return tabs.length > 0 ? tabs : ['Clasificación'];
+  }, [data.standings, data.matches, stats]);
+
+  const [activeTab, setActiveTab] = useState<MainTab>(visibleTabs[0]!);
+  const currentTab = visibleTabs.includes(activeTab) ? activeTab : visibleTabs[0]!;
+  const { t } = useT();
+
+  return (
+    <div className="space-y-4">
+      <CompetitionHeader data={data} seasons={seasons} competitionId={competitionId} />
+
+      {/* Pestañas principales */}
+      <div className="flex gap-0 border-b border-slate-200 dark:border-slate-800">
+        {visibleTabs.map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2.5 text-sm border-b -mb-px transition-colors whitespace-nowrap ${
+              currentTab === tab
+                ? 'border-rink-passion text-rink-passion font-semibold'
+                : 'border-transparent font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            {t(MAIN_TAB_KEYS[tab])}
+          </button>
+        ))}
+      </div>
+
+      {currentTab === 'Clasificación' && <StandingsTab standings={data.standings} />}
+      {currentTab === 'Jornadas'      && <GameweeksTab rounds={data.rounds} matches={data.matches} />}
+      {currentTab === 'Playoffs'      && <PlayoffsTab  matches={data.matches} />}
+      {currentTab === 'Estadísticas'  && stats && <StatsLeadersTab stats={stats} />}
+    </div>
+  );
+}

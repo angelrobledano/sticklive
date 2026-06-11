@@ -1,0 +1,12 @@
+# Finales de línea LF en todo el repo (el deploy es Linux).
+# Evita las conversiones CRLF automáticas de Git en Windows.
+* text=auto eol=lf
+
+# Binarios: nunca tocar
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.svg text eol=lf
+*.woff binary
+*.woff2 binary

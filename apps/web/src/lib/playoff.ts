@@ -1,0 +1,80 @@
+import type { SeasonMatch } from '@/lib/api/client';
+
+/**
+ * Lógica compartida del cuadro de playoff (series al mejor de N).
+ * La usan la vista de competición (pestaña Playoffs) y el bracket
+ * compacto de la ficha de partido.
+ */
+
+export type PlayoffPhase = 'Cuartos' | 'Semis' | 'Final';
+export const PLAYOFF_PHASES: PlayoffPhase[] = ['Cuartos', 'Semis', 'Final'];
+
+export interface PlayoffSeries {
+  games: SeasonMatch[];
+  teamA: SeasonMatch['homeTeam'];
+  teamB: SeasonMatch['awayTeam'];
+  winsA: number;
+  winsB: number;
+}
+
+/** Agrupa los partidos de una fase por eliminatoria (pareja de equipos). */
+export function buildSeries(games: SeasonMatch[]): PlayoffSeries[] {
+  const map = new Map<string, SeasonMatch[]>();
+  for (const g of games) {
+    const key = [g.homeTeam.id, g.awayTeam.id].sort().join('|');
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(g);
+  }
+  return [...map.values()]
+    .map((gs) => {
+      const sorted = [...gs].sort((a, b) => ((a.scheduledAt ?? '') < (b.scheduledAt ?? '') ? -1 : 1));
+      const ref = sorted[0]!;
+      const teamA = ref.homeTeam;
+      const teamB = ref.awayTeam;
+      let winsA = 0, winsB = 0;
+      for (const g of sorted) {
+        if (g.status !== 'finished' || g.score.home === null || g.score.away === null) continue;
+        const homeWon = g.score.home > g.score.away;
+        const homeIsA = g.homeTeam.id === teamA.id;
+        if (homeWon === homeIsA) winsA++; else winsB++;
+      }
+      return { games: sorted, teamA, teamB, winsA, winsB };
+    })
+    .sort((a, b) => ((a.games[0]!.scheduledAt ?? '') < (b.games[0]!.scheduledAt ?? '') ? -1 : 1));
+}
+
+/** Reparte los partidos de playoff en fases según roundNumber (1=QF, 2=SF, 3=F). */
+export function groupByPhase(matches: SeasonMatch[]): Record<PlayoffPhase, SeasonMatch[]> {
+  const buckets: Record<PlayoffPhase, SeasonMatch[]> = { Cuartos: [], Semis: [], Final: [] };
+  for (const m of matches) {
+    if (m.roundType !== 'playoff') continue;
+    const rn = m.roundNumber ?? 1;
+    if (rn === 0) continue; // serie de colocación (9º–10º) — fuera del cuadro por el título
+    buckets[rn >= 3 ? 'Final' : rn === 2 ? 'Semis' : 'Cuartos'].push(m);
+  }
+  return buckets;
+}
+
+/**
+ * Serie de colocación 9º–10º (roundNumber derivado = 0): los equipos que
+ * evitaron el descenso disputan la última plaza europea (WSE Cup). No forma
+ * parte del cuadro por el título, pero SÍ debe mostrarse — el orden final
+ * decide qué competición europea juega cada club.
+ */
+export function placementMatches(matches: SeasonMatch[]): SeasonMatch[] {
+  return matches.filter((m) => m.roundType === 'playoff' && m.roundNumber === 0);
+}
+
+/**
+ * IDs de equipos que han avanzado desde una fase: los que aparecen en
+ * alguna serie de la fase siguiente. Sirve para pintar el check de
+ * "clasificado" en el bracket.
+ */
+export function advancedFrom(nextPhaseSeries: PlayoffSeries[]): Set<string> {
+  const ids = new Set<string>();
+  for (const s of nextPhaseSeries) {
+    ids.add(s.teamA.id);
+    ids.add(s.teamB.id);
+  }
+  return ids;
+}

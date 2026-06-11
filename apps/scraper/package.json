@@ -1,0 +1,36 @@
+{
+  "name": "@sports/scraper",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --loader ts-node/esm src/index.ts",
+    "dev": "nodemon --watch src --exec \"npx tsx src/index.ts\"",
+    "build": "tsc",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "probe": "node --loader ts-node/esm src/scrapers/fep/fep-network-probe.ts"
+  },
+  "dependencies": {
+    "@sports/analytics": "*",
+    "@sports/logger": "*",
+    "@sports/shared-types": "*",
+    "@sports/etl": "*",
+    "@sports/db": "*",
+    "playwright": "^1.44.0",
+    "cheerio": "^1.0.0",
+    "pg": "^8.11.0",
+    "node-cron": "^3.0.3",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.11.0",
+    "@types/node-cron": "^3.0.0",
+    "ts-node": "^10.9.0",
+    "nodemon": "^3.1.0",
+    "vitest": "^1.6.0",
+    "typescript": "^5.4.0"
+  }
+}
