@@ -3,15 +3,42 @@ import { notFound } from 'next/navigation';
 import { getMatchDetail, isApiNotFound } from '@/lib/api/client';
 import { MatchCenterClient } from '@/components/match/MatchCenterClient';
 import { BackLink } from '@/components/shared/BackLink';
-import { localeAlternates, isSupportedLocale } from '@/lib/seo';
+import { JsonLd } from '@/components/shared/JsonLd';
+import { localeAlternates, isSupportedLocale, SITE_URL } from '@/lib/seo';
+import { clubName } from '@/lib/names';
 
 interface Props {
   params: { locale: string; id: string };
 }
 
-export function generateMetadata({ params }: Props): Metadata {
+const DESC: Record<string, (h: string, a: string) => string> = {
+  es: (h, a) => `Resultado, goles, alineaciones y estadísticas del ${h} - ${a} de hockey patines, en directo en Stick Live.`,
+  en: (h, a) => `${h} vs ${a} rink hockey: live score, goals, lineups and stats on Stick Live.`,
+  pt: (h, a) => `${h} - ${a} de hóquei em patins: resultado, golos, onzes e estatísticas em direto no Stick Live.`,
+  fr: (h, a) => `${h} - ${a} de rink hockey : score en direct, buts, compositions et statistiques sur Stick Live.`,
+  it: (h, a) => `${h} - ${a} di hockey su pista: risultato in diretta, gol, formazioni e statistiche su Stick Live.`,
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
-  return { alternates: localeAlternates(locale, `/matches/${params.id}`) };
+  const alternates = localeAlternates(locale, `/matches/${params.id}`);
+  try {
+    const data = await getMatchDetail(params.id);
+    const home = clubName(data.match.homeTeam?.shortName ?? data.match.homeTeam?.name ?? '');
+    const away = clubName(data.match.awayTeam?.shortName ?? data.match.awayTeam?.name ?? '');
+    const finished = data.match.status === 'finished';
+    const score = finished ? ` ${data.match.score.home ?? 0}-${data.match.score.away ?? 0} ` : ' - ';
+    const title = `${home}${score}${away} | Stick Live`;
+    const description = (DESC[locale] ?? DESC['en'])!(home, away);
+    return {
+      title,
+      description,
+      alternates,
+      openGraph: { title, description, type: 'website' },
+    };
+  } catch {
+    return { alternates };
+  }
 }
 
 export default async function MatchDetailPage({ params }: Props) {
@@ -20,34 +47,41 @@ export default async function MatchDetailPage({ params }: Props) {
   try {
     data = await getMatchDetail(matchId);
   } catch (err) {
-    console.error(`[MatchDetailPage] getMatchDetail("${matchId}") fallo:`, err);
     if (isApiNotFound(err)) notFound();
     throw err; // error boundary con reintento — la API puede estar reiniciándose
   }
 
-
-  // DIAG: volcar estructura recibida del API en los logs del servidor Next.js
-  console.log('[MatchDetailPage] data received for', matchId, {
-    matchId:        data?.match?.id,
-    status:         data?.match?.status,
-    hasHomeTeam:    !!data?.match?.homeTeam,
-    hasAwayTeam:    !!data?.match?.awayTeam,
-    homeTeamKeys:   data?.match?.homeTeam ? Object.keys(data.match.homeTeam) : [],
-    eventsCount:    data?.events?.length ?? 'undefined',
-    statsKeys:      data?.stats ? Object.keys(data.stats) : [],
-    homeFouls:      data?.stats?.homeFouls,
-    awayFouls:      data?.stats?.awayFouls,
-    // Primer evento (si existe) para ver si los keys son camelCase o snake_case
-    firstEventKeys: data?.events?.[0] ? Object.keys(data.events[0]) : [],
-  });
+  // schema.org SportsEvent — resultados enriquecidos en buscadores
+  const m = data.match;
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SportsEvent',
+    name: `${clubName(m.homeTeam?.name ?? '')} vs ${clubName(m.awayTeam?.name ?? '')}`,
+    sport: 'Roller Hockey',
+    startDate: m.scheduledAt ?? undefined,
+    eventStatus: m.status === 'finished'
+      ? 'https://schema.org/EventScheduled'
+      : m.status === 'postponed'
+        ? 'https://schema.org/EventPostponed'
+        : 'https://schema.org/EventScheduled',
+    location: m.venue?.name
+      ? { '@type': 'Place', name: m.venue.name, address: m.venue.city ?? undefined }
+      : undefined,
+    competitor: [
+      { '@type': 'SportsTeam', name: clubName(m.homeTeam?.name ?? ''), url: `${SITE_URL}/${params.locale}/teams/${m.homeTeam?.id}` },
+      { '@type': 'SportsTeam', name: clubName(m.awayTeam?.name ?? ''), url: `${SITE_URL}/${params.locale}/teams/${m.awayTeam?.id}` },
+    ],
+  };
 
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
+      <JsonLd data={jsonLd} />
+
       {/* Navegacion de vuelta */}
       <BackLink href="/" />
 
       {/* Match Center */}
-      <MatchCenterClient data={data!} />
+      <MatchCenterClient data={data} />
     </div>
   );
 }

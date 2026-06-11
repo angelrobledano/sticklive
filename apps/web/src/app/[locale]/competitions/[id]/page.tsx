@@ -18,9 +18,29 @@ interface Props {
   searchParams: { season?: string };
 }
 
-export function generateMetadata({ params }: Props): Metadata {
+const DESC: Record<string, (n: string) => string> = {
+  es: (n) => `${n}: clasificación, calendario, resultados, playoffs y estadísticas de hockey patines en Stick Live.`,
+  en: (n) => `${n}: standings, fixtures, results, playoffs and rink hockey stats on Stick Live.`,
+  pt: (n) => `${n}: classificação, calendário, resultados, playoffs e estatísticas de hóquei em patins no Stick Live.`,
+  fr: (n) => `${n} : classement, calendrier, résultats, playoffs et statistiques de rink hockey sur Stick Live.`,
+  it: (n) => `${n}: classifica, calendario, risultati, playoff e statistiche di hockey su pista su Stick Live.`,
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
-  return { alternates: localeAlternates(locale, `/competitions/${params.id}`) };
+  const alternates = localeAlternates(locale, `/competitions/${params.id}`);
+  try {
+    const seasons = await getCompetitionSeasons(params.id);
+    const current = seasons.find((s) => s.isCurrent) ?? seasons[0];
+    if (!current) return { alternates };
+    const overview = await getSeasonOverview(current.id);
+    const name = `${overview.season.competitionName} ${current.name ?? ''}`.trim();
+    const title = `${name} | Stick Live`;
+    const description = (DESC[locale] ?? DESC['en'])!(name);
+    return { title, description, alternates, openGraph: { title, description, type: 'website' } };
+  } catch {
+    return { alternates };
+  }
 }
 
 /**

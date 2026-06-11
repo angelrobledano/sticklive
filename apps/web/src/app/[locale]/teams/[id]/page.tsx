@@ -3,15 +3,34 @@ import { notFound } from 'next/navigation';
 import { getTeamDetail, isApiNotFound } from '@/lib/api/client';
 import { TeamCenterClient } from '@/components/team/TeamCenterClient';
 import { BackLink } from '@/components/shared/BackLink';
-import { localeAlternates, isSupportedLocale } from '@/lib/seo';
+import { JsonLd } from '@/components/shared/JsonLd';
+import { localeAlternates, isSupportedLocale, SITE_URL } from '@/lib/seo';
+import { clubName } from '@/lib/names';
 
 interface Props {
   params: { locale: string; id: string };
 }
 
-export function generateMetadata({ params }: Props): Metadata {
+const DESC: Record<string, (n: string) => string> = {
+  es: (n) => `${n}: plantilla, calendario, resultados y estadísticas de hockey patines en Stick Live.`,
+  en: (n) => `${n}: squad, fixtures, results and rink hockey stats on Stick Live.`,
+  pt: (n) => `${n}: plantel, calendário, resultados e estatísticas de hóquei em patins no Stick Live.`,
+  fr: (n) => `${n} : effectif, calendrier, résultats et statistiques de rink hockey sur Stick Live.`,
+  it: (n) => `${n}: rosa, calendario, risultati e statistiche di hockey su pista su Stick Live.`,
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
-  return { alternates: localeAlternates(locale, `/teams/${params.id}`) };
+  const alternates = localeAlternates(locale, `/teams/${params.id}`);
+  try {
+    const data = await getTeamDetail(params.id);
+    const name = clubName(data.team.name);
+    const title = `${name} | Stick Live`;
+    const description = (DESC[locale] ?? DESC['en'])!(name);
+    return { title, description, alternates, openGraph: { title, description, type: 'website' } };
+  } catch {
+    return { alternates };
+  }
 }
 
 export default async function TeamDetailPage({ params }: Props) {
@@ -23,8 +42,19 @@ export default async function TeamDetailPage({ params }: Props) {
     throw err; // error boundary con reintento — no convertir caídas de API en 404
   }
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SportsTeam',
+    name: clubName(data.team.name),
+    sport: 'Roller Hockey',
+    url: `${SITE_URL}/${params.locale}/teams/${data.team.id}`,
+    logo: `${SITE_URL}/escudos/${data.team.id}.png`,
+    location: data.team.city ? { '@type': 'Place', name: data.team.city } : undefined,
+  };
+
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
+      <JsonLd data={jsonLd} />
       <BackLink href="/" />
 
       <TeamCenterClient data={data} />

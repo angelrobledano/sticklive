@@ -17,6 +17,7 @@ import { seasonStatsRouter } from './routes/season-stats.js';
 import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
 import { pushRouter } from './routes/push.js';
+import { metaRouter } from './routes/meta.js';
 
 const app = new Hono();
 
@@ -70,6 +71,7 @@ app.route('/payments/redsys', paymentsRouter); // /payments/redsys/create-json +
 app.route('/auth', authRouter);                // magic links + favoritos en nube
 app.route('/admin', adminRouter);              // panel de admin (X-Admin-Token)
 app.route('/push', pushRouter);                // suscripciones Web Push
+app.route('/meta', metaRouter);                // ids para sitemap
 
 // 404 genérico
 app.notFound((c) => {
