@@ -12,3 +12,5 @@ coverage/
 *.js.map
 *.tsbuildinfo
 playwright-browsers/
+*.sql.gz
+dump.sql
