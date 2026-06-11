@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { track, setPersonProps } from '@/lib/analytics';
+import { syncPushConfig } from '@/lib/push';
 
 const STORAGE_KEY = 'rink-favorites';
 
@@ -33,6 +34,7 @@ export function useFavorites() {
         kind: 'team', ref_id: teamId, total_favorites: next.length,
       });
       setPersonProps({ favorite_teams: next.length });
+      void syncPushConfig(); // el emisor de push segmenta por favoritos
       return next;
     });
   }, []);

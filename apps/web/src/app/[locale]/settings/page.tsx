@@ -8,6 +8,7 @@ import { useT, SUPPORTED_LOCALES, LOCALE_NAMES, type Locale } from '@/lib/i18n';
 import { usePremium } from '@/context/PremiumContext';
 import { track, setPersonProps } from '@/lib/analytics';
 import { clubName } from '@/lib/names';
+import { enablePush, disablePush, syncPushConfig } from '@/lib/push';
 
 // ─── Constantes de storage ────────────────────────────────────────────────────
 
@@ -400,6 +401,14 @@ function useNotifConfig() {
       const next = { ...prev, [key]: !prev[key] };
       try { localStorage.setItem(NOTIF_KEY, JSON.stringify(next)); } catch { /* noop */ }
       track('notification_toggle', { key, enabled: next[key] });
+
+      // Web Push: el maestro suscribe/desuscribe; el resto re-sincroniza
+      // las preferencias con el servidor para que el emisor segmente bien.
+      if (key === 'master') {
+        void (next.master ? enablePush() : disablePush());
+      } else {
+        void syncPushConfig();
+      }
       return next;
     });
   }, []);

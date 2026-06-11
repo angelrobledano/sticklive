@@ -21,6 +21,7 @@ import { createLogger } from '@sports/logger';
 import { db, closeDb } from '@sports/db';
 import { EtlPipeline } from './pipeline.js';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
+import { snapshotMatches, diffAndNotify, pushEnabled } from './push-dispatcher.js';
 
 const log = createLogger({ service: 'cron-live' });
 
@@ -84,10 +85,19 @@ async function runOneCycle(seasonId: string): Promise<number> {
   const scraper  = new FepMatchesScraper({ seasonId });
   const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId });
 
+  // Snapshot previo: el dispatcher de push hace diff tras el ciclo
+  const prev = pushEnabled ? await snapshotMatches(seasonId) : new Map();
+
   const result = await scraper.run();
   if (result.data.length === 0) return 0;
 
   const etl = await pipeline.runMatches(result);
+
+  // Notificar cambios (inicio/gol/final) — nunca rompe el ciclo
+  try { await diffAndNotify(prev, seasonId); } catch (err) {
+    log.warn({ err }, 'push-dispatcher falló — el scraping sigue');
+  }
+
   return etl.upserted;
 }
 
