@@ -1,0 +1,72 @@
+# ============================================================
+# Stick Live — producción (VPS).
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# Servicios:
+#   postgres  → datos (volumen persistente)
+#   api       → Hono en :3000 (expuesto)
+#   web       → Next.js en :80 (expuesto)
+#   etl       → scheduler de scraping (live 5min / calendario 1h / actas diario)
+# ============================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sports_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:-sports_results}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sports_user} -d ${POSTGRES_DB:-sports_results}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: &app-build
+      context: .
+      dockerfile: deploy/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_SEASON_ID: ${NEXT_PUBLIC_SEASON_ID}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+        NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
+        NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-https://eu.i.posthog.com}
+    restart: unless-stopped
+    command: npx tsx apps/api/src/index.ts
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sports_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build: *app-build
+    restart: unless-stopped
+    command: npx next start apps/web -p 3001
+    env_file: .env.prod
+    ports:
+      - "80:3001"
+    depends_on:
+      - api
+
+  etl:
+    build: *app-build
+    restart: unless-stopped
+    command: sh deploy/etl-scheduler.sh
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sports_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

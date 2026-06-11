@@ -195,6 +195,8 @@ export interface UpsertMatchEventInput {
   eventType: 'goal' | 'penalty' | 'blue_card' | 'red_card' | 'timeout' | 'period_end';
   minute: number | null;
   period: number | null;
+  /** Tiempo RESTANTE del crono al ocurrir el evento, "MM:SS" (cuenta atrás) */
+  clock?: string | null;
   /** UUID del equipo en DB (puede ser null si no se pudo resolver) */
   teamId: string | null;
   /** UUID del jugador en DB (puede ser null) */
@@ -228,7 +230,7 @@ export async function replaceMatchEvents(
 
   for (const ev of events) {
     placeholders.push(
-      `($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`
+      `($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`
     );
     values.push(
       matchId,
@@ -237,6 +239,7 @@ export async function replaceMatchEvents(
       ev.eventType,
       ev.minute,
       ev.period,
+      ev.clock ?? null,
       ev.detail,
       ev.sourceId ?? null,
       ev.sourceRef,
@@ -246,7 +249,7 @@ export async function replaceMatchEvents(
 
   await client.query(
     `INSERT INTO match_events
-       (match_id, team_id, player_id, event_type, minute, period, detail, source_id, source_ref, scraped_at)
+       (match_id, team_id, player_id, event_type, minute, period, clock, detail, source_id, source_ref, scraped_at)
      VALUES ${placeholders.join(', ')}`,
     values
   );

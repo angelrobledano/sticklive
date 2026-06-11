@@ -70,6 +70,7 @@ interface AccumulatedFoulEvent {
   eventType: 'accumulated_foul';
   minute: number | null;
   period: number | null;
+  clock?: string | null;
   teamId: string;
   isHomeTeam: boolean;
   foulNumber: number;
@@ -139,6 +140,7 @@ function injectAccumulatedFouls(events: MatchEvent[], homeTeamId: string): Timel
             eventType: 'accumulated_foul',
             minute: ev.minute,
             period: ev.period,
+            clock: ev.clock ?? null,
             teamId: homeTeamId,
             isHomeTeam: true,
             foulNumber: homeFouls,
@@ -154,6 +156,7 @@ function injectAccumulatedFouls(events: MatchEvent[], homeTeamId: string): Timel
             eventType: 'accumulated_foul',
             minute: ev.minute,
             period: ev.period,
+            clock: ev.clock ?? null,
             teamId: ev.teamId,
             isHomeTeam: false,
             foulNumber: awayFouls,
@@ -269,11 +272,10 @@ function EventSummary({ events }: { events: MatchDetail['events'] }) {
             e.eventType === 'blue_card' ? 'bg-blue-500' : 'bg-red-500'
           }`} />}
       <span className="truncate max-w-[100px]">{eventSurname(e.player!)}</span>
-      {e.minute != null && (
-        <span className="tabular-nums text-slate-400 dark:text-slate-500 whitespace-nowrap">
-          {fmtEventMinute(e.minute, e.period, t)}
-        </span>
-      )}
+      <span className="tabular-nums text-slate-400 dark:text-slate-500 whitespace-nowrap">
+        {(e.period === 2 ? t('match_detail.p2_short') + ' ' : e.period && e.period > 2 ? t('match_detail.ot_short') + ' ' : '')}
+        {fmtEventClock(e)}
+      </span>
     </span>
   );
 
@@ -302,22 +304,16 @@ function BallIcon({ size = 9 }: { size?: number }) {
 }
 
 /**
- * Minuto de evento en clave de hockey: el minuto almacenado ya es DENTRO
- * de la parte (el crono baja de 25:00), y la parte viene en event.period.
- * Gol en el minuto 4 de la 2ª → "2ª 4'".
+ * Crono del evento en clave de hockey: TIEMPO RESTANTE en formato MM:SS,
+ * tal y como lo mostraba el marcador (cuenta atrás desde 25:00 por parte).
+ * Si el acta no trae el instante exacto (eventos antiguos sin reprocesar),
+ * se aproxima desde el minuto transcurrido: restante ≈ 25 - minuto.
  */
-function fmtEventMinute(
-  minute: number | null,
-  period: number | null,
-  t: (k: string, v?: Record<string, string | number>) => string
-): string {
-  if (minute == null) return '·';
-  const label =
-    period === 1 ? t('match_detail.p1_short')
-    : period === 2 ? t('match_detail.p2_short')
-    : period != null && period > 2 ? t('match_detail.ot_short')
-    : null;
-  return label ? `${label} ${minute}'` : `${minute}'`;
+function fmtEventClock(ev: { clock?: string | null; minute: number | null }): string {
+  if (ev.clock) return ev.clock;
+  if (ev.minute == null) return '–:–';
+  const remaining = Math.max(0, 25 - ev.minute);
+  return `${String(remaining).padStart(2, '0')}:00`;
 }
 
 function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?: string }) {
@@ -449,10 +445,11 @@ function eventTitle(ev: TimelineEvent, t: (k: string, v?: Record<string, string 
   }
 }
 
-function TimelineRow({ ev }: {
+function TimelineRow({ ev, sameInstantAsPrev = false }: {
   ev: TimelineEvent;
   homeName: string;
   awayName: string;
+  sameInstantAsPrev?: boolean;
 }) {
   const { t } = useT();
   if (ev.eventType === 'period_divider') {
@@ -507,51 +504,112 @@ function TimelineRow({ ev }: {
       <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">{ev.detail}</span>
     ) : null;
 
-  // Celda de contenido: dos líneas (evento+desenlace / jugador)
+  // ── Jerarquía visual de 3 niveles ──────────────────────────────────────────
+  //   Alto:  goles y tarjetas (el jugador es el protagonista)
+  //   Medio: faltas directas/penaltis y avisos de 10ª/15ª falta
+  //   Bajo:  tiempos muertos (mínimo peso visual, no ensucian el scroll)
+  const tier: 'high' | 'mid' | 'low' =
+    ev.eventType === 'goal' || ev.eventType === 'blue_card' || ev.eventType === 'red_card'
+      ? 'high'
+      : ev.eventType === 'timeout' ? 'low' : 'mid';
+
+  const isGoal = ev.eventType === 'goal';
+  const titleColor = isGoal
+    ? 'text-emerald-600 dark:text-emerald-400'
+    : ev.eventType === 'blue_card' ? 'text-blue-600 dark:text-blue-400'
+    : ev.eventType === 'red_card' ? 'text-red-600 dark:text-red-400'
+    : 'text-slate-800 dark:text-slate-200';
+
+  // Celda de contenido según nivel
   const cell = isVirtual ? (
+    // Aviso 10ª/15ª falta — SIEMPRE en el lado del equipo infractor
     <span className="inline-flex items-center px-2 py-0.5 rounded-md
                      bg-orange-50 dark:bg-orange-900/20 text-[11px] font-medium
                      text-orange-800 dark:text-orange-300">
       {eventTitle(ev, t)}
     </span>
+  ) : tier === 'low' ? (
+    // Tiempo muerto: una sola línea gris, mínima
+    <span className="text-[11px] text-slate-400 dark:text-slate-600">{eventTitle(ev, t)}</span>
   ) : (
     <div className={`min-w-0 ${isHome ? 'text-right' : 'text-left'}`}>
-      <p className="text-[13px] leading-snug text-slate-800 dark:text-slate-200">
-        <span className="font-semibold">{eventTitle(ev, t)}</span>
-        {outcome && <> {outcome}</>}
-      </p>
-      {'player' in ev && ev.player && (
-        <Link href={`/players/${ev.player.id}`}
-              className="block text-xs text-slate-500 dark:text-slate-400 hover:text-rink-passion hover:underline truncate">
-          {playerFullName(ev.player)}
-        </Link>
+      {tier === 'high' && 'player' in ev && ev.player ? (
+        <>
+          {/* Nivel alto: el JUGADOR primero y en negrita */}
+          <Link href={`/players/${ev.player.id}`}
+                className="block text-sm font-bold text-slate-900 dark:text-slate-50 hover:text-rink-passion hover:underline truncate">
+            {playerFullName(ev.player)}
+          </Link>
+          <p className={`text-xs font-semibold leading-snug ${titleColor}`}>
+            {eventTitle(ev, t)}{outcome && <> {outcome}</>}
+          </p>
+        </>
+      ) : (
+        <>
+          <p className={`text-[13px] leading-snug ${tier === 'high' ? `font-bold ${titleColor}` : 'text-slate-800 dark:text-slate-200'}`}>
+            <span className={tier === 'high' ? '' : 'font-semibold'}>{eventTitle(ev, t)}</span>
+            {outcome && <> {outcome}</>}
+          </p>
+          {'player' in ev && ev.player && (
+            <Link href={`/players/${ev.player.id}`}
+                  className="block text-xs text-slate-500 dark:text-slate-400 hover:text-rink-passion hover:underline truncate">
+              {playerFullName(ev.player)}
+            </Link>
+          )}
+        </>
       )}
     </div>
   );
 
+  const rowPad = tier === 'low' ? 'py-0.5' : tier === 'high' ? 'py-2' : 'py-1.5';
+  // Mismo instante que el evento anterior → relación causa-efecto:
+  // se pega al bloque y el eje no repite el crono.
+  const linked = sameInstantAsPrev ? '-mt-1' : '';
+
   // Modelo espejo: local a la izquierda, visitante a la derecha, con el
-  // minuto como nodo central del eje. La posición comunica el equipo —
-  // sin etiquetas BAR/IHC redundantes.
+  // CRONO RESTANTE (MM:SS, cuenta atrás) como nodo central del eje.
   return (
-    <div className="grid grid-cols-[1fr_44px_1fr] items-center py-1.5">
+    <div className={`grid grid-cols-[1fr_52px_1fr] items-center ${rowPad} ${linked}`}>
       {/* Lado local: [texto] [icono] → centro */}
       <div className={`flex items-center justify-end gap-2 min-w-0 pr-1 ${isHome ? '' : 'invisible'}`}>
         {isHome && cell}
-        {isHome && <EventIcon type={ev.eventType} />}
+        {isHome && (tier === 'low'
+          ? <TimeoutDot />
+          : <EventIcon type={ev.eventType} />)}
       </div>
 
-      {/* Minuto — nodo central que interrumpe la línea */}
-      <span className="justify-self-center z-10 px-1 text-[11px] font-mono font-semibold
-                       text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 text-center">
-        {fmtEventMinute(ev.minute, ev.period, t)}
+      {/* Crono restante — nodo central que interrumpe la línea */}
+      <span className={`justify-self-center z-10 px-1 font-mono text-center
+                        bg-white dark:bg-slate-900 tabular-nums ${
+        sameInstantAsPrev
+          ? 'text-[10px] text-slate-300 dark:text-slate-700'
+          : tier === 'low'
+            ? 'text-[10px] text-slate-400 dark:text-slate-600'
+            : 'text-[11px] font-semibold text-slate-500 dark:text-slate-400'
+      }`}>
+        {sameInstantAsPrev ? '·' : fmtEventClock(ev)}
       </span>
 
       {/* Lado visitante: centro → [icono] [texto] */}
       <div className={`flex items-center justify-start gap-2 min-w-0 pl-1 ${isHome ? 'invisible' : ''}`}>
-        {!isHome && <EventIcon type={ev.eventType} />}
+        {!isHome && (tier === 'low'
+          ? <TimeoutDot />
+          : <EventIcon type={ev.eventType} />)}
         {!isHome && cell}
       </div>
     </div>
+  );
+}
+
+/** Icono mínimo para tiempos muertos (nivel bajo) */
+function TimeoutDot() {
+  return (
+    <span className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+           className="w-2.5 h-2.5 text-slate-400 dark:text-slate-600">
+        <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" strokeLinecap="round" />
+      </svg>
+    </span>
   );
 }
 
@@ -629,9 +687,19 @@ function TimelineTab({ data }: { data: MatchDetail }) {
       {/* Eje central del timeline */}
       <div className="absolute left-1/2 top-3 bottom-3 w-px -translate-x-1/2
                       bg-slate-100 dark:bg-slate-800" aria-hidden="true" />
-      {timeline.map((ev) => (
-        <TimelineRow key={ev.id} ev={ev} homeName={homeName} awayName={awayName} />
-      ))}
+      {timeline.map((ev, i) => {
+        // Causa-efecto: mismo instante exacto (periodo + crono) que el evento
+        // anterior → se agrupan visualmente y el eje no repite el tiempo.
+        const prev = timeline[i - 1];
+        const sameInstant = !!prev && !!(ev as { clock?: string | null }).clock
+          && (prev as { clock?: string | null }).clock === (ev as { clock?: string | null }).clock
+          && prev.period === ev.period
+          && prev.eventType !== 'period_divider' && prev.eventType !== 'period_end';
+        return (
+          <TimelineRow key={ev.id} ev={ev} homeName={homeName} awayName={awayName}
+                       sameInstantAsPrev={sameInstant} />
+        );
+      })}
     </div>
   );
 }

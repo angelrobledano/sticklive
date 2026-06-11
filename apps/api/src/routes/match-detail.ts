@@ -91,7 +91,7 @@ matchDetailRouter.get('/:id', async (c) => {
     // 2) Eventos del partido ordenados cronológicamente
     const eventsResult = await db.query<EventRow>(`
       SELECT
-        e.id, e.event_type, e.minute, e.period,
+        e.id, e.event_type, e.minute, e.period, e.clock,
         e.team_id, e.detail,
         e.player_id,
         p.first_name  AS player_first_name,
@@ -112,6 +112,7 @@ matchDetailRouter.get('/:id', async (c) => {
       eventType:   e.event_type,
       minute:      e.minute,
       period:      e.period,
+      clock:       (e as unknown as { clock: string | null }).clock,
       teamId:      e.team_id,
       isHomeTeam:  e.team_id === homeTeamId,
       detail:      e.detail,

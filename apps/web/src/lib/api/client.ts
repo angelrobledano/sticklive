@@ -301,6 +301,8 @@ export interface MatchEvent {
   eventType: MatchEventType;
   minute: number | null;
   period: number | null;
+  /** Tiempo RESTANTE del crono al ocurrir el evento ("MM:SS", cuenta atrás) */
+  clock?: string | null;
   teamId: string | null;
   isHomeTeam: boolean;
   detail: string | null;

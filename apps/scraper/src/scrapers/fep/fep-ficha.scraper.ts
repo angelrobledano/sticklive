@@ -34,6 +34,8 @@ export interface ScrapedMatchEvent {
   minute: number | null;
   /** Periodo / cuarto (1..4) */
   period: number | null;
+  /** Tiempo RESTANTE del crono "MM:SS" (el marcador cuenta atrás desde 25:00) */
+  clock?: string;
   /** Indicacion de si el evento es del equipo local (true) o visitante (false) */
   isHome: boolean | null;
   /** Nombre del jugador tal como aparece en el HTML (para resolver en ETL) */
@@ -299,10 +301,17 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
         const sourceRef = `fep_event_${idp}_${idx}`;
         rawInstant.set(sourceRef, `${isHome}|${periodText} ${timeText}`);
 
+        // Crono restante normalizado "MM:SS" (el marcador cuenta atrás)
+        const clockMatch = timeText?.match(/(\d{1,2})[:.'](\d{2})/);
+        const clock = clockMatch
+          ? `${clockMatch[1]!.padStart(2, '0')}:${clockMatch[2]}`
+          : undefined;
+
         events.push({
           eventType,
           minute: Number.isNaN(minute) ? undefined : minute,
           period,
+          clock,
           isHome,
           playerName,
           jerseyNumber: Number.isNaN(jerseyNumber) ? undefined : jerseyNumber,
@@ -680,6 +689,7 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
       eventType: ev.eventType,
       minute:    ev.minute,
       period:    ev.period,
+      clock:     ev.clock ?? null,
       teamId:    ev.isHome === true ? homeTeamId : ev.isHome === false ? awayTeamId : null,
       playerId:  (ev.playerName ? playerMap.get(normalizeName(ev.playerName)) : null) ?? null,
       detail:    ev.detail,
