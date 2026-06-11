@@ -48,7 +48,10 @@ authRouter.post('/magic-link', async (c) => {
       console.log(`[auth] 🔗 Magic link para ${clean}: ${link}`);
       return c.json({ sent: true, devLink: link });
     }
-    // TODO(producción): enviar `link` por email vía SMTP y no exponerlo
+
+    // Producción: el enlace viaja SOLO por email
+    const { sendMagicLink } = await import('../lib/mailer.js');
+    await sendMagicLink(clean, link);
     return c.json({ sent: true });
   } catch (err) {
     console.error('[auth] magic-link error:', err);
