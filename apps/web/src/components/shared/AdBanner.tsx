@@ -95,8 +95,14 @@ function AdIllustration({ zone }: { zone: AdZone }) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
+/** Monetización apagada mientras la app sea gratis (mismo flag que Premium) */
+const MONETIZATION_ENABLED = process.env['NEXT_PUBLIC_PREMIUM_ENABLED'] === '1';
+
 export function AdBanner({ zone, className = '' }: AdBannerProps) {
   const { isPremium, mounted } = usePremium();
+
+  // App gratis: ni anuncios ni premium que vender — cero DOM
+  if (!MONETIZATION_ENABLED) return null;
 
   // Durante SSR/hydratación y para usuarios Premium: sin DOM
   if (!mounted || isPremium) return null;

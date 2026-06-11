@@ -1,22 +1,24 @@
 # Stick Live — Estado del proyecto
 
-*Actualizado: 11 de junio de 2026*
+*Actualizado: 11 de junio de 2026 (tarde) — EN PRODUCCIÓN: https://sticklive.eu*
 
 ---
 
 ## Resumen ejecutivo
 
-**Stick Live** es una plataforma de resultados de hockey sobre patines en tiempo real, construida con arquitectura de producción (no un prototipo). Obtiene los datos de las fuentes oficiales mediante scraping y ETL propios, y los sirve en una web mobile-first al estilo FotMob/Sofascore.
+**Stick Live** es una plataforma de resultados de hockey sobre patines en tiempo real, **desplegada y pública en https://sticklive.eu**. Obtiene los datos de las fuentes oficiales mediante scraping y ETL propios, y los sirve en una web mobile-first al estilo FotMob/Sofascore, instalable como app (PWA).
 
 **Qué funciona hoy, de punta a punta:**
 
-- **Datos en directo** de la OK Liga masculina (temporada 2025/26, liga regular + playoffs fusionados como fases de una misma competición), con marcadores que se actualizan en la web vía SSE sin recargar.
-- **Profundidad de datos**: actas completas (goles, asistencias, tarjetas, faltas de equipo, faltas directas y penaltis con su resultado), alineaciones con dorsales y capitanes, fotos de jugadores, cuerpo técnico, clasificaciones con zonas de playoff/descenso, bracket de playoffs y playoff 9º–10º por plaza europea (WSE Cup).
-- **Producto**: favoritos (equipos y ligas) con autenticación progresiva —anónimo → magic link → favoritos en la nube—, premium de pago vía Redsys (sandbox), preferencias de notificaciones, modo oscuro premium, y panel de administración de usuarios.
-- **Internacionalización completa** en 5 idiomas (es, en, pt, fr, it) con URLs por idioma (`/es/...`) y hreflang: lista para SEO internacional desde el primer despliegue.
-- **Analítica de producto** (PostHog, región EU) con plan de tracking orientado a funnels: activación (favoritos), conversión a cuenta, consumo en directo y checkout premium.
+- **En producción**: VPS Hetzner (CX23, Nuremberg) con Docker Compose — Postgres, API, web y scheduler de scraping (directo cada 5 min, calendario cada hora, actas a diario). HTTPS automático con Caddy, dominio `sticklive.eu` (+ www).
+- **Datos en directo** de la OK Liga (liga + playoffs como fases), con SSE en la web y **notificaciones push reales** (Web Push/VAPID): inicio de partido, goles y final, segmentadas por favoritos y preferencias, con smart bundling y silencio nocturno (ver `docs/NOTIFICACIONES.md`).
+- **Histórico multianual**: catálogo completo RFEP 1999/00→2025/26 importado (≈390 temporadas, 9.600 partidos, clasificaciones y escudos); actas detalladas en proceso de scraping (~9.500). Modelo preparado para federaciones autonómicas (taxonomía organizer/scope/región/categoría de edad; piloto FMP listo para ejecutar).
+- **Producto**: favoritos de **equipos, ligas y jugadores** con autenticación progresiva (anónimo → magic link por email real vía Brevo, o **Google OAuth** → sincronización multi-dispositivo), compartir nativo (partido/equipo/liga/jugador + alineación como imagen), pista de hockey con el 5 inicial, timeline con crono real en cuenta atrás, buscador de competiciones con filtros por edad, y panel de administración.
+- **Gratis de momento**: monetización (premium + anuncios) oculta tras flag. Stripe implementado y dormido (Redsys como alternativo).
+- **i18n** en 5 idiomas con URLs por idioma y hreflang; **SEO**: sitemap multiidioma dinámico, robots, metadata por ficha y schema.org (SportsEvent/SportsTeam/Person). Dado de alta en Search Console.
+- **Analítica** (PostHog EU): pageviews normalizadas y eventos de funnel (favoritos, login, compartir, checkout, push).
 
-**Qué falta para el lanzamiento:** automatizar los procesos de datos en el servidor (cron), desplegar a VPS, activar notificaciones push reales (VAPID + Service Worker) y envío de emails (SMTP) para los magic links.
+**Qué falta:** volcado del histórico local → servidor (en curso), reproceso de actas con crono exacto (refichas), importar federaciones autonómicas, APK/iOS con Capacitor, y monetización cuando toque.
 
 ---
 
@@ -73,11 +75,12 @@ Esquema: competitions/seasons/rounds/teams/season_teams/matches/events/standings
 
 ### Pendiente (prioridad)
 
-1. **Tareas programadas** (Task Scheduler / cron): cron-live cada 5 min, calendario cada hora, fichas pendientes diario. Prueba de fuego: final HCL–IHC.
-2. **Deploy a VPS**: Docker + crons + `NEXT_PUBLIC_SITE_URL` para hreflang/canonical.
-3. **Push real**: claves VAPID + Service Worker; SMTP para magic links (hoy modo dev: el enlace se muestra en pantalla). Evento `premium_purchased` desde el webhook Redsys.
-4. **Google OAuth** (hoy stub honesto) y roles de admin de nivel 2 (sin token compartido).
-5. **Producto B2B de scouting** (idea estratégica): el histórico de actas habilita series temporales por jugador (evolución goleadora, disciplina, minutos en pista) que la web pública no enseña. Cuando el dato histórico esté cargado, diseñar un endpoint de export / API de datos como producto de pago para equipos, separado de la app de resultados.
+1. **Volcado del histórico** al servidor (pg_dump local → restore) en cuanto termine el scraping de actas, y después `refichas` para capturar el crono MM:SS exacto en el timeline.
+2. **Federaciones autonómicas**: ejecutar el piloto FMP (catálogo + siembra + scraping con `SIDGAD_PORTAL=fmp`); después andaluza/valenciana/catalana por config.
+3. **APK Android (Capacitor)** sobre la PWA ya instalable; iOS más adelante (cuenta Apple 99 €/año, mitigar guideline 4.2 con push nativas).
+4. **Monetización** cuando haya tracción: activar flag `NEXT_PUBLIC_PREMIUM_ENABLED=1` + claves Stripe (todo implementado, incl. webhook con `premium_purchased`).
+5. **Admin nivel 2**: roles de usuario en vez de token compartido.
+6. **Producto B2B de scouting** (idea estratégica): el histórico de actas habilita series temporales por jugador (evolución goleadora, disciplina) que la web pública no enseña. Con el dato cargado, diseñar un endpoint de export / API de datos como producto de pago para equipos, separado de la app de resultados.
 
 ### Limitaciones de datos conocidas (decisiones honestas)
 
