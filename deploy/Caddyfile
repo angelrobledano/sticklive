@@ -1,0 +1,21 @@
+# ============================================================
+# Caddy — HTTPS automático (Let's Encrypt) para sticklive.eu
+#   /api/* → API Hono (se quita el prefijo /api)
+#   resto  → Next.js
+# ============================================================
+
+sticklive.eu, www.sticklive.eu {
+	encode gzip
+
+	# API — el prefijo /api se elimina antes de llegar a Hono.
+	# flush_interval -1: imprescindible para el SSE del directo.
+	handle_path /api/* {
+		reverse_proxy api:3000 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		reverse_proxy web:3001
+	}
+}
