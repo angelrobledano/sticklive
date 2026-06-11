@@ -18,6 +18,7 @@ import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
 import { pushRouter } from './routes/push.js';
 import { metaRouter } from './routes/meta.js';
+import { stripeRouter } from './routes/payments-stripe.js';
 
 const app = new Hono();
 
@@ -67,7 +68,8 @@ app.route('/teams',   teamDetailRouter);  // /teams/:id
 app.route('/seasons', seasonOverviewRouter); // /seasons/:id/overview — después de standings/matches
 app.route('/seasons', seasonStatsRouter);    // /seasons/:id/stats — líderes de temporada
 app.route('/players',  playerDetailRouter);  // /players/:id
-app.route('/payments/redsys', paymentsRouter); // /payments/redsys/create-json + /webhook
+app.route('/payments/redsys', paymentsRouter); // proveedor alternativo (inactivo)
+app.route('/payments/stripe', stripeRouter);   // proveedor ACTIVO: checkout + webhook
 app.route('/auth', authRouter);                // magic links + favoritos en nube
 app.route('/admin', adminRouter);              // panel de admin (X-Admin-Token)
 app.route('/push', pushRouter);                // suscripciones Web Push

@@ -18,6 +18,8 @@ const DEVICE_KEY  = 'rink-device-id';
 const SEASON_ID   = process.env['NEXT_PUBLIC_SEASON_ID'] ?? '';
 const API_URL     = process.env['NEXT_PUBLIC_API_URL']   ?? 'http://localhost:3000';
 const REDSYS_URL  = 'https://sis-t.redsys.es:25443/sis/realizarPago'; // entorno de pruebas
+/** Proveedor de pago activo: 'stripe' (por defecto) o 'redsys' */
+const PAYMENT_PROVIDER = process.env['NEXT_PUBLIC_PAYMENT_PROVIDER'] ?? 'stripe';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -182,6 +184,25 @@ function PremiumBanner({ deviceId }: { deviceId: string }) {
     setLoading(true);
     setError(null);
 
+    // ── Proveedor ACTIVO: Stripe (Redsys queda abajo por si se vuelve) ──────
+    if (PAYMENT_PROVIDER === 'stripe') {
+      try {
+        const res = await fetch(`${API_URL}/payments/stripe/checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceId }),
+        });
+        const body = await res.json() as { url?: string; error?: string };
+        if (!res.ok || !body.url) throw new Error(body.error ?? `HTTP ${res.status}`);
+        window.location.href = body.url; // → Stripe Checkout
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error desconocido');
+        setLoading(false);
+      }
+      return;
+    }
+
+    // ── Redsys (proveedor alternativo) ──────────────────────────────────────
     try {
       const res = await fetch(`${API_URL}/payments/redsys/create-json`, {
         method:  'POST',
@@ -306,10 +327,12 @@ function PremiumBanner({ deviceId }: { deviceId: string }) {
           </p>
         )}
 
-        {/* Nota de entorno de pruebas */}
-        <p className="text-[10px] text-white/40 text-center pt-1">
-          {t('settings.premium_sandbox')}
-        </p>
+        {/* Nota de entorno de pruebas (solo aplica al flujo Redsys) */}
+        {PAYMENT_PROVIDER === 'redsys' && (
+          <p className="text-[10px] text-white/40 text-center pt-1">
+            {t('settings.premium_sandbox')}
+          </p>
+        )}
       </div>
     </div>
   );
