@@ -28,6 +28,9 @@ async function main() {
   const args = process.argv.slice(2);
   const since = args.find((a) => a.startsWith('--since='))?.split('=')[1];
   const limit = Number(args.find((a) => a.startsWith('--limit='))?.split('=')[1] ?? 0);
+  // Federaciones: cada portal sidgad va en proceso aparte (SIDGAD_PORTAL),
+  // así que las actas se procesan filtrando por organizador.
+  const org = args.find((a) => a.startsWith('--org='))?.split('=')[1] ?? null;
 
   // Temporadas con idc numérico, con partidos finalizados pendientes de acta
   const res = await db.query<{
@@ -42,6 +45,7 @@ async function main() {
       AND m.status = 'finished'
       AND NOT EXISTS (SELECT 1 FROM match_events e WHERE e.match_id = m.id)
       ${since ? `AND s.start_date >= '${Number(since)}-01-01'` : ''}
+      ${org ? `AND c.organizer = '${org.replace(/[^A-Z]/gi, '')}'` : ''}
     GROUP BY s.id, c.name, s.name
     ORDER BY s.start_date DESC NULLS LAST
     ${limit > 0 ? `LIMIT ${limit}` : ''}
