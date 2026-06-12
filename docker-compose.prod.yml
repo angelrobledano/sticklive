@@ -20,6 +20,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-sports_results}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      # Solo loopback del servidor: accesible vía túnel SSH para trabajos
+      # masivos de scraping desde IP residencial (escriben directo en prod).
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sports_user} -d ${POSTGRES_DB:-sports_results}"]
       interval: 5s
