@@ -40,21 +40,59 @@ const SYNONYM: Record<string, string> = {
   'CPTO': 'CTO',
 };
 
+/** ¿El token es de edición (romano, año, ordinal suelto)? */
+function isEditionToken(t: string): boolean {
+  return ROMAN.test(t)
+    || /^(19|20)\d{2}([/-](19|20)?\d{2})?$/.test(t)
+    || /^\d+[OA]?$/.test(t);
+}
+
 export function canonicalKey(name: string): string {
   const tokens = name
     .toUpperCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    // SUB-17 / SUB 16: el número ES identidad (categoría), no edición → soldar
+    .replace(/SUB[- ]?(\d+)/g, 'SUB$1')
     .replace(/[^A-Z0-9/ ]/g, ' ')
     .split(/\s+/)
     .filter(Boolean)
-    // Fuera: romanos (ediciones), años (1999, 2011/2012, 2012-13), ordinales (1ª, 2O)
-    .filter((t) => !ROMAN.test(t))
-    .filter((t) => !/^(19|20)\d{2}([/-](19|20)?\d{2})?$/.test(t))
-    .filter((t) => !/^\d+[OA]?$/.test(t))
+    .filter((t) => !isEditionToken(t))
     .filter((t) => !STOP.has(t))
     .map((t) => SYNONYM[t] ?? t);
   return tokens.join(' ');
 }
+
+/** ¿El nombre está "limpio" (sin tokens de edición)? */
+function isCleanName(name: string): boolean {
+  return name
+    .toUpperCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/SUB[- ]?(\d+)/g, 'SUB$1')
+    .replace(/[^A-Z0-9/ ]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((t) => !isEditionToken(t));
+}
+
+/** Nombre de display limpio: el original sin los tokens de edición */
+function cleanedDisplayName(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter((raw) => {
+      const t = raw.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9/]/g, '');
+      return t.length === 0 || !isEditionToken(t);
+    })
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Competiciones que NUNCA deben entrar en una fusión: el normalizador
+ * podría confundirlas con su hermana mayor, pero son entidades distintas.
+ */
+const NEVER_MERGE = (name: string): boolean =>
+  /9\s*[º°]?\s*[–-]\s*10|9 Y 10|PLAY\s*-?\s*OUT/i.test(name);
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
@@ -79,9 +117,10 @@ async function main() {
     GROUP BY c.id
   `);
 
-  // Agrupar por clave canónica
+  // Agrupar por clave canónica (excluyendo las protegidas)
   const groups = new Map<string, CompRow[]>();
   for (const row of res.rows) {
+    if (NEVER_MERGE(row.name)) continue; // 9º-10º, playout... entidades propias
     const key = canonicalKey(row.name);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(row);
@@ -94,21 +133,34 @@ async function main() {
   let merged = 0, removed = 0;
 
   for (const [key, rows] of mergeGroups) {
-    // Canónica: la que más partidos tiene (su nombre suele ser el "limpio");
-    // desempate: nombre más corto (sin ordinales suele ser más corto).
+    // Canónica: preferir nombre LIMPIO (sin edición); después, más partidos.
     const sorted = [...rows].sort((a, b) =>
-      b.match_count - a.match_count || a.name.length - b.name.length
+      Number(isCleanName(b.name)) - Number(isCleanName(a.name))
+      || b.match_count - a.match_count
+      || a.name.length - b.name.length
     );
     const canonical = sorted[0]!;
     const dupes = sorted.slice(1);
 
+    // Si ni la canónica tiene nombre limpio, se le limpia el display
+    const displayName = isCleanName(canonical.name)
+      ? canonical.name
+      : cleanedDisplayName(canonical.name);
+
     console.log(`■ ${key}`);
-    console.log(`  → CANÓNICA: "${canonical.name}" (${canonical.season_count} temp, ${canonical.match_count} partidos)`);
+    console.log(`  → CANÓNICA: "${canonical.name}"${displayName !== canonical.name ? ` → renombrar a "${displayName}"` : ''} (${canonical.season_count} temp, ${canonical.match_count} partidos)`);
     for (const d of dupes) {
       console.log(`     fusionar: "${d.name}" (${d.season_count} temp, ${d.match_count} partidos)`);
     }
 
     if (!apply) continue;
+
+    if (displayName !== canonical.name) {
+      await db.query(
+        `UPDATE competitions SET name = $2, updated_at = NOW() WHERE id = $1`,
+        [canonical.id, displayName]
+      );
+    }
 
     for (const dupe of dupes) {
       // Mover temporadas a la canónica, evitando colisión de slug
