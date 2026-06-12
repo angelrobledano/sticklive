@@ -1,0 +1,3299 @@
+{
+  "fetchedAt": "2026-06-12T10:57:03.880Z",
+  "seasons": [
+    {
+      "tempId": "29",
+      "label": "Temporada 2020/21"
+    },
+    {
+      "tempId": "31",
+      "label": "Temporada 2021/22"
+    },
+    {
+      "tempId": "33",
+      "label": "Temporada 2022/23"
+    },
+    {
+      "tempId": "35",
+      "label": "Temporada 2023/24"
+    },
+    {
+      "tempId": "37",
+      "label": "Temporada 2024/25"
+    },
+    {
+      "tempId": "39",
+      "label": "Temporada 2025/26"
+    }
+  ],
+  "competitionCount": 81,
+  "competitions": [
+    {
+      "idc": "1092",
+      "name": "CAMPEONATO DE ANDALUCIA PREBENJAMÍN 2025-26",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 5,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "534",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "532",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "531",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "533",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        },
+        {
+          "logo": "5259222.png",
+          "ref": "535",
+          "abbr": "TAB",
+          "name": "CD TABLADILLA"
+        }
+      ],
+      "config": "ids_teams:531,532,533,534,535;horarios:1;desde_hasta:5,,,,;ids_period_reg:1,2,3;tpo_reg:10;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2,6,3;periods_names:PERIODO 1,DESCANSO 1-2,PERIODO 2,DESCANSO 2-3,PERIODO 3;ids_periods:1,2,3;model_acta:1;hide_designaciones:0;hide_personal_stats:0;show_gk:;show_game_rink:1;hide_clasif:1;agrupada:0;primaria_top:1;"
+    },
+    {
+      "idc": "1070",
+      "name": "CAMPEONATO DE ANDALUCÍA BENJAMÍN 2025-25",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 7,
+      "teams": [
+        {
+          "logo": "5259213_1.png",
+          "ref": "482",
+          "abbr": "BUR",
+          "name": "HC BURGUILLOS"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "486",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "481",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "483",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "484",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS B"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "485",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "487",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:481,482,483,484,485,486,487;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;horarios:1;desde_hasta:5,,,,;derechos1:20;derechos2:0;"
+    },
+    {
+      "idc": "1078",
+      "name": "CAMPEONATO DE ANDALUCÍA ALEVÍN 2025-26",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 7,
+      "teams": [
+        {
+          "logo": "5259213_1.png",
+          "ref": "493",
+          "abbr": "BUR",
+          "name": "HC BURGUILLOS"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "488",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "492",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "490",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "491",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "489",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        },
+        {
+          "logo": "5259212.png",
+          "ref": "494",
+          "abbr": "ZAF",
+          "name": "ZAFRA HC"
+        }
+      ],
+      "config": "ids_teams:488,489,490,491,492,493,494;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;horarios:1;desde_hasta:5,,,,;derechos1:25;derechos2:0;fase_nombre:(FASE REGULAR);"
+    },
+    {
+      "idc": "1080",
+      "name": "CAMPEONATO DE ANDALUCÍA INFANTIL 2025-26",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 6,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "502",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "503",
+          "abbr": "CAJ B",
+          "name": "CHP CÁJAR-GRANADA B"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "506",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "501",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "504",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "505",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:501,502,503,504,505,506;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;horarios:1;desde_hasta:5,,,,;derechos1:35;derechos2:0;fase_nombre:(FASE REGULAR);"
+    },
+    {
+      "idc": "1081",
+      "name": "CAMPEONATO DE ANDALUCÍA JUVENIL 2025-26",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 5,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "507",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "509",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "511",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "508",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        },
+        {
+          "logo": "5259212.png",
+          "ref": "510",
+          "abbr": "ZAF",
+          "name": "ZAFRA HC"
+        }
+      ],
+      "config": "ids_teams:507,508,509,510,511;horarios:1;desde_hasta:5,,,,;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:42;derechos2:0;"
+    },
+    {
+      "idc": "1082",
+      "name": "CAMPEONATO DE ANDALUCÍA JUVENIL FEMENINA 2025-26",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "514",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "512",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "513",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:512,513,514;horarios:1;desde_hasta:5,,,,;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "1083",
+      "name": "CAMPEONATO DE ANDALUCÍA JÚNIOR 2025-26",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259207.png",
+          "ref": "515",
+          "abbr": "ALH",
+          "name": "CP ALHAMBRA"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "518",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "517",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "516",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        }
+      ],
+      "config": "ids_teams:515,516,517,518;horarios:1;desde_hasta:5,,,,;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;fase_nombre:;derechos1:55;derechos2:0;"
+    },
+    {
+      "idc": "1084",
+      "name": "CAMPEONATO DE ANDALUCÍA SÉNIOR 2025-26",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 7,
+      "teams": [
+        {
+          "logo": "5259213_1.png",
+          "ref": "525",
+          "abbr": "BUR",
+          "name": "HC BURGUILLOS"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "521",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "519",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "520",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS B"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "522",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259209.png",
+          "ref": "524",
+          "abbr": "ITA",
+          "name": "CD ITALICENSE"
+        },
+        {
+          "logo": "5259276.png",
+          "ref": "523",
+          "abbr": "NER",
+          "name": "NERJA PC"
+        }
+      ],
+      "config": "ids_teams:519,520,521,522,523,524,525;horarios:1;desde_hasta:5,,,,;ids_period_reg:1,2;tpo_reg:25;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;derechos1:72;derechos2:0;"
+    },
+    {
+      "idc": "1731",
+      "name": "COPA DE ANDALUCÍA PREBENJAMÍN",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 6,
+      "teams": [
+        {
+          "logo": "5259213_1.png",
+          "ref": "593",
+          "abbr": "BUR",
+          "name": "HC BURGUILLOS"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "588",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259215.png",
+          "ref": "589",
+          "abbr": "CPCL",
+          "name": "CP CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "591",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "590",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        },
+        {
+          "logo": "5259222.png",
+          "ref": "592",
+          "abbr": "TAB",
+          "name": "CD TABLADILLA"
+        }
+      ],
+      "config": "ids_teams:588,589,590,591,592,593;groups:GRUPO A,GRUPO B;groups_ids:592,590,588#593,591,589;hide_designaciones:0;hide_personal_stats:0;show_gk:;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2,3;tpo_reg:10;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2,6,3;periods_names:PERIODO 1,DESCANSO 1-2,PERIODO 2,DESCANSO 2-3,PERIODO 3;ids_periods:1,2,3;model_acta:1;"
+    },
+    {
+      "idc": "1733",
+      "name": "COPA DE ANDALUCIA BENJAMIN",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 5,
+      "teams": [
+        {
+          "logo": "5259213_1.png",
+          "ref": "601",
+          "abbr": "BUR",
+          "name": "HC BURGUILLOS"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "602",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "600",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "599",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "598",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:598,599,600,601,602;hide_designaciones:0;hide_personal_stats:0;show_gk:;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1;periods_names:PERIODO 1;ids_periods:1;model_acta:1;"
+    },
+    {
+      "idc": "1580",
+      "name": "COPA DE ANDALUCÍA ALEVÍN",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "545",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "544",
+          "abbr": "CPF",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "547",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "546",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:544,545,546,547;hide_designaciones:0;hide_personal_stats:0;show_gk:;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;fase_nombre:;"
+    },
+    {
+      "idc": "1585",
+      "name": "COPA DE ANDALUCÍA INFANTIL",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 5,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "555",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "556",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "557",
+          "abbr": "CPF",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "553",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "554",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:553,554,555,556,557;hide_designaciones:0;hide_personal_stats:0;show_gk:;show_game_rink:1;hide_clasif:0;agrupada:0;groups:GRUPO A,GRUPO B;groups_ids:555,553#557,556,554;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "1732",
+      "name": "COPA DE ANDALUCIA JUVENIL",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259337.png",
+          "ref": "597",
+          "abbr": "AND",
+          "name": "ANDALUCIA"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "594",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "596",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "595",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:594,595,596,597;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:3;"
+    },
+    {
+      "idc": "1734",
+      "name": "COPA DE ANDALUCIA SÉNIOR",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259214.png",
+          "ref": "603",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "604",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259209.png",
+          "ref": "605",
+          "abbr": "ITA",
+          "name": "CD ITALICENSE"
+        }
+      ],
+      "config": "ids_teams:603,604,605;hide_designaciones:0;hide_personal_stats:0;show_gk:;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:25;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "1697",
+      "name": "CAMPEONATO DE ESPAÑA INFANTIL (FASE SECTOR SUR)",
+      "tempId": "39",
+      "seasonLabel": "Temporada 2025/26",
+      "logo": "5_1.png",
+      "teamCount": 8,
+      "teams": [
+        {
+          "logo": "5259302.png",
+          "ref": "581",
+          "abbr": "ALC",
+          "name": "CP ALCOBENDAS"
+        },
+        {
+          "logo": "5259327.png",
+          "ref": "577",
+          "abbr": "CAOS",
+          "name": "CD ALAMEDA OSUNA"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "575",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "578",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259345.png",
+          "ref": "579",
+          "abbr": "CPR",
+          "name": "CPP RASPEIG"
+        },
+        {
+          "logo": "5259311.png",
+          "ref": "580",
+          "abbr": "CVE",
+          "name": "COLEGIO VIRGEN DE EUROPA"
+        },
+        {
+          "logo": "5259305.png",
+          "ref": "574",
+          "abbr": "HCC",
+          "name": "HC COCENTAINA"
+        },
+        {
+          "logo": "5259304.png",
+          "ref": "576",
+          "abbr": "PAS",
+          "name": "CP ALCODIAM"
+        }
+      ],
+      "config": "ids_teams:574,575,576,577,578,579,580,581;fase_nombre:FASE DE GRUPOS;groups:GRUPO A,GRUPO B;groups_ids:574,575,576,580#578,581,579,577;hide_designaciones:0;hide_personal_stats:0;show_gk:;show_game_rink:1;hide_clasif:0;agrupada:1;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:3;primaria_top:1;"
+    },
+    {
+      "idc": "327",
+      "name": "CAMPEONATO DE ANDALUCÍA SÉNIOR (FASE REGULAR)",
+      "tempId": "37",
+      "seasonLabel": "Temporada 2024/25",
+      "logo": "5_1.png",
+      "teamCount": 8,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "378",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "416",
+          "abbr": "CAJ B",
+          "name": "CHP CÁJAR B"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "379",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "380",
+          "abbr": "CLA B",
+          "name": "CD CLARET B"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "376",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "381",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259209.png",
+          "ref": "377",
+          "abbr": "ITA",
+          "name": "CD ITALICENSE"
+        },
+        {
+          "logo": "5259276.png",
+          "ref": "420",
+          "abbr": "NER",
+          "name": "NERJA PC"
+        }
+      ],
+      "config": "ids_teams:376,377,378,379,380,381,416,420;horarios:1;desde_hasta:5,9,21,9,15;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:25;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;derechos1:70;derechos2:0;"
+    },
+    {
+      "idc": "328",
+      "name": "CAMPEONATO DE ANDALUCÍA JÚNIOR (FASE REGULAR)",
+      "tempId": "37",
+      "seasonLabel": "Temporada 2024/25",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "382",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "385",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "384",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "383",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        }
+      ],
+      "config": "ids_teams:382,383,384,385;horarios:1;desde_hasta:5,9,21,9,15;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;derechos1:52;derechos2:0;"
+    },
+    {
+      "idc": "329",
+      "name": "CAMPEONATO DE ANDALUCÍA JUVENIL (FASE REGULAR)",
+      "tempId": "37",
+      "seasonLabel": "Temporada 2024/25",
+      "logo": "5_1.png",
+      "teamCount": 5,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "386",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "388",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "389",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS B"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "390",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "387",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:386,387,388,389,390;horarios:1;desde_hasta:5,9,21,9,15;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;derechos1:40;derechos2:0;"
+    },
+    {
+      "idc": "333",
+      "name": "CAMPEONATO DE ANDALUCÍA JUVENIL (FEMENINO)",
+      "tempId": "37",
+      "seasonLabel": "Temporada 2024/25",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "418",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "417",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "419",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:417,418,419;horarios:1;desde_hasta:5,9,21,9,15;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;derechos1:40;derechos2:0;"
+    },
+    {
+      "idc": "330",
+      "name": "CAMPEONATO DE ANDALUCÍA INFANTIL (LIGA REGULAR)",
+      "tempId": "37",
+      "seasonLabel": "Temporada 2024/25",
+      "logo": "5_1.png",
+      "teamCount": 9,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "393",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "397",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "398",
+          "abbr": "CLA B",
+          "name": "CD CLARET B"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "391",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "392",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS B"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "394",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "395",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "396",
+          "abbr": "SEV B",
+          "name": "CP SEVILLA B"
+        },
+        {
+          "logo": "5259212.png",
+          "ref": "399",
+          "abbr": "ZAF",
+          "name": "ZAFRA HC"
+        }
+      ],
+      "config": "ids_teams:391,392,393,394,395,396,397,398,399;horarios:1;desde_hasta:5,9,21,9,15;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;derechos1:32;derechos2:0;fase_nombre:(FASE REGULAR);"
+    },
+    {
+      "idc": "978",
+      "name": "COPA DE ANDALUCIA INFANTIL",
+      "tempId": "37",
+      "seasonLabel": "Temporada 2024/25",
+      "logo": "5_1.png",
+      "teamCount": 6,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "471",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "472",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "469",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "473",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "468",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        },
+        {
+          "logo": "5259212.png",
+          "ref": "470",
+          "abbr": "ZAF",
+          "name": "ZAFRA HC"
+        }
+      ],
+      "config": "ids_teams:468,469,470,471,472,473;groups:GRUPO A,GRUPO B;groups_ids:472,471,469#470,473,468;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "332",
+      "name": "CAMPEONATO DE ANDALUCÍA ALEVÍN (FASE REGULAR)",
+      "tempId": "37",
+      "seasonLabel": "Temporada 2024/25",
+      "logo": "5_1.png",
+      "teamCount": 5,
+      "teams": [
+        {
+          "logo": "5259213_1.png",
+          "ref": "413",
+          "abbr": "BUR",
+          "name": "HC BURGUILLOS"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "408",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "412",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "410",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "411",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS"
+        }
+      ],
+      "config": "ids_teams:408,409,410,411,412,413,414,415;horarios:1;desde_hasta:5,9,21,9,15;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;derechos1:25;derechos2:0;fase_nombre:(FASE REGULAR);"
+    },
+    {
+      "idc": "979",
+      "name": "COPA DE ANDALUCIA ALEVÍN",
+      "tempId": "37",
+      "seasonLabel": "Temporada 2024/25",
+      "logo": "5_1.png",
+      "teamCount": 7,
+      "teams": [
+        {
+          "logo": "5259213_1.png",
+          "ref": "480",
+          "abbr": "BUR",
+          "name": "HC BURGUILLOS"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "478",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "476",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "475",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "477",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "479",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        },
+        {
+          "logo": "5259212.png",
+          "ref": "474",
+          "abbr": "ZAF",
+          "name": "ZAFRA HC"
+        }
+      ],
+      "config": "ids_teams:474,475,476,477,478,479,480;groups:GRUPO A,GRUPO B;groups_ids:480,478,476,474#479,477,475;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "331",
+      "name": "CAMPEONATO DE ANDALUCÍA BENJAMÍN (LIGA  REGULAR)",
+      "tempId": "37",
+      "seasonLabel": "Temporada 2024/25",
+      "logo": "5_1.png",
+      "teamCount": 8,
+      "teams": [
+        {
+          "logo": "5259213_1.png",
+          "ref": "406",
+          "abbr": "BUR",
+          "name": "HC BURGUILLOS"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "404",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "400",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259215.png",
+          "ref": "407",
+          "abbr": "CP CLA",
+          "name": "CP CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "401",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "402",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS B"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "403",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "405",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:400,401,402,403,404,405,406,407;horarios:1;desde_hasta:5,9,21,9,15;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;derechos1:20;derechos2:0;"
+    },
+    {
+      "idc": "969",
+      "name": "COPA DE ANDALUCIA BENJAMÍN",
+      "tempId": "37",
+      "seasonLabel": "Temporada 2024/25",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "459",
+          "abbr": "CAJ A",
+          "name": "CHP CÁJAR-GRANADA A"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "460",
+          "abbr": "CAJ B",
+          "name": "CHP CÁJAR-GRANADA B"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "458",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "461",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        }
+      ],
+      "config": "ids_teams:458,459,460,461;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "367",
+      "name": "CAMPEONATO DE ANDALUCÍA PREBENJAMÍN",
+      "tempId": "37",
+      "seasonLabel": "Temporada 2024/25",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "424",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259215.png",
+          "ref": "422",
+          "abbr": "CLA",
+          "name": "CP CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "421",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "423",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        }
+      ],
+      "config": "ids_teams:421,422,423,424;fase_nombre:FASE REGULAR;hide_designaciones:0;hide_personal_stats:1;show_game_rink:1;hide_clasif:1;agrupada:0;ids_period_reg:1,2,3;tpo_reg:10;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,6,3,9;periods_names:PERIODO 1,DESCANSO 1-2,PERIODO 2,DESCANSO 2-3,PERIODO 3,PENALTIS;ids_periods:1,2,3;model_acta:1;"
+    },
+    {
+      "idc": "968",
+      "name": "COPA DE ANDALUCIA PREBENJAMÍN",
+      "tempId": "37",
+      "seasonLabel": "Temporada 2024/25",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "455",
+          "abbr": "CAJ A",
+          "name": "CHP CÁJAR-GRANADA A"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "456",
+          "abbr": "CAJ B",
+          "name": "CHP CÁJAR-GRANADA B"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "454",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "457",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:454,455,456,457;ids_period_reg:1,2,3;tpo_reg:10;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2,6,3;periods_names:PERIODO 1,DESCANSO 1-2,PERIODO 2,DESCANSO 2-3,PERIODO 3;ids_periods:1,2,3;model_acta:1;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;"
+    },
+    {
+      "idc": "806",
+      "name": "FASE SECTOR NACIONAL SUR FEMENINO SUB 17",
+      "tempId": "37",
+      "seasonLabel": "Temporada 2024/25",
+      "logo": "5_1.png",
+      "teamCount": 6,
+      "teams": [
+        {
+          "logo": "5259302.png",
+          "ref": "435",
+          "abbr": "ALC",
+          "name": "CP ALCOBENDAS"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "434",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259345.png",
+          "ref": "436",
+          "abbr": "RASP",
+          "name": "CP RASPEIG"
+        },
+        {
+          "logo": "5259303.png",
+          "ref": "433",
+          "abbr": "RIV",
+          "name": "RIVAS HOCKEY"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "438",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        },
+        {
+          "logo": "5259346.png",
+          "ref": "437",
+          "abbr": "TCPC",
+          "name": "TRES CANTOS PC"
+        }
+      ],
+      "config": "ids_teams:433,434,435,436,437,438;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:3;"
+    },
+    {
+      "idc": "867",
+      "name": "FASE SECTOR NACIONAL SUR JUVENIL",
+      "tempId": "37",
+      "seasonLabel": "Temporada 2024/25",
+      "logo": "5_1.png",
+      "teamCount": 6,
+      "teams": [
+        {
+          "logo": "5259213_1.png",
+          "ref": "439",
+          "abbr": "BUR",
+          "name": "HC BURGUILLOS"
+        },
+        {
+          "logo": "5259327.png",
+          "ref": "440",
+          "abbr": "CAO",
+          "name": "CD ALAMEDA OSUNA"
+        },
+        {
+          "logo": "5259347.png",
+          "ref": "441",
+          "abbr": "CPC",
+          "name": "CP COSLADA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "443",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259304.png",
+          "ref": "444",
+          "abbr": "PAS",
+          "name": "CP ALCODIAM"
+        },
+        {
+          "logo": "5259345.png",
+          "ref": "442",
+          "abbr": "RASP",
+          "name": "CPP RASPEIG"
+        }
+      ],
+      "config": "ids_teams:439,440,441,442,443,444;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:3;"
+    },
+    {
+      "idc": "109",
+      "name": "CAMPEONATO DE ANDALUCÍA BENJAMÍN 2023-24",
+      "tempId": "35",
+      "seasonLabel": "Temporada 2023/24",
+      "logo": "5_1.png",
+      "teamCount": 7,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "338",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "334",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259215.png",
+          "ref": "340",
+          "abbr": "CPCL",
+          "name": "PATIN CLARET"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "337",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "335",
+          "abbr": "IRL",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "336",
+          "abbr": "IRL FM",
+          "name": "CP IRLANDESAS FEM"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "339",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:334,335,336,337,338,339,340;horarios:1;desde_hasta:5,9,21,9,15;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:20;derechos2:0;fase_nombre:FASE REGULAR;"
+    },
+    {
+      "idc": "304",
+      "name": "CAMPEONATO DE ANDALUCÍA PREBENJAMÍN 2023-24",
+      "tempId": "35",
+      "seasonLabel": "Temporada 2023/24",
+      "logo": "5_1.png",
+      "teamCount": 8,
+      "teams": [
+        {
+          "logo": "5259214.png",
+          "ref": "374",
+          "abbr": "CD CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259215.png",
+          "ref": "375",
+          "abbr": "CLA-A",
+          "name": "PATIN CLARET A"
+        },
+        {
+          "logo": "5259215.png",
+          "ref": "370",
+          "abbr": "CLA-B",
+          "name": "PATIN CLARET B"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "369",
+          "abbr": "IRL B",
+          "name": "IRLANDESAS BLANCO"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "368",
+          "abbr": "IRL V",
+          "name": "IRLANDESAS VERDE"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "371",
+          "abbr": "SEV",
+          "name": "PATIN SEVILLA"
+        },
+        {
+          "logo": "5259339_1.png",
+          "ref": "373",
+          "abbr": "SOL",
+          "name": "SAN FRANCISCO SOLANO"
+        },
+        {
+          "logo": "5259222.png",
+          "ref": "372",
+          "abbr": "TAB",
+          "name": "TABLADILLA"
+        }
+      ],
+      "config": "ids_teams:368,369,370,371,372,373,374,375;fase_nombre:;hide_designaciones:0;hide_personal_stats:1;show_game_rink:0;hide_clasif:1;agrupada:0;hide_scorer:0;"
+    },
+    {
+      "idc": "250",
+      "name": "COPA DE ANDALUCIA PREBENJAMÍN",
+      "tempId": "35",
+      "seasonLabel": "Temporada 2023/24",
+      "logo": "5_1.png",
+      "teamCount": 5,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "361",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259215.png",
+          "ref": "359",
+          "abbr": "CLA",
+          "name": "CP CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "357",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "360",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "358",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:357,358,359,360,361;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:13;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;fase_nombre:COPA PREBENJAMÍN FAP;groups:GRUPO A,GRUPO B;groups_ids:358,357#361,360,359;cup_model:4;cup_games:1462,1459,1461;"
+    },
+    {
+      "idc": "99",
+      "name": "CAMPEONATO DE ANDALUCÍA ALEVÍN 2023-24",
+      "tempId": "35",
+      "seasonLabel": "Temporada 2023/24",
+      "logo": "5_1.png",
+      "teamCount": 6,
+      "teams": [
+        {
+          "logo": "5259214.png",
+          "ref": "317",
+          "abbr": " CLA B",
+          "name": "CD CLARET B"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "304",
+          "abbr": "CAJ ",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "309",
+          "abbr": "CLA A",
+          "name": "CD CLARET A"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "306",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "307",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "308",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:304,306,307,308,309,317;horarios:1;desde_hasta:5,9,21,9,14;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:25;derechos2:0;fase_nombre:FASE REGULAR;"
+    },
+    {
+      "idc": "100",
+      "name": "CAMPEONATO DE ANDALUCÍA INFANTIL 2023-24",
+      "tempId": "35",
+      "seasonLabel": "Temporada 2023/24",
+      "logo": "5_1.png",
+      "teamCount": 7,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "313",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "311",
+          "abbr": "CPI A",
+          "name": "CP IRLANDESAS A"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "312",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS B"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "314",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "356",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA B"
+        },
+        {
+          "logo": "5259216.png",
+          "ref": "316",
+          "abbr": "PRAD",
+          "name": "PRADERAS SANTA CLARA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "315",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:311,312,313,314,315,316,356;horarios:1;desde_hasta:5,9,21,9,14;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:32;derechos2:0;fase_nombre:FASE REGULAR;"
+    },
+    {
+      "idc": "101",
+      "name": "CAMPEONATO DE ANDALUCIA JUVENIL 2023-24",
+      "tempId": "35",
+      "seasonLabel": "Temporada 2023/24",
+      "logo": "5_1.png",
+      "teamCount": 6,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "318",
+          "abbr": "CAJ A",
+          "name": "CHP CÁJAR A"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "319",
+          "abbr": "CAJ B",
+          "name": "CHP CÁJAR B"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "323",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "320",
+          "abbr": "CPI A",
+          "name": "CP IRLANDESAS A"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "321",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS B"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "322",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        }
+      ],
+      "config": "ids_teams:318,319,320,321,322,323;horarios:1;desde_hasta:5,9,21,9,14;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:40;derechos2:0;"
+    },
+    {
+      "idc": "252",
+      "name": "COPA DE ANDALUCIA JUVENIL",
+      "tempId": "35",
+      "seasonLabel": "Temporada 2023/24",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259214.png",
+          "ref": "363",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "362",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259337.png",
+          "ref": "364",
+          "abbr": "FAP",
+          "name": "SELECCIÓN FAP"
+        }
+      ],
+      "config": "ids_teams:362,363,364;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:3;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;"
+    },
+    {
+      "idc": "102",
+      "name": "CAMPEONATO DE ANDALUCIA JUNIOR 2023-24",
+      "tempId": "35",
+      "seasonLabel": "Temporada 2023/24",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "324",
+          "abbr": "CAJ A",
+          "name": "CHP CÁJAR A"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "325",
+          "abbr": "CAJ B",
+          "name": "CHP CÁJAR B"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "326",
+          "abbr": "CPI A",
+          "name": "CP IRLANDESAS A"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "327",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS B"
+        }
+      ],
+      "config": "ids_teams:324,325,326,327;horarios:1;desde_hasta:5,9,21,9,14;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:52;derechos2:0;"
+    },
+    {
+      "idc": "103",
+      "name": "CAMPEONATO DE ANDALUCIA SENIOR 2023-24",
+      "tempId": "35",
+      "seasonLabel": "Temporada 2023/24",
+      "logo": "5_1.png",
+      "teamCount": 6,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "330",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "331",
+          "abbr": "CLA A",
+          "name": "CD CLARET A"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "332",
+          "abbr": "CLA B",
+          "name": "CD CLARET B"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "328",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "333",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259209.png",
+          "ref": "329",
+          "abbr": "ITA",
+          "name": "CD ITALICENSE"
+        }
+      ],
+      "config": "ids_teams:328,329,330,331,332,333;horarios:1;desde_hasta:5,9,21,11,14;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:25;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:70;derechos2:0;fase_nombre:FASE REGULAR;"
+    },
+    {
+      "idc": "98",
+      "name": "TAÇA SUL IBÉRICA SUB 15",
+      "tempId": "35",
+      "seasonLabel": "Temporada 2023/24",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259208.png",
+          "ref": "300",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259331.png",
+          "ref": "302",
+          "abbr": "FAB",
+          "name": "GD FABRIL"
+        },
+        {
+          "logo": "5259318.png",
+          "ref": "303",
+          "abbr": "POR",
+          "name": "HC PORTIMAO"
+        },
+        {
+          "logo": "5259212.png",
+          "ref": "301",
+          "abbr": "ZAFR",
+          "name": "ZAFRA HC"
+        }
+      ],
+      "config": "ids_teams:300,301,302,303;cup_model:4;cup_games:1166,1167,1169;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "222",
+      "name": "FASE SECTOR NACIONAL SUR INFANTIL",
+      "tempId": "35",
+      "seasonLabel": "Temporada 2023/24",
+      "logo": "5_1.png",
+      "teamCount": 6,
+      "teams": [
+        {
+          "logo": "5259304.png",
+          "ref": "349",
+          "abbr": "ACI",
+          "name": "PATÍN ALCODIAM SALESIANO"
+        },
+        {
+          "logo": "5259302.png",
+          "ref": "350",
+          "abbr": "CPA",
+          "name": "CP ALCOBENDAS"
+        },
+        {
+          "logo": "5259311.png",
+          "ref": "351",
+          "abbr": "CVE",
+          "name": "VIRGEN DE EUROPA"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "354",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259305.png",
+          "ref": "352",
+          "abbr": "HCC",
+          "name": "HC COCENTAINA"
+        },
+        {
+          "logo": "5259212.png",
+          "ref": "353",
+          "abbr": "ZAF",
+          "name": "ZAFRA HC"
+        }
+      ],
+      "config": "ids_teams:349,350,351,352,353,354;fase_nombre:;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:3;derechos1:35.00;derechos2:35.00;derechos_anot:20.00;hide_scorer:0;"
+    },
+    {
+      "idc": "62",
+      "name": "CAMPEONATO DE ANDALUCÍA SÉNIOR 2022-23",
+      "tempId": "33",
+      "seasonLabel": "Temporada 2022/23",
+      "logo": "5_1.png",
+      "teamCount": 5,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "209",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "211",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "208",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "245",
+          "abbr": "CPIB",
+          "name": "CP IRLANDESAS B"
+        },
+        {
+          "logo": "5259209.png",
+          "ref": "210",
+          "abbr": "ITA",
+          "name": "CD ITALICENSE"
+        }
+      ],
+      "config": "ids_teams:208,209,210,211,245;horarios:0;desde_hasta:5,,,,;hide_scorer:0;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:25;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:60.00;derechos2:0;fase_nombre:;"
+    },
+    {
+      "idc": "63",
+      "name": "CAMPEONATO DE ANDALUCÍA JÚNIOR 2022-23",
+      "tempId": "33",
+      "seasonLabel": "Temporada 2022/23",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "213",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "212",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "214",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        }
+      ],
+      "config": "ids_teams:212,213,214;horarios:0;desde_hasta:5,,,,;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:45.00;derechos2:0;fase_nombre:;"
+    },
+    {
+      "idc": "64",
+      "name": "CAMPEONATO DE ANDALUCÍA JUVENIL 2022-23",
+      "tempId": "33",
+      "seasonLabel": "Temporada 2022/23",
+      "logo": "5_1.png",
+      "teamCount": 7,
+      "teams": [
+        {
+          "logo": "5259213_1.png",
+          "ref": "219",
+          "abbr": "BURG",
+          "name": "HC BURGUILLOS"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "217",
+          "abbr": "CAJ A",
+          "name": "CHP CÁJAR A"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "218",
+          "abbr": "CAJ B",
+          "name": "CHP CÁJAR B"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "220",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "215",
+          "abbr": "CPI A",
+          "name": "CP IRLANDESAS A"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "216",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS B"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "221",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        }
+      ],
+      "config": "ids_teams:215,216,217,218,219,220,221;fase_nombre:;horarios:0;desde_hasta:5,,,,;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:35.00;derechos2:0;"
+    },
+    {
+      "idc": "69",
+      "name": "CAMPEONATO DE ANDALUCÍA JUVENIL (FEMENINA) 2022-23",
+      "tempId": "33",
+      "seasonLabel": "Temporada 2022/23",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "251",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR B"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "249",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR A"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "250",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:249,250,251;fase_nombre:;"
+    },
+    {
+      "idc": "91",
+      "name": "FASE SECTOR NACIONAL SUR FEMENINO SUB17",
+      "tempId": "33",
+      "seasonLabel": "Temporada 2022/23",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259302.png",
+          "ref": "263",
+          "abbr": "ALB",
+          "name": "CP ALCOBENDAS"
+        },
+        {
+          "logo": "5259326.png",
+          "ref": "264",
+          "abbr": "ALCA",
+          "name": "CP ALCALÁ"
+        },
+        {
+          "logo": "5259327.png",
+          "ref": "265",
+          "abbr": "ALM",
+          "name": "CD COLEGIO ALAMEDA OSUNA"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "262",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR GRANADA"
+        }
+      ],
+      "config": "ids_teams:262,263,264,265;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:3;fase_nombre:;"
+    },
+    {
+      "idc": "65",
+      "name": "CAMPEONATO DE ANDALUCÍA INFANTIL 2022-23",
+      "tempId": "33",
+      "seasonLabel": "Temporada 2022/23",
+      "logo": "5_1.png",
+      "teamCount": 8,
+      "teams": [
+        {
+          "logo": "5259213_1.png",
+          "ref": "226",
+          "abbr": "BURG",
+          "name": "HC BURGUILLOS"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "224",
+          "abbr": "CAJ A",
+          "name": "CHP CÁJAR A"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "225",
+          "abbr": "CAJ B",
+          "name": "CHP CÁJAR B"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "228",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "222",
+          "abbr": "CPI A",
+          "name": "CP IRLANDESAS A"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "223",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS B"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "229",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "227",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:222,223,224,225,226,227,228,229;horarios:0;desde_hasta:5,,,,;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:30.00;derechos2:0;fase_nombre:(FASE REGULAR);"
+    },
+    {
+      "idc": "66",
+      "name": "CAMPEONATO DE ANDALUCÍA ALEVÍN 2022-23",
+      "tempId": "33",
+      "seasonLabel": "Temporada 2022/23",
+      "logo": "5_1.png",
+      "teamCount": 11,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "232",
+          "abbr": "CAJ A",
+          "name": "CHP CÁJAR A"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "233",
+          "abbr": "CAJ B",
+          "name": "CHP CÁJAR B"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "239",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259215.png",
+          "ref": "238",
+          "abbr": "CP CLA",
+          "name": "CP CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "230",
+          "abbr": "CPI A",
+          "name": "CP IRLANDESAS A"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "231",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS B"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "240",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "",
+          "ref": "235",
+          "abbr": "HERM",
+          "name": "CP DOS HERMANAS"
+        },
+        {
+          "logo": "5259216.png",
+          "ref": "236",
+          "abbr": "PRAD",
+          "name": "CD PRADERAS SANTA CLARA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "237",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        },
+        {
+          "logo": "5259212.png",
+          "ref": "234",
+          "abbr": "ZAFR",
+          "name": "ZAFRA HC"
+        }
+      ],
+      "config": "ids_teams:230,231,232,233,234,235,236,237,238,239,240;horarios:0;desde_hasta:5,,,,;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:25.00;derechos2:0;fase_nombre:(FASE REGULAR);"
+    },
+    {
+      "idc": "90",
+      "name": "FASE SECTOR NACIONAL SUR ALEVÍN",
+      "tempId": "33",
+      "seasonLabel": "Temporada 2022/23",
+      "logo": "5_1.png",
+      "teamCount": 6,
+      "teams": [
+        {
+          "logo": "5259304.png",
+          "ref": "257",
+          "abbr": "ACI",
+          "name": "CP ALCODIAM"
+        },
+        {
+          "logo": "5259302.png",
+          "ref": "259",
+          "abbr": "ALB",
+          "name": "CP ALCOBENDAS"
+        },
+        {
+          "logo": "5259325.png",
+          "ref": "260",
+          "abbr": "ALCH",
+          "name": "CH PATIN ALUCHE"
+        },
+        {
+          "logo": "5259305.png",
+          "ref": "258",
+          "abbr": "COC",
+          "name": "HC COCENTAINA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "255",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259212.png",
+          "ref": "256",
+          "abbr": "ZAFR",
+          "name": "ZAFRA HC"
+        }
+      ],
+      "config": "ids_teams:255,256,257,258,259,260;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:3;fase_nombre:;"
+    },
+    {
+      "idc": "67",
+      "name": "CAMPEONATO DE ANDALUCÍA BENJAMÍN 2022-23",
+      "tempId": "33",
+      "seasonLabel": "Temporada 2022/23",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259214.png",
+          "ref": "242",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259215.png",
+          "ref": "243",
+          "abbr": "CP CLA",
+          "name": "CP CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "241",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "244",
+          "abbr": "SEV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:241,242,243,244;horarios:0;desde_hasta:5,,,,;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:20.00;derechos2:0;fase_nombre:;"
+    },
+    {
+      "idc": "70",
+      "name": "CAMPEONATO DE ANDALUCIA PREBENJAMIN 2022-23",
+      "tempId": "33",
+      "seasonLabel": "Temporada 2022/23",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259215.png",
+          "ref": "252",
+          "abbr": "CLA A",
+          "name": "CP CLARET A"
+        },
+        {
+          "logo": "5259215.png",
+          "ref": "253",
+          "abbr": "CLA B",
+          "name": "CP CLARET B"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "254",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        }
+      ],
+      "config": "ids_teams:252,253,254;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2,3;tpo_reg:10;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2,6,3;periods_names:PERIODO 1,DESCANSO 1-2,PERIODO 2,DESCANSO 2-3,PERIODO 3;ids_periods:1,2,3;model_acta:1;derechos1:15.00;derechos2:0;fase_nombre:;"
+    },
+    {
+      "idc": "93",
+      "name": "COPA DE ANDALUCÍA BENJAMÍN",
+      "tempId": "33",
+      "seasonLabel": "Temporada 2022/23",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "272",
+          "abbr": "CAJ A",
+          "name": "CHP CÁJAR A"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "273",
+          "abbr": "CAJ B",
+          "name": "CHP CÁJAR B"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "271",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "274",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        }
+      ],
+      "config": "ids_teams:271,272,273,274;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "94",
+      "name": "COPA DE ANDALUCÍA JUVENIL",
+      "tempId": "33",
+      "seasonLabel": "Temporada 2022/23",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "276",
+          "abbr": "CAJ A",
+          "name": "CHP CÁJAR A"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "277",
+          "abbr": "CAJ B",
+          "name": "CHP CÁJAR B"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "275",
+          "abbr": "CLA",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "278",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        }
+      ],
+      "config": "ids_teams:275,276,277,278;ids_period_reg:1;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1;periods_names:PERIODO 1;ids_periods:1;model_acta:1;"
+    },
+    {
+      "idc": "95",
+      "name": "COPA DE ANDALUCÍA ALEVÍN",
+      "tempId": "33",
+      "seasonLabel": "Temporada 2022/23",
+      "logo": "5_1.png",
+      "teamCount": 8,
+      "teams": [
+        {
+          "logo": "5259214.png",
+          "ref": "281",
+          "abbr": "CLA A",
+          "name": "CD CLARET A"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "282",
+          "abbr": "CLA B",
+          "name": "CD CLARET B"
+        },
+        {
+          "logo": "5259215.png",
+          "ref": "285",
+          "abbr": "CLRT",
+          "name": "CP CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "279",
+          "abbr": "CPI A",
+          "name": "CP IRLANDESAS A"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "280",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS B"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "295",
+          "abbr": "CPI C",
+          "name": "CP IRLANDESAS C"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "284",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259216.png",
+          "ref": "286",
+          "abbr": "STCL",
+          "name": "SANTA CLARA"
+        }
+      ],
+      "config": "ids_teams:279,280,281,282,284,285,286,295;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;groups:GRUPO A,GRUPO B;groups_ids:295,285,282,279#286,284,281,280;fase_nombre:(FASE REGULAR);ids_period_reg:1,2;tpo_reg:15;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;playoff_model_games:0#,1#,2#,3#,4#,5#,6#,7#,8#,9#,10#,11#,12#,13#,14#,15#,16#;"
+    },
+    {
+      "idc": "97",
+      "name": "COPA DE ANDALUCÍA INFANTIL",
+      "tempId": "33",
+      "seasonLabel": "Temporada 2022/23",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "296",
+          "abbr": "CAJ A",
+          "name": "CHP CÁJAR A"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "297",
+          "abbr": "CAJ B",
+          "name": "CHP CÁJAR B"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "298",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "299",
+          "abbr": "FUE",
+          "name": "CP FUENGIROLA"
+        }
+      ],
+      "config": "ids_teams:296,297,298,299;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "54",
+      "name": "FASE SECTOR NACIONAL SUR ALEVÍN",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 6,
+      "teams": [
+        {
+          "logo": "5259304.png",
+          "ref": "177",
+          "abbr": "ACI",
+          "name": "PAS ALCOY"
+        },
+        {
+          "logo": "5259302.png",
+          "ref": "176",
+          "abbr": "ALC",
+          "name": "CP ALCOBENDAS"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "180",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259305.png",
+          "ref": "178",
+          "abbr": "COC",
+          "name": "HC COCENTAINA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "179",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259311.png",
+          "ref": "175",
+          "abbr": "CVE",
+          "name": "VIRGEN DE EUROPA"
+        }
+      ],
+      "config": "ids_teams:175,176,177,178,179,180;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:3;"
+    },
+    {
+      "idc": "26",
+      "name": "LIGA SENIOR AUTONÓMICA",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259209.png",
+          "ref": "100",
+          "abbr": "CDIT",
+          "name": "CD ITALICENSE"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "101",
+          "abbr": "CHPC",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "102",
+          "abbr": "CPF",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "99",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        }
+      ],
+      "config": "ids_teams:99,100,101,102;horarios:1;desde_hasta:5,,,,;hide_scorer:0;ids_period_reg:1,2;tpo_reg:25;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:60.00;derechos2:0;fase_nombre:LIGA SENIOR FAP (APERTURA);"
+    },
+    {
+      "idc": "27",
+      "name": "LIGA JUNIOR AUTONÓMICA",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "103",
+          "abbr": "CHPC",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "105",
+          "abbr": "CPF",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "104",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        }
+      ],
+      "config": "ids_teams:103,104,105;horarios:1;desde_hasta:5,,,,;hide_scorer:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:45.00;derechos2:0;fase_nombre:LIGA JUNIOR FAP (APERTURA);"
+    },
+    {
+      "idc": "28",
+      "name": "LIGA JUVENIL AUTONÓMICA (FEMENINA)",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "110",
+          "abbr": "CHPC",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "109",
+          "abbr": "CPF",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "111",
+          "abbr": "PSV",
+          "name": "PATIN SEVILLA"
+        }
+      ],
+      "config": "ids_teams:109,110,111;horarios:1;desde_hasta:5,,,,;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;fase_nombre:;derechos1:35;derechos2:0;"
+    },
+    {
+      "idc": "29",
+      "name": "LIGA JUVENIL AUTONÓMICA",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 5,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "112",
+          "abbr": "CHPC",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "113",
+          "abbr": "CHPC B",
+          "name": "CHP CÁJAR B"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "116",
+          "abbr": "CPF",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "114",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "115",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS B"
+        }
+      ],
+      "config": "ids_teams:112,113,114,115,116;horarios:1;desde_hasta:5,,,,;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:35;derechos2:0;fase_nombre:LIGA JUVENIL FAP (APERTURA);"
+    },
+    {
+      "idc": "30",
+      "name": "LIGA INFANTIL AUTONÓMICA",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 7,
+      "teams": [
+        {
+          "logo": "5259214.png",
+          "ref": "121",
+          "abbr": "CDCL",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "119",
+          "abbr": "CHPC",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "120",
+          "abbr": "CHPC B",
+          "name": "CHP CÁJAR-GRANADA B"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "122",
+          "abbr": "CPF",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "117",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "118",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS B"
+        },
+        {
+          "logo": "5259213_1.png",
+          "ref": "123",
+          "abbr": "HCB",
+          "name": "HC BURGUILLOS"
+        }
+      ],
+      "config": "ids_teams:117,118,119,120,121,122,123;horarios:1;desde_hasta:5,,,,;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:26;derechos2:0;fase_nombre:LIGA INFANTIL FAP (APERTURA);"
+    },
+    {
+      "idc": "31",
+      "name": "LIGA ALEVÍN AUTONÓMICA",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 8,
+      "teams": [
+        {
+          "logo": "5259214.png",
+          "ref": "126",
+          "abbr": "CDCL",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "129",
+          "abbr": "CHPC",
+          "name": "CHP CÁJAR-GRANADA"
+        },
+        {
+          "logo": "5259286.png",
+          "ref": "131",
+          "abbr": "CPCL",
+          "name": "CP CLARET"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "128",
+          "abbr": "CPF",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "125",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "130",
+          "abbr": "CPSV",
+          "name": "CP SEVILLA"
+        },
+        {
+          "logo": "5259216.png",
+          "ref": "127",
+          "abbr": "PRAD",
+          "name": "LAS PRADERAS SC"
+        },
+        {
+          "logo": "5259212.png",
+          "ref": "132",
+          "abbr": "ZHC",
+          "name": "ZAFRA HC"
+        }
+      ],
+      "config": "ids_teams:125,126,127,128,129,130,131,132;horarios:1;desde_hasta:5,,,,;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;derechos1:23.00;derechos2:0;fase_nombre:LIGA ALEVÍN FAP (APERTURA);"
+    },
+    {
+      "idc": "33",
+      "name": "LIGA BENJAMÍN AUTONÓMICA (APERTURA)",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 6,
+      "teams": [
+        {
+          "logo": "5259214.png",
+          "ref": "135",
+          "abbr": "CDCL",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259216.png",
+          "ref": "136",
+          "abbr": "CDPR",
+          "name": "CD PRADERAS SANTA CLARA"
+        },
+        {
+          "logo": "5259286.png",
+          "ref": "138",
+          "abbr": "CPCL",
+          "name": "CP CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "134",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "137",
+          "abbr": "CPSV",
+          "name": "CP SEVILLA"
+        },
+        {
+          "logo": "5259212.png",
+          "ref": "139",
+          "abbr": "ZHC",
+          "name": "ZAFRA HC"
+        }
+      ],
+      "config": "ids_teams:134,135,136,137,138,139;horarios:1;desde_hasta:5,,,,;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;hide_designaciones:0;hide_personal_stats:0;derechos1:18.00;derechos2:0;hide_scorer:0;fase_nombre:;"
+    },
+    {
+      "idc": "49",
+      "name": "LIGA BENJAMÍN AUTONÓMICA (CLAUSURA)",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 2,
+      "teams": [
+        {
+          "logo": "5259214.png",
+          "ref": "172",
+          "abbr": "CDCL",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "173",
+          "abbr": "CHPC",
+          "name": "CHP CÁJAR"
+        }
+      ],
+      "config": "ids_teams:171,172,173,174;horarios:1;desde_hasta:5,,,,;derechos1:18;derechos2:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;hide_designaciones:0;hide_personal_stats:0;show_game_rink:0;hide_clasif:0;agrupada:0;"
+    },
+    {
+      "idc": "55",
+      "name": "TAÇASUL  IBÉRICA SUB13",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259214.png",
+          "ref": "182",
+          "abbr": "CDCL",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "181",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259313.png",
+          "ref": "183",
+          "abbr": "GDMÇ",
+          "name": "GD 1º MARÇO"
+        }
+      ],
+      "config": "ids_teams:181,182,183;horarios:1;desde_hasta:5,,,,;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "56",
+      "name": "TAÇASUL  IBÉRICA SUB 17",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 2,
+      "teams": [
+        {
+          "logo": "5259314.png",
+          "ref": "184",
+          "abbr": "ALJ",
+          "name": "SCM ALJUSTRELENSE"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "185",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        }
+      ],
+      "config": "ids_teams:184,185;horarios:1;desde_hasta:5,,,,;hide_scorer:0;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:;tpo_ot:0;bonus:0;empates:0;all_periods:1,10,2,9;periods_names:PERIODO 1,DESCANSO,PERIODO 2,PENALTIS;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "57",
+      "name": "TAÇASUL IBÉRICA ESCOLARES",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259317.png",
+          "ref": "189",
+          "abbr": "BOL",
+          "name": "CD BOLIQUEIME"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "187",
+          "abbr": "CDCL",
+          "name": "CD CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "186",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259316.png",
+          "ref": "188",
+          "abbr": "ESTR",
+          "name": "CF ESTREMOZ"
+        }
+      ],
+      "config": "ids_teams:186,187,188,189;horarios:1;desde_hasta:5,,,,;ids_period_reg:1,2,3;tpo_reg:10;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2,6,3;periods_names:PERIODO 1,DESCANSO 1-2,PERIODO 2,DESCANSO 2-3,PERIODO 3;ids_periods:1,2,3;model_acta:1;"
+    },
+    {
+      "idc": "58",
+      "name": "TAÇA SUL IBÉRICA BENJAMIN",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259319.png",
+          "ref": "193",
+          "abbr": "CASTR",
+          "name": "FC CASTRENSE"
+        },
+        {
+          "logo": "5259286.png",
+          "ref": "191",
+          "abbr": "CPCL",
+          "name": "CP CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "190",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259318.png",
+          "ref": "192",
+          "abbr": "PORT",
+          "name": "HC PORTIMAO"
+        }
+      ],
+      "config": "ids_teams:190,191,192,193;horarios:1;desde_hasta:5,,,,;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2,3;tpo_reg:10;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2,6,3;periods_names:PERIODO 1,DESCANSO 1-2,PERIODO 2,DESCANSO 2-3,PERIODO 3;ids_periods:1,2,3;model_acta:1;"
+    },
+    {
+      "idc": "59",
+      "name": "TORNEIO SUL IBÉRICO SÉNIOR",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259317.png",
+          "ref": "195",
+          "abbr": "BOL",
+          "name": "CD BOLIQUEIME"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "196",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "194",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        }
+      ],
+      "config": "ids_teams:194,195,196;horarios:1;desde_hasta:5,,,,;ids_period_reg:1,2;tpo_reg:25;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "60",
+      "name": "TAÇA SUL IBÉRICA SUB 15",
+      "tempId": "31",
+      "seasonLabel": "Temporada 2021/22",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "198",
+          "abbr": "CAJ",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "197",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259316.png",
+          "ref": "200",
+          "abbr": "ESTR",
+          "name": "CF ESTREMOZ"
+        },
+        {
+          "logo": "5259318.png",
+          "ref": "199",
+          "abbr": "POR",
+          "name": "HC PORTIMAO"
+        }
+      ],
+      "config": "ids_teams:197,198,199,200;horarios:1;desde_hasta:5,,,,;hide_designaciones:0;hide_personal_stats:0;show_game_rink:1;hide_clasif:0;agrupada:0;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "22",
+      "name": "LIGA PREBENJAMÍN AUTONÓMICA",
+      "tempId": "29",
+      "seasonLabel": "Temporada 2020/21",
+      "logo": "5_1.png",
+      "teamCount": 4,
+      "teams": [
+        {
+          "logo": "5259283.png",
+          "ref": "87",
+          "abbr": "CDSTC",
+          "name": "CD SANTA CLARA"
+        },
+        {
+          "logo": "5259286.png",
+          "ref": "85",
+          "abbr": "CPCL",
+          "name": "CP CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "84",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "86",
+          "abbr": "CPSV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:84,85,86,87;ids_period_reg:1,2,3;tpo_reg:10;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2,6,3;periods_names:PERIODO 1,DESCANSO 1-2,PERIODO 2,DESCANSO 2-3,PERIODO 3;ids_periods:1,2,3;model_acta:1;"
+    },
+    {
+      "idc": "21",
+      "name": "LIGA BENJAMÍN AUTONÓMICA",
+      "tempId": "29",
+      "seasonLabel": "Temporada 2020/21",
+      "logo": "5_1.png",
+      "teamCount": 6,
+      "teams": [
+        {
+          "logo": "5259283.png",
+          "ref": "81",
+          "abbr": "CDSTC",
+          "name": "CD SANTA CLARA"
+        },
+        {
+          "logo": "5259214.png",
+          "ref": "83",
+          "abbr": "COLCL",
+          "name": "CD COLEGIO CLARET"
+        },
+        {
+          "logo": "5259286.png",
+          "ref": "82",
+          "abbr": "CPCL",
+          "name": "CP CLARET"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "78",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "79",
+          "abbr": "CPIB",
+          "name": "CP IRLANDESAS B"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "80",
+          "abbr": "CPSV",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:78,79,80,81,82,83;fase_nombre:;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "5",
+      "name": "LIGA ALEVÍN AUTONÓMICA",
+      "tempId": "29",
+      "seasonLabel": "Temporada 2020/21",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "24",
+          "abbr": "CHPC",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "21",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "22",
+          "abbr": "CPI B",
+          "name": "CP IRLANDESAS"
+        }
+      ],
+      "config": "ids_teams:21,22,24,26;ids_period_reg:1,2;tpo_reg:15;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;fase_nombre:;"
+    },
+    {
+      "idc": "6",
+      "name": "LIGA INFANTIL AUTONÓMICA",
+      "tempId": "29",
+      "seasonLabel": "Temporada 2020/21",
+      "logo": "5_1.png",
+      "teamCount": 2,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "33",
+          "abbr": "CHPC",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "34",
+          "abbr": "CHPC B",
+          "name": "CHP CÁJAR"
+        }
+      ],
+      "config": "ids_teams:31,32,33,34,35,36;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;fase_nombre:;"
+    },
+    {
+      "idc": "19",
+      "name": "LIGA JUVENIL AUTONÓMICA",
+      "tempId": "29",
+      "seasonLabel": "Temporada 2020/21",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "72",
+          "abbr": "CHPC",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "73",
+          "abbr": "CPF",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "74",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        }
+      ],
+      "config": "ids_teams:72,73,74;ids_period_reg:1;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1;periods_names:PERIODO 1;ids_periods:1;model_acta:1;fase_nombre:;"
+    },
+    {
+      "idc": "12",
+      "name": "LIGA JUVENIL AUTONÓMICA",
+      "tempId": "29",
+      "seasonLabel": "Temporada 2020/21",
+      "logo": "5_1.png",
+      "teamCount": 2,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "55",
+          "abbr": "CHPC",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "56",
+          "abbr": "CHPC B",
+          "name": "CHP CÁJAR"
+        }
+      ],
+      "config": "ids_teams:55,56,57,58;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;fase_nombre:;"
+    },
+    {
+      "idc": "13",
+      "name": "LIGA JUVENIL FEMENINA AUTONÓMICA",
+      "tempId": "29",
+      "seasonLabel": "Temporada 2020/21",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "61",
+          "abbr": "CHPC",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259210_1.png",
+          "ref": "60",
+          "abbr": "CPF",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259282_2.png",
+          "ref": "62",
+          "abbr": "CPS",
+          "name": "CP SEVILLA"
+        }
+      ],
+      "config": "ids_teams:60,61,62;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;fase_nombre:;"
+    },
+    {
+      "idc": "14",
+      "name": "LIGA SÉNIOR AUTONÓMICA (APERTURA)",
+      "tempId": "29",
+      "seasonLabel": "Temporada 2020/21",
+      "logo": "5_1.png",
+      "teamCount": 3,
+      "teams": [
+        {
+          "logo": "5259209.png",
+          "ref": "64",
+          "abbr": "CDIT",
+          "name": "CD ITALICENSE"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "65",
+          "abbr": "CHPC",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "63",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        }
+      ],
+      "config": "ids_teams:63,64,65;ids_period_reg:1,2;tpo_reg:25;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;fase_nombre:;"
+    },
+    {
+      "idc": "15",
+      "name": "LIGA JÚNIOR AUTONÓMICA",
+      "tempId": "29",
+      "seasonLabel": "Temporada 2020/21",
+      "logo": "5_1.png",
+      "teamCount": 2,
+      "teams": [
+        {
+          "logo": "5259211.png",
+          "ref": "67",
+          "abbr": "CHPC",
+          "name": "CHP CÁJAR"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "66",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        }
+      ],
+      "config": "ids_teams:66,67;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;fase_nombre:;"
+    },
+    {
+      "idc": "18",
+      "name": "LIGA SÉNIOR AUTONÓMICA (CLAUSURA)",
+      "tempId": "29",
+      "seasonLabel": "Temporada 2020/21",
+      "logo": "5_1.png",
+      "teamCount": 2,
+      "teams": [
+        {
+          "logo": "5259209.png",
+          "ref": "69",
+          "abbr": "CDIT",
+          "name": "CD ITALICENSE"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "70",
+          "abbr": "CHPC A",
+          "name": "CHP CÁJAR"
+        }
+      ],
+      "config": "ids_teams:68,69,70,71;ids_period_reg:1,2;tpo_reg:25;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;fase_nombre:;"
+    },
+    {
+      "idc": "20",
+      "name": "LIGA SÉNIOR AUTONÓMICA (VETERANOS)",
+      "tempId": "29",
+      "seasonLabel": "Temporada 2020/21",
+      "logo": "5_1.png",
+      "teamCount": 2,
+      "teams": [
+        {
+          "logo": "5259210_1.png",
+          "ref": "75",
+          "abbr": "CPF",
+          "name": "CP FUENGIROLA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "76",
+          "abbr": "CPI",
+          "name": "CP IRLANDESAS"
+        }
+      ],
+      "config": "ids_teams:75,76;fase_nombre:;ids_period_reg:1,2;tpo_reg:25;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:1;"
+    },
+    {
+      "idc": "24",
+      "name": "FASE SECTOR NACIONAL SUR INFANTIL",
+      "tempId": "29",
+      "seasonLabel": "Temporada 2020/21",
+      "logo": "5_1.png",
+      "teamCount": 6,
+      "teams": [
+        {
+          "logo": "5259304.png",
+          "ref": "93",
+          "abbr": "ACI",
+          "name": "PAS ALCOY"
+        },
+        {
+          "logo": "5259302.png",
+          "ref": "91",
+          "abbr": "ALC",
+          "name": "CP ALCOBENDAS"
+        },
+        {
+          "logo": "5259211.png",
+          "ref": "90",
+          "abbr": "CAJ",
+          "name": "CHP CAJAR-GRANADA"
+        },
+        {
+          "logo": "5259305.png",
+          "ref": "94",
+          "abbr": "COC",
+          "name": "HC COCENTAINA"
+        },
+        {
+          "logo": "5259208.png",
+          "ref": "89",
+          "abbr": "IRL",
+          "name": "CP IRLANDESAS"
+        },
+        {
+          "logo": "5259303.png",
+          "ref": "92",
+          "abbr": "RIV",
+          "name": "RIVAS LAS LAGUNAS"
+        }
+      ],
+      "config": "ids_teams:89,90,91,92,93,94;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;bonus:0;empates:1;all_periods:1,10,2;periods_names:PERIODO 1,DESCANSO,PERIODO 2;ids_periods:1,2;model_acta:3;fase_nombre:;"
+    }
+  ]
+}
