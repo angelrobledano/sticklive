@@ -168,11 +168,16 @@ async function main() {
         `SELECT id, slug FROM seasons WHERE competition_id = $1`, [dupe.id]
       );
       for (const season of seasons.rows) {
-        const clash = await db.query(
-          `SELECT 1 FROM seasons WHERE competition_id = $1 AND slug = $2`,
-          [canonical.id, season.slug]
-        );
-        const newSlug = (clash.rowCount ?? 0) > 0 ? `${season.slug}-${dupe.slug.slice(0, 12)}` : season.slug;
+        // Slug único dentro de la canónica: probar base, base-2, base-3...
+        let newSlug = season.slug;
+        for (let n = 2; ; n++) {
+          const clash = await db.query(
+            `SELECT 1 FROM seasons WHERE competition_id = $1 AND slug = $2`,
+            [canonical.id, newSlug]
+          );
+          if ((clash.rowCount ?? 0) === 0) break;
+          newSlug = `${season.slug}-${n}`;
+        }
         await db.query(
           `UPDATE seasons SET competition_id = $1, slug = $2, updated_at = NOW() WHERE id = $3`,
           [canonical.id, newSlug, season.id]
