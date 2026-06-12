@@ -11,6 +11,69 @@ function norm(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
+// ── Orden curado de las competiciones nacionales de España ──────────────────
+// Clave normalizada (sin ediciones, años, patrocinios ni partículas) para que
+// "XXX CTO ESPAÑA SELECC MASCULINO" o "PARLEM OK LIGA" casen igual.
+function rankKey(name: string): string {
+  return name
+    .toUpperCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^A-Z0-9 ]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((t) => !/^(?=[IVXLC])(X{0,3})(IX|IV|V?I{0,3})$/.test(t))      // romanos
+    .filter((t) => !/^(19|20)\d{2}$/.test(t))                             // años
+    .filter((t) => !['DE', 'DEL', 'LA', 'EL', 'SM', 'SAR', 'IBERDROLA', 'PARLEM'].includes(t))
+    .map((t) => ({ SELECCIONES: 'SELECC', FEM: 'FEMENINO', FEMENINA: 'FEMENINO', MASCULINA: 'MASCULINO', CAMPEONATO: 'CTO' } as Record<string, string>)[t] ?? t)
+    .join(' ');
+}
+
+/** Cada entrada admite variantes (nombres de origen y canónicos post-fusión) */
+const ES_PRIORITY: string[][] = [
+  ['OK LIGA MASCULINO', 'OK LIGA'],
+  ['OK LIGA FEMENINO'],
+  ['OK LIGA PLATA MASCULINO ELIMINATORIA'],
+  ['OK LIGA PLATA NORTE', 'OK LIGA PLATA MASCULINO NORTE'],
+  ['OK LIGA PLATA SUR', 'OK LIGA PLATA MASCULINO SUR'],
+  ['OK LIGA PLATA FEMENINO'],
+  ['OK LIGA BRONCE ELIMINATORIA'],
+  ['OK LIGA BRONCE MASCULINO NORTE', 'OK LIGA BRONCE NORTE'],
+  ['OK LIGA BRONCE MASCULINO SUR', 'OK LIGA BRONCE SUR'],
+  ['COPA REY'],
+  ['COPA REINA'],
+  ['SUPERCOPA ESPANA MASCULINO'],
+  ['SUPERCOPA ESPANA FEMENINO'],
+  ['COPA PRINCESA MASCULINO', 'COPA PRINCESA'],
+  ['COPA PRINCESA FEMENINO'],
+  ['MINICOPA REY', 'MINI COPA REY'],
+  ['MINI COPA REINA', 'MINICOPA REINA'],
+  ['CTO ESPANA SELECC MASCULINO'],
+  ['CTO ESPANA SELECC FEMENINO'],
+  ['CTO ESPANA ALEVIN'],
+  ['COPA ESPANA ALEVIN FEMENINO'],
+  ['CTO ESPANA INFANTIL'],
+  ['COPA ESPANA INFANTIL FEMENINO'],
+  ['CTO ESPANA JUVENIL'],
+  ['COPA ESPANA JUVENIL FEMENINO'],
+  ['CTO ESPANA JUNIOR'],
+];
+
+const RANK = new Map<string, number>();
+ES_PRIORITY.forEach((variants, i) => variants.forEach((v) => RANK.set(v, i)));
+
+/** Orden: prioridad curada primero; el resto por temporada más reciente */
+function sortComps(comps: CompetitionSummary[]): CompetitionSummary[] {
+  return [...comps].sort((a, b) => {
+    const ra = RANK.get(rankKey(a.name)) ?? Infinity;
+    const rb = RANK.get(rankKey(b.name)) ?? Infinity;
+    if (ra !== rb) return ra - rb;
+    const da = a.season?.startDate ?? '';
+    const db = b.season?.startDate ?? '';
+    if (da !== db) return db.localeCompare(da); // más reciente primero
+    return a.name.localeCompare(b.name);
+  });
+}
+
 /** Nombre del país en el idioma activo (Intl, sin tablas a mano) */
 function countryName(code: string | null, locale: string): string | null {
   if (!code) return null;
@@ -212,7 +275,7 @@ export function CompetitionsList({ competitions, error }: {
               </h2>
             </div>
             <div className="space-y-3">
-              {national.map((comp) => <CompetitionCard key={comp.id} comp={comp} />)}
+              {sortComps(national).map((comp) => <CompetitionCard key={comp.id} comp={comp} />)}
             </div>
             {Array.from(regionals.entries()).sort(([a], [b]) => a.localeCompare(b, locale)).map(([region, regionComps]) => (
               <div key={region} className="space-y-2 pt-2">
@@ -220,7 +283,7 @@ export function CompetitionsList({ competitions, error }: {
                   {region} · {regionComps.length}
                 </h3>
                 <div className="space-y-3">
-                  {regionComps.map((comp) => <CompetitionCard key={comp.id} comp={comp} />)}
+                  {sortComps(regionComps).map((comp) => <CompetitionCard key={comp.id} comp={comp} />)}
                 </div>
               </div>
             ))}

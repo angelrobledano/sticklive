@@ -343,6 +343,7 @@ export interface CompetitionSummary {
   season: {
     id: string;
     name: string | null;
+    startDate?: string | null;
     teamCount: number;
     matchCount: number;
   } | null;
