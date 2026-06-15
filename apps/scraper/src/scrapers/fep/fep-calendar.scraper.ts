@@ -18,6 +18,7 @@ import * as cheerio from 'cheerio';
 import { BaseScraper } from '../../core/base-scraper.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
 import type { ScrapedMatch, MatchStatus } from '@sports/shared-types';
+import { madridToUtc } from './fep-matches.scraper.js';
 
 const BASE_URL = 'https://www.server2.sidgad.es/rfep';
 const SOURCE_ID = process.env['FEP_SOURCE_ID'] ?? 'FEP_HOCKEY_PLACEHOLDER';
@@ -120,13 +121,13 @@ export class FepCalendarScraper extends BaseScraper<ScrapedMatch> {
 
     // Fecha del partido desde atributo gamedate="20250926"
     const gamedateStr = $row.attr('gamedate') ?? '';
-    const scheduledDate = parseGamedate(gamedateStr);
+    const dateparts = parseGamedate(gamedateStr);
 
     // Hora desde la 3ª celda (índice 2)
     const cells = $row.find('td');
     const timeStr = cells.eq(2).text().trim(); // "21:00"
-    const scheduledAt = scheduledDate
-      ? combineDateAndTime(scheduledDate, timeStr)
+    const scheduledAt = dateparts
+      ? combineDateAndTime(dateparts, timeStr)
       : undefined;
 
     // Nombres de equipo (para logging/debug, no los usamos como ref)
@@ -186,22 +187,34 @@ export class FepCalendarScraper extends BaseScraper<ScrapedMatch> {
 
 // ── Helpers de parsing ───────────────────────────────────────────
 
-function parseGamedate(gamedateStr: string): Date | null {
+function parseGamedate(gamedateStr: string): { year: number; month: number; day: number } | null {
   if (!gamedateStr || gamedateStr.length !== 8) return null;
-  const year = gamedateStr.slice(0, 4);
-  const month = gamedateStr.slice(4, 6);
-  const day = gamedateStr.slice(6, 8);
-  const date = new Date(`${year}-${month}-${day}`);
-  return isNaN(date.getTime()) ? null : date;
+  const year  = parseInt(gamedateStr.slice(0, 4), 10);
+  const month = parseInt(gamedateStr.slice(4, 6), 10) - 1; // 0-based
+  const day   = parseInt(gamedateStr.slice(6, 8), 10);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+  return { year, month, day };
 }
 
-function combineDateAndTime(date: Date, timeStr: string): Date | undefined {
-  if (!timeStr || !timeStr.includes(':')) return date;
-  const [h, m] = timeStr.split(':').map(Number);
-  if (h === undefined || m === undefined) return date;
-  const combined = new Date(date);
-  combined.setHours(h, m, 0, 0);
-  return combined;
+/**
+ * Combina la fecha del gamedate y la hora del calendario en un Date UTC,
+ * interpretando ambos como hora española (Europe/Madrid / CEST o CET).
+ */
+function combineDateAndTime(
+  dateparts: { year: number; month: number; day: number },
+  timeStr: string
+): Date | undefined {
+  if (!timeStr || !timeStr.includes(':')) {
+    // Sin hora: usamos medianoche Madrid (00:00 CEST/CET → UTC)
+    return madridToUtc(dateparts.year, dateparts.month, dateparts.day, 0, 0);
+  }
+  const parts = timeStr.split(':').map(Number);
+  const h = parts[0];
+  const m = parts[1];
+  if (h === undefined || m === undefined || isNaN(h) || isNaN(m)) {
+    return madridToUtc(dateparts.year, dateparts.month, dateparts.day, 0, 0);
+  }
+  return madridToUtc(dateparts.year, dateparts.month, dateparts.day, h, m);
 }
 
 function parseScore(scoreText: string): { homeScore?: number; awayScore?: number } {
@@ -223,8 +236,8 @@ function inferStatus(
   if (!scheduledAt) return 'scheduled';
   const now = new Date();
   if (scheduledAt > now) return 'scheduled';
-  // Si la fecha ya pasó pero no hay resultado, puede ser live o pendiente
+  // Si la fecha ya paso pero no hay resultado, puede ser live o pendiente
   const hoursSince = (now.getTime() - scheduledAt.getTime()) / 3_600_000;
   if (hoursSince < 3) return 'live';
-  return 'scheduled'; // datos aún no actualizados
+  return 'scheduled'; // datos aun no actualizados
 }

@@ -270,8 +270,10 @@ function inferStatus(
 }
 
 /**
- * Parsea "23/05 12:30" → Date del año actual.
- * Si el mes parseado es mayor que el mes actual, asume año anterior.
+ * Parsea "23/05 12:30" → Date UTC.
+ * FEP publica siempre en hora española (Europe/Madrid):
+ *   - CEST (UTC+2): último domingo de marzo → último domingo de octubre
+ *   - CET  (UTC+1): resto del año
  */
 function parseDatetime(text: string): Date | undefined {
   if (!text) return undefined;
@@ -279,20 +281,47 @@ function parseDatetime(text: string): Date | undefined {
   const m = text.match(/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/);
   if (!m) return undefined;
 
-  const day = parseInt(m[1]!, 10);
+  const day   = parseInt(m[1]!, 10);
   const month = parseInt(m[2]!, 10) - 1; // 0-based
-  const hour = parseInt(m[3]!, 10);
-  const min = parseInt(m[4]!, 10);
+  const hour  = parseInt(m[3]!, 10);
+  const min   = parseInt(m[4]!, 10);
 
   const now = new Date();
   let year = now.getFullYear();
 
   // Si el mes está en el futuro lejano, probablemente sea de la temporada anterior
-  const candidate = new Date(year, month, day, hour, min, 0);
-  if (candidate.getTime() - now.getTime() > 180 * 24 * 3_600_000) {
+  const candidate = madridToUtc(year, month, day, hour, min);
+  if (candidate && candidate.getTime() - now.getTime() > 180 * 24 * 3_600_000) {
     year -= 1;
   }
 
-  const date = new Date(year, month, day, hour, min, 0);
-  return isNaN(date.getTime()) ? undefined : date;
+  return madridToUtc(year, month, day, hour, min);
+}
+
+/**
+ * Convierte una fecha/hora en zona horaria Europe/Madrid a un Date UTC.
+ * Calcula el offset DST sin dependencias externas:
+ *   DST empieza: ultimo domingo de marzo a las 02:00 (01:00 UTC), offset +2
+ *   DST termina: ultimo domingo de octubre a las 03:00 (01:00 UTC), offset +1
+ */
+export function madridToUtc(
+  year: number, month: number, day: number, hour: number, min: number
+): Date {
+  const lastSundayOf = (y: number, mo: number): number => {
+    // Ultimo domingo del mes mo (0-based). Calcula en UTC puro.
+    const lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+    const dow     = new Date(Date.UTC(y, mo, lastDay)).getUTCDay(); // 0=domingo
+    return lastDay - dow;
+  };
+  // Transiciones expresadas en UTC (momento en que el reloj cambia en Madrid)
+  const dstStart = Date.UTC(year, 2, lastSundayOf(year, 2), 1, 0, 0); // Mar -> 01:00 UTC
+  const dstEnd   = Date.UTC(year, 9, lastSundayOf(year, 9), 1, 0, 0); // Oct -> 01:00 UTC
+
+  // Primera aproximacion: tratamos la hora como UTC para decidir el offset
+  const approxUtc = Date.UTC(year, month, day, hour, min, 0);
+  const offset    = (approxUtc >= dstStart && approxUtc < dstEnd) ? 2 : 1; // CEST=+2, CET=+1
+
+  const utcMs = approxUtc - offset * 3_600_000;
+  const d = new Date(utcMs);
+  return isNaN(d.getTime()) ? new Date(NaN) : d;
 }
