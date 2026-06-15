@@ -392,20 +392,20 @@ function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?: strin
       {/* Goleadores y tarjetas — lo esencial sin entrar al timeline */}
       {showScore && <EventSummary events={data.events} />}
 
-      {/* Faltas de equipo */}
-      {/* Sin icono: una tarjeta azul al lado confundía (son faltas de equipo,
-          no tarjetas). El número grande + etiqueta se explican solos. */}
-      <div className="flex justify-between items-center px-2">
-        <div className="flex items-baseline gap-1.5">
-          <span className="font-mono text-lg font-bold text-slate-800 dark:text-slate-100">{stats.homeFouls}</span>
-          <span className="text-xs text-slate-400 dark:text-slate-500">{t('match_detail.fouls')}</span>
+      {/* Faltas de equipo — solo si algún equipo acumula faltas */}
+      {(stats.homeFouls > 0 || stats.awayFouls > 0) && (
+        <div className="flex justify-between items-center px-2">
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-mono text-lg font-bold text-slate-800 dark:text-slate-100">{stats.homeFouls}</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">{t('match_detail.fouls')}</span>
+          </div>
+          <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-medium">{t('match_detail.team_fouls_header')}</span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-xs text-slate-400 dark:text-slate-500">{t('match_detail.fouls')}</span>
+            <span className="font-mono text-lg font-bold text-slate-800 dark:text-slate-100">{stats.awayFouls}</span>
+          </div>
         </div>
-        <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-medium">{t('match_detail.team_fouls_header')}</span>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-xs text-slate-400 dark:text-slate-500">{t('match_detail.fouls')}</span>
-          <span className="font-mono text-lg font-bold text-slate-800 dark:text-slate-100">{stats.awayFouls}</span>
-        </div>
-      </div>
+      )}
 
       {/* Venue / árbitro */}
       {(match.venue || match.referee) && (
@@ -942,7 +942,8 @@ function LineupsTab({ data }: { data: MatchDetail }) {
         homeName={data.match.homeTeam?.shortName ?? data.match.homeTeam?.name ?? ''}
         awayName={data.match.awayTeam?.shortName ?? data.match.awayTeam?.name ?? ''}
       />
-      {teams.map(({ team, label, players }) => (
+      {/* Solo renderizar la tarjeta del equipo si tiene jugadores */}
+      {teams.filter(({ players }) => players.length > 0).map(({ team, label, players }) => (
         <div key={team.id} className="card p-4">
           <div className="flex items-center gap-2 mb-4">
             <TeamShield teamId={team.id} teamName={team.name} size={24} />
@@ -972,13 +973,7 @@ function LineupsTab({ data }: { data: MatchDetail }) {
             </div>
           </div>
 
-          {players.length === 0 ? (
-            <div className="py-6 text-center">
-              <span className="text-[11px] text-slate-400 dark:text-slate-600">
-                {t('match_detail.lineup_unavailable')}
-              </span>
-            </div>
-          ) : (
+          {(
             <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
               {players.map((p) => (
                 <div key={`${p.jerseyNumber}-${p.playerName}`} className="flex items-center gap-3 py-2">
@@ -1023,7 +1018,7 @@ function LineupsTab({ data }: { data: MatchDetail }) {
   );
 }
 
-// ─── Tab C: Estadísticas ──────────────────────────────────────────────────────
+// ─── Tab C: Estadísticas ─────────────────────────────────────────────────────
 
 function StatRow({ label, home, away, max }: {
   label: string; home: number; away: number; max: number;
@@ -1172,6 +1167,30 @@ const TAB_KEYS: Record<Tab, string> = {
   'Estadísticas': 'match_tabs.stats',
 };
 
+/**
+ * Calcula qué tabs deben mostrarse en función de los datos disponibles.
+ * Principio: el usuario nunca debe ver una pestaña vacía.
+ *   - Resumen:      siempre visible.
+ *   - Alineaciones: solo si hay al menos un jugador en algún equipo.
+ *   - Estadísticas: solo si el partido ha empezado y hay algo que mostrar
+ *                   (marcador, faltas o eventos).
+ */
+function visibleTabsFor(data: MatchDetail): Tab[] {
+  const isStarted = data.match.status === 'live' || data.match.status === 'finished';
+  const hasLineups = (data.lineups?.home?.length ?? 0) > 0 || (data.lineups?.away?.length ?? 0) > 0;
+  const hasStats = isStarted && (
+    (data.stats.homeGoals ?? 0) > 0 || (data.stats.awayGoals ?? 0) > 0 ||
+    data.stats.homeFouls > 0 || data.stats.awayFouls > 0 ||
+    (data.stats.homeBlueCards ?? 0) > 0 || (data.stats.awayBlueCards ?? 0) > 0 ||
+    data.events.length > 0
+  );
+  return TABS.filter((tab) => {
+    if (tab === 'Alineaciones') return hasLineups;
+    if (tab === 'Estadísticas') return hasStats;
+    return true;
+  });
+}
+
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
 // ─── Indicador de partido en vivo ─────────────────────────────────────────────
@@ -1291,19 +1310,24 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
 
   const data = liveData; // alias para no cambiar el resto del JSX
 
+  // Tabs visibles según datos disponibles — nunca mostrar una pestaña vacía
+  const visibleTabs = visibleTabsFor(data);
+  // Si la tab activa quedó oculta (ej: alineaciones desaparecieron en live), volver a Resumen
+  const safeActiveTab: Tab = visibleTabs.includes(activeTab) ? activeTab : 'Resumen';
+
   return (
     <div className="space-y-4">
       {/* Cabecera del partido */}
       <MatchHeader data={data} sseStatus={sseStatus} />
 
-      {/* Pestañas */}
+      {/* Pestañas — solo las que tienen datos */}
       <div className="flex gap-0 border-b border-slate-200 dark:border-slate-800">
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2.5 text-sm border-b -mb-px transition-colors whitespace-nowrap ${
-              activeTab === tab
+              safeActiveTab === tab
                 ? 'border-rink-passion text-rink-passion font-semibold'
                 : 'border-transparent font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
@@ -1314,9 +1338,9 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
       </div>
 
       {/* Contenido */}
-      {activeTab === 'Resumen'      && <TimelineTab   data={data} />}
-      {activeTab === 'Alineaciones' && <LineupsTab    data={data} />}
-      {activeTab === 'Estadísticas' && <StatsTab      data={data} />}
+      {safeActiveTab === 'Resumen'      && <TimelineTab   data={data} />}
+      {safeActiveTab === 'Alineaciones' && <LineupsTab    data={data} />}
+      {safeActiveTab === 'Estadísticas' && <StatsTab      data={data} />}
     </div>
   );
 }

@@ -21,6 +21,7 @@ import { createLogger } from '@sports/logger';
 import { db, closeDb } from '@sports/db';
 import { EtlPipeline } from './pipeline.js';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
+import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import { snapshotMatches, diffAndNotify, pushEnabled } from './push-dispatcher.js';
 
 const log = createLogger({ service: 'cron-live' });
@@ -78,7 +79,76 @@ async function checkWindow(seasonId: string): Promise<WindowStatus> {
 }
 
 /**
- * Un ciclo de scraping: captura marcadores y los persiste.
+ * Descarga y persiste la ficha resumen (eventos, alineaciones, faltas) de todos
+ * los partidos que están live o que terminaron recientemente sin tener eventos.
+ *
+ * Se ejecuta al final de cada ciclo de scraping de marcadores, garantizando
+ * que los eventos estén disponibles en tiempo real y que ningún partido
+ * finalizado quede sin datos de cara a los listados y fichas históricas.
+ */
+async function runFichasForActiveMatches(seasonId: string): Promise<void> {
+  const rows = await db.query<{
+    id: string;
+    source_ref: string;
+    comp_ref: string | null;
+    home_team_name: string | null;
+  }>(
+    `SELECT m.id, m.source_ref, comp.source_ref AS comp_ref, ht.name AS home_team_name
+     FROM matches m
+     JOIN seasons s ON s.id = m.season_id
+     JOIN competitions comp ON comp.id = s.competition_id
+     LEFT JOIN teams ht ON ht.id = m.home_team_id
+     WHERE m.season_id = $1
+       AND m.source_ref LIKE 'fep_match_%'
+       AND (
+         -- Partidos en directo: siempre actualizar eventos
+         m.status = 'live'
+         OR (
+           -- Partidos recién terminados (3h) sin ningún evento persistido
+           m.status = 'finished'
+           AND m.updated_at > NOW() - INTERVAL '3 hours'
+           AND NOT EXISTS (SELECT 1 FROM match_events me WHERE me.match_id = m.id)
+         )
+       )`,
+    [seasonId]
+  );
+
+  if (rows.rows.length === 0) return;
+
+  log.info({ count: rows.rows.length }, '📋 Procesando fichas para partidos activos/recientes');
+
+  for (const match of rows.rows) {
+    const idp = match.source_ref.replace('fep_match_', '');
+    const idc = (match.comp_ref ?? '').replace(/^fep_competition_/, '');
+
+    if (!idc) {
+      log.warn({ matchId: match.id, idp }, 'idc vacío — omitiendo ficha de este partido');
+      continue;
+    }
+
+    try {
+      const scraper = new FepFichaScraper({
+        idp,
+        idc,
+        homeTeamName: match.home_team_name ?? undefined,
+        matchId: match.id,
+      });
+      await scraper.run();
+      log.debug({ matchId: match.id, idp, idc }, 'Ficha procesada');
+    } catch (err) {
+      // No bloqueamos el ciclo: un error de ficha individual no debe
+      // detener el scraping de otros partidos o del siguiente ciclo.
+      log.warn({ err, matchId: match.id, idp, idc }, '⚠️ Error en ficha — continuando con siguiente partido');
+    }
+
+    // Cortesía con el servidor fuente: evitar ráfagas de peticiones
+    await new Promise((r) => setTimeout(r, 1_000));
+  }
+}
+
+/**
+ * Un ciclo de scraping: captura marcadores, los persiste y luego descarga
+ * las fichas resumen de los partidos activos para mantener eventos en tiempo real.
  * Devuelve cuántos registros se actualizaron.
  */
 async function runOneCycle(seasonId: string): Promise<number> {
@@ -96,6 +166,15 @@ async function runOneCycle(seasonId: string): Promise<number> {
   // Notificar cambios (inicio/gol/final) — nunca rompe el ciclo
   try { await diffAndNotify(prev, seasonId); } catch (err) {
     log.warn({ err }, 'push-dispatcher falló — el scraping sigue');
+  }
+
+  // Inyectar eventos en tiempo real desde las fichas de partidos activos.
+  // Es la pieza que cierra el ciclo: score + status + eventos en un solo tick.
+  // Los errores de ficha son no-fatales; el ciclo de scores continúa.
+  try {
+    await runFichasForActiveMatches(seasonId);
+  } catch (err) {
+    log.warn({ err }, '⚠️ runFichasForActiveMatches falló — ciclo de scores sigue OK');
   }
 
   return etl.upserted;
@@ -118,7 +197,7 @@ async function main() {
     if (initial.hasOverdue) {
       // Ciclo único de recuperación: partidos pasados sin resultado final.
       // rfep_mc_1.php incluye los partidos recientes ya finalizados, así que
-      // un solo ciclo basta para cerrar marcadores y estados.
+      // un solo ciclo basta para cerrar marcadores, estados y fichas.
       log.info('🩹 Partidos atrasados sin resultado — ciclo de recuperación');
       const upserted = await runOneCycle(SEASON_ID);
       log.info({ upserted }, 'Recuperación completada — saliendo.');
@@ -150,7 +229,7 @@ async function main() {
       break;
     }
 
-    // Ejecutar ciclo
+    // Ejecutar ciclo (scores + fichas)
     const cycleStart = Date.now();
     try {
       const upserted = await runOneCycle(SEASON_ID);
@@ -166,7 +245,14 @@ async function main() {
     const status = await checkWindow(SEASON_ID);
 
     if (!status.hasLive && !status.hasUpcoming) {
-      log.info({ cycle }, '✅ Todos los partidos finalizados — saliendo del bucle.');
+      // Un ciclo final de recuperación: partidos que acaban de terminar
+      // pero pueden tener fichas pendientes de procesar.
+      log.info({ cycle }, '✅ Todos los partidos finalizados — ciclo final de fichas y saliendo.');
+      try {
+        await runFichasForActiveMatches(SEASON_ID);
+      } catch (err) {
+        log.warn({ err }, 'Ciclo final de fichas con error — datos se recuperarán en próximo overdue');
+      }
       break;
     }
 
