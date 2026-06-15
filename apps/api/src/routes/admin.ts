@@ -1,17 +1,12 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db } from '@sports/db';
+import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions } from '@sports/db';
 
 /**
- * Panel de administración — nivel 1 (token compartido).
+ * Panel de administracion nivel 1 (token compartido).
  *
- * Autenticación: cabecera `X-Admin-Token` comparada (en tiempo constante)
- * con la variable de entorno ADMIN_TOKEN. Si ADMIN_TOKEN no está definida,
- * TODAS las rutas de admin responden 503: nunca un admin abierto por defecto.
- *
- *   GET    /admin/users            — listado con favoritos, premium y estado
- *   PATCH  /admin/users/:id/status — { status: 'active' | 'disabled' }
- *   DELETE /admin/users/:id        — borrado definitivo (cascade en favoritos)
+ * Autenticacion: cabecera X-Admin-Token comparada (en tiempo constante)
+ * con la variable de entorno ADMIN_TOKEN.
  */
 
 export const adminRouter = new Hono();
@@ -87,7 +82,6 @@ adminRouter.patch('/users/:id/status', async (c) => {
   }
 
   try {
-    // Al desactivar, invalidar también la sesión: expulsión inmediata
     const res = await db.query(
       body.status === 'disabled'
         ? `UPDATE users SET status = $2, session_token = NULL, updated_at = NOW() WHERE id = $1 RETURNING id, status`
@@ -108,10 +102,103 @@ adminRouter.delete('/users/:id', async (c) => {
     if (res.rowCount === 0) return c.json({ error: 'User not found' }, 404);
     return c.json({ ok: true, deleted: id });
   } catch (err) {
-    // orders referencia users sin ON DELETE: si tiene pedidos, no se puede borrar
     return c.json({
       error: 'Cannot delete user (may have payment orders). Disable it instead.',
       detail: err instanceof Error ? err.message : '',
     }, 409);
+  }
+});
+
+// ── Competiciones ─────────────────────────────────────────────────────────────
+
+/**
+ * GET /admin/competitions/archived
+ * Lista todas las competiciones archivadas con su ultima actividad conocida.
+ */
+adminRouter.get('/competitions/archived', async (c) => {
+  try {
+    const archived = await listArchivedCompetitions();
+    return c.json({ count: archived.length, competitions: archived });
+  } catch (err) {
+    return c.json({ error: 'Database error', detail: err instanceof Error ? err.message : '' }, 500);
+  }
+});
+
+/**
+ * GET /admin/competitions/duplicates?threshold=0.6
+ * Detecta pares de competiciones activas con nombres similares (pg_trgm).
+ * threshold: 0-1, por defecto 0.6.
+ */
+adminRouter.get('/competitions/duplicates', async (c) => {
+  const threshold = Math.min(1, Math.max(0, parseFloat(c.req.query('threshold') ?? '0.6')));
+  try {
+    const candidates = await findDuplicateCandidates(threshold);
+    return c.json({
+      threshold,
+      count: candidates.length,
+      message: candidates.length === 0
+        ? 'No se detectaron competiciones similares con este umbral.'
+        : `${candidates.length} pares detectados. Revisa antes de fusionar.`,
+      duplicates: candidates,
+    });
+  } catch (err) {
+    return c.json({ error: 'Database error', detail: err instanceof Error ? err.message : '' }, 500);
+  }
+});
+
+/**
+ * POST /admin/competitions/:id/archive
+ * Archiva manualmente una competicion activa.
+ */
+adminRouter.post('/competitions/:id/archive', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const comp = await archiveCompetition(id);
+    if (!comp) return c.json({ error: 'Competition not found' }, 404);
+    return c.json({ ok: true, competition: { id: comp.id, name: comp.name, archived_at: comp.archived_at } });
+  } catch (err) {
+    return c.json({ error: 'Database error', detail: err instanceof Error ? err.message : '' }, 500);
+  }
+});
+
+/**
+ * POST /admin/competitions/:id/restore
+ * Reactiva manualmente una competicion archivada.
+ */
+adminRouter.post('/competitions/:id/restore', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const comp = await restoreCompetition(id);
+    if (!comp) return c.json({ error: 'Competition not found' }, 404);
+    return c.json({ ok: true, competition: { id: comp.id, name: comp.name, archived_at: comp.archived_at } });
+  } catch (err) {
+    return c.json({ error: 'Database error', detail: err instanceof Error ? err.message : '' }, 500);
+  }
+});
+
+/**
+ * POST /admin/competitions/merge
+ * Fusiona dos competiciones: mueve las temporadas de mergeId a keepId
+ * y elimina el duplicado.
+ *
+ * Body: { keepId: string, mergeId: string }
+ *
+ * DESTRUCTIVA: elimina la competicion mergeId.
+ * Confirmar con GET /duplicates antes de ejecutar.
+ */
+adminRouter.post('/competitions/merge', async (c) => {
+  const body = await c.req.json().catch(() => ({})) as { keepId?: string; mergeId?: string };
+  if (!body.keepId || !body.mergeId) {
+    return c.json({ error: 'Body must contain keepId and mergeId (UUIDs)' }, 400);
+  }
+  if (body.keepId === body.mergeId) {
+    return c.json({ error: 'keepId and mergeId must be different' }, 400);
+  }
+  try {
+    const result = await mergeCompetitions(body.keepId, body.mergeId);
+    return c.json({ ok: true, ...result });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return c.json({ error: 'Merge failed', detail }, detail.includes('no existen') ? 404 : 500);
   }
 });

@@ -23,10 +23,19 @@ interface CompetitionRow {
 
 /**
  * GET /competitions
- * Lista las competiciones con su temporada de referencia (la actual si
- * existe; si no, la más reciente — las históricas también se listan).
+ * Lista las competiciones activas con su temporada de referencia.
+ *
+ * Excluye por defecto:
+ *   - competiciones archivadas (archived_at IS NOT NULL)
+ *   - competiciones sin ninguna temporada con partidos
+ *
+ * Query param:
+ *   ?include_archived=true -> incluye archivadas (vistas historicas / admin)
  */
 competitionsRouter.get('/', async (c) => {
+  const includeArchived = c.req.query('include_archived') === 'true';
+  const archivedClause = includeArchived ? '' : 'AND comp.archived_at IS NULL';
+
   try {
     const result = await db.query<CompetitionRow>(`
       SELECT
@@ -40,14 +49,13 @@ competitionsRouter.get('/', async (c) => {
         (SELECT COUNT(*)::text FROM matches m WHERE m.season_id = s.id)       AS match_count
       FROM competitions comp
       JOIN LATERAL (
-        -- Última temporada CON partidos: las competiciones cuyo scraping
-        -- quedó vacío (sin calendario en la fuente) no se listan.
         SELECT id, name, start_date FROM seasons s2
         WHERE s2.competition_id = comp.id
           AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s2.id)
         ORDER BY s2.is_current DESC, s2.start_date DESC NULLS LAST
         LIMIT 1
       ) s ON TRUE
+      WHERE TRUE ` + archivedClause + `
       ORDER BY comp.name ASC
     `);
 
@@ -82,7 +90,8 @@ competitionsRouter.get('/', async (c) => {
 
 /**
  * GET /competitions/:id/seasons
- * Histórico de temporadas de una competición, de más reciente a más antigua.
+ * Historico de temporadas de una competicion (activa o archivada), de mas reciente a mas antigua.
+ * Accesible siempre por URL directa independientemente del estado de archivado.
  */
 competitionsRouter.get('/:id/seasons', async (c) => {
   const id = c.req.param('id');
@@ -93,13 +102,14 @@ competitionsRouter.get('/:id/seasons', async (c) => {
       slug: string;
       is_current: boolean;
       start_date: Date | null;
-    }>(`
-      SELECT id, name, slug, is_current, start_date
-      FROM seasons s
-      WHERE competition_id = $1
-        AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s.id)
-      ORDER BY start_date DESC NULLS LAST, name DESC
-    `, [id]);
+    }>(
+      `SELECT id, name, slug, is_current, start_date
+        FROM seasons s
+        WHERE competition_id = $1
+          AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s.id)
+        ORDER BY start_date DESC NULLS LAST, name DESC`,
+      [id]
+    );
 
     if (result.rows.length === 0) return c.json({ error: 'Competition not found or has no seasons' }, 404);
 

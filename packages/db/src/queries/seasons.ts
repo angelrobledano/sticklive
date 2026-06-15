@@ -61,6 +61,8 @@ export async function upsertSeason(
       input.scrapedAt ?? null,
     ]
   );
+  // El trigger trg_reactivate_competition en DB reactiva automaticamente
+  // la competicion padre si estaba archivada.
   return result.rows[0]!;
 }
 
