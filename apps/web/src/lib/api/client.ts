@@ -344,6 +344,8 @@ export interface CompetitionSummary {
     id: string;
     name: string | null;
     startDate?: string | null;
+    endDate?: string | null;
+    isCurrent: boolean;
     teamCount: number;
     matchCount: number;
   } | null;

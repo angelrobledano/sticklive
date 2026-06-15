@@ -17,6 +17,9 @@ interface CompetitionRow {
   age_category: string;
   season_id: string | null;
   season_name: string | null;
+  season_start: string | null;
+  season_end: string | null;
+  season_is_current: boolean | null;
   team_count: string | null;
   match_count: string | null;
 }
@@ -42,9 +45,11 @@ competitionsRouter.get('/', async (c) => {
         comp.id, comp.name, comp.short_name, comp.slug,
         comp.gender, comp.category, comp.country,
         comp.organizer, comp.scope, comp.region, comp.age_category,
-        s.id   AS season_id,
-        s.name AS season_name,
+        s.id         AS season_id,
+        s.name       AS season_name,
         s.start_date AS season_start,
+        s.end_date   AS season_end,
+        s.is_current AS season_is_current,
         (SELECT COUNT(*)::text FROM season_teams st WHERE st.season_id = s.id) AS team_count,
         (SELECT COUNT(*)::text FROM matches m WHERE m.season_id = s.id)       AS match_count
       FROM competitions comp
@@ -74,7 +79,9 @@ competitionsRouter.get('/', async (c) => {
       season: r.season_id ? {
         id:         r.season_id,
         name:       r.season_name,
-        startDate:  (r as unknown as { season_start: string | null }).season_start,
+        startDate:  r.season_start,
+        endDate:    r.season_end,
+        isCurrent:  r.season_is_current ?? false,
         teamCount:  Number(r.team_count ?? 0),
         matchCount: Number(r.match_count ?? 0),
       } : null,
