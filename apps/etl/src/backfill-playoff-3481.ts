@@ -30,7 +30,7 @@ async function main() {
        AND s.is_current = true
      ORDER BY s.start_date DESC NULLS LAST
      LIMIT 1`,
-    [`fep_competition_${IDC}`]
+    [IDC]
   );
 
   if (seasonRes.rows.length === 0) {
