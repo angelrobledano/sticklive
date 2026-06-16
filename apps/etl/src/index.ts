@@ -78,7 +78,7 @@ async function main() {
       entity,
       sport: sportSlug,
       dry_run: isDryRun,
-      processed: result.processedCount,
+      processed: result.upserted,
       errors: result.errorCount,
       success: result.errorCount === 0,
     },

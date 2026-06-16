@@ -1,8 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src",
+    // DOM: los probes y fep-catalog ejecutan código dentro de page.evaluate
+    // (contexto de navegador: document, HTMLElement, click…). Necesitan los
+    // tipos del DOM aunque el resto corra en Node (auditoría Q2).
+    "lib": ["ES2022", "DOM"],
     "paths": {
       "@sports/analytics": [
         "../../packages/analytics/src/index.ts"

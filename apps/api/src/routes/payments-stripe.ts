@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import Stripe from 'stripe';
 import { db } from '@sports/db';
+import { rateLimit } from '../lib/rate-limit.js';
 
 /**
  * Pagos con Stripe — proveedor de pago ACTIVO.
@@ -23,19 +24,38 @@ function stripe(): Stripe {
   return (_stripe ??= new Stripe(key));
 }
 
-stripeRouter.post('/checkout', async (c) => {
+/**
+ * GET /payments/stripe/status?deviceId=...
+ * Estado premium AUTORITATIVO derivado de premium_until > NOW() (auditoría S9).
+ * La web lo usa para que el premium caduque de verdad en el cliente.
+ */
+stripeRouter.get('/status', async (c) => {
+  const deviceId = c.req.query('deviceId');
+  if (!deviceId) return c.json({ error: 'missing_device_id' }, 400);
+  const res = await db.query<{ premium_until: string | null }>(
+    `SELECT premium_until FROM users WHERE device_id = $1`, [deviceId]
+  );
+  const until = res.rows[0]?.premium_until ?? null;
+  const premium = until !== null && new Date(until).getTime() > Date.now();
+  return c.json({ premium, premiumUntil: premium ? until : null });
+});
+
+stripeRouter.post('/checkout', rateLimit(10, 60_000), async (c) => {
   try {
     const { deviceId } = await c.req.json<{ deviceId?: string }>();
     if (!deviceId) return c.json({ error: 'missing_device_id' }, 400);
 
     // Asegurar que el usuario existe (misma semántica que Redsys)
-    const userRes = await db.query<{ id: string; is_premium: boolean }>(
+    const userRes = await db.query<{ id: string; premium_until: string | null }>(
       `INSERT INTO users (device_id) VALUES ($1)
        ON CONFLICT (device_id) DO UPDATE SET updated_at = NOW()
-       RETURNING id, is_premium`,
+       RETURNING id, premium_until`,
       [deviceId]
     );
-    if (userRes.rows[0]?.is_premium) {
+    // Premium activo = premium_until en el futuro (no el flag is_premium, que
+    // nunca se revierte). Así un usuario con premium caducado puede re-comprar.
+    const until = userRes.rows[0]?.premium_until;
+    if (until && new Date(until).getTime() > Date.now()) {
       return c.json({ error: 'already_premium' }, 409);
     }
 

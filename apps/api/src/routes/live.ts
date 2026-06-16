@@ -111,34 +111,45 @@ liveRouter.get('/live', async (c) => {
  */
 liveRouter.get('/current', async (c) => {
   try {
+    // Ventana temporal: en vez de devolver TODO el calendario de todas las
+    // temporadas actuales (que crece sin límite al escalar competiciones,
+    // auditoría A2), se acota a [hoy-8d, hoy+15d] por defecto. La home muestra
+    // hoy ± ~2 semanas, así que es suficiente. Override opcional con ?days= o
+    // ?from=&to= (ISO). Tope de seguridad de 120 días.
+    const days = Math.min(120, Math.max(1, Number(c.req.query('days') ?? 0)));
+    const isISO = (s: string | undefined) => !!s && /^\d{4}-\d{2}-\d{2}/.test(s);
+    const fromQ = c.req.query('from');
+    const toQ = c.req.query('to');
+
+    let where = '';
+    const params: unknown[] = [];
+    if (isISO(fromQ) && isISO(toQ)) {
+      params.push(fromQ, toQ);
+      where = `AND m.scheduled_at >= $1::timestamptz AND m.scheduled_at < ($2::timestamptz + INTERVAL '1 day')`;
+    } else {
+      const back = days || 8;
+      const fwd = days || 15;
+      where = `AND m.scheduled_at >= NOW() - INTERVAL '${back} days'
+               AND m.scheduled_at <  NOW() + INTERVAL '${fwd} days'`;
+    }
+
     const result = await db.query<LiveMatchRow>(`
       SELECT
-        m.id,
-        m.season_id,
-        m.round_id,
-        m.home_score,
-        m.away_score,
-        m.status,
-        m.scheduled_at,
-        m.started_at,
-        m.venue_name,
-        m.venue_city,
-        m.source_ref,
-        ht.id           AS home_team_id,
-        ht.name         AS home_team_name,
-        ht.short_name   AS home_team_short_name,
-        ht.logo_url     AS home_team_logo_url,
-        at.id           AS away_team_id,
-        at.name         AS away_team_name,
-        at.short_name   AS away_team_short_name,
-        at.logo_url     AS away_team_logo_url
+        m.id, m.season_id, m.round_id,
+        m.home_score, m.away_score, m.status,
+        m.scheduled_at, m.started_at, m.venue_name, m.venue_city, m.source_ref,
+        ht.id AS home_team_id, ht.name AS home_team_name,
+        ht.short_name AS home_team_short_name, ht.logo_url AS home_team_logo_url,
+        at.id AS away_team_id, at.name AS away_team_name,
+        at.short_name AS away_team_short_name, at.logo_url AS away_team_logo_url
       FROM matches m
       JOIN seasons s ON s.id = m.season_id AND s.is_current = true
       LEFT JOIN teams ht ON ht.id = m.home_team_id
       LEFT JOIN teams at ON at.id = m.away_team_id
       WHERE m.status IN ('scheduled', 'live', 'finished')
+        ${where}
       ORDER BY m.scheduled_at ASC NULLS LAST
-    `);
+    `, params);
 
     const matches = result.rows.map(mapLiveRow);
     return c.json({ count: matches.length, matches });

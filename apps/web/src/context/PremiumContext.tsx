@@ -53,14 +53,28 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
   const [isPremium, setIsPremium] = useState(false);
   const [mounted,   setMounted]   = useState(false);
 
-  // Leer localStorage en el cliente (una sola vez)
+  // 1) localStorage como caché optimista (evita parpadeo). 2) el servidor manda:
+  // se consulta el estado real (premium_until > NOW()) para que el premium
+  // CADUQUE de verdad en el cliente (auditoría S9), no solo en BD.
   useEffect(() => {
     setMounted(true);
+    let deviceId = '';
     try {
-      if (localStorage.getItem(PREMIUM_KEY) === 'true') {
-        setIsPremium(true);
-      }
+      if (localStorage.getItem(PREMIUM_KEY) === 'true') setIsPremium(true);
+      deviceId = localStorage.getItem('rink-device-id') ?? '';
     } catch { /* SSR / iframe privado */ }
+
+    if (!deviceId) return;
+    const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
+    fetch(`${apiUrl}/payments/stripe/status?deviceId=${encodeURIComponent(deviceId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { premium?: boolean } | null) => {
+        if (data && typeof data.premium === 'boolean') {
+          setIsPremium(data.premium);
+          try { localStorage.setItem(PREMIUM_KEY, data.premium ? 'true' : 'false'); } catch { /* noop */ }
+        }
+      })
+      .catch(() => { /* sin red: nos quedamos con la caché local */ });
   }, []);
 
   const setPremium = useCallback((value: boolean) => {

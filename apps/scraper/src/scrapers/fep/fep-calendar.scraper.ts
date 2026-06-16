@@ -15,6 +15,7 @@
  *   </tr>
  */
 import * as cheerio from 'cheerio';
+import type { Element } from 'domhandler';
 import { BaseScraper } from '../../core/base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
@@ -109,7 +110,7 @@ export class FepCalendarScraper extends BaseScraper<ScrapedMatch> {
 
   private parseMatchRow(
     $: cheerio.CheerioAPI,
-    $row: cheerio.Cheerio<cheerio.Element>,
+    $row: cheerio.Cheerio<Element>,
     ctx: { idc: string; seasonId: string; roundName: string; scrapedAt: Date }
   ): ScrapedMatch | null {
     // Extraer IDs de equipo desde las clases CSS: team_3408 team_3358

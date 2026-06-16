@@ -23,6 +23,10 @@ export const db = new Pool({
   max: Number(process.env['DATABASE_POOL_MAX'] ?? 10),
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
+  // Una query colgada no debe bloquear indefinidamente una conexión del pool
+  // (auditoría B3). Tope configurable; 15 s por defecto.
+  statement_timeout: Number(process.env['DATABASE_STATEMENT_TIMEOUT_MS'] ?? 15_000),
+  query_timeout: Number(process.env['DATABASE_QUERY_TIMEOUT_MS'] ?? 15_000),
 });
 
 db.on('error', (err) => {

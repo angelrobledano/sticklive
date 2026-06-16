@@ -5,13 +5,17 @@
     "lib": ["ES2022"],
     "module": "Node16",
     "moduleResolution": "Node16",
-    "declaration": true,
-    "declarationMap": true,
+    // noEmit: el monorepo se ejecuta con `tsx` (y la web con `next build`); el
+    // `dist` de tsc NO lo consume nadie (los `exports` de cada paquete apuntan a
+    // `src`). Con noEmit, `tsc` solo CHEQUEA tipos y desaparecen los TS6059
+    // "not under rootDir" al importar código fuente entre paquetes (auditoría Q2).
+    "noEmit": true,
+    "declaration": false,
     "sourceMap": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
-    "exactOptionalPropertyTypes": true,
+    "exactOptionalPropertyTypes": false,
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

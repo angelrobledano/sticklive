@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { logger as honoLogger } from 'hono/logger';
 import { cors } from 'hono/cors';
 import { logger } from '@sports/logger';
+import { assertEnv } from './lib/env.js';
 import { standingsRouter } from './routes/standings.js';
 import { matchesRouter } from './routes/matches.js';
 import { liveRouter } from './routes/live.js';
@@ -80,8 +81,26 @@ app.notFound((c) => {
   return c.json({ error: 'Not found' }, 404);
 });
 
+// Error handler global: nunca filtrar detalles internos al cliente (auditoría S7).
+app.onError((err, c) => {
+  logger.error({ path: c.req.path, err }, 'Error no controlado en la API');
+  return c.json({ error: 'internal_error' }, 500);
+});
+
+// Validación de entorno antes de aceptar tráfico (fail fast, auditoría B1).
+assertEnv();
+
 const PORT = Number(process.env['PORT'] ?? 3000);
 
-serve({ fetch: app.fetch, port: PORT }, () => {
+const server = serve({ fetch: app.fetch, port: PORT }, () => {
   logger.info({ service: 'api', port: PORT }, `API escuchando en http://localhost:${PORT}`);
 });
+
+// Cierre limpio (auditoría B3): drenar conexiones al recibir SIGTERM/SIGINT.
+for (const sig of ['SIGTERM', 'SIGINT'] as const) {
+  process.on(sig, () => {
+    logger.info({ sig }, 'Apagando API…');
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 10_000).unref();
+  });
+}

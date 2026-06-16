@@ -125,7 +125,7 @@ async function main() {
 
       const scraper = new FepCalendarScraper({
         idc: calIdc,
-        seasonId,
+        seasonId: seasonId!, // garantizado por el guard de SEASON_ID al inicio
         competitionName: calName,
         roundId,
       });
@@ -165,7 +165,7 @@ async function main() {
   // ── Marcadores en vivo ───────────────────────────────────────
   if (entity === 'matches' || entity === 'all') {
     log.info('→ Scrapeando marcadores rfep_mc_1.php...');
-    const scraper = new FepMatchesScraper({ seasonId });
+    const scraper = new FepMatchesScraper({ seasonId: seasonId! });
     const result = await scraper.run();
     log.info({ found: result.data.length, errors: result.errors.length }, 'Marcadores scrapeados');
     if (result.data.length > 0) {

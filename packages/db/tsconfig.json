@@ -1,8 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src",
+    // Sin outDir/rootDir: el typecheck del monorepo importa código FUENTE de
+    // otros paquetes (que caería fuera de rootDir). Con noEmit (base) no se
+    // emite nada, así que no hacen falta (auditoría Q2).
     "paths": {
       "@sports/logger": ["../logger/src/index.ts"]
     }

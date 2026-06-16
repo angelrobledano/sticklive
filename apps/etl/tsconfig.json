@@ -1,8 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src",
     "paths": {
       "@sports/analytics": ["../../packages/analytics/src/index.ts"],
       "@sports/db": ["../../packages/db/src/index.ts"],

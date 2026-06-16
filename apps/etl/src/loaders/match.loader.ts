@@ -127,14 +127,23 @@ export async function loadMatches(
             }
           }
           if (!resolved) {
-            // Partido no está en DB y los equipos no se pueden resolver.
-            // Esto es ESPERADO cuando rfep_mc_1.php devuelve competiciones
-            // que aún no están indexadas (Infantil, Junior, Plata, etc.).
-            // No es un error real — simplemente no tenemos datos de esa competición.
-            log.warn(
-              { item: itemLabel, sourceRef: input.sourceRef },
-              'Partido omitido: competición no indexada o equipos no registrados'
-            );
+            const msg = teamErr instanceof Error ? teamErr.message : String(teamErr);
+            // Distinguir el caso ESPERADO (equipo no resoluble: competición no
+            // indexada) del INESPERADO (fallo real del upsert, p. ej. un UUID
+            // inválido en source_id). Antes ambos se enmascaraban con el mismo
+            // mensaje engañoso y costaba diagnosticar (auditoría B2).
+            if (msg.includes('No se encontró equipo')) {
+              log.warn(
+                { item: itemLabel, sourceRef: input.sourceRef },
+                'Partido omitido: competición no indexada o equipos no registrados'
+              );
+            } else {
+              log.error(
+                { item: itemLabel, sourceRef: input.sourceRef, err: teamErr },
+                'Partido omitido por error REAL al cargar (no es falta de equipo) — revisar'
+              );
+              errors.push({ item: itemLabel, error: msg });
+            }
             skipped++;
             continue;
           }

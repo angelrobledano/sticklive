@@ -14,6 +14,7 @@
  * Los team_ids y player_ids se resuelven por nombre/ref contra la DB.
  */
 import * as cheerio from 'cheerio';
+import type { Element } from 'domhandler';
 import { BaseScraper } from '../../core/base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
@@ -68,7 +69,10 @@ export interface FichaScraperConfig {
 }
 
 export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
-  private config: FichaScraperConfig;
+  // Config propia de la ficha. ANTES se llamaba `config` y SOBREESCRIBÍA el
+  // `config` de BaseScraper (que lleva scraperKey/entityType/sourceId) → de ahí
+  // el "[undefined/undefined]" en los logs. Se renombra a `cfg` (auditoría Q2/B-).
+  private readonly cfg: FichaScraperConfig;
 
   constructor(config: FichaScraperConfig) {
     super({
@@ -76,11 +80,11 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
       entityType: 'match_event',
       sourceId: SOURCE_ID,
     });
-    this.config = config;
+    this.cfg = config;
   }
 
   protected async scrape(): Promise<ScrapedMatchEvent[]> {
-    const { idp, idc } = this.config;
+    const { idp, idc } = this.cfg;
 
     // La FEP usa dos patrones de URL dependiendo del tipo de competicion:
     //   1. Liga regular / fase de grupos: rfep_acta_idc_{IDC}_1.php
@@ -140,21 +144,21 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
 
           // Inyeccion inmediata: si el caller proporciono matchId, parsear e insertar
           // en match_events sin esperar al loop ETL externo
-          if (this.config.matchId) {
+          if (this.cfg.matchId) {
             const events = this.parseFicha(html, idp);
             // Jugadores: upsert en players/team_players desde los links de la
             // ficha (id_player). Devuelve mapa nombre→UUID para vincular
             // eventos y alineaciones.
-            const playerMap = await this.upsertPlayers(events, this.config.matchId);
-            await this.injectEvents(events, this.config.matchId, playerMap);
+            const playerMap = await this.upsertPlayers(events, this.cfg.matchId);
+            await this.injectEvents(events, this.cfg.matchId, playerMap);
             // Faltas de equipo: cabecera de la ficha (.report_faltas: local, visitante)
             const fouls = parseTeamFouls(html);
             if (fouls) {
               await db.query(
                 `UPDATE matches SET home_fouls = $2, away_fouls = $3, updated_at = NOW() WHERE id = $1`,
-                [this.config.matchId, fouls.home, fouls.away]
+                [this.cfg.matchId, fouls.home, fouls.away]
               );
-              this.log.info({ matchId: this.config.matchId, ...fouls }, 'Faltas de equipo actualizadas');
+              this.log.info({ matchId: this.cfg.matchId, ...fouls }, 'Faltas de equipo actualizadas');
             }
             // Alineaciones: vienen en el mismo HTML (tablas competiciones_tabla_basic)
             const lineups = parseLineups(html, idp);
@@ -178,10 +182,10 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
             }
             if (lineups.length > 0) {
               await withTransaction(async (client) => {
-                await replaceMatchLineups(this.config.matchId!, lineups, client);
+                await replaceMatchLineups(this.cfg.matchId!, lineups, client);
               });
               this.log.info(
-                { matchId: this.config.matchId, players: lineups.length },
+                { matchId: this.cfg.matchId, players: lineups.length },
                 'Alineaciones inyectadas en match_lineups'
               );
               // Dorsales: el acta es la fuente — actualizar team_players
@@ -195,7 +199,7 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
                    AND ml.jersey_number IS NOT NULL
                    AND tp.season_id = m.season_id
                    AND tp.team_id = CASE WHEN ml.is_home THEN m.home_team_id ELSE m.away_team_id END`,
-                [this.config.matchId]
+                [this.cfg.matchId]
               );
             }
             return events;
@@ -367,11 +371,12 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
       '.ficha_resumen table',
     ];
 
-    let $table: cheerio.Cheerio<cheerio.Element> | null = null;
+    let $table: cheerio.Cheerio<Element> | null = null;
     for (const sel of ACTA_TABLE_SELECTORS) {
       const found = $(sel);
       if (found.length > 0) {
-        $table = found.first();
+        // .first() devuelve Cheerio<AnyNode>; aquí es una <table>, acotamos.
+        $table = found.first() as cheerio.Cheerio<Element>;
         this.log.info({ selector: sel }, 'Tabla de eventos encontrada');
         break;
       }
@@ -432,7 +437,7 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
    */
   private tryParseRow(
     $: cheerio.CheerioAPI,
-    cells: cheerio.Cheerio<cheerio.Element>,
+    cells: cheerio.Cheerio<Element>,
     idp: string,
     rowIdx: number
   ): ScrapedMatchEvent | null {
@@ -474,7 +479,7 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
 
   private detectEventType(
     $: cheerio.CheerioAPI,
-    cells: cheerio.Cheerio<cheerio.Element>,
+    cells: cheerio.Cheerio<Element>,
     rowText: string,
     rowHtml: string
   ): FepEventType | null {
@@ -529,7 +534,7 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
 
   private detectSide(
     $: cheerio.CheerioAPI,
-    cells: cheerio.Cheerio<cheerio.Element>,
+    cells: cheerio.Cheerio<Element>,
     rowText: string
   ): boolean | null {
     // sidgad suele poner la info del local en columna izquierda (0..n/2)
@@ -538,8 +543,8 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
     if (/\blocal\b|\bhome\b/.test(allClasses)) return true;
     if (/\bvisitante\b|\baway\b/.test(allClasses)) return false;
 
-    if (this.config.homeTeamName) {
-      const home = this.config.homeTeamName.toUpperCase().slice(0, 6);
+    if (this.cfg.homeTeamName) {
+      const home = this.cfg.homeTeamName.toUpperCase().slice(0, 6);
       if (rowText.toUpperCase().includes(home)) return true;
     }
 
@@ -548,11 +553,11 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
 
   private detectPlayer(
     $: cheerio.CheerioAPI,
-    cells: cheerio.Cheerio<cheerio.Element>,
+    cells: cheerio.Cheerio<Element>,
     rowText: string
   ): { playerName: string | null; jerseyNumber: number | null } {
     // Buscar celda con clase jugador / player / nombre
-    let playerCell: cheerio.Cheerio<cheerio.Element> | null = null;
+    let playerCell: cheerio.Cheerio<Element> | null = null;
     cells.each((_, c) => {
       const cls = ($(c).attr('class') ?? '').toLowerCase();
       if (/jugador|player|nombre/.test(cls)) playerCell = $(c);

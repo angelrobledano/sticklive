@@ -2,6 +2,7 @@
  * Scraper de clasificacion -- rfep_clasif_idc_{IDC}_1.php
  */
 import * as cheerio from 'cheerio';
+import type { Element } from 'domhandler';
 import { BaseScraper } from '../../core/base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
@@ -99,8 +100,8 @@ export class FepStandingsScraper extends BaseScraper<ScrapedStanding> {
 
   private parseStandingRow(
     $: cheerio.CheerioAPI,
-    $row: cheerio.Cheerio<cheerio.Element>,
-    cells: cheerio.Cheerio<cheerio.Element>,
+    $row: cheerio.Cheerio<Element>,
+    cells: cheerio.Cheerio<Element>,
     ctx: { groupName?: string; sourceUrl: string; scrapedAt: Date }
   ): ScrapedStanding | null {
     const positionText = cells.eq(0).text().trim();

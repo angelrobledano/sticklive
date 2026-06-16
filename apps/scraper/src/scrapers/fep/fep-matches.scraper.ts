@@ -32,6 +32,7 @@
  * y COALESCE preserva los team_ids ya resueltos del insert inicial.
  */
 import * as cheerio from 'cheerio';
+import type { Element } from 'domhandler';
 import { BaseScraper } from '../../core/base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost } from './sidgad-client.js';
@@ -106,7 +107,7 @@ export class FepMatchesScraper extends BaseScraper<ScrapedMatch> {
 
   private parseMatchElement(
     $: cheerio.CheerioAPI,
-    $el: cheerio.Cheerio<cheerio.Element>,
+    $el: cheerio.Cheerio<Element>,
     scrapedAt: Date
   ): ScrapedMatch | null {
     const idp = $el.attr('idp');

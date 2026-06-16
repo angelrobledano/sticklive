@@ -27,7 +27,7 @@ export interface RawCompetition {
   acceso: string;            // "calendario_btn"
   // Trazabilidad
   sourceId: string;
-  sourceUrl: string;
+  sourceUrl?: string;
   scrapedAt: Date;
 }
 

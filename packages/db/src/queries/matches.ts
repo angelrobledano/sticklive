@@ -192,7 +192,9 @@ export async function getMatchesBySeason(
 // ============================================================
 
 export interface UpsertMatchEventInput {
-  eventType: 'goal' | 'penalty' | 'blue_card' | 'red_card' | 'timeout' | 'period_end';
+  // 'foul' y 'direct_foul' son válidos en BD desde la migración 008; el tipo
+  // estaba desactualizado y rompía el typecheck del scraper de actas (Q2).
+  eventType: 'goal' | 'penalty' | 'blue_card' | 'red_card' | 'timeout' | 'period_end' | 'foul' | 'direct_foul';
   minute: number | null;
   period: number | null;
   /** Tiempo RESTANTE del crono al ocurrir el evento, "MM:SS" (cuenta atrás) */
