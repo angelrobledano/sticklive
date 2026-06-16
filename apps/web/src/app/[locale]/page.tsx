@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
-import { getMatches } from '@/lib/api/client';
+import { getCurrentMatches } from '@/lib/api/client';
 import { MatchesView } from '@/components/shared/MatchesView';
 import { localeAlternates, isSupportedLocale } from '@/lib/seo';
-
-const SEASON_ID = process.env['NEXT_PUBLIC_SEASON_ID'] ?? 'e6ab9d19-cc4b-4095-a9ce-4407a4000737';
 
 export function generateMetadata({ params }: { params: { locale: string } }): Metadata {
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
@@ -11,11 +9,11 @@ export function generateMetadata({ params }: { params: { locale: string } }): Me
 }
 
 export default async function HomePage() {
-  let matches: Awaited<ReturnType<typeof getMatches>> = [];
+  let matches: Awaited<ReturnType<typeof getCurrentMatches>> = [];
   let fetchError: string | null = null;
 
   try {
-    matches = await getMatches(SEASON_ID);
+    matches = await getCurrentMatches();
   } catch (err) {
     fetchError = err instanceof Error ? err.message : 'Error al conectar con la API';
   }

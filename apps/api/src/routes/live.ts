@@ -27,6 +27,36 @@ interface LiveMatchRow {
   away_team_logo_url: string | null;
 }
 
+function mapLiveRow(row: LiveMatchRow) {
+  return {
+    id:          row.id,
+    seasonId:    row.season_id,
+    roundId:     row.round_id,
+    status:      row.status,
+    scheduledAt: row.scheduled_at,
+    startedAt:   row.started_at,
+    venue:       row.venue_name
+      ? { name: row.venue_name, city: row.venue_city }
+      : null,
+    score: {
+      home: row.home_score,
+      away: row.away_score,
+    },
+    homeTeam: {
+      id:        row.home_team_id,
+      name:      row.home_team_name,
+      shortName: row.home_team_short_name,
+      logoUrl:   row.home_team_logo_url,
+    },
+    awayTeam: {
+      id:        row.away_team_id,
+      name:      row.away_team_name,
+      shortName: row.away_team_short_name,
+      logoUrl:   row.away_team_logo_url,
+    },
+  };
+}
+
 /**
  * GET /matches/live
  * Devuelve todos los partidos con status = 'live', enriquecidos con los
@@ -64,34 +94,53 @@ liveRouter.get('/live', async (c) => {
       ORDER BY m.started_at ASC NULLS LAST
     `);
 
-    const matches = result.rows.map((row) => ({
-      id:          row.id,
-      seasonId:    row.season_id,
-      roundId:     row.round_id,
-      status:      row.status,
-      scheduledAt: row.scheduled_at,
-      startedAt:   row.started_at,
-      venue:       row.venue_name
-        ? { name: row.venue_name, city: row.venue_city }
-        : null,
-      score: {
-        home: row.home_score,
-        away: row.away_score,
-      },
-      homeTeam: {
-        id:       row.home_team_id,
-        name:     row.home_team_name,
-        shortName: row.home_team_short_name,
-        logoUrl:  row.home_team_logo_url,
-      },
-      awayTeam: {
-        id:       row.away_team_id,
-        name:     row.away_team_name,
-        shortName: row.away_team_short_name,
-        logoUrl:  row.away_team_logo_url,
-      },
-    }));
+    const matches = result.rows.map(mapLiveRow);
+    return c.json({ count: matches.length, matches });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return c.json({ error: 'Database error', detail: message }, 500);
+  }
+});
 
+/**
+ * GET /matches/current
+ * Devuelve todos los partidos (scheduled + live + finished) de las
+ * temporadas marcadas como is_current=true. Permite a la home page
+ * mostrar partidos de TODAS las competiciones activas sin depender
+ * de un único SEASON_ID hardcodeado.
+ */
+liveRouter.get('/current', async (c) => {
+  try {
+    const result = await db.query<LiveMatchRow>(`
+      SELECT
+        m.id,
+        m.season_id,
+        m.round_id,
+        m.home_score,
+        m.away_score,
+        m.status,
+        m.scheduled_at,
+        m.started_at,
+        m.venue_name,
+        m.venue_city,
+        m.source_ref,
+        ht.id           AS home_team_id,
+        ht.name         AS home_team_name,
+        ht.short_name   AS home_team_short_name,
+        ht.logo_url     AS home_team_logo_url,
+        at.id           AS away_team_id,
+        at.name         AS away_team_name,
+        at.short_name   AS away_team_short_name,
+        at.logo_url     AS away_team_logo_url
+      FROM matches m
+      JOIN seasons s ON s.id = m.season_id AND s.is_current = true
+      LEFT JOIN teams ht ON ht.id = m.home_team_id
+      LEFT JOIN teams at ON at.id = m.away_team_id
+      WHERE m.status IN ('scheduled', 'live', 'finished')
+      ORDER BY m.scheduled_at ASC NULLS LAST
+    `);
+
+    const matches = result.rows.map(mapLiveRow);
     return c.json({ count: matches.length, matches });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';

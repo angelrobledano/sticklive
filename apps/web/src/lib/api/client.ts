@@ -282,6 +282,18 @@ export async function getLiveMatches(): Promise<Match[]> {
   return res.matches.map(normalizeLiveMatch);
 }
 
+/**
+ * Partidos de TODAS las temporadas is_current=true.
+ * Usado en la home page para mostrar competiciones activas en paralelo
+ * (liga regular + playoffs + otras competiciones en curso).
+ */
+export async function getCurrentMatches(): Promise<Match[]> {
+  const res = await apiFetch<{ matches: RawLiveMatch[] }>('/matches/current', {
+    next: { revalidate: 60, tags: ['matches-current'] },
+  });
+  return deduplicateMatches(res.matches.map(normalizeLiveMatch));
+}
+
 // ============================================================
 // MATCH DETAIL
 // ============================================================
