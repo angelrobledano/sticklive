@@ -11,6 +11,10 @@ interface SeasonRow {
   competition_id: string;
   competition_name: string;
   competition_short_name: string | null;
+  competition_organizer: string;
+  competition_scope: string;
+  competition_country: string | null;
+  competition_region: string | null;
 }
 
 interface StandingRow {
@@ -75,9 +79,13 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
     // 1) Season + competition info
     const seasonRes = await db.query<SeasonRow>(`
       SELECT s.id, s.name, s.start_date, s.end_date,
-             c.id   AS competition_id,
-             c.name AS competition_name,
-             c.short_name AS competition_short_name
+             c.id         AS competition_id,
+             c.name       AS competition_name,
+             c.short_name AS competition_short_name,
+             c.organizer  AS competition_organizer,
+             c.scope      AS competition_scope,
+             c.country    AS competition_country,
+             c.region     AS competition_region
       FROM seasons s
       JOIN competitions c ON c.id = s.competition_id
       WHERE s.id = $1
@@ -215,6 +223,10 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         competitionId:    s.competition_id,
         competitionName:  s.competition_name,
         competitionShort: s.competition_short_name,
+        competitionOrganizer: s.competition_organizer,
+        competitionScope:     s.competition_scope,
+        competitionCountry:   s.competition_country,
+        competitionRegion:    s.competition_region,
       },
       standings: standingsRes.rows.map((r) => ({
         id:                 r.id,

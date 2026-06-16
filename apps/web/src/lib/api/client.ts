@@ -626,6 +626,10 @@ export interface SeasonOverview {
     competitionId: string;
     competitionName: string;
     competitionShort: string | null;
+    competitionOrganizer: string;
+    competitionScope: string;
+    competitionCountry: string | null;
+    competitionRegion: string | null;
   };
   standings: SeasonStandingRow[];
   rounds: SeasonRound[];

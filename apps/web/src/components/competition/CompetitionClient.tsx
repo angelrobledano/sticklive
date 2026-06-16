@@ -32,6 +32,18 @@ function fmtDate(iso: string | null): string {
   });
 }
 
+// ─── Helper: etiqueta de federación ──────────────────────────────────────────
+
+function fedLabelFromSeason(season: SeasonOverview['season'], locale: string): string {
+  if (season.competitionScope === 'regional') return season.competitionRegion ?? season.competitionOrganizer;
+  if (season.competitionScope === 'international') return 'Internacional';
+  try {
+    return new Intl.DisplayNames([locale], { type: 'region' }).of(season.competitionCountry ?? '') ?? season.competitionOrganizer;
+  } catch {
+    return season.competitionOrganizer;
+  }
+}
+
 // ─── Cabecera de la competición ───────────────────────────────────────────────
 
 function CompetitionHeader({ data, seasons, competitionId }: {
@@ -41,8 +53,9 @@ function CompetitionHeader({ data, seasons, competitionId }: {
 }) {
   const { season } = data;
   const router = useRouter();
-  const { t } = useT();
+  const { t, locale } = useT();
   const hasHistory = !!competitionId && (seasons?.length ?? 0) > 1;
+  const fedLabel = fedLabelFromSeason(season, locale);
 
   return (
     <div className="card px-4 py-3.5 flex items-center gap-3.5">
@@ -53,7 +66,7 @@ function CompetitionHeader({ data, seasons, competitionId }: {
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-          {season.competitionShort ?? season.competitionName}
+          {fedLabel}
         </p>
         <h1 className="text-base font-bold text-slate-900 dark:text-slate-50 leading-tight truncate">
           {season.competitionName}
