@@ -55,6 +55,10 @@ services:
     restart: unless-stopped
     command: npx next start apps/web -p 3001
     env_file: .env.prod
+    volumes:
+      # Escudos como DATOS (no horneados en la imagen): los rellena el etl con
+      # `run-pipeline --entity=download-logos` y los sirve Next desde public/.
+      - escudos:/app/apps/web/public/escudos
     depends_on:
       - api
 
@@ -79,6 +83,10 @@ services:
     env_file: .env.prod
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-sports_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}
+    volumes:
+      # Mismo volumen que web: el etl escribe los escudos, web los sirve.
+      # OJO: download-logos arma la ruta desde el cwd → ejecutarlo desde /app.
+      - escudos:/app/apps/web/public/escudos
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,3 +95,4 @@ volumes:
   pgdata:
   caddy_data:
   caddy_config:
+  escudos:
