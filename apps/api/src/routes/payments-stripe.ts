@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import Stripe from 'stripe';
 import { db } from '@sports/db';
 import { rateLimit } from '../lib/rate-limit.js';
+import { isPremiumActive } from '../lib/premium.js';
 
 /**
  * Pagos con Stripe — proveedor de pago ACTIVO.
@@ -36,7 +37,7 @@ stripeRouter.get('/status', async (c) => {
     `SELECT premium_until FROM users WHERE device_id = $1`, [deviceId]
   );
   const until = res.rows[0]?.premium_until ?? null;
-  const premium = until !== null && new Date(until).getTime() > Date.now();
+  const premium = isPremiumActive(until);
   return c.json({ premium, premiumUntil: premium ? until : null });
 });
 
@@ -54,8 +55,7 @@ stripeRouter.post('/checkout', rateLimit(10, 60_000), async (c) => {
     );
     // Premium activo = premium_until en el futuro (no el flag is_premium, que
     // nunca se revierte). Así un usuario con premium caducado puede re-comprar.
-    const until = userRes.rows[0]?.premium_until;
-    if (until && new Date(until).getTime() > Date.now()) {
+    if (isPremiumActive(userRes.rows[0]?.premium_until)) {
       return c.json({ error: 'already_premium' }, 409);
     }
 

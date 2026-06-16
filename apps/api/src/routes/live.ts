@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '@sports/db';
+import { resolveCurrentWindow } from '../lib/match-window.js';
 
 export const liveRouter = new Hono();
 
@@ -116,25 +117,21 @@ liveRouter.get('/current', async (c) => {
     // auditoría A2), se acota a [hoy-8d, hoy+15d] por defecto. La home muestra
     // hoy ± ~2 semanas, así que es suficiente. Override opcional con ?days= o
     // ?from=&to= (ISO). Tope de seguridad de 120 días.
-    // Ventana por defecto: hoy-8d .. hoy+15d. Solo si llega ?days= se usa una
-    // ventana simétrica de N días (OJO: antes esto colapsaba a ±1 día cuando NO
-    // venía el parámetro, dejando la home casi vacía — bug corregido).
-    const daysRaw = c.req.query('days');
-    const daysN = daysRaw ? Math.min(120, Math.max(1, Number(daysRaw) || 0)) : 0;
-    const back = daysN || 8;
-    const fwd = daysN || 15;
-    const isISO = (s: string | undefined) => !!s && /^\d{4}-\d{2}-\d{2}/.test(s);
-    const fromQ = c.req.query('from');
-    const toQ = c.req.query('to');
+    // Ventana temporal (auditoría A2). Lógica pura y testeada en match-window.ts.
+    const win = resolveCurrentWindow({
+      days: c.req.query('days'),
+      from: c.req.query('from'),
+      to: c.req.query('to'),
+    });
 
     let where = '';
     const params: unknown[] = [];
-    if (isISO(fromQ) && isISO(toQ)) {
-      params.push(fromQ, toQ);
+    if (win.kind === 'range') {
+      params.push(win.from, win.to);
       where = `AND m.scheduled_at >= $1::timestamptz AND m.scheduled_at < ($2::timestamptz + INTERVAL '1 day')`;
     } else {
-      where = `AND m.scheduled_at >= NOW() - INTERVAL '${back} days'
-               AND m.scheduled_at <  NOW() + INTERVAL '${fwd} days'`;
+      where = `AND m.scheduled_at >= NOW() - INTERVAL '${win.backDays} days'
+               AND m.scheduled_at <  NOW() + INTERVAL '${win.fwdDays} days'`;
     }
 
     const result = await db.query<LiveMatchRow>(`

@@ -271,7 +271,7 @@ Leyenda: ✅ Resuelto · 🟡 Parcial · ⬜ No resuelto · ⊘ Descartado (fals
 | B3 | Concurrencia | Sin `SIGTERM` ni `statement_timeout` | Baja | ✅ Resuelto |
 | B4 | Concurrencia | Sin lock contra solapamiento de scraping | Baja | ⬜ No resuelto |
 | B5 | Bugs | `config` sobrescrito en `fep-ficha` → `[undefined/undefined]` en logs | Media | ✅ Resuelto (hallado al cerrar el typecheck) |
-| Q1 | Testing | Cero tests en el repo | Media | 🟡 Parcial (lógica horaria con 12 tests ✅; ETL/pagos ⬜) |
+| Q1 | Testing | Cero tests en el repo | Media | ✅ Resuelto (tests de lógica horaria, ventana de la home, premium y transformer del ETL; cobertura ampliable) |
 | Q2 | Calidad | El typecheck del monorepo no pasaba | Media | ✅ Resuelto (8/8 paquetes en verde) |
 | Q3 | Proceso | Sin CI | Media | ✅ Resuelto (GitHub Actions: typecheck+test+lint+audit) |
 | Q4 | Mantenibilidad | God components (1346/878/849 líneas…) | Media | ⬜ No resuelto |
@@ -287,7 +287,7 @@ Leyenda: ✅ Resuelto · 🟡 Parcial · ⬜ No resuelto · ⊘ Descartado (fals
 | D2 | Dependencias | Sin `npm audit`/Dependabot automatizado | Media | ✅ Resuelto (`npm audit` en CI + Dependabot semanal npm y actions) |
 | D3 | Dependencias | Tipos de `cheerio` (`Element`) rotos | Baja | ✅ Resuelto (`domhandler`) |
 
-**Totales:** 15 ✅ resueltos · 4 🟡 parciales · 8 ⬜ no resueltos · 1 ⊘ descartado (29 hallazgos).
+**Totales:** 16 ✅ resueltos · 3 🟡 parciales · 8 ⬜ no resueltos · 1 ⊘ descartado (29 hallazgos).
 Los **10 prioritarios** quedan todos en ✅ o 🟡 con su parte crítica cerrada. Lo ⬜ pendiente es de severidad media/baja y no bloquea producción.
 
 ### Pendiente por prioridad (lo ⬜ y 🟡)
