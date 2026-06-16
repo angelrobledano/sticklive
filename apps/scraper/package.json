@@ -22,7 +22,7 @@
     "cheerio": "^1.0.0",
     "pg": "^8.11.0",
     "node-cron": "^3.0.3",
-    "zod": "^3.23.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
