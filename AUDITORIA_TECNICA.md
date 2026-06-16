@@ -249,7 +249,58 @@ Ver **Q1** (cero tests) y **Q3** (sin CI). Áreas críticas sin cobertura, por p
 
 ---
 
-# Estado de resolución — Top 10 (16/06/2026)
+# Estado de resolución (16/06/2026)
+
+## Tabla completa de hallazgos y estado
+
+Leyenda: ✅ Resuelto · 🟡 Parcial · ⬜ No resuelto · ⊘ Descartado (falso positivo).
+
+| ID | Categoría | Hallazgo | Severidad | Estado |
+|----|-----------|----------|-----------|--------|
+| S1 | Seguridad | Sin rate limiting en la API pública | **Alta** | ✅ Resuelto |
+| S2 | Seguridad/Auth | Magic link filtrable si falta SMTP (ATO) | **Alta** | ✅ Resuelto |
+| S3 | Seguridad/Auth | Tokens en claro; sesión sin caducidad | Media-Alta | ✅ Resuelto |
+| S4 | Seguridad/Auth | OAuth sin validar `state` (login CSRF) | Media | ✅ Resuelto |
+| S5 | Seguridad | XSS por JSON-LD sin escapar | Media | ✅ Resuelto |
+| S6 | Seguridad/Authz | Admin con token único: PII, sin roles/rotación/auditoría | Media | ⬜ No resuelto |
+| S7 | Seguridad | Fuga de `detail` de error al cliente | Baja-Media | 🟡 Parcial (handler global añadido; faltan los `catch` explícitos de `live`/`admin`) |
+| S8 | Seguridad | CORS de SSE a `*` + sin límite de body | Baja | 🟡 Parcial (SSE sin `*` y `merge` acotado; falta límite global de body) |
+| S9 | Seguridad/Negocio | Webhook sin idempotencia; premium no caduca | Baja-Media | 🟡 Parcial (premium ya caduca ✅; idempotencia del webhook ⬜) |
+| B1 | Bugs/Robustez | Footguns de config con fallback silencioso | Media | ✅ Resuelto (`assertEnv` + `FEP_SOURCE_ID` + magic link) |
+| B2 | Bugs | Mensaje de error engañoso en `match.loader` | Media | ✅ Resuelto |
+| B3 | Concurrencia | Sin `SIGTERM` ni `statement_timeout` | Baja | ✅ Resuelto |
+| B4 | Concurrencia | Sin lock contra solapamiento de scraping | Baja | ⬜ No resuelto |
+| B5 | Bugs | `config` sobrescrito en `fep-ficha` → `[undefined/undefined]` en logs | Media | ✅ Resuelto (hallado al cerrar el typecheck) |
+| Q1 | Testing | Cero tests en el repo | Media | 🟡 Parcial (lógica horaria con 12 tests ✅; ETL/pagos ⬜) |
+| Q2 | Calidad | El typecheck del monorepo no pasaba | Media | ✅ Resuelto (8/8 paquetes en verde) |
+| Q3 | Proceso | Sin CI | Media | ✅ Resuelto (GitHub Actions: typecheck+test+lint+audit) |
+| Q4 | Mantenibilidad | God components (1346/878/849 líneas…) | Media | ⬜ No resuelto |
+| Q5 | Código muerto | Probes / Redsys / `validate` en árbol de producción | Baja | ⬜ No resuelto |
+| A1 | Escalabilidad | SSE con polling a BD por cliente | **Alta** | ✅ Resuelto (poller único por partido) |
+| A2 | Escalabilidad | Over-fetch de la home (todo el calendario) | Media | ✅ Resuelto (ventana temporal) |
+| A3 | Arquitectura | Escudos: doble fuente de verdad + reinicio manual | Media | ⬜ No resuelto |
+| A4 | Arquitectura/Operativa | Imagen Docker única; scraping a prod desde IP residencial | Baja | ⬜ No resuelto |
+| U1 | UX | La home abre en "hoy" vacío en playoff | Media | ⬜ No resuelto |
+| U2 | UX | Mensaje técnico ("localhost:3000") al usuario final | Baja | ⬜ No resuelto |
+| U3 | A11y | Sin auditoría WCAG completa | Baja | ⬜ No resuelto |
+| D1 | Dependencias | `nodemailer@8` "sospechoso" | — | ⊘ Descartado (verificado legítimo) |
+| D2 | Dependencias | Sin `npm audit`/Dependabot automatizado | Media | ✅ Resuelto (`npm audit` en CI + Dependabot semanal npm y actions) |
+| D3 | Dependencias | Tipos de `cheerio` (`Element`) rotos | Baja | ✅ Resuelto (`domhandler`) |
+
+**Totales:** 15 ✅ resueltos · 4 🟡 parciales · 8 ⬜ no resueltos · 1 ⊘ descartado (29 hallazgos).
+Los **10 prioritarios** quedan todos en ✅ o 🟡 con su parte crítica cerrada. Lo ⬜ pendiente es de severidad media/baja y no bloquea producción.
+
+### Pendiente por prioridad (lo ⬜ y 🟡)
+1. **S6** — roles de admin en vez de token único (Media).
+2. **Q1** — tests de transformers ETL y webhook de pagos (Media).
+3. **A3** — una sola fuente de verdad para escudos (Media).
+4. **S9/S7/S8** — idempotencia del webhook, limpiar `detail` en `catch` explícitos, límite global de body (cierre de los 🟡).
+5. **U1** — la home abre en el próximo día con partidos (Media, alto impacto percibido).
+6. **Q4/Q5/A4/B4/U2/U3** — mantenibilidad y pulido (Baja).
+
+---
+
+## Detalle del Top 10
 
 Los 10 problemas prioritarios se han abordado en código. **Importante:** estos cambios requieren `npm run typecheck` + `npm run test` en local y un despliegue cuidadoso (hay una migración de BD). Tres de ellos —SSE, hashing de tokens y typecheck— son sustanciales: **verifícalos en local antes de producción.**
 
