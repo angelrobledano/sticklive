@@ -20,12 +20,17 @@ export function ShareButton({ title, kind, className = '' }: {
   const share = async () => {
     const url = window.location.href;
     track('share', { kind, title });
-    try {
-      if (navigator.share) {
+    // Web Share API (móvil). En PC suele no existir o fallar; en ese caso NO
+    // abortamos: caemos a copiar el enlace. Solo el cancelar del usuario corta.
+    if (navigator.share) {
+      try {
         await navigator.share({ title: `${title} · Stick Live`, url });
         return;
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return; // el usuario canceló
+        // cualquier otro error (PC sin soporte real, etc.) → copiar enlace
       }
-    } catch { /* cancelado por el usuario */ return; }
+    }
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);

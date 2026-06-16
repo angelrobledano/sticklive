@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { CompetitionSummary } from '@/lib/api/client';
 import { useT } from '@/lib/i18n';
 import { clubName } from '@/lib/names';
+import { CountryFlag } from '@/components/shared/CountryFlag';
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -128,10 +129,9 @@ function CompetitionRow({
 }) {
   const { t } = useT();
 
-  // Avatar: bandera del país o letra inicial
-  const flag = countryFlag(comp.country);
-  const avatarContent = flag || (comp.shortName ?? comp.name).slice(0, 2).toUpperCase();
-  const hasFlag = !!flag;
+  // Avatar: bandera del país (imagen, multiplataforma) o iniciales
+  const hasFlag = !!comp.country && comp.country.length === 2;
+  const initials = (comp.shortName ?? comp.name).slice(0, 2).toUpperCase();
 
   // Línea de metadatos
   const parts: string[] = [];
@@ -150,16 +150,16 @@ function CompetitionRow({
                    hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
       >
         {/* Avatar circular */}
-        <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center
+        <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center overflow-hidden
                          ${hasFlag
-                           ? 'bg-slate-100 dark:bg-slate-800 text-base leading-none'
+                           ? 'bg-slate-100 dark:bg-slate-800'
                            : 'bg-rink-passion/10 border border-rink-passion/20'}`}
         >
           {hasFlag ? (
-            <span>{avatarContent}</span>
+            <CountryFlag code={comp.country} className="w-full h-full object-cover" />
           ) : (
             <span className="text-[10px] font-black text-rink-passion leading-none">
-              {avatarContent}
+              {initials}
             </span>
           )}
         </div>
@@ -266,7 +266,6 @@ function CountryAccordion({
     if (comps.some((c) => favorites.has(c.id))) setOpen(true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const flag = countryFlag(countryCode);
   const national = comps.filter((c) => c.scope === 'national');
   const regional = comps.filter((c) => c.scope === 'regional');
 
@@ -288,7 +287,7 @@ function CountryAccordion({
         className="w-full flex items-center gap-2 px-1 py-3 text-left group"
         aria-expanded={open}
       >
-        {flag && <span className="text-lg leading-none">{flag}</span>}
+        <CountryFlag code={countryCode} className="w-5 h-auto rounded-[2px] shrink-0" />
         <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300 flex-1
                          group-hover:text-slate-800 dark:group-hover:text-slate-100 transition-colors">
           {label}

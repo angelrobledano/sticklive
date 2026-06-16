@@ -262,7 +262,7 @@ Leyenda: ✅ Resuelto · 🟡 Parcial · ⬜ No resuelto · ⊘ Descartado (fals
 | S3 | Seguridad/Auth | Tokens en claro; sesión sin caducidad | Media-Alta | ✅ Resuelto |
 | S4 | Seguridad/Auth | OAuth sin validar `state` (login CSRF) | Media | ✅ Resuelto |
 | S5 | Seguridad | XSS por JSON-LD sin escapar | Media | ✅ Resuelto |
-| S6 | Seguridad/Authz | Admin con token único: PII, sin roles/rotación/auditoría | Media | ⬜ No resuelto |
+| S6 | Seguridad/Authz | Admin con token único: PII, sin roles/rotación/auditoría | Media | ✅ Aceptado por decisión (admin = un solo usuario; el token único basta). Residual: mantener `ADMIN_TOKEN` largo y rotarlo si se expone. |
 | S7 | Seguridad | Fuga de `detail` de error al cliente | Baja-Media | ✅ Resuelto (handler global + `detail` eliminado de las 18 rutas, log solo en servidor) |
 | S8 | Seguridad | CORS de SSE a `*` + sin límite de body | Baja | ✅ Resuelto (SSE sin `*`, `merge` acotado y `bodyLimit` global de 64 KB) |
 | S9 | Seguridad/Negocio | Webhook sin idempotencia; premium no caduca | Baja-Media | ✅ Resuelto (premium caduca + tabla `processed_stripe_events`, migración 024) |
@@ -287,17 +287,16 @@ Leyenda: ✅ Resuelto · 🟡 Parcial · ⬜ No resuelto · ⊘ Descartado (fals
 | D2 | Dependencias | Sin `npm audit`/Dependabot automatizado | Media | ✅ Resuelto (`npm audit` en CI + Dependabot semanal npm y actions) |
 | D3 | Dependencias | Tipos de `cheerio` (`Element`) rotos | Baja | ✅ Resuelto (`domhandler`) |
 
-**Totales:** 23 ✅ resueltos · 0 🟡 parciales · 5 ⬜ no resueltos · 1 ⊘ descartado (29 hallazgos).
+**Totales:** 24 ✅ resueltos/aceptados · 0 🟡 parciales · 4 ⬜ no resueltos · 1 ⊘ descartado (29 hallazgos).
 Todos los hallazgos de severidad **Alta y Media-Alta** están cerrados, y no queda ningún 🟡.
 
-### Pendiente (5 ⬜) — por qué no son "de una tanda"
-Son de severidad media/baja y ninguno bloquea producción. No los cierro en caliente porque requieren decisión de producto, refactor amplio o trabajo de infraestructura:
+### Pendiente (4 ⬜) — por qué no son "de una tanda"
+Son de severidad media/baja y ninguno bloquea producción. No los cierro en caliente porque requieren refactor amplio o trabajo de infraestructura:
 
-1. **S6 — Roles de admin (Media).** Sustituir el token único por roles por usuario es una **decisión de producto** (quién es admin, qué puede hacer) + migración + cambios de auth. La fuga de PII vía detalle de error ya se mitigó (S7); falta el modelo de roles.
-2. **Q4 — God components (Media).** Partir `MatchCenterClient` (1346), `settings` (849), `CompetitionClient` (816)… es un refactor amplio y **sin tests de esos componentes**: alto riesgo de regresión. Hacerlo con red de seguridad, no en caliente.
-3. **U3 — Auditoría WCAG (Baja).** No es un cambio de código puntual: requiere pasar axe/lighthouse sobre las vistas y corregir hallazgos uno a uno.
-4. **A4 — Infra (Baja).** Separar imágenes Docker y mover el scraping masivo a staging es trabajo de infraestructura/proceso, no de código.
-5. **Q5 — Código muerto (Baja).** Mover los `*-probe`/Redsys fuera del árbol de producción; cosmético.
+1. **Q4 — God components (Media).** Partir `MatchCenterClient` (1346), `settings` (849), `CompetitionClient` (816)… es un refactor amplio y **sin tests de esos componentes**: alto riesgo de regresión. Hacerlo con red de seguridad, no en caliente.
+2. **U3 — Auditoría WCAG (Baja).** No es un cambio de código puntual: requiere pasar axe/lighthouse sobre las vistas y corregir hallazgos uno a uno.
+3. **A4 — Infra (Baja).** Separar imágenes Docker y mover el scraping masivo a staging es trabajo de infraestructura/proceso, no de código.
+4. **Q5 — Código muerto (Baja).** Mover los `*-probe`/Redsys fuera del árbol de producción; cosmético.
 
 ---
 

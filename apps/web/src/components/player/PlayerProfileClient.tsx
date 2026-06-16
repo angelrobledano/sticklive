@@ -6,6 +6,7 @@ import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { toTitleCase } from '@/lib/names';
 import { useT } from '@/lib/i18n';
 import { ShareButton } from '@/components/shared/ShareButton';
+import { CountryFlag } from '@/components/shared/CountryFlag';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -38,23 +39,12 @@ function positionKey(pos: string | null): string | null {
   return map[pos.toLowerCase()] ?? null;
 }
 
-/** Convierte código ISO 2 letras a emoji de bandera */
-function countryFlag(code: string | null): string {
-  if (!code || code.length !== 2) return '';
-  const base = 0x1F1E6 - 'A'.charCodeAt(0);
-  return String.fromCodePoint(
-    base + code.toUpperCase().charCodeAt(0),
-    base + code.toUpperCase().charCodeAt(1)
-  );
-}
-
 // ─── Cabecera del jugador ─────────────────────────────────────────────────────
 
 function PlayerHeader({ data }: { data: PlayerDetail }) {
   const { t, locale } = useT();
   const { player, currentTeam } = data;
   const age = calcAge(player.birthDate);
-  const flag = countryFlag(player.nationality);
   const posKey = positionKey(player.position);
   const isGK = player.position?.toLowerCase() === 'portero' ||
                player.position?.toLowerCase() === 'goalkeeper';
@@ -88,8 +78,9 @@ function PlayerHeader({ data }: { data: PlayerDetail }) {
           />
         </div>
 
-        {/* Datos */}
-        <div className="flex-1 min-w-0 space-y-1">
+        {/* Datos — pr-20 reserva el hueco de los botones absolutos (compartir +
+            seguir), para que el nombre largo no quede DEBAJO de ellos. */}
+        <div className="flex-1 min-w-0 space-y-1 pr-20">
           <div className="flex items-center gap-2 flex-wrap">
             {posKey && (
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
@@ -106,14 +97,14 @@ function PlayerHeader({ data }: { data: PlayerDetail }) {
           </h1>
           {player.birthDate && (
             <p className="text-sm text-slate-400 dark:text-slate-500">
-              {flag && <span className="mr-1.5">{flag}</span>}
+              <CountryFlag code={player.nationality} className="inline-block w-4 h-auto rounded-[2px] mr-1.5 align-[-1px]" />
               {fmtDate(player.birthDate, locale)}
               {age != null && <span className="ml-2 text-slate-300 dark:text-slate-600">({t('player.years_old', { n: age })})</span>}
             </p>
           )}
           {!player.birthDate && player.nationality && (
             <p className="text-sm text-slate-400 dark:text-slate-500">
-              {flag && <span className="mr-1.5">{flag}</span>}
+              <CountryFlag code={player.nationality} className="inline-block w-4 h-auto rounded-[2px] mr-1.5 align-[-1px]" />
               {player.nationality}
             </p>
           )}

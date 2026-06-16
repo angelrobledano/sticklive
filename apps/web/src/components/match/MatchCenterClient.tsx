@@ -741,6 +741,8 @@ function halfPositions(fieldCount: number): Array<{ x: number; y: number }> {
   }
 }
 
+const RINK_API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
+
 function RinkChip({ p, accent }: { p: RinkPlayer; accent: boolean }) {
   const surname = displayLineupName(p.playerName).split(' ').slice(-1)[0] ?? '';
   const chip = (
@@ -748,9 +750,11 @@ function RinkChip({ p, accent }: { p: RinkPlayer; accent: boolean }) {
       <span className={`relative w-10 h-10 rounded-full overflow-visible shadow-md ring-2 ${
         accent ? 'ring-rink-passion' : 'ring-white dark:ring-slate-200'
       }`}>
-        {/* Foto del jugador con fallback a silueta */}
+        {/* Foto del jugador. En la pista la servimos vía proxy de la API
+            (same-origin) para que html2canvas la capture al compartir; si no hay
+            playerId, caemos a la URL directa del CDN. */}
         <PlayerAvatar
-          photoUrl={p.photoUrl ?? null}
+          photoUrl={p.playerId ? `${RINK_API_URL}/players/${p.playerId}/photo` : (p.photoUrl ?? null)}
           name={p.playerName}
           className="w-10 h-10 rounded-full bg-white dark:bg-slate-300"
         />
@@ -794,7 +798,12 @@ function StartingFiveRink({ home, away, homeName, awayName }: {
     setSharing(true);
     try {
       const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(rinkRef.current, { scale: 2, backgroundColor: '#0b1220' });
+      const canvas = await html2canvas(rinkRef.current, {
+        scale: 2,
+        backgroundColor: '#0b1220',
+        useCORS: true,      // permite dibujar imágenes servidas con CORS
+        imageTimeout: 8000, // da tiempo a que carguen las fotos (proxy) antes de capturar
+      });
       canvas.toBlob(async (blob) => {
         if (!blob) { setSharing(false); return; }
         const file = new File([blob], 'stick-live-alineacion.png', { type: 'image/png' });

@@ -13,6 +13,7 @@ import { teamDetailRouter } from './routes/team-detail.js';
 import { teamLogoRouter } from './routes/team-logo.js';
 import { seasonOverviewRouter } from './routes/season-overview.js';
 import { playerDetailRouter } from './routes/player-detail.js';
+import { playerPhotoRouter } from './routes/player-photo.js';
 import { paymentsRouter } from './routes/payments.js';
 import { matchStreamRouter } from './routes/match-stream.js';
 import { competitionsRouter } from './routes/competitions.js';
@@ -78,6 +79,7 @@ app.route('/teams',   teamLogoRouter);    // /teams/:id/logo — escudo (volumen
 app.route('/teams',   teamDetailRouter);  // /teams/:id
 app.route('/seasons', seasonOverviewRouter); // /seasons/:id/overview — después de standings/matches
 app.route('/seasons', seasonStatsRouter);    // /seasons/:id/stats — líderes de temporada
+app.route('/players',  playerPhotoRouter);   // /players/:id/photo — foto (proxy CDN)
 app.route('/players',  playerDetailRouter);  // /players/:id
 app.route('/payments/redsys', paymentsRouter); // proveedor alternativo (inactivo)
 app.route('/payments/stripe', stripeRouter);   // proveedor ACTIVO: checkout + webhook
