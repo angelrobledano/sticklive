@@ -54,7 +54,7 @@ competitionsRouter.get('/', async (c) => {
         (SELECT COUNT(*)::text FROM matches m WHERE m.season_id = s.id)       AS match_count
       FROM competitions comp
       JOIN LATERAL (
-        SELECT id, name, start_date FROM seasons s2
+        SELECT id, name, start_date, end_date, is_current FROM seasons s2
         WHERE s2.competition_id = comp.id
           AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s2.id)
         ORDER BY s2.is_current DESC, s2.start_date DESC NULLS LAST
