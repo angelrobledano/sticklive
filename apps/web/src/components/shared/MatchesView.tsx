@@ -122,28 +122,79 @@ function FavoritesOnboarding() {
   );
 }
 
+/** Fecha "22 de junio de 2026" (capitalizada) en el idioma activo. */
+function formatDateHeader(dateKey: string, locale: string): string {
+  const s = new Date(`${dateKey}T12:00:00`).toLocaleDateString(locale, {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 /**
- * Día inicial a mostrar: hoy si tiene partidos; si no, el próximo día con
- * partidos; si tampoco, el más reciente con partidos; si no hay nada, hoy.
- * En calendario disperso (playoff) evita abrir en un "hoy" vacío (auditoría U1).
+ * Estado vacío de la home: mensaje claro ("No hay partidos para hoy") y, debajo,
+ * los PRÓXIMOS partidos agrupados por fecha (ascendente), con el mismo diseño de
+ * MatchCard. Evita pantallas vacías y resultados antiguos.
  */
-function pickInitialDate(matches: Match[], todayKey: string): string {
-  const keys = matches
-    .map((m) => madridDateKey(m.scheduledAt))
-    .filter((k): k is string => !!k);
-  if (keys.length === 0) return todayKey;
-  if (keys.includes(todayKey)) return todayKey;
-  const future = keys.filter((k) => k > todayKey).sort();
-  if (future.length > 0) return future[0]!;
-  const past = keys.filter((k) => k < todayKey).sort();
-  return past[past.length - 1]!;
+function UpcomingMatches({ matches, afterKey, isToday }: {
+  matches: Match[];
+  afterKey: string;
+  isToday: boolean;
+}) {
+  const { t, locale } = useT();
+
+  const groups = useMemo(() => {
+    const upcoming = matches
+      .map((m) => ({ m, key: madridDateKey(m.scheduledAt) }))
+      .filter((x): x is { m: Match; key: string } => !!x.key && x.key > afterKey)
+      .sort((a, b) =>
+        a.key !== b.key
+          ? (a.key < b.key ? -1 : 1)
+          : ((a.m.scheduledAt ?? '') < (b.m.scheduledAt ?? '') ? -1 : 1)
+      );
+    const byDate = new Map<string, Match[]>();
+    for (const { m, key } of upcoming) {
+      const arr = byDate.get(key);
+      if (arr) arr.push(m); else byDate.set(key, [m]);
+    }
+    return Array.from(byDate.entries()); // ya ascendente por orden de inserción
+  }, [matches, afterKey]);
+
+  return (
+    <div>
+      <div className="flex flex-col items-center text-center pt-10 pb-4 px-8 gap-1">
+        <p className="text-base font-bold text-slate-800 dark:text-slate-100">
+          {isToday ? t('common.no_matches_today') : t('common.no_matches_this_day')}
+        </p>
+        {groups.length > 0 && (
+          <p className="text-xs text-slate-400 dark:text-slate-500">{t('common.upcoming_intro')}</p>
+        )}
+      </div>
+
+      {groups.length === 0 ? (
+        <p className="text-center text-xs text-slate-400 dark:text-slate-500 px-8 pb-12">
+          {t('common.no_upcoming')}
+        </p>
+      ) : (
+        groups.map(([dateKey, ms]) => (
+          <section key={dateKey}>
+            <SectionHeader label={formatDateHeader(dateKey, locale)} count={ms.length} />
+            <ul className="px-4 space-y-2 pb-2">
+              {ms.map((m) => (
+                <li key={m.id}><MatchCard match={m} /></li>
+              ))}
+            </ul>
+          </section>
+        ))
+      )}
+    </div>
+  );
 }
 
 export function MatchesView({ matches }: MatchesViewProps) {
   // "Hoy" anclado en Europe/Madrid: misma autoridad horaria que usa el filtrado
   // de partidos. Estable en SSR (servidor UTC) y en cualquier TZ del dispositivo.
   const todayKey = madridTodayKey();
-  const [selectedDate, setSelectedDateState] = useState<string>(() => pickInitialDate(matches, todayKey));
+  const [selectedDate, setSelectedDateState] = useState<string>(todayKey);
 
   // El día elegido sobrevive al pull-to-refresh (sessionStorage: muere al
   // cerrar la pestaña, así mañana la app vuelve a abrir en "hoy").
@@ -233,15 +284,10 @@ export function MatchesView({ matches }: MatchesViewProps) {
       {/* Lista de partidos — con swipe horizontal para cambiar de día */}
       <div className="flex-1" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {dayMatches.length === 0 ? (
-          <EmptyState
-            nextDate={
-              // Próximo día (después del seleccionado) que tenga partidos
-              matches
-                .map((m) => madridDateKey(m.scheduledAt))
-                .filter((k): k is string => !!k && k > selectedDate)
-                .sort()[0] ?? null
-            }
-            onJump={setSelectedDate}
+          <UpcomingMatches
+            matches={matches}
+            afterKey={selectedDate}
+            isToday={selectedDate === todayKey}
           />
         ) : (
           <>
