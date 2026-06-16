@@ -46,6 +46,10 @@ services:
     env_file: .env.prod
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-sports_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}
+    volumes:
+      # Mismo volumen de escudos que web/etl (solo lectura): la API sirve los
+      # escudos en /teams/:id/logo desde aquí (auditoría A3).
+      - escudos:/app/apps/web/public/escudos:ro
     depends_on:
       postgres:
         condition: service_healthy

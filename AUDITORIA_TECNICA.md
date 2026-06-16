@@ -278,7 +278,7 @@ Leyenda: ✅ Resuelto · 🟡 Parcial · ⬜ No resuelto · ⊘ Descartado (fals
 | Q5 | Código muerto | Probes / Redsys / `validate` en árbol de producción | Baja | ⬜ No resuelto |
 | A1 | Escalabilidad | SSE con polling a BD por cliente | **Alta** | ✅ Resuelto (poller único por partido) |
 | A2 | Escalabilidad | Over-fetch de la home (todo el calendario) | Media | ✅ Resuelto (ventana temporal) |
-| A3 | Arquitectura | Escudos: doble fuente de verdad + reinicio manual | Media | ⬜ No resuelto |
+| A3 | Arquitectura | Escudos: doble fuente de verdad + reinicio manual | Media | ✅ Resuelto (la API sirve `/teams/:id/logo` desde el volumen o proxy del CDN; sin reinicios) |
 | A4 | Arquitectura/Operativa | Imagen Docker única; scraping a prod desde IP residencial | Baja | ⬜ No resuelto |
 | U1 | UX | La home abre en "hoy" vacío en playoff | Media | ✅ Resuelto (abre en el día más cercano con partidos) |
 | U2 | UX | Mensaje técnico ("localhost:3000") al usuario final | Baja | ✅ Resuelto (mensaje neutro, sin detalle interno) |
@@ -287,18 +287,17 @@ Leyenda: ✅ Resuelto · 🟡 Parcial · ⬜ No resuelto · ⊘ Descartado (fals
 | D2 | Dependencias | Sin `npm audit`/Dependabot automatizado | Media | ✅ Resuelto (`npm audit` en CI + Dependabot semanal npm y actions) |
 | D3 | Dependencias | Tipos de `cheerio` (`Element`) rotos | Baja | ✅ Resuelto (`domhandler`) |
 
-**Totales:** 22 ✅ resueltos · 0 🟡 parciales · 6 ⬜ no resueltos · 1 ⊘ descartado (29 hallazgos).
+**Totales:** 23 ✅ resueltos · 0 🟡 parciales · 5 ⬜ no resueltos · 1 ⊘ descartado (29 hallazgos).
 Todos los hallazgos de severidad **Alta y Media-Alta** están cerrados, y no queda ningún 🟡.
 
-### Pendiente (6 ⬜) — por qué no son "de una tanda"
+### Pendiente (5 ⬜) — por qué no son "de una tanda"
 Son de severidad media/baja y ninguno bloquea producción. No los cierro en caliente porque requieren decisión de producto, refactor amplio o trabajo de infraestructura:
 
 1. **S6 — Roles de admin (Media).** Sustituir el token único por roles por usuario es una **decisión de producto** (quién es admin, qué puede hacer) + migración + cambios de auth. La fuga de PII vía detalle de error ya se mitigó (S7); falta el modelo de roles.
-2. **A3 — Una sola fuente de verdad para escudos (Media).** Hoy conviven `/escudos/{id}.png` (volumen) y `teams.logo_url` (CDN). Unificar (servir desde el CDN vía `next/image`, ya con `remotePatterns` de sidgad) elimina el reinicio manual de `web`. Es un cambio transversal en `TeamShield` + sitios de llamada; merece su propia tanda y validar el hotlink del CDN.
-3. **Q4 — God components (Media).** Partir `MatchCenterClient` (1346), `settings` (849), `CompetitionClient` (816)… es un refactor amplio y **sin tests de esos componentes**: alto riesgo de regresión. Hacerlo con red de seguridad, no en caliente.
-4. **U3 — Auditoría WCAG (Baja).** No es un cambio de código puntual: requiere pasar axe/lighthouse sobre las vistas y corregir hallazgos uno a uno.
-5. **A4 — Infra (Baja).** Separar imágenes Docker y mover el scraping masivo a staging es trabajo de infraestructura/proceso, no de código.
-6. **Q5 — Código muerto (Baja).** Mover los `*-probe`/Redsys fuera del árbol de producción; cosmético.
+2. **Q4 — God components (Media).** Partir `MatchCenterClient` (1346), `settings` (849), `CompetitionClient` (816)… es un refactor amplio y **sin tests de esos componentes**: alto riesgo de regresión. Hacerlo con red de seguridad, no en caliente.
+3. **U3 — Auditoría WCAG (Baja).** No es un cambio de código puntual: requiere pasar axe/lighthouse sobre las vistas y corregir hallazgos uno a uno.
+4. **A4 — Infra (Baja).** Separar imágenes Docker y mover el scraping masivo a staging es trabajo de infraestructura/proceso, no de código.
+5. **Q5 — Código muerto (Baja).** Mover los `*-probe`/Redsys fuera del árbol de producción; cosmético.
 
 ---
 

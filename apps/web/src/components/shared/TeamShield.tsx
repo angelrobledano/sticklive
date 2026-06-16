@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
+
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
 interface TeamShieldProps {
-  /** UUID del equipo — define /escudos/{teamId}.png como src primario */
+  /** UUID del equipo — define el escudo vía la API (/teams/:id/logo) */
   teamId: string;
   /** Nombre del equipo — usado en alt y como texto del fallback de iniciales */
   teamName: string;
@@ -19,10 +20,14 @@ interface TeamShieldProps {
 type ImgState = 'team' | 'default' | 'initials';
 
 /**
- * Escudo de equipo con fallback en 3 niveles:
- *   1. /escudos/{teamId}.png  (imagen local, la normal)
- *   2. /escudos/default-team.png  (logo generico si no hay escudo)
- *   3. Circulo con iniciales en font-mono
+ * Escudo de equipo con fallback en 3 niveles (auditoría A3):
+ *   1. {API}/teams/{id}/logo  → la API lo sirve del volumen o hace proxy del CDN
+ *      (fuente única = teams.logo_url; sin reiniciar `web` al añadir escudos).
+ *   2. /escudos/default-team.png  (genérico horneado, siempre presente)
+ *   3. Círculo con iniciales
+ *
+ * Se usa <img> (no next/image) a propósito: la URL es dinámica y NO queremos que
+ * el optimizador de Next cachee un 404 de un escudo que aún no existía.
  */
 export function TeamShield({
   teamId,
@@ -31,7 +36,8 @@ export function TeamShield({
   rounded = 'rounded-full',
   className = '',
 }: TeamShieldProps) {
-  const [imgState, setImgState] = useState<ImgState>('team');
+  // Sin teamId no hay escudo posible → directo al genérico.
+  const [imgState, setImgState] = useState<ImgState>(teamId ? 'team' : 'default');
 
   const initials = teamName.slice(0, 2).toUpperCase();
   const containerCls = [
@@ -41,7 +47,6 @@ export function TeamShield({
     className,
   ].filter(Boolean).join(' ');
 
-  // Fallback de iniciales
   if (imgState === 'initials') {
     return (
       <div
@@ -57,7 +62,7 @@ export function TeamShield({
   }
 
   const src = imgState === 'team'
-    ? `/escudos/${teamId || '_unknown'}.png`
+    ? `${API_URL}/teams/${teamId}/logo`
     : '/escudos/default-team.png';
 
   // Aire interior: el clip circular recorta las esquinas de los escudos
@@ -66,15 +71,16 @@ export function TeamShield({
 
   return (
     <div className={containerCls} style={{ width: size, height: size, padding: pad }}>
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={src}
         alt={teamName}
         width={size}
         height={size}
+        loading="lazy"
+        decoding="async"
         className="w-full h-full object-contain"
-        onError={() =>
-          setImgState((prev) => (prev === 'team' ? 'default' : 'initials'))
-        }
+        onError={() => setImgState((prev) => (prev === 'team' ? 'default' : 'initials'))}
       />
     </div>
   );
