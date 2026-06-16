@@ -97,7 +97,7 @@ paymentsRouter.post('/create-json', async (c) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Error desconocido';
     logger.error({ service: 'api', error: message }, 'Redsys /create-json error');
-    return c.json({ error: 'Error al crear el pedido', detail: message }, 500);
+    return c.json({ error: 'Error al crear el pedido' }, 500);
   }
 });
 

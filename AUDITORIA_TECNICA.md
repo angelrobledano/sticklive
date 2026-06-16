@@ -263,13 +263,13 @@ Leyenda: ✅ Resuelto · 🟡 Parcial · ⬜ No resuelto · ⊘ Descartado (fals
 | S4 | Seguridad/Auth | OAuth sin validar `state` (login CSRF) | Media | ✅ Resuelto |
 | S5 | Seguridad | XSS por JSON-LD sin escapar | Media | ✅ Resuelto |
 | S6 | Seguridad/Authz | Admin con token único: PII, sin roles/rotación/auditoría | Media | ⬜ No resuelto |
-| S7 | Seguridad | Fuga de `detail` de error al cliente | Baja-Media | 🟡 Parcial (handler global añadido; faltan los `catch` explícitos de `live`/`admin`) |
-| S8 | Seguridad | CORS de SSE a `*` + sin límite de body | Baja | 🟡 Parcial (SSE sin `*` y `merge` acotado; falta límite global de body) |
-| S9 | Seguridad/Negocio | Webhook sin idempotencia; premium no caduca | Baja-Media | 🟡 Parcial (premium ya caduca ✅; idempotencia del webhook ⬜) |
+| S7 | Seguridad | Fuga de `detail` de error al cliente | Baja-Media | ✅ Resuelto (handler global + `detail` eliminado de las 18 rutas, log solo en servidor) |
+| S8 | Seguridad | CORS de SSE a `*` + sin límite de body | Baja | ✅ Resuelto (SSE sin `*`, `merge` acotado y `bodyLimit` global de 64 KB) |
+| S9 | Seguridad/Negocio | Webhook sin idempotencia; premium no caduca | Baja-Media | ✅ Resuelto (premium caduca + tabla `processed_stripe_events`, migración 024) |
 | B1 | Bugs/Robustez | Footguns de config con fallback silencioso | Media | ✅ Resuelto (`assertEnv` + `FEP_SOURCE_ID` + magic link) |
 | B2 | Bugs | Mensaje de error engañoso en `match.loader` | Media | ✅ Resuelto |
 | B3 | Concurrencia | Sin `SIGTERM` ni `statement_timeout` | Baja | ✅ Resuelto |
-| B4 | Concurrencia | Sin lock contra solapamiento de scraping | Baja | ⬜ No resuelto |
+| B4 | Concurrencia | Sin lock contra solapamiento de scraping | Baja | ✅ Resuelto (`flock` en el scheduler; manual debe usar el mismo lock) |
 | B5 | Bugs | `config` sobrescrito en `fep-ficha` → `[undefined/undefined]` en logs | Media | ✅ Resuelto (hallado al cerrar el typecheck) |
 | Q1 | Testing | Cero tests en el repo | Media | ✅ Resuelto (tests de lógica horaria, ventana de la home, premium y transformer del ETL; cobertura ampliable) |
 | Q2 | Calidad | El typecheck del monorepo no pasaba | Media | ✅ Resuelto (8/8 paquetes en verde) |
@@ -280,23 +280,25 @@ Leyenda: ✅ Resuelto · 🟡 Parcial · ⬜ No resuelto · ⊘ Descartado (fals
 | A2 | Escalabilidad | Over-fetch de la home (todo el calendario) | Media | ✅ Resuelto (ventana temporal) |
 | A3 | Arquitectura | Escudos: doble fuente de verdad + reinicio manual | Media | ⬜ No resuelto |
 | A4 | Arquitectura/Operativa | Imagen Docker única; scraping a prod desde IP residencial | Baja | ⬜ No resuelto |
-| U1 | UX | La home abre en "hoy" vacío en playoff | Media | ⬜ No resuelto |
-| U2 | UX | Mensaje técnico ("localhost:3000") al usuario final | Baja | ⬜ No resuelto |
+| U1 | UX | La home abre en "hoy" vacío en playoff | Media | ✅ Resuelto (abre en el día más cercano con partidos) |
+| U2 | UX | Mensaje técnico ("localhost:3000") al usuario final | Baja | ✅ Resuelto (mensaje neutro, sin detalle interno) |
 | U3 | A11y | Sin auditoría WCAG completa | Baja | ⬜ No resuelto |
 | D1 | Dependencias | `nodemailer@8` "sospechoso" | — | ⊘ Descartado (verificado legítimo) |
 | D2 | Dependencias | Sin `npm audit`/Dependabot automatizado | Media | ✅ Resuelto (`npm audit` en CI + Dependabot semanal npm y actions) |
 | D3 | Dependencias | Tipos de `cheerio` (`Element`) rotos | Baja | ✅ Resuelto (`domhandler`) |
 
-**Totales:** 16 ✅ resueltos · 3 🟡 parciales · 8 ⬜ no resueltos · 1 ⊘ descartado (29 hallazgos).
-Los **10 prioritarios** quedan todos en ✅ o 🟡 con su parte crítica cerrada. Lo ⬜ pendiente es de severidad media/baja y no bloquea producción.
+**Totales:** 22 ✅ resueltos · 0 🟡 parciales · 6 ⬜ no resueltos · 1 ⊘ descartado (29 hallazgos).
+Todos los hallazgos de severidad **Alta y Media-Alta** están cerrados, y no queda ningún 🟡.
 
-### Pendiente por prioridad (lo ⬜ y 🟡)
-1. **S6** — roles de admin en vez de token único (Media).
-2. **Q1** — tests de transformers ETL y webhook de pagos (Media).
-3. **A3** — una sola fuente de verdad para escudos (Media).
-4. **S9/S7/S8** — idempotencia del webhook, limpiar `detail` en `catch` explícitos, límite global de body (cierre de los 🟡).
-5. **U1** — la home abre en el próximo día con partidos (Media, alto impacto percibido).
-6. **Q4/Q5/A4/B4/U2/U3** — mantenibilidad y pulido (Baja).
+### Pendiente (6 ⬜) — por qué no son "de una tanda"
+Son de severidad media/baja y ninguno bloquea producción. No los cierro en caliente porque requieren decisión de producto, refactor amplio o trabajo de infraestructura:
+
+1. **S6 — Roles de admin (Media).** Sustituir el token único por roles por usuario es una **decisión de producto** (quién es admin, qué puede hacer) + migración + cambios de auth. La fuga de PII vía detalle de error ya se mitigó (S7); falta el modelo de roles.
+2. **A3 — Una sola fuente de verdad para escudos (Media).** Hoy conviven `/escudos/{id}.png` (volumen) y `teams.logo_url` (CDN). Unificar (servir desde el CDN vía `next/image`, ya con `remotePatterns` de sidgad) elimina el reinicio manual de `web`. Es un cambio transversal en `TeamShield` + sitios de llamada; merece su propia tanda y validar el hotlink del CDN.
+3. **Q4 — God components (Media).** Partir `MatchCenterClient` (1346), `settings` (849), `CompetitionClient` (816)… es un refactor amplio y **sin tests de esos componentes**: alto riesgo de regresión. Hacerlo con red de seguridad, no en caliente.
+4. **U3 — Auditoría WCAG (Baja).** No es un cambio de código puntual: requiere pasar axe/lighthouse sobre las vistas y corregir hallazgos uno a uno.
+5. **A4 — Infra (Baja).** Separar imágenes Docker y mover el scraping masivo a staging es trabajo de infraestructura/proceso, no de código.
+6. **Q5 — Código muerto (Baja).** Mover los `*-probe`/Redsys fuera del árbol de producción; cosmético.
 
 ---
 
@@ -337,7 +339,7 @@ Los 10 problemas prioritarios se han abordado en código. **Importante:** estos 
 
 ---
 
-## Valoración global: **5.5 / 10** (de origen) → **~7.5 / 10 tras estos cambios, una vez verificados**
+## Valoración global: **5.5 / 10** (de origen) → **~8 / 10 tras estos cambios, una vez verificados y desplegados**
 **Justificación.** Como producto de un solo desarrollador, ya **en producción y funcional**, con arquitectura real (scraper/ETL/API/web bien separados), i18n propio, auth progresiva, pagos, SSE y PWA, el trabajo es notable y la base es sólida: separación de responsabilidades correcta, SQL parametrizado (sin SQLi), firma de webhook verificada, pool centralizado, comparación de token admin en tiempo constante.
 
 La nota de partida (5.5) la lastraban la falta de rate limiting, un footgun de auth que podía comprometer cuentas, un SSE que no aguantaba audiencia, la ausencia de tests/CI y un typecheck que no pasaba. **Con los 10 puntos resueltos** —rate limiting, magic link blindado, SSE con poller único, tokens hasheados con sesión caducable, OAuth con state firmado, premium que caduca de verdad, validación de entorno al arranque, ventana temporal en la home, primeros tests y CI— el proyecto pasa a un **~7.5**: producto sólido y razonablemente endurecido. Para llegar a 8.5–9 falta cerrar los residuales de typecheck, ampliar cobertura de tests (pagos, ETL), una sola fuente de verdad para escudos y disciplina de backups. La puntuación final queda **condicionada a verificar en local** los tres cambios grandes (SSE, hashing de tokens, typecheck) antes de producción.

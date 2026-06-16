@@ -99,6 +99,17 @@ stripeRouter.post('/webhook', async (c) => {
     return c.json({ error: 'invalid_signature' }, 400);
   }
 
+  // Idempotencia (auditoría S9): si el event.id ya se procesó, no repetir el
+  // efecto. INSERT ... ON CONFLICT DO NOTHING → si no inserta, es duplicado.
+  const seen = await db.query(
+    `INSERT INTO processed_stripe_events (event_id) VALUES ($1)
+     ON CONFLICT (event_id) DO NOTHING RETURNING event_id`,
+    [event.id]
+  );
+  if ((seen.rowCount ?? 0) === 0) {
+    return c.json({ received: true, duplicate: true });
+  }
+
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const userId = session.metadata?.['userId'];

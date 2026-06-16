@@ -2,6 +2,7 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { logger as honoLogger } from 'hono/logger';
 import { cors } from 'hono/cors';
+import { bodyLimit } from 'hono/body-limit';
 import { logger } from '@sports/logger';
 import { assertEnv } from './lib/env.js';
 import { standingsRouter } from './routes/standings.js';
@@ -34,6 +35,13 @@ app.use('*', cors({
   allowHeaders: ['Content-Type', 'Authorization', 'X-Admin-Token'],
   allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   maxAge: 86_400,
+}));
+
+// Límite de tamaño de body (auditoría S8): corta payloads enormes (DoS). El
+// webhook de Stripe y los POST normales caben de sobra en 64 KB.
+app.use('*', bodyLimit({
+  maxSize: 64 * 1024,
+  onError: (c) => c.json({ error: 'payload_too_large' }, 413),
 }));
 
 // Health check

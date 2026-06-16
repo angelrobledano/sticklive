@@ -354,6 +354,6 @@ teamDetailRouter.get('/:id', async (c) => {
     return c.json({ team, standing, matches, squad, staff, stats: teamStats });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    return c.json({ error: 'Database error', detail: message }, 500);
+    return c.json({ error: 'Database error' }, 500);
   }
 });

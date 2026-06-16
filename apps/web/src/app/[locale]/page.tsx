@@ -30,13 +30,10 @@ export default async function HomePage() {
           </svg>
         </div>
         <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-          No se pudo cargar el calendario
+          No hemos podido cargar los partidos
         </p>
-        <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">
-          {fetchError}
-        </p>
-        <p className="text-xs text-slate-400 dark:text-slate-600">
-          Asegúrate de que la API está activa en localhost:3000
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          Inténtalo de nuevo en unos segundos.
         </p>
       </div>
     );

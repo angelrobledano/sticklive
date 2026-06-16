@@ -70,7 +70,8 @@ adminRouter.get('/users', async (c) => {
       users,
     });
   } catch (err) {
-    return c.json({ error: 'Database error', detail: err instanceof Error ? err.message : '' }, 500);
+    console.error('[admin] error:', err);
+    return c.json({ error: 'Database error' }, 500);
   }
 });
 
@@ -91,7 +92,8 @@ adminRouter.patch('/users/:id/status', async (c) => {
     if (res.rowCount === 0) return c.json({ error: 'User not found' }, 404);
     return c.json({ ok: true, user: res.rows[0] });
   } catch (err) {
-    return c.json({ error: 'Database error', detail: err instanceof Error ? err.message : '' }, 500);
+    console.error('[admin] error:', err);
+    return c.json({ error: 'Database error' }, 500);
   }
 });
 
@@ -102,9 +104,9 @@ adminRouter.delete('/users/:id', async (c) => {
     if (res.rowCount === 0) return c.json({ error: 'User not found' }, 404);
     return c.json({ ok: true, deleted: id });
   } catch (err) {
+    console.error('[admin] delete user error:', err);
     return c.json({
       error: 'Cannot delete user (may have payment orders). Disable it instead.',
-      detail: err instanceof Error ? err.message : '',
     }, 409);
   }
 });
@@ -120,7 +122,8 @@ adminRouter.get('/competitions/archived', async (c) => {
     const archived = await listArchivedCompetitions();
     return c.json({ count: archived.length, competitions: archived });
   } catch (err) {
-    return c.json({ error: 'Database error', detail: err instanceof Error ? err.message : '' }, 500);
+    console.error('[admin] error:', err);
+    return c.json({ error: 'Database error' }, 500);
   }
 });
 
@@ -142,7 +145,8 @@ adminRouter.get('/competitions/duplicates', async (c) => {
       duplicates: candidates,
     });
   } catch (err) {
-    return c.json({ error: 'Database error', detail: err instanceof Error ? err.message : '' }, 500);
+    console.error('[admin] error:', err);
+    return c.json({ error: 'Database error' }, 500);
   }
 });
 
@@ -157,7 +161,8 @@ adminRouter.post('/competitions/:id/archive', async (c) => {
     if (!comp) return c.json({ error: 'Competition not found' }, 404);
     return c.json({ ok: true, competition: { id: comp.id, name: comp.name, archived_at: comp.archived_at } });
   } catch (err) {
-    return c.json({ error: 'Database error', detail: err instanceof Error ? err.message : '' }, 500);
+    console.error('[admin] error:', err);
+    return c.json({ error: 'Database error' }, 500);
   }
 });
 
@@ -172,7 +177,8 @@ adminRouter.post('/competitions/:id/restore', async (c) => {
     if (!comp) return c.json({ error: 'Competition not found' }, 404);
     return c.json({ ok: true, competition: { id: comp.id, name: comp.name, archived_at: comp.archived_at } });
   } catch (err) {
-    return c.json({ error: 'Database error', detail: err instanceof Error ? err.message : '' }, 500);
+    console.error('[admin] error:', err);
+    return c.json({ error: 'Database error' }, 500);
   }
 });
 

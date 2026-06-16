@@ -139,6 +139,6 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
   } catch (err) {
     console.error('[season-stats] GET /:id/stats error:', err);
     const message = err instanceof Error ? err.message : String(err);
-    return c.json({ error: 'Database error', detail: message }, 500);
+    return c.json({ error: 'Database error' }, 500);
   }
 });

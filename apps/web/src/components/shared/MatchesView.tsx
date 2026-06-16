@@ -122,11 +122,28 @@ function FavoritesOnboarding() {
   );
 }
 
+/**
+ * Día inicial a mostrar: hoy si tiene partidos; si no, el próximo día con
+ * partidos; si tampoco, el más reciente con partidos; si no hay nada, hoy.
+ * En calendario disperso (playoff) evita abrir en un "hoy" vacío (auditoría U1).
+ */
+function pickInitialDate(matches: Match[], todayKey: string): string {
+  const keys = matches
+    .map((m) => madridDateKey(m.scheduledAt))
+    .filter((k): k is string => !!k);
+  if (keys.length === 0) return todayKey;
+  if (keys.includes(todayKey)) return todayKey;
+  const future = keys.filter((k) => k > todayKey).sort();
+  if (future.length > 0) return future[0]!;
+  const past = keys.filter((k) => k < todayKey).sort();
+  return past[past.length - 1]!;
+}
+
 export function MatchesView({ matches }: MatchesViewProps) {
   // "Hoy" anclado en Europe/Madrid: misma autoridad horaria que usa el filtrado
   // de partidos. Estable en SSR (servidor UTC) y en cualquier TZ del dispositivo.
   const todayKey = madridTodayKey();
-  const [selectedDate, setSelectedDateState] = useState<string>(todayKey);
+  const [selectedDate, setSelectedDateState] = useState<string>(() => pickInitialDate(matches, todayKey));
 
   // El día elegido sobrevive al pull-to-refresh (sessionStorage: muere al
   // cerrar la pestaña, así mañana la app vuelve a abrir en "hoy").

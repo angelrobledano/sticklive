@@ -262,6 +262,6 @@ matchDetailRouter.get('/:id', async (c) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     console.error('[match-detail] GET /:id error:', err);
-    return c.json({ error: 'Database error', detail: message }, 500);
+    return c.json({ error: 'Database error' }, 500);
   }
 });

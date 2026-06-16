@@ -35,6 +35,7 @@ metaRouter.get('/sitemap', async (c) => {
       matches:      matches.rows.map((r) => r.id),
     });
   } catch (err) {
-    return c.json({ error: 'Database error', detail: err instanceof Error ? err.message : '' }, 500);
+    console.error('[meta] error:', err);
+    return c.json({ error: 'Database error' }, 500);
   }
 });

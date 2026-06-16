@@ -91,7 +91,7 @@ competitionsRouter.get('/', async (c) => {
   } catch (err) {
     console.error('[competitions] GET / error:', err);
     const message = err instanceof Error ? err.message : 'Unknown error';
-    return c.json({ error: 'Database error', detail: message }, 500);
+    return c.json({ error: 'Database error' }, 500);
   }
 });
 
@@ -131,6 +131,6 @@ competitionsRouter.get('/:id/seasons', async (c) => {
   } catch (err) {
     console.error('[competitions] GET /:id/seasons error:', err);
     const message = err instanceof Error ? err.message : String(err);
-    return c.json({ error: 'Database error', detail: message }, 500);
+    return c.json({ error: 'Database error' }, 500);
   }
 });
