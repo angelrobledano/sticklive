@@ -3,28 +3,18 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import type { Match } from '@/lib/api/client';
 import { useFavorites } from '@/hooks/useFavorites';
-import { DateSelector, toDateKey } from '@/components/shared/DateSelector';
+import { DateSelector } from '@/components/shared/DateSelector';
 import { MatchCard } from '@/components/shared/MatchCard';
 import { AdBanner } from '@/components/shared/AdBanner';
 import Link from 'next/link';
 import { useT } from '@/lib/i18n';
+import { madridDateKey, madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
 
 /** Nº de partidos favoritos visibles antes de colapsar el resto */
 const FAV_PREVIEW = 3;
 
 interface MatchesViewProps {
   matches: Match[];
-}
-
-/** Extrae la fecha local España de un ISO string */
-function getSpainDateKey(iso: string | null): string {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString('es-ES', {
-    timeZone: 'Europe/Madrid',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).split('/').reverse().join('-'); // dd/mm/yyyy → yyyy-mm-dd
 }
 
 /**
@@ -133,7 +123,9 @@ function FavoritesOnboarding() {
 }
 
 export function MatchesView({ matches }: MatchesViewProps) {
-  const todayKey = toDateKey(new Date());
+  // "Hoy" anclado en Europe/Madrid: misma autoridad horaria que usa el filtrado
+  // de partidos. Estable en SSR (servidor UTC) y en cualquier TZ del dispositivo.
+  const todayKey = madridTodayKey();
   const [selectedDate, setSelectedDateState] = useState<string>(todayKey);
 
   // El día elegido sobrevive al pull-to-refresh (sessionStorage: muere al
@@ -142,10 +134,7 @@ export function MatchesView({ matches }: MatchesViewProps) {
     try {
       const saved = sessionStorage.getItem('rink-selected-date');
       if (saved && /^\d{4}-\d{2}-\d{2}$/.test(saved)) {
-        const diff = Math.round(
-          (new Date(`${saved}T12:00`).getTime() - new Date(`${todayKey}T12:00`).getTime()) / 86_400_000
-        );
-        if (Math.abs(diff) <= 7) setSelectedDateState(saved);
+        if (Math.abs(dayDiff(saved, todayKey)) <= 7) setSelectedDateState(saved);
       }
     } catch { /* noop */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -161,12 +150,10 @@ export function MatchesView({ matches }: MatchesViewProps) {
 
   // ── Swipe horizontal: día anterior / siguiente ─────────────────────────────
   const shiftDay = (delta: number) => {
-    const d = new Date(`${selectedDate}T12:00:00`); // mediodía: inmune a DST
-    d.setDate(d.getDate() + delta);
+    const next = addDaysToKey(selectedDate, delta);
     // Mantenerse dentro de la ventana del DateSelector (hoy ± 7 días)
-    const diffDays = Math.round((d.getTime() - new Date(`${todayKey}T12:00:00`).getTime()) / 86_400_000);
-    if (Math.abs(diffDays) > 7) return;
-    setSelectedDate(toDateKey(d));
+    if (Math.abs(dayDiff(next, todayKey)) > 7) return;
+    setSelectedDate(next);
   };
 
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -188,7 +175,7 @@ export function MatchesView({ matches }: MatchesViewProps) {
 
   // Filtrar por fecha seleccionada
   const dayMatches = useMemo(
-    () => matches.filter((m) => getSpainDateKey(m.scheduledAt) === selectedDate),
+    () => matches.filter((m) => madridDateKey(m.scheduledAt) === selectedDate),
     [matches, selectedDate]
   );
 
@@ -233,7 +220,7 @@ export function MatchesView({ matches }: MatchesViewProps) {
             nextDate={
               // Próximo día (después del seleccionado) que tenga partidos
               matches
-                .map((m) => getSpainDateKey(m.scheduledAt))
+                .map((m) => madridDateKey(m.scheduledAt))
                 .filter((k): k is string => !!k && k > selectedDate)
                 .sort()[0] ?? null
             }

@@ -2,33 +2,32 @@
 
 import { useCallback, useRef, useEffect } from 'react';
 import { useT } from '@/lib/i18n';
+import { madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
 
-/** Crea un array de Date centrado en hoy con `before` días antes y `after` días después */
-function buildDateRange(before = 7, after = 7): Date[] {
-  const dates: Date[] = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  for (let i = -before; i <= after; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    dates.push(d);
-  }
-  return dates;
+/**
+ * Construye las claves "YYYY-MM-DD" del carrusel, centradas en el "hoy" de
+ * Madrid. Se trabaja con claves (no con objetos Date locales) para que el
+ * carrusel y el filtrado de partidos compartan exactamente la misma autoridad
+ * horaria; si no, el día resaltado como "hoy" no casaría con el día filtrado.
+ */
+function buildDateKeys(before = 7, after = 14): string[] {
+  const today = madridTodayKey();
+  const keys: string[] = [];
+  for (let i = -before; i <= after; i++) keys.push(addDaysToKey(today, i));
+  return keys;
 }
 
-/** Convierte Date a clave "YYYY-MM-DD" (sin timezone) */
-export function toDateKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+/**
+ * Date a mediodía para PINTAR etiquetas (día, mes, día de semana). El mediodía
+ * hace que getDate()/Intl devuelvan el día correcto en cualquier TZ; solo se usa
+ * para formateo visual, nunca para comparar o agrupar.
+ */
+function labelDate(key: string): Date {
+  return new Date(`${key}T12:00:00`);
 }
 
-function getRelativeKey(date: Date, today: Date): string | null {
-  const diff = Math.round(
-    (date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-  );
+function getRelativeKey(key: string, todayKey: string): string | null {
+  const diff = dayDiff(key, todayKey);
   if (diff === -1) return 'common.yesterday';
   if (diff === 0)  return 'common.today';
   if (diff === 1)  return 'common.tomorrow';
@@ -52,9 +51,8 @@ interface DateSelectorProps {
 
 export function DateSelector({ selected, onChange }: DateSelectorProps) {
   const { t, locale } = useT();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dates = buildDateRange(7, 14);
+  const todayKey = madridTodayKey();
+  const dateKeys = buildDateKeys(7, 14);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Centrar el elemento activo al montar
@@ -83,10 +81,10 @@ export function DateSelector({ selected, onChange }: DateSelectorProps) {
       className="flex gap-1.5 overflow-x-auto py-2.5 px-4 scrollbar-none"
       style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
     >
-      {dates.map((date) => {
-        const key = toDateKey(date);
+      {dateKeys.map((key) => {
+        const date = labelDate(key);
         const isActive = key === selected;
-        const relKey = getRelativeKey(date, today);
+        const relKey = getRelativeKey(key, todayKey);
         const relLabel = relKey ? t(relKey) : null;
 
         return (
