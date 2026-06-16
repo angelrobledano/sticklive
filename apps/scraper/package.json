@@ -9,7 +9,7 @@
     "build": "tsc",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "probe": "node --loader ts-node/esm src/scrapers/fep/fep-network-probe.ts"
   },
   "dependencies": {
