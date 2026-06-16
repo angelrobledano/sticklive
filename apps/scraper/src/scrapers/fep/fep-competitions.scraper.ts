@@ -13,6 +13,7 @@
 import { Page } from 'playwright';
 import * as cheerio from 'cheerio';
 import { BaseScraper } from '../../core/base-scraper.js';
+import { requireFepSourceId } from '../../core/fep-source.js';
 import { createScrapingContext, navigateTo } from '../../core/browser.js';
 import type { ScrapedCompetition, ScrapedTrace } from '@sports/shared-types';
 
@@ -21,8 +22,8 @@ import type { ScrapedCompetition, ScrapedTrace } from '@sports/shared-types';
 const SIDGAD_API_PATTERN = /sidgad\.com.*\/(api|service|data)\//i;
 
 const BASE_URL = 'https://www.hockeypatines.fep.es';
-// ID de la fuente — debe coincidir con el UUID en data_sources tras el seed
-const SOURCE_ID = process.env['FEP_SOURCE_ID'] ?? 'FEP_HOCKEY_PLACEHOLDER';
+// ID de la fuente — UUID en data_sources (scraper_key=fep_hockey). Obligatorio.
+const SOURCE_ID = requireFepSourceId();
 
 export class FepCompetitionsScraper extends BaseScraper<ScrapedCompetition> {
   constructor() {

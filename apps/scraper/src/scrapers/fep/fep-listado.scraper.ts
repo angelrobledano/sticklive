@@ -8,11 +8,12 @@
  */
 import * as cheerio from 'cheerio';
 import { BaseScraper } from '../../core/base-scraper.js';
+import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadGet, CURRENT_TEMP } from './sidgad-client.js';
 import type { ScrapedTrace } from '@sports/shared-types';
 
 const SOURCE_URL = 'https://www.server2.sidgad.es/rfep/rfep_ls_1.php';
-const SOURCE_ID = process.env['FEP_SOURCE_ID'] ?? 'FEP_HOCKEY_PLACEHOLDER';
+const SOURCE_ID = requireFepSourceId();
 
 /** Datos de una competición extraídos del listado */
 export interface RawCompetition {

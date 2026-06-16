@@ -3,13 +3,14 @@
  */
 import * as cheerio from 'cheerio';
 import { BaseScraper } from '../../core/base-scraper.js';
+import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
 import type { ScrapedStanding } from '@sports/shared-types';
 
 const BASE_URL = 'https://www.server2.sidgad.es/rfep';
 // Los logos de clubes estan en sidgad.cloud (descubierto via fep-competition-inspector.ts)
 const LOGO_CDN_BASE = 'https://sidgad.cloud/rfep/images/logos_clubes';
-const SOURCE_ID = process.env['FEP_SOURCE_ID'] ?? 'FEP_HOCKEY_PLACEHOLDER';
+const SOURCE_ID = requireFepSourceId();
 
 export interface StandingsScraperConfig {
   idc: string;

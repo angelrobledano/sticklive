@@ -16,12 +16,13 @@
  */
 import * as cheerio from 'cheerio';
 import { BaseScraper } from '../../core/base-scraper.js';
+import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
 import type { ScrapedMatch, MatchStatus } from '@sports/shared-types';
 import { madridToUtc } from './fep-matches.scraper.js';
 
 const BASE_URL = 'https://www.server2.sidgad.es/rfep';
-const SOURCE_ID = process.env['FEP_SOURCE_ID'] ?? 'FEP_HOCKEY_PLACEHOLDER';
+const SOURCE_ID = requireFepSourceId();
 
 export interface CalendarScraperConfig {
   /** ID de competición sidgad (ej: "3150" para OK LIGA) */

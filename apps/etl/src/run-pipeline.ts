@@ -16,6 +16,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createLogger } from '@sports/logger';
 import { db, closeDb, replaceMatchEvents, withTransaction } from '@sports/db';
 import { EtlPipeline } from './pipeline.js';
@@ -289,7 +290,14 @@ async function main() {
 
   // ── Descarga de logos ───────────────────────────────────────
   if (entity === 'download-logos') {
-    const outDir = path.join(process.cwd(), 'apps', 'web', 'public', 'escudos');
+    // Ruta resuelta desde la ubicación de ESTE módulo (apps/etl/src), NO desde
+    // process.cwd(): así da igual desde dónde se lance el comando. Antes, al
+    // ejecutarlo desde /app/apps/etl, los escudos caían en
+    // /app/apps/etl/apps/web/public/escudos y nunca llegaban al volumen de web.
+    // Override opcional con ESCUDOS_DIR.
+    const outDir =
+      process.env['ESCUDOS_DIR'] ??
+      path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web/public/escudos');
     fs.mkdirSync(outDir, { recursive: true });
 
     // Mapa descubierto via fep-competition-inspector.ts:
@@ -350,6 +358,12 @@ async function main() {
       await new Promise((r) => setTimeout(r, 120));
     }
     log.info({ ok, skip, fail }, 'Logos completado');
+    if (ok > 0) {
+      log.warn(
+        '⚠️  Next fotografía public/ al arrancar: reinicia el contenedor web ' +
+          'para que sirva los escudos nuevos →  docker compose ... restart web'
+      );
+    }
   }
 
   log.info('🏁 Pipeline completado');

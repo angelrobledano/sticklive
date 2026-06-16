@@ -15,12 +15,13 @@
  */
 import * as cheerio from 'cheerio';
 import { BaseScraper } from '../../core/base-scraper.js';
+import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
 import { db, replaceMatchEvents, replaceMatchLineups, withTransaction } from '@sports/db';
 import type { UpsertMatchLineupInput } from '@sports/db';
 
 const BASE_URL = 'https://www.server2.sidgad.es/rfep';
-const SOURCE_ID = process.env['FEP_SOURCE_ID'] ?? 'FEP_HOCKEY_PLACEHOLDER';
+const SOURCE_ID = requireFepSourceId();
 
 /** IDCs de competiciones que usan rutas de Playoff/Eliminatorias en sidgad */
 const PLAYOFF_IDCS = ['3481'];
