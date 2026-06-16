@@ -116,7 +116,13 @@ liveRouter.get('/current', async (c) => {
     // auditoría A2), se acota a [hoy-8d, hoy+15d] por defecto. La home muestra
     // hoy ± ~2 semanas, así que es suficiente. Override opcional con ?days= o
     // ?from=&to= (ISO). Tope de seguridad de 120 días.
-    const days = Math.min(120, Math.max(1, Number(c.req.query('days') ?? 0)));
+    // Ventana por defecto: hoy-8d .. hoy+15d. Solo si llega ?days= se usa una
+    // ventana simétrica de N días (OJO: antes esto colapsaba a ±1 día cuando NO
+    // venía el parámetro, dejando la home casi vacía — bug corregido).
+    const daysRaw = c.req.query('days');
+    const daysN = daysRaw ? Math.min(120, Math.max(1, Number(daysRaw) || 0)) : 0;
+    const back = daysN || 8;
+    const fwd = daysN || 15;
     const isISO = (s: string | undefined) => !!s && /^\d{4}-\d{2}-\d{2}/.test(s);
     const fromQ = c.req.query('from');
     const toQ = c.req.query('to');
@@ -127,8 +133,6 @@ liveRouter.get('/current', async (c) => {
       params.push(fromQ, toQ);
       where = `AND m.scheduled_at >= $1::timestamptz AND m.scheduled_at < ($2::timestamptz + INTERVAL '1 day')`;
     } else {
-      const back = days || 8;
-      const fwd = days || 15;
       where = `AND m.scheduled_at >= NOW() - INTERVAL '${back} days'
                AND m.scheduled_at <  NOW() + INTERVAL '${fwd} days'`;
     }
