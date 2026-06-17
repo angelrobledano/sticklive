@@ -248,6 +248,7 @@
     "notif_ios_install": "En iPhone, añade Stick Live a tu pantalla de inicio (botón Compartir → «Añadir a pantalla de inicio») para poder recibir notificaciones.",
     "notif_denied": "Has bloqueado las notificaciones para este sitio. Vuelve a activarlas desde los ajustes del navegador.",
     "notif_enable_hint": "Activa el interruptor de arriba para permitir las notificaciones en este dispositivo.",
+    "notif_activate_btn": "Activar notificaciones en este dispositivo",
     "notif_test_btn": "Enviar notificación de prueba",
     "notif_test_sending": "Enviando…",
     "notif_test_ok": "Enviada. Debería llegarte en unos segundos.",
