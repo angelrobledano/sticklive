@@ -168,11 +168,23 @@ async function resolveUserByEmail(email: string, deviceId?: string): Promise<str
     userId = adopted.rows[0]?.id;
   }
   if (!userId) {
+    // users.device_id tiene UNIQUE: si el device del cliente ya pertenece a otra
+    // cuenta (con otro email), un INSERT directo reventaría con 500. Probamos con
+    // el device_id del cliente y, si choca, usamos uno único derivado del email
+    // (los emails son únicos por uq_users_email, así que no puede colisionar).
     const created = await db.query<{ id: string }>(
-      `INSERT INTO users (device_id, email) VALUES ($1, $2) RETURNING id`,
+      `INSERT INTO users (device_id, email) VALUES ($1, $2)
+       ON CONFLICT (device_id) DO NOTHING RETURNING id`,
       [deviceId || `email:${email}`, email]
     );
-    userId = created.rows[0]!.id;
+    userId = created.rows[0]?.id;
+    if (!userId) {
+      const fallback = await db.query<{ id: string }>(
+        `INSERT INTO users (device_id, email) VALUES ($1, $2) RETURNING id`,
+        [`email:${email}`, email]
+      );
+      userId = fallback.rows[0]!.id;
+    }
   }
   return userId;
 }
