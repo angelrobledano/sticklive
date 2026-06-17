@@ -205,7 +205,11 @@ authRouter.get('/google', (c) => {
 authRouter.get('/google/callback', async (c) => {
   const clientId = process.env['GOOGLE_CLIENT_ID'];
   const clientSecret = process.env['GOOGLE_CLIENT_SECRET'];
-  const fail = (reason: string) => c.redirect(`${WEB_BASE}/login#error=${reason}`);
+  // Log de cada motivo de fallo para diagnóstico (el cliente solo ve el motivo).
+  const fail = (reason: string) => {
+    console.error('[auth] google login failed:', reason);
+    return c.redirect(`${WEB_BASE}/login#error=${reason}`);
+  };
 
   try {
     if (!clientId || !clientSecret) return fail('google_not_configured');
@@ -217,6 +221,7 @@ authRouter.get('/google/callback', async (c) => {
     if (!st) return fail('bad_state');
     const deviceId = typeof st.d === 'string' ? st.d : '';
 
+    const redirectUri = `${API_PUBLIC}/auth/google/callback`;
     // Canjear el code por tokens (server-to-server, por TLS con Google)
     const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
       method: 'POST',
@@ -225,11 +230,18 @@ authRouter.get('/google/callback', async (c) => {
         code,
         client_id: clientId,
         client_secret: clientSecret,
-        redirect_uri: `${API_PUBLIC}/auth/google/callback`,
+        redirect_uri: redirectUri,
         grant_type: 'authorization_code',
       }),
     });
-    if (!tokenRes.ok) return fail('google_token');
+    if (!tokenRes.ok) {
+      // El cuerpo de Google revela la causa exacta: invalid_client,
+      // redirect_uri_mismatch, invalid_grant, etc. Logueamos el redirect_uri
+      // que enviamos para detectar desajustes de configuración (API_BASE_URL).
+      const detail = await tokenRes.text().catch(() => '');
+      console.error(`[auth] google token exchange ${tokenRes.status}; redirect_uri=${redirectUri}; resp=${detail}`);
+      return fail('google_token');
+    }
     const tokens = await tokenRes.json() as { id_token?: string };
     if (!tokens.id_token) return fail('google_token');
 
