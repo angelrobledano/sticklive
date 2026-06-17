@@ -100,9 +100,16 @@ function LoginInner() {
 
     if (oauthError || !session || !userEmail) {
       setStatus('error');
-      setErrorMsg(oauthError === 'account_disabled'
-        ? t('auth.account_disabled')
-        : t('auth.google_failed'));
+      // Mensaje específico por motivo (antes todo caía en uno genérico, así no
+      // se entendía qué fallaba). El acceso por email lleva a la MISMA cuenta.
+      const byReason: Record<string, string> = {
+        account_disabled:     t('auth.account_disabled'),
+        google_not_configured: t('auth.google_unavailable'),
+        bad_state:            t('auth.google_state'),
+        google_email:         t('auth.google_email'),
+        google_denied:        t('auth.google_denied'),
+      };
+      setErrorMsg((oauthError && byReason[oauthError]) || t('auth.google_failed'));
       return;
     }
 

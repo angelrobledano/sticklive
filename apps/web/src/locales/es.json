@@ -92,7 +92,12 @@
     "upsell_email": "Registrarse con email",
     "upsell_guest": "Continuar como invitado",
     "google_failed": "No se pudo completar el acceso con Google. Prueba de nuevo o usa el enlace por email.",
-    "account_disabled": "Esta cuenta está desactivada. Si crees que es un error, contáctanos."
+    "account_disabled": "Esta cuenta está desactivada. Si crees que es un error, contáctanos.",
+    "google_unavailable": "El acceso con Google no está disponible ahora mismo. Entra con tu email y quedará la misma cuenta.",
+    "google_state": "La conexión con Google caducó por seguridad. Vuelve a intentarlo.",
+    "google_email": "Tu cuenta de Google no expone un email verificado. Entra con ese mismo email y será la misma cuenta.",
+    "google_denied": "Cancelaste el acceso con Google. Puedes intentarlo otra vez o entrar con tu email.",
+    "link_hint": "Si ya te registraste con este email, no pasa nada: usamos el mismo email para identificarte, así que entrarás a tu cuenta de siempre."
   },
   "common": {
     "today": "Hoy",
