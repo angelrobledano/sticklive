@@ -28,7 +28,10 @@ import { db, closeDb } from '@sports/db';
 import { EtlPipeline } from './pipeline.js';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
-import { snapshotMatches, diffAndNotify, pushEnabled } from './push-dispatcher.js';
+import {
+  snapshotMatches, snapshotRounds, snapshotGoals,
+  diffAndNotify, diffPlayerGoals, pushEnabled,
+} from './push-dispatcher.js';
 
 const log = createLogger({ service: 'cron-live' });
 
@@ -173,22 +176,30 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
   const scraper  = new FepMatchesScraper({ seasonId: primarySeasonId });
   const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: primarySeasonId });
 
-  // Snapshot previo para push-notifications
-  const prev = pushEnabled ? await snapshotMatches(primarySeasonId) : new Map();
+  // Snapshot previo (partidos + jornadas) para push antes de scrapear marcadores
+  const prev       = pushEnabled ? await snapshotMatches(primarySeasonId) : new Map();
+  const prevRounds = pushEnabled ? await snapshotRounds(primarySeasonId)  : new Map();
 
   const result = await scraper.run();
   if (result.data.length === 0) return 0;
 
   const etl = await pipeline.runMatches(result);
 
-  try { await diffAndNotify(prev, primarySeasonId); } catch (err) {
+  // Eventos de partido (equipo/competición) + jornada (inicio/fin)
+  try { await diffAndNotify(prev, prevRounds, primarySeasonId); } catch (err) {
     log.warn({ err }, 'push-dispatcher fallo — el scraping sigue');
   }
 
+  // Goles de jugador: las fichas traen el goleador, así que snapshot ANTES de
+  // refrescarlas y diff DESPUÉS.
+  const prevGoals = pushEnabled ? await snapshotGoals(primarySeasonId) : new Map();
   try {
     await runFichasForActiveMatches(seasonIds);
   } catch (err) {
     log.warn({ err }, 'runFichasForActiveMatches fallo — ciclo de scores sigue OK');
+  }
+  try { await diffPlayerGoals(prevGoals, primarySeasonId); } catch (err) {
+    log.warn({ err }, 'push gol-jugador fallo — el ciclo sigue');
   }
 
   return etl.upserted;

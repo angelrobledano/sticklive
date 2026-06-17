@@ -41,6 +41,18 @@ export function enabledTeams(favoriteTeamIds: string[]): string[] {
   return favoriteTeamIds.filter((id) => !off.has(id));
 }
 
+/** Competiciones con notificación activada. */
+export function enabledLeagues(favoriteLeagueIds: string[]): string[] {
+  const off = new Set(getDisabled().leagues);
+  return favoriteLeagueIds.filter((id) => !off.has(id));
+}
+
+/** Jugadores con notificación activada. */
+export function enabledPlayers(favoritePlayerIds: string[]): string[] {
+  const off = new Set(getDisabled().players);
+  return favoritePlayerIds.filter((id) => !off.has(id));
+}
+
 export function isNotifEnabled(kind: NotifKind, id: string): boolean {
   return !getDisabled()[bucket(kind)].includes(id);
 }

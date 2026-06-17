@@ -52,6 +52,31 @@ export function cardAlert(kind: 'azul' | 'roja', playerName: string, teamName: s
   return `Tarjeta ${kind} para ${playerName} (${teamName})${min}`;
 }
 
+/** Tag de jornada (una notificación viva por ronda y fase). */
+export function jornadaTag(roundId: string, phase: 'start' | 'end'): string {
+  return `jornada-${roundId}-${phase}`;
+}
+
+/** Tag de jugador (una notificación viva por jugador). */
+export function playerTag(playerId: string): string {
+  return `player-${playerId}`;
+}
+
+/** `¡Arranca la Jornada 26! Sigue todos los partidos en directo.` */
+export function jornadaStartAlert(roundName: string): string {
+  return `¡Arranca la ${roundName}! Sigue todos los partidos en directo.`;
+}
+
+/** `La Jornada 26 ha terminado. Consulta resultados y clasificación.` */
+export function jornadaEndAlert(roundName: string): string {
+  return `La ${roundName} ha terminado. Consulta resultados y clasificación.`;
+}
+
+/** `⚽ ¡Gol de Pablo Álvarez! BAR 2 - 1 IHC` (jugador favorito) */
+export function playerGoalAlert(playerName: string, m: MatchRef): string {
+  return `⚽ ¡Gol de ${playerName}! ${m.homeShort} ${m.homeScore} - ${m.awayScore} ${m.awayShort}`;
+}
+
 /** Cuerpo de la notificación viva del partido: `[LIVE] BAR 3 - 1 IHC (Min. 34')` */
 export function liveBody(m: MatchRef): string {
   const min = m.minute != null ? ` (Min. ${m.minute}')` : '';

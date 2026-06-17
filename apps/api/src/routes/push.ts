@@ -32,9 +32,14 @@ interface SubscribeBody {
   };
   deviceId?: string;
   favTeams?: string[];
+  favLeagues?: string[];
+  favPlayers?: string[];
   config?: Record<string, unknown>;
   locale?: string;
 }
+
+const UUID_RE = /^[0-9a-f-]{36}$/i;
+const onlyUuids = (xs?: string[]) => (xs ?? []).filter((x) => UUID_RE.test(x));
 
 pushRouter.post('/subscribe', async (c) => {
   try {
@@ -43,25 +48,31 @@ pushRouter.post('/subscribe', async (c) => {
     if (!sub?.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
       return c.json({ error: 'invalid_subscription' }, 400);
     }
-    const favTeams = (body.favTeams ?? []).filter((t) => /^[0-9a-f-]{36}$/i.test(t));
+    const favTeams   = onlyUuids(body.favTeams);
+    const favLeagues = onlyUuids(body.favLeagues);
+    const favPlayers = onlyUuids(body.favPlayers);
 
     await db.query(
-      `INSERT INTO push_subscriptions (device_id, endpoint, p256dh, auth, fav_teams, config, locale)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `INSERT INTO push_subscriptions (device_id, endpoint, p256dh, auth, fav_teams, fav_leagues, fav_players, config, locale)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        ON CONFLICT (endpoint) DO UPDATE SET
-         device_id = EXCLUDED.device_id,
-         p256dh    = EXCLUDED.p256dh,
-         auth      = EXCLUDED.auth,
-         fav_teams = EXCLUDED.fav_teams,
-         config    = EXCLUDED.config,
-         locale    = EXCLUDED.locale,
-         updated_at = NOW()`,
+         device_id   = EXCLUDED.device_id,
+         p256dh      = EXCLUDED.p256dh,
+         auth        = EXCLUDED.auth,
+         fav_teams   = EXCLUDED.fav_teams,
+         fav_leagues = EXCLUDED.fav_leagues,
+         fav_players = EXCLUDED.fav_players,
+         config      = EXCLUDED.config,
+         locale      = EXCLUDED.locale,
+         updated_at  = NOW()`,
       [
         body.deviceId ?? 'unknown',
         sub.endpoint,
         sub.keys.p256dh,
         sub.keys.auth,
         favTeams,
+        favLeagues,
+        favPlayers,
         JSON.stringify(body.config ?? {}),
         body.locale ?? 'es',
       ]
