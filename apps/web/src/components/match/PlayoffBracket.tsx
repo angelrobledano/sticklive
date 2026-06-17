@@ -26,9 +26,13 @@ function MicroSeries({ serie, isCurrent, advanced, linkable }: {
   advanced: Set<string>;
   linkable: boolean;
 }) {
+  // Eliminatoria a partido único: en vez del marcador de victorias (1–0, que
+  // parece el resultado del partido y confunde) mostramos el marcador real.
+  const single = serie.games.length === 1 ? serie.games[0]! : null;
+  const singleScored = !!single && (single.status === 'finished' || single.status === 'live');
   const rows = [
-    { team: serie.teamA, wins: serie.winsA },
-    { team: serie.teamB, wins: serie.winsB },
+    { team: serie.teamA, wins: serie.winsA, score: single?.score.home ?? null },
+    { team: serie.teamB, wins: serie.winsB, score: single?.score.away ?? null },
   ];
   // Partido enlazable: el último jugado o el próximo
   const target = serie.games.find((g) => g.status === 'live')
@@ -44,8 +48,9 @@ function MicroSeries({ serie, isCurrent, advanced, linkable }: {
           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
       }`}
     >
-      {rows.map(({ team, wins }, idx) => {
+      {rows.map(({ team, wins, score }, idx) => {
         const qualified = advanced.has(team.id);
+        const value = single ? (singleScored && score != null ? score : '–') : wins;
         return (
           <div key={team.id}
                className={`flex items-center gap-1.5 px-2 py-1 ${idx === 0 ? 'border-b border-slate-100 dark:border-slate-800' : ''}`}>
@@ -60,7 +65,7 @@ function MicroSeries({ serie, isCurrent, advanced, linkable }: {
                 <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             )}
-            <span className="text-[11px] font-bold tabular-nums text-slate-700 dark:text-slate-200">{wins}</span>
+            <span className="text-[11px] font-bold tabular-nums text-slate-700 dark:text-slate-200">{value}</span>
           </div>
         );
       })}
