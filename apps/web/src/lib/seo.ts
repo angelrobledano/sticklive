@@ -57,9 +57,20 @@ export function socialMeta(opts: {
   description: string;
   type?: 'website' | 'article';
   image?: { url: string; width: number; height: number; type?: string; alt?: string };
+  /** La imagen la genera un fichero opengraph-image/twitter-image (OG dinámico). */
+  dynamicImage?: boolean;
 }): Pick<Metadata, 'openGraph' | 'twitter'> {
   const { locale, path = '', title, description, type = 'website' } = opts;
   const url = `${SITE_URL}/${locale}${path === '/' ? '' : path}`;
+
+  // Con imagen dinámica (opengraph-image.tsx + twitter-image.tsx), NO fijamos
+  // imágenes aquí: si lo hiciéramos, Next ignoraría las del fichero. Twitter
+  // card e imagen los aporta twitter-image.tsx automáticamente.
+  if (opts.dynamicImage) {
+    return {
+      openGraph: { type, url, siteName: 'Stick Live', locale: OG_LOCALE[locale], title, description },
+    };
+  }
   const img = opts.image
     ? opts.image
     : { url: `${SITE_URL}${OG_IMAGE.path}`, width: OG_IMAGE.width, height: OG_IMAGE.height, type: OG_IMAGE.type, alt: OG_IMAGE.alt };

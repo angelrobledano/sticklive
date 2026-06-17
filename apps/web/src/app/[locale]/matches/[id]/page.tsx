@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       alternates,
-      ...socialMeta({ locale, path: `/matches/${params.id}`, title: ogTitle, description, type: 'article' }),
+      ...socialMeta({ locale, path: `/matches/${params.id}`, title: ogTitle, description, type: 'article', dynamicImage: true }),
     };
   } catch {
     return { alternates };

@@ -62,6 +62,34 @@ function cloudRemove(kind: Kind, id: string) {
   }).catch(() => { /* idem */ });
 }
 
+// ── Tombstones: bajas locales que NO deben reaparecer en la reconciliación ──────
+// La reconciliación es aditiva, así que quitar un favorito SIN conexión (el DELETE
+// en la nube falla) lo recuperaría al volver online. Guardamos las bajas y, en la
+// reconciliación, las restamos de la unión + reintentamos el DELETE en la nube.
+const TOMBSTONE_KEY = 'rink-fav-removed';
+interface Tombstones { teams: string[]; leagues: string[]; players: string[] }
+
+function readTombstones(): Tombstones {
+  try {
+    const raw = JSON.parse(localStorage.getItem(TOMBSTONE_KEY) ?? '{}') as Partial<Tombstones>;
+    return { teams: raw.teams ?? [], leagues: raw.leagues ?? [], players: raw.players ?? [] };
+  } catch { return { teams: [], leagues: [], players: [] }; }
+}
+function writeTombstones(t: Tombstones) {
+  try { localStorage.setItem(TOMBSTONE_KEY, JSON.stringify(t)); } catch { /* noop */ }
+}
+function tombstoneBucket(kind: Kind): keyof Tombstones {
+  return kind === 'team' ? 'teams' : kind === 'league' ? 'leagues' : 'players';
+}
+function addTombstone(kind: Kind, id: string) {
+  const t = readTombstones(); const k = tombstoneBucket(kind);
+  if (!t[k].includes(id)) { t[k] = [...t[k], id]; writeTombstones(t); }
+}
+function clearTombstone(kind: Kind, id: string) {
+  const t = readTombstones(); const k = tombstoneBucket(kind);
+  if (t[k].includes(id)) { t[k] = t[k].filter((x) => x !== id); writeTombstones(t); }
+}
+
 /**
  * Reconcilia local↔nube una sola vez por carga de app. Empuja lo local a la
  * cuenta y baja lo que solo estuviera en la nube (unión aditiva, idempotente).
@@ -85,9 +113,17 @@ function reconcileCloud() {
     .then((r) => (r.ok ? r.json() : null))
     .then((cloud: { teams?: string[]; leagues?: string[]; players?: string[] } | null) => {
       if (!cloud) { cloudReconciled = false; return; } // permite reintento
-      writeArr(STORAGE_KEY, Array.from(new Set(cloud.teams   ?? readArr(STORAGE_KEY))));
-      writeArr(LEAGUES_KEY, Array.from(new Set(cloud.leagues ?? readArr(LEAGUES_KEY))));
-      writeArr(PLAYERS_KEY, Array.from(new Set(cloud.players ?? readArr(PLAYERS_KEY))));
+      const tomb = readTombstones();
+      // Reintenta borrar en la nube lo que sigue marcado como baja local.
+      for (const id of tomb.teams)   if ((cloud.teams   ?? []).includes(id)) cloudRemove('team', id);
+      for (const id of tomb.leagues) if ((cloud.leagues ?? []).includes(id)) cloudRemove('league', id);
+      for (const id of tomb.players) if ((cloud.players ?? []).includes(id)) cloudRemove('player', id);
+      // Escribe la unión MENOS las bajas (para que no reaparezcan).
+      const minus = (arr: string[] | undefined, removed: string[], fallback: string[]) =>
+        Array.from(new Set((arr ?? fallback).filter((id) => !removed.includes(id))));
+      writeArr(STORAGE_KEY, minus(cloud.teams,   tomb.teams,   readArr(STORAGE_KEY)));
+      writeArr(LEAGUES_KEY, minus(cloud.leagues, tomb.leagues, readArr(LEAGUES_KEY)));
+      writeArr(PLAYERS_KEY, minus(cloud.players, tomb.players, readArr(PLAYERS_KEY)));
       broadcast();
     })
     .catch(() => { cloudReconciled = false; });
@@ -148,7 +184,8 @@ export function useFavorites() {
     });
     setPersonProps({ favorite_teams: next.length });
     void syncPushConfig(); // el emisor de push segmenta por equipos favoritos
-    if (adding) cloudAdd('team', teamId); else cloudRemove('team', teamId);
+    if (adding) { clearTombstone('team', teamId); cloudAdd('team', teamId); }
+    else { addTombstone('team', teamId); cloudRemove('team', teamId); }
   }, []);
 
   const isFavorite = useCallback(
@@ -167,7 +204,8 @@ export function useFavorites() {
       kind: 'league', ref_id: competitionId, total_favorites: next.length,
     });
     void syncPushConfig(); // el emisor segmenta por ligas favoritas
-    if (adding) cloudAdd('league', competitionId); else cloudRemove('league', competitionId);
+    if (adding) { clearTombstone('league', competitionId); cloudAdd('league', competitionId); }
+    else { addTombstone('league', competitionId); cloudRemove('league', competitionId); }
   }, []);
 
   const isLeagueFavorite = useCallback(
@@ -192,7 +230,8 @@ export function useFavorites() {
       kind: 'player', ref_id: playerId, total_favorites: next.length,
     });
     void syncPushConfig(); // el emisor segmenta por jugadores favoritos
-    if (adding) cloudAdd('player', playerId); else cloudRemove('player', playerId);
+    if (adding) { clearTombstone('player', playerId); cloudAdd('player', playerId); }
+    else { addTombstone('player', playerId); cloudRemove('player', playerId); }
   }, []);
 
   const isPlayerFavorite = useCallback(
