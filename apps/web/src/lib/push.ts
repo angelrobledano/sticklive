@@ -6,6 +6,8 @@
  * (el emisor segmenta con lo que haya en push_subscriptions).
  */
 
+import { enabledTeams } from '@/lib/notif-prefs';
+
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 const VAPID_PUBLIC = process.env['NEXT_PUBLIC_VAPID_PUBLIC_KEY'] ?? '';
 
@@ -71,7 +73,10 @@ function gather() {
   let deviceId = 'unknown';
   let locale = 'es';
   try {
-    favTeams = JSON.parse(localStorage.getItem('rink-favorites') ?? '[]');
+    const favorites: string[] = JSON.parse(localStorage.getItem('rink-favorites') ?? '[]');
+    // Solo los equipos con notificación ACTIVADA (on/off por entidad). El emisor
+    // del ETL segmenta por fav_teams, así desactivar un equipo deja de avisar.
+    favTeams = enabledTeams(favorites);
     config   = JSON.parse(localStorage.getItem('rink-notif-config') ?? '{}');
     deviceId = localStorage.getItem('rink-device-id') ?? 'unknown';
     locale   = localStorage.getItem('sticklive_locale') ?? 'es';

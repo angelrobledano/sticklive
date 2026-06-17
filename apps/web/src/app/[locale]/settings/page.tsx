@@ -442,7 +442,17 @@ function useNotifConfig() {
     });
   }, []);
 
-  return { config, set, mounted };
+  // Fija varias claves a la vez (p. ej. el toggle combinado de jornada).
+  const update = useCallback((partial: Partial<NotifConfig>) => {
+    setConfig((prev) => {
+      const next = { ...prev, ...partial };
+      try { localStorage.setItem(NOTIF_KEY, JSON.stringify(next)); } catch { /* noop */ }
+      void syncPushConfig();
+      return next;
+    });
+  }, []);
+
+  return { config, set, update, mounted };
 }
 
 // ─── Selector de idioma ───────────────────────────────────────────────────────
@@ -679,15 +689,57 @@ function NotificationStatus({ deviceId }: { deviceId: string }) {
   );
 }
 
+// ─── Sub-cabecera de sección dentro de un bloque ──────────────────────────────
+
+function SubHeader({ label }: { label: string }) {
+  return (
+    <div className="pt-3 pb-1">
+      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+// ─── Fila de navegación (título + chevron) ────────────────────────────────────
+
+function NavRow({ label, href, count }: { label: string; href: string; count?: number }) {
+  return (
+    <Link href={href} className="flex items-center gap-3 py-3.5 group">
+      <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200">{label}</span>
+      {typeof count === 'number' && count > 0 && (
+        <span className="text-xs text-slate-400 dark:text-slate-500 tabular-nums">{count}</span>
+      )}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+           className="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0 group-hover:text-rink-passion transition-colors">
+        <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </Link>
+  );
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function SettingsPage() {
   const { t } = useT();
   const { isDark,    toggle: toggleDark, mounted: themeMounted }   = useDarkMode();
   const { favorites, toggle: toggleFav, isFavorite, leagues, toggleLeague, players, togglePlayer, mounted: favMounted } = useFavorites();
-  const { config,    set: setNotif,     mounted: notifMounted }    = useNotifConfig();
+  const { config,    set: setNotif, update: updateNotif, mounted: notifMounted } = useNotifConfig();
   const { isPremium, mounted: premiumMounted }                     = usePremium();
   const deviceId = useDeviceId();
+
+  // ¿Está el push bloqueado en este dispositivo? (permiso denegado, sin soporte,
+  // iPhone sin instalar o sin clave VAPID) → atenuamos las secciones de abajo.
+  const [notifBlocked, setNotifBlocked] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      const perm = notificationPermission();
+      setNotifBlocked(vapidMissing() || perm === 'unsupported' || perm === 'denied' || (isIOS() && !isStandalone()));
+    };
+    check();
+    window.addEventListener('focus', check);
+    return () => window.removeEventListener('focus', check);
+  }, []);
 
   // Lista de equipos de la OK Liga
   const [teams, setTeams]           = useState<TeamInfo[]>([]);
@@ -911,6 +963,9 @@ export default function SettingsPage() {
           </svg>
         }
       >
+        {/* Banner superior: permiso/estado + activar + prueba (avisa de errores) */}
+        <NotificationStatus deviceId={deviceId} />
+
         {/* Switch maestro — control absoluto del sistema */}
         <SettingRow
           label={t('settings.master')}
@@ -919,46 +974,37 @@ export default function SettingsPage() {
           onChange={() => setNotif('master')}
         />
 
-        {/* Estado del permiso + aviso iOS + botón de prueba */}
-        <NotificationStatus deviceId={deviceId} />
+        {/* Secciones — atenuadas si el maestro está apagado o el push bloqueado */}
+        <div className={(!config.master || notifBlocked) ? 'opacity-40 pointer-events-none select-none' : ''}>
 
-        {/* El resto de opciones se atenúa cuando el maestro está apagado */}
-        <div className={config.master ? '' : 'opacity-40 pointer-events-none select-none'}>
+          {/* Sección 1: Alertas de la jornada (inicio + resumen, toggle único) */}
+          <SubHeader label={t('settings.sec_jornada')} />
+          <SettingRow
+            label={t('settings.jornada_alerts')}
+            description={t('settings.jornada_alerts_desc')}
+            checked={config.globalJornadaStart || config.globalJornadaEnd}
+            onChange={() => {
+              const on = !(config.globalJornadaStart || config.globalJornadaEnd);
+              updateNotif({ globalJornadaStart: on, globalJornadaEnd: on });
+            }}
+          />
 
-        <div className="pt-2 pb-1">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-            {t('settings.global_section')}
-          </p>
-        </div>
-        <SettingRow label={t('settings.j_start')} description={t('settings.j_start_desc')} checked={config.globalJornadaStart} onChange={() => setNotif('globalJornadaStart')} />
-        <SettingRow label={t('settings.j_end')} description={t('settings.j_end_desc')} checked={config.globalJornadaEnd} onChange={() => setNotif('globalJornadaEnd')} />
-        <SettingRow label={t('settings.m_start')} description={t('settings.m_start_desc')} checked={config.globalMatchStart} onChange={() => setNotif('globalMatchStart')} />
-        <SettingRow label={t('settings.m_end')} description={t('settings.m_end_desc')} checked={config.globalMatchEnd} onChange={() => setNotif('globalMatchEnd')} />
+          {/* Sección 2: Notificaciones de mis favoritos (navegación por entidad) */}
+          <SubHeader label={t('settings.sec_favs')} />
+          <NavRow label={t('settings.notif_nav_competitions')} href="/settings/notifications/competitions" count={leagues.length} />
+          <NavRow label={t('settings.notif_nav_teams')}        href="/settings/notifications/teams"        count={favorites.length} />
+          <NavRow label={t('settings.notif_nav_players')}      href="/settings/notifications/players"      count={players.length} />
 
-        <div className="pt-4 pb-1">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-            {t('settings.fav_section')}
-          </p>
-        </div>
-        <SettingRow label={t('settings.goals')} description={t('settings.goals_desc')} checked={config.favGoals} onChange={() => setNotif('favGoals')} />
-        <SettingRow label={t('settings.cards')} description={t('settings.cards_desc')} checked={config.favBlueCards} onChange={() => setNotif('favBlueCards')} />
-        <SettingRow label={t('settings.timeouts')} description={t('settings.timeouts_desc')} checked={config.favTimeouts} onChange={() => setNotif('favTimeouts')} />
-        <SettingRow label={t('settings.m_start')} description={t('settings.fav_m_start_desc')} checked={config.favMatchStart} onChange={() => setNotif('favMatchStart')} />
-        <SettingRow label={t('settings.m_end')} description={t('settings.fav_m_end_desc')} checked={config.favMatchEnd} onChange={() => setNotif('favMatchEnd')} />
+          {/* Sección 3: Descanso */}
+          <SubHeader label={t('settings.sec_rest')} />
+          <SettingRow
+            label={t('settings.quiet')}
+            description={t('settings.quiet_desc')}
+            checked={config.quietNight}
+            onChange={() => setNotif('quietNight')}
+          />
 
-        <div className="pt-4 pb-1">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-            {t('settings.rest_section')}
-          </p>
-        </div>
-        <SettingRow
-          label={t('settings.quiet')}
-          description={t('settings.quiet_desc')}
-          checked={config.quietNight}
-          onChange={() => setNotif('quietNight')}
-        />
-
-        </div>{/* fin del bloque condicionado al switch maestro */}
+        </div>{/* fin de secciones atenuables */}
 
       </SettingsBlock>
 
