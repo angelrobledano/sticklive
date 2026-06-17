@@ -106,6 +106,9 @@ function seasonFields(label: string | null) {
 async function main() {
   const args = process.argv.slice(2);
   const doRun = args.includes('--run');
+  // --fichas: además de calendar+standings, scrapea las ACTAS de cada partido
+  // (de ahí salen jugadores, plantillas y alineaciones). Es lento.
+  const doFichas = args.includes('--fichas');
   // Acepta uno o varios idc separados por coma: --only-idc=3151,3258,3301
   const onlyIdcRaw = args.find((a) => a.startsWith('--only-idc='))?.split('=')[1] ?? null;
   const onlyIdcs = onlyIdcRaw
@@ -258,15 +261,19 @@ async function main() {
   }
 
   // ── Scraping secuencial ────────────────────────────────────────────────────
-  console.log(`\n▶ Scrapeando ${seeded.length} temporadas (calendar + standings)...`);
+  // Las actas (fichas-pendientes) traen jugadores/plantillas/alineaciones; son
+  // lentas (una por partido), así que solo si se pide con --fichas.
+  const entities = ['calendar', 'standings', ...(doFichas ? ['fichas-pendientes'] : [])];
+  console.log(`\n▶ Scrapeando ${seeded.length} temporadas (${entities.join(' + ')})...`);
   let ok = 0, fail = 0;
   for (const [i, s] of seeded.entries()) {
     console.log(`\n[${i + 1}/${seeded.length}] ${s.label} (idc=${s.idc})`);
-    for (const entity of ['calendar', 'standings']) {
+    for (const entity of entities) {
       try {
         execSync(
           `npx tsx --env-file=../../.env src/run-pipeline.ts --entity=${entity} --idc=${s.idc} --season-id=${s.seasonId}`,
-          { cwd: resolve(HERE, '..'), stdio: 'inherit', timeout: 180_000 }
+          // Las actas de una temporada entera pueden tardar bastante.
+          { cwd: resolve(HERE, '..'), stdio: 'inherit', timeout: entity === 'fichas-pendientes' ? 3_600_000 : 180_000 }
         );
         ok++;
       } catch {
