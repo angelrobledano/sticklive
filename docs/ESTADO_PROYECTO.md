@@ -1,6 +1,8 @@
 # Stick Live — Estado del proyecto
 
-*Actualizado: 11 de junio de 2026 (tarde) — EN PRODUCCIÓN: https://sticklive.eu*
+*Actualizado: 17 de junio de 2026 — EN PRODUCCIÓN: https://sticklive.eu*
+
+> Historial detallado en [CHANGELOG.md](./CHANGELOG.md) · Alta de competiciones en [RUNBOOK_COMPETICIONES.md](./RUNBOOK_COMPETICIONES.md) · Avisos en [NOTIFICACIONES.md](./NOTIFICACIONES.md).
 
 ---
 
@@ -11,14 +13,15 @@
 **Qué funciona hoy, de punta a punta:**
 
 - **En producción**: VPS Hetzner (CX23, Nuremberg) con Docker Compose — Postgres, API, web y scheduler de scraping (directo cada 5 min, calendario cada hora, actas a diario). HTTPS automático con Caddy, dominio `sticklive.eu` (+ www).
-- **Datos en directo** de la OK Liga (liga + playoffs como fases), con SSE en la web y **notificaciones push reales** (Web Push/VAPID): inicio de partido, goles y final, segmentadas por favoritos y preferencias, con smart bundling y silencio nocturno (ver `docs/NOTIFICACIONES.md`).
-- **Histórico multianual**: catálogo completo RFEP 1999/00→2025/26 importado (≈390 temporadas, 9.600 partidos, clasificaciones y escudos); actas detalladas en proceso de scraping (~9.500). Modelo preparado para federaciones autonómicas (taxonomía organizer/scope/región/categoría de edad; piloto FMP listo para ejecutar).
-- **Producto**: favoritos de **equipos, ligas y jugadores** con autenticación progresiva (anónimo → magic link por email real vía Brevo, o **Google OAuth** → sincronización multi-dispositivo), compartir nativo (partido/equipo/liga/jugador + alineación como imagen), pista de hockey con el 5 inicial, timeline con crono real en cuenta atrás, buscador de competiciones con filtros por edad, y panel de administración.
+- **Datos en directo multi-competición**: el directo arranca con la OK Liga (masculina, liga + playoffs como fases) y se ha ampliado a **todas las competiciones senior y copas de la temporada en curso** mediante una pasada adicional aislada en el cron de directo (no toca el camino crítico de la OK Liga). SSE en la web y **notificaciones push reales** (Web Push/VAPID) con disparadores de inicio, gol, final, **inicio/fin de jornada**, **competición seguida** y **gol de jugador seguido**, segmentadas por favoritos y preferencias por entidad, con smart bundling y silencio nocturno (ver [NOTIFICACIONES.md](./NOTIFICACIONES.md)).
+- **OK Liga Femenina** unificada como una sola competición (liga + playoff dentro), igual que la masculina; las copas/campeonatos de España se modelan como rondas de playoff.
+- **Histórico multianual**: catálogo completo RFEP 1999/00→2025/26 importado (≈390 temporadas, 9.600 partidos, clasificaciones y escudos); actas detalladas en proceso de scraping (~9.500). Modelo preparado para federaciones autonómicas (taxonomía organizer/scope/región/categoría de edad; piloto FMP listo para ejecutar). *Nota operativa: la BD de producción se reconstruyó el 16/06 partiendo solo de la OK Liga vigente; el histórico se vuelca aparte (ver runbook).*
+- **Producto**: favoritos de **equipos, ligas y jugadores** con **sincronización en la nube write-through** (cada cambio viaja al instante entre dispositivos, con tombstones para que una baja sin conexión no reaparezca) y autenticación progresiva (anónimo → magic link por email real vía Brevo, o **Google OAuth** → multi-dispositivo). Compartir nativo (partido/equipo/liga/jugador + alineación como imagen, con pre-generación para iOS), **instalación como app desde el navegador** (PWA con botón de instalar + instrucciones iOS), pista de hockey con el 5 inicial, timeline con crono real en cuenta atrás, **toolbar de filtros en competición** (jornada / fecha / equipo con estado en la URL), y panel de administración.
 - **Gratis de momento**: monetización (premium + anuncios) oculta tras flag. Stripe implementado y dormido (Redsys como alternativo).
-- **i18n** en 5 idiomas con URLs por idioma y hreflang; **SEO**: sitemap multiidioma dinámico, robots, metadata por ficha y schema.org (SportsEvent/SportsTeam/Person). Dado de alta en Search Console.
+- **i18n** en 5 idiomas con URLs por idioma y hreflang; **SEO**: sitemap multiidioma dinámico, robots, metadata por ficha, schema.org (SportsEvent/SportsTeam/Person) e **imágenes Open Graph dinámicas por partido** (escudos + marcador vía `next/og`) más una OG estática de marca. Dado de alta en Search Console.
 - **Analítica** (PostHog EU): pageviews normalizadas y eventos de funnel (favoritos, login, compartir, checkout, push).
 
-**Qué falta:** volcado del histórico local → servidor (en curso), reproceso de actas con crono exacto (refichas), importar federaciones autonómicas, APK/iOS con Capacitor, y monetización cuando toque.
+**Qué falta:** volcado del histórico local → servidor (en curso), reproceso de actas con crono exacto (refichas), importar federaciones autonómicas, APK/iOS con Capacitor, y monetización cuando toque. **Pendiente inmediato:** prueba end-to-end de las notificaciones en directo durante un partido real de playoff (19/21/23 junio).
 
 ---
 
@@ -63,9 +66,11 @@ REST: competiciones (+temporadas históricas), overview de temporada (clasificac
 - **Diseño**: mobile-first, dark mode con superficies elevadas (no negro plano), toggles iOS-style, contrastes AA, targets táctiles 44px, branding "Stick Live" sin referencias a la fuente de datos.
 - **Analítica**: PostHog con autocapture apagado, pageviews manuales con rutas normalizadas (`/matches/:id`), 9 eventos de plan de tracking, `identified_only`, captura desactivada en desarrollo.
 
-### Base de datos (16 migraciones)
+### Base de datos (26 migraciones)
 
-Esquema: competitions/seasons/rounds/teams/season_teams/matches/events/standings/players/team_players/match_lineups + users/orders (premium), auth_tokens/user_favorites (auth progresiva), users.status (admin). Migrador idempotente con tabla `_migrations` y bootstrap de esquemas preexistentes.
+Esquema: competitions/seasons/rounds/teams/season_teams/matches/events/standings/players/team_players/match_lineups + users/orders (premium), auth_tokens/user_favorites (auth progresiva), users.status (admin), push_subscriptions (+ `fav_leagues`/`fav_players` para segmentar avisos). Migrador idempotente con tabla `_migrations` y bootstrap de esquemas preexistentes. Migraciones recientes: **025** (favoritos de liga/jugador en suscripciones push), **026** (fusión del playoff femenino dentro de la liga femenina). El runner se ejecuta contra el contenedor (`$DC exec api npx tsx packages/db/src/migrate.ts`); tras reconstruir la BD hay que reaplicarlas todas.
+
+**Deduplicación de equipos al añadir competiciones nuevas:** decisión de modelo — los equipos se resuelven **por referencia FEP** (`source_ref`/`alt_source_refs`), no por slug, de modo que un mismo club que juega OK Liga y Campeonato de España es una sola entidad. Si no hay match, se crea con slug único (sufijo de género/ref). Detalle operativo en el [runbook](./RUNBOOK_COMPETICIONES.md).
 
 ### Operativa actual
 

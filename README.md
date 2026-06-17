@@ -8,16 +8,17 @@ Plataforma de resultados deportivos en tiempo real, enfocada inicialmente en hoc
 /
 ├── apps/
 │   ├── scraper/        # Scrapers (Playwright + Cheerio)
-│   ├── etl/            # Normalización y carga a DB
-│   └── api/            # Next.js — frontend + API routes
+│   ├── etl/            # Normalización, carga a DB y crons (live + emisor push)
+│   ├── api/            # Hono (Node) — REST + SSE, puerto 3000
+│   └── web/            # Next.js 14 App Router — puerto 3001
 ├── packages/
 │   ├── db/             # Migraciones y queries PostgreSQL
 │   ├── shared-types/   # Tipos TypeScript compartidos
-│   └── logger/         # Logger (pino) compartido
+│   ├── analytics/      # Eventos de servidor (PostHog)
+│   └── logger/         # Logger compartido
 ├── infra/
 │   └── docker/         # Docker Compose
-└── docs/
-    └── architecture.md # Decisiones de arquitectura
+└── docs/               # Documentación (ver abajo)
 ```
 
 ## Arranque rápido (desarrollo)
@@ -60,4 +61,9 @@ npm run test
 
 ## Documentación
 
-→ [Arquitectura y decisiones técnicas](docs/architecture.md)
+- [Estado del proyecto](docs/ESTADO_PROYECTO.md) — qué funciona hoy, de punta a punta.
+- [Changelog](docs/CHANGELOG.md) — historial de hitos de producto y plataforma.
+- [Notificaciones push](docs/NOTIFICACIONES.md) — cuándo y cómo se envían los avisos.
+- [Runbook de competiciones](docs/RUNBOOK_COMPETICIONES.md) — alta y gestión de competiciones en producción.
+- [Despliegue](docs/DEPLOY.md) — procedimiento de deploy, migraciones y túnel a la BD.
+- [Arquitectura y decisiones técnicas](docs/architecture.md) — racional de diseño original.
