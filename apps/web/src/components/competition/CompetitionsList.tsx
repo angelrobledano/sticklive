@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import type { CompetitionSummary } from '@/lib/api/client';
 import { useT } from '@/lib/i18n';
 import { clubName } from '@/lib/names';
 import { CountryFlag } from '@/components/shared/CountryFlag';
+import { useFavorites } from '@/hooks/useFavorites';
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -57,21 +58,6 @@ const COUNTRY_ORDER = ['ES', 'PT', 'IT', 'FR', 'AR', 'AN'];
 function countrySortKey(code: string | null): number {
   const i = COUNTRY_ORDER.indexOf((code ?? '').toUpperCase());
   return i === -1 ? 100 : i;
-}
-
-// ── Favoritos ─────────────────────────────────────────────────────────────────
-
-const FAV_KEY = 'sl_fav_comps';
-
-function loadFavs(): Set<string> {
-  try {
-    const raw = localStorage.getItem(FAV_KEY);
-    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
-  } catch { return new Set(); }
-}
-
-function saveFavs(favs: Set<string>) {
-  try { localStorage.setItem(FAV_KEY, JSON.stringify([...favs])); } catch { /* noop */ }
 }
 
 // ── Iconos ────────────────────────────────────────────────────────────────────
@@ -399,21 +385,15 @@ export function CompetitionsList({
 }) {
   const { t, locale } = useT();
 
-  const [tab, setTab]         = useState<Tab>('todas');
-  const [query, setQuery]     = useState('');
-  const [favorites, setFavs]  = useState<Set<string>>(new Set());
+  const [tab, setTab]     = useState<Tab>('todas');
+  const [query, setQuery] = useState('');
 
-  // Hidratar favoritos del localStorage
-  useEffect(() => { setFavs(loadFavs()); }, []);
-
-  const toggleFav = useCallback((id: string) => {
-    setFavs((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      saveFavs(next);
-      return next;
-    });
-  }, []);
+  // Favoritos de ligas: store compartido (rink-fav-leagues) con Ajustes y
+  // "Gestionar favoritos". Antes esta lista usaba su propia clave y quedaba
+  // desincronizada; ahora todo pasa por el mismo hook.
+  const { leagues, toggleLeague } = useFavorites();
+  const favorites = useMemo(() => new Set(leagues), [leagues]);
+  const toggleFav = toggleLeague;
 
   // 1) Filtrar solo temporadas relevantes (2024/25 o 2025/26)
   const relevant = useMemo(

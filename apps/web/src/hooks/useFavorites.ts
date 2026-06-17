@@ -49,8 +49,17 @@ export function useFavorites() {
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(LEAGUES_KEY);
-      if (stored) setLeagues(JSON.parse(stored) as string[]);
+      const stored = JSON.parse(localStorage.getItem(LEAGUES_KEY) ?? '[]') as string[];
+      // Migración: la lista de competiciones usaba antes su propia clave
+      // ('sl_fav_comps'). Unificamos en LEAGUES_KEY para que la estrella, "Mis
+      // ligas", Ajustes y "Gestionar favoritos" compartan el mismo estado.
+      const legacy = JSON.parse(localStorage.getItem(LEGACY_COMPS_KEY) ?? '[]') as string[];
+      const merged = Array.from(new Set([...stored, ...legacy]));
+      setLeagues(merged);
+      if (legacy.length > 0) {
+        localStorage.setItem(LEAGUES_KEY, JSON.stringify(merged));
+        localStorage.removeItem(LEGACY_COMPS_KEY);
+      }
     } catch { /* noop */ }
   }, []);
 
@@ -125,3 +134,5 @@ export function getFavNames(): Record<string, string> {
 const LEAGUES_KEY = 'rink-fav-leagues';
 const PLAYERS_KEY = 'rink-fav-players';
 const FAV_NAMES_KEY = 'rink-fav-names';
+/** Clave antigua de la lista de competiciones (se migra a LEAGUES_KEY). */
+const LEGACY_COMPS_KEY = 'sl_fav_comps';
