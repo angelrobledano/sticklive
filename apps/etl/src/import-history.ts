@@ -106,7 +106,11 @@ function seasonFields(label: string | null) {
 async function main() {
   const args = process.argv.slice(2);
   const doRun = args.includes('--run');
-  const onlyIdc = args.find((a) => a.startsWith('--only-idc='))?.split('=')[1] ?? null;
+  // Acepta uno o varios idc separados por coma: --only-idc=3151,3258,3301
+  const onlyIdcRaw = args.find((a) => a.startsWith('--only-idc='))?.split('=')[1] ?? null;
+  const onlyIdcs = onlyIdcRaw
+    ? new Set(onlyIdcRaw.split(',').map((s) => s.trim()).filter(Boolean))
+    : null;
   // Federaciones autonómicas: --catalog=<json> --org=FMP --region=Madrid
   //   (+ SIDGAD_PORTAL/SIDGAD_REFERER en el entorno para la fase --run)
   const catalogPath = args.find((a) => a.startsWith('--catalog='))?.split('=')[1] ?? DEFAULT_CATALOG;
@@ -118,7 +122,7 @@ async function main() {
     competitions: CatalogCompetition[];
   };
 
-  const comps = catalog.competitions.filter((c) => !onlyIdc || c.idc === onlyIdc);
+  const comps = catalog.competitions.filter((c) => !onlyIdcs || onlyIdcs.has(String(c.idc)));
   log.info({ total: comps.length }, 'Competiciones del catálogo a importar');
 
   // IDs base
@@ -164,13 +168,16 @@ async function main() {
     // 2. Temporada — el idc va en source_ref: es la clave de scraping.
     //    Si ya existe una temporada con ese slug Y otro source_ref (p. ej. la
     //    2025/26 actual ya cargada), NO la pisamos: actualizamos solo si es nueva.
+    // La temporada en curso (temp_39 = 2025/26) se marca como actual; el índice
+    // único es POR competición, así que cada una puede tener su temporada activa.
+    const isCurrent = comp.tempId === '39';
     const seasonRes = await db.query<{ id: string; source_ref: string | null }>(
       `INSERT INTO seasons
          (competition_id, name, slug, start_date, end_date, is_current, source_id, source_ref, scraped_at)
-       VALUES ($1,$2,$3,$4,$5,FALSE,$6,$7,NOW())
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
        ON CONFLICT (competition_id, slug) DO UPDATE SET updated_at = NOW()
        RETURNING id, source_ref`,
-      [competitionId, season.name, season.slug, season.start, season.end, sourceId, comp.idc]
+      [competitionId, season.name, season.slug, season.start, season.end, isCurrent, sourceId, comp.idc]
     );
     const seasonId = seasonRes.rows[0]!.id;
     const existingRef = seasonRes.rows[0]!.source_ref;
@@ -181,32 +188,55 @@ async function main() {
       continue;
     }
 
-    // 3. Equipos del catálogo
+    // 3. Equipos del catálogo — DEDUPE POR REF FEP.
+    //    Cada equipo registrado (ref único) es un equipo: un mismo ref se reutiliza
+    //    en todas sus competiciones (OK Liga + Copa + Supercopa), pero clubes
+    //    homónimos con refs distintos (Barça masc/fem) son equipos DISTINTOS.
+    //    El slug se hace único (sufijo de género o ref) para no colisionar.
+    const slugTaken = async (sl: string) =>
+      (await db.query(`SELECT 1 FROM teams WHERE sport_id = $1 AND slug = $2`, [sportId, sl])).rows.length > 0;
+
     for (const team of comp.teams) {
       const logoUrl = team.logo && team.logo !== 'default.png'
         ? `https://sidgad.cloud/rfep/images//logos_clubes/${team.logo}`
         : null;
-      // Los ids de equipo de sidgad cambian POR TEMPORADA: si el club ya
-      // existe (mismo slug), el ref de esta temporada se registra como
-      // alternativo en alt_source_refs para que el resolver del loader
-      // de partidos lo encuentre.
-      const tRes = await db.query<{ id: string }>(
-        `INSERT INTO teams (sport_id, name, short_name, slug, country, logo_url, source_id, source_ref, scraped_at)
-         VALUES ($1,$2,$3,$4,'ES',$5,$6,$7,NOW())
-         ON CONFLICT (sport_id, slug) DO UPDATE SET
-           logo_url = COALESCE(teams.logo_url, EXCLUDED.logo_url),
-           alt_source_refs = CASE
-             WHEN EXCLUDED.source_ref = teams.source_ref THEN teams.alt_source_refs
-             WHEN EXCLUDED.source_ref = ANY(COALESCE(teams.alt_source_refs, '{}')) THEN teams.alt_source_refs
-             ELSE array_append(COALESCE(teams.alt_source_refs, '{}'), EXCLUDED.source_ref)
-           END,
-           updated_at = NOW()
-         RETURNING id`,
-        [sportId, team.name, team.abbr || null, slugify(team.name), logoUrl, sourceId, team.ref]
+
+      // a) ¿existe ya un equipo con este ref? (source_ref o alt_source_refs)
+      const found = await db.query<{ id: string }>(
+        `SELECT id FROM teams
+         WHERE source_ref = $1 OR $1 = ANY(COALESCE(alt_source_refs, '{}'))
+         LIMIT 1`,
+        [team.ref]
       );
+      let teamId = found.rows[0]?.id ?? null;
+
+      if (teamId) {
+        // Reutilizamos; completamos el logo si faltaba.
+        if (logoUrl) {
+          await db.query(
+            `UPDATE teams SET logo_url = COALESCE(logo_url, $2), updated_at = NOW() WHERE id = $1`,
+            [teamId, logoUrl]
+          );
+        }
+      } else {
+        // b) equipo nuevo: slug único (sufijo por género y, si aún colisiona, por ref)
+        const base = slugify(team.name);
+        let candidate = base;
+        if (await slugTaken(candidate)) candidate = canon.gender === 'female' ? `${base}-fem` : `${base}-m`;
+        if (await slugTaken(candidate)) candidate = `${base}-${team.ref}`;
+        const ins = await db.query<{ id: string }>(
+          `INSERT INTO teams (sport_id, name, short_name, slug, country, logo_url, source_id, source_ref, scraped_at)
+           VALUES ($1,$2,$3,$4,'ES',$5,$6,$7,NOW())
+           ON CONFLICT (sport_id, slug) DO UPDATE SET updated_at = NOW()
+           RETURNING id`,
+          [sportId, team.name, team.abbr || null, candidate, logoUrl, sourceId, team.ref]
+        );
+        teamId = ins.rows[0]!.id;
+      }
+
       await db.query(
         `INSERT INTO season_teams (season_id, team_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
-        [seasonId, tRes.rows[0]!.id]
+        [seasonId, teamId]
       );
     }
 
