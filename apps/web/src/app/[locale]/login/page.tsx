@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useT } from '@/lib/i18n';
@@ -10,10 +10,14 @@ import { track } from '@/lib/analytics';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
+// Guard a nivel de módulo: cada token de magic link es de un solo uso. Sobrevive
+// a remounts/StrictMode y a re-disparos del efecto, evitando un segundo POST
+// /verify que recibiría "caducado" tras haber canjeado ya el enlace.
+const attemptedTokens = new Set<string>();
+
 type Status = 'idle' | 'sending' | 'sent' | 'verifying' | 'welcome' | 'error';
 
 function LoginInner() {
-  const router = useRouter();
   const params = useSearchParams();
   const { login } = useAuth();
   const { t } = useT();
@@ -26,7 +30,8 @@ function LoginInner() {
   // ── Canjear magic link (?token=) ─────────────────────────────────────────
   useEffect(() => {
     const token = params.get('token');
-    if (!token) return;
+    if (!token || attemptedTokens.has(token)) return;
+    attemptedTokens.add(token);
     setStatus('verifying');
 
     const deviceId = (() => {
@@ -78,7 +83,9 @@ function LoginInner() {
         setStatus('error');
         setErrorMsg(err.message);
       });
-  }, [params, login, router]);
+    // Solo al montar: el token se lee una vez y se canjea una vez (guard arriba).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Retorno de Google OAuth (#session=...&email=... en el fragment) ──────
   useEffect(() => {
