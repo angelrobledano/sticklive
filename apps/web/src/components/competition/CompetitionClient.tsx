@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback, Suspense } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import type { SeasonOverview, SeasonStandingRow, SeasonMatch, SeasonRound, CompetitionSeason, SeasonStats, SeasonLeader, TeamSummary } from '@/lib/api/client';
@@ -655,21 +655,55 @@ function SeriesCard({ serie, label }: { serie: PlayoffSeries; label: string }) {
 
 type PlayoffViewPhase = PlayoffPhase | '9º–10º';
 
+/** Slugs de fase para la URL (?phase=). */
+const PHASE_SLUG: Record<PlayoffViewPhase, string> = {
+  'Cuartos': 'cuartos', 'Semis': 'semis', 'Final': 'final', '9º–10º': '9-10',
+};
+function phaseFromSlug(s: string | null): PlayoffViewPhase | null {
+  if (!s) return null;
+  return (Object.keys(PHASE_SLUG) as PlayoffViewPhase[]).find((p) => PHASE_SLUG[p] === s) ?? null;
+}
+
 function PlayoffsTab({ matches }: { standings?: SeasonStandingRow[]; matches: SeasonMatch[] }) {
   const { t } = useT();
-  const [activePhase, setActivePhase] = useState<PlayoffViewPhase>('Cuartos');
+  const sp = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Fases por roundNumber (1=QF, 2=SF, 3=F — derivado por la API).
   const byPhase = useMemo(() => groupByPhase(matches), [matches]);
   // Serie de colocación 9º–10º (rn=0): fuera del cuadro por el título,
-  // pero decide la última plaza europea — fase propia, no se oculta.
+  // pero decide la última plaza europea — fase propia.
   const placement = useMemo(() => placementMatches(matches), [matches]);
 
-  const visiblePhases: PlayoffViewPhase[] = [
-    ...PLAYOFF_PHASES,
+  // Pre-render filtering: SOLO fases con partidos reales (matches.length > 0).
+  const visiblePhases = useMemo<PlayoffViewPhase[]>(() => [
+    ...PLAYOFF_PHASES.filter((p) => (byPhase[p]?.length ?? 0) > 0),
     ...(placement.length > 0 ? (['9º–10º'] as const) : []),
-  ];
+  ], [byPhase, placement]);
+
+  // Fase activa desde la URL (validada contra las visibles); si no, la primera.
+  const requested = phaseFromSlug(sp.get('phase'));
+  const activePhase: PlayoffViewPhase =
+    requested && visiblePhases.includes(requested) ? requested : (visiblePhases[0] ?? 'Final');
+
+  // Redirección elegante: si la URL pide una fase vacía/inexistente, normaliza a
+  // la primera con contenido (solo si había un ?phase= explícito).
+  useEffect(() => {
+    const raw = sp.get('phase');
+    if (!raw || visiblePhases.length === 0) return;
+    if (requested && visiblePhases.includes(requested)) return;
+    const params = new URLSearchParams(sp.toString());
+    params.set('phase', PHASE_SLUG[visiblePhases[0]!]);
+    router.replace(`${pathname}?${params}`, { scroll: false });
+  }, [sp, requested, visiblePhases, pathname, router]);
+
+  const selectPhase = (phase: PlayoffViewPhase) => {
+    const params = new URLSearchParams(sp.toString());
+    params.set('phase', PHASE_SLUG[phase]);
+    router.replace(`${pathname}?${params}`, { scroll: false });
+  };
 
   const renderPhase = (phase: PlayoffViewPhase) => {
     if (phase === '9º–10º') {
@@ -722,27 +756,32 @@ function PlayoffsTab({ matches }: { standings?: SeasonStandingRow[]; matches: Se
       {/* Vista general del cuadro por el título — informativa, sin enlaces */}
       <PlayoffBracket matches={matches} />
 
-      {/* Sub-pestañas horizontales */}
-      <div className="flex gap-0 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
-        {visiblePhases.map((phase) => (
-          <button
-            key={phase}
-            onClick={() => setActivePhase(phase)}
-            className={`flex-1 py-2.5 text-sm font-semibold transition-colors whitespace-nowrap ${
-              activePhase === phase
-                ? 'bg-rink-passion text-white'
-                : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-            }`}
-          >
-            {phaseLabel(phase)}
-          </button>
-        ))}
-      </div>
+      {/* Sub-pestañas horizontales — solo las fases con contenido. Si solo hay
+          una (o ninguna), no mostramos la barra: no aporta nada navegable. */}
+      {visiblePhases.length > 1 && (
+        <div className="flex gap-0 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+          {visiblePhases.map((phase) => (
+            <button
+              key={phase}
+              onClick={() => selectPhase(phase)}
+              className={`flex-1 py-2.5 text-sm font-semibold transition-colors whitespace-nowrap ${
+                activePhase === phase
+                  ? 'bg-rink-passion text-white'
+                  : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
+            >
+              {phaseLabel(phase)}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Contenido de la fase activa */}
-      <div ref={scrollRef}>
-        {renderPhase(activePhase)}
-      </div>
+      {visiblePhases.length > 0 && (
+        <div ref={scrollRef}>
+          {renderPhase(activePhase)}
+        </div>
+      )}
     </div>
   );
 }
@@ -951,7 +990,11 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
           <GameweeksTab rounds={data.rounds} matches={data.matches} />
         </Suspense>
       )}
-      {currentTab === 'Playoffs'      && <PlayoffsTab  matches={data.matches} />}
+      {currentTab === 'Playoffs'      && (
+        <Suspense fallback={<div className="card h-40 animate-pulse" />}>
+          <PlayoffsTab matches={data.matches} />
+        </Suspense>
+      )}
       {currentTab === 'Estadísticas'  && stats && <StatsLeadersTab stats={stats} />}
     </div>
   );
