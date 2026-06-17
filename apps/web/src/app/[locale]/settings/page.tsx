@@ -604,15 +604,29 @@ export default function SettingsPage() {
   const myPlayers = players.map((id) => ({ id, name: favNames[id] ?? '—' }));
 
   useEffect(() => {
-    if (!SEASON_ID) { setLoadingTeams(false); return; }
-    fetch(`${API_URL}/seasons/${SEASON_ID}/standings`)
-      .then((r) => r.json())
-      .then((data: { standings: Array<{
-        team_id?: string; teamId?: string;
-        team_name?: string; teamName?: string;
-        team_short_name?: string; teamShortName?: string;
-        team_logo_url?: string; teamLogoUrl?: string;
-      }> }) => {
+    const loadTeams = async () => {
+      // Temporada resuelta en runtime: env si está; si no, la "actual" con más
+      // equipos según /competitions. Evita depender de un id horneado en build.
+      let seasonId = SEASON_ID;
+      if (!seasonId) {
+        const comps = await fetch(`${API_URL}/competitions`).then((r) => r.json()).catch(() => null);
+        const list = (comps?.competitions ?? []) as Array<{ season?: { id: string; isCurrent?: boolean; teamCount?: number } | null }>;
+        const withSeason = list.filter((c) => c.season?.id);
+        const current = withSeason.filter((c) => c.season?.isCurrent);
+        const pool = current.length ? current : withSeason;
+        pool.sort((a, b) => (b.season?.teamCount ?? 0) - (a.season?.teamCount ?? 0));
+        seasonId = pool[0]?.season?.id ?? '';
+      }
+      if (!seasonId) { setLoadingTeams(false); return; }
+      try {
+        const data = await fetch(`${API_URL}/seasons/${seasonId}/standings`).then((r) => r.json()) as {
+          standings: Array<{
+            team_id?: string; teamId?: string;
+            team_name?: string; teamName?: string;
+            team_short_name?: string; teamShortName?: string;
+            team_logo_url?: string; teamLogoUrl?: string;
+          }>;
+        };
         const list: TeamInfo[] = (data.standings ?? []).map((s) => ({
           id:        s.team_id    ?? s.teamId    ?? '',
           name:      s.team_name  ?? s.teamName  ?? '',
@@ -620,9 +634,10 @@ export default function SettingsPage() {
           logoUrl:   s.team_logo_url   ?? s.teamLogoUrl   ?? null,
         }));
         setTeams(list);
-      })
-      .catch(() => { /* sin equipos */ })
-      .finally(() => setLoadingTeams(false));
+      } catch { /* sin equipos */ }
+      finally { setLoadingTeams(false); }
+    };
+    void loadTeams();
   }, []);
 
   const allMounted = themeMounted && favMounted && notifMounted && premiumMounted;

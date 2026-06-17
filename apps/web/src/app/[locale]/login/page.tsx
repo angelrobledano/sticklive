@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useT } from '@/lib/i18n';
@@ -18,6 +18,7 @@ const attemptedTokens = new Set<string>();
 type Status = 'idle' | 'sending' | 'sent' | 'verifying' | 'welcome' | 'error';
 
 function LoginInner() {
+  const router = useRouter();
   const params = useSearchParams();
   const { login } = useAuth();
   const { t } = useT();
@@ -76,8 +77,14 @@ function LoginInner() {
           } catch { /* noop */ }
         }
 
-        // Bienvenida en vez de redirección seca — primer momento de marca
-        setStatus('welcome');
+        // Si la cuenta ya tiene favoritos (de este dispositivo o de la nube),
+        // saltamos el onboarding y vamos directos a la home. Si no, bienvenida.
+        const favCount =
+          (merged?.teams?.length ?? teams.length) +
+          (merged?.leagues?.length ?? leagues.length) +
+          ((merged as { players?: string[] } | null)?.players?.length ?? players.length);
+        if (favCount > 0) router.replace('/');
+        else setStatus('welcome');
       })
       .catch((err: Error) => {
         setStatus('error');
@@ -130,18 +137,23 @@ function LoginInner() {
       body: JSON.stringify({ teams, leagues, players }),
     })
       .then((r) => (r.ok ? r.json() : null))
-      .then((merged: { teams?: string[]; leagues?: string[] } | null) => {
+      .then((merged: { teams?: string[]; leagues?: string[]; players?: string[] } | null) => {
         if (merged) {
           try {
             localStorage.setItem('rink-favorites', JSON.stringify(merged.teams ?? teams));
             localStorage.setItem('rink-fav-leagues', JSON.stringify(merged.leagues ?? leagues));
-            localStorage.setItem('rink-fav-players', JSON.stringify((merged as { players?: string[] }).players ?? players));
+            localStorage.setItem('rink-fav-players', JSON.stringify(merged.players ?? players));
           } catch { /* noop */ }
         }
+        // Ya con favoritos → directo a la home; si no, bienvenida + onboarding.
+        const favCount =
+          (merged?.teams?.length ?? teams.length) +
+          (merged?.leagues?.length ?? leagues.length) +
+          (merged?.players?.length ?? players.length);
+        if (favCount > 0) router.replace('/');
+        else setStatus('welcome');
       })
-      .catch(() => { /* el merge puede reintentar en la próxima visita */ });
-
-    setStatus('welcome');
+      .catch(() => setStatus('welcome'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -193,7 +205,7 @@ function LoginInner() {
             {t('auth.welcome_body')}
           </p>
         </div>
-        <Link href="/favorites"
+        <Link href="/favorites?onboarding=1"
               className="block w-full min-h-[48px] leading-[48px] rounded-xl bg-rink-passion text-white
                          text-sm font-semibold hover:opacity-90 transition-opacity">
           {t('auth.welcome_cta')}

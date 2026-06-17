@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useFavorites } from '@/hooks/useFavorites';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { clubName } from '@/lib/names';
@@ -13,15 +14,34 @@ const SEASON_ID = process.env['NEXT_PUBLIC_SEASON_ID'] ?? '';
 
 interface TeamItem { id: string; name: string; shortName: string | null }
 interface LeagueItem { id: string; name: string; shortName: string | null }
+interface CompItem {
+  id: string; name: string; shortName: string | null;
+  season?: { id: string; isCurrent?: boolean; teamCount?: number } | null;
+}
+
+/**
+ * Temporada para listar equipos. Usa NEXT_PUBLIC_SEASON_ID si está; si no,
+ * la deriva de /competitions (la "actual" con más equipos). Así no depende de
+ * un id horneado en el build, que puede quedar vacío/obsoleto tras un reseed.
+ */
+function pickSeasonId(comps: CompItem[]): string | null {
+  const withSeason = comps.filter((c) => c.season?.id);
+  const current = withSeason.filter((c) => c.season?.isCurrent);
+  const pool = current.length ? current : withSeason;
+  pool.sort((a, b) => (b.season?.teamCount ?? 0) - (a.season?.teamCount ?? 0));
+  return pool[0]?.season?.id ?? null;
+}
 
 /**
  * Gestionar favoritos: edición en bloque de equipos y ligas seguidos.
  * Buscador + listas con estrella grande por fila para activar/desactivar
  * en masa sin entrar en cada perfil.
  */
-export default function FavoritesPage() {
+function FavoritesInner() {
   const { isFavorite, toggle, isLeagueFavorite, toggleLeague, mounted } = useFavorites();
   const { t } = useT();
+  const searchParams = useSearchParams();
+  const onboarding = searchParams.get('onboarding') === '1';
   const [query, setQuery] = useState('');
   const [teams, setTeams] = useState<TeamItem[]>([]);
   const [leagues, setLeagues] = useState<LeagueItem[]>([]);
@@ -29,21 +49,27 @@ export default function FavoritesPage() {
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      SEASON_ID
-        ? fetch(`${API_URL}/seasons/${SEASON_ID}/standings`).then((r) => r.json()).catch(() => null)
-        : Promise.resolve(null),
-      fetch(`${API_URL}/competitions`).then((r) => r.json()).catch(() => null),
-    ]).then(([st, comps]) => {
-      const list: TeamItem[] = (st?.standings ?? []).map((s: Record<string, string | null>) => ({
-        id: (s['team_id'] ?? s['teamId']) as string,
-        name: (s['team_name'] ?? s['teamName'] ?? '') as string,
-        shortName: (s['team_short_name'] ?? s['teamShortName'] ?? null) as string | null,
-      })).filter((t: TeamItem) => t.id);
-      setTeams(list.sort((a, b) => a.name.localeCompare(b.name)));
-      setLeagues(((comps?.competitions ?? []) as Array<{ id: string; name: string; shortName: string | null }>)
-        .map((c) => ({ id: c.id, name: c.name, shortName: c.shortName })));
-    }).finally(() => setLoading(false));
+    fetch(`${API_URL}/competitions`)
+      .then((r) => r.json()).catch(() => null)
+      .then(async (comps) => {
+        const compList = (comps?.competitions ?? []) as CompItem[];
+        setLeagues(compList.map((c) => ({ id: c.id, name: c.name, shortName: c.shortName })));
+
+        // Temporada resuelta en runtime (env o derivada de /competitions).
+        const seasonId = SEASON_ID || pickSeasonId(compList);
+        if (!seasonId) return;
+        const st = await fetch(`${API_URL}/seasons/${seasonId}/standings`)
+          .then((r) => r.json()).catch(() => null);
+        const list: TeamItem[] = ((st?.standings ?? []) as Array<Record<string, string | null>>)
+          .map((s) => ({
+            id: (s['team_id'] ?? s['teamId']) as string,
+            name: (s['team_name'] ?? s['teamName'] ?? '') as string,
+            shortName: (s['team_short_name'] ?? s['teamShortName'] ?? null) as string | null,
+          }))
+          .filter((tm) => tm.id);
+        setTeams(list.sort((a, b) => a.name.localeCompare(b.name)));
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -100,8 +126,14 @@ export default function FavoritesPage() {
   };
 
   return (
-    <div className="px-4 py-4 max-w-2xl mx-auto space-y-4 pb-24">
-      <BackLink href="/settings" />
+    <div className="px-4 py-4 max-w-2xl mx-auto space-y-4 pb-28">
+      {onboarding ? (
+        <Link href="/" className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-rink-passion transition-colors">
+          {t('favorites.onboarding_skip')}
+        </Link>
+      ) : (
+        <BackLink href="/settings" />
+      )}
 
       <div>
         <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t('favorites.manage_favs')}</h1>
@@ -170,6 +202,34 @@ export default function FavoritesPage() {
           {toast}
         </div>
       )}
+
+      {/* Onboarding: paso siguiente claro tras elegir favoritos. Por encima de la
+          barra inferior en móvil (bottom-20) y flotante en escritorio. */}
+      {onboarding && (
+        <div className="fixed inset-x-0 bottom-20 md:bottom-6 z-[55] px-4 pointer-events-none">
+          <div className="max-w-2xl mx-auto pointer-events-auto">
+            <Link
+              href="/"
+              className="flex items-center justify-center gap-2 w-full min-h-[50px] rounded-xl
+                         bg-rink-passion text-white text-sm font-bold shadow-lg
+                         hover:opacity-90 transition-opacity"
+            >
+              {t('favorites.onboarding_done')}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className="w-4 h-4">
+                <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function FavoritesPage() {
+  return (
+    <Suspense fallback={null}>
+      <FavoritesInner />
+    </Suspense>
   );
 }

@@ -65,6 +65,8 @@
     "manage_help": "Los equipos y ligas que selecciones aparecerán en la parte superior de tu calendario y activarás sus alertas automáticas.",
     "teams": "Equipos",
     "leagues": "Ligas",
+    "onboarding_done": "Listo · Ver partidos",
+    "onboarding_skip": "Saltar por ahora",
     "onboarding_title": "Tu grada personalizada",
     "onboarding_body": "Marca tus equipos y ligas con la estrella para ver sus partidos arriba y recibir alertas en directo.",
     "onboarding_cta": "Explorar competiciones",
