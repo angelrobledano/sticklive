@@ -135,17 +135,22 @@ function formatDateHeader(dateKey: string, locale: string): string {
  * los PRÓXIMOS partidos agrupados por fecha (ascendente), con el mismo diseño de
  * MatchCard. Evita pantallas vacías y resultados antiguos.
  */
-function UpcomingMatches({ matches, afterKey, isToday }: {
+function UpcomingMatches({ matches, selectedDate, todayKey }: {
   matches: Match[];
-  afterKey: string;
-  isToday: boolean;
+  selectedDate: string;
+  todayKey: string;
 }) {
   const { t, locale } = useT();
+  const isToday = selectedDate === todayKey;
+  // En días anteriores a hoy NO mostramos "próximos": ver partidos/resultados
+  // posteriores a un día ya pasado confunde. Solo el mensaje de "no hay partidos".
+  const isPast = selectedDate < todayKey;
 
   const groups = useMemo(() => {
+    if (isPast) return [] as Array<[string, Match[]]>;
     const upcoming = matches
       .map((m) => ({ m, key: madridDateKey(m.scheduledAt) }))
-      .filter((x): x is { m: Match; key: string } => !!x.key && x.key > afterKey)
+      .filter((x): x is { m: Match; key: string } => !!x.key && x.key > selectedDate)
       .sort((a, b) =>
         a.key !== b.key
           ? (a.key < b.key ? -1 : 1)
@@ -157,20 +162,20 @@ function UpcomingMatches({ matches, afterKey, isToday }: {
       if (arr) arr.push(m); else byDate.set(key, [m]);
     }
     return Array.from(byDate.entries()); // ya ascendente por orden de inserción
-  }, [matches, afterKey]);
+  }, [matches, selectedDate, isPast]);
 
   return (
     <div>
-      <div className="flex flex-col items-center text-center pt-10 pb-4 px-8 gap-1">
+      <div className={`flex flex-col items-center text-center pt-10 px-8 gap-1 ${isPast ? 'pb-12' : 'pb-4'}`}>
         <p className="text-base font-bold text-slate-800 dark:text-slate-100">
           {isToday ? t('common.no_matches_today') : t('common.no_matches_this_day')}
         </p>
-        {groups.length > 0 && (
+        {!isPast && groups.length > 0 && (
           <p className="text-xs text-slate-400 dark:text-slate-500">{t('common.upcoming_intro')}</p>
         )}
       </div>
 
-      {groups.length === 0 ? (
+      {isPast ? null : groups.length === 0 ? (
         <p className="text-center text-xs text-slate-400 dark:text-slate-500 px-8 pb-12">
           {t('common.no_upcoming')}
         </p>
@@ -286,8 +291,8 @@ export function MatchesView({ matches }: MatchesViewProps) {
         {dayMatches.length === 0 ? (
           <UpcomingMatches
             matches={matches}
-            afterKey={selectedDate}
-            isToday={selectedDate === todayKey}
+            selectedDate={selectedDate}
+            todayKey={todayKey}
           />
         ) : (
           <>

@@ -746,7 +746,7 @@ const RINK_API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:300
 function RinkChip({ p, accent }: { p: RinkPlayer; accent: boolean }) {
   const surname = displayLineupName(p.playerName).split(' ').slice(-1)[0] ?? '';
   const chip = (
-    <div className="flex flex-col items-center gap-0.5 -translate-x-1/2 -translate-y-1/2">
+    <div className="relative flex flex-col items-center -translate-x-1/2 -translate-y-1/2">
       <span className={`relative w-10 h-10 rounded-full overflow-visible shadow-md ring-2 ${
         accent ? 'ring-rink-passion' : 'ring-white dark:ring-slate-200'
       }`}>
@@ -770,8 +770,9 @@ function RinkChip({ p, accent }: { p: RinkPlayer; accent: boolean }) {
                            text-[8px] font-bold flex items-center justify-center">C</span>
         )}
       </span>
-      <span className="max-w-[76px] truncate text-[10px] font-semibold leading-tight
-                       text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
+      <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 max-w-[80px] truncate
+                       whitespace-nowrap rounded px-1 py-px text-[10px] font-semibold leading-tight
+                       text-white bg-slate-900/65">
         {surname}
       </span>
     </div>
