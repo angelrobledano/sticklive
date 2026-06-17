@@ -55,8 +55,9 @@ function FavoritesInner() {
         const compList = (comps?.competitions ?? []) as CompItem[];
         setLeagues(compList.map((c) => ({ id: c.id, name: c.name, shortName: c.shortName })));
 
-        // Temporada resuelta en runtime (env o derivada de /competitions).
-        const seasonId = SEASON_ID || pickSeasonId(compList);
+        // Preferimos la temporada ACTUAL real de /competitions; el env solo como
+        // último recurso (puede estar vacío u obsoleto, que era justo el problema).
+        const seasonId = pickSeasonId(compList) || SEASON_ID;
         if (!seasonId) return;
         const st = await fetch(`${API_URL}/seasons/${seasonId}/standings`)
           .then((r) => r.json()).catch(() => null);

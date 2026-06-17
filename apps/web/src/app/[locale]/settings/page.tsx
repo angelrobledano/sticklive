@@ -605,18 +605,16 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const loadTeams = async () => {
-      // Temporada resuelta en runtime: env si está; si no, la "actual" con más
-      // equipos según /competitions. Evita depender de un id horneado en build.
-      let seasonId = SEASON_ID;
-      if (!seasonId) {
-        const comps = await fetch(`${API_URL}/competitions`).then((r) => r.json()).catch(() => null);
-        const list = (comps?.competitions ?? []) as Array<{ season?: { id: string; isCurrent?: boolean; teamCount?: number } | null }>;
-        const withSeason = list.filter((c) => c.season?.id);
-        const current = withSeason.filter((c) => c.season?.isCurrent);
-        const pool = current.length ? current : withSeason;
-        pool.sort((a, b) => (b.season?.teamCount ?? 0) - (a.season?.teamCount ?? 0));
-        seasonId = pool[0]?.season?.id ?? '';
-      }
+      // Temporada ACTUAL real desde /competitions (fuente de verdad); el env solo
+      // como último recurso. Evita depender de un id horneado en build que puede
+      // estar vacío u obsoleto tras un reseed.
+      const compsData = await fetch(`${API_URL}/competitions`).then((r) => r.json()).catch(() => null);
+      const list = (compsData?.competitions ?? []) as Array<{ season?: { id: string; isCurrent?: boolean; teamCount?: number } | null }>;
+      const withSeason = list.filter((c) => c.season?.id);
+      const current = withSeason.filter((c) => c.season?.isCurrent);
+      const pool = current.length ? current : withSeason;
+      pool.sort((a, b) => (b.season?.teamCount ?? 0) - (a.season?.teamCount ?? 0));
+      const seasonId = pool[0]?.season?.id || SEASON_ID;
       if (!seasonId) { setLoadingTeams(false); return; }
       try {
         const data = await fetch(`${API_URL}/seasons/${seasonId}/standings`).then((r) => r.json()) as {
