@@ -8,7 +8,10 @@ import { useT, SUPPORTED_LOCALES, LOCALE_NAMES, type Locale } from '@/lib/i18n';
 import { usePremium } from '@/context/PremiumContext';
 import { track, setPersonProps } from '@/lib/analytics';
 import { clubName } from '@/lib/names';
-import { enablePush, disablePush, syncPushConfig } from '@/lib/push';
+import {
+  enablePush, disablePush, syncPushConfig,
+  notificationPermission, isIOS, isStandalone, vapidMissing, sendTestPush,
+} from '@/lib/push';
 
 // ─── Constantes de storage ────────────────────────────────────────────────────
 
@@ -573,6 +576,70 @@ function FavoriteRow({ href, name, fallback, logoSrc, onRemove }: {
   );
 }
 
+// ─── Estado de notificaciones (soporte, permiso, iOS) + prueba ────────────────
+
+function NotificationStatus({ deviceId }: { deviceId: string }) {
+  const { t } = useT();
+  const [perm, setPerm] = useState<NotificationPermission | 'unsupported'>('default');
+  const [ios, setIos]   = useState(false);
+  const [standalone, setStandalone] = useState(true);
+  const [noVapid, setNoVapid] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [result, setResult]   = useState<string | null>(null);
+
+  useEffect(() => {
+    setPerm(notificationPermission());
+    setIos(isIOS());
+    setStandalone(isStandalone());
+    setNoVapid(vapidMissing());
+    // Refrescar el permiso al volver a la pestaña (puede cambiar fuera de la app)
+    const onFocus = () => setPerm(notificationPermission());
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
+
+  const test = async () => {
+    setTesting(true);
+    setResult(null);
+    const r = await sendTestPush(deviceId);
+    setTesting(false);
+    setResult(
+      r.ok
+        ? (r.sent && r.sent > 0 ? t('settings.notif_test_ok') : t('settings.notif_test_nosub'))
+        : t('settings.notif_test_fail')
+    );
+  };
+
+  // Mensaje de contexto según el caso
+  let note: string | null = null;
+  if (noVapid)                     note = t('settings.notif_unavailable');
+  else if (ios && !standalone)     note = t('settings.notif_ios_install');
+  else if (perm === 'unsupported') note = t('settings.notif_unavailable');
+  else if (perm === 'denied')      note = t('settings.notif_denied');
+  else if (perm === 'default')     note = t('settings.notif_enable_hint');
+
+  return (
+    <div className="py-3 space-y-2">
+      {note && (
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{note}</p>
+      )}
+      {!noVapid && perm === 'granted' && (!ios || standalone) && (
+        <button
+          onClick={test}
+          disabled={testing}
+          className="inline-flex items-center gap-2 min-h-[40px] px-3.5 rounded-xl
+                     border border-rink-passion/30 text-rink-passion text-xs font-semibold
+                     hover:bg-rink-passion/5 disabled:opacity-50 transition-colors"
+        >
+          {testing && <span className="w-3.5 h-3.5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" />}
+          {testing ? t('settings.notif_test_sending') : t('settings.notif_test_btn')}
+        </button>
+      )}
+      {result && <p className="text-xs text-slate-500 dark:text-slate-400">{result}</p>}
+    </div>
+  );
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -809,6 +876,9 @@ export default function SettingsPage() {
           checked={config.master}
           onChange={() => setNotif('master')}
         />
+
+        {/* Estado del permiso + aviso iOS + botón de prueba */}
+        <NotificationStatus deviceId={deviceId} />
 
         {/* El resto de opciones se atenúa cuando el maestro está apagado */}
         <div className={config.master ? '' : 'opacity-40 pointer-events-none select-none'}>

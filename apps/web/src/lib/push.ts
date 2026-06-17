@@ -13,7 +13,49 @@ export function pushSupported(): boolean {
   return typeof window !== 'undefined'
     && 'serviceWorker' in navigator
     && 'PushManager' in window
+    && 'Notification' in window
     && Boolean(VAPID_PUBLIC);
+}
+
+/** Estado del permiso de notificaciones (o 'unsupported' si el navegador no lo soporta). */
+export function notificationPermission(): NotificationPermission | 'unsupported' {
+  if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
+  return Notification.permission;
+}
+
+/** iPhone/iPad (incluye iPadOS que se hace pasar por Mac con pantalla táctil). */
+export function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /iphone|ipad|ipod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+/** App añadida a la pantalla de inicio (PWA en modo standalone). */
+export function isStandalone(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia?.('(display-mode: standalone)').matches
+    || (navigator as unknown as { standalone?: boolean }).standalone === true;
+}
+
+/** Falta la clave VAPID pública en el build (push deshabilitado en el cliente). */
+export function vapidMissing(): boolean {
+  return !VAPID_PUBLIC;
+}
+
+/** Envía una notificación de prueba a las suscripciones de este dispositivo. */
+export async function sendTestPush(deviceId: string): Promise<{ ok: boolean; sent?: number; error?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/push/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId }),
+    });
+    const data = await res.json().catch(() => ({})) as { sent?: number; error?: string };
+    if (!res.ok) return { ok: false, error: data.error ?? `HTTP ${res.status}` };
+    return { ok: true, sent: data.sent ?? 0 };
+  } catch {
+    return { ok: false, error: 'network' };
+  }
 }
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
