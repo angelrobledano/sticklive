@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { AdBanner } from '@/components/shared/AdBanner';
 import type { MatchDetail, MatchEvent, MatchEventType } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
@@ -750,9 +751,9 @@ function RinkChip({ p, accent }: { p: RinkPlayer; accent: boolean }) {
       <span className={`relative w-10 h-10 rounded-full overflow-visible shadow-md ring-2 ${
         accent ? 'ring-rink-passion' : 'ring-white dark:ring-slate-200'
       }`}>
-        {/* Foto del jugador. En la pista la servimos vía proxy de la API
-            (same-origin) para que html2canvas la capture al compartir; si no hay
-            playerId, caemos a la URL directa del CDN. */}
+        {/* Foto del jugador vía proxy de la API; si no hay playerId, caemos a la
+            URL directa del CDN. (La imagen compartible se renderiza aparte en el
+            servidor: /matches/{id}/lineup-image.) */}
         <PlayerAvatar
           photoUrl={p.playerId ? `${RINK_API_URL}/players/${p.playerId}/photo` : (p.photoUrl ?? null)}
           name={p.playerName}
@@ -783,53 +784,52 @@ function RinkChip({ p, accent }: { p: RinkPlayer; accent: boolean }) {
     : <div className="absolute" style={{ left: 0, top: 0 }}>{chip}</div>;
 }
 
-function StartingFiveRink({ home, away, homeName, awayName }: {
+function StartingFiveRink({ home, away, homeName, awayName, matchId }: {
   home: RinkPlayer[];
   away: RinkPlayer[];
   homeName: string;
   awayName: string;
+  matchId: string;
 }) {
   const { t } = useT();
+  const params = useParams();
+  const locale = (Array.isArray(params?.['locale']) ? params['locale'][0] : params?.['locale']) ?? 'es';
   const rinkRef = useRef<HTMLDivElement>(null);
   const [sharing, setSharing] = useState(false);
-  // Imagen pre-generada. Clave para iOS Safari: navigator.share() debe invocarse
-  // DENTRO del gesto del usuario; si renderizamos (async, segundos) antes de
-  // compartir, iOS pierde el gesto y share() no resuelve (spinner colgado).
+  // Imagen pre-descargada. Clave para iOS Safari/WebKit: navigator.share() debe
+  // invocarse DENTRO del gesto del usuario; si hacemos trabajo async (segundos)
+  // antes de compartir, iOS pierde el gesto y share() no resuelve (spinner colgado).
   const fileRef = useRef<File | null>(null);
 
-  /** Renderiza la pista a PNG (html2canvas) y devuelve el File, cacheándolo. */
-  const buildImage = useCallback(async (): Promise<File | null> => {
-    if (!rinkRef.current) return null;
-    const { default: html2canvas } = await import('html2canvas');
-    const canvas = await html2canvas(rinkRef.current, {
-      scale: 2,
-      backgroundColor: '#0b1220',
-      useCORS: true,      // permite dibujar imágenes servidas con CORS
-      imageTimeout: 3000, // las fotos van por proxy same-origin y ya están en pantalla
-    });
-    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/png'));
-    if (!blob) return null;
-    const file = new File([blob], 'stick-live-alineacion.png', { type: 'image/png' });
-    fileRef.current = file;
-    return file;
-  }, []);
+  // La imagen se RENDERIZA EN EL SERVIDOR (next/og), no con html2canvas: este se
+  // colgaba en iOS rasterizando el DOM. Aquí solo descargamos ese PNG ya hecho.
+  const imageUrl = `/${locale}/matches/${matchId}/lineup-image`;
 
-  // Firma de la alineación: regenera la imagen solo si cambian los jugadores/dorsales.
-  const lineupSig = [...home, ...away]
-    .map((p) => `${p.playerId ?? p.playerName}:${p.jerseyNumber ?? ''}`)
-    .join(',');
+  /** Descarga el PNG del servidor y lo cachea como File para compartir. */
+  const fetchShareFile = useCallback(async (): Promise<File | null> => {
+    try {
+      const res = await fetch(imageUrl);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      const file = new File([blob], 'stick-live-alineacion.png', { type: 'image/png' });
+      fileRef.current = file;
+      return file;
+    } catch {
+      return null;
+    }
+  }, [imageUrl]);
 
-  // Pre-generamos en segundo plano al abrir (tras un margen para que carguen las
-  // fotos), de modo que al pulsar compartir el File ya esté listo y share() se
-  // llame de forma síncrona dentro del gesto.
+  // Pre-descargamos al montar para que al pulsar compartir el File ya esté listo
+  // y share() se llame de forma síncrona dentro del gesto (único camino fiable en iOS).
   useEffect(() => {
     fileRef.current = null;
-    if (!lineupSig) return;
-    const id = setTimeout(() => { buildImage().catch(() => {}); }, 1500);
-    return () => clearTimeout(id);
-  }, [lineupSig, buildImage]);
+    if (!matchId) return;
+    let cancelled = false;
+    void fetchShareFile().then(() => { if (cancelled) fileRef.current = null; });
+    return () => { cancelled = true; };
+  }, [matchId, fetchShareFile]);
 
-  /** Comparte la alineación como imagen (descarga como fallback). */
+  /** Comparte la alineación como imagen (abre/descarga como fallback). */
   const shareLineup = async () => {
     if (sharing) return;
     // Camino rápido: imagen ya lista → share() síncrono dentro del gesto (iOS OK).
@@ -838,12 +838,16 @@ function StartingFiveRink({ home, away, homeName, awayName }: {
       navigator.share({ files: [cached], title: 'Stick Live' }).catch(() => {});
       return;
     }
-    // Aún no lista: la generamos ahora. Watchdog para no dejar el spinner colgado.
+    // Aún no lista (red lenta): la descargamos ahora. Watchdog anti-spinner colgado.
     setSharing(true);
-    const watchdog = setTimeout(() => setSharing(false), 10000);
+    const watchdog = setTimeout(() => setSharing(false), 12000);
     try {
-      const file = await buildImage();
-      if (!file) return;
+      const file = await fetchShareFile();
+      if (!file) {
+        // Último recurso: abrir la imagen en una pestaña para guardarla a mano.
+        window.open(imageUrl, '_blank');
+        return;
+      }
       if (navigator.canShare?.({ files: [file] })) {
         navigator.share({ files: [file], title: 'Stick Live' }).catch(() => {});
       } else {
@@ -854,7 +858,7 @@ function StartingFiveRink({ home, away, homeName, awayName }: {
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
-    } catch { /* render/captura falló */ } finally {
+    } catch { /* descarga falló */ } finally {
       clearTimeout(watchdog);
       setSharing(false);
     }
@@ -985,6 +989,7 @@ function LineupsTab({ data }: { data: MatchDetail }) {
         away={starters('away')}
         homeName={data.match.homeTeam?.shortName ?? data.match.homeTeam?.name ?? ''}
         awayName={data.match.awayTeam?.shortName ?? data.match.awayTeam?.name ?? ''}
+        matchId={data.match.id}
       />
       {/* Solo renderizar la tarjeta del equipo si tiene jugadores */}
       {teams.filter(({ players }) => players.length > 0).map(({ team, label, players }) => (
