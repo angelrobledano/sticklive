@@ -172,6 +172,38 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
  * Un ciclo de scraping: captura marcadores, los persiste y luego descarga
  * las fichas resumen de los partidos activos.
  */
+/** Temporadas (≠ primaria) con actividad: live o partido inminente en la ventana. */
+async function activeSecondarySeasons(seasonIds: string[], primarySeasonId: string): Promise<string[]> {
+  const res = await db.query<{ season_id: string }>(
+    `SELECT DISTINCT season_id FROM matches
+     WHERE season_id = ANY($1) AND season_id <> $2
+       AND ( status = 'live'
+          OR (status = 'scheduled'
+              AND scheduled_at BETWEEN NOW() - INTERVAL '3 hours'
+                                   AND NOW() + INTERVAL '${WINDOW_HOURS} hours') )`,
+    [seasonIds, primarySeasonId]
+  );
+  return res.rows.map((r) => r.season_id);
+}
+
+/**
+ * Scrapea los marcadores de UNA temporada y dispara el push de eventos de partido
+ * (inicio/gol/final) + jornada + competición. No emite gol-jugador (eso queda para
+ * la primaria, que tiene el timing fino con las fichas).
+ */
+async function scrapeSeasonScores(seasonId: string): Promise<void> {
+  const prev       = pushEnabled ? await snapshotMatches(seasonId) : new Map();
+  const prevRounds = pushEnabled ? await snapshotRounds(seasonId)  : new Map();
+  const scraper  = new FepMatchesScraper({ seasonId });
+  const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId });
+  const result = await scraper.run();
+  if (result.data.length === 0) return;
+  await pipeline.runMatches(result);
+  try { await diffAndNotify(prev, prevRounds, seasonId); } catch (err) {
+    log.warn({ err, seasonId }, 'push (secundaria) fallo — sigue');
+  }
+}
+
 async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promise<number> {
   const scraper  = new FepMatchesScraper({ seasonId: primarySeasonId });
   const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: primarySeasonId });
@@ -188,6 +220,22 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
   // Eventos de partido (equipo/competición) + jornada (inicio/fin)
   try { await diffAndNotify(prev, prevRounds, primarySeasonId); } catch (err) {
     log.warn({ err }, 'push-dispatcher fallo — el scraping sigue');
+  }
+
+  // ── Marcadores de las DEMÁS competiciones con actividad (aditivo) ──────────
+  // El directo de la primaria (OK Liga) ya está hecho arriba; aquí cubrimos el
+  // resto de competiciones en vivo. Aislado: si una falla, no afecta a nada más.
+  // Las fichas/alineaciones de sus partidos se refrescan después, abajo, porque
+  // runFichasForActiveMatches opera sobre TODAS las temporadas.
+  try {
+    for (const sid of await activeSecondarySeasons(seasonIds, primarySeasonId)) {
+      try { await scrapeSeasonScores(sid); } catch (err) {
+        log.warn({ err, seasonId: sid }, 'scores secundaria fallo — continúa');
+      }
+      await sleep(1000); // cortesía con la fuente
+    }
+  } catch (err) {
+    log.warn({ err }, 'pase de competiciones secundarias fallo — primaria intacta');
   }
 
   // Goles de jugador: las fichas traen el goleador, así que snapshot ANTES de
