@@ -16,6 +16,8 @@ interface LiveMatchRow {
   venue_name: string | null;
   venue_city: string | null;
   source_ref: string | null;
+  competition_id: string | null;
+  competition_name: string | null;
   // equipo local
   home_team_id: string;
   home_team_name: string;
@@ -33,6 +35,8 @@ function mapLiveRow(row: LiveMatchRow) {
     id:          row.id,
     seasonId:    row.season_id,
     roundId:     row.round_id,
+    competitionId:   row.competition_id,
+    competitionName: row.competition_name,
     status:      row.status,
     scheduledAt: row.scheduled_at,
     startedAt:   row.started_at,
@@ -78,6 +82,8 @@ liveRouter.get('/live', async (c) => {
         m.venue_name,
         m.venue_city,
         m.source_ref,
+        comp.id         AS competition_id,
+        comp.name       AS competition_name,
         -- equipo local
         ht.id           AS home_team_id,
         ht.name         AS home_team_name,
@@ -89,6 +95,8 @@ liveRouter.get('/live', async (c) => {
         at.short_name   AS away_team_short_name,
         at.logo_url     AS away_team_logo_url
       FROM matches m
+      LEFT JOIN seasons s2       ON s2.id = m.season_id
+      LEFT JOIN competitions comp ON comp.id = s2.competition_id
       LEFT JOIN teams ht ON ht.id = m.home_team_id
       LEFT JOIN teams at ON at.id = m.away_team_id
       WHERE m.status = 'live'
@@ -139,12 +147,14 @@ liveRouter.get('/current', async (c) => {
         m.id, m.season_id, m.round_id,
         m.home_score, m.away_score, m.status,
         m.scheduled_at, m.started_at, m.venue_name, m.venue_city, m.source_ref,
+        comp.id AS competition_id, comp.name AS competition_name,
         ht.id AS home_team_id, ht.name AS home_team_name,
         ht.short_name AS home_team_short_name, ht.logo_url AS home_team_logo_url,
         at.id AS away_team_id, at.name AS away_team_name,
         at.short_name AS away_team_short_name, at.logo_url AS away_team_logo_url
       FROM matches m
       JOIN seasons s ON s.id = m.season_id AND s.is_current = true
+      JOIN competitions comp ON comp.id = s.competition_id
       LEFT JOIN teams ht ON ht.id = m.home_team_id
       LEFT JOIN teams at ON at.id = m.away_team_id
       WHERE m.status IN ('scheduled', 'live', 'finished')

@@ -96,6 +96,16 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
   );
 }
 
+/** Etiqueta de competición sobre un partido (en listas con competiciones mezcladas). */
+function CompetitionCaption({ name }: { name?: string | null }) {
+  if (!name) return null;
+  return (
+    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1 pb-0.5">
+      {name}
+    </p>
+  );
+}
+
 /** Estado vacío de favoritos — onboarding motivador, no una sección en blanco */
 function FavoritesOnboarding() {
   const { t } = useT();
@@ -185,7 +195,10 @@ function UpcomingMatches({ matches, selectedDate, todayKey }: {
             <SectionHeader label={formatDateHeader(dateKey, locale)} count={ms.length} />
             <ul className="px-4 space-y-2 pb-2">
               {ms.map((m) => (
-                <li key={m.id}><MatchCard match={m} /></li>
+                <li key={m.id}>
+                  <CompetitionCaption name={m.competitionName} />
+                  <MatchCard match={m} />
+                </li>
               ))}
             </ul>
           </section>
@@ -269,6 +282,18 @@ export function MatchesView({ matches }: MatchesViewProps) {
     return { favMatches: fav, restMatches: rest };
   }, [dayMatches, favorites, isFavorite]);
 
+  // Los no-favoritos se agrupan POR COMPETICIÓN (antes había una cabecera fija
+  // "OK Liga Masculina" que etiquetaba mal los partidos de otras competiciones).
+  const restByCompetition = useMemo(() => {
+    const map = new Map<string, Match[]>();
+    for (const m of restMatches) {
+      const key = m.competitionName ?? 'Otras competiciones';
+      const arr = map.get(key);
+      if (arr) arr.push(m); else map.set(key, [m]);
+    }
+    return Array.from(map.entries());
+  }, [restMatches]);
+
   const hasBothSections = favMatches.length > 0 && restMatches.length > 0;
 
   return (
@@ -312,6 +337,7 @@ export function MatchesView({ matches }: MatchesViewProps) {
                 <ul className="px-4 space-y-2">
                   {(showAllFavs ? favMatches : favMatches.slice(0, FAV_PREVIEW)).map((m) => (
                     <li key={m.id}>
+                      <CompetitionCaption name={m.competitionName} />
                       <MatchCard match={m} isFavoriteTeam />
                     </li>
                   ))}
@@ -341,19 +367,19 @@ export function MatchesView({ matches }: MatchesViewProps) {
               <AdBanner zone="home-inline" className="my-1" />
             )}
 
-            {/* Bloque principal — OK Liga */}
-            {restMatches.length > 0 && (
-              <section>
-                <SectionHeader label="OK Liga Masculina" count={restMatches.length} />
+            {/* Bloque principal — una sección por competición */}
+            {restByCompetition.map(([comp, ms]) => (
+              <section key={comp}>
+                <SectionHeader label={comp} count={ms.length} />
                 <ul className="px-4 space-y-2 pb-4">
-                  {restMatches.map((m) => (
+                  {ms.map((m) => (
                     <li key={m.id}>
                       <MatchCard match={m} />
                     </li>
                   ))}
                 </ul>
               </section>
-            )}
+            ))}
           </>
         )}
       </div>

@@ -57,6 +57,8 @@ export interface Match {
   id: string;
   seasonId: string;
   roundId: string | null;
+  competitionId?: string | null;
+  competitionName?: string | null;
   status: MatchStatus;
   scheduledAt: string | null;
   startedAt: string | null;
@@ -115,6 +117,8 @@ interface RawLiveMatch {
   id: string;
   seasonId: string;
   roundId: string | null;
+  competitionId?: string | null;
+  competitionName?: string | null;
   status: MatchStatus;
   scheduledAt: string | null;
   startedAt: string | null;
@@ -175,6 +179,8 @@ function normalizeLiveMatch(raw: RawLiveMatch): Match {
     id:          raw.id,
     seasonId:    raw.seasonId,
     roundId:     raw.roundId,
+    competitionId:   raw.competitionId ?? null,
+    competitionName: raw.competitionName ?? null,
     status:      raw.status,
     scheduledAt: raw.scheduledAt,
     startedAt:   raw.startedAt,
