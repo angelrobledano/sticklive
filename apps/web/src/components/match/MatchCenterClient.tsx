@@ -792,36 +792,70 @@ function StartingFiveRink({ home, away, homeName, awayName }: {
   const { t } = useT();
   const rinkRef = useRef<HTMLDivElement>(null);
   const [sharing, setSharing] = useState(false);
+  // Imagen pre-generada. Clave para iOS Safari: navigator.share() debe invocarse
+  // DENTRO del gesto del usuario; si renderizamos (async, segundos) antes de
+  // compartir, iOS pierde el gesto y share() no resuelve (spinner colgado).
+  const fileRef = useRef<File | null>(null);
 
-  /** Renderiza la pista a PNG y la comparte (o descarga como fallback) */
+  /** Renderiza la pista a PNG (html2canvas) y devuelve el File, cacheándolo. */
+  const buildImage = useCallback(async (): Promise<File | null> => {
+    if (!rinkRef.current) return null;
+    const { default: html2canvas } = await import('html2canvas');
+    const canvas = await html2canvas(rinkRef.current, {
+      scale: 2,
+      backgroundColor: '#0b1220',
+      useCORS: true,      // permite dibujar imágenes servidas con CORS
+      imageTimeout: 3000, // las fotos van por proxy same-origin y ya están en pantalla
+    });
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/png'));
+    if (!blob) return null;
+    const file = new File([blob], 'stick-live-alineacion.png', { type: 'image/png' });
+    fileRef.current = file;
+    return file;
+  }, []);
+
+  // Firma de la alineación: regenera la imagen solo si cambian los jugadores/dorsales.
+  const lineupSig = [...home, ...away]
+    .map((p) => `${p.playerId ?? p.playerName}:${p.jerseyNumber ?? ''}`)
+    .join(',');
+
+  // Pre-generamos en segundo plano al abrir (tras un margen para que carguen las
+  // fotos), de modo que al pulsar compartir el File ya esté listo y share() se
+  // llame de forma síncrona dentro del gesto.
+  useEffect(() => {
+    fileRef.current = null;
+    if (!lineupSig) return;
+    const id = setTimeout(() => { buildImage().catch(() => {}); }, 1500);
+    return () => clearTimeout(id);
+  }, [lineupSig, buildImage]);
+
+  /** Comparte la alineación como imagen (descarga como fallback). */
   const shareLineup = async () => {
-    if (!rinkRef.current || sharing) return;
+    if (sharing) return;
+    // Camino rápido: imagen ya lista → share() síncrono dentro del gesto (iOS OK).
+    const cached = fileRef.current;
+    if (cached && navigator.canShare?.({ files: [cached] })) {
+      navigator.share({ files: [cached], title: 'Stick Live' }).catch(() => {});
+      return;
+    }
+    // Aún no lista: la generamos ahora. Watchdog para no dejar el spinner colgado.
     setSharing(true);
+    const watchdog = setTimeout(() => setSharing(false), 10000);
     try {
-      const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(rinkRef.current, {
-        scale: 2,
-        backgroundColor: '#0b1220',
-        useCORS: true,      // permite dibujar imágenes servidas con CORS
-        imageTimeout: 8000, // da tiempo a que carguen las fotos (proxy) antes de capturar
-      });
-      canvas.toBlob(async (blob) => {
-        if (!blob) { setSharing(false); return; }
-        const file = new File([blob], 'stick-live-alineacion.png', { type: 'image/png' });
-        try {
-          if (navigator.canShare?.({ files: [file] })) {
-            await navigator.share({ files: [file], title: 'Stick Live' });
-          } else {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'stick-live-alineacion.png';
-            a.click();
-            URL.revokeObjectURL(a.href);
-          }
-        } catch { /* cancelado */ }
-        setSharing(false);
-      }, 'image/png');
-    } catch {
+      const file = await buildImage();
+      if (!file) return;
+      if (navigator.canShare?.({ files: [file] })) {
+        navigator.share({ files: [file], title: 'Stick Live' }).catch(() => {});
+      } else {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    } catch { /* render/captura falló */ } finally {
+      clearTimeout(watchdog);
       setSharing(false);
     }
   };
