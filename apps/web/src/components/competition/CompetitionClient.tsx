@@ -590,8 +590,59 @@ type PlayoffPhase = typeof PLAYOFF_PHASES[number];
 
 // ─── Series de playoff (lógica compartida en @/lib/playoff) ─────────────────
 
+/**
+ * Eliminatoria a PARTIDO ÚNICO: tarjeta de partido limpia (sin marcador de
+ * victorias de serie, que ahí sobra y confunde). Resalta al ganador y enlaza.
+ */
+function SingleMatchSeries({ serie, label }: { serie: PlayoffSeries; label: string }) {
+  const g = serie.games[0]!;
+  const isFinished = g.status === 'finished';
+  const isLive = g.status === 'live';
+  const showScore = isFinished || isLive;
+  const sides = [
+    { team: g.homeTeam, score: g.score.home },
+    { team: g.awayTeam, score: g.score.away },
+  ];
+
+  const card = (
+    <div className={`card overflow-hidden border ${isLive ? 'border-emerald-400/40' : 'border-slate-200 dark:border-slate-800'}`}>
+      <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
+        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</p>
+        {isLive && <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider">● Live</span>}
+      </div>
+      {sides.map(({ team, score }, idx) => {
+        const winner = showScore && (idx === 0
+          ? (g.score.home ?? 0) > (g.score.away ?? 0)
+          : (g.score.away ?? 0) > (g.score.home ?? 0));
+        return (
+          <div key={idx} className={`flex items-center gap-2.5 px-3 py-2 ${idx === 0 ? 'border-b border-slate-100 dark:border-slate-800' : ''} ${!showScore ? 'opacity-60' : ''}`}>
+            <TeamShield teamId={team.id} teamName={team.shortName ?? team.name} size={24} />
+            <span className={`flex-1 text-sm truncate ${winner ? 'font-bold text-slate-900 dark:text-slate-50' : 'font-medium text-slate-700 dark:text-slate-300'}`}>
+              <AdaptiveTeamName name={team.name} shortName={team.shortName} mobile="abbr" />
+            </span>
+            {showScore && score != null && (
+              <span className="font-score text-base font-bold tabular-nums text-slate-900 dark:text-slate-50">{score}</span>
+            )}
+          </div>
+        );
+      })}
+      <div className="px-3 pb-2 pt-1">
+        <span className={`text-[9px] font-bold uppercase tracking-wider ${isLive ? 'text-emerald-500' : 'text-slate-400 dark:text-slate-500'}`}>
+          {isLive ? '🟢 En directo'
+            : isFinished ? `Final · ${fmtDate(g.finishedAt ?? g.scheduledAt)}`
+            : `${fmtDate(g.scheduledAt)} · ${fmtTime(g.scheduledAt)}`}
+        </span>
+      </div>
+    </div>
+  );
+
+  return <Link href={`/matches/${g.id}`} className="block hover:opacity-90 transition-opacity">{card}</Link>;
+}
+
 function SeriesCard({ serie, label }: { serie: PlayoffSeries; label: string }) {
   const { t } = useT();
+  // Partido único → tarjeta de partido (sin marcador de victorias de serie).
+  if (serie.games.length === 1) return <SingleMatchSeries serie={serie} label={label} />;
   const hasLive = serie.games.some((g) => g.status === 'live');
   const notStarted = serie.winsA === 0 && serie.winsB === 0 && !hasLive;
   const rows = [
