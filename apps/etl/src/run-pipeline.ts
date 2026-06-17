@@ -37,8 +37,9 @@ const IDC_NAMES: Record<string, string> = {
   '3150': 'OK LIGA MASCULINA',
   '3481': 'PLAY OFFS OK LIGA',
 };
-// idcs que son fase de playoff (sus partidos van a la ronda de fase)
-const PLAYOFF_IDCS_PIPELINE = ['3481'];
+// idcs que son fase de playoff (sus partidos van a la ronda de fase de su liga):
+//   3481 = playoff OK Liga (masc) · 3484 = playoff OK Liga Iberdrola (fem)
+const PLAYOFF_IDCS_PIPELINE = ['3481', '3484'];
 
 /**
  * Elimina placeholders sintéticos que ya tienen partido real (mismo cruce y

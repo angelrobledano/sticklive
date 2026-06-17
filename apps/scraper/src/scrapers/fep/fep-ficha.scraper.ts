@@ -25,7 +25,7 @@ const BASE_URL = 'https://www.server2.sidgad.es/rfep';
 const SOURCE_ID = requireFepSourceId();
 
 /** IDCs de competiciones que usan rutas de Playoff/Eliminatorias en sidgad */
-const PLAYOFF_IDCS = ['3481'];
+const PLAYOFF_IDCS = ['3481', '3484'];
 
 export type FepEventType = 'goal' | 'penalty' | 'blue_card' | 'red_card' | 'timeout' | 'period_end' | 'foul' | 'direct_foul';
 

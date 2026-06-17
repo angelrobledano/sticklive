@@ -136,7 +136,13 @@ async function main() {
   const seeded: Array<{ seasonId: string; idc: string; label: string }> = [];
   let skipped = 0;
 
+  // Los playoffs NO son competición propia: son una FASE de su liga (sus
+  // partidos se scrapean a la temporada de la liga con --idc en run-pipeline).
+  // 3481 = playoff OK Liga masc · 3484 = playoff OK Liga Iberdrola fem.
+  const PLAYOFF_SEED_SKIP = new Set(['3481', '3484']);
+
   for (const comp of comps) {
+    if (PLAYOFF_SEED_SKIP.has(String(comp.idc))) { skipped++; continue; }
     const canon = organizer === 'RFEP'
       ? canonical(comp.name)
       // Autonómicas: sin alias de patrocinador y con slug prefijado por
