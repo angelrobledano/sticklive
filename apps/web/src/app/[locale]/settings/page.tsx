@@ -8,6 +8,7 @@ import { useT, SUPPORTED_LOCALES, LOCALE_NAMES, type Locale } from '@/lib/i18n';
 import { usePremium } from '@/context/PremiumContext';
 import { track, setPersonProps } from '@/lib/analytics';
 import { clubName } from '@/lib/names';
+import { InstallApp } from '@/components/shared/InstallApp';
 import {
   enablePush, disablePush, syncPushConfig,
   notificationPermission, isIOS, isStandalone, vapidMissing, sendTestPush,
@@ -793,6 +794,9 @@ export default function SettingsPage() {
 
       {/* ── Tarjeta de cuenta (autenticación progresiva) ───────────────────── */}
       <AccountCard />
+
+      {/* ── Instalar como app (PWA) — se oculta si ya está instalada ───────── */}
+      <InstallApp />
 
       {/* ── Idioma ─────────────────────────────────────────────────────────── */}
       <LanguageCard />

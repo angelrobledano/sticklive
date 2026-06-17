@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import { notFound } from 'next/navigation';
 import '../globals.css';
 import { BottomNav } from '@/components/layout/BottomNav';
+import { PwaSetup } from '@/components/layout/PwaSetup';
 import { AuthUpsell } from '@/components/shared/AuthUpsell';
 import { I18nProvider } from '@/lib/i18n';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -111,6 +112,9 @@ export default function RootLayout({ children, params }: Props) {
 
           {/* Sheet de conversión a cuenta (se dispara al 3er favorito anónimo) */}
           <AuthUpsell />
+
+          {/* Registro del Service Worker + captura del prompt de instalación PWA */}
+          <PwaSetup />
 
           {/* Pageviews de PostHog (no-op en desarrollo) */}
           <AnalyticsPageview />
