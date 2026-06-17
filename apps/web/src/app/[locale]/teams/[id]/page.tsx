@@ -4,7 +4,7 @@ import { getTeamDetail, isApiNotFound } from '@/lib/api/client';
 import { TeamCenterClient } from '@/components/team/TeamCenterClient';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
-import { localeAlternates, isSupportedLocale, SITE_URL } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL } from '@/lib/seo';
 import { clubName } from '@/lib/names';
 
 interface Props {
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const name = clubName(data.team.name);
     const title = `${name} | Stick Live`;
     const description = (DESC[locale] ?? DESC['en'])!(name);
-    return { title, description, alternates, openGraph: { title, description, type: 'website' } };
+    return { title, description, alternates, ...socialMeta({ locale, path: `/teams/${params.id}`, title: name, description }) };
   } catch {
     return { alternates };
   }

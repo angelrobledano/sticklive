@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { localeAlternates, isSupportedLocale } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale } from '@/lib/seo';
 import {
   getSeasonOverview,
   getCompetitionSeasons,
@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const name = `${overview.season.competitionName} ${current.name ?? ''}`.trim();
     const title = `${name} | Stick Live`;
     const description = (DESC[locale] ?? DESC['en'])!(name);
-    return { title, description, alternates, openGraph: { title, description, type: 'website' } };
+    return { title, description, alternates, ...socialMeta({ locale, path: `/competitions/${params.id}`, title: name, description }) };
   } catch {
     return { alternates };
   }

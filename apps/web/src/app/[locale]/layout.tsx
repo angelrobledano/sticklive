@@ -10,7 +10,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { PremiumProvider } from '@/context/PremiumContext';
 import { AnalyticsPageview } from '@/lib/analytics';
 import { SUPPORTED_LOCALES, isSupportedLocale, type Locale } from '@/lib/locales';
-import { localeAlternates, SITE_URL } from '@/lib/seo';
+import { localeAlternates, socialMeta, SITE_URL } from '@/lib/seo';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -51,6 +51,15 @@ const SEO_TEXT: Record<Locale, { title: string; description: string }> = {
   },
 };
 
+/** Título OG corto (< 60 car., sin sufijo de marca para no cortarse). */
+const OG_HOME_TITLE: Record<Locale, string> = {
+  es: 'Hockey patines en directo, al segundo',
+  en: 'Rink hockey live, second by second',
+  pt: 'Hóquei em patins ao vivo, ao segundo',
+  fr: 'Rink hockey en direct, à la seconde',
+  it: 'Hockey su pista in diretta, al secondo',
+};
+
 export function generateMetadata({ params }: { params: { locale: string } }): Metadata {
   const locale: Locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   const { title, description } = SEO_TEXT[locale];
@@ -60,12 +69,7 @@ export function generateMetadata({ params }: { params: { locale: string } }): Me
     description,
     keywords: ['hockey patines', 'rink hockey', 'hóquei em patins', 'OK Liga', 'resultados en directo', 'live scores'],
     alternates: localeAlternates(locale, '/'),
-    openGraph: {
-      title: 'Stick Live',
-      description,
-      type: 'website',
-      locale,
-    },
+    ...socialMeta({ locale, path: '/', title: OG_HOME_TITLE[locale], description }),
   };
 }
 

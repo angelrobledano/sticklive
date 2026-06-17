@@ -4,7 +4,7 @@ import { getMatchDetail, isApiNotFound } from '@/lib/api/client';
 import { MatchCenterClient } from '@/components/match/MatchCenterClient';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
-import { localeAlternates, isSupportedLocale, SITE_URL } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL } from '@/lib/seo';
 import { clubName } from '@/lib/names';
 
 interface Props {
@@ -28,13 +28,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const away = clubName(data.match.awayTeam?.shortName ?? data.match.awayTeam?.name ?? '');
     const finished = data.match.status === 'finished';
     const score = finished ? ` ${data.match.score.home ?? 0}-${data.match.score.away ?? 0} ` : ' - ';
-    const title = `${home}${score}${away} | Stick Live`;
+    const ogTitle = `${home}${score}${away}`;
+    const title = `${ogTitle} | Stick Live`;
     const description = (DESC[locale] ?? DESC['en'])!(home, away);
     return {
       title,
       description,
       alternates,
-      openGraph: { title, description, type: 'website' },
+      ...socialMeta({ locale, path: `/matches/${params.id}`, title: ogTitle, description, type: 'article' }),
     };
   } catch {
     return { alternates };

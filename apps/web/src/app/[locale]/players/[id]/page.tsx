@@ -4,7 +4,7 @@ import { getPlayerDetail } from '@/lib/api/client';
 import type { PlayerDetail } from '@/lib/api/client';
 import { PlayerProfileClient } from '@/components/player/PlayerProfileClient';
 import { JsonLd } from '@/components/shared/JsonLd';
-import { localeAlternates, isSupportedLocale, SITE_URL } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL } from '@/lib/seo';
 import { toTitleCase, clubName } from '@/lib/names';
 
 interface Props {
@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const team = data.currentTeam ? clubName(data.currentTeam.name) : null;
     const title = `${name} | Stick Live`;
     const description = (DESC[locale] ?? DESC['en'])!(name, team);
-    return { title, description, alternates, openGraph: { title, description, type: 'profile' } };
+    return { title, description, alternates, ...socialMeta({ locale, path: `/players/${params.id}`, title: name, description, type: 'article' }) };
   } catch {
     return { alternates };
   }
