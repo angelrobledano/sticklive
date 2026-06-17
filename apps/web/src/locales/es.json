@@ -13,6 +13,10 @@
     "summary": "Resumen",
     "lineups": "Alineaciones"
   },
+  "fixtures": {
+    "by_round": "Por jornada",
+    "empty": "No hay partidos programados para esta selección."
+  },
   "match_states": {
     "live": "En directo",
     "in_play": "En juego",

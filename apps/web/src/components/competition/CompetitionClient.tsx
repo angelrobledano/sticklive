@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import type { SeasonOverview, SeasonStandingRow, SeasonMatch, SeasonRound, CompetitionSeason, SeasonStats, SeasonLeader } from '@/lib/api/client';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import type { SeasonOverview, SeasonStandingRow, SeasonMatch, SeasonRound, CompetitionSeason, SeasonStats, SeasonLeader, TeamSummary } from '@/lib/api/client';
 import { buildSeries, groupByPhase, placementMatches, type PlayoffSeries } from '@/lib/playoff';
 import { PlayoffBracket } from '@/components/match/PlayoffBracket';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
@@ -288,100 +288,237 @@ function MatchCard({ match }: { match: SeasonMatch }) {
   );
 }
 
-function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; matches: SeasonMatch[] }) {
+// ─── Pestaña Jornadas: navegador de partidos con filtros (jornada/fecha/equipo) ──
+
+/** YYYY-MM-DD en Europe/Madrid (clave de día estable). */
+function madridDay(iso: string | null): string | null {
+  if (!iso) return null;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date(iso));
+}
+
+/** "2026-06-20" → "Vie 20 jun" (sin desfase de zona). */
+function dayPillLabel(d: string): string {
+  const s = new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', {
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Madrid',
+  });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function roundLabel(r: SeasonRound): string {
+  if (r.roundType === 'regular') return r.name ?? `Jornada ${r.number}`;
+  return r.name ? `Playoffs · ${r.name}` : `Playoffs ${r.number}`;
+}
+
+/** Estado vacío estilizado para cruces de filtros sin partidos. */
+function EmptyFixtures() {
   const { t } = useT();
-  const regularRounds = rounds.filter((r) => r.roundType === 'regular');
-  const regularMatches = matches.filter((m) => m.roundType === 'regular');
+  return (
+    <div className="card p-10 flex flex-col items-center text-center gap-3">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
+           className="w-9 h-9 text-slate-300 dark:text-slate-700">
+        <rect x="3" y="4" width="18" height="17" rx="2" />
+        <path d="M3 9h18M8 2v4M16 2v4" strokeLinecap="round" />
+      </svg>
+      <p className="text-sm text-slate-400 dark:text-slate-600">{t('fixtures.empty')}</p>
+    </div>
+  );
+}
 
-  // Determinar jornada activa (la más reciente con partidos jugados o la próxima)
-  const defaultRound = useMemo(() => {
-    const withFinished = regularMatches
-      .filter((m) => m.status === 'finished' || m.status === 'live')
-      .map((m) => m.roundNumber ?? 0);
-    if (withFinished.length > 0) return Math.max(...withFinished);
-    return regularRounds[0]?.number ?? 1;
-  }, [regularMatches, regularRounds]);
-
-  const [activeRound, setActiveRound] = useState(defaultRound);
-  const pillsRef = useRef<HTMLDivElement>(null);
-
-  const roundMatches = regularMatches.filter((m) => m.roundNumber === activeRound);
-  const currentRoundInfo = regularRounds.find((r) => r.number === activeRound);
-
-  // Fallback sin rounds en DB: agrupar los partidos por fecha.
-  // (El calendario de la fuente trae el nombre de jornada pero aún no se
-  // persiste en rounds — cuando se haga, este bloque deja de usarse.)
-  if (regularRounds.length === 0) {
-    if (regularMatches.length === 0) {
-      return (
-        <div className="card p-8 text-center opacity-60">
-          <p className="text-sm text-slate-400 dark:text-slate-600">{t('standings.no_fixtures')}</p>
-        </div>
-      );
+/** Lista de partidos agrupada por día (calendario completo de un equipo). */
+function FixturesByDate({ matches }: { matches: SeasonMatch[] }) {
+  const groups = useMemo(() => {
+    const map = new Map<string, SeasonMatch[]>();
+    for (const m of matches) {
+      const d = madridDay(m.scheduledAt) ?? 'Sin fecha';
+      const arr = map.get(d);
+      if (arr) arr.push(m); else map.set(d, [m]);
     }
-    const byDate = new Map<string, SeasonMatch[]>();
-    for (const m of regularMatches) {
-      const key = m.scheduledAt ? new Date(m.scheduledAt).toISOString().slice(0, 10) : 'Sin fecha';
-      if (!byDate.has(key)) byDate.set(key, []);
-      byDate.get(key)!.push(m);
-    }
-    const dates = [...byDate.keys()].sort();
-    return (
-      <div className="space-y-3">
-        {dates.map((d) => (
-          <div key={d} className="card overflow-hidden">
-            <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                {d === 'Sin fecha' ? d : fmtDate(d)}
-              </span>
-            </div>
-            <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {byDate.get(d)!.map((m) => <MatchCard key={m.id} match={m} />)}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
+    return [...map.entries()];
+  }, [matches]);
 
   return (
     <div className="space-y-3">
-      {/* Selector de jornadas — scroll horizontal */}
-      <div ref={pillsRef} className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-0">
-        {regularRounds.map((r) => (
-          <button
-            key={r.id}
-            onClick={() => setActiveRound(r.number)}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors shrink-0 ${
-              activeRound === r.number
-                ? 'bg-rink-passion text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            {r.name ?? `J${r.number}`}
-          </button>
-        ))}
+      {groups.map(([d, ms]) => (
+        <div key={d} className="card overflow-hidden">
+          <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              {d === 'Sin fecha' ? d : dayPillLabel(d)}
+            </span>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+            {ms.map((m) => <MatchCard key={m.id} match={m} />)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; matches: SeasonMatch[] }) {
+  const { t } = useT();
+  const sp = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const journeyParam = sp.get('journey');
+  const dateParam = sp.get('date');
+  const teamParam = sp.get('team_id');
+
+  // Rondas para el selector: regular por número, luego playoff/cup.
+  const orderedRounds = useMemo(() => {
+    const rank = (rt: string) => (rt === 'regular' ? 0 : 1);
+    return [...rounds].sort((a, b) => rank(a.roundType) - rank(b.roundType) || a.number - b.number);
+  }, [rounds]);
+
+  // Equipos participantes (de los partidos), únicos y ordenados por nombre.
+  const teams = useMemo(() => {
+    const map = new Map<string, TeamSummary>();
+    for (const m of matches) {
+      if (m.homeTeam?.id) map.set(m.homeTeam.id, m.homeTeam);
+      if (m.awayTeam?.id) map.set(m.awayTeam.id, m.awayTeam);
+    }
+    return [...map.values()].sort((a, b) => (a.shortName ?? a.name).localeCompare(b.shortName ?? b.name));
+  }, [matches]);
+
+  // Días con actividad (Madrid), únicos y ordenados.
+  const dates = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of matches) { const d = madridDay(m.scheduledAt); if (d) set.add(d); }
+    return [...set].sort();
+  }, [matches]);
+
+  // Jornada por defecto: la más reciente con partido jugado/en vivo.
+  const defaultJourney = useMemo(() => {
+    const active = matches
+      .filter((m) => m.status === 'finished' || m.status === 'live')
+      .map((m) => m.roundNumber ?? 0);
+    if (active.length > 0) return Math.max(...active);
+    return orderedRounds[0]?.number ?? 1;
+  }, [matches, orderedRounds]);
+
+  const activeJourney = journeyParam != null ? Number(journeyParam) : defaultJourney;
+  const selectedTeam = teamParam ? teams.find((tm) => tm.id === teamParam) ?? null : null;
+
+  // Exclusión mutua: equipo > fecha > jornada.
+  const filtered = useMemo(() => {
+    if (selectedTeam) {
+      return matches
+        .filter((m) => m.homeTeam?.id === selectedTeam.id || m.awayTeam?.id === selectedTeam.id)
+        .sort((a, b) => (a.scheduledAt ?? '').localeCompare(b.scheduledAt ?? ''));
+    }
+    if (dateParam) {
+      return matches
+        .filter((m) => madridDay(m.scheduledAt) === dateParam)
+        .sort((a, b) => (a.scheduledAt ?? '').localeCompare(b.scheduledAt ?? ''));
+    }
+    return matches.filter((m) => (m.roundNumber ?? null) === activeJourney);
+  }, [matches, selectedTeam, dateParam, activeJourney]);
+
+  // Sincroniza la URL aplicando exclusión mutua (preserva otros params, p. ej. season).
+  const apply = useCallback((patch: { journey?: number; date?: string; team?: string }) => {
+    const params = new URLSearchParams(sp.toString());
+    params.delete('journey'); params.delete('date'); params.delete('team_id');
+    if (patch.team) params.set('team_id', patch.team);
+    else if (patch.date) params.set('date', patch.date);
+    else if (patch.journey != null) params.set('journey', String(patch.journey));
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [sp, pathname, router]);
+
+  const journeyMode = !selectedTeam && !dateParam;
+
+  return (
+    <div className="space-y-3">
+      {/* ── Toolbar de filtros ─────────────────────────────────────────────── */}
+      <div className="space-y-2.5">
+        {/* Jornada + chip de equipo activo */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 min-w-0">
+            <select
+              value={journeyMode ? String(activeJourney) : ''}
+              onChange={(e) => { if (e.target.value) apply({ journey: Number(e.target.value) }); }}
+              className="w-full min-h-[40px] pl-3 pr-8 rounded-xl border border-slate-200 dark:border-slate-700
+                         bg-white dark:bg-slate-900 text-sm font-medium text-slate-700 dark:text-slate-200
+                         focus:outline-none focus:ring-2 focus:ring-rink-passion/40 cursor-pointer appearance-none"
+              aria-label={t('fixtures.by_round')}
+            >
+              {!journeyMode && <option value="">{t('fixtures.by_round')}</option>}
+              {orderedRounds.map((r) => (
+                <option key={r.id} value={r.number}>{roundLabel(r)}</option>
+              ))}
+            </select>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
+                 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none">
+              <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          {selectedTeam && (
+            <button
+              onClick={() => apply({})}
+              className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1.5 rounded-full bg-rink-passion/10
+                         text-rink-passion text-xs font-semibold shrink-0"
+            >
+              <TeamShield teamId={selectedTeam.id} teamName={selectedTeam.shortName ?? selectedTeam.name} size={20} />
+              <span className="max-w-[120px] truncate">{clubName(selectedTeam.shortName ?? selectedTeam.name)}</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className="w-3.5 h-3.5">
+                <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {/* Pastillas de fecha */}
+        {dates.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+            {dates.map((d) => (
+              <button
+                key={d}
+                onClick={() => apply({ date: d })}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+                  !selectedTeam && dateParam === d
+                    ? 'bg-rink-passion text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                {dayPillLabel(d)}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Escudos de equipos participantes */}
+        {teams.length > 0 && (
+          <div className="flex gap-2.5 overflow-x-auto scrollbar-none pb-1">
+            {teams.map((tm) => (
+              <button
+                key={tm.id}
+                onClick={() => apply(selectedTeam?.id === tm.id ? {} : { team: tm.id })}
+                aria-label={tm.shortName ?? tm.name}
+                className={`shrink-0 rounded-full p-0.5 transition-all ${
+                  selectedTeam?.id === tm.id
+                    ? 'ring-2 ring-rink-passion'
+                    : 'ring-1 ring-transparent opacity-80 hover:opacity-100 hover:ring-slate-300 dark:hover:ring-slate-700'
+                }`}
+              >
+                <TeamShield teamId={tm.id} teamName={tm.shortName ?? tm.name} size={36} />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Partidos de la jornada */}
-      <div className="card overflow-hidden">
-        {currentRoundInfo && (
-          <div className="px-4 pt-4 pb-2">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-              {currentRoundInfo.name ?? `Jornada ${currentRoundInfo.number}`}
-            </p>
-          </div>
-        )}
-        {roundMatches.length === 0 ? (
-          <div className="px-4 py-6 text-center">
-            <p className="text-sm text-slate-400 dark:text-slate-600 opacity-60">Sin partidos en esta jornada</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-            {roundMatches.map((m) => <MatchCard key={m.id} match={m} />)}
-          </div>
-        )}
-      </div>
+      {/* ── Resultados ─────────────────────────────────────────────────────── */}
+      {filtered.length === 0 ? (
+        <EmptyFixtures />
+      ) : selectedTeam ? (
+        <FixturesByDate matches={filtered} />
+      ) : (
+        <div className="card overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/60">
+          {filtered.map((m) => <MatchCard key={m.id} match={m} />)}
+        </div>
+      )}
     </div>
   );
 }
@@ -809,7 +946,11 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
       </div>
 
       {currentTab === 'Clasificación' && <StandingsTab standings={data.standings} />}
-      {currentTab === 'Jornadas'      && <GameweeksTab rounds={data.rounds} matches={data.matches} />}
+      {currentTab === 'Jornadas'      && (
+        <Suspense fallback={<div className="card h-40 animate-pulse" />}>
+          <GameweeksTab rounds={data.rounds} matches={data.matches} />
+        </Suspense>
+      )}
       {currentTab === 'Playoffs'      && <PlayoffsTab  matches={data.matches} />}
       {currentTab === 'Estadísticas'  && stats && <StatsLeadersTab stats={stats} />}
     </div>
