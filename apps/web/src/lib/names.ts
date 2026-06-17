@@ -11,11 +11,27 @@ export function toTitleCase(s: string): string {
     .replace(/(^|\s|-|')\p{L}/gu, (m) => m.toUpperCase());
 }
 
-/** "IGUALADA RIGAT HC" → "Igualada Rigat HC" (siglas ≤3 letras se conservan) */
+// Conectores españoles → siempre en minúscula (salvo si es la primera palabra).
+const CONNECTORS = new Set([
+  'de', 'del', 'la', 'las', 'el', 'los', 'lo', 'y', 'e', 'o', 'u', 'a', 'al', 'con', 'en', 'por', 'para',
+]);
+// Palabras cortas en mayúsculas que NO son siglas (deben ir en Título), para que
+// la heurística de "≤3 letras = sigla" no las deje gritadas (REY, SUR…).
+const FORCE_TITLE = new Set(['REY', 'SUR']);
+
+/**
+ * "IGUALADA RIGAT HC" → "Igualada Rigat HC"; "COPA DEL REY" → "Copa del Rey".
+ * Conserva siglas reales (OK, SAR, HC, CP…), baja conectores y pone en Título el resto.
+ */
 export function clubName(name: string): string {
   return name
     .split(/\s+/)
-    .map((w) => (w.length <= 3 && w === w.toUpperCase() ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+    .map((w, i) => {
+      const lower = w.toLowerCase();
+      if (i > 0 && CONNECTORS.has(lower)) return lower;
+      const isAcronym = w.length <= 3 && w === w.toUpperCase() && !FORCE_TITLE.has(w.toUpperCase());
+      return isAcronym ? w : w.charAt(0).toUpperCase() + lower.slice(1);
+    })
     .join(' ');
 }
 

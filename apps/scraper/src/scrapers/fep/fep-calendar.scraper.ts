@@ -168,6 +168,7 @@ export class FepCalendarScraper extends BaseScraper<ScrapedMatch> {
     return {
       seasonId: ctx.seasonId,
       roundId: this.calendarConfig.roundId,
+      roundRef: ctx.roundName || undefined, // nombre de ronda de la fuente (Final, Cuartos…)
       homeTeamRef,
       awayTeamRef,
       homeScore,

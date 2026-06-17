@@ -41,6 +41,42 @@ const IDC_NAMES: Record<string, string> = {
 //   3481 = playoff OK Liga (masc) · 3484 = playoff OK Liga Iberdrola (fem)
 const PLAYOFF_IDCS_PIPELINE = ['3481', '3484'];
 
+// idcs de copas/supercopas (formato eliminatoria): sus rondas se crean a partir
+// del nombre de la fuente (Octavos/Cuartos/Semis/Final) con round_type='playoff',
+// para que la web las pinte como bracket. No tocan la OK Liga ni el loader.
+const CUP_IDCS = new Set(['3258', '3259', '3177', '3178', '3301', '3302', '3260', '3261']);
+
+/** Número de orden de una ronda de copa por su fase (para ordenar el bracket). */
+function cupRoundNumber(name: string): number {
+  const n = name.toLowerCase();
+  if (/octavos|1\/8/.test(n)) return 1;
+  if (/cuartos|1\/4/.test(n)) return 2;
+  if (/semi/.test(n))         return 3;
+  if (/final/.test(n))        return 4;
+  if (/tercer|bronce|consol/.test(n)) return 5;
+  return 9;
+}
+
+/** Get-or-create de una ronda por (temporada, nombre); busca número libre. */
+async function getOrCreateRound(seasonId: string, name: string, number: number, type: string): Promise<string> {
+  const found = await db.query<{ id: string }>(
+    `SELECT id FROM rounds WHERE season_id = $1 AND round_type = $2 AND LOWER(name) = LOWER($3) LIMIT 1`,
+    [seasonId, type, name]
+  );
+  if (found.rows[0]) return found.rows[0].id;
+  let num = number;
+  for (let guard = 0; guard < 50; guard++) { // evita choque con UNIQUE(season,number,type)
+    const clash = await db.query(`SELECT 1 FROM rounds WHERE season_id = $1 AND number = $2 AND round_type = $3`, [seasonId, num, type]);
+    if (clash.rows.length === 0) break;
+    num++;
+  }
+  const ins = await db.query<{ id: string }>(
+    `INSERT INTO rounds (season_id, number, name, round_type) VALUES ($1, $2, $3, $4) RETURNING id`,
+    [seasonId, num, name, type]
+  );
+  return ins.rows[0]!.id;
+}
+
 /**
  * Elimina placeholders sintéticos que ya tienen partido real (mismo cruce y
  * fecha) o cuya fecha pasó hace >6h sin convertirse en partido real.
@@ -132,6 +168,23 @@ async function main() {
       });
       const result = await scraper.run();
       log.info({ idc: calIdc, found: result.data.length, errors: result.errors.length }, 'Calendario scrapeado');
+
+      // Copas: crear rondas por nombre (Octavos/Cuartos/Semis/Final) como
+      // 'playoff' y asignarlas a cada partido → la web las pinta como bracket.
+      if (CUP_IDCS.has(calIdc) && seasonId) {
+        const cache = new Map<string, string>();
+        for (const m of result.data) {
+          const rname = m.roundRef?.trim();
+          if (!rname) continue;
+          let rid = cache.get(rname.toLowerCase());
+          if (!rid) {
+            rid = await getOrCreateRound(seasonId, rname, cupRoundNumber(rname), 'playoff');
+            cache.set(rname.toLowerCase(), rid);
+          }
+          m.roundId = rid;
+        }
+      }
+
       if (result.data.length > 0) {
         const etl = await pipeline.runMatches(result);
         log.info(etl, '✅ Partidos cargados');
