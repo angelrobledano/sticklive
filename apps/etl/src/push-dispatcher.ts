@@ -278,11 +278,14 @@ export async function diffAndNotify(
 
     for (const ev of toSend) {
       let wants: boolean;
-      if (ev.kind === 'jornada_start')      wants = cfg['globalJornadaStart'] === true;
-      else if (ev.kind === 'jornada_end')   wants = cfg['globalJornadaEnd'] === true;
-      else {
+      if (!('matchTeams' in ev)) {
+        // Jornada (global)
+        wants = ev.kind === 'jornada_start'
+          ? cfg['globalJornadaStart'] === true
+          : cfg['globalJornadaEnd'] === true;
+      } else {
         // Seguido = equipo favorito O competición favorita
-        const followed = ev.matchTeams.some((t) => (sub.fav_teams ?? []).includes(t)) || followsLeague;
+        const followed = ev.matchTeams.some((t: string) => (sub.fav_teams ?? []).includes(t)) || followsLeague;
         wants =
           ev.kind === 'goal'  ? (followed ? cfg['favGoals'] !== false : false) :
           ev.kind === 'start' ? (followed ? cfg['favMatchStart'] !== false : cfg['globalMatchStart'] === true) :
