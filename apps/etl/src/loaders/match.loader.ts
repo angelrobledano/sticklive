@@ -7,7 +7,7 @@
  * 3. Procesar en batches para no sobrecargar la DB
  * 4. Usar transacciones por batch (no por partido individual — más eficiente)
  */
-import { upsertMatch, insertScrapeLog, db } from '@sports/db';
+import { upsertMatch, insertScrapeLog, addTeamAltRef, db } from '@sports/db';
 import type { ScrapedMatch, ScrapeResult } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { transformMatch } from '../transformers/match.transformer.js';
@@ -100,7 +100,7 @@ export async function loadMatches(
           // Equipo no encontrado — intentar UPDATE de score/status para partidos ya existentes
           // (el upsert completo falla si los equipos no estan en DB, pero el marcador si puede actualizarse)
           if (input.sourceRef) {
-            const scoreResult = await db.query(
+            const scoreResult = await db.query<{ home_team_id: string | null; away_team_id: string | null }>(
               `UPDATE matches
                SET home_score = COALESCE($2, home_score),
                    away_score = COALESCE($3, away_score),
@@ -108,7 +108,7 @@ export async function loadMatches(
                    scraped_at = $5,
                    updated_at = NOW()
                WHERE source_ref = $1
-               RETURNING id`,
+               RETURNING home_team_id, away_team_id`,
               [
                 input.sourceRef,
                 input.homeScore ?? null,
@@ -124,6 +124,29 @@ export async function loadMatches(
               );
               upserted++;
               resolved = true;
+
+              // Self-heal: el feed de directo (rfep_mc_1.php) identifica equipos por
+              // id de CLUB (fep_club_XX) mientras el calendario usa el id de EQUIPO.
+              // Si el partido ya existía (creado por el calendario, con team_ids), y
+              // el ref del directo no resolvió, aprendemos ese id de club como
+              // alt_source_ref para que la PRÓXIMA vez resuelva directo y se haga el
+              // upsert completo. Idempotente y sin hardcodear ids. Solo para refs
+              // opacos del directo (fep_club_*), no para nombres/abreviaturas.
+              const row = scoreResult.rows[0];
+              const learn: Array<Promise<unknown>> = [];
+              if (row?.home_team_id && homeTeamRef.startsWith('fep_club_')) {
+                learn.push(addTeamAltRef(row.home_team_id, homeTeamRef).catch(() => {}));
+              }
+              if (row?.away_team_id && awayTeamRef.startsWith('fep_club_')) {
+                learn.push(addTeamAltRef(row.away_team_id, awayTeamRef).catch(() => {}));
+              }
+              if (learn.length > 0) {
+                await Promise.all(learn);
+                log.info(
+                  { sourceRef: input.sourceRef, homeTeamRef, awayTeamRef },
+                  'alt_source_refs aprendidos desde el directo (club_id → equipo)'
+                );
+              }
             }
           }
           if (!resolved) {

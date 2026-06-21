@@ -260,6 +260,10 @@ function inferStatus(
 ): MatchStatus {
   if (classes.includes('scorer_game_final')) return 'finished';
   if (classes.includes('scorer_game_pending')) return 'scheduled';
+  // sidgad marca el directo con `scorer_game_playing` (no `scorer_game_live`).
+  // Detectarlo por clase evita depender del marcador (al saque inicial puede
+  // venir vacío y se marcaría 'scheduled' por error).
+  if (classes.includes('scorer_game_playing') || classes.includes('scorer_game_live')) return 'live';
 
   const upper = statusText.toUpperCase();
   if (upper === 'FINAL') return 'finished';
