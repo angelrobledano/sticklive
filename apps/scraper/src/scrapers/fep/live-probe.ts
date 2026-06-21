@@ -82,6 +82,29 @@ function findTarget(matches: ScrapedMatch[]): ScrapedMatch | undefined {
   });
 }
 
+// ── Volcado del elemento en vivo del feed mc (para ver descanso + crono) ──────
+async function dumpLiveElement(idp: string): Promise<void> {
+  try {
+    const html = await sidgadPost('rfep_mc_1.php', {});
+    const $ = cheerio.load(html);
+    const el = $(`a.scorer_game[idp="${idp}"], div.scorer_game[idp="${idp}"]`).first();
+    if (el.length === 0) { incident('MC_DUMP', `elemento idp=${idp} no encontrado en rfep_mc_1.php`); return; }
+    const botCenter = el.find('.scorer_bot_center').text().trim();
+    const botRight  = el.find('.scorer_bot_left').text().trim();
+    const botPhase  = el.find('.scorer_bot_right').text().trim();
+    const score     = el.find('.scorer_score').text().trim().replace(/\s+/g, '');
+    const classes   = (el.attr('class') ?? '').trim();
+    console.log(`  ◆ MC[${idp}] bot_center="${botCenter}" | bot_left="${botRight}" | bot_right="${botPhase}" | score="${score}"`);
+    console.log(`     classes="${classes}"`);
+    note('MC_DUMP', `idp=${idp} bot_center="${botCenter}" bot_right="${botPhase}" score="${score}" classes="${classes}"`);
+    // Buscar cualquier patrón de crono MM:SS en el elemento
+    const clocks = (el.text().match(/\b\d{1,2}:\d{2}\b/g) ?? []);
+    if (clocks.length) console.log(`     posibles cronos en el elemento: ${clocks.join(', ')}`);
+  } catch (err) {
+    note('MC_DUMP_ERR', err instanceof Error ? err.message : String(err));
+  }
+}
+
 // ── Descargar la ficha (acta) y volcar HTML para inspección ───────────────────
 const ACTA_CANDIDATES = (idp: string, idc: string) => [
   { path: `rfep_gr_${idp}_1.php`,           body: { idm: '1', idc, idp, tab: 'tab_ficha_resumen' } },
@@ -105,6 +128,39 @@ async function probeActa(idp: string, idc: string): Promise<void> {
       const file = path.join(LOG_DIR, `acta_${idp}_${stamp()}.html`);
       fs.writeFileSync(file, html, 'utf-8');
       console.log(`  ✔ acta vía ${c.path} → ${html.length}b · ~${clocks} cronos · ~${goals} "gol" · ${path.basename(file)}`);
+
+      // ── Escáner de cabecera: localizar el CRONO EN MARCHA y la FASE ──────────
+      // Imprime elementos cuyo texto propio es un MM:SS o contiene PERIODO/PARTE/
+      // DESCANSO/FINAL, o cuya clase sugiere crono/marcador. Con esto sacamos el
+      // selector exacto del reloj vivo para parsearlo.
+      console.log('  ── ACTA HEADER SCAN (crono/fase) ──');
+      const seen = new Set<string>();
+      $('[class]').each((_, e) => {
+        const $e = $(e);
+        const own = $e.clone().children().remove().end().text().trim().replace(/\s+/g, ' ');
+        const cls = ($e.attr('class') ?? '').trim();
+        const isClock  = /^\d{1,2}:\d{2}$/.test(own);
+        const isPhase  = /\b(DESCANSO|PERIODO|PERÍODO|PARTE|FINAL|TIEMPO)\b/i.test(own) && own.length < 30;
+        const clsHint  = /crono|tiempo|reloj|marcador|periodo|parte|minuto|live|result|score/i.test(cls);
+        if ((isClock || isPhase || (clsHint && own && own.length < 30))) {
+          const tag = (e as { tagName?: string }).tagName ?? 'el';
+          const key = `${tag}.${cls}=${own}`;
+          if (!seen.has(key) && seen.size < 30) {
+            seen.add(key);
+            console.log(`     ${tag}.${cls.split(/\s+/).join('.')} = "${own}"`);
+          }
+        }
+      });
+      // Volcado completo de la cabecera de fase (por si el crono va en un hijo)
+      const pa = $('.periodo_activo').first();
+      if (pa.length) {
+        console.log('  periodo_activo OUTER:', ($.html(pa) ?? '').replace(/\s+/g, ' ').trim().slice(0, 600));
+        const parent = pa.parent();
+        console.log('  periodo_activo PARENT:', ($.html(parent) ?? '').replace(/\s+/g, ' ').trim().slice(0, 1000));
+      } else {
+        console.log('  (no se encontró .periodo_activo)');
+      }
+      console.log('  ── fin scan ──');
       note('ACTA', `idp=${idp} endpoint=${c.path} bytes=${html.length} clocks=${clocks} goals=${goals}`);
       dumped = true;
       break;
@@ -183,6 +239,9 @@ async function tick(): Promise<boolean> {
   const status = target.status ?? '?';
 
   console.log(`[${t}] ciclo ${cycle} · idp ${idp} · ${target.homeTeamRef} vs ${target.awayTeamRef} · ${status} · ${score} · prog ${target.scheduledAt ?? '?'}`);
+
+  // Volcado del elemento en vivo: ver cómo representa la fuente el descanso y el crono
+  await dumpLiveElement(idp);
 
   // Diffs (latencia: comparar esta hora con la de la jugada en TV)
   if (prevScore && score !== prevScore && score !== '—') {

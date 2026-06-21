@@ -317,6 +317,64 @@ function fmtEventClock(ev: { clock?: string | null; minute: number | null }): st
   return `${String(remaining).padStart(2, '0')}:00`;
 }
 
+/**
+ * Fase + crono en vivo: "Descanso", o "En directo · 2ª Parte · 12:34".
+ * La fuente da el RESTANTE del periodo (cuenta atrás desde 25:00); aquí se
+ * muestra el TRANSCURRIDO y se hace correr localmente desde el instante de
+ * captura (clockAt), resincronizando cuando llega un nuevo snapshot. Se congela
+ * en el descanso. Puede desviarse unos segundos por paradas de reloj entre polls.
+ */
+function LivePhase({ live }: { live: NonNullable<MatchDetail['match']['live']> }) {
+  const { t } = useT();
+  const [elapsed, setElapsed] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (live.isHalftime || live.clockSeconds == null || !live.clockAt) {
+      setElapsed(null);
+      return;
+    }
+    const baseElapsed = 1500 - live.clockSeconds; // transcurrido en el periodo al capturar
+    const anchor = new Date(live.clockAt).getTime();
+    const tick = () => {
+      const e = baseElapsed + (Date.now() - anchor) / 1000;
+      setElapsed(Math.max(0, Math.min(1500, Math.floor(e))));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [live.isHalftime, live.clockSeconds, live.clockAt]);
+
+  if (live.isHalftime) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+        <span className="w-2 h-2 rounded-full bg-amber-500" />
+        {t('match_states.half_time')}
+      </span>
+    );
+  }
+
+  const periodLabel = live.period === 2
+    ? t('match_states.second_half')
+    : live.period === 1
+      ? t('match_states.first_half')
+      : null;
+  const mmss = elapsed != null
+    ? `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`
+    : null;
+
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+      {t('match_states.live')}
+      {periodLabel && (
+        <span className="ml-1.5 font-semibold normal-case tracking-normal tabular-nums text-emerald-600/90 dark:text-emerald-400/90">
+          {periodLabel}{mmss ? ` · ${mmss}` : ''}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?: string }) {
   const { t } = useT();
   const { match, stats } = data;
@@ -334,19 +392,25 @@ function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?: strin
         className="absolute top-3 right-3"
       />
       {/* Estado */}
-      <div className="text-center h-5">
+      <div className="text-center min-h-5">
         {isLive && (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            {t('match_states.live')}
+          <span className="inline-flex items-center gap-1.5">
+            {match.live ? (
+              <LivePhase live={match.live} />
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                {t('match_states.live')}
+              </span>
+            )}
             {/* Indicador de conexión SSE */}
             {sseStatus === 'live' && (
-              <span className="ml-1.5 text-[9px] font-normal text-emerald-500/70 normal-case tracking-normal">
+              <span className="text-[9px] font-normal text-emerald-500/70 normal-case tracking-normal">
                 · {t('match_detail.auto_update')}
               </span>
             )}
             {sseStatus === 'error' && (
-              <span className="ml-1.5 text-[9px] font-normal text-amber-500 normal-case tracking-normal">
+              <span className="text-[9px] font-normal text-amber-500 normal-case tracking-normal">
                 · {t('match_detail.reconnecting')}
               </span>
             )}

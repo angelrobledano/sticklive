@@ -160,6 +160,20 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
               );
               this.log.info({ matchId: this.cfg.matchId, ...fouls }, 'Faltas de equipo actualizadas');
             }
+            // Estado en vivo: fase (periodo/descanso) y crono en marcha de la cabecera.
+            // Se persiste el RESTANTE + el instante de captura para que el cliente lo
+            // haga correr localmente y resincronice en cada poll.
+            const live = parseLiveHeader(html);
+            if (live) {
+              await db.query(
+                `UPDATE matches
+                   SET live_period = $2, live_clock_seconds = $3,
+                       live_clock_at = NOW(), live_is_halftime = $4, updated_at = NOW()
+                 WHERE id = $1`,
+                [this.cfg.matchId, live.period, live.clockSeconds, live.isHalftime]
+              );
+              this.log.info({ matchId: this.cfg.matchId, ...live }, 'Estado en vivo (fase/crono) actualizado');
+            }
             // Alineaciones: vienen en el mismo HTML (tablas competiciones_tabla_basic)
             const lineups = parseLineups(html, idp);
             // Vincular jugador por nombre (la tabla de alineación no trae id_player)
@@ -734,6 +748,30 @@ function normalizeName(s: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .toUpperCase();
+}
+
+/**
+ * Estado en vivo de la cabecera de la ficha (rfep_gr):
+ *   #game_period (.periodo_activo) → fase ("PERIODO 1/2" | "DESCANSO" | "FINAL")
+ *   #game_time                     → MM:SS RESTANTE del periodo en curso (cuenta atrás).
+ * Devuelve null si no hay cabecera de directo (ficha antigua/sin marcador en vivo).
+ */
+export interface LiveHeader {
+  period: number | null;
+  clockSeconds: number | null; // restante en el periodo en curso
+  isHalftime: boolean;
+}
+export function parseLiveHeader(html: string): LiveHeader | null {
+  const $ = cheerio.load(html);
+  const phase = $('#game_period, .periodo_activo').first().text().trim().toUpperCase();
+  const time  = $('#game_time').first().text().trim();
+  if (!phase && !time) return null;
+  const isHalftime = /(DESCANS|MEDIO|INTER)/.test(phase);
+  const pm = phase.match(/(\d+)/);
+  const period = pm ? parseInt(pm[1]!, 10) : null;
+  const tm = time.match(/(\d{1,2}):(\d{2})/);
+  const clockSeconds = tm ? parseInt(tm[1]!, 10) * 60 + parseInt(tm[2]!, 10) : null;
+  return { period, clockSeconds, isHalftime };
 }
 
 /**

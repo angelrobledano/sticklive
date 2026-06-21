@@ -35,6 +35,7 @@ interface MatchRow {
   scheduled_at: string | null; started_at: string | null; finished_at: string | null;
   home_team_id: string; home_team_name: string; home_team_short_name: string | null; home_team_logo_url: string | null;
   away_team_id: string; away_team_name: string; away_team_short_name: string | null; away_team_logo_url: string | null;
+  live_period: number | null; live_clock_seconds: number | null; live_clock_at: Date | null; live_is_halftime: boolean;
 }
 interface EventRow {
   id: string; event_type: string; minute: number | null; period: number | null;
@@ -50,6 +51,7 @@ async function fetchMatchSnapshot(matchId: string) {
       m.id, m.season_id, m.round_id,
       m.home_score, m.away_score, m.status,
       m.scheduled_at, m.started_at, m.finished_at,
+      m.live_period, m.live_clock_seconds, m.live_clock_at, m.live_is_halftime,
       ht.id AS home_team_id, ht.name AS home_team_name,
       ht.short_name AS home_team_short_name, ht.logo_url AS home_team_logo_url,
       at.id AS away_team_id, at.name AS away_team_name,
@@ -129,6 +131,9 @@ async function fetchMatchSnapshot(matchId: string) {
       score: { home: row.home_score, away: row.away_score },
       homeTeam: { id: row.home_team_id, name: row.home_team_name, shortName: row.home_team_short_name, logoUrl: row.home_team_logo_url },
       awayTeam: { id: row.away_team_id, name: row.away_team_name, shortName: row.away_team_short_name, logoUrl: row.away_team_logo_url },
+      live: effectiveStatus === 'live'
+        ? { period: row.live_period, clockSeconds: row.live_clock_seconds, clockAt: row.live_clock_at?.toISOString() ?? null, isHalftime: row.live_is_halftime }
+        : null,
     },
     events: eventsResult.rows.map((e) => ({
       id: e.id, eventType: e.event_type, minute: e.minute, period: e.period,
@@ -151,6 +156,7 @@ interface Hub {
   lastEventCount: number;
   lastHome: number | null;
   lastAway: number | null;
+  lastPhase: string | null;
   lastSnapshotJson: string | null;
 }
 
@@ -187,14 +193,20 @@ async function pollHub(matchId: string) {
 
   const evChanged = snapshot.events.length !== hub.lastEventCount;
   const scoreChanged = snapshot.match.score.home !== hub.lastHome || snapshot.match.score.away !== hub.lastAway;
+  // Cambio de fase (periodo / descanso / final) — para reflejar el descanso en
+  // tiempo real aunque no cambie el marcador.
+  const lv = snapshot.match.live;
+  const phaseKey = `${snapshot.match.status}|${lv?.isHalftime ?? ''}|${lv?.period ?? ''}`;
+  const phaseChanged = phaseKey !== hub.lastPhase;
   const first = hub.lastSnapshotJson === null;
   hub.lastEventCount = snapshot.events.length;
   hub.lastHome = snapshot.match.score.home;
   hub.lastAway = snapshot.match.score.away;
+  hub.lastPhase = phaseKey;
   const json = JSON.stringify(snapshot);
   hub.lastSnapshotJson = json;
 
-  if (first || evChanged || scoreChanged) fanout(hub, json, 'data');
+  if (first || evChanged || scoreChanged || phaseChanged) fanout(hub, json, 'data');
 
   if (snapshot.match.status === 'finished') {
     fanout(hub, JSON.stringify({ matchId, finishedAt: snapshot.match.finishedAt }), 'finished');
@@ -205,7 +217,7 @@ async function pollHub(matchId: string) {
 function subscribe(matchId: string, cb: Subscriber) {
   let hub = hubs.get(matchId);
   if (!hub) {
-    hub = { subscribers: new Set(), timer: null, lastEventCount: -1, lastHome: -1, lastAway: -1, lastSnapshotJson: null };
+    hub = { subscribers: new Set(), timer: null, lastEventCount: -1, lastHome: -1, lastAway: -1, lastPhase: null, lastSnapshotJson: null };
     hubs.set(matchId, hub);
     hub.timer = setInterval(() => { void pollHub(matchId); }, POLL_INTERVAL_MS);
     void pollHub(matchId); // primer poll inmediato

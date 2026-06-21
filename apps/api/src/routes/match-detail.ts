@@ -27,6 +27,10 @@ interface MatchDetailRow {
   away_team_name: string;
   away_team_short_name: string | null;
   away_team_logo_url: string | null;
+  live_period: number | null;
+  live_clock_seconds: number | null;
+  live_clock_at: Date | null;
+  live_is_halftime: boolean;
 }
 
 interface EventRow {
@@ -56,6 +60,7 @@ matchDetailRouter.get('/:id', async (c) => {
         m.home_score, m.away_score, m.home_fouls, m.away_fouls, m.status,
         m.scheduled_at, m.started_at, m.finished_at,
         m.venue_name, m.venue_city, m.referee, m.source_ref,
+        m.live_period, m.live_clock_seconds, m.live_clock_at, m.live_is_halftime,
         ht.id           AS home_team_id,
         ht.name         AS home_team_name,
         ht.short_name   AS home_team_short_name,
@@ -227,6 +232,14 @@ matchDetailRouter.get('/:id', async (c) => {
       venue: row.venue_name ? { name: row.venue_name, city: row.venue_city } : null,
       referee:     row.referee,
       sourceRef:   row.source_ref,
+      live: (effectiveStatus === 'live')
+        ? {
+            period:       row.live_period,
+            clockSeconds: row.live_clock_seconds,
+            clockAt:      row.live_clock_at?.toISOString() ?? null,
+            isHalftime:   row.live_is_halftime,
+          }
+        : null,
       homeTeam: {
         id:        row.home_team_id,
         name:      row.home_team_name,

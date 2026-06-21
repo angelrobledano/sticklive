@@ -441,8 +441,15 @@ export interface MatchLineups {
   away: LineupPlayer[];
 }
 
+export interface MatchLiveState {
+  period: number | null;        // periodo en curso (1, 2…)
+  clockSeconds: number | null;  // tiempo RESTANTE del periodo, en segundos
+  clockAt: string | null;       // ISO: instante de captura (ancla para el tick)
+  isHalftime: boolean;          // true durante el descanso
+}
+
 export interface MatchDetail {
-  match: Match & { referee: string | null };
+  match: Match & { referee: string | null; live?: MatchLiveState | null };
   events: MatchEvent[];
   stats: MatchStats;
   lineups: MatchLineups;
@@ -461,6 +468,7 @@ interface RawMatchDetail {
     venue: MatchVenue | null;
     referee: string | null;
     sourceRef: string | null;
+    live?: MatchLiveState | null;
     homeTeam: TeamSummary;
     awayTeam: TeamSummary;
   };
@@ -490,6 +498,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
       homeTeam:    raw.match.homeTeam,
       awayTeam:    raw.match.awayTeam,
       sourceRef:   raw.match.sourceRef,
+      live:        raw.match.live ?? null,
     },
     events: raw.events,
     stats:  raw.stats,
