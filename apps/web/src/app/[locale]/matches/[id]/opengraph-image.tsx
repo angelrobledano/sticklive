@@ -7,6 +7,10 @@ import { clubName } from '@/lib/names';
 export const alt = 'Stick Live — Hockey patines en directo';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
+// Sin esto, Next cachea la imagen de forma indefinida (se generaría con el
+// partido "VS" antes de empezar y nunca reflejaría el directo). Con revalidate
+// la tarjeta OG refresca marcador y "EN DIRECTO" cada 30 s.
+export const revalidate = 30;
 
 const API = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 

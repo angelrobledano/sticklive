@@ -26,8 +26,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const data = await getMatchDetail(params.id);
     const home = clubName(data.match.homeTeam?.shortName ?? data.match.homeTeam?.name ?? '');
     const away = clubName(data.match.awayTeam?.shortName ?? data.match.awayTeam?.name ?? '');
-    const finished = data.match.status === 'finished';
-    const score = finished ? ` ${data.match.score.home ?? 0}-${data.match.score.away ?? 0} ` : ' - ';
+    const showScore = data.match.status === 'finished' || data.match.status === 'live';
+    const score = showScore ? ` ${data.match.score.home ?? 0}-${data.match.score.away ?? 0} ` : ' - ';
     const ogTitle = `${home}${score}${away}`;
     const title = `${ogTitle} | Stick Live`;
     const description = (DESC[locale] ?? DESC['en'])!(home, away);
