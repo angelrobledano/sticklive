@@ -128,9 +128,13 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
          -- Partidos en directo: siempre actualizar eventos
          m.status = 'live'
          OR (
-           -- Partidos recién terminados (3h) sin ningún evento persistido
+           -- Partidos recién terminados (3h) sin ningún evento persistido.
+           -- Guardia: solo los jugados en las últimas 48h. Evita perseguir en
+           -- bucle la ficha (404) de partidos viejos que la fuente sigue
+           -- listando en el feed `mc` (p.ej. incomparecencias antiguas 0-10).
            m.status = 'finished'
-           AND m.updated_at > NOW() - INTERVAL '3 hours'
+           AND m.updated_at   > NOW() - INTERVAL '3 hours'
+           AND m.scheduled_at > NOW() - INTERVAL '48 hours'
            AND NOT EXISTS (SELECT 1 FROM match_events me WHERE me.match_id = m.id)
          )
        )`,
