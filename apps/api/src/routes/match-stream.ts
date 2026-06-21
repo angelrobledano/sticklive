@@ -94,6 +94,32 @@ async function fetchMatchSnapshot(matchId: string) {
     awayPenalties: { total: mappedEvents.filter((e) => e.eventType === 'penalty' && !e.isHomeTeam && e.teamId !== null).length, scored: 0 },
   };
 
+  // Alineaciones — paridad con el REST (/matches/:id) para que el directo no
+  // las pierda al reemplazar el cliente sus datos con el snapshot del stream.
+  const lineupsResult = await db.query<{
+    is_home: boolean; jersey_number: number | null; player_name: string;
+    is_goalkeeper: boolean; is_starter: boolean; is_captain: boolean;
+    goals: number; assists: number; player_id: string | null; photo_url: string | null;
+  }>(`
+    SELECT ml.is_home, ml.jersey_number, ml.player_name, ml.player_id,
+           ml.is_goalkeeper, ml.is_starter, ml.is_captain, ml.goals, ml.assists,
+           p.photo_url
+    FROM match_lineups ml
+    LEFT JOIN players p ON p.id = ml.player_id
+    WHERE ml.match_id = $1
+      AND ml.role IS NULL
+    ORDER BY ml.is_home DESC, ml.is_starter DESC, ml.jersey_number ASC NULLS LAST
+  `, [matchId]);
+  const toLineup = (r: typeof lineupsResult.rows[number]) => ({
+    jerseyNumber: r.jersey_number, playerName: r.player_name,
+    isGoalkeeper: r.is_goalkeeper, isStarter: r.is_starter, isCaptain: r.is_captain,
+    goals: r.goals, assists: r.assists, playerId: r.player_id, photoUrl: r.photo_url,
+  });
+  const lineups = {
+    home: lineupsResult.rows.filter((r) => r.is_home).map(toLineup),
+    away: lineupsResult.rows.filter((r) => !r.is_home).map(toLineup),
+  };
+
   return {
     stats,
     match: {
@@ -106,9 +132,10 @@ async function fetchMatchSnapshot(matchId: string) {
     },
     events: eventsResult.rows.map((e) => ({
       id: e.id, eventType: e.event_type, minute: e.minute, period: e.period,
-      teamId: e.team_id, detail: e.detail,
+      teamId: e.team_id, isHomeTeam: e.team_id === homeTeamId, detail: e.detail,
       player: e.player_id ? { id: e.player_id, firstName: e.player_first_name ?? '', lastName: e.player_last_name ?? '' } : null,
     })),
+    lineups,
     updatedAt: new Date().toISOString(),
   };
 }
