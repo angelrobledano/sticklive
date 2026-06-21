@@ -274,7 +274,7 @@ function EventSummary({ events }: { events: MatchDetail['events'] }) {
           }`} />}
       <span className="truncate max-w-[100px]">{eventSurname(e.player!)}</span>
       <span className="tabular-nums text-slate-400 dark:text-slate-500 whitespace-nowrap">
-        {(e.period === 2 ? t('match_detail.p2_short') + ' ' : e.period && e.period > 2 ? t('match_detail.ot_short') + ' ' : '')}
+        {(e.period === 1 ? t('match_detail.p1_short') + ' ' : e.period === 2 ? t('match_detail.p2_short') + ' ' : e.period && e.period > 2 ? t('match_detail.ot_short') + ' ' : '')}
         {fmtEventClock(e)}
       </span>
     </span>
@@ -326,18 +326,20 @@ function fmtEventClock(ev: { clock?: string | null; minute: number | null }): st
  */
 function LivePhase({ live }: { live: NonNullable<MatchDetail['match']['live']> }) {
   const { t } = useT();
-  const [elapsed, setElapsed] = useState<number | null>(null);
+  const [remaining, setRemaining] = useState<number | null>(null);
 
   useEffect(() => {
     if (live.isHalftime || live.clockSeconds == null || !live.clockAt) {
-      setElapsed(null);
+      setRemaining(null);
       return;
     }
-    const baseElapsed = 1500 - live.clockSeconds; // transcurrido en el periodo al capturar
+    // En hockey el crono cuenta ATRÁS desde 25:00. La fuente da el restante;
+    // lo hacemos decrecer desde el instante de captura (clockAt).
+    const base = live.clockSeconds;
     const anchor = new Date(live.clockAt).getTime();
     const tick = () => {
-      const e = baseElapsed + (Date.now() - anchor) / 1000;
-      setElapsed(Math.max(0, Math.min(1500, Math.floor(e))));
+      const r = base - (Date.now() - anchor) / 1000;
+      setRemaining(Math.max(0, Math.min(1500, Math.round(r))));
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -358,8 +360,8 @@ function LivePhase({ live }: { live: NonNullable<MatchDetail['match']['live']> }
     : live.period === 1
       ? t('match_states.first_half')
       : null;
-  const mmss = elapsed != null
-    ? `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`
+  const mmss = remaining != null
+    ? `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`
     : null;
 
   return (
