@@ -31,7 +31,7 @@ const MAX_CONNECTIONS = Number(process.env['SSE_MAX_CONNECTIONS'] ?? 1000);
 
 interface MatchRow {
   id: string; season_id: string; round_id: string | null;
-  home_score: number | null; away_score: number | null; status: string;
+  home_score: number | null; away_score: number | null; home_fouls: number | null; away_fouls: number | null; status: string;
   scheduled_at: string | null; started_at: string | null; finished_at: string | null;
   home_team_id: string; home_team_name: string; home_team_short_name: string | null; home_team_logo_url: string | null;
   away_team_id: string; away_team_name: string; away_team_short_name: string | null; away_team_logo_url: string | null;
@@ -49,7 +49,7 @@ async function fetchMatchSnapshot(matchId: string) {
   const matchResult = await db.query<MatchRow>(`
     SELECT
       m.id, m.season_id, m.round_id,
-      m.home_score, m.away_score, m.status,
+      m.home_score, m.away_score, m.home_fouls, m.away_fouls, m.status,
       m.scheduled_at, m.started_at, m.finished_at,
       m.live_period, m.live_clock_seconds, m.live_clock_at, m.live_is_halftime,
       ht.id AS home_team_id, ht.name AS home_team_name,
@@ -90,8 +90,11 @@ async function fetchMatchSnapshot(matchId: string) {
     eventType: e.event_type, teamId: e.team_id, isHomeTeam: e.team_id === homeTeamId,
   }));
   const stats = {
-    homeFouls: mappedEvents.filter((e) => e.eventType === 'blue_card' && e.isHomeTeam).length,
-    awayFouls: mappedEvents.filter((e) => e.eventType === 'blue_card' && !e.isHomeTeam && e.teamId !== null).length,
+    // Faltas de equipo = nº de eventos 'foul' por equipo (cada FALTA del acta es
+    // una; coincide con el contador acumulado de la fuente). Fallback a la
+    // cabecera (home_fouls) solo para partidos antiguos sin eventos de falta.
+    homeFouls: mappedEvents.filter((e) => e.eventType === 'foul' && e.isHomeTeam).length || (row.home_fouls ?? 0),
+    awayFouls: mappedEvents.filter((e) => e.eventType === 'foul' && !e.isHomeTeam && e.teamId !== null).length || (row.away_fouls ?? 0),
     homePenalties: { total: mappedEvents.filter((e) => e.eventType === 'penalty' && e.isHomeTeam).length, scored: 0 },
     awayPenalties: { total: mappedEvents.filter((e) => e.eventType === 'penalty' && !e.isHomeTeam && e.teamId !== null).length, scored: 0 },
   };

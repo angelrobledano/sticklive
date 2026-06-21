@@ -168,10 +168,12 @@ matchDetailRouter.get('/:id', async (c) => {
     // 3) Stats: faltas de equipo desde matches.home_fouls/away_fouls
     // (scrapeadas de la cabecera de la ficha). Fallback legacy: contar
     // tarjetas azules, que NO es lo mismo pero es mejor que nada.
-    const homeFouls = row.home_fouls
-      ?? events.filter((e) => e.eventType === 'blue_card' && e.isHomeTeam).length;
-    const awayFouls = row.away_fouls
-      ?? events.filter((e) => e.eventType === 'blue_card' && !e.isHomeTeam && e.teamId !== null).length;
+    // Faltas de equipo = nº de eventos 'foul' por equipo (coincide con el
+    // contador acumulado del acta). Fallback a la cabecera solo si no hay eventos.
+    const homeFouls = events.filter((e) => e.eventType === 'foul' && e.isHomeTeam).length
+      || (row.home_fouls ?? 0);
+    const awayFouls = events.filter((e) => e.eventType === 'foul' && !e.isHomeTeam && e.teamId !== null).length
+      || (row.away_fouls ?? 0);
 
     const homePenalties = events.filter((e) => e.eventType === 'penalty' && e.isHomeTeam);
     const awayPenalties = events.filter((e) => e.eventType === 'penalty' && !e.isHomeTeam && e.teamId !== null);

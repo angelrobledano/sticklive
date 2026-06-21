@@ -405,12 +405,8 @@ function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?: strin
                 {t('match_states.live')}
               </span>
             )}
-            {/* Indicador de conexión SSE */}
-            {sseStatus === 'live' && (
-              <span className="text-[9px] font-normal text-emerald-500/70 normal-case tracking-normal">
-                · {t('match_detail.auto_update')}
-              </span>
-            )}
+            {/* En directo se sobreentiende que se actualiza en vivo; solo avisamos
+                si la conexión se cae. */}
             {sseStatus === 'error' && (
               <span className="text-[9px] font-normal text-amber-500 normal-case tracking-normal">
                 · {t('match_detail.reconnecting')}
