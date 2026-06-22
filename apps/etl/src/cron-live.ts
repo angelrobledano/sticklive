@@ -42,6 +42,23 @@ const WINDOW_HOURS   = Number(process.env['WINDOW_HOURS']     ?? 2);
 const MAX_RUNTIME_MS = Number(process.env['MAX_RUNTIME_MIN']  ?? 180) * 60 * 1000;
 const SPORT_SLUG     = 'hockey-patines';
 
+// ── Sentry Cron Monitor (heartbeat) ──────────────────────────────────────────
+// Detecta si el cron deja de correr del todo (contenedor/scheduler muerto). Como
+// en partido el cron entra en un bucle largo, no vale un check-in por invocación:
+// latimos al arrancar Y en cada ciclo, así Sentry nos ve vivos siempre (≤5 min
+// entre latidos) y solo alerta si de verdad se cae.
+const CRON_MONITOR_SLUG = 'cron-live-hockey';
+const CRON_MONITOR_CONFIG = {
+  schedule: { type: 'interval' as const, value: 5, unit: 'minute' as const },
+  checkinMargin: 5, // minutos de gracia antes de marcar "perdido"
+  maxRuntime: 200,  // minutos (el bucle activo puede durar hasta 180)
+  timezone: 'Etc/UTC',
+};
+function heartbeat(): void {
+  try { Sentry.captureCheckIn({ monitorSlug: CRON_MONITOR_SLUG, status: 'ok' }, CRON_MONITOR_CONFIG); }
+  catch { /* nunca romper el cron por el monitor */ }
+}
+
 interface WindowStatus {
   hasLive:     boolean;  // al menos un partido con status='live'
   hasUpcoming: boolean;  // al menos un partido 'scheduled' en las próximas WINDOW_HOURS
@@ -219,7 +236,18 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
   const prevRounds = pushEnabled ? await snapshotRounds(primarySeasonId)  : new Map();
 
   const result = await scraper.run();
-  if (result.data.length === 0) return 0;
+  if (result.data.length === 0) {
+    // rfep_mc_1.php normalmente devuelve decenas de partidos. 0 = la fuente cayó,
+    // cambió de estructura o nos bloqueó → alerta a Sentry (agujero nº1 de la
+    // auditoría: enterarse de que el scraper dejó de traer datos en una jornada).
+    if (!result.success) {
+      Sentry.captureException(new Error('Scraper de marcadores falló: 0 partidos'),
+        { tags: { phase: 'mc-scrape' }, extra: { errors: result.errors } });
+    } else {
+      Sentry.captureMessage('rfep_mc_1.php devolvió 0 partidos — posible cambio/caída de la fuente', 'warning');
+    }
+    return 0;
+  }
 
   const etl = await pipeline.runMatches(result);
 
@@ -272,6 +300,8 @@ async function sleep(ms: number): Promise<void> {
 }
 
 async function main() {
+  heartbeat(); // latido al monitor: "el cron arrancó"
+
   // ── 0. Resolver temporadas activas ────────────────────────────────────────
   const seasonIds = await resolveSeasonIds();
 
@@ -313,6 +343,7 @@ async function main() {
 
   while (true) {
     cycle++;
+    heartbeat(); // latido en cada ciclo: mantiene el monitor vivo en partidos largos
     const elapsed = Date.now() - startedAt;
 
     if (elapsed > MAX_RUNTIME_MS) {
