@@ -39,6 +39,7 @@
     "cards_leaderboard": "Cards"
   },
   "timeline_events": {
+    "foul": "Foul",
     "goal": "Goal",
     "goal_by": "Goal by",
     "penalty": "Penalty",

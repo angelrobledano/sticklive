@@ -160,6 +160,17 @@ async function probeActa(idp: string, idc: string): Promise<void> {
       } else {
         console.log('  (no se encontró .periodo_activo)');
       }
+      // Volcado de filas FALTA DIRECTA / penalti para ver si la fuente nombra al lanzador
+      let fdDumped = 0;
+      $('tr').each((_, tr) => {
+        if (fdDumped >= 3) return;
+        const txt = $(tr).text().replace(/\s+/g, ' ').trim();
+        if (/(FALTA DIRECTA|DIRECTA|PENALTI)/i.test(txt)) {
+          fdDumped++;
+          console.log(`  FD/PEN ROW: ${($.html(tr) ?? '').replace(/\s+/g, ' ').trim().slice(0, 700)}`);
+        }
+      });
+      if (fdDumped === 0) console.log('  (sin filas FALTA DIRECTA/PENALTI en el acta)');
       console.log('  ── fin scan ──');
       note('ACTA', `idp=${idp} endpoint=${c.path} bytes=${html.length} clocks=${clocks} goals=${goals}`);
       dumped = true;

@@ -129,9 +129,9 @@ function injectAccumulatedFouls(events: MatchEvent[], homeTeamId: string): Timel
   const countableType = hasRealFouls ? 'foul' : 'blue_card';
 
   for (const ev of events) {
-    // Las faltas individuales no se pintan (inundarían la cronología):
-    // solo generan las marcas de acumulación 10ª/15ª... (falta directa).
-    if (ev.eventType !== 'foul') result.push(ev);
+    // Las faltas individuales SÍ se pintan (de forma compacta, con su autor)
+    // y además generan las marcas de acumulación 10ª/15ª... (falta directa).
+    result.push(ev);
     if (ev.eventType === countableType) {
       if (ev.teamId === homeTeamId) {
         homeFouls++;
@@ -498,6 +498,7 @@ function eventTitle(ev: TimelineEvent, t: (k: string, v?: Record<string, string 
     case 'blue_card':       return t('timeline_events.blue_card');
     case 'red_card':        return t('timeline_events.red_card');
     case 'timeout':         return t('timeline_events.timeout');
+    case 'foul':            return t('timeline_events.foul');
     case 'direct_foul':     return t('timeline_events.direct_foul');
     case 'period_end':      return t('match_detail.end_of_period', { n: ev.period ?? '' });
     case 'accumulated_foul': {
@@ -508,7 +509,7 @@ function eventTitle(ev: TimelineEvent, t: (k: string, v?: Record<string, string 
   }
 }
 
-function TimelineRow({ ev, sameInstantAsPrev = false }: {
+function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
   ev: TimelineEvent;
   homeName: string;
   awayName: string;
@@ -574,7 +575,7 @@ function TimelineRow({ ev, sameInstantAsPrev = false }: {
   const tier: 'high' | 'mid' | 'low' =
     ev.eventType === 'goal' || ev.eventType === 'blue_card' || ev.eventType === 'red_card'
       ? 'high'
-      : ev.eventType === 'timeout' ? 'low' : 'mid';
+      : ev.eventType === 'timeout' || ev.eventType === 'foul' ? 'low' : 'mid';
 
   const isGoal = ev.eventType === 'goal';
   const titleColor = isGoal
@@ -592,8 +593,11 @@ function TimelineRow({ ev, sameInstantAsPrev = false }: {
       {eventTitle(ev, t)}
     </span>
   ) : tier === 'low' ? (
-    // Tiempo muerto: una sola línea gris, mínima
-    <span className="text-[11px] text-slate-400 dark:text-slate-600">{eventTitle(ev, t)}</span>
+    // Tiempo muerto / falta: una sola línea gris, mínima, con el autor si lo hay
+    <span className="text-[11px] text-slate-400 dark:text-slate-600">
+      {eventTitle(ev, t)}
+      {'player' in ev && ev.player ? <> · <span className="text-slate-500 dark:text-slate-400">{eventSurname(ev.player)}</span></> : null}
+    </span>
   ) : (
     <div className={`min-w-0 ${isHome ? 'text-right' : 'text-left'}`}>
       {tier === 'high' && 'player' in ev && ev.player ? (
@@ -613,12 +617,18 @@ function TimelineRow({ ev, sameInstantAsPrev = false }: {
             <span className={tier === 'high' ? '' : 'font-semibold'}>{eventTitle(ev, t)}</span>
             {outcome && <> {outcome}</>}
           </p>
-          {'player' in ev && ev.player && (
+          {'player' in ev && ev.player ? (
             <Link href={`/players/${ev.player.id}`}
                   className="block text-xs text-slate-500 dark:text-slate-400 hover:text-rink-passion hover:underline truncate">
               {playerFullName(ev.player)}
             </Link>
-          )}
+          ) : (ev.eventType === 'direct_foul' || ev.eventType === 'penalty') ? (
+            // La fuente no nombra al lanzador en FD/penalti fallados (id_player=0);
+            // mostramos al menos el equipo que la lanza.
+            <span className="block text-xs text-slate-500 dark:text-slate-400 truncate">
+              {isHome ? homeName : awayName}
+            </span>
+          ) : null}
         </>
       )}
     </div>
@@ -636,9 +646,11 @@ function TimelineRow({ ev, sameInstantAsPrev = false }: {
       {/* Lado local: [texto] [icono] → centro */}
       <div className={`flex items-center justify-end gap-2 min-w-0 pr-1 ${isHome ? '' : 'invisible'}`}>
         {isHome && cell}
-        {isHome && (tier === 'low'
+        {isHome && (ev.eventType === 'timeout'
           ? <TimeoutDot />
-          : <EventIcon type={ev.eventType} />)}
+          : ev.eventType === 'foul'
+            ? <FoulDot />
+            : <EventIcon type={ev.eventType} />)}
       </div>
 
       {/* Crono restante — nodo central que interrumpe la línea */}
@@ -655,12 +667,23 @@ function TimelineRow({ ev, sameInstantAsPrev = false }: {
 
       {/* Lado visitante: centro → [icono] [texto] */}
       <div className={`flex items-center justify-start gap-2 min-w-0 pl-1 ${isHome ? 'invisible' : ''}`}>
-        {!isHome && (tier === 'low'
+        {!isHome && (ev.eventType === 'timeout'
           ? <TimeoutDot />
-          : <EventIcon type={ev.eventType} />)}
+          : ev.eventType === 'foul'
+            ? <FoulDot />
+            : <EventIcon type={ev.eventType} />)}
         {!isHome && cell}
       </div>
     </div>
+  );
+}
+
+/** Icono mínimo para faltas individuales (nivel bajo) */
+function FoulDot() {
+  return (
+    <span className="w-4 h-4 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
+      <span className="w-1.5 h-1.5 rounded-full bg-orange-400 dark:bg-orange-500" />
+    </span>
   );
 }
 

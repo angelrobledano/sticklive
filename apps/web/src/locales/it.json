@@ -39,6 +39,7 @@
     "cards_leaderboard": "Cartellini"
   },
   "timeline_events": {
+    "foul": "Fallo",
     "goal": "Gol",
     "goal_by": "Gol di",
     "penalty": "Rigore",

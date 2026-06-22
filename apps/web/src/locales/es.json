@@ -43,6 +43,7 @@
     "cards_leaderboard": "Tarjetas"
   },
   "timeline_events": {
+    "foul": "Falta",
     "goal": "Gol",
     "goal_by": "Gol de",
     "penalty": "Penalti",

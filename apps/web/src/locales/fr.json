@@ -39,6 +39,7 @@
     "cards_leaderboard": "Cartons"
   },
   "timeline_events": {
+    "foul": "Faute",
     "goal": "But",
     "goal_by": "But de",
     "penalty": "Penalty",
