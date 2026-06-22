@@ -459,7 +459,7 @@ export async function diffRedCards(
     const cfg = sub.config ?? {};
     if (cfg['master'] === false) continue;
     if (night && cfg['quietNight'] !== false) continue;
-    if (cfg['favCards'] === false) continue; // por defecto ON (ausente = ON)
+    if (cfg['favRedCards'] === false) continue; // toggle "Tarjetas rojas" (default ON)
 
     for (const c of fresh) {
       const followsTeam   = c.scorerTeamId != null && (sub.fav_teams ?? []).includes(c.scorerTeamId);
