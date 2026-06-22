@@ -14,9 +14,9 @@ import webpush from 'web-push';
 import { db } from '@sports/db';
 import { createLogger } from '@sports/logger';
 import {
-  branded, matchTag, goalAlert, finalAlert, liveBody, isQuietHours,
+  branded, matchTag, finalAlert, liveBody, isQuietHours,
   jornadaStartAlert, jornadaEndAlert, jornadaTag,
-  playerGoalAlert, playerTag,
+  playerGoalAlert,
   type MatchRef,
 } from '../../api/src/lib/notification-copy.js';
 
@@ -101,51 +101,67 @@ export async function snapshotRounds(seasonId: string): Promise<Map<string, Roun
 export interface GoalSnap {
   count: number;
   matchId: string;
+  playerId: string;
   playerName: string;
+  scorerTeamId: string | null;   // equipo del goleador (segmentación por equipo)
+  competitionId: string | null;  // competición (segmentación por liga)
   homeShort: string;
   awayShort: string;
   homeScore: number;
   awayScore: number;
+  minute: number | null;         // minuto transcurrido del último gol del jugador
 }
 
 /**
- * Conteo de goles por (partido, jugador). Se compara antes/después de las fichas
- * para detectar goles nuevos (los eventos se reemplazan en cada scrape, así que
- * diffeamos por conteo, no por id de evento).
+ * Conteo de goles por (partido, jugador) sobre TODAS las temporadas activas. Se
+ * compara antes/después de las fichas para detectar goles nuevos (los eventos se
+ * reemplazan en cada scrape, así que diffeamos por conteo). Incluye el equipo del
+ * goleador, la competición y el minuto para enriquecer la notificación.
  */
-export async function snapshotGoals(seasonId: string): Promise<Map<string, GoalSnap>> {
+export async function snapshotGoals(seasonIds: string[]): Promise<Map<string, GoalSnap>> {
+  if (seasonIds.length === 0) return new Map();
   const res = await db.query<{
     match_id: string; player_id: string; player_name: string;
+    scorer_team_id: string | null; competition_id: string | null;
     home_short: string | null; away_short: string | null;
-    home_score: number | null; away_score: number | null; goals: string;
+    home_score: number | null; away_score: number | null;
+    minute: number | null; goals: string;
   }>(`
-    SELECT e.match_id, e.player_id,
+    SELECT e.match_id, e.player_id, e.team_id AS scorer_team_id,
+           comp.id AS competition_id,
            TRIM(COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'')) AS player_name,
            ht.short_name AS home_short, at.short_name AS away_short,
            m.home_score, m.away_score,
+           MAX(e.minute) AS minute,
            COUNT(*) AS goals
     FROM match_events e
     JOIN matches m ON m.id = e.match_id
+    JOIN seasons s ON s.id = m.season_id
+    JOIN competitions comp ON comp.id = s.competition_id
     LEFT JOIN players p ON p.id = e.player_id
     LEFT JOIN teams ht ON ht.id = m.home_team_id
     LEFT JOIN teams at ON at.id = m.away_team_id
-    WHERE m.season_id = $1
+    WHERE m.season_id = ANY($1)
       AND e.event_type IN ('goal', 'penalty')
       AND e.player_id IS NOT NULL
       AND (m.status = 'live' OR m.scheduled_at > NOW() - INTERVAL '6 hours')
-    GROUP BY e.match_id, e.player_id, p.first_name, p.last_name,
+    GROUP BY e.match_id, e.player_id, e.team_id, comp.id, p.first_name, p.last_name,
              ht.short_name, at.short_name, m.home_score, m.away_score
-  `, [seasonId]);
+  `, [seasonIds]);
   const map = new Map<string, GoalSnap>();
   for (const r of res.rows) {
     map.set(`${r.match_id}:${r.player_id}`, {
       count: Number(r.goals),
       matchId: r.match_id,
+      playerId: r.player_id,
       playerName: r.player_name || 'Tu jugador',
+      scorerTeamId: r.scorer_team_id,
+      competitionId: r.competition_id,
       homeShort: r.home_short ?? 'Local',
       awayShort: r.away_short ?? 'Visitante',
       homeScore: r.home_score ?? 0,
       awayScore: r.away_score ?? 0,
+      minute: r.minute != null ? Number(r.minute) : null,
     });
   }
   return map;
@@ -228,13 +244,8 @@ export async function diffAndNotify(
         payload: { title: branded(`${ref.homeShort} – ${ref.awayShort} ¡en juego!`), body: liveBody(ref), tag, url } });
     }
 
-    const homeDiff = (now.home_score ?? 0) - (before.home_score ?? 0);
-    const awayDiff = (now.away_score ?? 0) - (before.away_score ?? 0);
-    if (now.status === 'live' && (homeDiff > 0 || awayDiff > 0)) {
-      const scorer = homeDiff > 0 ? ref.homeShort : ref.awayShort;
-      toSend.push({ kind: 'goal', matchTeams: teams,
-        payload: { title: branded(goalAlert(scorer, null, ref)), body: liveBody(ref), tag, url } });
-    }
+    // El GOL ya no se notifica aquí (por marcador, sin goleador): se emite en
+    // diffGoals tras las fichas, con goleador y minuto, y un solo tag por partido.
 
     if (before.status !== 'finished' && now.status === 'finished') {
       toSend.push({ kind: 'final', matchTeams: teams,
@@ -303,21 +314,23 @@ export async function diffAndNotify(
 }
 
 /**
- * Goles de JUGADORES favoritos. Se llama tras refrescar las fichas (que traen el
- * goleador): compara el conteo de goles por (partido, jugador) antes/después.
+ * GOLES. Se llama tras refrescar las fichas (que traen goleador y minuto):
+ * compara el conteo de goles por (partido, jugador) antes/después y emite UN push
+ * por gol nuevo, con goleador + minuto, a quien sigue el equipo del goleador, la
+ * competición O al jugador. Tag por partido (matchTag) → notificación viva, sin
+ * duplicar aunque el usuario siga equipo y jugador a la vez.
  */
-export async function diffPlayerGoals(
+export async function diffGoals(
   prevGoals: Map<string, GoalSnap>,
-  seasonId: string,
+  seasonIds: string[],
 ): Promise<void> {
   if (!pushEnabled) return;
 
-  const cur = await snapshotGoals(seasonId);
-  const fresh: Array<{ playerId: string; snap: GoalSnap }> = [];
+  const cur = await snapshotGoals(seasonIds);
+  const fresh: GoalSnap[] = [];
   for (const [key, now] of cur) {
     const delta = now.count - (prevGoals.get(key)?.count ?? 0);
-    const playerId = key.split(':')[1];
-    if (delta > 0 && playerId) fresh.push({ playerId, snap: now });
+    if (delta > 0) fresh.push(now);
   }
   if (fresh.length === 0) return;
 
@@ -336,16 +349,21 @@ export async function diffPlayerGoals(
     if (cfg['favGoals'] === false) continue;
 
     for (const g of fresh) {
-      if (!(sub.fav_players ?? []).includes(g.playerId)) continue;
+      const followsTeam   = g.scorerTeamId != null && (sub.fav_teams ?? []).includes(g.scorerTeamId);
+      const followsLeague = g.competitionId != null && (sub.fav_leagues ?? []).includes(g.competitionId);
+      const followsPlayer = (sub.fav_players ?? []).includes(g.playerId);
+      if (!(followsTeam || followsLeague || followsPlayer)) continue;
+
       const ref: MatchRef = {
-        homeShort: g.snap.homeShort, awayShort: g.snap.awayShort,
-        homeScore: g.snap.homeScore, awayScore: g.snap.awayScore,
+        homeShort: g.homeShort, awayShort: g.awayShort,
+        homeScore: g.homeScore, awayScore: g.awayScore,
+        minute: g.minute,
       };
       const payload: PushPayload = {
-        title: branded(playerGoalAlert(g.snap.playerName, ref)),
+        title: branded(playerGoalAlert(g.playerName, ref)),
         body: liveBody(ref),
-        tag: playerTag(g.playerId),
-        url: `${WEB_BASE}/matches/${g.snap.matchId}`,
+        tag: matchTag(g.matchId), // un único tag por partido → sin duplicar
+        url: `${WEB_BASE}/matches/${g.matchId}`,
       };
       const res = await deliver(sub, payload);
       if (res === 'sent') sent++;
@@ -353,5 +371,5 @@ export async function diffPlayerGoals(
     }
   }
 
-  log.info({ goals: fresh.length, sent, pruned }, '⚽ Push gol-jugador');
+  log.info({ goals: fresh.length, sent, pruned }, '⚽ Push de gol (goleador+minuto)');
 }

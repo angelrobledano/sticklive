@@ -32,7 +32,7 @@ import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.sc
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import {
   snapshotMatches, snapshotRounds, snapshotGoals,
-  diffAndNotify, diffPlayerGoals, pushEnabled,
+  diffAndNotify, diffGoals, pushEnabled,
 } from './push-dispatcher.js';
 
 const log = createLogger({ service: 'cron-live' });
@@ -244,16 +244,16 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
     log.warn({ err }, 'pase de competiciones secundarias fallo — primaria intacta');
   }
 
-  // Goles de jugador: las fichas traen el goleador, así que snapshot ANTES de
-  // refrescarlas y diff DESPUÉS.
-  const prevGoals = pushEnabled ? await snapshotGoals(primarySeasonId) : new Map();
+  // Goles: las fichas traen goleador y minuto, así que snapshot ANTES de
+  // refrescarlas y diff DESPUÉS, sobre TODAS las temporadas activas.
+  const prevGoals = pushEnabled ? await snapshotGoals(seasonIds) : new Map();
   try {
     await runFichasForActiveMatches(seasonIds);
   } catch (err) {
     log.warn({ err }, 'runFichasForActiveMatches fallo — ciclo de scores sigue OK');
   }
-  try { await diffPlayerGoals(prevGoals, primarySeasonId); } catch (err) {
-    log.warn({ err }, 'push gol-jugador fallo — el ciclo sigue');
+  try { await diffGoals(prevGoals, seasonIds); } catch (err) {
+    log.warn({ err }, 'push de gol fallo — el ciclo sigue');
   }
 
   return etl.upserted;

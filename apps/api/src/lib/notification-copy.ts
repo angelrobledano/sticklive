@@ -72,9 +72,10 @@ export function jornadaEndAlert(roundName: string): string {
   return `La ${roundName} ha terminado. Consulta resultados y clasificación.`;
 }
 
-/** `⚽ ¡Gol de Pablo Álvarez! BAR 2 - 1 IHC` (jugador favorito) */
+/** `⚽ ¡Gol de Pablo Álvarez! BAR 2 - 1 IHC (12')` */
 export function playerGoalAlert(playerName: string, m: MatchRef): string {
-  return `⚽ ¡Gol de ${playerName}! ${m.homeShort} ${m.homeScore} - ${m.awayScore} ${m.awayShort}`;
+  const min = m.minute != null ? ` (${m.minute}')` : '';
+  return `⚽ ¡Gol de ${playerName}! ${m.homeShort} ${m.homeScore} - ${m.awayScore} ${m.awayShort}${min}`;
 }
 
 /** Cuerpo de la notificación viva del partido: `[LIVE] BAR 3 - 1 IHC (Min. 34')` */
