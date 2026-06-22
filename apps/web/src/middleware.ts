@@ -49,6 +49,8 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Excluir assets, ficheros estáticos y rutas internas de Next
-  matcher: ['/((?!_next|api|favicon.ico|icon.svg|.*\\..*).*)'],
+  // Excluir assets, ficheros estáticos y rutas internas de Next.
+  // `monitoring` = tunnelRoute de Sentry (anti-adblock): no debe pasar por el
+  // middleware de i18n o se redirigiría y se perderían los eventos.
+  matcher: ['/((?!_next|api|monitoring|favicon.ico|icon.svg|.*\\..*).*)'],
 };

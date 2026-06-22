@@ -91,7 +91,10 @@ async function reconcileSyntheticMatches(): Promise<number> {
        AND r.season_id    = s.season_id
        AND r.home_team_id = s.home_team_id
        AND r.away_team_id = s.away_team_id
-       AND r.scheduled_at::date = s.scheduled_at::date
+       -- Comparar el DÍA en hora española: un placeholder a las 00:00 (Madrid)
+       -- y el partido real a las 20:30 caen en días UTC distintos y no casaban.
+       AND (r.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
+         = (s.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
      RETURNING s.id`
   );
   const stale = await db.query(

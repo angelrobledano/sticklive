@@ -14,3 +14,6 @@ coverage/
 playwright-browsers/
 *.sql.gz
 dump.sql
+
+# Sentry Config File
+.env.sentry-build-plugin
