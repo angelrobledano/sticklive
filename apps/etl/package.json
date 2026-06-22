@@ -12,6 +12,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@sentry/node": "^10.59.0",
     "@sports/analytics": "*",
     "@sports/db": "*",
     "@sports/logger": "*",

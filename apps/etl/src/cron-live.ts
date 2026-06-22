@@ -23,6 +23,8 @@
  *   WINDOW_HOURS       — horas hacia adelante para buscar partidos próximos (defecto: 2)
  *   MAX_RUNTIME_MIN    — minutos máximos antes de salir por seguridad (defecto: 180)
  */
+import './instrument.js'; // Sentry.init — debe ir el PRIMERO de todo
+import * as Sentry from '@sentry/node';
 import { createLogger } from '@sports/logger';
 import { db, closeDb } from '@sports/db';
 import { EtlPipeline } from './pipeline.js';
@@ -319,6 +321,7 @@ async function main() {
       );
     } catch (err) {
       log.error({ cycle, err }, 'Error en ciclo — reintentando en siguiente tick');
+      Sentry.captureException(err, { tags: { phase: 'cron-cycle' }, extra: { cycle } });
     }
 
     const status = await checkWindow(seasonIds);
@@ -344,5 +347,6 @@ async function main() {
 }
 
 main()
-  .catch((err) => { log.error({ err }, 'Error fatal'); process.exit(1); })
-  .finally(() => closeDb());
+  .catch((err) => { log.error({ err }, 'Error fatal'); Sentry.captureException(err); process.exitCode = 1; })
+  // flush ANTES de salir: el cron es un proceso corto y si no se pierden los eventos
+  .finally(async () => { await Sentry.flush(2000); await closeDb(); });

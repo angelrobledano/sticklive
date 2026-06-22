@@ -1,3 +1,5 @@
+import './instrument.js'; // Sentry.init — debe ir el PRIMERO de todo
+import * as Sentry from '@sentry/node';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { logger as honoLogger } from 'hono/logger';
@@ -96,6 +98,7 @@ app.notFound((c) => {
 // Error handler global: nunca filtrar detalles internos al cliente (auditoría S7).
 app.onError((err, c) => {
   logger.error({ path: c.req.path, err }, 'Error no controlado en la API');
+  Sentry.captureException(err, { tags: { path: c.req.path } });
   return c.json({ error: 'internal_error' }, 500);
 });
 
