@@ -16,7 +16,7 @@ import { createLogger } from '@sports/logger';
 import {
   branded, matchTag, finalAlert, liveBody, isQuietHours,
   jornadaStartAlert, jornadaEndAlert, jornadaTag,
-  playerGoalAlert,
+  playerGoalAlert, cardAlert, halftimeAlert, secondHalfAlert,
   type MatchRef,
 } from '../../api/src/lib/notification-copy.js';
 
@@ -43,12 +43,15 @@ export interface MatchSnap {
   away_team_id: string | null;
   home_name: string | null;
   away_name: string | null;
+  live_is_halftime: boolean;
+  live_period: number | null;
 }
 
 export async function snapshotMatches(seasonId: string): Promise<Map<string, MatchSnap>> {
   const res = await db.query<MatchSnap>(`
     SELECT m.id, m.status, m.home_score, m.away_score,
            m.home_team_id, m.away_team_id,
+           m.live_is_halftime, m.live_period,
            ht.short_name AS home_name, at.short_name AS away_name
     FROM matches m
     LEFT JOIN teams ht ON ht.id = m.home_team_id
@@ -104,6 +107,7 @@ export interface GoalSnap {
   playerId: string;
   playerName: string;
   scorerTeamId: string | null;   // equipo del goleador (segmentación por equipo)
+  scorerTeamShort?: string | null; // abreviatura del equipo (para copy de tarjeta)
   competitionId: string | null;  // competición (segmentación por liga)
   homeShort: string;
   awayShort: string;
@@ -156,6 +160,58 @@ export async function snapshotGoals(seasonIds: string[]): Promise<Map<string, Go
       playerId: r.player_id,
       playerName: r.player_name || 'Tu jugador',
       scorerTeamId: r.scorer_team_id,
+      competitionId: r.competition_id,
+      homeShort: r.home_short ?? 'Local',
+      awayShort: r.away_short ?? 'Visitante',
+      homeScore: r.home_score ?? 0,
+      awayScore: r.away_score ?? 0,
+      minute: r.minute != null ? Number(r.minute) : null,
+    });
+  }
+  return map;
+}
+
+/** Tarjetas rojas / expulsiones nuevas por (partido, jugador), multi-temporada. */
+export async function snapshotRedCards(seasonIds: string[]): Promise<Map<string, GoalSnap>> {
+  if (seasonIds.length === 0) return new Map();
+  const res = await db.query<{
+    match_id: string; player_id: string; player_name: string;
+    scorer_team_id: string | null; scorer_team_short: string | null; competition_id: string | null;
+    home_short: string | null; away_short: string | null;
+    home_score: number | null; away_score: number | null;
+    minute: number | null; cards: string;
+  }>(`
+    SELECT e.match_id, e.player_id, e.team_id AS scorer_team_id,
+           st.short_name AS scorer_team_short, comp.id AS competition_id,
+           TRIM(COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'')) AS player_name,
+           ht.short_name AS home_short, at.short_name AS away_short,
+           m.home_score, m.away_score,
+           MAX(e.minute) AS minute,
+           COUNT(*) AS cards
+    FROM match_events e
+    JOIN matches m ON m.id = e.match_id
+    JOIN seasons s ON s.id = m.season_id
+    JOIN competitions comp ON comp.id = s.competition_id
+    LEFT JOIN players p ON p.id = e.player_id
+    LEFT JOIN teams st ON st.id = e.team_id
+    LEFT JOIN teams ht ON ht.id = m.home_team_id
+    LEFT JOIN teams at ON at.id = m.away_team_id
+    WHERE m.season_id = ANY($1)
+      AND e.event_type = 'red_card'
+      AND e.player_id IS NOT NULL
+      AND (m.status = 'live' OR m.scheduled_at > NOW() - INTERVAL '6 hours')
+    GROUP BY e.match_id, e.player_id, e.team_id, st.short_name, comp.id, p.first_name, p.last_name,
+             ht.short_name, at.short_name, m.home_score, m.away_score
+  `, [seasonIds]);
+  const map = new Map<string, GoalSnap>();
+  for (const r of res.rows) {
+    map.set(`${r.match_id}:${r.player_id}`, {
+      count: Number(r.cards),
+      matchId: r.match_id,
+      playerId: r.player_id,
+      playerName: r.player_name || 'Jugador',
+      scorerTeamId: r.scorer_team_id,
+      scorerTeamShort: r.scorer_team_short,
       competitionId: r.competition_id,
       homeShort: r.home_short ?? 'Local',
       awayShort: r.away_short ?? 'Visitante',
@@ -372,4 +428,169 @@ export async function diffGoals(
   }
 
   log.info({ goals: fresh.length, sent, pruned }, '⚽ Push de gol (goleador+minuto)');
+}
+
+/**
+ * EXPULSIONES (tarjeta roja). Mismo mecanismo que los goles: tras las fichas,
+ * un push por roja nueva a quien sigue el equipo, la competición o al jugador.
+ */
+export async function diffRedCards(
+  prev: Map<string, GoalSnap>,
+  seasonIds: string[],
+): Promise<void> {
+  if (!pushEnabled) return;
+
+  const cur = await snapshotRedCards(seasonIds);
+  const fresh: GoalSnap[] = [];
+  for (const [key, now] of cur) {
+    if (now.count - (prev.get(key)?.count ?? 0) > 0) fresh.push(now);
+  }
+  if (fresh.length === 0) return;
+
+  const subs = await db.query<SubRow>(
+    `SELECT id, endpoint, p256dh, auth, fav_teams, fav_leagues, fav_players, config FROM push_subscriptions`
+  );
+  if (subs.rows.length === 0) return;
+
+  const night = isQuietHours();
+  let sent = 0, pruned = 0;
+
+  for (const sub of subs.rows) {
+    const cfg = sub.config ?? {};
+    if (cfg['master'] === false) continue;
+    if (night && cfg['quietNight'] !== false) continue;
+    if (cfg['favCards'] === false) continue; // por defecto ON (ausente = ON)
+
+    for (const c of fresh) {
+      const followsTeam   = c.scorerTeamId != null && (sub.fav_teams ?? []).includes(c.scorerTeamId);
+      const followsLeague = c.competitionId != null && (sub.fav_leagues ?? []).includes(c.competitionId);
+      const followsPlayer = (sub.fav_players ?? []).includes(c.playerId);
+      if (!(followsTeam || followsLeague || followsPlayer)) continue;
+
+      const ref: MatchRef = {
+        homeShort: c.homeShort, awayShort: c.awayShort,
+        homeScore: c.homeScore, awayScore: c.awayScore, minute: c.minute,
+      };
+      const payload: PushPayload = {
+        title: branded(cardAlert('roja', c.playerName, c.scorerTeamShort ?? '', c.minute)),
+        body: liveBody(ref),
+        tag: matchTag(c.matchId),
+        url: `${WEB_BASE}/matches/${c.matchId}`,
+      };
+      const res = await deliver(sub, payload);
+      if (res === 'sent') sent++;
+      else if (res === 'pruned') { pruned++; break; }
+    }
+  }
+
+  log.info({ reds: fresh.length, sent, pruned }, '🟥 Push de expulsión');
+}
+
+// ── Fase del partido (descanso / 2ª parte) ───────────────────────────────────
+
+export interface PhaseSnap {
+  matchId: string;
+  status: string;
+  isHalftime: boolean;
+  period: number | null;
+  homeTeamId: string | null;
+  awayTeamId: string | null;
+  competitionId: string | null;
+  homeShort: string;
+  awayShort: string;
+  homeScore: number;
+  awayScore: number;
+}
+
+/** Estado de fase (descanso/periodo) de los partidos en vivo, multi-temporada. */
+export async function snapshotPhases(seasonIds: string[]): Promise<Map<string, PhaseSnap>> {
+  if (seasonIds.length === 0) return new Map();
+  const res = await db.query<{
+    id: string; status: string; live_is_halftime: boolean; live_period: number | null;
+    home_team_id: string | null; away_team_id: string | null; competition_id: string | null;
+    home_short: string | null; away_short: string | null;
+    home_score: number | null; away_score: number | null;
+  }>(`
+    SELECT m.id, m.status, m.live_is_halftime, m.live_period,
+           m.home_team_id, m.away_team_id, comp.id AS competition_id,
+           ht.short_name AS home_short, at.short_name AS away_short,
+           m.home_score, m.away_score
+    FROM matches m
+    JOIN seasons s ON s.id = m.season_id
+    JOIN competitions comp ON comp.id = s.competition_id
+    LEFT JOIN teams ht ON ht.id = m.home_team_id
+    LEFT JOIN teams at ON at.id = m.away_team_id
+    WHERE m.season_id = ANY($1) AND m.status = 'live'
+  `, [seasonIds]);
+  const map = new Map<string, PhaseSnap>();
+  for (const r of res.rows) {
+    map.set(r.id, {
+      matchId: r.id, status: r.status,
+      isHalftime: r.live_is_halftime, period: r.live_period,
+      homeTeamId: r.home_team_id, awayTeamId: r.away_team_id, competitionId: r.competition_id,
+      homeShort: r.home_short ?? 'Local', awayShort: r.away_short ?? 'Visitante',
+      homeScore: r.home_score ?? 0, awayScore: r.away_score ?? 0,
+    });
+  }
+  return map;
+}
+
+/**
+ * Transiciones de fase: DESCANSO (entra en halftime) y 2ª PARTE (sale del
+ * descanso a periodo ≥ 2). Post-fichas (el flag lo escriben las fichas). Solo a
+ * seguidores del equipo o la competición, bajo favMatchStart.
+ */
+export async function diffPhase(
+  prev: Map<string, PhaseSnap>,
+  seasonIds: string[],
+): Promise<void> {
+  if (!pushEnabled) return;
+
+  const cur = await snapshotPhases(seasonIds);
+  const events: Array<{ snap: PhaseSnap; kind: 'halftime' | 'second_half' }> = [];
+  for (const [id, now] of cur) {
+    const before = prev.get(id);
+    if (!before) continue;
+    if (!before.isHalftime && now.isHalftime) events.push({ snap: now, kind: 'halftime' });
+    else if (before.isHalftime && !now.isHalftime && (now.period ?? 0) >= 2) events.push({ snap: now, kind: 'second_half' });
+  }
+  if (events.length === 0) return;
+
+  const subs = await db.query<SubRow>(
+    `SELECT id, endpoint, p256dh, auth, fav_teams, fav_leagues, fav_players, config FROM push_subscriptions`
+  );
+  if (subs.rows.length === 0) return;
+
+  const night = isQuietHours();
+  let sent = 0, pruned = 0;
+
+  for (const sub of subs.rows) {
+    const cfg = sub.config ?? {};
+    if (cfg['master'] === false) continue;
+    if (night && cfg['quietNight'] !== false) continue;
+    if (cfg['favMatchStart'] === false) continue;
+
+    for (const ev of events) {
+      const teams = [ev.snap.homeTeamId, ev.snap.awayTeamId].filter(Boolean) as string[];
+      const followed = teams.some((t) => (sub.fav_teams ?? []).includes(t))
+        || (ev.snap.competitionId != null && (sub.fav_leagues ?? []).includes(ev.snap.competitionId));
+      if (!followed) continue;
+
+      const ref: MatchRef = {
+        homeShort: ev.snap.homeShort, awayShort: ev.snap.awayShort,
+        homeScore: ev.snap.homeScore, awayScore: ev.snap.awayScore,
+      };
+      const payload: PushPayload = {
+        title: branded(ev.kind === 'halftime' ? halftimeAlert(ref) : secondHalfAlert(ref)),
+        body: ev.kind === 'second_half' ? liveBody(ref) : '',
+        tag: matchTag(ev.snap.matchId),
+        url: `${WEB_BASE}/matches/${ev.snap.matchId}`,
+      };
+      const res = await deliver(sub, payload);
+      if (res === 'sent') sent++;
+      else if (res === 'pruned') { pruned++; break; }
+    }
+  }
+
+  log.info({ phases: events.length, sent, pruned }, '⏱️ Push de fase (descanso/2ª parte)');
 }

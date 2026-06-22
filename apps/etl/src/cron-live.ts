@@ -31,8 +31,8 @@ import { EtlPipeline } from './pipeline.js';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import {
-  snapshotMatches, snapshotRounds, snapshotGoals,
-  diffAndNotify, diffGoals, pushEnabled,
+  snapshotMatches, snapshotRounds, snapshotGoals, snapshotRedCards, snapshotPhases,
+  diffAndNotify, diffGoals, diffRedCards, diffPhase, pushEnabled,
 } from './push-dispatcher.js';
 
 const log = createLogger({ service: 'cron-live' });
@@ -247,6 +247,8 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
   // Goles: las fichas traen goleador y minuto, así que snapshot ANTES de
   // refrescarlas y diff DESPUÉS, sobre TODAS las temporadas activas.
   const prevGoals = pushEnabled ? await snapshotGoals(seasonIds) : new Map();
+  const prevReds  = pushEnabled ? await snapshotRedCards(seasonIds) : new Map();
+  const prevPhase = pushEnabled ? await snapshotPhases(seasonIds) : new Map();
   try {
     await runFichasForActiveMatches(seasonIds);
   } catch (err) {
@@ -254,6 +256,12 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
   }
   try { await diffGoals(prevGoals, seasonIds); } catch (err) {
     log.warn({ err }, 'push de gol fallo — el ciclo sigue');
+  }
+  try { await diffRedCards(prevReds, seasonIds); } catch (err) {
+    log.warn({ err }, 'push de expulsion fallo — el ciclo sigue');
+  }
+  try { await diffPhase(prevPhase, seasonIds); } catch (err) {
+    log.warn({ err }, 'push de fase fallo — el ciclo sigue');
   }
 
   return etl.upserted;

@@ -89,6 +89,16 @@ export function finalAlert(m: MatchRef): string {
   return `Final: ${m.homeShort} ${m.homeScore} - ${m.awayScore} ${m.awayShort}. Ver resumen y estadísticas.`;
 }
 
+/** `Descanso · BAR 2 - 1 IHC` */
+export function halftimeAlert(m: MatchRef): string {
+  return `Descanso · ${m.homeShort} ${m.homeScore} - ${m.awayScore} ${m.awayShort}`;
+}
+
+/** `¡Comienza la 2ª parte! BAR 2 - 1 IHC` */
+export function secondHalfAlert(m: MatchRef): string {
+  return `¡Comienza la 2ª parte! ${m.homeShort} ${m.homeScore} - ${m.awayScore} ${m.awayShort}`;
+}
+
 /** Resumen matinal para partidos silenciados por la noche */
 export function morningSummary(winnerName: string, m: MatchRef, kickoffLocal: string): string {
   return `Buenos días. Ayer el ${winnerName} venció ${m.homeScore}-${m.awayScore} en el partido de las ${kickoffLocal}.`;
