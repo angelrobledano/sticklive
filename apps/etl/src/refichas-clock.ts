@@ -10,6 +10,8 @@
  *   npx tsx --env-file=../../.env src/refichas-clock.ts            # todo
  *   npx tsx --env-file=../../.env src/refichas-clock.ts --limit=50 # prueba
  */
+import './instrument.js'; // Sentry.init — el PRIMERO de todo
+import * as Sentry from '@sentry/node';
 import { db, closeDb } from '@sports/db';
 import { createLogger } from '@sports/logger';
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
@@ -63,5 +65,5 @@ async function main() {
 }
 
 main()
-  .catch((err) => { log.error({ err }, 'Error'); process.exit(1); })
-  .finally(() => closeDb());
+  .catch((err) => { log.error({ err }, 'Error'); Sentry.captureException(err); process.exitCode = 1; })
+  .finally(async () => { await Sentry.flush(2000); await closeDb(); });

@@ -14,6 +14,8 @@
  *
  * También acepta --dry-run para validar transformaciones sin persistir.
  */
+import './instrument.js'; // Sentry.init — el PRIMERO de todo
+import * as Sentry from '@sentry/node';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -427,5 +429,5 @@ async function main() {
 }
 
 main()
-  .catch((err) => { log.error({ err }, 'Error fatal'); process.exit(1); })
-  .finally(() => closeDb());
+  .catch((err) => { log.error({ err }, 'Error fatal'); Sentry.captureException(err); process.exitCode = 1; })
+  .finally(async () => { await Sentry.flush(2000); await closeDb(); });
