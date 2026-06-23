@@ -42,3 +42,21 @@ mv "$TMP" "$OUT"
 ls -1t "$BACKUP_DIR"/sticklive-*.sql.gz 2>/dev/null | tail -n +8 | xargs -r rm -f
 
 echo "[backup] $(date -u +%FT%TZ) OK → $(basename "$OUT") ($(du -h "$OUT" | cut -f1))"
+
+# ── Copia off-site (opcional) ────────────────────────────────────────────────
+# Si existe /opt/sticklive/.backup-offsite.env con OFFSITE_TARGET, sincroniza los
+# .sql.gz a esa Storage Box por rsync-over-SSH (sin --delete: el destino acumula
+# histórico → retención larga off-site). Sin el fichero, se omite (backup local
+# intacto). Ejemplo del .env:
+#   OFFSITE_TARGET=u123456@u123456.your-storagebox.de:backups/
+#   OFFSITE_SSH_OPTS=-p 23 -i /root/.ssh/storagebox
+OFFSITE_CONF=/opt/sticklive/.backup-offsite.env
+if [ -f "$OFFSITE_CONF" ]; then
+  # shellcheck source=/dev/null
+  . "$OFFSITE_CONF"
+  if [ -n "${OFFSITE_TARGET:-}" ]; then
+    echo "[backup] off-site → $OFFSITE_TARGET"
+    rsync -az -e "ssh ${OFFSITE_SSH_OPTS:-}" "$BACKUP_DIR"/sticklive-*.sql.gz "$OFFSITE_TARGET"
+    echo "[backup] $(date -u +%FT%TZ) off-site OK"
+  fi
+fi

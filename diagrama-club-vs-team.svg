@@ -1,0 +1,46 @@
+<svg viewBox="0 0 960 340" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#64748b"/>
+    </marker>
+    <marker id="arrG" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#059669"/>
+    </marker>
+  </defs>
+  <rect width="960" height="340" fill="#ffffff"/>
+  <text x="25" y="42" font-size="22" font-weight="700" fill="#0f172a">La crisis de identidad: club_id vs team_id</text>
+  <text x="25" y="66" font-size="14" fill="#64748b">La misma fuente identifica al equipo de dos formas distintas. La capa de reconciliación lo arregla.</text>
+
+  <!-- source 1: calendario -->
+  <rect x="25" y="110" width="230" height="80" rx="10" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="140" y="142" font-size="15" font-weight="600" fill="#0f172a" text-anchor="middle">Calendario / clasificación</text>
+  <text x="140" y="166" font-size="13" fill="#475569" text-anchor="middle">identifica por</text>
+  <text x="140" y="183" font-size="14" font-weight="700" fill="#2563eb" text-anchor="middle">team_id</text>
+
+  <!-- source 2: directo -->
+  <rect x="25" y="220" width="230" height="80" rx="10" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="140" y="252" font-size="15" font-weight="600" fill="#0f172a" text-anchor="middle">Acta / directo del partido</text>
+  <text x="140" y="276" font-size="13" fill="#475569" text-anchor="middle">identifica por</text>
+  <text x="140" y="293" font-size="14" font-weight="700" fill="#dc2626" text-anchor="middle">club_id (fep_club_XX)</text>
+
+  <!-- reconciliation box (center) -->
+  <rect x="375" y="150" width="220" height="110" rx="12" fill="#2563eb" stroke="#1d4ed8"/>
+  <text x="485" y="190" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">alt_source_refs</text>
+  <text x="485" y="214" font-size="12.5" fill="#dbeafe" text-anchor="middle">tabla de referencias</text>
+  <text x="485" y="231" font-size="12.5" fill="#dbeafe" text-anchor="middle">cruzadas que mapea</text>
+  <text x="485" y="248" font-size="12.5" fill="#dbeafe" text-anchor="middle">club_id ↔ team_id</text>
+
+  <!-- result -->
+  <rect x="705" y="170" width="230" height="70" rx="10" fill="#ecfdf5" stroke="#6ee7b7"/>
+  <text x="820" y="200" font-size="15" font-weight="700" fill="#065f46" text-anchor="middle">Partido enlazado ✓</text>
+  <text x="820" y="222" font-size="12.5" fill="#047857" text-anchor="middle">cero partidos huérfanos</text>
+
+  <!-- arrows in -->
+  <path d="M255,150 C320,150 320,180 373,190" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+  <path d="M255,260 C320,260 320,225 373,218" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+  <!-- arrow out -->
+  <line x1="595" y1="205" x2="701" y2="205" stroke="#059669" stroke-width="2.5" fill="none" marker-end="url(#arrG)"/>
+
+  <!-- failure note -->
+  <text x="485" y="300" font-size="12.5" fill="#dc2626" text-anchor="middle" font-style="italic">Sin esta capa: pantalla en blanco / 404 al abrir el directo</text>
+</svg>

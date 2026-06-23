@@ -1,0 +1,38 @@
+<svg viewBox="0 0 960 340" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+  <rect width="960" height="340" fill="#ffffff"/>
+  <text x="25" y="42" font-size="22" font-weight="700" fill="#0f172a">Roadmap de Stick Live: Now / Next / Later</text>
+  <text x="25" y="66" font-size="14" fill="#64748b">Ampliar competiciones poco a poco, verificando que el scraping coge bien los datos antes de sumar.</text>
+
+  <!-- NOW -->
+  <rect x="25" y="95" width="290" height="215" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="45" y="128" font-size="16" font-weight="700" fill="#1d4ed8">NOW · en producción</text>
+  <line x1="45" y1="140" x2="295" y2="140" stroke="#bfdbfe"/>
+  <text x="45" y="168" font-size="13.5" fill="#0f172a">• OK Liga en directo (SSE)</text>
+  <text x="45" y="194" font-size="13.5" fill="#0f172a">• Fichas: goles, actas, faltas</text>
+  <text x="45" y="220" font-size="13.5" fill="#0f172a">• Clasificaciones y favoritos</text>
+  <text x="45" y="246" font-size="13.5" fill="#0f172a">• Auth progresiva · PWA</text>
+  <text x="45" y="272" font-size="13.5" fill="#0f172a">• Analítica con PostHog</text>
+  <text x="45" y="298" font-size="13.5" fill="#0f172a">• Tests + CI + auditoría</text>
+
+  <!-- NEXT -->
+  <rect x="335" y="95" width="290" height="215" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+  <text x="355" y="128" font-size="16" font-weight="700" fill="#475569">NEXT</text>
+  <line x1="355" y1="140" x2="605" y2="140" stroke="#e2e8f0"/>
+  <text x="355" y="168" font-size="13.5" fill="#0f172a">• Notificaciones de calidad</text>
+  <text x="370" y="190" font-size="12.5" fill="#64748b">(goleador, minuto, tarjetas, descanso)</text>
+  <text x="355" y="218" font-size="13.5" fill="#0f172a">• OK Liga femenina</text>
+  <text x="355" y="244" font-size="13.5" fill="#0f172a">• Ligas autonómicas</text>
+  <text x="355" y="270" font-size="13.5" fill="#0f172a">• App nativa Android</text>
+  <text x="355" y="296" font-size="13.5" fill="#0f172a">• Re-importar histórico</text>
+
+  <!-- LATER -->
+  <rect x="645" y="95" width="290" height="215" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="665" y="128" font-size="16" font-weight="700" fill="#94a3b8">LATER</text>
+  <line x1="665" y1="140" x2="915" y2="140" stroke="#e2e8f0"/>
+  <text x="665" y="168" font-size="13.5" fill="#0f172a">• Portugal</text>
+  <text x="665" y="194" font-size="13.5" fill="#0f172a">• Italia y Francia</text>
+  <text x="665" y="220" font-size="13.5" fill="#0f172a">• Estadísticas avanzadas</text>
+  <text x="665" y="246" font-size="13.5" fill="#0f172a">• App nativa iOS</text>
+  <text x="665" y="272" font-size="13.5" fill="#0f172a">• Modelo de negocio</text>
+  <text x="680" y="294" font-size="12.5" fill="#64748b">(ads / premium, tras validar)</text>
+</svg>

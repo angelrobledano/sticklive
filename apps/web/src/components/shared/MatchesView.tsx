@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import type { Match } from '@/lib/api/client';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useLiveScores } from '@/hooks/useLiveScores';
 import { DateSelector } from '@/components/shared/DateSelector';
 import { MatchCard } from '@/components/shared/MatchCard';
 import { AdBanner } from '@/components/shared/AdBanner';
@@ -208,7 +209,12 @@ function UpcomingMatches({ matches, selectedDate, todayKey }: {
   );
 }
 
-export function MatchesView({ matches }: MatchesViewProps) {
+export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
+  // Refresco en vivo: mientras haya partidos en juego, la lista se sincroniza con
+  // el resultado real sondeando /current sin caché (la home es SSR y, si no, el
+  // marcador quedaría congelado frente al detalle, que sí va por SSE).
+  const matches = useLiveScores(initialMatches);
+
   // "Hoy" anclado en Europe/Madrid: misma autoridad horaria que usa el filtrado
   // de partidos. Estable en SSR (servidor UTC) y en cualquier TZ del dispositivo.
   const todayKey = madridTodayKey();

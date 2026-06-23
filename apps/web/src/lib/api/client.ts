@@ -300,6 +300,20 @@ export async function getCurrentMatches(): Promise<Match[]> {
   return deduplicateMatches(res.matches.map(normalizeLiveMatch));
 }
 
+/**
+ * Igual que getCurrentMatches pero SIN caché — para el refresco en vivo desde el
+ * cliente. La home se renderiza en el servidor con revalidate:60, pero un usuario
+ * mirando la lista no genera nuevas requests, así que el marcador se congela. Este
+ * fetcher (cache:'no-store') lo usa el hook useLiveScores para sondear mientras
+ * haya partidos en juego y reflejar marcador/estado en tiempo real.
+ */
+export async function getCurrentMatchesFresh(): Promise<Match[]> {
+  const res = await apiFetch<{ matches: RawLiveMatch[] }>('/matches/current', {
+    cache: 'no-store',
+  });
+  return deduplicateMatches(res.matches.map(normalizeLiveMatch));
+}
+
 // ============================================================
 // MATCH DETAIL
 // ============================================================

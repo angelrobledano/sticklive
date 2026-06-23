@@ -17,3 +17,6 @@ dump.sql
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Config del off-site de backups (host-only)
+.backup-offsite.env
