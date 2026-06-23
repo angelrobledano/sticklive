@@ -60,6 +60,8 @@ export interface Match {
   competitionId?: string | null;
   competitionName?: string | null;
   status: MatchStatus;
+  /** Solo en directo: true durante el descanso (para badge "Descanso" en listas). */
+  isHalftime?: boolean;
   scheduledAt: string | null;
   startedAt: string | null;
   finishedAt: string | null;
@@ -120,6 +122,7 @@ interface RawLiveMatch {
   competitionId?: string | null;
   competitionName?: string | null;
   status: MatchStatus;
+  isHalftime?: boolean;
   scheduledAt: string | null;
   startedAt: string | null;
   score: MatchScore;
@@ -182,6 +185,7 @@ function normalizeLiveMatch(raw: RawLiveMatch): Match {
     competitionId:   raw.competitionId ?? null,
     competitionName: raw.competitionName ?? null,
     status:      raw.status,
+    isHalftime:  raw.isHalftime ?? false,
     scheduledAt: raw.scheduledAt,
     startedAt:   raw.startedAt,
     finishedAt:  null,

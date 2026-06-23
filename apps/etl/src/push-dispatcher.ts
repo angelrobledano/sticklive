@@ -11,6 +11,7 @@
  *   · Silencio nocturno: con quietNight activo, nada entre 23:00–08:00.
  */
 import webpush from 'web-push';
+import * as Sentry from '@sentry/node';
 import { db } from '@sports/db';
 import { createLogger } from '@sports/logger';
 import {
@@ -106,9 +107,11 @@ export interface GoalSnap {
   matchId: string;
   playerId: string;
   playerName: string;
-  scorerTeamId: string | null;   // equipo del goleador (segmentación por equipo)
+  scorerTeamId: string | null;   // equipo del goleador (para copy de tarjeta)
   scorerTeamShort?: string | null; // abreviatura del equipo (para copy de tarjeta)
   competitionId: string | null;  // competición (segmentación por liga)
+  homeTeamId: string | null;     // equipos del partido (segmentación: sigues a cualquiera)
+  awayTeamId: string | null;
   homeShort: string;
   awayShort: string;
   homeScore: number;
@@ -127,12 +130,14 @@ export async function snapshotGoals(seasonIds: string[]): Promise<Map<string, Go
   const res = await db.query<{
     match_id: string; player_id: string; player_name: string;
     scorer_team_id: string | null; competition_id: string | null;
+    home_team_id: string | null; away_team_id: string | null;
     home_short: string | null; away_short: string | null;
     home_score: number | null; away_score: number | null;
     minute: number | null; goals: string;
   }>(`
     SELECT e.match_id, e.player_id, e.team_id AS scorer_team_id,
            comp.id AS competition_id,
+           m.home_team_id, m.away_team_id,
            TRIM(COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'')) AS player_name,
            ht.short_name AS home_short, at.short_name AS away_short,
            m.home_score, m.away_score,
@@ -149,7 +154,8 @@ export async function snapshotGoals(seasonIds: string[]): Promise<Map<string, Go
       AND e.event_type IN ('goal', 'penalty')
       AND e.player_id IS NOT NULL
       AND (m.status = 'live' OR m.scheduled_at > NOW() - INTERVAL '6 hours')
-    GROUP BY e.match_id, e.player_id, e.team_id, comp.id, p.first_name, p.last_name,
+    GROUP BY e.match_id, e.player_id, e.team_id, comp.id, m.home_team_id, m.away_team_id,
+             p.first_name, p.last_name,
              ht.short_name, at.short_name, m.home_score, m.away_score
   `, [seasonIds]);
   const map = new Map<string, GoalSnap>();
@@ -161,6 +167,8 @@ export async function snapshotGoals(seasonIds: string[]): Promise<Map<string, Go
       playerName: r.player_name || 'Tu jugador',
       scorerTeamId: r.scorer_team_id,
       competitionId: r.competition_id,
+      homeTeamId: r.home_team_id,
+      awayTeamId: r.away_team_id,
       homeShort: r.home_short ?? 'Local',
       awayShort: r.away_short ?? 'Visitante',
       homeScore: r.home_score ?? 0,
@@ -177,12 +185,14 @@ export async function snapshotRedCards(seasonIds: string[]): Promise<Map<string,
   const res = await db.query<{
     match_id: string; player_id: string; player_name: string;
     scorer_team_id: string | null; scorer_team_short: string | null; competition_id: string | null;
+    home_team_id: string | null; away_team_id: string | null;
     home_short: string | null; away_short: string | null;
     home_score: number | null; away_score: number | null;
     minute: number | null; cards: string;
   }>(`
     SELECT e.match_id, e.player_id, e.team_id AS scorer_team_id,
            st.short_name AS scorer_team_short, comp.id AS competition_id,
+           m.home_team_id, m.away_team_id,
            TRIM(COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'')) AS player_name,
            ht.short_name AS home_short, at.short_name AS away_short,
            m.home_score, m.away_score,
@@ -200,7 +210,8 @@ export async function snapshotRedCards(seasonIds: string[]): Promise<Map<string,
       AND e.event_type = 'red_card'
       AND e.player_id IS NOT NULL
       AND (m.status = 'live' OR m.scheduled_at > NOW() - INTERVAL '6 hours')
-    GROUP BY e.match_id, e.player_id, e.team_id, st.short_name, comp.id, p.first_name, p.last_name,
+    GROUP BY e.match_id, e.player_id, e.team_id, st.short_name, comp.id, m.home_team_id, m.away_team_id,
+             p.first_name, p.last_name,
              ht.short_name, at.short_name, m.home_score, m.away_score
   `, [seasonIds]);
   const map = new Map<string, GoalSnap>();
@@ -213,6 +224,8 @@ export async function snapshotRedCards(seasonIds: string[]): Promise<Map<string,
       scorerTeamId: r.scorer_team_id,
       scorerTeamShort: r.scorer_team_short,
       competitionId: r.competition_id,
+      homeTeamId: r.home_team_id,
+      awayTeamId: r.away_team_id,
       homeShort: r.home_short ?? 'Local',
       awayShort: r.away_short ?? 'Visitante',
       homeScore: r.home_score ?? 0,
@@ -283,7 +296,22 @@ export async function diffAndNotify(
   // ── Eventos de partido ──────────────────────────────────────────────────────
   for (const [id, now] of current) {
     const before = prev.get(id);
-    if (!before) continue;
+    if (!before) {
+      // Partido que aparece directamente como 'live' sin estar en el snapshot
+      // previo: no pudimos observar el borde scheduled→live y el aviso de inicio
+      // se pierde en silencio (típico de scheduled_at fuera de la ventana ±4h del
+      // snapshot, p.ej. por desfase de la fuente). Avisamos para enterarnos.
+      if (now.status === 'live') {
+        Sentry.withScope((scope) => {
+          scope.setLevel('warning');
+          scope.setTag('phase', 'push-start-edge');
+          scope.setExtra('matchId', id);
+          scope.setExtra('teams', `${now.home_name ?? '?'}–${now.away_name ?? '?'}`);
+          Sentry.captureMessage('Inicio no notificado: partido apareció "live" sin verse el borde scheduled→live');
+        });
+      }
+      continue;
+    }
 
     const ref: MatchRef = {
       homeShort: now.home_name ?? 'Local',
@@ -405,7 +433,11 @@ export async function diffGoals(
     if (cfg['favGoals'] === false) continue;
 
     for (const g of fresh) {
-      const followsTeam   = g.scorerTeamId != null && (sub.fav_teams ?? []).includes(g.scorerTeamId);
+      // Sigues el partido si sigues a CUALQUIERA de los dos equipos (también te
+      // interesa el gol del rival), la competición o al goleador.
+      const favT = sub.fav_teams ?? [];
+      const followsTeam   = (g.homeTeamId != null && favT.includes(g.homeTeamId))
+                         || (g.awayTeamId != null && favT.includes(g.awayTeamId));
       const followsLeague = g.competitionId != null && (sub.fav_leagues ?? []).includes(g.competitionId);
       const followsPlayer = (sub.fav_players ?? []).includes(g.playerId);
       if (!(followsTeam || followsLeague || followsPlayer)) continue;

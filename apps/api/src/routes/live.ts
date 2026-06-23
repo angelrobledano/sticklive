@@ -13,6 +13,7 @@ interface LiveMatchRow {
   status: string;
   scheduled_at: Date | null;
   started_at: Date | null;
+  live_is_halftime: boolean | null;
   venue_name: string | null;
   venue_city: string | null;
   source_ref: string | null;
@@ -38,6 +39,7 @@ function mapLiveRow(row: LiveMatchRow) {
     competitionId:   row.competition_id,
     competitionName: row.competition_name,
     status:      row.status,
+    isHalftime:  row.live_is_halftime ?? false,
     scheduledAt: row.scheduled_at,
     startedAt:   row.started_at,
     venue:       row.venue_name
@@ -77,6 +79,7 @@ liveRouter.get('/live', async (c) => {
         m.home_score,
         m.away_score,
         m.status,
+        m.live_is_halftime,
         m.scheduled_at,
         m.started_at,
         m.venue_name,
@@ -145,7 +148,7 @@ liveRouter.get('/current', async (c) => {
     const result = await db.query<LiveMatchRow>(`
       SELECT
         m.id, m.season_id, m.round_id,
-        m.home_score, m.away_score, m.status,
+        m.home_score, m.away_score, m.status, m.live_is_halftime,
         m.scheduled_at, m.started_at, m.venue_name, m.venue_city, m.source_ref,
         comp.id AS competition_id, comp.name AS competition_name,
         ht.id AS home_team_id, ht.name AS home_team_name,

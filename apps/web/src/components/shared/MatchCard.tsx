@@ -92,6 +92,8 @@ function ScoreBlock({ match }: { match: Match }) {
   const effectiveStatus = isOverdue ? 'live' : status;
 
   if (effectiveStatus === 'live') {
+    // En descanso, badge ámbar estático "Descanso"; en juego, verde con pulso.
+    const isHalftime = match.isHalftime === true;
     return (
       <div className="flex flex-col items-center gap-1 px-3 shrink-0">
         <span className="font-score text-2xl font-extrabold tracking-tighter text-slate-900 dark:text-slate-50 tabular-nums">
@@ -99,10 +101,16 @@ function ScoreBlock({ match }: { match: Match }) {
           <span className="text-slate-300 dark:text-slate-600 mx-1.5 font-bold">–</span>
           {score.away ?? 0}
         </span>
-        <span className="inline-flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-          {t('match_states.in_play')}
-        </span>
+        {isHalftime ? (
+          <span className="inline-flex items-center gap-1 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+            {t('match_states.half_time')}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            {t('match_states.in_play')}
+          </span>
+        )}
       </div>
     );
   }
