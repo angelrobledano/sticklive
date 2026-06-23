@@ -106,7 +106,7 @@ async function dumpLiveElement(idp: string): Promise<void> {
 }
 
 // ── Descargar la ficha (acta) y volcar HTML para inspección ───────────────────
-const ACTA_CANDIDATES = (idp: string, idc: string) => [
+const ACTA_CANDIDATES = (idp: string, idc: string): Array<{ path: string; body: Record<string, string> }> => [
   { path: `rfep_gr_${idp}_1.php`,           body: { idm: '1', idc, idp, tab: 'tab_ficha_resumen' } },
   { path: `rfep_acta_idc_${idc}_1.php`,     body: { idp, idc, site_lang: SIDGAD_LANG } },
   { path: `rfep_acta_eli_idc_${idc}_1.php`, body: { id_partido: idp, idc, site_lang: SIDGAD_LANG } },
