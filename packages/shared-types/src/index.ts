@@ -4,7 +4,28 @@
 
 export type SportSlug = 'hockey-patines' | string;
 
-export type MatchStatus = 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled';
+export type MatchStatus =
+  | 'scheduled' | 'live' | 'halftime' | 'overtime' | 'penalty_shootout'
+  | 'finished' | 'postponed' | 'cancelled';
+
+/** Cómo se decidió un partido de eliminatoria. */
+export type WinType = 'regular' | 'overtime' | 'penalties';
+
+/**
+ * Resultado completo de un partido que puede ir a prórroga/penaltis.
+ * `home/awayGoals` es el marcador mostrado (incluye prórroga). El reglamentario
+ * y la tanda se guardan aparte para poder mostrar el contexto de la victoria.
+ */
+export interface MatchResult {
+  homeGoals: number;
+  awayGoals: number;
+  homeGoalsRegular?: number | null;
+  awayGoalsRegular?: number | null;
+  homePenalties?: number | null;
+  awayPenalties?: number | null;
+  winnerTeamId?: string | null;
+  winType?: WinType | null;
+}
 export type Gender = 'male' | 'female' | 'mixed' | 'unknown';
 export type RoundType = 'regular' | 'playoff' | 'cup' | 'friendly';
 export type EventType = 'goal' | 'penalty' | 'blue_card' | 'red_card' | 'timeout' | 'period_end';

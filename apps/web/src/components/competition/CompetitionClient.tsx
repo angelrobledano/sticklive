@@ -623,9 +623,13 @@ function SingleMatchSeries({ serie, label }: { serie: PlayoffSeries; label: stri
         {isLive && <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider">● Live</span>}
       </div>
       {sides.map(({ team, score }, idx) => {
-        const winner = showScore && (idx === 0
-          ? (g.score.home ?? 0) > (g.score.away ?? 0)
-          : (g.score.away ?? 0) > (g.score.home ?? 0));
+        // Ganador explícito (penaltis/prórroga) manda; si no, se deriva del
+        // marcador. Un empate sin ganador explícito no resalta a nadie.
+        const winnerId = g.winnerTeamId
+          ?? (g.score.home != null && g.score.away != null && g.score.home !== g.score.away
+              ? (g.score.home > g.score.away ? g.homeTeam.id : g.awayTeam.id)
+              : null);
+        const winner = showScore && winnerId === team.id;
         return (
           <div key={idx} className={`flex items-center gap-2.5 px-3 py-2 ${idx === 0 ? 'border-b border-slate-100 dark:border-slate-800' : ''} ${!showScore ? 'opacity-60' : ''}`}>
             <TeamShield teamId={team.id} teamName={team.shortName ?? team.name} size={24} />

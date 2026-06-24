@@ -52,6 +52,8 @@ interface MatchRow {
   finished_at: Date | null;
   home_score: number | null;
   away_score: number | null;
+  winner_team_id: string | null;
+  win_type: string | null;
   venue_name: string | null;
   round_id: string | null;
   round_number: number | null;
@@ -136,7 +138,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
     const matchesRes = await db.query<MatchRow>(`
       SELECT
         m.id, m.status, m.scheduled_at, m.started_at, m.finished_at,
-        m.home_score, m.away_score, m.venue_name, m.round_id,
+        m.home_score, m.away_score, m.winner_team_id, m.win_type, m.venue_name, m.round_id,
         r.number       AS round_number,
         r.name         AS round_name,
         r.round_type,
@@ -260,6 +262,8 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         startedAt:   m.started_at,
         finishedAt:  m.finished_at,
         score:       { home: m.home_score, away: m.away_score },
+        winnerTeamId: m.winner_team_id,
+        winType:      m.win_type,
         venueName:   m.venue_name,
         roundId:     m.round_id,
         // Para partidos de playoff manda la fase derivada (1=QF/2=SF/3=F/0=playout);

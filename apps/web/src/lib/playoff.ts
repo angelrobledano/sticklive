@@ -33,10 +33,17 @@ export function buildSeries(games: SeasonMatch[]): PlayoffSeries[] {
       const teamB = ref.awayTeam;
       let winsA = 0, winsB = 0;
       for (const g of sorted) {
-        if (g.status !== 'finished' || g.score.home === null || g.score.away === null) continue;
-        const homeWon = g.score.home > g.score.away;
-        const homeIsA = g.homeTeam.id === teamA.id;
-        if (homeWon === homeIsA) winsA++; else winsB++;
+        if (g.status !== 'finished') continue;
+        // Ganador explícito (penaltis/prórroga) manda; si no, se deriva del
+        // marcador. Un empate sin ganador explícito NO se atribuye a nadie
+        // (antes lo contaba como victoria del visitante por error).
+        let winnerId: string | null = g.winnerTeamId ?? null;
+        if (!winnerId) {
+          if (g.score.home === null || g.score.away === null || g.score.home === g.score.away) continue;
+          winnerId = g.score.home > g.score.away ? g.homeTeam.id : g.awayTeam.id;
+        }
+        if (winnerId === teamA.id) winsA++;
+        else if (winnerId === teamB.id) winsB++;
       }
       return { games: sorted, teamA, teamB, winsA, winsB };
     })
