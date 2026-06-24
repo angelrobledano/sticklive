@@ -50,7 +50,7 @@ function LoginInner() {
         return data as { session: string; email: string };
       })
       .then(async ({ session, email: userEmail }) => {
-        login(session, userEmail);
+        login(session, userEmail, 'magic_link');
 
         // ── Migración crítica: fusionar favoritos anónimos con la cuenta ──
         let teams: string[] = [];
@@ -89,6 +89,7 @@ function LoginInner() {
       .catch((err: Error) => {
         setStatus('error');
         setErrorMsg(err.message);
+        track('login_failed', { method: 'magic_link', reason: (err.message ?? 'verify_error').slice(0, 80) });
       });
     // Solo al montar: el token se lee una vez y se canjea una vez (guard arriba).
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,10 +118,11 @@ function LoginInner() {
         google_denied:        t('auth.google_denied'),
       };
       setErrorMsg((oauthError && byReason[oauthError]) || t('auth.google_failed'));
+      track('login_failed', { method: 'google', reason: oauthError ?? 'unknown' });
       return;
     }
 
-    login(session, userEmail);
+    login(session, userEmail, 'google');
 
     // Fusionar favoritos anónimos con la cuenta (igual que el magic link)
     let teams: string[] = [];
@@ -160,6 +162,7 @@ function LoginInner() {
   // ── Pedir magic link ─────────────────────────────────────────────────────
   const requestLink = async (e: React.FormEvent) => {
     e.preventDefault();
+    track('login_started', { method: 'magic_link' });
     track('login_link_requested');
     setStatus('sending');
     setErrorMsg(null);
@@ -229,7 +232,7 @@ function LoginInner() {
       {/* Google OAuth — redirige al flujo de la API */}
       <button
         onClick={() => {
-          track('login_link_requested');
+          track('login_started', { method: 'google' });
           const deviceId = (() => {
             try { return localStorage.getItem('rink-device-id') ?? ''; } catch { return ''; }
           })();

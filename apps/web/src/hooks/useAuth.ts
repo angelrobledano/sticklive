@@ -34,14 +34,14 @@ export function useAuth() {
       });
   }, []);
 
-  const login = useCallback((session: string, userEmail: string) => {
+  const login = useCallback((session: string, userEmail: string, method: 'magic_link' | 'google' = 'magic_link') => {
     try {
       localStorage.setItem(SESSION_KEY, session);
       localStorage.setItem(EMAIL_KEY, userEmail);
     } catch { /* noop */ }
     setEmail(userEmail);
-    identify(userEmail.toLowerCase(), { email: userEmail });
-    track('login_completed', { method: 'magic_link' });
+    identify(userEmail.toLowerCase(), { email: userEmail, auth_method: method });
+    track('login_completed', { method });
   }, []);
 
   const logout = useCallback(() => {

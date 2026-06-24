@@ -7,6 +7,8 @@
  */
 
 import { buildPresetPayload } from '@/lib/notif-prefs';
+import { track, setPersonProps } from '@/lib/analytics';
+import { pwaPlatform } from '@/lib/pwa';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 const VAPID_PUBLIC = process.env['NEXT_PUBLIC_VAPID_PUBLIC_KEY'] ?? '';
@@ -114,6 +116,11 @@ export async function enablePush(): Promise<boolean> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ subscription, ...gather() }),
     });
+    if (res.ok) {
+      const platform = pwaPlatform();
+      track('push_subscribed', { platform });
+      setPersonProps({ notifications_enabled: true, push_platform: platform });
+    }
     return res.ok;
   } catch {
     return false;
@@ -147,5 +154,7 @@ export async function disablePush(): Promise<void> {
       body: JSON.stringify({ endpoint: subscription.endpoint }),
     });
     await subscription.unsubscribe();
+    track('push_unsubscribed', { reason: 'user', platform: pwaPlatform() });
+    setPersonProps({ notifications_enabled: false });
   } catch { /* noop */ }
 }

@@ -10,6 +10,7 @@ import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
+import { track } from '@/lib/analytics';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { useT } from '@/lib/i18n';
 import { TeamShield } from '@/components/shared/TeamShield';
@@ -425,6 +426,10 @@ function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; matches: Sea
 
   // Sincroniza la URL aplicando exclusión mutua (preserva otros params, p. ej. season).
   const apply = useCallback((patch: { journey?: number; date?: string; team?: string }) => {
+    track('fixtures_filter_applied', {
+      filter_type: patch.team ? 'team' : patch.date ? 'date' : 'round',
+      value: patch.team ?? patch.date ?? (patch.journey != null ? String(patch.journey) : ''),
+    });
     const params = new URLSearchParams(sp.toString());
     params.delete('journey'); params.delete('date'); params.delete('team_id');
     if (patch.team) params.set('team_id', patch.team);

@@ -203,6 +203,7 @@ export function useFavorites() {
     track(adding ? 'favorite_added' : 'favorite_removed', {
       kind: 'league', ref_id: competitionId, total_favorites: next.length,
     });
+    setPersonProps({ favorite_leagues: next.length });
     void syncPushConfig(); // el emisor segmenta por ligas favoritas
     if (adding) { clearTombstone('league', competitionId); cloudAdd('league', competitionId); }
     else { addTombstone('league', competitionId); cloudRemove('league', competitionId); }
@@ -229,6 +230,7 @@ export function useFavorites() {
     track(adding ? 'favorite_added' : 'favorite_removed', {
       kind: 'player', ref_id: playerId, total_favorites: next.length,
     });
+    setPersonProps({ favorite_players: next.length });
     void syncPushConfig(); // el emisor segmenta por jugadores favoritos
     if (adding) { clearTombstone('player', playerId); cloudAdd('player', playerId); }
     else { addTombstone('player', playerId); cloudRemove('player', playerId); }

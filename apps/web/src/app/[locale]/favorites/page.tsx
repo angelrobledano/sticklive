@@ -7,6 +7,7 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { clubName } from '@/lib/names';
 import { useT } from '@/lib/i18n';
+import { track } from '@/lib/analytics';
 import { BackLink } from '@/components/shared/BackLink';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
@@ -47,6 +48,19 @@ function FavoritesInner() {
   const [leagues, setLeagues] = useState<LeagueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Nº de favoritos elegidos (para medir la activación guiada).
+  const favCount = () => {
+    try {
+      return (JSON.parse(localStorage.getItem('rink-favorites') ?? '[]') as string[]).length
+        + (JSON.parse(localStorage.getItem('rink-fav-leagues') ?? '[]') as string[]).length
+        + (JSON.parse(localStorage.getItem('rink-fav-players') ?? '[]') as string[]).length;
+    } catch { return 0; }
+  };
+
+  useEffect(() => {
+    if (onboarding) track('onboarding_started', { entry: 'favorites' });
+  }, [onboarding]);
 
   useEffect(() => {
     fetch(`${API_URL}/competitions`)
@@ -129,7 +143,8 @@ function FavoritesInner() {
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4 pb-28">
       {onboarding ? (
-        <Link href="/" className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-rink-passion transition-colors">
+        <Link href="/" onClick={() => track('onboarding_completed', { skipped: true, favorites_selected: favCount() })}
+              className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-rink-passion transition-colors">
           {t('favorites.onboarding_skip')}
         </Link>
       ) : (
@@ -211,6 +226,7 @@ function FavoritesInner() {
           <div className="max-w-2xl mx-auto pointer-events-auto">
             <Link
               href="/"
+              onClick={() => track('onboarding_completed', { skipped: false, favorites_selected: favCount() })}
               className="flex items-center justify-center gap-2 w-full min-h-[50px] rounded-xl
                          bg-rink-passion text-white text-sm font-bold shadow-lg
                          hover:opacity-90 transition-opacity"

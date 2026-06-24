@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePremium } from '@/context/PremiumContext';
+import { track } from '@/lib/analytics';
 
 export default function PremiumSuccessPage() {
   const { setPremium } = usePremium();
@@ -13,6 +14,7 @@ export default function PremiumSuccessPage() {
     // reciben el cambio de estado y devuelven null sin recarga.
     // También persiste en localStorage para sesiones futuras.
     setPremium(true);
+    track('premium_purchase_completed', { plan: 'premium' });
   }, [setPremium]);
 
   return (

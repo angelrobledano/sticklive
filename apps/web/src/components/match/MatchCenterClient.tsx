@@ -920,6 +920,7 @@ function StartingFiveRink({ home, away, homeName, awayName, matchId }: {
     // Camino rápido: imagen ya lista → share() síncrono dentro del gesto (iOS OK).
     const cached = fileRef.current;
     if (cached && navigator.canShare?.({ files: [cached] })) {
+      track('lineup_shared', { match_id: matchId, outcome: 'shared' });
       navigator.share({ files: [cached], title: 'Stick Live' }).catch(() => {});
       return;
     }
@@ -930,12 +931,15 @@ function StartingFiveRink({ home, away, homeName, awayName, matchId }: {
       const file = await fetchShareFile();
       if (!file) {
         // Último recurso: abrir la imagen en una pestaña para guardarla a mano.
+        track('lineup_shared', { match_id: matchId, outcome: 'download' });
         window.open(imageUrl, '_blank');
         return;
       }
       if (navigator.canShare?.({ files: [file] })) {
+        track('lineup_shared', { match_id: matchId, outcome: 'shared' });
         navigator.share({ files: [file], title: 'Stick Live' }).catch(() => {});
       } else {
+        track('lineup_shared', { match_id: matchId, outcome: 'download' });
         const url = URL.createObjectURL(file);
         const a = document.createElement('a');
         a.href = url;
@@ -943,7 +947,7 @@ function StartingFiveRink({ home, away, homeName, awayName, matchId }: {
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
-    } catch { /* descarga falló */ } finally {
+    } catch { track('lineup_shared', { match_id: matchId, outcome: 'failed' }); } finally {
       clearTimeout(watchdog);
       setSharing(false);
     }
@@ -1359,6 +1363,16 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
       match_id: initialData.match.id,
       status: initialData.match.status,
     });
+    // NSM: seguimiento de directo. Cuenta abrir/llegar (push) a una ficha en vivo.
+    if (initialData.match.status === 'live') {
+      let source = 'open';
+      try { if (new URLSearchParams(window.location.search).get('src') === 'push') source = 'push'; } catch { /* noop */ }
+      track('live_match_followed', {
+        match_id: initialData.match.id,
+        season_id: initialData.match.seasonId,
+        source,
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData.match.id]);
 

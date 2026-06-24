@@ -179,6 +179,9 @@ function PremiumBanner({ deviceId }: { deviceId: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
 
+  // Tope del funnel de conversión: el usuario ve el bloque premium.
+  useEffect(() => { track('premium_viewed', { from_screen: 'settings' }); }, []);
+
   /**
    * 1. Llama a /payments/redsys/create-json para obtener el payload firmado.
    * 2. Inyecta un <form> oculto con los tres campos de Redsys.

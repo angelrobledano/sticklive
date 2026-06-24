@@ -10,9 +10,20 @@
  * - iOS Safari no soporta este evento: ahí se muestran instrucciones manuales.
  */
 
+import { track, setPersonProps } from '@/lib/analytics';
+
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+/** Plataforma para segmentar el funnel de instalación. */
+export function pwaPlatform(): 'ios' | 'android' | 'desktop' {
+  if (typeof navigator === 'undefined') return 'desktop';
+  const ua = navigator.userAgent || '';
+  if (/iphone|ipad|ipod/i.test(ua) || ((navigator as { platform?: string }).platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'ios';
+  if (/android/i.test(ua)) return 'android';
+  return 'desktop';
 }
 
 let deferred: BeforeInstallPromptEvent | null = null;
@@ -35,6 +46,8 @@ export function initPwa(): void {
 
   window.addEventListener('appinstalled', () => {
     deferred = null;
+    track('app_installed', { platform: pwaPlatform() });
+    setPersonProps({ pwa_installed: true });
     window.dispatchEvent(new Event('pwa-installed'));
   });
 }
@@ -47,6 +60,7 @@ export function canInstall(): boolean {
 /** Lanza el diálogo nativo de instalación. Devuelve el resultado. */
 export async function promptInstall(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
   if (!deferred) return 'unavailable';
+  track('app_install_prompt_shown', { platform: pwaPlatform() });
   await deferred.prompt();
   let outcome: 'accepted' | 'dismissed' = 'dismissed';
   try { outcome = (await deferred.userChoice).outcome; } catch { /* noop */ }

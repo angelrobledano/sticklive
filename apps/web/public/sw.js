@@ -43,12 +43,14 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const data = event.notification.data || {};
   const url = data.url || '/';
+  // Marca la procedencia para atribuir live_match_followed.source = push.
+  const target = url + (url.includes('?') ? '&' : '?') + 'src=push';
   event.waitUntil((async () => {
     await reportOpen(data);
     const wins = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const w of wins) {
-      if (w.url.startsWith(self.location.origin)) { w.focus(); w.navigate(url); return; }
+      if (w.url.startsWith(self.location.origin)) { w.focus(); w.navigate(target); return; }
     }
-    await clients.openWindow(url);
+    await clients.openWindow(target);
   })());
 });

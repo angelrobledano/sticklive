@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { PurchaseFailedTracker } from '@/components/shared/PurchaseFailedTracker';
 
 interface Props {
   searchParams: { order?: string };
@@ -7,6 +8,7 @@ interface Props {
 export default function PremiumErrorPage({ searchParams }: Props) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center gap-5">
+      <PurchaseFailedTracker />
       {/* Icono */}
       <div className="w-20 h-20 rounded-full bg-red-50 dark:bg-red-900/20
                       flex items-center justify-center">
