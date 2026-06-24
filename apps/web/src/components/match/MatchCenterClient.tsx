@@ -10,6 +10,7 @@ import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';
+import { finalLabelKey, penaltyText } from '@/lib/match-result';
 
 
 // ─── Lógica de hockey: umbrales de falta directa por acumulación ──────────────
@@ -415,7 +416,7 @@ function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?: strin
           </span>
         )}
         {isFinished && (
-          <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('match_detail.finished')}</span>
+          <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t(finalLabelKey(match.winType))}</span>
         )}
         {!isLive && !isFinished && (
           <span className="text-[11px] text-slate-400 dark:text-slate-500">
@@ -451,6 +452,20 @@ function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?: strin
           <TeamCrest team={at} />
         </div>
       </div>
+
+      {/* Prórroga / penaltis: marcador de la tanda + ganador (que un empate no oculte quién ganó) */}
+      {isFinished && penaltyText(match.penalties) && (
+        <p className="text-center text-xs font-semibold tabular-nums text-slate-500 dark:text-slate-400 -mt-1">
+          {t('match_states.penalties_label')} {penaltyText(match.penalties)}
+        </p>
+      )}
+      {isFinished && match.winnerTeamId && match.winType !== 'regular' && (
+        <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+          {t('match_states.winner')}: <span className="font-bold text-slate-800 dark:text-slate-100">
+            {match.winnerTeamId === ht.id ? (ht.shortName ?? ht.name) : (at.shortName ?? at.name)}
+          </span>
+        </p>
+      )}
 
       {/* Goleadores y tarjetas — lo esencial sin entrar al timeline */}
       {showScore && <EventSummary events={data.events} />}

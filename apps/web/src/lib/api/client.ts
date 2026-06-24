@@ -66,6 +66,11 @@ export interface Match {
   startedAt: string | null;
   finishedAt: string | null;
   score: MatchScore;
+  /** Prórroga/penaltis (null en partidos normales). `score` es el marcador mostrado. */
+  winType?: 'regular' | 'overtime' | 'penalties' | null;
+  winnerTeamId?: string | null;
+  regulation?: MatchScore | null;
+  penalties?: MatchScore | null;
   venue: MatchVenue | null;
   homeTeamId: string;
   awayTeamId: string;
@@ -123,6 +128,9 @@ interface RawLiveMatch {
   competitionName?: string | null;
   status: MatchStatus;
   isHalftime?: boolean;
+  winType?: 'regular' | 'overtime' | 'penalties' | null;
+  winnerTeamId?: string | null;
+  penalties?: MatchScore | null;
   scheduledAt: string | null;
   startedAt: string | null;
   score: MatchScore;
@@ -186,6 +194,9 @@ function normalizeLiveMatch(raw: RawLiveMatch): Match {
     competitionName: raw.competitionName ?? null,
     status:      raw.status,
     isHalftime:  raw.isHalftime ?? false,
+    winType:      raw.winType ?? null,
+    winnerTeamId: raw.winnerTeamId ?? null,
+    penalties:    raw.penalties ?? null,
     scheduledAt: raw.scheduledAt,
     startedAt:   raw.startedAt,
     finishedAt:  null,
@@ -483,6 +494,10 @@ interface RawMatchDetail {
     startedAt: string | null;
     finishedAt: string | null;
     score: MatchScore;
+    winType?: 'regular' | 'overtime' | 'penalties' | null;
+    winnerTeamId?: string | null;
+    regulation?: MatchScore | null;
+    penalties?: MatchScore | null;
     venue: MatchVenue | null;
     referee: string | null;
     sourceRef: string | null;
@@ -509,6 +524,10 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
       startedAt:   raw.match.startedAt,
       finishedAt:  raw.match.finishedAt,
       score:       raw.match.score,
+      winType:      raw.match.winType ?? null,
+      winnerTeamId: raw.match.winnerTeamId ?? null,
+      regulation:   raw.match.regulation ?? null,
+      penalties:    raw.match.penalties ?? null,
       venue:       raw.match.venue,
       referee:     raw.match.referee,
       homeTeamId:  raw.match.homeTeam.id,

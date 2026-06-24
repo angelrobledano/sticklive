@@ -6,6 +6,7 @@ import type { Match } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName } from '@/components/shared/TeamName';
 import { useT } from '@/lib/i18n';
+import { finalLabelKey, penaltyText } from '@/lib/match-result';
 
 
 interface MatchCardProps {
@@ -116,6 +117,7 @@ function ScoreBlock({ match }: { match: Match }) {
   }
 
   if (status === 'finished') {
+    const pen = penaltyText(match.penalties);
     return (
       <div className="flex flex-col items-center gap-1 px-3 shrink-0">
         <span className="font-score text-2xl font-extrabold tracking-tighter text-slate-900 dark:text-slate-50 tabular-nums">
@@ -123,9 +125,14 @@ function ScoreBlock({ match }: { match: Match }) {
           <span className="text-slate-300 dark:text-slate-600 mx-1.5 font-bold">–</span>
           {score.away ?? '-'}
         </span>
+        {pen && (
+          <span className="text-[9px] font-semibold tabular-nums text-slate-400 dark:text-slate-500">
+            {t('match_states.penalties_label')} {pen}
+          </span>
+        )}
         <span className="text-[9px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full
                          bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-          {t('match_states.final')}
+          {t(finalLabelKey(match.winType))}
         </span>
       </div>
     );
