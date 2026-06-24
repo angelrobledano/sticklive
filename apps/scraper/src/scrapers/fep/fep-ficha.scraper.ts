@@ -174,6 +174,24 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
               );
               this.log.info({ matchId: this.cfg.matchId, ...live }, 'Estado en vivo (fase/crono) actualizado');
             }
+            // Tanda de penaltis: marcador de la tanda + ganador explícito. La
+            // izquierda del acta es el local; el ganador es quien más marca.
+            const pens = parseShootout(html);
+            if (pens) {
+              await db.query(
+                `UPDATE matches SET
+                   home_pen = $2, away_pen = $3,
+                   win_type = 'penalties',
+                   winner_team_id = CASE
+                     WHEN $2 > $3 THEN home_team_id
+                     WHEN $3 > $2 THEN away_team_id
+                     ELSE winner_team_id END,
+                   updated_at = NOW()
+                 WHERE id = $1`,
+                [this.cfg.matchId, pens.home, pens.away]
+              );
+              this.log.info({ matchId: this.cfg.matchId, ...pens }, '🥅 Tanda de penaltis actualizada');
+            }
             // Alineaciones: vienen en el mismo HTML (tablas competiciones_tabla_basic)
             const lineups = parseLineups(html, idp);
             // Vincular jugador por nombre (la tabla de alineación no trae id_player)
@@ -908,6 +926,33 @@ function parseTeamFouls(html: string): { home: number; away: number } | null {
     .get();
   if (vals.length < 2 || vals.some((v) => Number.isNaN(v))) return null;
   return { home: vals[0]!, away: vals[1]! };
+}
+
+/**
+ * Tanda de penaltis ("LANZAMIENTOS DE PENALTIS" en el acta). La tabla tiene dos
+ * columnas (local izquierda, visitante derecha) con un lanzador por fila y un
+ * punto de color por resultado: verde = marcado, rojo = fallado, gris (#CCC) =
+ * no lanzó. Contamos los verdes de cada lado. Devuelve null si no hubo tanda.
+ */
+function parseShootout(html: string): { home: number; away: number } | null {
+  const $ = cheerio.load(html);
+  // Tabla cuya cabecera dice "LANZAMIENTOS DE PENALTIS" (o "SHOOTOUT").
+  const table = $('table').filter((_, t) => {
+    const head = $(t).find('thead').text().toUpperCase();
+    return head.includes('LANZAMIENTOS DE PENALTIS') || head.includes('SHOOTOUT');
+  }).first();
+  if (table.length === 0) return null;
+
+  // Las dos columnas al 50% (local izquierda, visitante derecha).
+  const sides = table.find('td[width="50%"]');
+  if (sides.length < 2) return null;
+
+  const countGreen = (idx: number): number =>
+    sides.eq(idx).find('div').toArray()
+      .filter((d) => (($(d).attr('style') ?? '').toLowerCase()).includes('background-color: green'))
+      .length;
+
+  return { home: countGreen(0), away: countGreen(1) };
 }
 
 function mapIncidenciaType(labelEs: string): FepEventType | null {

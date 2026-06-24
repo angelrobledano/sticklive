@@ -28,6 +28,7 @@ import * as Sentry from '@sentry/node';
 import { createLogger } from '@sports/logger';
 import { db, closeDb } from '@sports/db';
 import { EtlPipeline } from './pipeline.js';
+import { deriveMatchResults } from './derive-results.js';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import {
@@ -292,6 +293,11 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
   // Azul + falta directa juntas: una azul y la FD del mismo instante se agrupan.
   try { await diffBlueAndFouls(prevBlues, prevFouls, seasonIds); } catch (err) {
     log.warn({ err }, 'push de azul/falta directa fallo — el ciclo sigue');
+  }
+  // Deriva reglamentario/prórroga/win_type de los finalizados (la tanda y su
+  // ganador los pone la ficha; aquí se conserva).
+  try { await deriveMatchResults(seasonIds); } catch (err) {
+    log.warn({ err }, 'derive-results fallo — el ciclo sigue');
   }
 
   return etl.upserted;
