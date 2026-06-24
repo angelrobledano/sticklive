@@ -6,7 +6,7 @@
  * (el emisor segmenta con lo que haya en push_subscriptions).
  */
 
-import { enabledTeams, enabledLeagues, enabledPlayers } from '@/lib/notif-prefs';
+import { buildPresetPayload } from '@/lib/notif-prefs';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 const VAPID_PUBLIC = process.env['NEXT_PUBLIC_VAPID_PUBLIC_KEY'] ?? '';
@@ -71,20 +71,22 @@ function gather() {
   let favTeams: string[] = [];
   let favLeagues: string[] = [];
   let favPlayers: string[] = [];
+  let presets: Record<string, string> = {};
   let config: Record<string, unknown> = {};
   let deviceId = 'unknown';
   let locale = 'es';
   try {
-    // Solo las entidades con notificación ACTIVADA (on/off por entidad). El
-    // emisor del ETL segmenta por estas listas, así desactivar deja de avisar.
-    favTeams   = enabledTeams(JSON.parse(localStorage.getItem('rink-favorites') ?? '[]'));
-    favLeagues = enabledLeagues(JSON.parse(localStorage.getItem('rink-fav-leagues') ?? '[]'));
-    favPlayers = enabledPlayers(JSON.parse(localStorage.getItem('rink-fav-players') ?? '[]'));
+    // Subimos TODOS los favoritos como "lo que sigo"; el nivel de aviso lo decide
+    // el preset por entidad (el emisor segmenta por ahí: 'silent' = no avisar).
+    favTeams   = JSON.parse(localStorage.getItem('rink-favorites') ?? '[]');
+    favLeagues = JSON.parse(localStorage.getItem('rink-fav-leagues') ?? '[]');
+    favPlayers = JSON.parse(localStorage.getItem('rink-fav-players') ?? '[]');
+    presets    = buildPresetPayload(favTeams, favLeagues, favPlayers);
     config   = JSON.parse(localStorage.getItem('rink-notif-config') ?? '{}');
     deviceId = localStorage.getItem('rink-device-id') ?? 'unknown';
     locale   = localStorage.getItem('sticklive_locale') ?? 'es';
   } catch { /* noop */ }
-  return { favTeams, favLeagues, favPlayers, config, deviceId, locale };
+  return { favTeams, favLeagues, favPlayers, presets, config, deviceId, locale };
 }
 
 /**

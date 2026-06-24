@@ -57,6 +57,69 @@ export function isNotifEnabled(kind: NotifKind, id: string): boolean {
   return !getDisabled()[bucket(kind)].includes(id);
 }
 
+// ── Presets de notificación por entidad (complete|key_events|results|silent) ────
+//
+// Modelo nuevo: cada entidad seguida tiene un preset. El selector (modal) lo
+// escribe aquí; el emisor segmenta por preset. Mientras no haya modal, "seguido
+// sin preset" se trata como 'complete' en el emisor, así que esta clave solo
+// guarda elecciones explícitas. Para no romper a quien ya desactivó avisos con
+// el modelo viejo (lista de exclusión), getPresets() añade esos como 'silent'.
+
+export type NotificationPreset = 'complete' | 'key_events' | 'results' | 'silent';
+
+const PRESETS_KEY = 'rink-notif-presets';
+
+function presetKey(kind: NotifKind, id: string): string {
+  return `${kind === 'team' ? 'team' : kind === 'league' ? 'competition' : 'player'}:${id}`;
+}
+
+function readPresetMap(): Record<string, NotificationPreset> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(PRESETS_KEY) ?? '{}') as Record<string, NotificationPreset>;
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch { return {}; }
+}
+
+export function getPreset(kind: NotifKind, id: string): NotificationPreset {
+  const explicit = readPresetMap()[presetKey(kind, id)];
+  if (explicit) return explicit;
+  // Back-compat: si estaba desactivado con el modelo viejo, equivale a 'silent'.
+  return isNotifEnabled(kind, id) ? 'complete' : 'silent';
+}
+
+export function setPreset(kind: NotifKind, id: string, preset: NotificationPreset): void {
+  const map = readPresetMap();
+  map[presetKey(kind, id)] = preset;
+  try { localStorage.setItem(PRESETS_KEY, JSON.stringify(map)); } catch { /* noop */ }
+  // Mantener coherente la lista de exclusión vieja (otros sitios aún la leen).
+  setNotifEnabled(kind, id, preset !== 'silent');
+}
+
+/**
+ * Mapa "<tipo>:<id>" → preset que el cliente sube al backend. Mezcla las
+ * elecciones explícitas con la compatibilidad de la lista de exclusión vieja
+ * (entidades desactivadas → 'silent'); lo explícito gana.
+ */
+export function buildPresetPayload(
+  favTeams: string[], favLeagues: string[], favPlayers: string[],
+): Record<string, NotificationPreset> {
+  const out: Record<string, NotificationPreset> = {};
+  const dis = getDisabled();
+  for (const id of dis.teams)   out[`team:${id}`] = 'silent';
+  for (const id of dis.leagues) out[`competition:${id}`] = 'silent';
+  for (const id of dis.players) out[`player:${id}`] = 'silent';
+  // Las elecciones explícitas del nuevo store mandan sobre lo anterior.
+  Object.assign(out, readPresetMap());
+  // Solo claves de entidades que realmente se siguen (limpia restos).
+  const followed = new Set<string>([
+    ...favTeams.map((t) => `team:${t}`),
+    ...favLeagues.map((l) => `competition:${l}`),
+    ...favPlayers.map((p) => `player:${p}`),
+  ]);
+  for (const k of Object.keys(out)) if (!followed.has(k)) delete out[k];
+  return out;
+}
+
 /** Activa/desactiva la notificación de una entidad. Devuelve el nuevo estado. */
 export function setNotifEnabled(kind: NotifKind, id: string, enabled: boolean): boolean {
   const map = getDisabled();

@@ -10,6 +10,9 @@ export type RoundType = 'regular' | 'playoff' | 'cup' | 'friendly';
 export type EventType = 'goal' | 'penalty' | 'blue_card' | 'red_card' | 'timeout' | 'period_end';
 export type ScrapeStatus = 'success' | 'error' | 'skipped' | 'partial';
 
+/** Nivel de seguimiento de notificaciones por entidad seguida (equipo/competición/jugador). */
+export type NotificationPreset = 'complete' | 'key_events' | 'results' | 'silent';
+
 // ============================================================
 // Entidades de dominio (lo que circula por el sistema)
 // ============================================================

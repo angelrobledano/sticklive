@@ -52,6 +52,13 @@ export function cardAlert(kind: 'azul' | 'roja', playerName: string, teamName: s
   return `Tarjeta ${kind} para ${playerName} (${teamName})${min}`;
 }
 
+/** `🎯 Falta directa · Barça (min 22')` */
+export function directFoulAlert(teamName: string, minute?: number | null): string {
+  const min = minute != null ? ` (min ${minute}')` : '';
+  const team = teamName ? ` · ${teamName}` : '';
+  return `🎯 Falta directa${team}${min}`;
+}
+
 /** Tag de jornada (una notificación viva por ronda y fase). */
 export function jornadaTag(roundId: string, phase: 'start' | 'end'): string {
   return `jornada-${roundId}-${phase}`;

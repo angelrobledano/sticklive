@@ -35,7 +35,20 @@ interface SubscribeBody {
   favLeagues?: string[];
   favPlayers?: string[];
   config?: Record<string, unknown>;
+  /** Mapa "<tipo>:<id>" → preset de notificación (complete|key_events|results|silent). */
+  presets?: Record<string, string>;
   locale?: string;
+}
+
+const VALID_PRESETS = new Set(['complete', 'key_events', 'results', 'silent']);
+/** Filtra el mapa de presets a claves "tipo:uuid" y valores de preset válidos. */
+function sanitizePresets(p?: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(p ?? {})) {
+    const m = /^(team|competition|player):([0-9a-f-]{36})$/i.exec(k);
+    if (m && VALID_PRESETS.has(v)) out[k] = v;
+  }
+  return out;
 }
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
@@ -51,10 +64,11 @@ pushRouter.post('/subscribe', async (c) => {
     const favTeams   = onlyUuids(body.favTeams);
     const favLeagues = onlyUuids(body.favLeagues);
     const favPlayers = onlyUuids(body.favPlayers);
+    const presets    = sanitizePresets(body.presets);
 
     await db.query(
-      `INSERT INTO push_subscriptions (device_id, endpoint, p256dh, auth, fav_teams, fav_leagues, fav_players, config, locale)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      `INSERT INTO push_subscriptions (device_id, endpoint, p256dh, auth, fav_teams, fav_leagues, fav_players, config, presets, locale)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        ON CONFLICT (endpoint) DO UPDATE SET
          device_id   = EXCLUDED.device_id,
          p256dh      = EXCLUDED.p256dh,
@@ -63,6 +77,7 @@ pushRouter.post('/subscribe', async (c) => {
          fav_leagues = EXCLUDED.fav_leagues,
          fav_players = EXCLUDED.fav_players,
          config      = EXCLUDED.config,
+         presets     = EXCLUDED.presets,
          locale      = EXCLUDED.locale,
          updated_at  = NOW()`,
       [
@@ -74,6 +89,7 @@ pushRouter.post('/subscribe', async (c) => {
         favLeagues,
         favPlayers,
         JSON.stringify(body.config ?? {}),
+        JSON.stringify(presets),
         body.locale ?? 'es',
       ]
     );
