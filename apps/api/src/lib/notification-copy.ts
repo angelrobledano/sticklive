@@ -59,6 +59,20 @@ export function directFoulAlert(teamName: string, minute?: number | null): strin
   return `🎯 Falta directa${team}${min}`;
 }
 
+/**
+ * Azul + falta directa en una sola notificación (bundling): la tarjeta azul y la
+ * falta directa que la sigue en el mismo instante se anuncian juntas.
+ * `🔵 Tarjeta azul para Sergi Aragonès (Liceo) al minuto 22'. Barça dispone de falta directa.`
+ */
+export function blueCardWithFoulAlert(
+  playerName: string, cardedTeam: string, opponentTeam: string, minute?: number | null,
+): string {
+  const min = minute != null ? ` al minuto ${minute}'` : '';
+  const team = cardedTeam ? ` (${cardedTeam})` : '';
+  const opp = opponentTeam || 'El rival';
+  return `🔵 Tarjeta azul para ${playerName}${team}${min}. ${opp} dispone de falta directa.`;
+}
+
 /** Tag de jornada (una notificación viva por ronda y fase). */
 export function jornadaTag(roundId: string, phase: 'start' | 'end'): string {
   return `jornada-${roundId}-${phase}`;

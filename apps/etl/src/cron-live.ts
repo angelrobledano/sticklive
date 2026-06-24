@@ -32,7 +32,7 @@ import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.sc
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import {
   snapshotMatches, snapshotRounds, snapshotGoals, snapshotPlayerEventCounts,
-  diffAndNotify, diffGoals, diffCardOrFoul, pushEnabled,
+  diffAndNotify, diffGoals, diffCardOrFoul, diffBlueAndFouls, pushEnabled,
 } from './push-dispatcher.js';
 
 const log = createLogger({ service: 'cron-live' });
@@ -289,11 +289,9 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
   try { await diffCardOrFoul(prevReds, seasonIds, 'red_card'); } catch (err) {
     log.warn({ err }, 'push de expulsion fallo — el ciclo sigue');
   }
-  try { await diffCardOrFoul(prevBlues, seasonIds, 'blue_card'); } catch (err) {
-    log.warn({ err }, 'push de tarjeta azul fallo — el ciclo sigue');
-  }
-  try { await diffCardOrFoul(prevFouls, seasonIds, 'direct_foul'); } catch (err) {
-    log.warn({ err }, 'push de falta directa fallo — el ciclo sigue');
+  // Azul + falta directa juntas: una azul y la FD del mismo instante se agrupan.
+  try { await diffBlueAndFouls(prevBlues, prevFouls, seasonIds); } catch (err) {
+    log.warn({ err }, 'push de azul/falta directa fallo — el ciclo sigue');
   }
 
   return etl.upserted;

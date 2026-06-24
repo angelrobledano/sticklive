@@ -17,7 +17,7 @@ import { createLogger } from '@sports/logger';
 import {
   branded, matchTag, finalAlert, liveBody, isQuietHours,
   jornadaStartAlert, jornadaEndAlert, jornadaTag,
-  playerGoalAlert, cardAlert, directFoulAlert,
+  playerGoalAlert, cardAlert, directFoulAlert, blueCardWithFoulAlert,
   type MatchRef,
 } from '../../api/src/lib/notification-copy.js';
 import type { NotificationPreset } from '@sports/shared-types';
@@ -549,4 +549,96 @@ export async function diffCardOrFoul(
   }
 
   log.info({ eventType, count: fresh.length, sent, pruned }, '🟦 Push de tarjeta/falta');
+}
+
+/** Deltas nuevos (el conteo subió) entre dos snapshots de eventos. */
+function freshDeltas(prev: Map<string, GoalSnap>, cur: Map<string, GoalSnap>): GoalSnap[] {
+  const out: GoalSnap[] = [];
+  for (const [key, now] of cur) {
+    if (now.count - (prev.get(key)?.count ?? 0) > 0) out.push(now);
+  }
+  return out;
+}
+
+/**
+ * TARJETA AZUL + FALTA DIRECTA con bundling (regla inteligente del spec). Una azul
+ * provoca una falta directa en el mismo instante: las emparejamos por (partido,
+ * minuto) y emitimos UNA sola notificación combinada. Las azules y faltas sin
+ * pareja salen por separado. Azul y FD pertenecen a los mismos niveles de preset
+ * (complete/key_events), así que el gate por 'blue_card' no pierde destinatarios.
+ */
+export async function diffBlueAndFouls(
+  prevBlue: Map<string, GoalSnap>,
+  prevFoul: Map<string, GoalSnap>,
+  seasonIds: string[],
+): Promise<void> {
+  if (!pushEnabled) return;
+
+  const freshBlue = freshDeltas(prevBlue, await snapshotPlayerEventCounts(seasonIds, 'blue_card'));
+  const freshFoul = freshDeltas(prevFoul, await snapshotPlayerEventCounts(seasonIds, 'direct_foul'));
+  if (freshBlue.length === 0 && freshFoul.length === 0) return;
+
+  type Emission = { snap: GoalSnap; gate: PushEventType; title: string };
+  const emissions: Emission[] = [];
+  const usedFoul = new Set<GoalSnap>();
+  const bundled = new Set<GoalSnap>();
+
+  // 1) Parejas azul↔FD: mismo partido y mismo minuto (cada FD con una azul máx.).
+  for (const b of freshBlue) {
+    const f = freshFoul.find((x) =>
+      !usedFoul.has(x) && x.matchId === b.matchId &&
+      b.minute != null && x.minute != null && x.minute === b.minute);
+    if (!f) continue;
+    usedFoul.add(f); bundled.add(b);
+    const opponent = b.scorerTeamId != null && b.scorerTeamId === b.homeTeamId ? b.awayShort
+      : b.scorerTeamId != null && b.scorerTeamId === b.awayTeamId ? b.homeShort : '';
+    emissions.push({ snap: b, gate: 'blue_card',
+      title: blueCardWithFoulAlert(b.playerName, b.scorerTeamShort ?? '', opponent, b.minute) });
+  }
+  // 2) Azules sueltas.
+  for (const b of freshBlue) {
+    if (bundled.has(b)) continue;
+    emissions.push({ snap: b, gate: 'blue_card',
+      title: cardAlert('azul', b.playerName, b.scorerTeamShort ?? '', b.minute) });
+  }
+  // 3) Faltas directas sueltas.
+  for (const f of freshFoul) {
+    if (usedFoul.has(f)) continue;
+    emissions.push({ snap: f, gate: 'direct_foul',
+      title: directFoulAlert(f.scorerTeamShort ?? '', f.minute) });
+  }
+
+  const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
+  if (subs.rows.length === 0) return;
+
+  const night = isQuietHours();
+  let sent = 0, pruned = 0;
+
+  for (const sub of subs.rows) {
+    const cfg = sub.config ?? {};
+    if (cfg['master'] === false) continue;
+    if (night && cfg['quietNight'] !== false) continue;
+
+    for (const em of emissions) {
+      const s = em.snap;
+      const teamIds = [s.homeTeamId, s.awayTeamId].filter(Boolean) as string[];
+      if (!wants(sub, em.gate, teamIds, s.competitionId, s.playerId)) continue;
+
+      const ref: MatchRef = {
+        homeShort: s.homeShort, awayShort: s.awayShort,
+        homeScore: s.homeScore, awayScore: s.awayScore, minute: s.minute,
+      };
+      const payload: PushPayload = {
+        title: branded(em.title),
+        body: liveBody(ref),
+        tag: matchTag(s.matchId),
+        url: `${WEB_BASE}/matches/${s.matchId}`,
+      };
+      const res = await deliver(sub, payload);
+      if (res === 'sent') sent++;
+      else if (res === 'pruned') { pruned++; break; }
+    }
+  }
+
+  log.info({ blue: freshBlue.length, fouls: freshFoul.length, bundles: bundled.size, sent, pruned }, '🔵 Push azul/FD (bundling)');
 }
