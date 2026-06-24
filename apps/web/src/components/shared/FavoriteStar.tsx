@@ -5,6 +5,7 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { useT } from '@/lib/i18n';
 import { setPreset } from '@/lib/notif-prefs';
 import { syncPushConfig } from '@/lib/push';
+import { track } from '@/lib/analytics';
 import { NotificationPresetSheet } from '@/components/shared/NotificationPresetSheet';
 
 /**
@@ -57,6 +58,11 @@ export function FavoriteStar({ id, kind, name, className = '', variant = 'icon' 
       setPreset(kind, id, 'key_events');
       void syncPushConfig();
       setSheetOpen(true);
+      track('follow_created', {
+        entity_type: kind === 'league' ? 'competition' : kind,
+        entity_id: id,
+        preset_selected: 'key_events',
+      });
     }
 
     // Trigger de conversión: al marcar el TERCER favorito en anónimo,

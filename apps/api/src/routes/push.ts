@@ -113,6 +113,37 @@ pushRouter.delete('/subscribe', async (c) => {
 });
 
 /**
+ * POST /push/opened  { endpoint, type, url }
+ * Beacon del service worker al abrir una notificación. Emite `notification_opened`
+ * a PostHog (server-side); el distinctId se deriva del device_id de la suscripción.
+ * Sin red en el SW se pierde (aceptable). Rate limit suave anti-abuso.
+ */
+pushRouter.post('/opened', rateLimit(120, 60_000), async (c) => {
+  try {
+    const { endpoint, type, url } = await c.req.json<{ endpoint?: string; type?: string; url?: string }>();
+    let deviceId = 'unknown';
+    if (endpoint) {
+      const r = await db.query<{ device_id: string }>(
+        `SELECT device_id FROM push_subscriptions WHERE endpoint = $1`, [endpoint]
+      );
+      deviceId = r.rows[0]?.device_id ?? 'unknown';
+    }
+    try {
+      const { analytics } = await import('@sports/analytics');
+      analytics.capture({
+        distinctId: deviceId,
+        event: 'notification_opened',
+        properties: { notification_type: type ?? 'unknown', url: url ?? '/' },
+      });
+      await analytics.flush();
+    } catch { /* sin POSTHOG_API_KEY no rompemos la apertura */ }
+    return c.json({ ok: true });
+  } catch {
+    return c.json({ ok: false }, 200); // nunca un error de analítica molesta al cliente
+  }
+});
+
+/**
  * POST /push/test  { deviceId }
  * Envía una notificación de prueba a TODAS las suscripciones del dispositivo.
  * Sirve para verificar el flujo end-to-end en cada plataforma sin esperar a un

@@ -248,6 +248,8 @@ interface PushPayload {
   body: string;
   tag: string;
   url: string;
+  /** Tipo de notificación (para analítica notification_opened en el SW). */
+  type: string;
 }
 
 interface SubRow {
@@ -372,7 +374,7 @@ export async function diffAndNotify(
 
     if (before.status === 'scheduled' && now.status === 'live') {
       toSend.push({ kind: 'start', matchTeams: teams,
-        payload: { title: branded(`${ref.homeShort} – ${ref.awayShort} ¡en juego!`), body: liveBody(ref), tag, url } });
+        payload: { title: branded(`${ref.homeShort} – ${ref.awayShort} ¡en juego!`), body: liveBody(ref), tag, url, type: 'start' } });
     }
 
     // El GOL ya no se notifica aquí (por marcador, sin goleador): se emite en
@@ -380,7 +382,7 @@ export async function diffAndNotify(
 
     if (before.status !== 'finished' && now.status === 'finished') {
       toSend.push({ kind: 'final', matchTeams: teams,
-        payload: { title: branded(finalAlert(ref)), body: '', tag, url } });
+        payload: { title: branded(finalAlert(ref)), body: '', tag, url, type: 'final' } });
     }
   }
 
@@ -392,11 +394,11 @@ export async function diffAndNotify(
     const roundName = cur.name || `Jornada ${cur.number}`;
     if (before.live === 0 && cur.live > 0) {
       toSend.push({ kind: 'jornada_start',
-        payload: { title: branded(jornadaStartAlert(roundName)), body: '', tag: jornadaTag(rid, 'start'), url: `${WEB_BASE}/` } });
+        payload: { title: branded(jornadaStartAlert(roundName)), body: '', tag: jornadaTag(rid, 'start'), url: `${WEB_BASE}/`, type: 'jornada_start' } });
     }
     if (cur.total > 0 && cur.finished === cur.total && before.finished < before.total) {
       toSend.push({ kind: 'jornada_end',
-        payload: { title: branded(jornadaEndAlert(roundName)), body: '', tag: jornadaTag(rid, 'end'), url: `${WEB_BASE}/` } });
+        payload: { title: branded(jornadaEndAlert(roundName)), body: '', tag: jornadaTag(rid, 'end'), url: `${WEB_BASE}/`, type: 'jornada_end' } });
     }
   }
 
@@ -484,6 +486,7 @@ export async function diffGoals(
         body: liveBody(ref),
         tag: matchTag(g.matchId), // un único tag por partido → sin duplicar
         url: `${WEB_BASE}/matches/${g.matchId}`,
+        type: 'goal',
       };
       const res = await deliver(sub, payload);
       if (res === 'sent') sent++;
@@ -541,6 +544,7 @@ export async function diffCardOrFoul(
         body: liveBody(ref),
         tag: matchTag(c.matchId),
         url: `${WEB_BASE}/matches/${c.matchId}`,
+        type: eventType,
       };
       const res = await deliver(sub, payload);
       if (res === 'sent') sent++;
@@ -578,7 +582,7 @@ export async function diffBlueAndFouls(
   const freshFoul = freshDeltas(prevFoul, await snapshotPlayerEventCounts(seasonIds, 'direct_foul'));
   if (freshBlue.length === 0 && freshFoul.length === 0) return;
 
-  type Emission = { snap: GoalSnap; gate: PushEventType; title: string };
+  type Emission = { snap: GoalSnap; gate: PushEventType; title: string; type: string };
   const emissions: Emission[] = [];
   const usedFoul = new Set<GoalSnap>();
   const bundled = new Set<GoalSnap>();
@@ -592,19 +596,19 @@ export async function diffBlueAndFouls(
     usedFoul.add(f); bundled.add(b);
     const opponent = b.scorerTeamId != null && b.scorerTeamId === b.homeTeamId ? b.awayShort
       : b.scorerTeamId != null && b.scorerTeamId === b.awayTeamId ? b.homeShort : '';
-    emissions.push({ snap: b, gate: 'blue_card',
+    emissions.push({ snap: b, gate: 'blue_card', type: 'blue_foul',
       title: blueCardWithFoulAlert(b.playerName, b.scorerTeamShort ?? '', opponent, b.minute) });
   }
   // 2) Azules sueltas.
   for (const b of freshBlue) {
     if (bundled.has(b)) continue;
-    emissions.push({ snap: b, gate: 'blue_card',
+    emissions.push({ snap: b, gate: 'blue_card', type: 'blue_card',
       title: cardAlert('azul', b.playerName, b.scorerTeamShort ?? '', b.minute) });
   }
   // 3) Faltas directas sueltas.
   for (const f of freshFoul) {
     if (usedFoul.has(f)) continue;
-    emissions.push({ snap: f, gate: 'direct_foul',
+    emissions.push({ snap: f, gate: 'direct_foul', type: 'direct_foul',
       title: directFoulAlert(f.scorerTeamShort ?? '', f.minute) });
   }
 
@@ -633,6 +637,7 @@ export async function diffBlueAndFouls(
         body: liveBody(ref),
         tag: matchTag(s.matchId),
         url: `${WEB_BASE}/matches/${s.matchId}`,
+        type: em.type,
       };
       const res = await deliver(sub, payload);
       if (res === 'sent') sent++;
