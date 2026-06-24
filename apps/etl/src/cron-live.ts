@@ -32,7 +32,7 @@ import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.sc
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import {
   snapshotMatches, snapshotRounds, snapshotGoals, snapshotPlayerEventCounts,
-  diffAndNotify, diffGoals, diffCardOrFoul, diffBlueAndFouls, pushEnabled,
+  diffAndNotify, diffGoals, diffCardOrFoul, diffBlueAndFouls, flushPushAnalytics, pushEnabled,
 } from './push-dispatcher.js';
 
 const log = createLogger({ service: 'cron-live' });
@@ -390,4 +390,4 @@ async function main() {
 main()
   .catch((err) => { log.error({ err }, 'Error fatal'); Sentry.captureException(err); process.exitCode = 1; })
   // flush ANTES de salir: el cron es un proceso corto y si no se pierden los eventos
-  .finally(async () => { await Sentry.flush(2000); await closeDb(); });
+  .finally(async () => { await flushPushAnalytics(); await Sentry.flush(2000); await closeDb(); });

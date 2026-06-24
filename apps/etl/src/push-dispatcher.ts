@@ -263,10 +263,39 @@ interface SubRow {
   config: Record<string, boolean>;
   /** Mapa "<tipo>:<id>" → preset. Si una entidad seguida no aparece → 'complete'. */
   presets: Record<string, string>;
+  device_id: string;
 }
 
 /** Columnas que toda consulta de suscripciones necesita (incluye presets). */
-const SUBS_COLUMNS = 'id, endpoint, p256dh, auth, fav_teams, fav_leagues, fav_players, config, presets';
+const SUBS_COLUMNS = 'id, endpoint, p256dh, auth, fav_teams, fav_leagues, fav_players, config, presets, device_id';
+
+// ── Analítica de servidor: notification_sent (denominador del open rate) ───────
+type AnalyticsMod = typeof import('@sports/analytics');
+let analyticsMod: AnalyticsMod | null | undefined;
+async function getAnalytics(): Promise<AnalyticsMod | null> {
+  if (analyticsMod === undefined) {
+    try { analyticsMod = await import('@sports/analytics'); }
+    catch { analyticsMod = null; } // sin POSTHOG_API_KEY el módulo lanza al importar
+  }
+  return analyticsMod;
+}
+/** Registra un envío de push (fire-and-forget; nunca rompe el envío real). */
+function captureSent(deviceId: string, type: string): void {
+  void (async () => {
+    try {
+      const a = await getAnalytics();
+      a?.analytics.capture({
+        distinctId: deviceId || 'unknown',
+        event: 'notification_sent',
+        properties: { notification_type: type },
+      });
+    } catch { /* noop */ }
+  })();
+}
+/** Vacía el buffer de analítica al terminar el cron (proceso corto). */
+export async function flushPushAnalytics(): Promise<void> {
+  try { await analyticsMod?.shutdownAnalytics(); } catch { /* noop */ }
+}
 
 // ── Presets de notificación ─────────────────────────────────────────────────────
 // Cada preset es una colección de tipos de evento (no booleanos sueltos), para
@@ -311,6 +340,7 @@ async function deliver(sub: SubRow, payload: PushPayload): Promise<'sent' | 'pru
       JSON.stringify(payload),
       { TTL: 3600 }
     );
+    captureSent(sub.device_id, payload.type);
     return 'sent';
   } catch (err: unknown) {
     const status = (err as { statusCode?: number }).statusCode;
