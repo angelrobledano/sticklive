@@ -38,6 +38,11 @@ import {
 
 const log = createLogger({ service: 'cron-live' });
 
+// Fallos consecutivos del scrape de marcadores: solo alertamos a Sentry tras
+// varios seguidos (un blip de red aislado se recupera al ciclo siguiente).
+const MC_FAIL_ALERT_THRESHOLD = 3;
+let consecutiveMcFailures = 0;
+
 const POLL_INTERVAL  = Number(process.env['POLL_INTERVAL_S']  ?? 45) * 1000;
 const WINDOW_HOURS   = Number(process.env['WINDOW_HOURS']     ?? 2);
 const MAX_RUNTIME_MS = Number(process.env['MAX_RUNTIME_MIN']  ?? 180) * 60 * 1000;
@@ -239,16 +244,28 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
   const result = await scraper.run();
   if (result.data.length === 0) {
     // rfep_mc_1.php normalmente devuelve decenas de partidos. 0 = la fuente cayó,
-    // cambió de estructura o nos bloqueó → alerta a Sentry (agujero nº1 de la
-    // auditoría: enterarse de que el scraper dejó de traer datos en una jornada).
+    // cambió de estructura o nos bloqueó. Pero un fallo de red AISLADO (sidgad ya
+    // reintenta 3×) se recupera al ciclo siguiente (45s): no es una incidencia.
+    // Solo escalamos a Sentry como ERROR si FALLA VARIOS CICLOS SEGUIDOS; uno
+    // suelto queda como warning/breadcrumb para no generar ruido.
     if (!result.success) {
-      Sentry.captureException(new Error('Scraper de marcadores falló: 0 partidos'),
-        { tags: { phase: 'mc-scrape' }, extra: { errors: result.errors } });
+      consecutiveMcFailures++;
+      if (consecutiveMcFailures >= MC_FAIL_ALERT_THRESHOLD) {
+        Sentry.captureException(
+          new Error(`Scraper de marcadores falló ${consecutiveMcFailures} ciclos seguidos`),
+          { tags: { phase: 'mc-scrape' }, extra: { errors: result.errors } });
+      } else {
+        log.warn({ errors: result.errors, consecutiveMcFailures },
+          'Scraper de marcadores falló (transitorio) — reintento en el próximo ciclo');
+      }
     } else {
+      // 200 OK pero 0 partidos: huele a cambio de estructura de la fuente.
       Sentry.captureMessage('rfep_mc_1.php devolvió 0 partidos — posible cambio/caída de la fuente', 'warning');
     }
     return 0;
   }
+  // Ciclo con datos: la fuente responde, reseteamos el contador de fallos.
+  consecutiveMcFailures = 0;
 
   const etl = await pipeline.runMatches(result);
 
