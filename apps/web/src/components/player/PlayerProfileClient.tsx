@@ -8,6 +8,7 @@ import { useT } from '@/lib/i18n';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { CountryFlag } from '@/components/shared/CountryFlag';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
+import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -76,6 +77,7 @@ function PlayerHeader({ data }: { data: PlayerDetail }) {
             kind="player"
             name={toTitleCase(`${player.firstName} ${player.lastName}`)}
           />
+          <ManageNotificationsButton kind="player" id={player.id} name={toTitleCase(`${player.firstName} ${player.lastName}`)} />
         </div>
 
         {/* Datos — pr-20 reserva el hueco de los botones absolutos (compartir +

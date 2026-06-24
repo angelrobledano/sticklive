@@ -7,6 +7,7 @@ import { TeamShield } from '@/components/shared/TeamShield';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { playerDisplayName, toTitleCase, clubName } from '@/lib/names';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
+import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { useT } from '@/lib/i18n';
 
@@ -80,6 +81,7 @@ function TeamHeader({ data }: { data: TeamDetail }) {
             name={team.shortName ?? team.name}
             variant="button"
           />
+          <ManageNotificationsButton kind="team" id={team.id} name={team.shortName ?? team.name} />
         </div>
       </div>
 

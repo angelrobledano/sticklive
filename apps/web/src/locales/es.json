@@ -5,6 +5,25 @@
     "settings": "Ajustes",
     "back": "Volver"
   },
+  "notif_presets": {
+    "title": "¿Qué quieres recibir?",
+    "complete": {
+      "label": "Completo",
+      "desc": "No te perderás nada del partido."
+    },
+    "key_events": {
+      "label": "Eventos clave",
+      "desc": "Goles, tarjetas azules, faltas directas y resultado final."
+    },
+    "results": {
+      "label": "Resultados",
+      "desc": "Inicio y resultado final de los partidos."
+    },
+    "silent": {
+      "label": "Silencioso",
+      "desc": "Podrás seguirlo desde la aplicación."
+    }
+  },
   "match_tabs": {
     "standing": "Clasificación",
     "fixtures": "Jornadas",

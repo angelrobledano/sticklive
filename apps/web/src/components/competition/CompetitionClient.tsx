@@ -9,6 +9,7 @@ import { PlayoffBracket } from '@/components/match/PlayoffBracket';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
+import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { useT } from '@/lib/i18n';
 import { TeamShield } from '@/components/shared/TeamShield';
@@ -100,6 +101,12 @@ function CompetitionHeader({ data, seasons, competitionId }: {
       <FavoriteStar
         id={season.competitionId}
         kind="league"
+        name={season.competitionShort ?? season.competitionName}
+        className="shrink-0"
+      />
+      <ManageNotificationsButton
+        kind="league"
+        id={season.competitionId}
         name={season.competitionShort ?? season.competitionName}
         className="shrink-0"
       />

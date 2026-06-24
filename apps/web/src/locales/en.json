@@ -5,6 +5,25 @@
     "settings": "Settings",
     "back": "Back"
   },
+  "notif_presets": {
+    "title": "What do you want to get?",
+    "complete": {
+      "label": "Everything",
+      "desc": "You won't miss a thing."
+    },
+    "key_events": {
+      "label": "Key events",
+      "desc": "Goals, blue cards, direct fouls and final result."
+    },
+    "results": {
+      "label": "Results",
+      "desc": "Kick-off and final result only."
+    },
+    "silent": {
+      "label": "Silent",
+      "desc": "Follow it from the app, no push."
+    }
+  },
   "match_tabs": {
     "standing": "Standings",
     "fixtures": "Fixtures",

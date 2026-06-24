@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useT } from '@/lib/i18n';
+import { setPreset } from '@/lib/notif-prefs';
+import { syncPushConfig } from '@/lib/push';
+import { NotificationPresetSheet } from '@/components/shared/NotificationPresetSheet';
 
 /**
  * Estrella de favorito (equipos y ligas) con micro-interacción y toast.
@@ -24,6 +27,7 @@ export function FavoriteStar({ id, kind, name, className = '', variant = 'icon' 
   } = useFavorites();
   const { t } = useT();
   const [toast, setToast] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const active =
     kind === 'team' ? isFavorite(id)
@@ -46,6 +50,14 @@ export function FavoriteStar({ id, kind, name, className = '', variant = 'icon' 
     else if (kind === 'league') toggleLeague(id);
     else togglePlayer(id, name);
     setToast(t(wasActive ? 'favorites.toast_unfollowed' : 'favorites.toast_following', { name: name ?? '—' }));
+
+    // Al EMPEZAR a seguir: preset por defecto 'key_events' (anti-ruido) y abrimos
+    // el selector para que el usuario ajuste cuánto quiere recibir.
+    if (!wasActive) {
+      setPreset(kind, id, 'key_events');
+      void syncPushConfig();
+      setSheetOpen(true);
+    }
 
     // Trigger de conversión: al marcar el TERCER favorito en anónimo,
     // proponemos crear cuenta (el sheet decide si procede mostrarse)
@@ -83,6 +95,7 @@ export function FavoriteStar({ id, kind, name, className = '', variant = 'icon' 
           {active ? t('favorites.following') : t('favorites.follow')}
         </button>
         {toast && <FavToast text={toast} />}
+        <NotificationPresetSheet open={sheetOpen} kind={kind} id={id} name={name} onClose={() => setSheetOpen(false)} />
       </>
     );
   }
@@ -110,6 +123,7 @@ export function FavoriteStar({ id, kind, name, className = '', variant = 'icon' 
       </button>
 
       {toast && <FavToast text={toast} />}
+      <NotificationPresetSheet open={sheetOpen} kind={kind} id={id} name={name} onClose={() => setSheetOpen(false)} />
     </>
   );
 }
