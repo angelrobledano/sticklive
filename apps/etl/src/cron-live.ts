@@ -33,7 +33,9 @@ import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.sc
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import {
   snapshotMatches, snapshotRounds, snapshotGoals, snapshotPlayerEventCounts,
-  diffAndNotify, diffGoals, diffCardOrFoul, diffBlueAndFouls, flushPushAnalytics, pushEnabled,
+  snapshotExtraPhases, snapshotResults,
+  diffAndNotify, diffGoals, diffCardOrFoul, diffBlueAndFouls,
+  diffOvertimePenalties, diffResolution, flushPushAnalytics, pushEnabled,
 } from './push-dispatcher.js';
 
 const log = createLogger({ service: 'cron-live' });
@@ -296,6 +298,10 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
   const prevReds  = pushEnabled ? await snapshotPlayerEventCounts(seasonIds, 'red_card') : new Map();
   const prevBlues = pushEnabled ? await snapshotPlayerEventCounts(seasonIds, 'blue_card') : new Map();
   const prevFouls = pushEnabled ? await snapshotPlayerEventCounts(seasonIds, 'direct_foul') : new Map();
+  // Prórroga/penaltis: las fichas escriben live_period y el marcador de la tanda,
+  // así que snapshot ANTES y diff DESPUÉS (igual que goles).
+  const prevPhase   = pushEnabled ? await snapshotExtraPhases(seasonIds) : new Map();
+  const prevResults = pushEnabled ? await snapshotResults(seasonIds)     : new Map();
   try {
     await runFichasForActiveMatches(seasonIds);
   } catch (err) {
@@ -315,6 +321,14 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
   // ganador los pone la ficha; aquí se conserva).
   try { await deriveMatchResults(seasonIds); } catch (err) {
     log.warn({ err }, 'derive-results fallo — el ciclo sigue');
+  }
+  // Inicio de prórroga/penaltis en vivo.
+  try { await diffOvertimePenalties(prevPhase, seasonIds); } catch (err) {
+    log.warn({ err }, 'push de prórroga/penaltis fallo — el ciclo sigue');
+  }
+  // Final por tipo (reemplaza el final genérico vía mismo tag).
+  try { await diffResolution(prevResults, seasonIds); } catch (err) {
+    log.warn({ err }, 'push de final por tipo fallo — el ciclo sigue');
   }
 
   return etl.upserted;

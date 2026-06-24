@@ -18,6 +18,7 @@ import {
   branded, matchTag, finalAlert, liveBody, isQuietHours,
   jornadaStartAlert, jornadaEndAlert, jornadaTag,
   playerGoalAlert, cardAlert, directFoulAlert, blueCardWithFoulAlert,
+  overtimeStartAlert, penaltyStartAlert, finalOvertimeAlert, finalPenaltiesAlert,
   type MatchRef,
 } from '../../api/src/lib/notification-copy.js';
 import type { NotificationPreset } from '@sports/shared-types';
@@ -300,12 +301,12 @@ export async function flushPushAnalytics(): Promise<void> {
 // ── Presets de notificación ─────────────────────────────────────────────────────
 // Cada preset es una colección de tipos de evento (no booleanos sueltos), para
 // poder ampliar el catálogo sin rediseñar la segmentación.
-type PushEventType = 'start' | 'goal' | 'blue_card' | 'direct_foul' | 'red_card' | 'final';
+type PushEventType = 'start' | 'goal' | 'blue_card' | 'direct_foul' | 'red_card' | 'overtime' | 'penalties' | 'final';
 
 const PRESET_EVENTS: Record<NotificationPreset, PushEventType[]> = {
-  complete:   ['start', 'goal', 'blue_card', 'direct_foul', 'red_card', 'final'],
-  key_events: ['goal', 'blue_card', 'direct_foul', 'red_card', 'final'],
-  results:    ['start', 'final'],
+  complete:   ['start', 'goal', 'blue_card', 'direct_foul', 'red_card', 'overtime', 'penalties', 'final'],
+  key_events: ['goal', 'blue_card', 'direct_foul', 'red_card', 'overtime', 'penalties', 'final'],
+  results:    ['start', 'overtime', 'penalties', 'final'],
   silent:     [],
 };
 
@@ -676,4 +677,186 @@ export async function diffBlueAndFouls(
   }
 
   log.info({ blue: freshBlue.length, fouls: freshFoul.length, bundles: bundled.size, sent, pruned }, '🔵 Push azul/FD (bundling)');
+}
+
+// ── Prórroga y penaltis (inicio en vivo + final por tipo) ─────────────────────
+
+export interface ExtraPhaseSnap {
+  matchId: string; status: string; period: number | null; hasPenalties: boolean;
+  homeTeamId: string | null; awayTeamId: string | null; competitionId: string | null;
+  homeShort: string; awayShort: string; homeScore: number; awayScore: number;
+}
+
+/** Estado de prórroga/penaltis de los partidos en juego (la ficha escribe live_period y home_pen). */
+export async function snapshotExtraPhases(seasonIds: string[]): Promise<Map<string, ExtraPhaseSnap>> {
+  if (seasonIds.length === 0) return new Map();
+  const res = await db.query<{
+    id: string; status: string; live_period: number | null; has_pen: boolean;
+    home_team_id: string | null; away_team_id: string | null; competition_id: string | null;
+    home_short: string | null; away_short: string | null;
+    home_score: number | null; away_score: number | null;
+  }>(`
+    SELECT m.id, m.status, m.live_period,
+           (m.home_pen IS NOT NULL OR m.away_pen IS NOT NULL) AS has_pen,
+           m.home_team_id, m.away_team_id, comp.id AS competition_id,
+           ht.short_name AS home_short, at.short_name AS away_short,
+           m.home_score, m.away_score
+    FROM matches m
+    JOIN seasons s ON s.id = m.season_id
+    JOIN competitions comp ON comp.id = s.competition_id
+    LEFT JOIN teams ht ON ht.id = m.home_team_id
+    LEFT JOIN teams at ON at.id = m.away_team_id
+    WHERE m.season_id = ANY($1) AND m.status IN ('live', 'overtime', 'penalty_shootout')
+  `, [seasonIds]);
+  const map = new Map<string, ExtraPhaseSnap>();
+  for (const r of res.rows) {
+    map.set(r.id, {
+      matchId: r.id, status: r.status, period: r.live_period, hasPenalties: r.has_pen,
+      homeTeamId: r.home_team_id, awayTeamId: r.away_team_id, competitionId: r.competition_id,
+      homeShort: r.home_short ?? 'Local', awayShort: r.away_short ?? 'Visitante',
+      homeScore: r.home_score ?? 0, awayScore: r.away_score ?? 0,
+    });
+  }
+  return map;
+}
+
+/**
+ * Inicio de PRÓRROGA (el crono entra en periodo ≥3) e inicio de PENALTIS
+ * (aparece marcador de tanda). Snapshot ANTES de las fichas, diff DESPUÉS.
+ */
+export async function diffOvertimePenalties(
+  prev: Map<string, ExtraPhaseSnap>, seasonIds: string[],
+): Promise<void> {
+  if (!pushEnabled) return;
+  const cur = await snapshotExtraPhases(seasonIds);
+  const events: Array<{ snap: ExtraPhaseSnap; kind: 'overtime' | 'penalties' }> = [];
+  for (const [id, now] of cur) {
+    const before = prev.get(id);
+    if (!before || now.status === 'finished') continue;
+    if ((before.period ?? 0) <= 2 && (now.period ?? 0) >= 3) events.push({ snap: now, kind: 'overtime' });
+    if (!before.hasPenalties && now.hasPenalties)                events.push({ snap: now, kind: 'penalties' });
+  }
+  if (events.length === 0) return;
+
+  const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
+  if (subs.rows.length === 0) return;
+  const night = isQuietHours();
+  let sent = 0, pruned = 0;
+
+  for (const sub of subs.rows) {
+    const cfg = sub.config ?? {};
+    if (cfg['master'] === false) continue;
+    if (night && cfg['quietNight'] !== false) continue;
+    for (const ev of events) {
+      const s = ev.snap;
+      const teamIds = [s.homeTeamId, s.awayTeamId].filter(Boolean) as string[];
+      if (!wants(sub, ev.kind, teamIds, s.competitionId, null)) continue;
+      const ref: MatchRef = { homeShort: s.homeShort, awayShort: s.awayShort, homeScore: s.homeScore, awayScore: s.awayScore };
+      const payload: PushPayload = {
+        title: branded(ev.kind === 'overtime' ? overtimeStartAlert(ref) : penaltyStartAlert(ref)),
+        body: '',
+        tag: matchTag(s.matchId),
+        url: `${WEB_BASE}/matches/${s.matchId}`,
+        type: ev.kind === 'overtime' ? 'overtime' : 'penalty_shootout',
+      };
+      const res = await deliver(sub, payload);
+      if (res === 'sent') sent++;
+      else if (res === 'pruned') { pruned++; break; }
+    }
+  }
+  log.info({ events: events.length, sent, pruned }, '⏱️ Push de prórroga/penaltis');
+}
+
+export interface ResultSnap {
+  matchId: string; status: string; winType: string | null; winnerTeamId: string | null;
+  homePen: number | null; awayPen: number | null;
+  homeTeamId: string | null; awayTeamId: string | null; competitionId: string | null;
+  homeShort: string; awayShort: string; homeScore: number; awayScore: number;
+}
+
+/** Resultado de los partidos finalizados recientes (para el final por tipo). */
+export async function snapshotResults(seasonIds: string[]): Promise<Map<string, ResultSnap>> {
+  if (seasonIds.length === 0) return new Map();
+  const res = await db.query<{
+    id: string; status: string; win_type: string | null; winner_team_id: string | null;
+    home_pen: number | null; away_pen: number | null;
+    home_team_id: string | null; away_team_id: string | null; competition_id: string | null;
+    home_short: string | null; away_short: string | null;
+    home_score: number | null; away_score: number | null;
+  }>(`
+    SELECT m.id, m.status, m.win_type, m.winner_team_id, m.home_pen, m.away_pen,
+           m.home_team_id, m.away_team_id, comp.id AS competition_id,
+           ht.short_name AS home_short, at.short_name AS away_short,
+           m.home_score, m.away_score
+    FROM matches m
+    JOIN seasons s ON s.id = m.season_id
+    JOIN competitions comp ON comp.id = s.competition_id
+    LEFT JOIN teams ht ON ht.id = m.home_team_id
+    LEFT JOIN teams at ON at.id = m.away_team_id
+    WHERE m.season_id = ANY($1) AND m.status = 'finished'
+      AND (m.scheduled_at > NOW() - INTERVAL '12 hours' OR m.updated_at > NOW() - INTERVAL '12 hours')
+  `, [seasonIds]);
+  const map = new Map<string, ResultSnap>();
+  for (const r of res.rows) {
+    map.set(r.id, {
+      matchId: r.id, status: r.status, winType: r.win_type, winnerTeamId: r.winner_team_id,
+      homePen: r.home_pen, awayPen: r.away_pen,
+      homeTeamId: r.home_team_id, awayTeamId: r.away_team_id, competitionId: r.competition_id,
+      homeShort: r.home_short ?? 'Local', awayShort: r.away_short ?? 'Visitante',
+      homeScore: r.home_score ?? 0, awayScore: r.away_score ?? 0,
+    });
+  }
+  return map;
+}
+
+/**
+ * FINAL POR TIPO: cuando se resuelve win_type a prórroga/penaltis (lo fija la
+ * ficha/derivación, después del final genérico), emite un final enriquecido con
+ * el MISMO tag por partido → reemplaza la notificación de final genérica.
+ */
+export async function diffResolution(
+  prev: Map<string, ResultSnap>, seasonIds: string[],
+): Promise<void> {
+  if (!pushEnabled) return;
+  const cur = await snapshotResults(seasonIds);
+  const fresh: ResultSnap[] = [];
+  for (const [id, now] of cur) {
+    if (now.winType !== 'overtime' && now.winType !== 'penalties') continue;
+    const before = prev.get(id);
+    const wasResolved = !!before && (before.winType === 'overtime' || before.winType === 'penalties');
+    if (!wasResolved) fresh.push(now);
+  }
+  if (fresh.length === 0) return;
+
+  const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
+  if (subs.rows.length === 0) return;
+  const night = isQuietHours();
+  let sent = 0, pruned = 0;
+
+  for (const sub of subs.rows) {
+    const cfg = sub.config ?? {};
+    if (cfg['master'] === false) continue;
+    if (night && cfg['quietNight'] !== false) continue;
+    for (const r of fresh) {
+      const teamIds = [r.homeTeamId, r.awayTeamId].filter(Boolean) as string[];
+      if (!wants(sub, 'final', teamIds, r.competitionId, null)) continue;
+      const ref: MatchRef = { homeShort: r.homeShort, awayShort: r.awayShort, homeScore: r.homeScore, awayScore: r.awayScore };
+      const winnerShort = r.winnerTeamId === r.homeTeamId ? r.homeShort
+        : r.winnerTeamId === r.awayTeamId ? r.awayShort : r.homeShort;
+      const title = r.winType === 'overtime'
+        ? finalOvertimeAlert(ref, winnerShort)
+        : finalPenaltiesAlert(ref, winnerShort, `${r.homePen ?? 0}-${r.awayPen ?? 0}`);
+      const payload: PushPayload = {
+        title: branded(title),
+        body: '',
+        tag: matchTag(r.matchId), // mismo tag que el final genérico → lo reemplaza
+        url: `${WEB_BASE}/matches/${r.matchId}`,
+        type: r.winType === 'overtime' ? 'final_overtime' : 'final_penalties',
+      };
+      const res = await deliver(sub, payload);
+      if (res === 'sent') sent++;
+      else if (res === 'pruned') { pruned++; break; }
+    }
+  }
+  log.info({ resolved: fresh.length, sent, pruned }, '🏁 Push de final por tipo (prórroga/penaltis)');
 }

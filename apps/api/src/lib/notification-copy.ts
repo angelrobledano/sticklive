@@ -110,6 +110,26 @@ export function finalAlert(m: MatchRef): string {
   return `Final: ${m.homeShort} ${m.homeScore} - ${m.awayScore} ${m.awayShort}. Ver resumen y estadísticas.`;
 }
 
+/** `⏱️ HCL y IHC jugarán prórroga tras empatar 2-2.` */
+export function overtimeStartAlert(m: MatchRef): string {
+  return `⏱️ ${m.homeShort} y ${m.awayShort} jugarán prórroga tras empatar ${m.homeScore}-${m.awayScore}.`;
+}
+
+/** `🎯 El HCL-IHC se decide en los penaltis.` */
+export function penaltyStartAlert(m: MatchRef): string {
+  return `🎯 El ${m.homeShort}-${m.awayShort} se decide en los penaltis.`;
+}
+
+/** `🏁 IHC gana 4-3 en la prórroga.` */
+export function finalOvertimeAlert(m: MatchRef, winnerShort: string): string {
+  return `🏁 ${winnerShort} gana ${m.homeShort} ${m.homeScore}-${m.awayScore} ${m.awayShort} en la prórroga.`;
+}
+
+/** `🏁 IHC se lleva los penaltis (0-2) tras el 2-2.` */
+export function finalPenaltiesAlert(m: MatchRef, winnerShort: string, penText: string): string {
+  return `🏁 ${winnerShort} se lleva los penaltis (${penText}) tras el ${m.homeShort} ${m.homeScore}-${m.awayScore} ${m.awayShort}.`;
+}
+
 /** `Descanso · BAR 2 - 1 IHC` */
 export function halftimeAlert(m: MatchRef): string {
   return `Descanso · ${m.homeShort} ${m.homeScore} - ${m.awayScore} ${m.awayShort}`;
