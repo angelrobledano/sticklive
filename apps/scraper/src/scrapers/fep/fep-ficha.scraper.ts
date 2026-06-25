@@ -180,14 +180,14 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
             if (pens) {
               await db.query(
                 `UPDATE matches SET
-                   home_pen = $2, away_pen = $3,
+                   home_pen = $2::int, away_pen = $3::int,
                    win_type = 'penalties',
                    winner_team_id = CASE
-                     WHEN $2 > $3 THEN home_team_id
-                     WHEN $3 > $2 THEN away_team_id
+                     WHEN $2::int > $3::int THEN home_team_id
+                     WHEN $3::int > $2::int THEN away_team_id
                      ELSE winner_team_id END,
                    updated_at = NOW()
-                 WHERE id = $1`,
+                 WHERE id = $1::uuid`,
                 [this.cfg.matchId, pens.home, pens.away]
               );
               this.log.info({ matchId: this.cfg.matchId, ...pens }, '🥅 Tanda de penaltis actualizada');
