@@ -15,6 +15,7 @@ interface MatchDetailRow {
   away_pen: number | null;
   win_type: string | null;
   winner_team_id: string | null;
+  penalty_shootout: { home: { player: string; scored: boolean }[]; away: { player: string; scored: boolean }[] } | null;
   home_fouls: number | null;
   away_fouls: number | null;
   status: string;
@@ -64,7 +65,7 @@ matchDetailRouter.get('/:id', async (c) => {
       SELECT
         m.id, m.season_id, m.round_id,
         m.home_score, m.away_score, m.home_fouls, m.away_fouls, m.status,
-        m.home_goals_reg, m.away_goals_reg, m.home_pen, m.away_pen, m.win_type, m.winner_team_id,
+        m.home_goals_reg, m.away_goals_reg, m.home_pen, m.away_pen, m.win_type, m.winner_team_id, m.penalty_shootout,
         m.scheduled_at, m.started_at, m.finished_at,
         m.venue_name, m.venue_city, m.referee, m.source_ref,
         m.live_period, m.live_clock_seconds, m.live_clock_at, m.live_is_halftime,
@@ -245,6 +246,7 @@ matchDetailRouter.get('/:id', async (c) => {
         ? { home: row.home_goals_reg, away: row.away_goals_reg } : null,
       penalties:    (row.home_pen != null || row.away_pen != null)
         ? { home: row.home_pen, away: row.away_pen } : null,
+      penaltyShootout: row.penalty_shootout ?? null,
       venue: row.venue_name ? { name: row.venue_name, city: row.venue_city } : null,
       referee:     row.referee,
       sourceRef:   row.source_ref,

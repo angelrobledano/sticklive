@@ -181,6 +181,7 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
               await db.query(
                 `UPDATE matches SET
                    home_pen = $2::int, away_pen = $3::int,
+                   penalty_shootout = $4::jsonb,
                    win_type = 'penalties',
                    winner_team_id = CASE
                      WHEN $2::int > $3::int THEN home_team_id
@@ -188,7 +189,7 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
                      ELSE winner_team_id END,
                    updated_at = NOW()
                  WHERE id = $1::uuid`,
-                [this.cfg.matchId, pens.home, pens.away]
+                [this.cfg.matchId, pens.home, pens.away, JSON.stringify(pens.detail)]
               );
               this.log.info({ matchId: this.cfg.matchId, ...pens }, '🥅 Tanda de penaltis actualizada');
             }
@@ -934,7 +935,10 @@ function parseTeamFouls(html: string): { home: number; away: number } | null {
  * punto de color por resultado: verde = marcado, rojo = fallado, gris (#CCC) =
  * no lanzó. Contamos los verdes de cada lado. Devuelve null si no hubo tanda.
  */
-function parseShootout(html: string): { home: number; away: number } | null {
+interface ShootoutKick { player: string; scored: boolean }
+interface ShootoutDetail { home: number; away: number; detail: { home: ShootoutKick[]; away: ShootoutKick[] } }
+
+function parseShootout(html: string): ShootoutDetail | null {
   const $ = cheerio.load(html);
   // Tabla cuya cabecera dice "LANZAMIENTOS DE PENALTIS" (o "SHOOTOUT").
   const table = $('table').filter((_, t) => {
@@ -947,12 +951,29 @@ function parseShootout(html: string): { home: number; away: number } | null {
   const sides = table.find('td[width="50%"]');
   if (sides.length < 2) return null;
 
-  const countGreen = (idx: number): number =>
-    sides.eq(idx).find('div').toArray()
-      .filter((d) => (($(d).attr('style') ?? '').toLowerCase()).includes('background-color: green'))
-      .length;
+  // Cada fila de la sub-tabla = un lanzador: nombre + punto de color
+  // (verde=marcado, rojo=fallado, gris #CCC=no lanzó → se omite).
+  const parseSide = (idx: number): ShootoutKick[] => {
+    const kicks: ShootoutKick[] = [];
+    sides.eq(idx).find('tr').each((_, tr) => {
+      const $tr = $(tr);
+      const player = $tr.find('.nombre_ficha_jugador_plus').first().text().replace(/\s+/g, ' ').trim();
+      if (!player) return;
+      const style = ($tr.find('div[style*="background-color"]').first().attr('style') ?? '').toLowerCase();
+      if (style.includes('background-color: #ccc')) return; // no llegó a lanzar
+      kicks.push({ player, scored: style.includes('background-color: green') });
+    });
+    return kicks;
+  };
 
-  return { home: countGreen(0), away: countGreen(1) };
+  const home = parseSide(0);
+  const away = parseSide(1);
+  if (home.length === 0 && away.length === 0) return null;
+  return {
+    home: home.filter((k) => k.scored).length,
+    away: away.filter((k) => k.scored).length,
+    detail: { home, away },
+  };
 }
 
 function mapIncidenciaType(labelEs: string): FepEventType | null {

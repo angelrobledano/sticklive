@@ -41,6 +41,11 @@ export interface MatchScore {
   away: number | null;
 }
 
+export interface PenaltyKick {
+  player: string;
+  scored: boolean;
+}
+
 export interface MatchVenue {
   name: string;
   city: string | null;
@@ -71,6 +76,8 @@ export interface Match {
   winnerTeamId?: string | null;
   regulation?: MatchScore | null;
   penalties?: MatchScore | null;
+  /** Desglose de la tanda: cada lanzamiento con jugador y si marcó. */
+  penaltyShootout?: { home: PenaltyKick[]; away: PenaltyKick[] } | null;
   venue: MatchVenue | null;
   homeTeamId: string;
   awayTeamId: string;
@@ -498,6 +505,7 @@ interface RawMatchDetail {
     winnerTeamId?: string | null;
     regulation?: MatchScore | null;
     penalties?: MatchScore | null;
+    penaltyShootout?: { home: PenaltyKick[]; away: PenaltyKick[] } | null;
     venue: MatchVenue | null;
     referee: string | null;
     sourceRef: string | null;
@@ -528,6 +536,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
       winnerTeamId: raw.match.winnerTeamId ?? null,
       regulation:   raw.match.regulation ?? null,
       penalties:    raw.match.penalties ?? null,
+      penaltyShootout: raw.match.penaltyShootout ?? null,
       venue:       raw.match.venue,
       referee:     raw.match.referee,
       homeTeamId:  raw.match.homeTeam.id,

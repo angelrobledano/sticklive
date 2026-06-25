@@ -259,6 +259,48 @@ function eventSurname(p: { firstName: string; lastName: string }): string {
 }
 
 /** Goleadores y tarjetas bajo el marcador — lo esencial de un vistazo */
+/** Desglose de la tanda de penaltis: dos columnas (local/visitante), ✓ marcado / ✗ fallado. */
+function PenaltyShootout({ shootout, homeName, awayName }: {
+  shootout: { home: { player: string; scored: boolean }[]; away: { player: string; scored: boolean }[] };
+  homeName: string;
+  awayName: string;
+}) {
+  const { t } = useT();
+  const Kick = ({ k, right }: { k: { player: string; scored: boolean }; right?: boolean }) => (
+    <li className={`flex items-center gap-1.5 text-xs ${right ? 'flex-row-reverse text-right' : ''}`}>
+      <span className={`shrink-0 w-4 h-4 inline-flex items-center justify-center rounded-full text-[10px] font-bold ${
+        k.scored ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
+      }`}>
+        {k.scored ? '✓' : '✗'}
+      </span>
+      <span className={`truncate ${k.scored ? 'text-slate-800 dark:text-slate-100 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
+        {k.player}
+      </span>
+    </li>
+  );
+  return (
+    <div className="card p-3">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-center text-slate-400 dark:text-slate-500 mb-2">
+        {t('match_states.penalties_label')}
+      </p>
+      <div className="flex gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5 truncate">{homeName}</p>
+          <ul className="space-y-1.5">
+            {shootout.home.map((k, i) => <Kick key={i} k={k} />)}
+          </ul>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5 truncate text-right">{awayName}</p>
+          <ul className="space-y-1.5">
+            {shootout.away.map((k, i) => <Kick key={i} k={k} right />)}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EventSummary({ events }: { events: MatchDetail['events'] }) {
   const { t } = useT();
   const interesting = (events ?? []).filter(
@@ -469,6 +511,16 @@ function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?: strin
 
       {/* Goleadores y tarjetas — lo esencial sin entrar al timeline */}
       {showScore && <EventSummary events={data.events} />}
+
+      {/* Tanda de penaltis: quién marca y quién falla (lanzador a lanzador) */}
+      {isFinished && match.penaltyShootout
+        && (match.penaltyShootout.home.length > 0 || match.penaltyShootout.away.length > 0) && (
+        <PenaltyShootout
+          shootout={match.penaltyShootout}
+          homeName={ht.shortName ?? ht.name}
+          awayName={at.shortName ?? at.name}
+        />
+      )}
 
       {/* Faltas de equipo — solo si algún equipo acumula faltas */}
       {(stats.homeFouls > 0 || stats.awayFouls > 0) && (
