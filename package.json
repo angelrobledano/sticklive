@@ -20,12 +20,12 @@
     "etl:run": "npm run start --workspace=apps/etl"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.62.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.0.0",
-    "prettier": "^3.2.0",
-    "tsx": "^4.22.3",
-    "turbo": "^2.0.0",
+    "prettier": "^3.9.3",
+    "tsx": "^4.22.4",
+    "turbo": "^2.10.0",
     "typescript": "^5.4.0"
   },
   "engines": {
@@ -33,7 +33,7 @@
     "npm": ">=10.0.0"
   },
   "dependencies": {
-    "@sentry/nextjs": "^10.59.0",
+    "@sentry/nextjs": "^10.62.0",
     "@sentry/node": "^10.59.0"
   }
 }
