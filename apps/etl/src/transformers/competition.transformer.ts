@@ -17,7 +17,7 @@ const ScrapedCompetitionSchema = z.object({
   country: z.string().default('ES'),
   sourceId: z.string(),
   sourceRef: z.string().optional(),
-  sourceUrl: z.string().url().optional(),
+  sourceUrl: z.url().optional(),
   scrapedAt: z.date(),
 });
 

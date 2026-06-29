@@ -47,7 +47,7 @@ const ScrapedMatchSchema = z.object({
   venueCity: z.string().optional(),
   sourceId: z.string(),
   sourceRef: z.string().optional(),
-  sourceUrl: z.string().url().optional(),
+  sourceUrl: z.url().optional(),
   scrapedAt: z.date(),
 });
 

@@ -10,10 +10,10 @@ const ScrapedTeamSchema = z.object({
   shortName: z.string().optional(),
   city: z.string().optional(),
   country: z.string().default('ES'),
-  logoUrl: z.string().url().optional(),
+  logoUrl: z.url().optional(),
   sourceId: z.string(),
   sourceRef: z.string().optional(),
-  sourceUrl: z.string().url().optional(),
+  sourceUrl: z.url().optional(),
   scrapedAt: z.date(),
 });
 
