@@ -272,23 +272,6 @@ matchDetailRouter.get('/:id', async (c) => {
       },
     };
 
-    // DIAG: imprimir resumen de la respuesta en la terminal del servidor
-    console.log('[match-detail] RESPONSE for', id, {
-      matchStatus:    match.status,
-      matchId:        match.id,
-      homeTeam:       match.homeTeam?.name,
-      awayTeam:       match.awayTeam?.name,
-      score:          match.score,
-      eventsCount:    events.length,
-      eventTypes:     [...new Set(events.map((e) => e.eventType))],
-      homeFouls:      stats.homeFouls,
-      awayFouls:      stats.awayFouls,
-      homePenTotal:   stats.homePenalties.total,
-      awayPenTotal:   stats.awayPenalties.total,
-      // Raw row keys para detectar snake_case vs camelCase:
-      rawMatchKeys:   Object.keys(match),
-      rawEventSample: events[0] ?? null,
-    });
     return c.json({ match, events, stats, lineups });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
