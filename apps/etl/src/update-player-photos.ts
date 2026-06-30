@@ -43,7 +43,6 @@ void (async () => {
     let best: string | null = null;
     for (let n = MAX_INDEX; n >= 1; n--) {
       const url = `${CDN}/${idNum}_${n}.jpg`;
-      // eslint-disable-next-line no-await-in-loop
       if (await exists(url)) { best = url; break; }
     }
 

@@ -274,7 +274,6 @@ matchDetailRouter.get('/:id', async (c) => {
 
     return c.json({ match, events, stats, lineups });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
     console.error('[match-detail] GET /:id error:', err);
     return c.json({ error: 'Database error' }, 500);
   }

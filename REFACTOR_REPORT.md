@@ -101,3 +101,22 @@ Recomendación priorizada: empezar por `MatchCenterClient.tsx`. Extraer subcompo
 - **El entorno no puede typechequear de forma fiable** (el montaje de ficheros devuelve copias truncadas de los ficheros editados). Por eso esta pasada se limita a borrados de bajo riesgo y la verificación la corre el usuario.
 - Las eliminaciones de dependencias son seguras pero **deben confirmarse con `typecheck` + `build`** tras `npm install`. Si alguna rompiera (improbable, 0 imports verificados), revertir esa línea concreta del `package.json`.
 - Ningún cambio toca rutas públicas, contratos de API, esquema de BD ni UI.
+
+---
+
+## Anexo: ESLint 9 + barrida de warnings (segunda pasada)
+
+El repo no tenía **ninguna** config de ESLint (`eslint src` fallaba desde el bump a ESLint 9). Se creó de cero:
+
+- **`eslint.config.mjs`** (flat config en la raíz): base TS para todo el monorepo + bloque solo-web con `react-hooks` y `@next/next`. Reglas opinables en `warn` para una línea base verde y subible a `error` de forma incremental. `no-console` off (logging operativo), `no-undef` off (lo cubre TS).
+- **`apps/web/package.json`:** `lint` pasa de `next lint` → `eslint src`; añadidas 2 dev-deps necesarias (`@next/eslint-plugin-next`, `eslint-plugin-react-hooks`) porque el código ya tenía `eslint-disable` de esas reglas.
+
+Resultado: `npm run lint` en **verde** (0 errores). Se corrigió 1 error real (`no-useless-escape` en `fep-matches`) y se barrió el dead code que el linter destapó:
+
+- 9 `const message` muertos en rutas API; imports/consts sin uso en scraper (`teamAbbr`, `BASE_URL`, `SOURCE_ID`, `closeBrowser`) y web (`Link`, `EmptyState`→pendiente, `countryFlag`, `locale`, `mine`, `initials`, `totalFouls`); 2 `eslint-disable` inútiles; y las componentes muertas **`LivePulse`** y **`PlayoffMatchup`** (+ su tipo huérfano `PlayoffSeed`).
+- `MAIN_TABS` convertido a unión de tipos (el array runtime era muerto).
+- `<img>` de `lineup-image` documentado con `eslint-disable` (es `next/og`/satori, ahí `<img>` es correcto).
+
+### Pendiente (decisión de producto, NO ejecutado)
+
+- **`EmptyState` (`MatchesView.tsx`)**: componente de empty-state animado, terminado pero **desconectado** — no se renderiza. Parece un bug del refactor de `MatchesView` (debería mostrarse en días sin partidos), no dead code a borrar. Recomendación: re-enchufarlo como tarea propia (es un cambio funcional, fuera del alcance de limpieza). Queda como único `warning` vivo del lint a propósito.

@@ -21,7 +21,6 @@ import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
 import { db, replaceMatchEvents, replaceMatchLineups, withTransaction } from '@sports/db';
 import type { UpsertMatchLineupInput } from '@sports/db';
 
-const BASE_URL = 'https://www.server2.sidgad.es/rfep';
 const SOURCE_ID = requireFepSourceId();
 
 /** IDCs de competiciones que usan rutas de Playoff/Eliminatorias en sidgad */
@@ -295,7 +294,6 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
 
         const periodText = $tr.find('.game_view_indcidencias_period').first().text().trim(); // "P2"
         const timeText   = $tr.find('.game_view_incidencias_time').first().text().trim();    // "03:42"
-        const teamAbbr   = $tr.find('td.stats_table .texto_gris_11').first().text().trim();  // "BAR"
 
         // Tipo desde el texto en español del div de evento
         const labelEs = $tr

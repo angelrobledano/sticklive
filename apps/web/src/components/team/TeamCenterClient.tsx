@@ -105,7 +105,6 @@ function TeamHeader({ data }: { data: TeamDetail }) {
 function MiniMatchCard({ match, teamId }: { match: TeamMatchSummary; teamId: string }) {
   const { t, locale } = useT();
   const isHome = match.homeTeam.id === teamId;
-  const mine = isHome ? match.homeTeam : match.awayTeam;
   const opp  = isHome ? match.awayTeam  : match.homeTeam;
   const isFinished = match.status === 'finished';
   const isLive     = match.status === 'live';

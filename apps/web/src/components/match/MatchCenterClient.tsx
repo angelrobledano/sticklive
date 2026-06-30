@@ -241,7 +241,6 @@ function EventIcon({ type }: { type: MatchEventType | 'accumulated_foul' }) {
 function TeamCrest({ team }: {
   team: { id: string; name: string; shortName: string | null; logoUrl: string | null };
 }) {
-  const initials = (team.shortName ?? team.name).slice(0, 3).toUpperCase();
   return (
     <Link href={`/teams/${team.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-w-0">
       <TeamShield teamId={team.id} teamName={team.name} size={64} />
@@ -1256,7 +1255,6 @@ function StatRow({ label, home, away, max }: {
 function StatsTab({ data }: { data: MatchDetail }) {
   const { t } = useT();
   const { stats, match } = data;
-  const totalFouls = stats.homeFouls + stats.awayFouls;
   const totalPen = stats.homePenalties.total + stats.awayPenalties.total;
 
   if (stats.homeFouls === 0 && stats.awayFouls === 0) {
@@ -1397,23 +1395,6 @@ function visibleTabsFor(data: MatchDetail): Tab[] {
 }
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
-
-// ─── Indicador de partido en vivo ─────────────────────────────────────────────
-
-function LivePulse() {
-  const { t } = useT();
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="relative flex h-2 w-2">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-      </span>
-      <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">
-        {t('match_states.live')}
-      </span>
-    </span>
-  );
-}
 
 export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) {
   const { t } = useT();

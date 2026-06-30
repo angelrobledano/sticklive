@@ -137,14 +137,12 @@ export class FepMatchesScraper extends BaseScraper<ScrapedMatch> {
       '[class*="marcador"]',
     ] as const;
     let scoreRaw = '';
-    let scoreSelector = '';
     for (const sel of SCORE_SELECTORS) {
       const t = $el.find(sel).text().trim();
-      if (t && /\d/.test(t)) { scoreRaw = t; scoreSelector = sel; break; }
+      if (t && /\d/.test(t)) { scoreRaw = t; break; }
     }
     const { homeScore, awayScore } = parseScore(scoreRaw);
 
-    // Log de diagnostico — visible en la terminal del scraper cada vez que corre
     // Nota: home_fouls/away_fouls NO estan en rfep_mc_1.php; vienen de match_events
     // (ficha resumen). Aqui solo podemos actualizar score y status.
     // Estado: desde la clase del elemento + texto del botón central
@@ -157,9 +155,6 @@ export class FepMatchesScraper extends BaseScraper<ScrapedMatch> {
 
     // Competición (nombre, a veces oculto)
     const competitionName = $el.find('.scorer_liga').text().trim();
-    const idcAttr = $el.attr('idc');
-    // idc puede ser '$id_liga' (template sin sustituir) — ignoramos en ese caso
-    const idc = idcAttr && !idcAttr.startsWith('$') ? idcAttr : undefined;
 
     // teamRef: preferimos club ID numérico, fallback a abreviatura
     const homeTeamRef = homeClubRef
@@ -205,7 +200,7 @@ function parseScore(scoreRaw: string): { homeScore?: number; awayScore?: number 
     .replace(/[\u2013\u2014\u00B7]/g, '-')  // en-dash, em-dash, middle-dot
     .replace(/\s+/g, '');
   // Aceptar separadores : - / (Playoffs a veces usa formatos distintos)
-  const m = normalized.match(/^(\d+)[:\-\/](\d+)$/);
+  const m = normalized.match(/^(\d+)[:\-/](\d+)$/);
   if (!m) return {};
   const h = parseInt(m[1]!, 10);
   const a = parseInt(m[2]!, 10);

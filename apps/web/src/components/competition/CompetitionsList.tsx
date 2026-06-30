@@ -18,15 +18,6 @@ function norm(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-function countryFlag(code: string | null): string {
-  if (!code || code.length !== 2) return '';
-  const base = 0x1f1e6 - 'A'.charCodeAt(0);
-  return String.fromCodePoint(
-    base + code.toUpperCase().charCodeAt(0),
-    base + code.toUpperCase().charCodeAt(1),
-  );
-}
-
 function countryDisplayName(code: string | null, locale: string): string {
   if (!code) return '';
   try {
@@ -106,7 +97,6 @@ function CompetitionRow({
   comp,
   isFav,
   onToggleFav,
-  locale,
 }: {
   comp: CompetitionSummary;
   isFav: boolean;

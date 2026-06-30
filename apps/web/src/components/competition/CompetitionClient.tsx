@@ -537,66 +537,6 @@ function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; matches: Sea
 
 // ─── Tab C: Playoffs ──────────────────────────────────────────────────────────
 
-interface PlayoffSeed {
-  seed: number;
-  team: { id: string; name: string; shortName: string | null; logoUrl: string | null } | null;
-}
-
-function PlayoffMatchup({ home, away, match, label }: {
-  home: PlayoffSeed;
-  away: PlayoffSeed;
-  match: SeasonMatch | null;
-  label: string;
-}) {
-  const isFinished = match?.status === 'finished';
-  const isLive     = match?.status === 'live';
-
-  const content = (
-    <div className={`card overflow-hidden border ${isLive ? 'border-emerald-400/40' : 'border-slate-200 dark:border-slate-800'}`}>
-      <div className="px-3 pt-2.5 pb-1">
-        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</p>
-      </div>
-      {[home, away].map((side, idx) => {
-        const isHome = idx === 0;
-        const score = isHome
-          ? (isFinished || isLive) ? match?.score.home : null
-          : (isFinished || isLive) ? match?.score.away : null;
-        const team = side.team;
-        return (
-          <div key={idx} className={`flex items-center gap-2.5 px-3 py-2 ${idx === 0 ? 'border-b border-slate-100 dark:border-slate-800' : ''}`}>
-            <TeamShield teamId={team?.id ?? ''} teamName={team ? (team.shortName ?? team.name) : `${side.seed}o`} size={24} />
-            <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
-              {team ? (team.shortName ?? team.name) : `${side.seed}º clasificado`}
-            </span>
-            {(isFinished || isLive) && score !== undefined && score !== null && (
-              <span className="font-score text-base font-bold tabular-nums text-slate-900 dark:text-slate-50">{score}</span>
-            )}
-          </div>
-        );
-      })}
-      {(isFinished || isLive) && (
-        <div className="px-3 pb-2 pt-1">
-          <span className={`text-[9px] font-bold uppercase tracking-wider ${isLive ? 'text-emerald-500' : 'text-slate-400 dark:text-slate-500'}`}>
-            {isLive ? '🟢 En directo' : `Final · ${fmtDate(match?.finishedAt ?? match?.scheduledAt ?? null)}`}
-          </span>
-        </div>
-      )}
-      {!isFinished && !isLive && match && (
-        <div className="px-3 pb-2 pt-1">
-          <span className="text-[9px] text-slate-400 dark:text-slate-500">
-            {fmtDate(match.scheduledAt)} · {fmtTime(match.scheduledAt)}
-          </span>
-        </div>
-      )}
-    </div>
-  );
-
-  if (match) {
-    return <Link href={`/matches/${match.id}`} className="block hover:opacity-90 transition-opacity">{content}</Link>;
-  }
-  return content;
-}
-
 const PLAYOFF_PHASES = ['Cuartos', 'Semis', 'Final'] as const;
 type PlayoffPhase = typeof PLAYOFF_PHASES[number];
 
@@ -997,8 +937,7 @@ function StatsLeadersTab({ stats }: { stats: SeasonStats }) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-const MAIN_TABS = ['Clasificación', 'Jornadas', 'Playoffs', 'Estadísticas'] as const;
-type MainTab = typeof MAIN_TABS[number];
+type MainTab = 'Clasificación' | 'Jornadas' | 'Playoffs' | 'Estadísticas';
 // Etiquetas i18n (los valores internos siguen siendo estables en ES)
 const MAIN_TAB_KEYS: Record<MainTab, string> = {
   'Clasificación': 'match_tabs.standing',

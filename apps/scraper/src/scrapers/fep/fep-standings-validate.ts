@@ -9,8 +9,6 @@ import * as cheerio from 'cheerio';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-const SOURCE_ID = 'FEP_HOCKEY_PLACEHOLDER';
-
 function parseStatInt(text: string): number {
   const n = parseInt(text.trim(), 10);
   return isNaN(n) ? 0 : n;

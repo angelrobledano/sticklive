@@ -79,7 +79,6 @@ export function useLiveScores(initial: Match[]): Match[] {
       document.removeEventListener('visibilitychange', onVisible);
     };
     // Solo nos importa el flag de actividad: el contenido vive en matchesRef.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
   return matches;
