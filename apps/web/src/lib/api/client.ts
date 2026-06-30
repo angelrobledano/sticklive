@@ -1,108 +1,39 @@
 /**
  * API Client — fetchers tipados hacia apps/api (Hono).
+ *
+ * Barrel público de la capa API: los tipos viven en `./types` y el fetch en
+ * `./core`. Este módulo define los fetchers + el mapeo crudo→DTO, y re-exporta
+ * tipos y helpers para no romper los imports existentes de `@/lib/api/client`.
  */
+import { apiFetch } from './core';
+import type {
+  Match,
+  MatchScore,
+  MatchVenue,
+  MatchStatus,
+  TeamSummary,
+  PenaltyKick,
+  StandingItem,
+  HealthResponse,
+  GetMatchesFilters,
+  MatchDetail,
+  MatchLiveState,
+  MatchEvent,
+  MatchStats,
+  MatchLineups,
+  CompetitionSummary,
+  CompetitionSeason,
+  SeasonStats,
+  TeamDetail,
+  SeasonOverview,
+  PlayerDetail,
+} from './types';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
+export { isApiNotFound } from './core';
+export * from './types';
 
-async function apiFetch<T>(
-  path: string,
-  init?: RequestInit & { next?: { revalidate?: number; tags?: string[] } }
-): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`API ${res.status} - ${path}: ${body}`);
-  }
-  return res.json() as Promise<T>;
-}
-
-/**
- * True solo si la API respondió 404 de verdad (recurso inexistente).
- * Un fallo de conexión o un 500 NO es un 404: las páginas deben mostrar
- * su error boundary (con reintento) en vez de "no encontrado" — si no,
- * cada reinicio de la API convertía páginas válidas en 404s intermitentes.
- */
-export function isApiNotFound(err: unknown): boolean {
-  return err instanceof Error && err.message.startsWith('API 404');
-}
-
-export interface TeamSummary {
-  id: string;
-  name: string;
-  shortName: string | null;
-  logoUrl: string | null;
-}
-
-export interface MatchScore {
-  home: number | null;
-  away: number | null;
-}
-
-export interface PenaltyKick {
-  player: string;
-  scored: boolean;
-}
-
-export interface MatchVenue {
-  name: string;
-  city: string | null;
-}
-
-export type MatchStatus =
-  | 'scheduled'
-  | 'live'
-  | 'finished'
-  | 'postponed'
-  | 'cancelled';
-
-export interface Match {
-  id: string;
-  seasonId: string;
-  roundId: string | null;
-  competitionId?: string | null;
-  competitionName?: string | null;
-  status: MatchStatus;
-  /** Solo en directo: true durante el descanso (para badge "Descanso" en listas). */
-  isHalftime?: boolean;
-  scheduledAt: string | null;
-  startedAt: string | null;
-  finishedAt: string | null;
-  score: MatchScore;
-  /** Prórroga/penaltis (null en partidos normales). `score` es el marcador mostrado. */
-  winType?: 'regular' | 'overtime' | 'penalties' | null;
-  winnerTeamId?: string | null;
-  regulation?: MatchScore | null;
-  penalties?: MatchScore | null;
-  /** Desglose de la tanda: cada lanzamiento con jugador y si marcó. */
-  penaltyShootout?: { home: PenaltyKick[]; away: PenaltyKick[] } | null;
-  venue: MatchVenue | null;
-  homeTeamId: string;
-  awayTeamId: string;
-  homeTeam?: TeamSummary;
-  awayTeam?: TeamSummary;
-  sourceRef: string | null;
-}
-
-export interface StandingItem {
-  id: string;
-  seasonId: string;
-  teamId: string;
-  groupName: string | null;
-  position: number | null;
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDiff: number;
-  points: number;
-  form: string[] | null;
-  penalizationPoints?: number;
-}
+// ─── Mapeo crudo→DTO ───
+// Las respuestas de listas vienen en snake_case; las normalizamos al DTO camelCase.
 
 interface RawMatch {
   id: string;
@@ -259,14 +190,13 @@ function deduplicateMatches(matches: Match[]): Match[] {
   return Array.from(seen.values());
 }
 
-export interface HealthResponse {
-  status: string;
-  timestamp: string;
-}
+// ─── Health ───
 
 export function getHealth(): Promise<HealthResponse> {
   return apiFetch<HealthResponse>('/health', { next: { revalidate: 30 } });
 }
+
+// ─── Standings ───
 
 export async function getStandings(
   seasonId: string,
@@ -280,11 +210,7 @@ export async function getStandings(
   return res.standings.map(normalizeStanding);
 }
 
-export interface GetMatchesFilters {
-  gameweek?: number;
-  status?: MatchStatus | string;
-  teamId?: string;
-}
+// ─── Matches (listas) ───
 
 export async function getMatches(
   seasonId: string,
@@ -336,160 +262,7 @@ export async function getCurrentMatchesFresh(): Promise<Match[]> {
   return deduplicateMatches(res.matches.map(normalizeLiveMatch));
 }
 
-// ============================================================
-// MATCH DETAIL
-// ============================================================
-
-export type MatchEventType =
-  | 'goal'
-  | 'penalty'
-  | 'blue_card'
-  | 'red_card'
-  | 'timeout'
-  | 'period_end'
-  | 'foul'
-  | 'direct_foul';
-
-export interface MatchEvent {
-  id: string;
-  eventType: MatchEventType;
-  minute: number | null;
-  period: number | null;
-  /** Tiempo RESTANTE del crono al ocurrir el evento ("MM:SS", cuenta atrás) */
-  clock?: string | null;
-  teamId: string | null;
-  isHomeTeam: boolean;
-  detail: string | null;
-  player: { id: string; firstName: string; lastName: string } | null;
-}
-
-export interface MatchStats {
-  homeFouls: number;
-  awayFouls: number;
-  homeGoals?: number;
-  awayGoals?: number;
-  homeAssists?: number;
-  awayAssists?: number;
-  homeBlueCards?: number;
-  awayBlueCards?: number;
-  homeRedCards?: number;
-  awayRedCards?: number;
-  homeTimeouts?: number;
-  awayTimeouts?: number;
-  homeDirectFouls?: { total: number; scored: number };
-  awayDirectFouls?: { total: number; scored: number };
-  homePenalties: { total: number; scored: number };
-  awayPenalties: { total: number; scored: number };
-}
-
-export interface CompetitionSummary {
-  id: string;
-  name: string;
-  shortName: string | null;
-  slug: string;
-  gender: string | null;
-  category: string | null;
-  country: string | null;
-  organizer: string;
-  scope: 'national' | 'regional' | 'international';
-  region: string | null;
-  ageCategory: string;
-  season: {
-    id: string;
-    name: string | null;
-    startDate?: string | null;
-    endDate?: string | null;
-    isCurrent: boolean;
-    teamCount: number;
-    matchCount: number;
-  } | null;
-}
-
-export async function getCompetitions(): Promise<CompetitionSummary[]> {
-  const res = await apiFetch<{ competitions: CompetitionSummary[] }>(
-    '/competitions',
-    { next: { revalidate: 300, tags: ['competitions'] } }
-  );
-  return res.competitions;
-}
-
-export interface CompetitionSeason {
-  id: string;
-  name: string;
-  slug: string;
-  isCurrent: boolean;
-}
-
-export async function getCompetitionSeasons(competitionId: string): Promise<CompetitionSeason[]> {
-  const res = await apiFetch<{ seasons: CompetitionSeason[] }>(
-    `/competitions/${competitionId}/seasons`,
-    { next: { revalidate: 300, tags: [`competition-${competitionId}`] } }
-  );
-  return res.seasons;
-}
-
-export interface SeasonLeader {
-  playerId: string | null;
-  playerName: string;
-  photoUrl?: string | null;
-  teamId: string | null;
-  teamShort: string | null;
-  teamName: string | null;
-  value: number;
-  extra: number;
-}
-
-export interface TeamSetPieces {
-  teamId: string;
-  teamShort: string | null;
-  teamName: string | null;
-  directFouls: { total: number; scored: number; pct: number | null };
-  penalties: { total: number; scored: number; pct: number | null };
-}
-
-export interface SeasonStats {
-  topScorers: SeasonLeader[];
-  topAssists: SeasonLeader[];
-  topCards: SeasonLeader[];
-  setPieces?: TeamSetPieces[];
-}
-
-export async function getSeasonStats(seasonId: string): Promise<SeasonStats> {
-  return apiFetch<SeasonStats>(`/seasons/${seasonId}/stats`, {
-    next: { revalidate: 120, tags: [`season-stats-${seasonId}`] },
-  });
-}
-
-export interface LineupPlayer {
-  jerseyNumber: number | null;
-  playerName: string;
-  playerId?: string | null;
-  isGoalkeeper: boolean;
-  isStarter: boolean;
-  isCaptain: boolean;
-  goals: number;
-  assists?: number;
-  photoUrl?: string | null;
-}
-
-export interface MatchLineups {
-  home: LineupPlayer[];
-  away: LineupPlayer[];
-}
-
-export interface MatchLiveState {
-  period: number | null;        // periodo en curso (1, 2…)
-  clockSeconds: number | null;  // tiempo RESTANTE del periodo, en segundos
-  clockAt: string | null;       // ISO: instante de captura (ancla para el tick)
-  isHalftime: boolean;          // true durante el descanso
-}
-
-export interface MatchDetail {
-  match: Match & { referee: string | null; live?: MatchLiveState | null };
-  events: MatchEvent[];
-  stats: MatchStats;
-  lineups: MatchLineups;
-}
+// ─── Match detail ───
 
 interface RawMatchDetail {
   match: {
@@ -552,90 +325,31 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
   };
 }
 
-// ============================================================
-// TEAM DETAIL
-// ============================================================
+// ─── Competitions ───
 
-export interface TeamStanding {
-  seasonId: string;
-  competitionId: string;
-  competitionName: string;
-  competitionShort: string | null;
-  position: number | null;
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDiff: number;
-  points: number;
-  form: string[];
-  penalizationPoints: number;
+export async function getCompetitions(): Promise<CompetitionSummary[]> {
+  const res = await apiFetch<{ competitions: CompetitionSummary[] }>(
+    '/competitions',
+    { next: { revalidate: 300, tags: ['competitions'] } }
+  );
+  return res.competitions;
 }
 
-export interface TeamMatchSummary {
-  id: string;
-  status: string;
-  scheduledAt: string | null;
-  startedAt: string | null;
-  finishedAt: string | null;
-  score: MatchScore;
-  venue: MatchVenue | null;
-  homeTeam: TeamSummary;
-  awayTeam: TeamSummary;
+export async function getCompetitionSeasons(competitionId: string): Promise<CompetitionSeason[]> {
+  const res = await apiFetch<{ seasons: CompetitionSeason[] }>(
+    `/competitions/${competitionId}/seasons`,
+    { next: { revalidate: 300, tags: [`competition-${competitionId}`] } }
+  );
+  return res.seasons;
 }
 
-export interface SquadPlayer {
-  playerId: string;
-  firstName: string;
-  lastName: string;
-  position: string | null;
-  photoUrl?: string | null;
-  jerseyNumber: number | null;
-  goals: number;
-  blueCards: number;
-  redCards: number;
-  penalties: number;
+export async function getSeasonStats(seasonId: string): Promise<SeasonStats> {
+  return apiFetch<SeasonStats>(`/seasons/${seasonId}/stats`, {
+    next: { revalidate: 120, tags: [`season-stats-${seasonId}`] },
+  });
 }
 
-export interface TeamDetail {
-  team: {
-    id: string;
-    name: string;
-    shortName: string | null;
-    city: string | null;
-    country: string;
-    logoUrl: string | null;
-    websiteUrl: string | null;
-  };
-  standing: TeamStanding | null;
-  matches: TeamMatchSummary[];
-  squad: SquadPlayer[];
-  staff?: TeamStaffMember[];
-  stats?: TeamSeasonStats | null;
-}
-
-export interface TeamStaffMember {
-  name: string;
-  role: string; // E1/E2/A/D
-}
-
-export interface TeamSeasonStats {
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  assists: number;
-  teamFouls: number;
-  blueCards: number;
-  redCards: number;
-  timeouts: number;
-  directFouls: { total: number; scored: number; pct: number | null };
-  penalties: { total: number; scored: number; pct: number | null };
-}
+// ─── Team detail ───
 
 export async function getTeamDetail(teamId: string): Promise<TeamDetail> {
   return apiFetch<TeamDetail>(`/teams/${teamId}`, {
@@ -643,74 +357,7 @@ export async function getTeamDetail(teamId: string): Promise<TeamDetail> {
   });
 }
 
-// ============================================================
-// SEASON OVERVIEW (Competition Center)
-// ============================================================
-
-export interface SeasonStandingRow {
-  id: string;
-  teamId: string;
-  teamName: string;
-  teamShortName: string | null;
-  teamLogoUrl: string | null;
-  groupName: string | null;
-  position: number | null;
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDiff: number;
-  points: number;
-  form: string[];
-  penalizationPoints: number;
-}
-
-export interface SeasonRound {
-  id: string;
-  number: number;
-  name: string | null;
-  roundType: 'regular' | 'playoff' | 'cup' | 'friendly';
-}
-
-export interface SeasonMatch {
-  id: string;
-  status: string;
-  scheduledAt: string | null;
-  startedAt: string | null;
-  finishedAt: string | null;
-  score: MatchScore;
-  /** Ganador explícito (eliminatorias resueltas en penaltis); null si no aplica. */
-  winnerTeamId?: string | null;
-  winType?: 'regular' | 'overtime' | 'penalties' | null;
-  venueName: string | null;
-  roundId: string | null;
-  roundNumber: number | null;
-  roundName: string | null;
-  roundType: string;
-  homeTeam: TeamSummary;
-  awayTeam: TeamSummary;
-}
-
-export interface SeasonOverview {
-  season: {
-    id: string;
-    name: string;
-    startDate: string | null;
-    endDate: string | null;
-    competitionId: string;
-    competitionName: string;
-    competitionShort: string | null;
-    competitionOrganizer: string;
-    competitionScope: string;
-    competitionCountry: string | null;
-    competitionRegion: string | null;
-  };
-  standings: SeasonStandingRow[];
-  rounds: SeasonRound[];
-  matches: SeasonMatch[];
-}
+// ─── Season overview (Competition Center) ───
 
 export async function getSeasonOverview(seasonId: string): Promise<SeasonOverview> {
   return apiFetch<SeasonOverview>(`/seasons/${seasonId}/overview`, {
@@ -718,53 +365,7 @@ export async function getSeasonOverview(seasonId: string): Promise<SeasonOvervie
   });
 }
 
-// ============================================================
-// PLAYER DETAIL
-// ============================================================
-
-export interface PlayerSeasonTotals {
-  pj: number;
-  goals: number;
-  blueCards: number;
-  redCards: number;
-  penaltiesTotal: number;
-  penaltiesScored: number;
-}
-
-export interface PlayerCompStats {
-  competitionId: string;
-  competitionName: string;
-  competitionShort: string | null;
-  pj: number;
-  goals: number;
-  blueCards: number;
-  redCards: number;
-  penaltiesTotal: number;
-  penaltiesScored: number;
-}
-
-export interface PlayerDetail {
-  player: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    birthDate: string | null;
-    nationality: string | null;
-    position: string | null;
-    sourceRef: string | null;
-    photoUrl?: string | null;
-  };
-  currentTeam: {
-    id: string;
-    name: string;
-    shortName: string | null;
-    logoUrl: string | null;
-    jerseyNumber: number | null;
-    seasonId: string;
-  } | null;
-  seasonTotals: PlayerSeasonTotals;
-  statsByCompetition: PlayerCompStats[];
-}
+// ─── Player detail ───
 
 export async function getPlayerDetail(playerId: string): Promise<PlayerDetail> {
   return apiFetch<PlayerDetail>(`/players/${playerId}`, {
