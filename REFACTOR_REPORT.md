@@ -119,4 +119,17 @@ Resultado: `npm run lint` en **verde** (0 errores). Se corrigió 1 error real (`
 
 ### Pendiente (decisión de producto, NO ejecutado)
 
-- **`EmptyState` (`MatchesView.tsx`)**: componente de empty-state animado, terminado pero **desconectado** — no se renderiza. Parece un bug del refactor de `MatchesView` (debería mostrarse en días sin partidos), no dead code a borrar. Recomendación: re-enchufarlo como tarea propia (es un cambio funcional, fuera del alcance de limpieza). Queda como único `warning` vivo del lint a propósito.
+- **`EmptyState` (`MatchesView.tsx`)**: resuelto. Resultó estar **superado** por `UpcomingMatches` (que ya cubre el día sin partidos con un diseño mejor: mensaje + próximos partidos). Era dead code de verdad → eliminado, + limpieza de sus claves i18n huérfanas en los 5 idiomas.
+
+## Anexo 2: capa API + tipos (hecho)
+
+- **`client.ts` (773 líneas) troceado** en `core.ts` (fetch), `types.ts` (todos los DTOs públicos, centralizados) y `client.ts` (fetchers + mapeo crudo→DTO + barrel). El barrel re-exporta todo, así que los ~20 consumidores de `@/lib/api/client` no cambian (blast radius cero). Typecheck en verde.
+- **Unificación de tipos con `@sports/shared-types`: descartada (no procede).** Los tipos "duplicados" del informe original (`Match`, `MatchStatus`…) son en realidad **dominio (BD) vs DTO (respuesta API)**, correctamente separados. `MatchStatus` de la web es más estrecho a propósito (la API coacciona `halftime/overtime/penalty_shootout` a `'live'` + flags). Forzar la unión habría introducido bugs. Documentado en `types.ts` para evitar "arreglos" futuros.
+
+## Anexo 3: split de MatchCenterClient (hecho)
+
+`MatchCenterClient.tsx` pasa de **1507 líneas a un orquestador de ~195** (estado + SSE + polling + selector de tabs), repartiendo el resto en 7 módulos enfocados dentro de `components/match/`: `MatchHeader.tsx` (cabecera), `TimelineTab.tsx`, `LineupsTab.tsx` (con la pista + compartir), `StatsTab.tsx`, `format.ts` y `timeline-model.ts` (lógica pura) e `icons.tsx`. Sin cambios de comportamiento ni de UI: solo se movió código y se re-cablearon imports, verificando `typecheck`+`lint` en verde tras cada paso. Cierra el punto #1 de "Mejoras pendientes".
+
+### Pendiente de "componentes gigantes" (mismo patrón, no ejecutado)
+
+Quedan otros dos con la misma técnica incremental cuando se quiera: `CompetitionClient.tsx` (~1050) y `settings/page.tsx` (~1020).
