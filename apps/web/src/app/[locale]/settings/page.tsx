@@ -1,22 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useFavorites, getFavNames } from '@/hooks/useFavorites';
-import { useAuth } from '@/hooks/useAuth';
-import { useT, SUPPORTED_LOCALES, LOCALE_NAMES, type Locale } from '@/lib/i18n';
+import { useT } from '@/lib/i18n';
 import { usePremium } from '@/context/PremiumContext';
-import { track } from '@/lib/analytics';
 import { clubName } from '@/lib/names';
 import { InstallApp } from '@/components/shared/InstallApp';
 import {
-  enablePush,
-  notificationPermission, isIOS, isStandalone, vapidMissing, sendTestPush,
+  notificationPermission, isIOS, isStandalone, vapidMissing,
 } from '@/lib/push';
 import {
-  SEASON_ID, API_URL, REDSYS_URL,
-  PAYMENT_PROVIDER, PREMIUM_ENABLED,
-  type TeamInfo, type RedsysPayload,
+  SEASON_ID, API_URL, PREMIUM_ENABLED,
+  type TeamInfo,
 } from './config';
 import { SettingRow, SettingsBlock, PremiumActiveBadge } from './ui';
 import { useDeviceId, useDarkMode, useNotifConfig } from './hooks';
