@@ -18,9 +18,9 @@
     "@sports/shared-types": "*",
     "@sports/etl": "*",
     "@sports/db": "*",
-    "playwright": "^1.44.0",
+    "playwright": "^1.61.1",
     "cheerio": "^1.0.0",
-    "pg": "^8.11.0",
+    "pg": "^8.22.0",
     "node-cron": "^3.0.3",
     "zod": "^4.4.3"
   },
