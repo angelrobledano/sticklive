@@ -125,9 +125,6 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
     for (const candidate of ENDPOINT_CANDIDATES) {
       this.log.info({ idp, idc, endpoint: candidate.path }, 'Intentando endpoint ficha resumen');
       try {
-        // Log de diagnostico: muestra la URL exacta que se intenta raspar
-        const debugUrl = `https://www.server2.sidgad.es/rfep/${candidate.path}`;
-        console.log('[SCRAPER URL]', debugUrl, '| body:', JSON.stringify(candidate.body));
         const result = await sidgadPost(candidate.path, candidate.body);
         // Respuesta válida: tamaño mínimo y sin indicadores de error HTTP
         const snippet = result.slice(0, 1000).toLowerCase();
@@ -139,7 +136,6 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
             { idp, idc, endpoint: candidate.path, size: result.length },
             'Endpoint ficha activo encontrado'
           );
-          console.log('[SCRAPER URL] GANADOR:', debugUrl, '| body:', JSON.stringify(candidate.body));
 
           // Inyeccion inmediata: si el caller proporciono matchId, parsear e insertar
           // en match_events sin esperar al loop ETL externo

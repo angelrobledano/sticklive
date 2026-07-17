@@ -138,7 +138,7 @@ Resultado: `npm run lint` en **verde** (0 errores). Se corrigió 1 error real (`
 
 **Los tres componentes gigantes quedan decompuestos.** Técnica común: extracción incremental (helpers puros → presentacionales → hooks → secciones) con `typecheck`+`lint` en verde entre cada paso; sin cambios de comportamiento ni UI.
 
-### Frentes rápidos pendientes (no ejecutados)
+### Frentes rápidos (resueltos)
 
-- **Logging del scraper → pino** (`@sports/logger`): ~227 `console.log` a niveles silenciables en prod. Cambia salida de logs (comportamiento observable), no lógica.
-- **Deps mayores**: `node-cron` 3→4 (#7/#10), `eslint` 9→10 (#5). Revisar breaking changes; cierra los Dependabot que quedan.
+- **Logging del scraper → pino: no procedía como migración masiva.** El "227 `console.log`" resultó ser casi todo **sondas/inspectores/CLIs** (`*-probe`, `*-inspector`, `*-validate`, `*-test`, `*-dump`, `fep-catalog`) donde `console` es la UX correcta de una herramienta manual. El pipeline de producción **ya usa pino** (`createLogger` en `base-scraper`/`browser`/`index`/`sidgad-client`; `this.log.info` en los scrapers). Lo único de valor: 2 `console.log('[SCRAPER URL]'…)` de debug en `fep-ficha.scraper.ts` que duplicaban lo que el logger ya registraba → **eliminados**.
+- **Deps mayores (Dependabot):** cerrados los 8 de `@types/node` 20→26 (tipos alineados con Node 20); `eslint` 10 y `node-cron` 4 ignorados como major (breaking; `eslint-plugin-react-hooks` aún no soporta ESLint 10); mergeado el grupo minor-and-patch (#15, 14 updates + CI actions).
