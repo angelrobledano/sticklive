@@ -130,6 +130,15 @@ Resultado: `npm run lint` en **verde** (0 errores). Se corrigió 1 error real (`
 
 `MatchCenterClient.tsx` pasa de **1507 líneas a un orquestador de ~195** (estado + SSE + polling + selector de tabs), repartiendo el resto en 7 módulos enfocados dentro de `components/match/`: `MatchHeader.tsx` (cabecera), `TimelineTab.tsx`, `LineupsTab.tsx` (con la pista + compartir), `StatsTab.tsx`, `format.ts` y `timeline-model.ts` (lógica pura) e `icons.tsx`. Sin cambios de comportamiento ni de UI: solo se movió código y se re-cablearon imports, verificando `typecheck`+`lint` en verde tras cada paso. Cierra el punto #1 de "Mejoras pendientes".
 
-### Pendiente de "componentes gigantes" (mismo patrón, no ejecutado)
+### Componentes gigantes — progreso
 
-Quedan otros dos con la misma técnica incremental cuando se quiera: `CompetitionClient.tsx` (~1050) y `settings/page.tsx` (~1020).
+- ✅ `MatchCenterClient.tsx` (1507 → orquestador ~195 + 7 módulos).
+- ✅ `CompetitionClient.tsx` (~1050 → orquestador ~78 + 6 módulos): `CompetitionHeader`, `StandingsTab`, `GameweeksTab`, `PlayoffsTab`, `StatsLeadersTab`, `format`.
+- ✅ `settings/page.tsx` (~1020 → composición de pantalla + 7 módulos): `config` (constantes/tipos), `ui` (Toggle/SettingRow/SettingsBlock/PremiumActiveBadge), `hooks` (useDeviceId/useDarkMode/useNotifConfig), `PremiumBanner`, `cards` (Language/Account/Favorite/SubHeader), `NotificationStatus`.
+
+**Los tres componentes gigantes quedan decompuestos.** Técnica común: extracción incremental (helpers puros → presentacionales → hooks → secciones) con `typecheck`+`lint` en verde entre cada paso; sin cambios de comportamiento ni UI.
+
+### Frentes rápidos pendientes (no ejecutados)
+
+- **Logging del scraper → pino** (`@sports/logger`): ~227 `console.log` a niveles silenciables en prod. Cambia salida de logs (comportamiento observable), no lógica.
+- **Deps mayores**: `node-cron` 3→4 (#7/#10), `eslint` 9→10 (#5). Revisar breaking changes; cierra los Dependabot que quedan.
