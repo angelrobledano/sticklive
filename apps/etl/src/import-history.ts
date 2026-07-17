@@ -21,7 +21,7 @@
 import { db, closeDb } from '@sports/db';
 import { createLogger } from '@sports/logger';
 import { readFileSync } from 'fs';
-import { resolve, join, dirname } from 'path';
+import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 

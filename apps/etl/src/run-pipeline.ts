@@ -20,7 +20,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createLogger } from '@sports/logger';
-import { db, closeDb, replaceMatchEvents, withTransaction } from '@sports/db';
+import { db, closeDb } from '@sports/db';
 import { EtlPipeline } from './pipeline.js';
 
 // Los scrapers viven en apps/scraper — importamos via ruta relativa (ts-node lo resuelve)

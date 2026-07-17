@@ -152,7 +152,6 @@ playerDetailRouter.get('/:id', async (c) => {
       })),
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
     return c.json({ error: 'Database error' }, 500);
   }
 });

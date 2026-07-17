@@ -5,7 +5,6 @@
  */
 import { ScrapeResult, ScrapeError } from '@sports/shared-types';
 import { createLogger, Logger } from '@sports/logger';
-import { closeBrowser } from './browser.js';
 
 export interface ScraperConfig {
   /** Clave única del scraper — coincide con data_sources.scraper_key */

@@ -37,8 +37,6 @@ import { BaseScraper } from '../../core/base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost } from './sidgad-client.js';
 import type { ScrapedMatch, MatchStatus } from '@sports/shared-types';
-import fs from 'fs';
-import path from 'path';
 
 const BASE_URL = 'https://www.server2.sidgad.es/rfep';
 const SOURCE_ID = requireFepSourceId();
@@ -139,48 +137,14 @@ export class FepMatchesScraper extends BaseScraper<ScrapedMatch> {
       '[class*="marcador"]',
     ] as const;
     let scoreRaw = '';
-    let scoreSelector = '';
     for (const sel of SCORE_SELECTORS) {
       const t = $el.find(sel).text().trim();
-      if (t && /\d/.test(t)) { scoreRaw = t; scoreSelector = sel; break; }
+      if (t && /\d/.test(t)) { scoreRaw = t; break; }
     }
     const { homeScore, awayScore } = parseScore(scoreRaw);
 
-    // Log de diagnostico — visible en la terminal del scraper cada vez que corre
     // Nota: home_fouls/away_fouls NO estan en rfep_mc_1.php; vienen de match_events
     // (ficha resumen). Aqui solo podemos actualizar score y status.
-    console.log('[SCRAPER PARSE]', {
-      idp,
-      scoreRaw,
-      scoreSelector: scoreSelector || '(ninguno)',
-      homeScore:   homeScore  ?? null,
-      awayScore:   awayScore  ?? null,
-      homeFouls:   'n/a (ver match_events)',
-      awayFouls:   'n/a (ver match_events)',
-      status:      inferStatus(classes, $el.find('.scorer_bot_center').text().trim(), scoreRaw),
-      elementHtml: ($el.html() ?? '').slice(0, 400),
-    });
-
-    // Vuelca el HTML del partido al disco para diagnóstico sin necesidad de
-    // capturar la terminal. Sobrescribe en cada ciclo — siempre tendrás el
-    // último estado. Eliminar este bloque una vez identificado el selector.
-    try {
-      const debugContent = [
-        `IDP: ${idp}`,
-        `HOME: ${homeAbbr} | AWAY: ${awayAbbr}`,
-        `scoreRaw: "${scoreRaw}" | scoreSelector: "${scoreSelector || '(ninguno)'}"`,
-        `homeScore: ${homeScore ?? 'null'} | awayScore: ${awayScore ?? 'null'}`,
-        `classes: ${classes.join(' ')}`,
-        `---HTML---`,
-        $el.html() ?? '',
-      ].join('\n');
-      fs.writeFileSync(
-        path.join(process.cwd(), 'debug-playoff.txt'),
-        debugContent,
-        'utf-8'
-      );
-    } catch { /* no bloquear el scraper si el disco falla */ }
-
     // Estado: desde la clase del elemento + texto del botón central
     const statusText = $el.find('.scorer_bot_center').text().trim();
     const status = inferStatus(classes, statusText, scoreRaw);
@@ -191,9 +155,6 @@ export class FepMatchesScraper extends BaseScraper<ScrapedMatch> {
 
     // Competición (nombre, a veces oculto)
     const competitionName = $el.find('.scorer_liga').text().trim();
-    const idcAttr = $el.attr('idc');
-    // idc puede ser '$id_liga' (template sin sustituir) — ignoramos en ese caso
-    const idc = idcAttr && !idcAttr.startsWith('$') ? idcAttr : undefined;
 
     // teamRef: preferimos club ID numérico, fallback a abreviatura
     const homeTeamRef = homeClubRef
@@ -239,7 +200,7 @@ function parseScore(scoreRaw: string): { homeScore?: number; awayScore?: number 
     .replace(/[\u2013\u2014\u00B7]/g, '-')  // en-dash, em-dash, middle-dot
     .replace(/\s+/g, '');
   // Aceptar separadores : - / (Playoffs a veces usa formatos distintos)
-  const m = normalized.match(/^(\d+)[:\-\/](\d+)$/);
+  const m = normalized.match(/^(\d+)[:\-/](\d+)$/);
   if (!m) return {};
   const h = parseInt(m[1]!, 10);
   const a = parseInt(m[2]!, 10);

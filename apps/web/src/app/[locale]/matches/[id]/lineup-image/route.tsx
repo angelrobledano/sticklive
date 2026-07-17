@@ -156,6 +156,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
               }}>
                 {photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- next/og (satori) requiere <img>, no next/image
                   <img
                     src={photo}
                     width={76}

@@ -31,7 +31,6 @@ standingsRouter.get('/:id/standings', async (c) => {
       standings: rows,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
     return c.json({ error: 'Database error' }, 500);
   }
 });

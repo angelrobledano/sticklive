@@ -53,7 +53,6 @@ matchesRouter.get('/:id/matches', async (c) => {
       matches: rows,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
     return c.json({ error: 'Database error' }, 500);
   }
 });
