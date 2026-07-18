@@ -8,6 +8,7 @@ import type { SeasonMatch, SeasonStandingRow } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
 import { PlayoffBracket } from '@/components/match/PlayoffBracket';
+import { KnockoutBracket } from './KnockoutBracket';
 import { buildSeries, groupByPhase, placementMatches, type PlayoffSeries } from '@/lib/playoff';
 import { fmtDate, fmtTime } from './format';
 
@@ -147,6 +148,16 @@ function phaseFromSlug(s: string | null): PlayoffViewPhase | null {
 
 export function PlayoffsTab({ matches }: { standings?: SeasonStandingRow[]; matches: SeasonMatch[] }) {
   const { t } = useT();
+
+  // Eliminatoria con fases nombradas por la fuente (World Skate: Cuartos/Semis/
+  // Final/3º-4º, a partido único). Se distingue del playoff de OK Liga (series
+  // al mejor de N, fase derivada 1/2/3) porque trae roundNumber fuera de 1-3.
+  // Para estas, un cuadro dedicado por nombre de fase.
+  const isNamedKnockout = useMemo(
+    () => matches.some((m) => m.roundType === 'playoff' && (m.roundNumber ?? 0) > 3),
+    [matches],
+  );
+
   const sp = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -231,6 +242,16 @@ export function PlayoffsTab({ matches }: { standings?: SeasonStandingRow[]; matc
     : phase === 'Cuartos' ? t('playoffs.quarters')
     : phase === 'Semis' ? t('playoffs.semis')
     : t('playoffs.final');
+
+  // Cuadro de eliminatorias por nombre de fase (World Skate) — todos los hooks
+  // de arriba se han ejecutado ya, así que este return no rompe las reglas.
+  if (isNamedKnockout) {
+    return (
+      <div className="space-y-3">
+        <KnockoutBracket matches={matches} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
