@@ -115,6 +115,7 @@ export interface Match {
   scheduledAt?: string;
   venueName?: string;
   venueCity?: string;
+  videoUrl?: string;
 }
 
 export interface Standing {
@@ -166,7 +167,12 @@ export type ScrapedTeam = Omit<Team, 'id' | 'sportId'> & ScrapedTrace & {
 export type ScrapedMatch = Omit<Match, 'id' | 'homeTeamId' | 'awayTeamId'> & ScrapedTrace & {
   homeTeamRef: string;
   awayTeamRef: string;
+  /** Nombre de ronda/fase de la fuente (Jornada 1, Cuartos, Final…) — para mostrar. */
   roundRef?: string;
+  /** Número de ronda para la identidad en DB (UNIQUE season+number+type). Requerido si se crean rondas. */
+  roundNumber?: number;
+  /** Tipo de ronda; por defecto 'regular'. */
+  roundType?: RoundType;
 };
 
 export type ScrapedStanding = Omit<Standing, 'id' | 'seasonId' | 'teamId'> & ScrapedTrace & {

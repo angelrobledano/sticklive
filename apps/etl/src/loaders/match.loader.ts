@@ -7,7 +7,7 @@
  * 3. Procesar en batches para no sobrecargar la DB
  * 4. Usar transacciones por batch (no por partido individual — más eficiente)
  */
-import { upsertMatch, insertScrapeLog, addTeamAltRef, db } from '@sports/db';
+import { upsertMatch, insertScrapeLog, addTeamAltRef, upsertRound, db } from '@sports/db';
 import type { ScrapedMatch, ScrapeResult } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { transformMatch } from '../transformers/match.transformer.js';
@@ -22,9 +22,15 @@ export interface LoadMatchesResult {
   errors: Array<{ item: string; error: string }>;
 }
 
+export interface LoadMatchesOptions {
+  /** Crear/asignar rondas desde roundRef+roundNumber (fuentes con fases). */
+  createRounds?: boolean;
+}
+
 export async function loadMatches(
   scrapeResult: ScrapeResult<ScrapedMatch>,
-  sportId: string
+  sportId: string,
+  options: LoadMatchesOptions = {}
 ): Promise<LoadMatchesResult> {
   const start = Date.now();
   const errors: Array<{ item: string; error: string }> = [];
@@ -33,6 +39,25 @@ export async function loadMatches(
 
   const resolver = new RefResolver(sportId);
   const items = scrapeResult.data;
+
+  // Caché de rondas resueltas en esta ejecución: "season|number|type" → roundId.
+  const roundCache = new Map<string, string>();
+  async function resolveRound(raw: ScrapedMatch): Promise<string | undefined> {
+    if (!options.createRounds || raw.roundNumber == null || !raw.seasonId) return undefined;
+    const roundType = raw.roundType ?? 'regular';
+    const key = `${raw.seasonId}|${raw.roundNumber}|${roundType}`;
+    const cached = roundCache.get(key);
+    if (cached) return cached;
+    const id = await upsertRound({
+      seasonId: raw.seasonId,
+      number: raw.roundNumber,
+      name: raw.roundRef,
+      roundType,
+      sourceId: raw.sourceId,
+    });
+    roundCache.set(key, id);
+    return id;
+  }
 
   log.info({ total: items.length, batchSize: BATCH_SIZE }, 'Cargando partidos');
 
@@ -50,6 +75,10 @@ export async function loadMatches(
         if (warnings.length > 0) {
           log.warn({ item: itemLabel, warnings }, 'Warnings en transformación de partido');
         }
+
+        // Ronda/fase (solo si la fuente emite estructura y el flag está activo)
+        const roundId = await resolveRound(raw);
+        if (roundId) input.roundId = roundId;
 
         let resolved = false;
         try {
