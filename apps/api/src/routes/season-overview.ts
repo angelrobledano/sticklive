@@ -173,8 +173,19 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
     const playoffRows = matchesRes.rows.filter(
       (m) => m.round_type === 'playoff' || (isLegacyPlayoffComp && !m.round_id)
     );
+
+    // Si la fuente ya distingue las fases eliminatorias con rondas propias
+    // (varias rounds de playoff distintas: Cuartos/Semis/Final/3º-4º — caso
+    // World Skate), respetamos su número/nombre real y NO derivamos. La
+    // derivación por cronología es solo para el playoff de OK Liga, que vive
+    // en una única ronda 'playoff' sin distinción de fase.
+    const distinctPlayoffRounds = new Set(
+      playoffRows.map((m) => m.round_id).filter((x): x is string => !!x)
+    );
+    const hasRealPhases = distinctPlayoffRounds.size > 1;
+
     const derivedRound = new Map<string, number>(); // matchId → roundNumber
-    if (playoffRows.length > 0) {
+    if (playoffRows.length > 0 && !hasRealPhases) {
       const seriesMap = new Map<string, { firstDate: number; matchIds: string[] }>();
       for (const m of playoffRows) {
         const key = [m.home_team_id, m.away_team_id].sort().join('|');
@@ -266,9 +277,10 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         winType:      m.win_type,
         venueName:   m.venue_name,
         roundId:     m.round_id,
-        // Para partidos de playoff manda la fase derivada (1=QF/2=SF/3=F/0=playout);
-        // la ronda de fase (number=100) es solo un marcador, no una jornada.
-        roundNumber: derivedRound.get(m.id) ?? (m.round_type === 'playoff' ? null : m.round_number),
+        // Playoff OK Liga: manda la fase derivada (1=QF/2=SF/3=F/0=playout).
+        // Playoff con fases reales (World Skate): número real de la ronda.
+        // Liga: número de jornada.
+        roundNumber: derivedRound.get(m.id) ?? m.round_number,
         roundName:   m.round_name,
         roundType:   m.round_type ?? (derivedRound.has(m.id) ? 'playoff' : 'regular'),
         homeTeam: {
