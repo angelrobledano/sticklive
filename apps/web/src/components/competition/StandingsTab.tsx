@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
 import { useT } from '@/lib/i18n';
 import type { SeasonStandingRow } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
@@ -12,6 +13,20 @@ const RELEGATION_SPOTS = 2; // últimos 2 descienden en OK Liga
 
 export function StandingsTab({ standings }: { standings: SeasonStandingRow[] }) {
   const { t } = useT();
+
+  // Agrupar por group_name. Formatos de liga (OK Liga) no traen grupo → una
+  // sola tabla con zonas de playoff/descenso. Formatos con grupos (Europeo:
+  // Grupo A/B) → una tabla por grupo, sin zonas (no aplican a grupos de 4).
+  const groups = useMemo(() => {
+    const map = new Map<string, SeasonStandingRow[]>();
+    for (const row of standings) {
+      const key = row.groupName ?? '';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(row);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [standings]);
+
   if (standings.length === 0) {
     return (
       <div className="card p-8 text-center opacity-60">
@@ -20,12 +35,39 @@ export function StandingsTab({ standings }: { standings: SeasonStandingRow[] }) 
     );
   }
 
+  const isGrouped = groups.length > 1 || (groups.length === 1 && groups[0]![0] !== '');
+
+  if (isGrouped) {
+    return (
+      <div className="flex flex-col gap-4">
+        {groups.map(([name, rows]) => (
+          <div key={name || 'sin-grupo'}>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1 mb-1.5">
+              {name ? `${t('standings.group')} ${name}` : ''}
+            </h3>
+            <StandingsTable rows={rows} showZones={false} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return <StandingsTable rows={groups[0]?.[1] ?? standings} showZones />;
+}
+
+// ── Tabla individual (un grupo o la liga completa) ────────────────────────────
+
+function StandingsTable({
+  rows,
+  showZones,
+}: {
+  rows: SeasonStandingRow[];
+  showZones: boolean;
+}) {
+  const { t } = useT();
+
   return (
     <div className="card overflow-hidden">
-      {/* Cabecera de la tabla — columnas de stats más estrechas para dar
-          espacio al nombre del equipo y evitar truncados */}
-      {/* border-l transparente: alinea la cabecera con las filas (que llevan
-          barra lateral de 2px de zona) — sin él hay un micro-desplazamiento */}
       <div className="grid grid-cols-[24px_1fr_repeat(8,26px)] gap-x-1 px-3 py-1.5 border-l-2 border-l-transparent
                       bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
         <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">#</span>
@@ -36,13 +78,12 @@ export function StandingsTab({ standings }: { standings: SeasonStandingRow[] }) 
         ))}
       </div>
 
-      {/* Filas */}
       <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-        {standings.map((row, idx) => {
+        {rows.map((row, idx) => {
           const pos = row.position ?? idx + 1;
-          const total = standings.length;
-          const isPlayoff    = pos <= PLAYOFF_SPOTS;
-          const isRelegation = total > 0 && pos > total - RELEGATION_SPOTS;
+          const total = rows.length;
+          const isPlayoff    = showZones && pos <= PLAYOFF_SPOTS;
+          const isRelegation = showZones && total > 0 && pos > total - RELEGATION_SPOTS;
           const isLast       = idx === total - 1;
           const showPlayoffBorder    = isPlayoff    && pos === PLAYOFF_SPOTS    && !isLast;
           const showRelegationBorder = isRelegation && pos === total - RELEGATION_SPOTS + 1;
@@ -58,21 +99,15 @@ export function StandingsTab({ standings }: { standings: SeasonStandingRow[] }) 
                                          'border-l-transparent'}
               `}
             >
-              {/* Posición — gris medio uniforme: la barra lateral ya marca la
-                  zona, y así el nombre y los puntos son lo que destaca */}
               <span className="text-xs font-semibold text-center tabular-nums text-slate-500 dark:text-slate-400">
                 {pos}
               </span>
 
-              {/* Equipo */}
               <Link
                 href={`/teams/${row.teamId}`}
                 className="flex items-center gap-2 min-w-0 hover:opacity-75 transition-opacity"
               >
                 <TeamShield teamId={row.teamId} teamName={row.teamName} size={20} />
-                {/* Estrella solo en escritorio: en móvil la tabla queda 100%
-                    limpia y se sigue desde el perfil del equipo o desde
-                    Gestionar favoritos */}
                 <FavoriteStar
                   id={row.teamId}
                   kind="team"
@@ -86,7 +121,6 @@ export function StandingsTab({ standings }: { standings: SeasonStandingRow[] }) 
                 />
               </Link>
 
-              {/* PT con penalización */}
               <div className="flex items-baseline justify-center gap-0.5">
                 <span className="text-xs font-bold tabular-nums text-slate-900 dark:text-slate-50">
                   {row.points}
@@ -98,7 +132,6 @@ export function StandingsTab({ standings }: { standings: SeasonStandingRow[] }) 
                 )}
               </div>
 
-              {/* PJ, PG, PE, PP, GF, GC, DG */}
               {[row.played, row.won, row.drawn, row.lost, row.goalsFor, row.goalsAgainst].map((v, i) => (
                 <span key={i} className="text-[11px] text-slate-500 dark:text-slate-400 text-center tabular-nums">{v}</span>
               ))}
@@ -113,18 +146,18 @@ export function StandingsTab({ standings }: { standings: SeasonStandingRow[] }) 
         })}
       </div>
 
-      {/* Leyenda — compacta y discreta: dots de color, gris medio neutro */}
-      <div className="px-3 py-1.5 flex flex-wrap gap-x-3 gap-y-0.5 border-t border-slate-100 dark:border-slate-800">
-        {/* Los dots replican EXACTAMENTE los colores de las barras laterales */}
-        <div className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-rink-passion dark:bg-red-400 shrink-0" />
-          <span className="text-[10px] text-slate-400 dark:text-slate-500">{t('standings.playoffs_zone')}</span>
+      {showZones && (
+        <div className="px-3 py-1.5 flex flex-wrap gap-x-3 gap-y-0.5 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-rink-passion dark:bg-red-400 shrink-0" />
+            <span className="text-[10px] text-slate-400 dark:text-slate-500">{t('standings.playoffs_zone')}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 dark:bg-orange-400 shrink-0" />
+            <span className="text-[10px] text-slate-400 dark:text-slate-500">{t('standings.relegation_zone')}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 dark:bg-orange-400 shrink-0" />
-          <span className="text-[10px] text-slate-400 dark:text-slate-500">{t('standings.relegation_zone')}</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

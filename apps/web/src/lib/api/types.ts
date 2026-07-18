@@ -70,6 +70,7 @@ export interface Match {
   homeTeam?: TeamSummary;
   awayTeam?: TeamSummary;
   sourceRef: string | null;
+  videoUrl?: string | null;
 }
 
 // ─── Health ───

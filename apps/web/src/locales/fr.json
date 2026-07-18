@@ -129,6 +129,7 @@
     "finished": "Match terminé",
     "team_fouls_header": "Fautes d'équipe",
     "fouls": "fautes",
+    "watch_video": "Voir la vidéo",
     "auto_update": "mise à jour automatique",
     "reconnecting": "Recherche du signal… reconnexion pour vous apporter chaque but à la seconde",
     "no_events": "Aucun événement enregistré",
@@ -175,6 +176,7 @@
   },
   "standings": {
     "team": "Équipe",
+    "group": "Groupe",
     "playoffs_zone": "Playoffs (1er–8e)",
     "relegation_zone": "Relégation (2 derniers)",
     "no_data": "Aucune donnée de classement",

@@ -129,6 +129,7 @@
     "finished": "Jogo terminado",
     "team_fouls_header": "Faltas de equipa",
     "fouls": "faltas",
+    "watch_video": "Ver vídeo",
     "auto_update": "atualização automática",
     "reconnecting": "À procura do sinal… a religar para trazer cada golo ao segundo",
     "no_events": "Sem eventos registados",
@@ -175,6 +176,7 @@
   },
   "standings": {
     "team": "Equipa",
+    "group": "Grupo",
     "playoffs_zone": "Playoffs (1º–8º)",
     "relegation_zone": "Descida (últimos 2)",
     "no_data": "Sem dados de classificação",

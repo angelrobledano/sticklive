@@ -289,6 +289,24 @@ export function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?
           )}
         </div>
       )}
+
+      {/* Enlace de vídeo del partido (p. ej. World Skate → worldskate.tv) */}
+      {match.videoUrl && (
+        <div className="flex justify-center pt-1">
+          <a
+            href={match.videoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold
+                       text-white bg-rink-passion hover:bg-rink-passion/90 transition-colors"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+              <polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none" />
+            </svg>
+            {t('match_detail.watch_video')}
+          </a>
+        </div>
+      )}
     </div>
   );
 }
