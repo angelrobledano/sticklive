@@ -5,6 +5,7 @@ export * from './queries/competitions.js';
 export * from './queries/teams.js';
 export * from './queries/seasons.js';
 export * from './queries/matches.js';
+export * from './queries/rounds.js';
 export * from './queries/standings.js';
 export * from './queries/scrape-logs.js';
 export * from './queries/users.js';

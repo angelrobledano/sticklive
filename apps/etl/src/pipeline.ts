@@ -27,6 +27,10 @@ export interface PipelineContext {
   sportSlug: string;
   seasonId?: string;   // Requerido para partidos y clasificaciones
   dryRun?: boolean;    // Si true, transforma pero no persiste
+  /** Si true, el loader de partidos crea/asigna rondas desde roundRef/roundNumber
+   *  (solo para fuentes que emiten estructura de fases, p. ej. World Skate).
+   *  El flujo FEP lo deja en false → comportamiento sin cambios. */
+  createRounds?: boolean;
 }
 
 export interface PipelineResult {
@@ -84,7 +88,9 @@ export class EtlPipeline {
     if (!sport) throw new Error(`Deporte no encontrado: ${this.ctx.sportSlug}`);
 
     log.info({ scraperKey: scrapeResult.scraperKey }, 'Pipeline: partidos');
-    const result = await loadMatches(scrapeResult, sport.id);
+    const result = await loadMatches(scrapeResult, sport.id, {
+      createRounds: this.ctx.createRounds ?? false,
+    });
 
     return {
       entityType: 'match',

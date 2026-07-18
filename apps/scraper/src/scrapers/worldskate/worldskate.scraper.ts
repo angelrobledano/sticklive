@@ -25,7 +25,7 @@
 import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 import type {
-  ScrapedMatch, ScrapedStanding, ScrapeResult, MatchStatus,
+  ScrapedMatch, ScrapedStanding, ScrapeResult, MatchStatus, RoundType,
 } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { SidgadClient } from '../fep/sidgad-client.js';
@@ -119,22 +119,29 @@ export class WorldskateScraper {
   // ── Pasada A: calendarios ──────────────────────────────────────
   private parseCalendars($: cheerio.CheerioAPI, scrapedAt: Date): ScrapedMatch[] {
     const matches: ScrapedMatch[] = [];
+    let phase: Phase = { kind: 'group', title: '' };
 
-    // Tablas de calendario: llevan la clase content_fase_XXX (id my_calendar_table).
-    $('table.table_content_fase, table[id="my_calendar_table"]').each((_, table) => {
-      const $table = $(table);
-      let currentRound = '';
+    // Recorre, en orden de documento, los títulos de fase y las tablas de
+    // calendario, para saber a qué fase pertenece cada tabla.
+    $('div.div_titulo_fase_idc, table.table_content_fase').each((_, node) => {
+      const $node = $(node);
+      if ($node.is('div')) {
+        phase = classifyPhase($node.text());
+        return;
+      }
+      // tabla de calendario
+      const currentPhase = phase;
+      let roundMeta: RoundMeta = { name: '', number: 0, type: 'regular' };
 
-      $table.children('thead.head_jornada, tbody').each((_, child) => {
+      $node.children('thead.head_jornada, tbody').each((_, child) => {
         const $child = $(child);
         if ($child.is('thead')) {
-          currentRound = normalizeRoundName($child.find('th').first().text());
+          roundMeta = computeRound(currentPhase, $child.find('th').first().text());
           return;
         }
-        // tbody → filas de partido
         $child.find('tr.team_class').each((_, row) => {
           try {
-            const m = this.parseMatchRow($, $(row), currentRound, scrapedAt);
+            const m = this.parseMatchRow($, $(row), roundMeta, scrapedAt);
             if (m) matches.push(m);
           } catch (err) {
             log.warn({ err }, 'Fila de partido WSE no parseada');
@@ -149,7 +156,7 @@ export class WorldskateScraper {
   private parseMatchRow(
     $: cheerio.CheerioAPI,
     $row: cheerio.Cheerio<Element>,
-    roundName: string,
+    round: RoundMeta,
     scrapedAt: Date
   ): ScrapedMatch | null {
     const classes = ($row.attr('class') ?? '').split(/\s+/);
@@ -191,15 +198,21 @@ export class WorldskateScraper {
     const idp = $report.attr('idp') ?? $report.attr('id')?.replace('fichapartido_', '');
     const sourceRef = idp ? `wse_match_${idp}` : undefined;
 
+    // Enlace de vídeo (europe.worldskate.tv), si existe
+    const videoUrl = $row.find('a.fa-video-camera').attr('href') || undefined;
+
     return {
       seasonId: this.cfg.seasonId,
-      roundRef: roundName || undefined,
+      roundRef: round.name || undefined,
+      roundNumber: round.number || undefined,
+      roundType: round.type,
       homeTeamRef: homeRef,
       awayTeamRef: awayRef,
       homeScore,
       awayScore,
       status,
       scheduledAt: scheduledAt?.toISOString(),
+      videoUrl,
       sourceId: this.cfg.sourceId,
       sourceRef,
       scrapedAt,
@@ -325,6 +338,47 @@ function inferStatus(scoreText: string, scheduledAt: Date | undefined): MatchSta
   const hoursSince = (now.getTime() - scheduledAt.getTime()) / 3_600_000;
   if (hoursSince < 3) return 'live';
   return 'scheduled';
+}
+
+// ── Fases y numeración de rondas ─────────────────────────────────
+type PhaseKind = 'group' | 'placement' | 'knockout';
+interface Phase { kind: PhaseKind; title: string; }
+interface RoundMeta { name: string; number: number; type: RoundType; }
+
+/** Clasifica un bloque de fase por su título (div_titulo_fase_idc). */
+function classifyPhase(rawTitle: string): Phase {
+  const title = rawTitle.replace(/\s+/g, ' ').trim();
+  const u = title.toUpperCase();
+  if (u.includes('KNOCKOUT')) return { kind: 'knockout', title };
+  if (/\d+\s*(TO|A)\s*\d+/.test(u)) return { kind: 'placement', title }; // "5 TO 7"
+  return { kind: 'group', title };
+}
+
+/**
+ * Calcula nombre/número/tipo de ronda a partir de la fase y la cabecera
+ * (head_jornada). Esquema de numeración (UNIQUE season+number+type):
+ *   - grupos:      Jornada N → number N,        type 'regular'
+ *   - consolación: Jornada N → number 50+N,     type 'regular'
+ *   - eliminatoria: Cuartos 90 / Semis 95 / 3º-4º 98 / Final 99, type 'playoff'
+ */
+function computeRound(phase: Phase, theadText: string): RoundMeta {
+  const name = normalizeRoundName(theadText);
+
+  if (phase.kind === 'knockout') {
+    const number =
+      name === 'Cuartos de final' ? 90 :
+      name === 'Semifinal'        ? 95 :
+      name === '3º y 4º puesto'   ? 98 :
+      name === 'Final'            ? 99 : 89;
+    return { name, number, type: 'playoff' };
+  }
+
+  const jornada = parseInt((name.match(/(\d+)/)?.[1]) ?? '0', 10) || 0;
+  if (phase.kind === 'placement') {
+    // Prefija el título de la consolación para distinguir en la UI.
+    return { name: `${phase.title} · ${name}`.trim(), number: 50 + jornada, type: 'regular' };
+  }
+  return { name, number: jornada, type: 'regular' };
 }
 
 /** Nombre de grupo desde el th: "…GROUP A" → "A" (o undefined si no hay). */

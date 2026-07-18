@@ -137,7 +137,7 @@ async function runWorldskate(ctx: WorldskateCtx) {
   });
   const out = await scraper.run();
 
-  const pipeline = new EtlPipeline({ sportSlug: 'hockey-patines', seasonId: ctx.seasonId });
+  const pipeline = new EtlPipeline({ sportSlug: 'hockey-patines', seasonId: ctx.seasonId, createRounds: true });
   const mEtl = out.matches.success ? await pipeline.runMatches(out.matches) : { upserted: 0 };
   const sEtl = out.standings.success ? await pipeline.runStandings(out.standings) : { upserted: 0 };
   log.info(

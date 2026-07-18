@@ -16,6 +16,7 @@ export interface DbMatch {
   finished_at: Date | null;
   venue_name: string | null;
   venue_city: string | null;
+  video_url: string | null;
   is_neutral: boolean;
   attendance: number | null;
   referee: string | null;
@@ -41,6 +42,7 @@ export interface UpsertMatchInput {
   finishedAt?: Date;
   venueName?: string;
   venueCity?: string;
+  videoUrl?: string;
   isNeutral?: boolean;
   attendance?: number;
   referee?: string;
@@ -73,8 +75,8 @@ export async function upsertMatch(
         home_score, away_score, status,
         scheduled_at, started_at, finished_at,
         venue_name, venue_city, is_neutral, attendance, referee, notes,
-        source_id, source_ref, source_url, scraped_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+        source_id, source_ref, source_url, scraped_at, video_url)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
      ON CONFLICT (source_ref) WHERE (source_ref IS NOT NULL) DO UPDATE SET
        home_score   = COALESCE(EXCLUDED.home_score,  matches.home_score),
        away_score   = COALESCE(EXCLUDED.away_score,  matches.away_score),
@@ -83,6 +85,7 @@ export async function upsertMatch(
        started_at   = COALESCE(EXCLUDED.started_at,   matches.started_at),
        finished_at  = COALESCE(EXCLUDED.finished_at,  matches.finished_at),
        venue_name   = COALESCE(EXCLUDED.venue_name,   matches.venue_name),
+       video_url    = COALESCE(EXCLUDED.video_url,    matches.video_url),
        round_id     = COALESCE(EXCLUDED.round_id,     matches.round_id),
        attendance   = COALESCE(EXCLUDED.attendance,   matches.attendance),
        referee      = COALESCE(EXCLUDED.referee,      matches.referee),
@@ -110,6 +113,7 @@ export async function upsertMatch(
       input.sourceRef,
       input.sourceUrl ?? null,
       input.scrapedAt ?? null,
+      input.videoUrl ?? null,
     ]
   );
   return result.rows[0]!;
