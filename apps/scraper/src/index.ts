@@ -19,12 +19,14 @@ import { FepStandingsScraper }   from './scrapers/fep/fep-standings.scraper.js';
 import { FepMatchesScraper }     from './scrapers/fep/fep-matches.scraper.js';
 import { FepCompetitionsScraper } from './scrapers/fep/fep-competitions.scraper.js';
 import { FepListadoScraper }     from './scrapers/fep/fep-listado.scraper.js';
+import { WorldskateScraper }     from './scrapers/worldskate/worldskate.scraper.js';
 import { closeBrowser }          from './core/browser.js';
 
 const log = createLogger({ service: 'scraper' });
 
 const IDC_OK_LIGA = '3150';
 const IDC_PLAYOFF = '3481';
+const IDC_WSE_U17 = '320'; // Europeo Sub-17 M 2025/26 (World Skate Europe)
 
 // ─── Lookup de season IDs desde DB ───────────────────────────────────────────
 
@@ -96,6 +98,55 @@ async function runLiveScores(seasonId: string) {
   }, 'Live scores ETL');
 }
 
+// ─── World Skate Europe (Europeo Sub-17) ─────────────────────────────────────
+
+interface WorldskateCtx {
+  seasonId: string;
+  sourceId: string;
+  timezone: string | null;
+}
+
+/** Resuelve temporada actual + fuente + timezone del Europeo desde DB. */
+async function resolveWorldskate(): Promise<WorldskateCtx | null> {
+  try {
+    const res = await db.query<{ season_id: string; timezone: string | null; source_id: string }>(`
+      SELECT s.id AS season_id, s.timezone, ds.id AS source_id
+      FROM seasons s
+      JOIN competitions c   ON c.id = s.competition_id
+      JOIN data_sources ds  ON ds.scraper_key = 'worldskate_hockey'
+      WHERE c.source_ref = 'wse_competition_320'
+        AND s.is_current = TRUE
+      LIMIT 1
+    `);
+    const row = res.rows[0];
+    if (!row) { log.warn('World Skate: temporada actual no encontrada (¿seed ejecutado?)'); return null; }
+    return { seasonId: row.season_id, sourceId: row.source_id, timezone: row.timezone };
+  } catch (err) {
+    log.error({ err }, 'Error resolviendo contexto World Skate');
+    return null;
+  }
+}
+
+async function runWorldskate(ctx: WorldskateCtx) {
+  const scraper = new WorldskateScraper({
+    idc: IDC_WSE_U17,
+    seasonId: ctx.seasonId,
+    sourceId: ctx.sourceId,
+    timezone: ctx.timezone ?? undefined,
+    competitionName: 'Europeo Sub-17 M',
+  });
+  const out = await scraper.run();
+
+  const pipeline = new EtlPipeline({ sportSlug: 'hockey-patines', seasonId: ctx.seasonId });
+  const mEtl = out.matches.success ? await pipeline.runMatches(out.matches) : { upserted: 0 };
+  const sEtl = out.standings.success ? await pipeline.runStandings(out.standings) : { upserted: 0 };
+  log.info(
+    { matchesFound: out.matches.data.length, matchesUpserted: mEtl.upserted,
+      standingsFound: out.standings.data.length, standingsUpserted: sEtl.upserted },
+    'World Skate ETL: Europeo Sub-17'
+  );
+}
+
 // ─── Definición de crons ──────────────────────────────────────────────────────
 
 interface CronDef {
@@ -158,6 +209,15 @@ function buildCrons(seasons: SeasonLookup): CronDef[] {
 // ─── --run-once ───────────────────────────────────────────────────────────────
 
 async function runOnce(key: string, seasons: SeasonLookup) {
+  // World Skate necesita su propio contexto (temporada/fuente/tz) resuelto en DB.
+  if (key === 'worldskate_u17') {
+    const ctx = await resolveWorldskate();
+    if (!ctx) { log.error('World Skate: contexto no resuelto — ¿seed ejecutado?'); process.exit(1); }
+    await runWorldskate(ctx);
+    await Promise.all([closeBrowser(), closeDb(), shutdownAnalytics()]);
+    return;
+  }
+
   const map: Record<string, () => Promise<void>> = {
     fep_calendar_ok_liga:   () => runCalendar(IDC_OK_LIGA, seasons.okLigaSeasonId, 'OK Liga'),
     fep_standings_ok_liga:  () => runStandings(IDC_OK_LIGA, seasons.okLigaSeasonId, 'OK Liga'),
@@ -179,6 +239,17 @@ async function runOnce(key: string, seasons: SeasonLookup) {
 
 async function startScheduled(seasons: SeasonLookup) {
   const crons = buildCrons(seasons);
+
+  // World Skate Europe — solo si hay temporada actual sembrada (evita ruido offseason).
+  const wse = await resolveWorldskate();
+  if (wse) {
+    crons.push({
+      key: 'worldskate_u17',
+      cron: process.env['CRON_WORLDSKATE'] ?? '*/5 * * * *',
+      run: () => runWorldskate(wse),
+    });
+  }
+
   log.info({ crons: crons.map(c => `${c.key}(${c.cron})`) }, '🚀 Scrapers programados');
 
   for (const def of crons) {
