@@ -154,6 +154,7 @@
     "finished": "Full time",
     "team_fouls_header": "Team fouls",
     "fouls": "fouls",
+    "watch_video": "Watch video",
     "auto_update": "auto-updating",
     "reconnecting": "Searching for the signal… reconnecting to bring you every goal instantly",
     "no_events": "No events recorded",
@@ -200,6 +201,7 @@
   },
   "standings": {
     "team": "Team",
+    "group": "Group",
     "playoffs_zone": "Playoffs (1st–8th)",
     "relegation_zone": "Relegation (bottom 2)",
     "no_data": "No standings data",

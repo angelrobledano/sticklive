@@ -282,6 +282,7 @@ interface RawMatchDetail {
     venue: MatchVenue | null;
     referee: string | null;
     sourceRef: string | null;
+    videoUrl?: string | null;
     live?: MatchLiveState | null;
     homeTeam: TeamSummary;
     awayTeam: TeamSummary;
@@ -317,6 +318,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
       homeTeam:    raw.match.homeTeam,
       awayTeam:    raw.match.awayTeam,
       sourceRef:   raw.match.sourceRef,
+      videoUrl:    raw.match.videoUrl ?? null,
       live:        raw.match.live ?? null,
     },
     events: raw.events,

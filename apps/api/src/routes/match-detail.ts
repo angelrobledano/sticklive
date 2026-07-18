@@ -26,6 +26,7 @@ interface MatchDetailRow {
   venue_city: string | null;
   referee: string | null;
   source_ref: string | null;
+  video_url: string | null;
   home_team_id: string;
   home_team_name: string;
   home_team_short_name: string | null;
@@ -67,7 +68,7 @@ matchDetailRouter.get('/:id', async (c) => {
         m.home_score, m.away_score, m.home_fouls, m.away_fouls, m.status,
         m.home_goals_reg, m.away_goals_reg, m.home_pen, m.away_pen, m.win_type, m.winner_team_id, m.penalty_shootout,
         m.scheduled_at, m.started_at, m.finished_at,
-        m.venue_name, m.venue_city, m.referee, m.source_ref,
+        m.venue_name, m.venue_city, m.referee, m.source_ref, m.video_url,
         m.live_period, m.live_clock_seconds, m.live_clock_at, m.live_is_halftime,
         ht.id           AS home_team_id,
         ht.name         AS home_team_name,
@@ -250,6 +251,7 @@ matchDetailRouter.get('/:id', async (c) => {
       venue: row.venue_name ? { name: row.venue_name, city: row.venue_city } : null,
       referee:     row.referee,
       sourceRef:   row.source_ref,
+      videoUrl:    row.video_url,
       live: (effectiveStatus === 'live')
         ? {
             period:       row.live_period,
