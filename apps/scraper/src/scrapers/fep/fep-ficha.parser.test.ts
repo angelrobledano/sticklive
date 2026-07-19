@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import {
   parseFicha, parseLiveHeader, parseTeamFouls, parseLineups, eventSourceRef,
   remainingToElapsedMinute, mapIncidenciaType, normalizeName,
+  type ScrapedMatchEvent,
 } from './fep-ficha.parser.js';
 
 /**
@@ -89,7 +90,7 @@ describe('source_ref estable entre capturas', () => {
    * Identificamos cada evento por su contenido observable y exigimos que su
    * `sourceRef` no cambie entre las tres capturas del mismo partido.
    */
-  const identidad = (e: { period: number | undefined; clock: string | undefined; eventType: string; playerName: string | undefined }) =>
+  const identidad = (e: ScrapedMatchEvent) =>
     `${e.period}|${e.clock}|${e.eventType}|${e.playerName ?? '-'}`;
 
   it('el mismo evento conserva su ref en las tres capturas del partido', () => {
