@@ -11,6 +11,12 @@
 #   3. Los `id` de match_events NO cambian entre dos pasadas de la misma ficha.
 #      Esto es lo que hace correcto el diff por id del push-dispatcher.
 #
+# IMPORTANTE — el punto 3 sólo significa algo si la ficha SE ESCRIBIÓ. Si el
+# scraper recibe un 404 (competiciones viejas cuyo endpoint ya no existe),
+# replaceMatchEvents ni se llama, los ids "no cambian" porque nadie tocó la
+# tabla, y saldría un verde falso. Por eso se comprueba además que `scraped_at`
+# AVANCE en cada pasada, y se prueban varios partidos hasta dar con un acta viva.
+#
 # Además valida `make_interval(...)` de rebote: /matches/current y el cron lo
 # usan, y el paso 6 ejecuta esas consultas.
 #
@@ -116,13 +122,17 @@ export FEP_SOURCE_ID
 ok "FEP_SOURCE_ID=$FEP_SOURCE_ID"
 
 # ── 5. Elegir partido ────────────────────────────────────────────────────────
-# Uno que YA tenga eventos: así la primera pasada del upsert se enfrenta a filas
-# existentes, que es justo el caso que queremos probar (UPDATE, no INSERT).
+# Requisitos del partido de prueba:
+#   · que YA tenga eventos → el upsert se enfrenta a filas existentes (UPDATE),
+#     que es el camino que queremos ejercitar;
+#   · que su acta siga DESCARGÁNDOSE de la fuente. Esto último no se puede saber
+#     por SQL: hay competiciones cuyo endpoint devuelve 404 (idc antiguo, formato
+#     distinto). Por eso se prueban varios candidatos hasta dar con uno vivo.
 say "5/7 Eligiendo partido de prueba"
 if [ -n "$WANTED_REF" ]; then
-  SOURCE_REF="$WANTED_REF"
+  CANDIDATES="$WANTED_REF"
 else
-  SOURCE_REF="$(psql_dev -c "
+  CANDIDATES="$(psql_dev -c "
     SELECT m.source_ref
     FROM matches m
     JOIN seasons s ON s.id = m.season_id
@@ -131,32 +141,65 @@ else
       AND c.source_ref IS NOT NULL
       AND EXISTS (SELECT 1 FROM match_events e WHERE e.match_id = m.id AND e.source_ref IS NOT NULL)
     ORDER BY m.scheduled_at DESC
-    LIMIT 1")"
+    LIMIT 12")"
 fi
-[ -n "$SOURCE_REF" ] || fail "No encuentro ningún partido con eventos y source_ref utilizable"
-
-MATCH_ID="$(psql_dev -c "SELECT id FROM matches WHERE source_ref = '$SOURCE_REF'")"
-[ -n "$MATCH_ID" ] || fail "No existe partido con source_ref=$SOURCE_REF"
-ok "Partido $SOURCE_REF (id $MATCH_ID)"
+[ -n "$CANDIDATES" ] || fail "No encuentro ningún partido con eventos y source_ref utilizable"
 
 dump_events() {
   psql_dev -c "SELECT id, source_ref, event_type, COALESCE(minute::text,'-'), COALESCE(period::text,'-')
-               FROM match_events WHERE match_id = '$MATCH_ID' ORDER BY source_ref"
+               FROM match_events WHERE match_id = '$1' ORDER BY source_ref"
+}
+# Sello de la última escritura. Es la PRUEBA de que el upsert se ejecutó: si el
+# scraper no descarga nada, replaceMatchEvents ni se llama y esto no se mueve.
+last_write() {
+  psql_dev -c "SELECT COALESCE(MAX(scraped_at)::text, 'nunca')
+               FROM match_events WHERE match_id = '$1'"
 }
 
+run_ficha() { npx tsx --env-file=.env apps/etl/src/run-pipeline.ts --entity=ficha --source-ref="$1"; }
+
 # ── 6. Dos pasadas de la ficha ───────────────────────────────────────────────
-say "6/7 Ejecutando la ficha DOS veces (esto hace 2 peticiones a la fuente)"
+say "6/7 Buscando un acta viva y ejecutándola DOS veces"
 BEFORE="$(mktemp)"; AFTER="$(mktemp)"
 trap 'rm -f "$BEFORE" "$AFTER"' EXIT
 
-npx tsx --env-file=.env apps/etl/src/run-pipeline.ts --entity=ficha --source-ref="$SOURCE_REF"
-dump_events > "$BEFORE"
-ok "Pasada 1: $(wc -l < "$BEFORE") eventos"
+SOURCE_REF=""; MATCH_ID=""
+for cand in $CANDIDATES; do
+  cand_id="$(psql_dev -c "SELECT id FROM matches WHERE source_ref = '$cand'")"
+  [ -n "$cand_id" ] || continue
 
+  stamp_before="$(last_write "$cand_id")"
+  run_ficha "$cand" || true
+  stamp_after="$(last_write "$cand_id")"
+
+  # El acta está viva si la escritura avanzó. Un 404 deja el sello intacto.
+  if [ "$stamp_after" != "$stamp_before" ]; then
+    SOURCE_REF="$cand"; MATCH_ID="$cand_id"
+    break
+  fi
+  echo "  · $cand: la fuente no sirve el acta (sin escritura) — probando siguiente"
+done
+
+[ -n "$SOURCE_REF" ] || fail "Ningún candidato descargó el acta. Sin escritura real no se puede
+     verificar el upsert: pasa un partido concreto cuya acta sepas que existe,
+     p. ej.  bash deploy/verify-034-event-identity.sh fep_match_XXXXX"
+
+ok "Acta viva: $SOURCE_REF (id $MATCH_ID)"
+dump_events "$MATCH_ID" > "$BEFORE"
+ok "Pasada 1: $(wc -l < "$BEFORE") eventos escritos"
+
+STAMP_1="$(last_write "$MATCH_ID")"
 sleep 2
-npx tsx --env-file=.env apps/etl/src/run-pipeline.ts --entity=ficha --source-ref="$SOURCE_REF"
-dump_events > "$AFTER"
-ok "Pasada 2: $(wc -l < "$AFTER") eventos"
+run_ficha "$SOURCE_REF"
+dump_events "$MATCH_ID" > "$AFTER"
+STAMP_2="$(last_write "$MATCH_ID")"
+ok "Pasada 2: $(wc -l < "$AFTER") eventos escritos"
+
+# Sin esta comprobación, un scraper que falle en silencio daría un verde falso:
+# los ids "no cambian" simplemente porque nadie tocó la tabla.
+[ "$STAMP_2" != "$STAMP_1" ] || fail "La segunda pasada NO escribió (scraped_at no avanzó).
+     La comparación de ids no probaría nada — revisa por qué falló el scraping."
+ok "El upsert se ejecutó en ambas pasadas (scraped_at avanzó)"
 
 # ── 7. Veredicto ─────────────────────────────────────────────────────────────
 say "7/7 Comparando ids entre pasadas"
