@@ -1,11 +1,23 @@
-version: '3.9'
+# ============================================================
+# OVERRIDE de desarrollo. NO se usa en solitario (no define `image`):
+#
+#   docker compose -f infra/docker/docker-compose.yml \
+#                  -f infra/docker/docker-compose.dev.yml up -d postgres
+#
+# Sin `version:` — obsoleto en Compose v2 y sólo generaba warnings.
+# ============================================================
 
-# Override para desarrollo: solo levanta Postgres, el resto corre en local
 services:
   postgres:
-    ports:
-      - "5432:5432"
     environment:
+      # Nombre de base propio para no pisar el `sports_results` del compose
+      # base si alguna vez conviven.
+      #
+      # CUIDADO: esto sólo tiene efecto al crear el volumen POR PRIMERA VEZ.
+      # Si `postgres_data` ya existía (creado con el compose base), la base
+      # seguirá llamándose `sports_results` por mucho que aquí ponga otra cosa.
+      # Los scripts de verificación resuelven el nombre real consultando
+      # pg_database en vez de fiarse de este valor.
       POSTGRES_DB: sports_results_dev
       POSTGRES_USER: sports_user
       POSTGRES_PASSWORD: sports_pass

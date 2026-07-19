@@ -114,9 +114,11 @@ Un solo `deploy/Dockerfile` sin multi-stage sirve a `api`, `web` y `etl`. Arrast
 
 No hay servicio `migrate` en `docker-compose.prod.yml`. `packages/db/src/migrate.ts` existe pero se ejecuta a mano (`docs/DEPLOY.md`). 34 migraciones acumuladas y ninguna garantía de que prod esté al día. **Fix:** servicio `migrate` con `restart: "no"` que corra antes de `api`/`etl`, y comprobación de versión de esquema en el arranque de la API.
 
-### [ ] 2.4 `infra/docker/docker-compose.yml` está muerto
+### [x] 2.4 `infra/docker/docker-compose.yml` está muerto — **resuelto (PR #36)**
 
-Referencia `apps/api/Dockerfile`, que **no existe** (`find . -name Dockerfile*` sólo devuelve `apps/scraper/Dockerfile` y `deploy/Dockerfile`). Usa `version: '3.9'` (obsoleto) y credenciales de ejemplo en claro. Borrar o arreglar; hoy es una trampa para quien onboardee.
+Referenciaba `apps/api/Dockerfile`, que **no existe** (`find . -name Dockerfile*` sólo devuelve `apps/scraper/Dockerfile` y `deploy/Dockerfile`), así que cualquier `up` sin nombrar servicio fallaba. Además el servicio `scraper` levantaba crons contra la BD de desarrollo sin pedirlo, y `version: '3.9'` generaba un warning en cada invocación.
+
+Reducido a lo que de verdad es: la base de datos de desarrollo. Los dos servicios muertos fuera, `version` fuera, y el README corregido — documentaba `-f docker-compose.dev.yml` en solitario, que no funciona porque ese fichero es un override sin `image`.
 
 ### [ ] 2.5 Testing: 4 ficheros de test para 28.615 líneas
 

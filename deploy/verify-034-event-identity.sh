@@ -52,8 +52,7 @@ fail() { printf '\033[1;31m  ✗ %s\033[0m\n' "$*"; exit 1; }
 
 # ── 1. Postgres de desarrollo ────────────────────────────────────────────────
 # OJO: docker-compose.dev.yml es un OVERRIDE (no define `image`), hay que
-# combinarlo con el base. Y se arranca SOLO el servicio postgres: el base
-# declara además `api`, que apunta a un apps/api/Dockerfile inexistente.
+# combinarlo con el base.
 say "1/6 Levantando Postgres de desarrollo"
 $COMPOSE up -d postgres
 

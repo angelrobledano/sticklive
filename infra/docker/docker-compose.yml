@@ -1,14 +1,37 @@
-version: '3.9'
+# ============================================================
+# PostgreSQL para DESARROLLO local.
+#
+# El resto de servicios (api, web, etl, scraper) se ejecutan a mano con npm
+# mientras se desarrolla. La pila completa en contenedores es la de PRODUCCIÓN:
+# docker-compose.prod.yml en la raíz, que construye deploy/Dockerfile.
+#
+# Uso:
+#   docker compose -f infra/docker/docker-compose.yml \
+#                  -f infra/docker/docker-compose.dev.yml up -d postgres
+#
+# docker-compose.dev.yml es un OVERRIDE (no define `image`): hay que pasarlo
+# SIEMPRE junto a este fichero, nunca en solitario.
+#
+# Historial: aquí había además servicios `scraper` y `api`. El de `api`
+# apuntaba a apps/api/Dockerfile, que NO EXISTE desde que el despliegue se
+# unificó en deploy/Dockerfile — cualquier `up` sin nombrar servicio fallaba.
+# El de `scraper` levantaba crons contra la BD de desarrollo sin pedirlo. Se
+# eliminan los dos: este fichero es la base de datos y nada más.
+#
+# También se quitó `version:`, obsoleto en Compose v2 y responsable de un
+# warning en cada invocación.
+# ============================================================
 
 services:
-  # ───────────────────────────────────────────
-  # Base de datos
-  # ───────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: sports_postgres
     restart: unless-stopped
     environment:
+      # OJO: POSTGRES_DB/USER/PASSWORD sólo se aplican en la PRIMERA
+      # inicialización del volumen. Si `postgres_data` ya existe, cambiarlos
+      # no renombra nada: la base sigue llamándose como el día que se creó.
+      # Para empezar de cero:  docker compose ... down -v
       POSTGRES_DB: sports_results
       POSTGRES_USER: sports_user
       POSTGRES_PASSWORD: sports_pass
@@ -16,6 +39,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Las migraciones se aplican solas al crear el volumen por primera vez.
+      # Después, `npm run db:migrate` (lleva registro de las ya aplicadas).
       - ../../packages/db/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sports_user -d sports_results"]
@@ -23,48 +48,5 @@ services:
       timeout: 5s
       retries: 5
 
-  # ───────────────────────────────────────────
-  # Scraper
-  # ───────────────────────────────────────────
-  scraper:
-    build:
-      context: ../../
-      dockerfile: apps/scraper/Dockerfile
-    container_name: sports_scraper
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://sports_user:sports_pass@postgres:5432/sports_results
-      NODE_ENV: production
-    env_file:
-      - ../../.env
-    volumes:
-      - scraper_logs:/app/logs
-    # El scraper corre sus crons internamente; no expone puerto
-
-  # ───────────────────────────────────────────
-  # API
-  # ───────────────────────────────────────────
-  api:
-    build:
-      context: ../../
-      dockerfile: apps/api/Dockerfile
-    container_name: sports_api
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://sports_user:sports_pass@postgres:5432/sports_results
-      PORT: 3001
-      NODE_ENV: production
-    env_file:
-      - ../../.env
-    ports:
-      - "3001:3001"
-
 volumes:
   postgres_data:
-  scraper_logs:
