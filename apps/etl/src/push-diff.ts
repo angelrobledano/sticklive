@@ -31,7 +31,14 @@ export interface EventSnap {
   awayShort: string;
   homeScore: number;
   awayScore: number;
-  minute: number | null;         // minuto transcurrido DE ESTE evento (ya no un MAX agregado)
+  /**
+   * Periodo del evento. Imprescindible para ordenar: `minute` es RELATIVO al
+   * periodo (1..25 en cada uno), así que ordenar sólo por minuto colocaría un
+   * evento del minuto 3 del segundo periodo antes que uno del minuto 20 del
+   * primero.
+   */
+  period: number | null;
+  minute: number | null;         // minuto DENTRO del periodo (ya no un MAX agregado)
 }
 
 /**
@@ -42,8 +49,9 @@ export interface EventSnap {
  * escapaba: la fuente corrige el acta dentro del mismo ciclo sustituyendo un
  * evento por otro — el conteo agregado no cambiaba y la notificación se perdía.
  *
- * Se ordena por minuto para que, si un ciclo trae varios eventos de golpe, las
- * notificaciones salgan en el orden en que ocurrieron.
+ * Se ordena cronológicamente —por periodo y luego minuto— para que, si un ciclo
+ * trae varios eventos de golpe, las notificaciones salgan en el orden en que
+ * ocurrieron. El periodo manda porque `minute` se reinicia en cada uno.
  */
 export function freshEvents(
   prev: Map<string, EventSnap>,
@@ -53,7 +61,8 @@ export function freshEvents(
   for (const [eventId, now] of cur) {
     if (!prev.has(eventId)) out.push(now);
   }
-  return out.sort((a, b) => (a.minute ?? 0) - (b.minute ?? 0));
+  return out.sort((a, b) =>
+    (a.period ?? 0) - (b.period ?? 0) || (a.minute ?? 0) - (b.minute ?? 0));
 }
 
 /**

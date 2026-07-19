@@ -135,10 +135,10 @@ async function snapshotEvents(
     home_team_id: string | null; away_team_id: string | null;
     home_short: string | null; away_short: string | null;
     home_score: number | null; away_score: number | null;
-    minute: number | null;
+    minute: number | null; period: number | null;
   }>(`
     SELECT e.id AS event_id,
-           e.match_id, e.player_id, e.team_id AS actor_team_id, e.minute,
+           e.match_id, e.player_id, e.team_id AS actor_team_id, e.minute, e.period,
            st.short_name AS actor_team_short, comp.id AS competition_id,
            m.home_team_id, m.away_team_id,
            TRIM(COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'')) AS player_name,
@@ -174,6 +174,7 @@ async function snapshotEvents(
       awayShort: r.away_short ?? 'Visitante',
       homeScore: r.home_score ?? 0,
       awayScore: r.away_score ?? 0,
+      period: r.period != null ? Number(r.period) : null,
       minute: r.minute != null ? Number(r.minute) : null,
     });
   }
