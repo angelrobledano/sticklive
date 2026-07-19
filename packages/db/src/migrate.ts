@@ -55,8 +55,9 @@ async function bootstrapIfNeeded(files: string[]) {
     const sql = readFileSync(join(MIGRATIONS_DIR, file), 'utf-8');
     try {
       await db.query(sql);
-    } catch (err: any) {
-      const alreadyExists = err.message?.includes('already exists');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const alreadyExists = message.includes('already exists');
       if (!alreadyExists) throw err;
       // Si ya existe, simplemente lo registramos sin relanzar el error
     }

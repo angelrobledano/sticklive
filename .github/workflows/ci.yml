@@ -7,6 +7,7 @@ on:
     branches: [main]
 
 jobs:
+  # ── Calidad del código ──────────────────────────────────────────────────────
   quality:
     runs-on: ubuntu-latest
     steps:
@@ -25,10 +26,91 @@ jobs:
       - name: Tests
         run: npm run test
 
+      # Ya NO lleva continue-on-error: el repo está a cero avisos y la idea es
+      # que siga así. Si esto se pone rojo, es que algo entró sin revisar.
       - name: Lint
         run: npm run lint
-        continue-on-error: true # el lint no bloquea aún; se irá endureciendo
 
+      # El audit SÍ sigue sin bloquear, y conviene saber por qué: hoy hay 8
+      # vulnerabilidades en dependencias de producción (4 altas) y una de ellas
+      # exige subir node-cron con cambio de API. Ponerlo en bloqueante ahora
+      # dejaría el pipeline rojo permanentemente, que es la forma más rápida de
+      # que la gente aprenda a ignorarlo. Se arregla aparte y luego se endurece.
       - name: Audit (prod deps)
         run: npm audit --omit=dev --audit-level=high
         continue-on-error: true
+
+  # ── Migraciones contra una BD limpia ────────────────────────────────────────
+  # Aplica todas las migraciones desde cero. Detecta las que sólo funcionan
+  # sobre una base con historia previa, o las que se pisan entre sí. Es la red
+  # que faltaba: la 034 y la 035 se validaron a mano en un portátil.
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sports_user
+          POSTGRES_PASSWORD: sports_pass
+          POSTGRES_DB: sports_results_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U sports_user -d sports_results_ci"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://sports_user:sports_pass@localhost:5432/sports_results_ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      # Sin --env-file: DATABASE_URL viene del entorno del job, igual que en
+      # producción, donde se ejecuta con `$DC exec api npx tsx …`.
+      - name: Aplicar migraciones desde cero
+        run: npx tsx packages/db/src/migrate.ts
+
+      - name: Reaplicar (deben ser idempotentes)
+        run: npx tsx packages/db/src/migrate.ts
+
+      # Comprobación mínima de que el esquema quedó como esperamos. El índice
+      # único es del que depende el upsert de eventos: si falta, el scraper
+      # revienta en producción.
+      - name: Verificar esquema
+        run: |
+          PGPASSWORD=sports_pass psql -h localhost -U sports_user -d sports_results_ci -qtAX \
+            -v ON_ERROR_STOP=1 -c "
+              SELECT CASE WHEN COUNT(*) = 4 THEN 'ok'
+                          ELSE 'FALTAN INDICES: ' || COUNT(*)::text || ' de 4' END
+              FROM pg_indexes WHERE indexname IN (
+                'uq_match_events_match_source_ref',
+                'idx_matches_season_scheduled',
+                'idx_matches_live_partial',
+                'idx_matches_season_status_scheduled')" | grep -qx ok
+
+  # ── La imagen de producción construye ───────────────────────────────────────
+  # Hasta ahora un Dockerfile roto sólo se descubría desplegando.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Construir la imagen de producción
+        run: |
+          docker build -f deploy/Dockerfile \
+            --build-arg NEXT_PUBLIC_API_URL=https://sticklive.eu/api \
+            --build-arg NEXT_PUBLIC_SITE_URL=https://sticklive.eu \
+            --build-arg NEXT_PUBLIC_SEASON_ID= \
+            --build-arg NEXT_PUBLIC_POSTHOG_KEY= \
+            --build-arg NEXT_PUBLIC_VAPID_PUBLIC_KEY= \
+            --build-arg SENTRY_AUTH_TOKEN= \
+            -t sticklive:ci .
+
+      # El scheduler aborta si falta flock. Comprobamos que la imagen lo trae:
+      # es justo lo que se añadió al Dockerfile y nadie volvería a mirarlo.
+      - name: flock presente en la imagen
+        run: docker run --rm --entrypoint sh sticklive:ci -c 'command -v flock'

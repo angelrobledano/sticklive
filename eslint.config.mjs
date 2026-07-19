@@ -60,6 +60,16 @@ export default [
     },
   },
 
+  // Service worker: `self`, `clients`, `caches`… son globales del contexto de
+  // worker, no del navegador. Sin esto, `no-undef` marcaba 9 falsos positivos
+  // en sw.js y obligaba a dejar el job de lint en no-bloqueante.
+  {
+    files: ['apps/web/public/**/*.js'],
+    languageOptions: {
+      globals: { ...globals.serviceworker, ...globals.browser },
+    },
+  },
+
   // Reglas específicas del frontend (React hooks + Next). Solo apps/web.
   {
     files: ['apps/web/**/*.{ts,tsx}'],

@@ -77,7 +77,7 @@ async function main() {
       const listado = [ev(1), ev(2), ev(3), ev(4), ev(5)];
       await replaceMatchEvents(matchId, listado, client);
       const a = await read();
-      a.size === 5 || fail(`Esperaba 5 eventos tras la inserción, hay ${a.size}`);
+      if (a.size !== 5) fail(`Esperaba 5 eventos tras la inserción, hay ${a.size}`);
       ok(`Inserción inicial: ${a.size} eventos`);
 
       // ── 2ª pasada: mismo listado ──────────────────────────────────────────
@@ -87,11 +87,12 @@ async function main() {
       await replaceMatchEvents(matchId, listado.map((e) => ({ ...e, scrapedAt: new Date() })), client);
       const b = await read();
 
-      b.size === 5 || fail(`Tras reescribir el mismo listado hay ${b.size} eventos, esperaba 5`);
+      if (b.size !== 5) fail(`Tras reescribir el mismo listado hay ${b.size} eventos, esperaba 5`);
       for (const [ref, before] of a) {
         const after = b.get(ref) ?? fail(`Desapareció ${ref} al reescribir el mismo listado`);
-        after.id === before.id
-          || fail(`El id de ${ref} CAMBIÓ (${before.id} → ${after.id}): el upsert no está funcionando`);
+        if (after.id !== before.id) {
+          fail(`El id de ${ref} CAMBIÓ (${before.id} → ${after.id}): el upsert no está funcionando`);
+        }
       }
       ok('Idempotencia: los 5 ids se conservan al reescribir el mismo listado');
 
@@ -99,7 +100,7 @@ async function main() {
         const prev = a.get(r.source_ref)!.scraped_at;
         return r.scraped_at !== null && prev !== null && r.scraped_at.getTime() > prev.getTime();
       });
-      advanced || fail('scraped_at NO avanzó: el UPDATE del ON CONFLICT no se ejecutó');
+      if (!advanced) fail('scraped_at NO avanzó: el UPDATE del ON CONFLICT no se ejecutó');
       ok('Escritura real: scraped_at avanzó en todas las filas');
 
       // ── 3ª pasada: la fuente corrige el acta ──────────────────────────────
@@ -109,21 +110,23 @@ async function main() {
       await replaceMatchEvents(matchId, corregido, client);
       const c = await read();
 
-      c.size === 5 || fail(`Tras la corrección hay ${c.size} eventos, esperaba 5`);
-      c.has(`${PREFIX}_2`) && fail('El evento eliminado por la fuente sigue en la BD');
+      if (c.size !== 5) fail(`Tras la corrección hay ${c.size} eventos, esperaba 5`);
+      if (c.has(`${PREFIX}_2`)) fail('El evento eliminado por la fuente sigue en la BD');
       for (const ref of [`${PREFIX}_1`, `${PREFIX}_3`, `${PREFIX}_4`, `${PREFIX}_5`]) {
-        c.get(ref)!.id === b.get(ref)!.id
-          || fail(`${ref} cambió de id durante una corrección que no le afectaba`);
+        if (c.get(ref)!.id !== b.get(ref)!.id) {
+          fail(`${ref} cambió de id durante una corrección que no le afectaba`);
+        }
       }
       ok('Corrección del acta: supervivientes con id intacto, eliminado fuera');
 
       const nuevo = c.get(`${PREFIX}_6`) ?? fail('El evento nuevo no se insertó');
-      [...b.values()].some((r) => r.id === nuevo.id) && fail('El evento nuevo reutilizó un id anterior');
+      if ([...b.values()].some((r) => r.id === nuevo.id)) fail('El evento nuevo reutilizó un id anterior');
       ok('El evento nuevo entra con id propio (el diff por id lo verá)');
 
       const tres = c.get(`${PREFIX}_3`)!;
-      tres.minute === 99 && tres.detail === 'corregido'
-        || fail('El evento corregido no actualizó sus campos');
+      if (tres.minute !== 99 || tres.detail !== 'corregido') {
+        fail('El evento corregido no actualizó sus campos');
+      }
       ok('El evento corregido actualizó sus campos conservando el id');
 
       // Y que el índice único hace su trabajo.
@@ -133,7 +136,7 @@ async function main() {
             WHERE match_id = $1 GROUP BY match_id, source_ref HAVING COUNT(*) > 1) d`,
         [matchId]
       );
-      dupes.rows[0]?.n === '0' || fail(`Hay ${dupes.rows[0]?.n} duplicados de (match_id, source_ref)`);
+      if (dupes.rows[0]?.n !== '0') fail(`Hay ${dupes.rows[0]?.n} duplicados de (match_id, source_ref)`);
       ok('Sin duplicados de (match_id, source_ref)');
 
       throw new Rollback(); // deshace TODO lo anterior
@@ -145,7 +148,7 @@ async function main() {
   const left = await db.query<{ n: string }>(
     `SELECT COUNT(*)::text AS n FROM match_events WHERE source_ref LIKE '${PREFIX}_%'`
   );
-  left.rows[0]?.n === '0' || fail('El rollback no limpió los eventos sintéticos');
+  if (left.rows[0]?.n !== '0') fail('El rollback no limpió los eventos sintéticos');
   ok('Rollback correcto: la BD queda como estaba');
 
   console.log('\n\x1b[32m✅ replaceMatchEvents es idempotente y conserva los ids.\x1b[0m\n');
