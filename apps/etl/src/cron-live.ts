@@ -32,7 +32,7 @@ import { deriveMatchResults } from './derive-results.js';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import {
-  snapshotMatches, snapshotRounds, snapshotGoals, snapshotPlayerEventCounts,
+  snapshotMatches, snapshotRounds, snapshotGoals, snapshotEventsByType,
   snapshotExtraPhases, snapshotResults,
   diffAndNotify, diffGoals, diffCardOrFoul, diffBlueAndFouls,
   diffOvertimePenalties, diffResolution, flushPushAnalytics, pushEnabled,
@@ -111,8 +111,8 @@ async function checkWindow(seasonIds: string[]): Promise<WindowStatus> {
        FROM matches
        WHERE season_id    = ANY($1)
          AND status       = 'scheduled'
-         AND scheduled_at BETWEEN NOW() AND NOW() + INTERVAL '${WINDOW_HOURS} hours'`,
-      [seasonIds]
+         AND scheduled_at BETWEEN NOW() AND NOW() + make_interval(hours => $2::int)`,
+      [seasonIds, WINDOW_HOURS]
     ),
     // Partidos zombi: su hora pasó pero siguen sin estado final.
     db.query<{ count: string }>(
@@ -211,8 +211,8 @@ async function activeSecondarySeasons(seasonIds: string[], primarySeasonId: stri
        AND ( status = 'live'
           OR (status = 'scheduled'
               AND scheduled_at BETWEEN NOW() - INTERVAL '3 hours'
-                                   AND NOW() + INTERVAL '${WINDOW_HOURS} hours') )`,
-    [seasonIds, primarySeasonId]
+                                   AND NOW() + make_interval(hours => $3::int)) )`,
+    [seasonIds, primarySeasonId, WINDOW_HOURS]
   );
   return res.rows.map((r) => r.season_id);
 }
@@ -295,9 +295,9 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
   // Goles: las fichas traen goleador y minuto, así que snapshot ANTES de
   // refrescarlas y diff DESPUÉS, sobre TODAS las temporadas activas.
   const prevGoals = pushEnabled ? await snapshotGoals(seasonIds) : new Map();
-  const prevReds  = pushEnabled ? await snapshotPlayerEventCounts(seasonIds, 'red_card') : new Map();
-  const prevBlues = pushEnabled ? await snapshotPlayerEventCounts(seasonIds, 'blue_card') : new Map();
-  const prevFouls = pushEnabled ? await snapshotPlayerEventCounts(seasonIds, 'direct_foul') : new Map();
+  const prevReds  = pushEnabled ? await snapshotEventsByType(seasonIds, 'red_card') : new Map();
+  const prevBlues = pushEnabled ? await snapshotEventsByType(seasonIds, 'blue_card') : new Map();
+  const prevFouls = pushEnabled ? await snapshotEventsByType(seasonIds, 'direct_foul') : new Map();
   // Prórroga/penaltis: las fichas escriben live_period y el marcador de la tanda,
   // así que snapshot ANTES y diff DESPUÉS (igual que goles).
   const prevPhase   = pushEnabled ? await snapshotExtraPhases(seasonIds) : new Map();

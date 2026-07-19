@@ -15,14 +15,16 @@ cd /app/apps/etl
 #   flock -n "$ETL_LOCK" npx tsx src/run-pipeline.ts ...
 # Si el lock está cogido, flock -n sale sin ejecutar (lo absorbe el `|| ...`).
 ETL_LOCK=/tmp/etl-pipeline.lock
-# Si flock no está en la imagen, se corre SIN lock (mejor sin lock que sin
-# scraping). Con flock disponible, serializa las ejecuciones.
-if command -v flock >/dev/null 2>&1; then
-  LOCK="flock -n $ETL_LOCK"
-else
-  LOCK=""
-  echo "[scheduler] aviso: flock no disponible — sin lock anti-solapamiento"
+# flock es OBLIGATORIO. Antes, si faltaba, el scheduler seguía sin lock tras un
+# simple echo — silencioso en los logs y con riesgo de dos pipelines escribiendo
+# a la vez sobre las mismas filas. La imagen lo instala (deploy/Dockerfile); si
+# aun así no está, es un fallo de build y hay que enterarse ya.
+if ! command -v flock >/dev/null 2>&1; then
+  echo "[scheduler] ERROR: flock no disponible en la imagen." >&2
+  echo "[scheduler] Sin lock, dos pipelines pueden solaparse. Abortando." >&2
+  exit 1
 fi
+LOCK="flock -n $ETL_LOCK"
 
 LAST_HOUR=""
 LAST_DAY=""
