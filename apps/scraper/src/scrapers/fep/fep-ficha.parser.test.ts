@@ -129,6 +129,23 @@ describe('source_ref estable entre capturas', () => {
       expect(e.sourceRef).toMatch(/^fep_event_34259_p\d+_\d{4}_[a-z_]+_[HAx]$/);
     }
   });
+
+  it('ningún evento de un acta real cae al fallback posicional', () => {
+    // `eventSourceRef` vuelve a la posición si falta periodo o crono. En las
+    // actas reales eso no pasa nunca (105 eventos, 0 fallbacks), pero si la
+    // fuente dejara de publicar el crono degradaríamos a refs inestables EN
+    // SILENCIO: volverían las notificaciones duplicadas sin que nada fallara.
+    // Este test convierte esa degradación en un fallo visible.
+    for (const [name, idp] of [['acta-live-p1', '34259'], ['acta-live-p2', '34259'],
+                               ['acta-finalizada', '34259'], ['acta-playoff', '34277']] as const) {
+      const events = parseFicha(load(name), idp);
+      const posicionales = events.filter((e) => /_row\d+$/.test(e.sourceRef));
+      expect(posicionales, `${name}: eventos sin periodo o sin crono`).toEqual([]);
+
+      // Y la causa raíz, por si el formato de la ref cambiara algún día.
+      expect(events.every((e) => e.period != null && e.clock), `${name}`).toBe(true);
+    }
+  });
 });
 
 describe('eventSourceRef', () => {

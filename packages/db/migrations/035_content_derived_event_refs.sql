@@ -27,6 +27,20 @@
 -- Las filas sin periodo o sin crono (importaciones históricas, estrategias de
 -- parseo antiguas) se quedan como están: no se puede recomputar su clave y no
 -- participan del directo.
+--
+-- Medido en una BD con el histórico completo (1.485.085 eventos):
+--   · 369.855 reescritos (tenían periodo y crono)
+--   · 873.354 sin periodo ni crono   → importaciones del histórico
+--   · 241.085 con periodo, sin crono → anteriores a la migración 018
+--   ·     373 con crono, sin periodo
+--   · CERO filas con periodo y crono que quedaran sin reescribir.
+-- Tardó ~2 s. No hace falta trocearla por lotes.
+--
+-- Las actas reales de hoy siempre traen periodo y crono (105 de 105 eventos en
+-- los fixtures del parser), así que el directo queda cubierto al 100%. Si algún
+-- día se reprocesan actas antiguas con `--entity=refichas`, esos eventos
+-- cambiarán de ref y de id: no afecta al push (su ventana sólo mira partidos en
+-- vivo o de las últimas 6 h), pero conviene saberlo antes de lanzarlo.
 -- ============================================================
 
 -- El índice único se recrea al final. Se retira durante el UPDATE porque una
