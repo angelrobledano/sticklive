@@ -18,7 +18,9 @@
 #   bash deploy/verify-034-event-identity.sh                  # elige partido solo
 #   bash deploy/verify-034-event-identity.sh fep_match_34267  # partido concreto
 #
-# Requisitos: docker, node/npm, y el .env de dev apuntando a la BD de desarrollo.
+# Requisitos: docker, node/npm. En Windows, ejecutar con el bash de Git:
+#   & "C:\Program Files\Git\bin\bash.exe" deploy/verify-034-event-identity.sh
+#
 # NO toca producción en ningún momento: todo ocurre en el contenedor de dev.
 # =============================================================================
 set -euo pipefail
@@ -28,11 +30,13 @@ cd "$REPO_ROOT"
 
 COMPOSE="docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.dev.yml"
 PGUSER_DEV="sports_user"
-PGDB_DEV="sports_results_dev"
+PGDB_DEV=""   # se resuelve en el paso 1 (ver nota)
 WANTED_REF="${1:-}"
 
 # psql SIEMPRE dentro del contenedor: no hace falta tenerlo instalado en Windows.
 psql_dev() { $COMPOSE exec -T postgres psql -U "$PGUSER_DEV" -d "$PGDB_DEV" -qtAX "$@"; }
+psql_adm() { $COMPOSE exec -T postgres psql -U "$PGUSER_DEV" -d postgres -qtAX "$@"; }
+db_exists() { [ "$(psql_adm -c "SELECT 1 FROM pg_database WHERE datname = '$1'")" = "1" ]; }
 
 say()  { printf '\n\033[1;36m→ %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m  ✓ %s\033[0m\n' "$*"; }
@@ -44,12 +48,35 @@ fail() { printf '\033[1;31m  ✗ %s\033[0m\n' "$*"; exit 1; }
 # declara además `api`, que apunta a un apps/api/Dockerfile inexistente.
 say "1/7 Levantando Postgres de desarrollo"
 $COMPOSE up -d postgres
+
+# Esperar al SERVIDOR (sin -d: pg_isready no valida que exista la base, sólo
+# que el servidor acepta conexiones — comprobarlo con la base equivocada da un
+# falso verde y el fallo aparece dos pasos más tarde).
 for i in $(seq 1 30); do
-  if $COMPOSE exec -T postgres pg_isready -U "$PGUSER_DEV" -d "$PGDB_DEV" >/dev/null 2>&1; then break; fi
+  if $COMPOSE exec -T postgres pg_isready -U "$PGUSER_DEV" >/dev/null 2>&1; then break; fi
   sleep 2
   [ "$i" = "30" ] && fail "Postgres no arrancó en 60 s"
 done
-ok "Postgres listo"
+
+# Resolver el NOMBRE de la base. POSTGRES_DB del compose sólo se aplica en la
+# PRIMERA inicialización del volumen: si el contenedor ya existía de antes
+# (creado con el compose base), la base se llama `sports_results` y no
+# `sports_results_dev`. En vez de asumir, se mira qué hay realmente.
+if db_exists sports_results_dev; then
+  PGDB_DEV="sports_results_dev"
+elif db_exists sports_results; then
+  PGDB_DEV="sports_results"
+else
+  PGDB_DEV="sports_results_dev"
+  psql_adm -c "CREATE DATABASE $PGDB_DEV OWNER $PGUSER_DEV" >/dev/null
+fi
+ok "Postgres listo — base de dev: $PGDB_DEV"
+
+# Las herramientas de Node (migrate, run-pipeline) corren en el HOST y leen
+# DATABASE_URL. Se exporta aquí para que apunten a la MISMA base que psql:
+# Node da precedencia al entorno sobre --env-file, así que esto manda sobre .env
+# y la prueba no depende de cómo lo tengas configurado.
+export DATABASE_URL="postgresql://${PGUSER_DEV}:sports_pass@localhost:5432/${PGDB_DEV}"
 
 # ── 2. Datos ─────────────────────────────────────────────────────────────────
 # Sin partidos reales no hay nada que verificar. Si la BD está vacía, se
