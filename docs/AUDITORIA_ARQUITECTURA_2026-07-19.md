@@ -133,9 +133,22 @@ Existen: `match-window.test.ts`, `premium.test.ts`, `match.transformer.test.ts`,
 
 Objetivo realista: **60% en `packages/db` + `apps/etl/loaders` + parsers** antes de añadir la siguiente liga.
 
-### [ ] 2.6 CI que no bloquea nada relevante
+### [x] 2.6 CI que no bloquea nada relevante — **resuelto**
 
-`.github/workflows/ci.yml`: `lint` y `npm audit` con `continue-on-error: true`. No hay build de la imagen Docker (un Dockerfile roto se detecta en el deploy), ni dry-run de migraciones, ni despliegue automatizado. **Fix por fases:** endurecer lint → añadir job `docker build` → job de migraciones contra Postgres limpio → deploy por SSH en el tag.
+`lint` y `npm audit` iban con `continue-on-error: true`, no había build de la imagen ni prueba de migraciones. Ahora:
+
+- **`lint` bloquea.** Había 21 avisos en 3 ficheros: 11 en `verify-event-upsert.ts` (expresiones usadas como sentencias), 9 falsos positivos de `no-undef` en `sw.js` (faltaban los globales de service worker en la config de ESLint) y un `any` en `migrate.ts`. Arreglados los 21; el repo está a cero.
+- **Job `migrations`**: Postgres limpio, todas las migraciones desde cero, reaplicación para comprobar idempotencia y verificación de que existen los 4 índices del directo.
+- **Job `docker`**: construye `deploy/Dockerfile` y comprueba que la imagen trae `flock`, del que depende el lock del `etl-scheduler`.
+- **Protección de rama** en `main` exigiendo los tres jobs.
+
+Pendiente y consciente: **el `audit` sigue sin bloquear**. Hay 8 vulnerabilidades en dependencias de producción (4 altas) y una exige subir `node-cron` con cambio de API. Ponerlo en rojo permanente sería la forma más rápida de que se ignore. Ver el punto 2.8.
+
+### [ ] 2.8 Vulnerabilidades en dependencias de producción · **Medio**
+
+`npm audit --omit=dev` reporta 8 (4 moderadas, 4 altas), concentradas en `undici` y en la cadena `node-cron → uuid`. `npm audit fix` resuelve parte; `node-cron` necesita `--force` y salto de versión mayor, así que hay que revisar la API de los crons antes.
+
+Una vez limpio, quitar el `continue-on-error` del paso de audit en `ci.yml`.
 
 ### [ ] 2.7 Sin retención de datos
 
@@ -249,7 +262,7 @@ Orden razonable de inversión: (1) entorno de staging con la misma imagen, (2) P
 | 3 | `UNIQUE(match_id, source_ref)` + upsert de eventos | 1 | 1 día | Alto |
 | 4 | `flock` garantizado / advisory lock en Postgres | 1 | 1 h | Alto |
 | 5 | Cachear alineaciones en el hub SSE | 1 | 2 h | Medio-alto |
-| 6 | Golden files de los parsers de ficha | 2 | 2 días | **Muy alto** (seguro anti-rotura de la fuente) |
+| 6 | ~~Golden files de los parsers de ficha~~ ✅ | 2 | 2 días | **Muy alto** (seguro anti-rotura de la fuente) |
 | 7 | Compilar TS y multi-stage Docker | 2 | 1 día | Medio |
 | 8 | Servicio `migrate` en el compose de prod | 2 | 2 h | Medio |
 | 9 | `position`/`round_type` a claves canónicas | 3 | 1 día | Alto (antes de la 2ª liga) |
