@@ -88,6 +88,35 @@ export async function loadMatches(
             resolver.resolveTeam(awayTeamRef),
           ]);
 
+          // ADOPCIÓN de placeholders sintéticos: algunas fuentes (World Skate)
+          // no publican el id del partido (idp) hasta que se juega, así que el
+          // partido se guarda antes con ref sintética. Cuando aparece el idp la
+          // ref cambia y, sin esto, se insertaría un DUPLICADO dejando el
+          // fantasma programado. Adoptamos la fila existente reescribiendo su
+          // source_ref: el partido conserva su id, historial y favoritos.
+          if (!input.sourceRef.startsWith('synthetic:') && input.scheduledAt) {
+            const adopted = await db.query(
+              `UPDATE matches SET source_ref = $1, updated_at = NOW()
+               WHERE id = (
+                 SELECT id FROM matches
+                 WHERE season_id    = $2
+                   AND home_team_id = $3
+                   AND away_team_id = $4
+                   AND scheduled_at::date = $5::date
+                   AND source_ref LIKE 'synthetic:%'
+                 LIMIT 1
+               )
+               AND NOT EXISTS (SELECT 1 FROM matches WHERE source_ref = $1)`,
+              [input.sourceRef, input.seasonId, homeTeamId, awayTeamId, input.scheduledAt]
+            );
+            if ((adopted.rowCount ?? 0) > 0) {
+              log.info(
+                { item: itemLabel, sourceRef: input.sourceRef },
+                'Placeholder sintético adoptado por el partido real (sin duplicado)'
+              );
+            }
+          }
+
           // Guardia anti-duplicados: el calendario del playoff lista cada
           // eliminatoria con filas placeholder sin idp (ref sintética, hora
           // 00:00). Si ya existe un partido REAL (con idp) del mismo cruce
