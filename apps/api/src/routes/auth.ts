@@ -67,10 +67,10 @@ async function openSession(userId: string): Promise<string> {
   await db.query(
     `UPDATE users
         SET session_token = $2,
-            session_expires_at = NOW() + INTERVAL '${SESSION_TTL_DAYS} days',
+            session_expires_at = NOW() + make_interval(days => $3::int),
             updated_at = NOW()
       WHERE id = $1`,
-    [userId, hashToken(session)]
+    [userId, hashToken(session), SESSION_TTL_DAYS]
   );
   return session; // en claro, solo para el cliente
 }
@@ -90,8 +90,8 @@ authRouter.post('/magic-link', rateLimit(5, 60 * 60_000), async (c) => {
     const token = newToken();
     await db.query(
       `INSERT INTO auth_tokens (token, email, expires_at)
-       VALUES ($1, $2, NOW() + INTERVAL '${MAGIC_LINK_TTL_MIN} minutes')`,
-      [hashToken(token), clean]
+       VALUES ($1, $2, NOW() + make_interval(mins => $3::int))`,
+      [hashToken(token), clean, MAGIC_LINK_TTL_MIN]
     );
     const link = `${WEB_BASE}/login?token=${token}`;
 

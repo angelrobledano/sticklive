@@ -5,6 +5,14 @@
 # ============================================================
 FROM node:22-bookworm-slim
 
+# util-linux aporta `flock`, del que depende deploy/etl-scheduler.sh para
+# serializar el scraping. La variante -slim no lo garantiza, y sin él el
+# scheduler corría SIN lock: un scrape manual por túnel SSH podía solaparse
+# con el cron sobre las mismas filas.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends util-linux \
+ && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Dependencias primero (cache de capas)

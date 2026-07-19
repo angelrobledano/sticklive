@@ -51,6 +51,10 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
   // Estado local que empieza con los datos SSR y se actualiza en caliente via SSE
   const [liveData,   setLiveData]   = useState<MatchDetail>(initialData);
   const [sseStatus,  setSseStatus]  = useState<'idle' | 'connecting' | 'live' | 'finished' | 'error'>('idle');
+  // Contador de reconexión: al incrementarse, el efecto de SSE se vuelve a
+  // ejecutar y abre un EventSource nuevo. Lo usa el corte por duración máxima
+  // del servidor (`event: timeout`), que NO es un final de partido.
+  const [sseEpoch,   setSseEpoch]   = useState(0);
 
   const isLive = liveData.match.status === 'live';
 
@@ -83,6 +87,7 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
     setSseStatus('connecting');
     const url = `${API_URL}/matches/${liveData.match.id}/stream`;
     const es = new EventSource(url);
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
     const handleData = (raw: string) => {
       try {
@@ -105,9 +110,14 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
       es.close();
     });
 
+    // El servidor corta la conexión al alcanzar su duración máxima. NO es el
+    // final del partido: un hockey dura bastante más que esa ventana, así que
+    // hay que volver a conectar o el usuario se queda en el polling de
+    // fallback (30 s) justo en el tramo decisivo.
     es.addEventListener('timeout', () => {
-      setSseStatus('idle');
       es.close();
+      setSseStatus('connecting');
+      reconnectTimer = setTimeout(() => setSseEpoch((n) => n + 1), 1_000);
     });
 
     es.addEventListener('keepalive', () => { /* noop — mantiene la conexión */ });
@@ -118,10 +128,11 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
     };
 
     return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       es.close();
       setSseStatus('idle');
     };
-  }, [liveData.match.id, isLive]);
+  }, [liveData.match.id, isLive, sseEpoch]);
 
   // ── Polling de fallback cada 30s para partidos live sin SSE ────────────────
   // (cubre browsers que no soportan EventSource o cuando SSE falla)

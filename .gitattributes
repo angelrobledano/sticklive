@@ -10,3 +10,9 @@
 *.svg text eol=lf
 *.woff binary
 *.woff2 binary
+
+# Golden files: HTML real capturado de la fuente. Se guardan TAL CUAL, sin
+# normalizar saltos de línea, para que el parser vea exactamente los mismos
+# bytes que vio en producción. Si git los reescribiera, el test dejaría de
+# probar lo que creemos que prueba.
+apps/scraper/src/scrapers/fep/__fixtures__/*.html -text

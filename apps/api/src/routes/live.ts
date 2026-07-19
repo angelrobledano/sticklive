@@ -4,6 +4,36 @@ import { resolveCurrentWindow } from '../lib/match-window.js';
 
 export const liveRouter = new Hono();
 
+/**
+ * Micro-caché en memoria para las dos rutas más sondeadas del producto.
+ *
+ * `useLiveScores` en la web sondea /current cada 25 s con `no-store` DESDE CADA
+ * NAVEGADOR (no pasa por la caché de Next). Sin esto, 500 usuarios en la home
+ * son ~20 req/s de una consulta con 4 JOINs pegando directa a Postgres.
+ *
+ * Un TTL de segundos es invisible para el usuario (el scraper refresca cada
+ * ~45 s de todas formas) y colapsa esas 20 req/s en una sola query.
+ *
+ * Es deliberadamente un Map en memoria: hoy la API es un único proceso. Si se
+ * escala a varias réplicas, sustituir por Redis manteniendo esta firma.
+ */
+const CACHE_TTL_MS = Number(process.env['LIVE_CACHE_TTL_MS'] ?? 5_000);
+const cache = new Map<string, { body: unknown; expiresAt: number }>();
+
+async function cached<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const hit = cache.get(key);
+  if (hit && hit.expiresAt > Date.now()) return hit.body as T;
+  const body = await fn();
+  cache.set(key, { body, expiresAt: Date.now() + CACHE_TTL_MS });
+  return body;
+}
+
+// Purga periódica: las claves de /current varían con los parámetros de ventana.
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of cache) if (v.expiresAt <= now) cache.delete(k);
+}, 60_000).unref?.();
+
 interface LiveMatchRow {
   id: string;
   season_id: string;
@@ -79,6 +109,7 @@ function mapLiveRow(row: LiveMatchRow) {
  */
 liveRouter.get('/live', async (c) => {
   try {
+    const payload = await cached('live', async () => {
     const result = await db.query<LiveMatchRow>(`
       SELECT
         m.id,
@@ -115,8 +146,13 @@ liveRouter.get('/live', async (c) => {
       ORDER BY m.started_at ASC NULLS LAST
     `);
 
-    const matches = result.rows.map(mapLiveRow);
-    return c.json({ count: matches.length, matches });
+      const matches = result.rows.map(mapLiveRow);
+      return { count: matches.length, matches };
+    });
+
+    // Caddy y el navegador absorben la ráfaga; SWR evita el thundering herd.
+    c.header('Cache-Control', 'public, max-age=5, stale-while-revalidate=30');
+    return c.json(payload);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return c.json({ error: 'Database error', detail: message }, 500);
@@ -150,10 +186,19 @@ liveRouter.get('/current', async (c) => {
       params.push(win.from, win.to);
       where = `AND m.scheduled_at >= $1::timestamptz AND m.scheduled_at < ($2::timestamptz + INTERVAL '1 day')`;
     } else {
-      where = `AND m.scheduled_at >= NOW() - INTERVAL '${win.backDays} days'
-               AND m.scheduled_at <  NOW() + INTERVAL '${win.fwdDays} days'`;
+      // Parametrizado con make_interval en vez de interpolar en la plantilla:
+      // los días vienen de ?days= (saneado en resolveCurrentWindow, pero no
+      // queremos que la seguridad dependa sólo de ese saneado).
+      params.push(win.backDays, win.fwdDays);
+      where = `AND m.scheduled_at >= NOW() - make_interval(days => $1::int)
+               AND m.scheduled_at <  NOW() + make_interval(days => $2::int)`;
     }
 
+    const cacheKey = win.kind === 'range'
+      ? `current:range:${win.from}:${win.to}`
+      : `current:days:${win.backDays}:${win.fwdDays}`;
+
+    const payload = await cached(cacheKey, async () => {
     const result = await db.query<LiveMatchRow>(`
       SELECT
         m.id, m.season_id, m.round_id,
@@ -175,8 +220,12 @@ liveRouter.get('/current', async (c) => {
       ORDER BY m.scheduled_at ASC NULLS LAST
     `, params);
 
-    const matches = result.rows.map(mapLiveRow);
-    return c.json({ count: matches.length, matches });
+      const matches = result.rows.map(mapLiveRow);
+      return { count: matches.length, matches };
+    });
+
+    c.header('Cache-Control', 'public, max-age=5, stale-while-revalidate=30');
+    return c.json(payload);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return c.json({ error: 'Database error', detail: message }, 500);

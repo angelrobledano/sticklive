@@ -25,7 +25,8 @@ Plataforma de resultados deportivos en tiempo real, enfocada inicialmente en hoc
 
 ```bash
 # 1. Levantar PostgreSQL
-docker compose -f infra/docker/docker-compose.dev.yml up -d
+docker compose -f infra/docker/docker-compose.yml \
+               -f infra/docker/docker-compose.dev.yml up -d postgres
 
 # 2. Instalar dependencias
 npm install

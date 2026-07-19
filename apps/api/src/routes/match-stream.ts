@@ -24,8 +24,17 @@ export const matchStreamRouter = new Hono();
 // ─── Configuración ────────────────────────────────────────────────────────────
 const POLL_INTERVAL_MS       = 15_000;
 const KEEPALIVE_INTERVAL_MS   = 25_000;
-const MAX_STREAM_DURATION_MS  = 30 * 60 * 1_000;
+// Duración máxima de UNA conexión SSE. Es una válvula de seguridad contra
+// conexiones zombi, no un límite de producto: un partido de hockey patines
+// dura ~70-90 min reales (2×25 + descanso + posible prórroga y penaltis).
+// Con 30 min, todo el mundo acababa en el polling de fallback justo en el
+// tramo decisivo. El cliente además reconecta al recibir `event: timeout`.
+const MAX_STREAM_DURATION_MS = Number(process.env['SSE_MAX_DURATION_MS'] ?? 2 * 60 * 60 * 1_000);
 const MAX_CONNECTIONS = Number(process.env['SSE_MAX_CONNECTIONS'] ?? 1000);
+// Las alineaciones no cambian durante el partido salvo goles/asistencias (que
+// ya llegan por eventos). Recalcular ese JOIN con `players` cada 15 s por
+// partido en vivo es el grueso del coste del hub, así que se cachea.
+const LINEUPS_TTL_MS = Number(process.env['SSE_LINEUPS_TTL_MS'] ?? 5 * 60 * 1_000);
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -101,29 +110,7 @@ async function fetchMatchSnapshot(matchId: string) {
 
   // Alineaciones — paridad con el REST (/matches/:id) para que el directo no
   // las pierda al reemplazar el cliente sus datos con el snapshot del stream.
-  const lineupsResult = await db.query<{
-    is_home: boolean; jersey_number: number | null; player_name: string;
-    is_goalkeeper: boolean; is_starter: boolean; is_captain: boolean;
-    goals: number; assists: number; player_id: string | null; photo_url: string | null;
-  }>(`
-    SELECT ml.is_home, ml.jersey_number, ml.player_name, ml.player_id,
-           ml.is_goalkeeper, ml.is_starter, ml.is_captain, ml.goals, ml.assists,
-           p.photo_url
-    FROM match_lineups ml
-    LEFT JOIN players p ON p.id = ml.player_id
-    WHERE ml.match_id = $1
-      AND ml.role IS NULL
-    ORDER BY ml.is_home DESC, ml.is_starter DESC, ml.jersey_number ASC NULLS LAST
-  `, [matchId]);
-  const toLineup = (r: typeof lineupsResult.rows[number]) => ({
-    jerseyNumber: r.jersey_number, playerName: r.player_name,
-    isGoalkeeper: r.is_goalkeeper, isStarter: r.is_starter, isCaptain: r.is_captain,
-    goals: r.goals, assists: r.assists, playerId: r.player_id, photoUrl: r.photo_url,
-  });
-  const lineups = {
-    home: lineupsResult.rows.filter((r) => r.is_home).map(toLineup),
-    away: lineupsResult.rows.filter((r) => !r.is_home).map(toLineup),
-  };
+  const lineups = await fetchLineups(matchId);
 
   return {
     stats,
@@ -146,6 +133,63 @@ async function fetchMatchSnapshot(matchId: string) {
     lineups,
     updatedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Alineaciones del partido, cacheadas por `LINEUPS_TTL_MS`.
+ *
+ * El hub sondea cada 15 s, pero las alineaciones sólo cambian cuando el acta
+ * publica goles/asistencias — información que el cliente ya recibe por
+ * `events`. Sin caché, este JOIN con `players` se repetía por partido en vivo
+ * y por tick, dominando el coste del directo en BD.
+ */
+interface LineupEntry {
+  jerseyNumber: number | null;
+  playerName: string;
+  isGoalkeeper: boolean;
+  isStarter: boolean;
+  isCaptain: boolean;
+  goals: number;
+  assists: number;
+  playerId: string | null;
+  photoUrl: string | null;
+}
+interface LineupsPayload {
+  home: LineupEntry[];
+  away: LineupEntry[];
+}
+const lineupsCache = new Map<string, { value: LineupsPayload; expiresAt: number }>();
+
+async function fetchLineups(matchId: string): Promise<LineupsPayload> {
+  const cached = lineupsCache.get(matchId);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const lineupsResult = await db.query<{
+    is_home: boolean; jersey_number: number | null; player_name: string;
+    is_goalkeeper: boolean; is_starter: boolean; is_captain: boolean;
+    goals: number; assists: number; player_id: string | null; photo_url: string | null;
+  }>(`
+    SELECT ml.is_home, ml.jersey_number, ml.player_name, ml.player_id,
+           ml.is_goalkeeper, ml.is_starter, ml.is_captain, ml.goals, ml.assists,
+           p.photo_url
+    FROM match_lineups ml
+    LEFT JOIN players p ON p.id = ml.player_id
+    WHERE ml.match_id = $1
+      AND ml.role IS NULL
+    ORDER BY ml.is_home DESC, ml.is_starter DESC, ml.jersey_number ASC NULLS LAST
+  `, [matchId]);
+  const toLineup = (r: typeof lineupsResult.rows[number]) => ({
+    jerseyNumber: r.jersey_number, playerName: r.player_name,
+    isGoalkeeper: r.is_goalkeeper, isStarter: r.is_starter, isCaptain: r.is_captain,
+    goals: r.goals, assists: r.assists, playerId: r.player_id, photoUrl: r.photo_url,
+  });
+  const lineups: LineupsPayload = {
+    home: lineupsResult.rows.filter((r) => r.is_home).map(toLineup),
+    away: lineupsResult.rows.filter((r) => !r.is_home).map(toLineup),
+  };
+
+  lineupsCache.set(matchId, { value: lineups, expiresAt: Date.now() + LINEUPS_TTL_MS });
+  return lineups;
 }
 
 // ─── Hub: un poller por partido, fan-out a N suscriptores ───────────────────────
@@ -176,6 +220,7 @@ function stopHub(matchId: string) {
   if (!hub) return;
   if (hub.timer) clearInterval(hub.timer);
   hubs.delete(matchId);
+  lineupsCache.delete(matchId); // no acumular alineaciones de partidos cerrados
 }
 
 async function pollHub(matchId: string) {
