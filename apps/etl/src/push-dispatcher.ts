@@ -105,7 +105,17 @@ export async function snapshotRounds(seasonId: string): Promise<Map<string, Roun
 // ── Goles por jugador ───────────────────────────────────────────────────────────
 
 export interface GoalSnap {
-  count: number;
+  /**
+   * UUID del evento en match_events. Es la CLAVE del diff.
+   *
+   * Antes esto se diffeaba por CONTEO agregado por (partido, jugador), porque
+   * la ficha reescribía los eventos con DELETE + INSERT y los ids cambiaban en
+   * cada ciclo. Ese enfoque perdía notificaciones: si la fuente corregía el
+   * acta dentro del mismo ciclo (quita un evento y añade otro), el conteo no
+   * variaba y no se emitía nada. Desde la migración 034 los ids son estables
+   * (upsert por source_ref), así que diffeamos por identidad: exacto.
+   */
+  eventId: string;
   matchId: string;
   playerId: string | null;
   playerName: string;
@@ -118,95 +128,43 @@ export interface GoalSnap {
   awayShort: string;
   homeScore: number;
   awayScore: number;
-  minute: number | null;         // minuto transcurrido del último gol del jugador
+  minute: number | null;         // minuto transcurrido DE ESTE evento (ya no un MAX agregado)
 }
 
 /**
- * Conteo de goles por (partido, jugador) sobre TODAS las temporadas activas. Se
- * compara antes/después de las fichas para detectar goles nuevos (los eventos se
- * reemplazan en cada scrape, así que diffeamos por conteo). Incluye el equipo del
- * goleador, la competición y el minuto para enriquecer la notificación.
+ * Snapshot de eventos INDIVIDUALES (uno por fila de match_events), indexados por
+ * su UUID, sobre todas las temporadas activas.
+ *
+ * Motor común de `snapshotGoals` y `snapshotEventsByType`. Devuelve una fila por
+ * evento — sin GROUP BY — porque el diff es ahora por identidad, no por conteo.
+ * Como efecto secundario, `minute` es el minuto REAL del evento y no un MAX
+ * agregado que podía atribuir el minuto equivocado a la notificación.
+ *
+ * Ventana: partidos en juego o de las últimas 6 h (igual que antes).
  */
-export async function snapshotGoals(seasonIds: string[]): Promise<Map<string, GoalSnap>> {
-  if (seasonIds.length === 0) return new Map();
-  const res = await db.query<{
-    match_id: string; player_id: string; player_name: string;
-    scorer_team_id: string | null; competition_id: string | null;
-    home_team_id: string | null; away_team_id: string | null;
-    home_short: string | null; away_short: string | null;
-    home_score: number | null; away_score: number | null;
-    minute: number | null; goals: string;
-  }>(`
-    SELECT e.match_id, e.player_id, e.team_id AS scorer_team_id,
-           comp.id AS competition_id,
-           m.home_team_id, m.away_team_id,
-           TRIM(COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'')) AS player_name,
-           ht.short_name AS home_short, at.short_name AS away_short,
-           m.home_score, m.away_score,
-           MAX(e.minute) AS minute,
-           COUNT(*) AS goals
-    FROM match_events e
-    JOIN matches m ON m.id = e.match_id
-    JOIN seasons s ON s.id = m.season_id
-    JOIN competitions comp ON comp.id = s.competition_id
-    LEFT JOIN players p ON p.id = e.player_id
-    LEFT JOIN teams ht ON ht.id = m.home_team_id
-    LEFT JOIN teams at ON at.id = m.away_team_id
-    WHERE m.season_id = ANY($1)
-      AND e.event_type IN ('goal', 'penalty')
-      AND e.player_id IS NOT NULL
-      AND (m.status = 'live' OR m.scheduled_at > NOW() - INTERVAL '6 hours')
-    GROUP BY e.match_id, e.player_id, e.team_id, comp.id, m.home_team_id, m.away_team_id,
-             p.first_name, p.last_name,
-             ht.short_name, at.short_name, m.home_score, m.away_score
-  `, [seasonIds]);
-  const map = new Map<string, GoalSnap>();
-  for (const r of res.rows) {
-    map.set(`${r.match_id}:${r.player_id}`, {
-      count: Number(r.goals),
-      matchId: r.match_id,
-      playerId: r.player_id,
-      playerName: r.player_name || 'Tu jugador',
-      scorerTeamId: r.scorer_team_id,
-      competitionId: r.competition_id,
-      homeTeamId: r.home_team_id,
-      awayTeamId: r.away_team_id,
-      homeShort: r.home_short ?? 'Local',
-      awayShort: r.away_short ?? 'Visitante',
-      homeScore: r.home_score ?? 0,
-      awayScore: r.away_score ?? 0,
-      minute: r.minute != null ? Number(r.minute) : null,
-    });
-  }
-  return map;
-}
-
-/**
- * Conteo de eventos de un tipo dado por (partido, jugador, equipo), multi-temporada.
- * Sirve para tarjeta roja, tarjeta azul y falta directa. A diferencia de los goles,
- * NO exige jugador (la falta directa puede venir sin lanzador): se segmenta entonces
- * por equipo/competición. La clave incluye equipo para distinguir eventos sin jugador.
- */
-export async function snapshotPlayerEventCounts(
-  seasonIds: string[], eventType: 'red_card' | 'blue_card' | 'direct_foul',
+async function snapshotEvents(
+  seasonIds: string[],
+  eventTypes: string[],
+  opts: { requirePlayer?: boolean; fallbackName?: string } = {},
 ): Promise<Map<string, GoalSnap>> {
   if (seasonIds.length === 0) return new Map();
+
   const res = await db.query<{
+    event_id: string;
     match_id: string; player_id: string | null; player_name: string;
     actor_team_id: string | null; actor_team_short: string | null; competition_id: string | null;
     home_team_id: string | null; away_team_id: string | null;
     home_short: string | null; away_short: string | null;
     home_score: number | null; away_score: number | null;
-    minute: number | null; cnt: string;
+    minute: number | null;
   }>(`
-    SELECT e.match_id, e.player_id, e.team_id AS actor_team_id,
+    SELECT e.id AS event_id,
+           e.match_id, e.player_id, e.team_id AS actor_team_id, e.minute,
            st.short_name AS actor_team_short, comp.id AS competition_id,
            m.home_team_id, m.away_team_id,
            TRIM(COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'')) AS player_name,
            ht.short_name AS home_short, at.short_name AS away_short,
-           m.home_score, m.away_score,
-           MAX(e.minute) AS minute,
-           COUNT(*) AS cnt
+           m.home_score, m.away_score
     FROM match_events e
     JOIN matches m ON m.id = e.match_id
     JOIN seasons s ON s.id = m.season_id
@@ -216,19 +174,18 @@ export async function snapshotPlayerEventCounts(
     LEFT JOIN teams ht ON ht.id = m.home_team_id
     LEFT JOIN teams at ON at.id = m.away_team_id
     WHERE m.season_id = ANY($1)
-      AND e.event_type = $2
+      AND e.event_type = ANY($2)
+      AND ($3::boolean = false OR e.player_id IS NOT NULL)
       AND (m.status = 'live' OR m.scheduled_at > NOW() - INTERVAL '6 hours')
-    GROUP BY e.match_id, e.player_id, e.team_id, st.short_name, comp.id, m.home_team_id, m.away_team_id,
-             p.first_name, p.last_name,
-             ht.short_name, at.short_name, m.home_score, m.away_score
-  `, [seasonIds, eventType]);
+  `, [seasonIds, eventTypes, opts.requirePlayer ?? false]);
+
   const map = new Map<string, GoalSnap>();
   for (const r of res.rows) {
-    map.set(`${r.match_id}:${r.player_id ?? 'np'}:${r.actor_team_id ?? 'nt'}`, {
-      count: Number(r.cnt),
+    map.set(r.event_id, {
+      eventId: r.event_id,
       matchId: r.match_id,
       playerId: r.player_id,
-      playerName: r.player_name || 'Jugador',
+      playerName: r.player_name || (opts.fallbackName ?? 'Jugador'),
       scorerTeamId: r.actor_team_id,
       scorerTeamShort: r.actor_team_short,
       competitionId: r.competition_id,
@@ -242,6 +199,29 @@ export async function snapshotPlayerEventCounts(
     });
   }
   return map;
+}
+
+/**
+ * Goles (incluye los de penalti) con goleador identificado, indexados por id de
+ * evento. Se compara antes/después de refrescar las fichas para detectar los
+ * goles NUEVOS.
+ */
+export async function snapshotGoals(seasonIds: string[]): Promise<Map<string, GoalSnap>> {
+  return snapshotEvents(seasonIds, ['goal', 'penalty'], {
+    requirePlayer: true,
+    fallbackName: 'Tu jugador',
+  });
+}
+
+/**
+ * Eventos de un tipo dado (roja, azul, falta directa), indexados por id de
+ * evento. A diferencia de los goles NO exige jugador: la falta directa puede
+ * venir sin lanzador y entonces se segmenta por equipo/competición.
+ */
+export async function snapshotEventsByType(
+  seasonIds: string[], eventType: 'red_card' | 'blue_card' | 'direct_foul',
+): Promise<Map<string, GoalSnap>> {
+  return snapshotEvents(seasonIds, [eventType]);
 }
 
 interface PushPayload {
@@ -482,12 +462,12 @@ export async function diffGoals(
 ): Promise<void> {
   if (!pushEnabled) return;
 
-  const cur = await snapshotGoals(seasonIds);
-  const fresh: GoalSnap[] = [];
-  for (const [key, now] of cur) {
-    const delta = now.count - (prevGoals.get(key)?.count ?? 0);
-    if (delta > 0) fresh.push(now);
-  }
+  // Detección por evento, emisión por goleador: si un jugador marca dos veces
+  // dentro del mismo ciclo (~45 s), sale UNA notificación con el gol más
+  // avanzado, no dos. Conserva la semántica del diff por conteo anterior — con
+  // el mismo `tag` el dispositivo sólo mostraría la última de todas formas,
+  // pero evita el doble aviso.
+  const fresh = collapsePerScorer(freshEvents(prevGoals, await snapshotGoals(seasonIds)));
   if (fresh.length === 0) return;
 
   const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
@@ -541,11 +521,7 @@ export async function diffCardOrFoul(
 ): Promise<void> {
   if (!pushEnabled) return;
 
-  const cur = await snapshotPlayerEventCounts(seasonIds, eventType);
-  const fresh: GoalSnap[] = [];
-  for (const [key, now] of cur) {
-    if (now.count - (prev.get(key)?.count ?? 0) > 0) fresh.push(now);
-  }
+  const fresh = freshEvents(prev, await snapshotEventsByType(seasonIds, eventType));
   if (fresh.length === 0) return;
 
   const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
@@ -586,13 +562,34 @@ export async function diffCardOrFoul(
   log.info({ eventType, count: fresh.length, sent, pruned }, '🟦 Push de tarjeta/falta');
 }
 
-/** Deltas nuevos (el conteo subió) entre dos snapshots de eventos. */
-function freshDeltas(prev: Map<string, GoalSnap>, cur: Map<string, GoalSnap>): GoalSnap[] {
+/**
+ * Eventos NUEVOS entre dos snapshots: los que aparecen ahora y no estaban antes,
+ * comparados por id de evento.
+ *
+ * Sustituye al viejo `freshDeltas`, que comparaba conteos agregados. Con ids
+ * estables (migración 034) esto detecta también el caso que antes se escapaba:
+ * la fuente corrige el acta dentro del mismo ciclo sustituyendo un evento por
+ * otro — el conteo no cambiaba y la notificación se perdía.
+ *
+ * Se ordena por minuto para que, si un ciclo trae varios eventos de golpe, las
+ * notificaciones salgan en el orden en que ocurrieron.
+ */
+function freshEvents(prev: Map<string, GoalSnap>, cur: Map<string, GoalSnap>): GoalSnap[] {
   const out: GoalSnap[] = [];
-  for (const [key, now] of cur) {
-    if (now.count - (prev.get(key)?.count ?? 0) > 0) out.push(now);
+  for (const [eventId, now] of cur) {
+    if (!prev.has(eventId)) out.push(now);
   }
-  return out;
+  return out.sort((a, b) => (a.minute ?? 0) - (b.minute ?? 0));
+}
+
+/**
+ * Un evento por (partido, jugador): se queda con el de minuto más avanzado.
+ * La entrada debe venir ordenada por minuto (lo hace `freshEvents`).
+ */
+function collapsePerScorer(events: GoalSnap[]): GoalSnap[] {
+  const byScorer = new Map<string, GoalSnap>();
+  for (const ev of events) byScorer.set(`${ev.matchId}:${ev.playerId ?? 'np'}`, ev);
+  return [...byScorer.values()];
 }
 
 /**
@@ -609,8 +606,8 @@ export async function diffBlueAndFouls(
 ): Promise<void> {
   if (!pushEnabled) return;
 
-  const freshBlue = freshDeltas(prevBlue, await snapshotPlayerEventCounts(seasonIds, 'blue_card'));
-  const freshFoul = freshDeltas(prevFoul, await snapshotPlayerEventCounts(seasonIds, 'direct_foul'));
+  const freshBlue = freshEvents(prevBlue, await snapshotEventsByType(seasonIds, 'blue_card'));
+  const freshFoul = freshEvents(prevFoul, await snapshotEventsByType(seasonIds, 'direct_foul'));
   if (freshBlue.length === 0 && freshFoul.length === 0) return;
 
   type Emission = { snap: GoalSnap; gate: PushEventType; title: string; type: string };

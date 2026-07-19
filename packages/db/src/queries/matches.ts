@@ -214,27 +214,49 @@ export interface UpsertMatchEventInput {
 }
 
 /**
- * Reemplaza todos los eventos de un partido en una sola transaccion.
- * Estrategia DELETE + INSERT para garantizar idempotencia: cada vez que
- * corre el scraper de ficha devuelve el listado completo y este metodo
- * lo vuelca limpio.
+ * Sincroniza los eventos de un partido con el listado completo que devuelve la
+ * ficha, MANTENIENDO ESTABLE el `id` de cada evento entre ciclos de scraping.
+ *
+ * Antes esto era un DELETE + INSERT. Funcionaba, pero como `id` es
+ * `gen_random_uuid()`, cada gol cambiaba de UUID cada ~45 s. Efectos:
+ *   · el timeline del cliente se re-renderizaba entero en directo (cambia el
+ *     `key` de React de cada fila);
+ *   · el push-dispatcher no podía diffear por id y tenía que hacerlo por
+ *     CONTEO, que pierde la notificación si la fuente corrige un evento
+ *     (quita uno y añade otro) dentro del mismo ciclo;
+ *   · era imposible referenciar un evento de forma estable (deep-link,
+ *     correcciones manuales).
+ *
+ * Ahora se hace upsert contra `uq_match_events_match_source_ref`
+ * (migración 034) y se borran sólo los que ya no vienen en la ficha.
+ *
+ * Sigue siendo idempotente: la ficha manda siempre el listado completo.
+ * Debe llamarse dentro de una transacción para que un lector concurrente
+ * (el hub SSE) no vea un estado intermedio.
  */
 export async function replaceMatchEvents(
   matchId: string,
   events: UpsertMatchEventInput[],
   client: pg.PoolClient | typeof db = db
 ): Promise<void> {
-  // Borrar eventos anteriores del partido
-  await client.query('DELETE FROM match_events WHERE match_id = $1', [matchId]);
+  if (events.length === 0) {
+    await client.query('DELETE FROM match_events WHERE match_id = $1', [matchId]);
+    return;
+  }
 
-  if (events.length === 0) return;
+  // Postgres no permite que un ON CONFLICT DO UPDATE toque la misma fila dos
+  // veces en la misma sentencia. Los sourceRef de la ficha son únicos por
+  // construcción (fep_event_{idp}_{fila}), pero deduplicamos por si acaso:
+  // preferimos quedarnos con la última aparición.
+  const bySourceRef = new Map<string, UpsertMatchEventInput>();
+  for (const ev of events) bySourceRef.set(ev.sourceRef, ev);
+  const rows = [...bySourceRef.values()];
 
-  // Insertar todos los eventos en batch
   const values: unknown[] = [];
   const placeholders: string[] = [];
   let idx = 1;
 
-  for (const ev of events) {
+  for (const ev of rows) {
     placeholders.push(
       `($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`
     );
@@ -256,8 +278,27 @@ export async function replaceMatchEvents(
   await client.query(
     `INSERT INTO match_events
        (match_id, team_id, player_id, event_type, minute, period, clock, detail, source_id, source_ref, scraped_at)
-     VALUES ${placeholders.join(', ')}`,
+     VALUES ${placeholders.join(', ')}
+     ON CONFLICT (match_id, source_ref) WHERE source_ref IS NOT NULL
+     DO UPDATE SET
+       team_id    = EXCLUDED.team_id,
+       player_id  = EXCLUDED.player_id,
+       event_type = EXCLUDED.event_type,
+       minute     = EXCLUDED.minute,
+       period     = EXCLUDED.period,
+       clock      = EXCLUDED.clock,
+       detail     = EXCLUDED.detail,
+       source_id  = EXCLUDED.source_id,
+       scraped_at = EXCLUDED.scraped_at`,
     values
+  );
+
+  // Eventos que la ficha ya no lista (correcciones del acta): fuera.
+  await client.query(
+    `DELETE FROM match_events
+     WHERE match_id = $1
+       AND (source_ref IS NULL OR source_ref <> ALL($2::text[]))`,
+    [matchId, rows.map((e) => e.sourceRef)]
   );
 }
 
