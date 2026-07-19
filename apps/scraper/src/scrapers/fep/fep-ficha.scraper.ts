@@ -13,8 +13,8 @@
  * El IDP (ID del partido FEP) se extrae del source_ref del partido en DB.
  * Los team_ids y player_ids se resuelven por nombre/ref contra la DB.
  */
-import * as cheerio from 'cheerio';
-import type { Element } from 'domhandler';
+// cheerio y domhandler ya no hacen falta aquí: el HTML lo interpreta
+// fep-ficha.parser.ts. Este módulo sólo hace E/S (red y base de datos).
 import { BaseScraper } from '../../core/base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
