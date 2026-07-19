@@ -26,7 +26,6 @@ const log = createLogger({ service: 'scraper' });
 
 const IDC_OK_LIGA = '3150';
 const IDC_PLAYOFF = '3481';
-const IDC_WSE_U17 = '320'; // Europeo Sub-17 M 2025/26 (World Skate Europe)
 
 // ─── Lookup de season IDs desde DB ───────────────────────────────────────────
 
@@ -104,36 +103,50 @@ interface WorldskateCtx {
   seasonId: string;
   sourceId: string;
   timezone: string | null;
+  idc: string;
+  name: string;
 }
 
-/** Resuelve temporada actual + fuente + timezone del Europeo desde DB. */
-async function resolveWorldskate(): Promise<WorldskateCtx | null> {
+/**
+ * Resuelve TODAS las competiciones worldskate con temporada actual (data-driven):
+ * masculino (idc 320), femenino (321) y futuras. El idc sale del source_ref
+ * de la competición ('wse_competition_<idc>'). Añadir una nueva = solo seed.
+ */
+async function resolveWorldskate(): Promise<WorldskateCtx[]> {
   try {
-    const res = await db.query<{ season_id: string; timezone: string | null; source_id: string }>(`
-      SELECT s.id AS season_id, s.timezone, ds.id AS source_id
+    const res = await db.query<{
+      season_id: string; timezone: string | null; source_id: string;
+      comp_ref: string; comp_name: string;
+    }>(`
+      SELECT s.id AS season_id, s.timezone, ds.id AS source_id,
+             c.source_ref AS comp_ref, c.name AS comp_name
       FROM seasons s
       JOIN competitions c   ON c.id = s.competition_id
       JOIN data_sources ds  ON ds.scraper_key = 'worldskate_hockey'
-      WHERE c.source_ref = 'wse_competition_320'
+      WHERE c.source_ref LIKE 'wse_competition_%'
         AND s.is_current = TRUE
-      LIMIT 1
     `);
-    const row = res.rows[0];
-    if (!row) { log.warn('World Skate: temporada actual no encontrada (¿seed ejecutado?)'); return null; }
-    return { seasonId: row.season_id, sourceId: row.source_id, timezone: row.timezone };
+    if (res.rows.length === 0) { log.warn('World Skate: sin competiciones actuales (¿seed ejecutado?)'); }
+    return res.rows.map((row) => ({
+      seasonId: row.season_id,
+      sourceId: row.source_id,
+      timezone: row.timezone,
+      idc: row.comp_ref.replace('wse_competition_', ''),
+      name: row.comp_name,
+    }));
   } catch (err) {
-    log.error({ err }, 'Error resolviendo contexto World Skate');
-    return null;
+    log.error({ err }, 'Error resolviendo competiciones World Skate');
+    return [];
   }
 }
 
 async function runWorldskate(ctx: WorldskateCtx) {
   const scraper = new WorldskateScraper({
-    idc: IDC_WSE_U17,
+    idc: ctx.idc,
     seasonId: ctx.seasonId,
     sourceId: ctx.sourceId,
     timezone: ctx.timezone ?? undefined,
-    competitionName: 'Europeo Sub-17 M',
+    competitionName: ctx.name,
   });
   const out = await scraper.run();
 
@@ -141,10 +154,17 @@ async function runWorldskate(ctx: WorldskateCtx) {
   const mEtl = out.matches.success ? await pipeline.runMatches(out.matches) : { upserted: 0 };
   const sEtl = out.standings.success ? await pipeline.runStandings(out.standings) : { upserted: 0 };
   log.info(
-    { matchesFound: out.matches.data.length, matchesUpserted: mEtl.upserted,
+    { competition: ctx.name, idc: ctx.idc,
+      matchesFound: out.matches.data.length, matchesUpserted: mEtl.upserted,
       standingsFound: out.standings.data.length, standingsUpserted: sEtl.upserted },
-    'World Skate ETL: Europeo Sub-17'
+    'World Skate ETL'
   );
+}
+
+/** Corre todas las competiciones worldskate activas. */
+async function runAllWorldskate() {
+  const comps = await resolveWorldskate();
+  for (const ctx of comps) await runWorldskate(ctx);
 }
 
 // ─── Definición de crons ──────────────────────────────────────────────────────
@@ -209,11 +229,9 @@ function buildCrons(seasons: SeasonLookup): CronDef[] {
 // ─── --run-once ───────────────────────────────────────────────────────────────
 
 async function runOnce(key: string, seasons: SeasonLookup) {
-  // World Skate necesita su propio contexto (temporada/fuente/tz) resuelto en DB.
-  if (key === 'worldskate_u17') {
-    const ctx = await resolveWorldskate();
-    if (!ctx) { log.error('World Skate: contexto no resuelto — ¿seed ejecutado?'); process.exit(1); }
-    await runWorldskate(ctx);
+  // World Skate: corre todas las competiciones activas (masc + fem + futuras).
+  if (key === 'worldskate_u17' || key === 'worldskate') {
+    await runAllWorldskate();
     await Promise.all([closeBrowser(), closeDb(), shutdownAnalytics()]);
     return;
   }
@@ -240,13 +258,14 @@ async function runOnce(key: string, seasons: SeasonLookup) {
 async function startScheduled(seasons: SeasonLookup) {
   const crons = buildCrons(seasons);
 
-  // World Skate Europe — solo si hay temporada actual sembrada (evita ruido offseason).
+  // World Skate Europe — solo si hay competiciones actuales sembradas (evita
+  // ruido offseason). Un único cron corre todas (masc + fem + futuras).
   const wse = await resolveWorldskate();
-  if (wse) {
+  if (wse.length > 0) {
     crons.push({
-      key: 'worldskate_u17',
+      key: 'worldskate',
       cron: process.env['CRON_WORLDSKATE'] ?? '*/5 * * * *',
-      run: () => runWorldskate(wse),
+      run: runAllWorldskate,
     });
   }
 

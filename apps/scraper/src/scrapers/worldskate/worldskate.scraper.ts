@@ -349,8 +349,11 @@ interface RoundMeta { name: string; number: number; type: RoundType; }
 function classifyPhase(rawTitle: string): Phase {
   const title = rawTitle.replace(/\s+/g, ' ').trim();
   const u = title.toUpperCase();
-  if (u.includes('KNOCKOUT')) return { kind: 'knockout', title };
-  if (/\d+\s*(TO|A)\s*\d+/.test(u)) return { kind: 'placement', title }; // "5 TO 7"
+  // Eliminatoria por el título: masculino usa "KNOCKOUT STAGE", femenino
+  // "FINAL STAGE" (ambas contienen la fase por el título: cuartos/semis/final/
+  // small final y, en el femenino de 6, el 5º-6º).
+  if (u.includes('KNOCKOUT') || u.includes('FINAL STAGE')) return { kind: 'knockout', title };
+  if (/\d+\s*(TO|A)\s*\d+/.test(u)) return { kind: 'placement', title }; // fase de consolación "5 TO 7"
   return { kind: 'group', title };
 }
 
@@ -365,11 +368,15 @@ function computeRound(phase: Phase, theadText: string): RoundMeta {
   const name = normalizeRoundName(theadText);
 
   if (phase.kind === 'knockout') {
+    // Colocación dentro de la fase final ("Puestos 5º-6º"): número por el
+    // primer puesto (75, 77…) para que ordene tras las medallas.
+    const placement = name.match(/Puestos (\d+)/);
     const number =
       name === 'Cuartos de final' ? 90 :
       name === 'Semifinal'        ? 95 :
       name === '3º y 4º puesto'   ? 98 :
-      name === 'Final'            ? 99 : 89;
+      name === 'Final'            ? 99 :
+      placement                   ? 70 + parseInt(placement[1]!, 10) : 89;
     return { name, number, type: 'playoff' };
   }
 
@@ -402,5 +409,8 @@ function normalizeRoundName(raw: string): string {
   if (u.includes('QUARTER')) return 'Cuartos de final';
   if (u.includes('SEMIS') || u.includes('SEMI')) return 'Semifinal';
   if (u.includes('FINAL')) return 'Final';
+  // Partido de colocación dentro de la fase final: "5 TO 6" → "Puestos 5º-6º".
+  const pl = u.match(/^(\d+)\s*(?:TO|A)\s*(\d+)$/);
+  if (pl) return `Puestos ${pl[1]}º-${pl[2]}º`;
   return clean;
 }

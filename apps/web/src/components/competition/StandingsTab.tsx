@@ -52,7 +52,9 @@ export function StandingsTab({ standings }: { standings: SeasonStandingRow[] }) 
     );
   }
 
-  return <StandingsTable rows={groups[0]?.[1] ?? standings} showZones />;
+  // Zonas de playoff/descenso solo en ligas grandes (OK Liga). En un grupo
+  // único pequeño (Europeo femenino: 6 selecciones) no aplican.
+  return <StandingsTable rows={standings} showZones={standings.length > PLAYOFF_SPOTS} />;
 }
 
 // ── Tabla individual (un grupo o la liga completa) ────────────────────────────
