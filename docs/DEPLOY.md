@@ -27,6 +27,46 @@ Sin `--env-file .env.prod` fallan cosas como `$DC logs` o cualquier `exec`.
 
 ---
 
+## ⚠️ Si la release trae migraciones de las que depende el CÓDIGO
+
+El despliegue estándar de abajo **construye primero y migra después**. Eso vale
+cuando la migración sólo añade cosas que el código nuevo aún no exige. Pero si
+el código nuevo *necesita* el esquema nuevo para funcionar, ese orden deja una
+ventana en la que el `etl` corre contra una base que aún no está preparada, y
+en jornada eso es una caída del directo.
+
+Caso real: la migración 034 crea el índice único contra el que
+`replaceMatchEvents` hace `ON CONFLICT`. Con el orden estándar, el `cron-live`
+arrancaba, llamaba a la ficha y reventaba hasta que se ejecutaba el paso 4.
+
+Secuencia correcta — se para el ETL durante la ventana:
+
+```bash
+cd /opt/sticklive
+./deploy/backup-db.sh          # si la migración reescribe datos, respaldo antes
+
+git checkout -- deploy/backup-db.sh deploy/restore-sports-dump.sh
+git pull
+DC="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+
+$DC stop etl                                       # nadie escribe durante la ventana
+$DC up -d --build api web caddy                    # código nuevo, sin ETL
+$DC exec api npx tsx packages/db/src/migrate.ts    # esquema al día
+$DC up -d --build etl                              # ahora sí
+
+$DC ps && $DC logs -f --tail=100 etl
+```
+
+Cómo saber si aplica: si el PR incluye migración **y** cambios en `apps/etl`,
+`apps/scraper` o `packages/db`, usa esta secuencia. Si sólo toca `apps/web`,
+el despliegue estándar sirve.
+
+> Esto es un parche de procedimiento. El arreglo de fondo es un servicio
+> `migrate` en el propio compose que corra antes que `api` y `etl` (punto 2.3
+> de la auditoría de arquitectura).
+
+---
+
 ## Despliegue estándar
 
 ```bash
@@ -109,6 +149,9 @@ Si se rotan las VAPID, hay que **reconstruir la web** (la pública es build arg)
 
 ## Checklist de despliegue
 
+- [ ] ¿La release trae migraciones **y** toca `etl`/`scraper`/`db`? → usar la
+      secuencia con `stop etl` de arriba, no la estándar.
+- [ ] `./deploy/backup-db.sh` si alguna migración reescribe datos existentes.
 - [ ] `git checkout --` de `deploy/backup-db.sh` y `deploy/restore-sports-dump.sh`.
 - [ ] `git pull`.
 - [ ] `$DC up -d --build` (o `--build web` si solo es front).
