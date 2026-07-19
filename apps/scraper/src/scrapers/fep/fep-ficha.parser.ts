@@ -52,8 +52,14 @@ export interface ParseOptions {
  * puede recomputar desde las columnas de match_events, que es lo que hace la
  * migración 035 para reescribir las refs históricas sin perder ids.
  *
- * `fallbackIdx` sólo entra si falta periodo o crono (estrategias de parseo
- * antiguas): ahí se vuelve a la posición, asumiendo su inestabilidad.
+ * El CRONO es lo único imprescindible: sin él no hay nada que identifique al
+ * evento salvo su posición, y ahí se cae al `fallbackIdx` asumiendo la
+ * inestabilidad. El periodo, en cambio, puede faltar y no pasa nada: se marca
+ * como `px` y la clave sigue siendo de contenido.
+ *
+ * Esa distinción viene de un caso real: en producción había un evento con
+ * crono `00:15` y sin periodo. Exigir ambos lo mandaba a una ref posicional
+ * —inestable entre scrapes— justo lo que esta función existe para evitar.
  */
 export function eventSourceRef(input: {
   idp: string;
@@ -64,9 +70,9 @@ export function eventSourceRef(input: {
   fallbackIdx: number;
 }): string {
   const { idp, period, clock, eventType, isHome, fallbackIdx } = input;
-  if (period == null || !clock) return `fep_event_${idp}_row${fallbackIdx}`;
+  if (!clock) return `fep_event_${idp}_row${fallbackIdx}`;
   const side = isHome === true ? 'H' : isHome === false ? 'A' : 'x';
-  return `fep_event_${idp}_p${period}_${clock.replace(':', '')}_${eventType}_${side}`;
+  return `fep_event_${idp}_p${period ?? 'x'}_${clock.replace(':', '')}_${eventType}_${side}`;
 }
 
 export type FepEventType = 'goal' | 'penalty' | 'blue_card' | 'red_card' | 'timeout' | 'period_end' | 'foul' | 'direct_foul';

@@ -125,26 +125,26 @@ describe('source_ref estable entre capturas', () => {
 
   it('la ref no contiene la posición de la fila', () => {
     const events = parseFicha(load('acta-live-p2'), '34259');
-    // Formato esperado: fep_event_{idp}_p{periodo}_{crono}_{tipo}_{lado}
+    // Formato esperado: fep_event_{idp}_p{periodo|x}_{crono}_{tipo}_{lado}
     for (const e of events) {
-      expect(e.sourceRef).toMatch(/^fep_event_34259_p\d+_\d{4}_[a-z_]+_[HAx]$/);
+      expect(e.sourceRef).toMatch(/^fep_event_34259_p(\d+|x)_\d{4}_[a-z_]+_[HAx]$/);
     }
   });
 
   it('ningún evento de un acta real cae al fallback posicional', () => {
-    // `eventSourceRef` vuelve a la posición si falta periodo o crono. En las
-    // actas reales eso no pasa nunca (105 eventos, 0 fallbacks), pero si la
-    // fuente dejara de publicar el crono degradaríamos a refs inestables EN
-    // SILENCIO: volverían las notificaciones duplicadas sin que nada fallara.
-    // Este test convierte esa degradación en un fallo visible.
+    // `eventSourceRef` vuelve a la posición si falta el crono. En las actas
+    // reales eso no pasa nunca (105 eventos, 0 fallbacks), pero si la fuente
+    // dejara de publicarlo degradaríamos a refs inestables EN SILENCIO:
+    // volverían las notificaciones duplicadas sin que nada fallara. Este test
+    // convierte esa degradación en un fallo visible.
     for (const [name, idp] of [['acta-live-p1', '34259'], ['acta-live-p2', '34259'],
                                ['acta-finalizada', '34259'], ['acta-playoff', '34277']] as const) {
       const events = parseFicha(load(name), idp);
       const posicionales = events.filter((e) => /_row\d+$/.test(e.sourceRef));
-      expect(posicionales, `${name}: eventos sin periodo o sin crono`).toEqual([]);
+      expect(posicionales, `${name}: eventos sin crono`).toEqual([]);
 
       // Y la causa raíz, por si el formato de la ref cambiara algún día.
-      expect(events.every((e) => e.period != null && e.clock), `${name}`).toBe(true);
+      expect(events.every((e) => !!e.clock), `${name}: falta el crono`).toBe(true);
     }
   });
 });
@@ -169,11 +169,22 @@ describe('eventSourceRef', () => {
     expect(new Set(refs).size).toBe(3);
   });
 
-  it('cae a la posición sólo si falta periodo o crono', () => {
-    expect(eventSourceRef({ ...base, period: undefined, clock: '20:46', isHome: true }))
-      .toBe('fep_event_999_row7');
+  it('cae a la posición sólo si falta el crono', () => {
     expect(eventSourceRef({ ...base, period: 1, clock: undefined, isHome: true }))
       .toBe('fep_event_999_row7');
+  });
+
+  it('sin periodo pero con crono sigue derivando del contenido', () => {
+    // Caso real en producción: un evento con crono 00:15 y sin periodo. Exigir
+    // ambos lo mandaba a una ref posicional, inestable entre scrapes.
+    expect(eventSourceRef({ ...base, period: undefined, clock: '00:15', isHome: false }))
+      .toBe('fep_event_999_px_0015_goal_A');
+  });
+
+  it('un periodo desconocido no colisiona con uno conocido', () => {
+    const conocido = eventSourceRef({ ...base, period: 1, clock: '00:15', isHome: true });
+    const desconocido = eventSourceRef({ ...base, period: undefined, clock: '00:15', isHome: true });
+    expect(conocido).not.toBe(desconocido);
   });
 });
 

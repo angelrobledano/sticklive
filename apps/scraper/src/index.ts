@@ -1,18 +1,25 @@
 /**
- * Punto de entrada del scraper.
+ * Punto de entrada del scraper — ejecución MANUAL de una tarea.
  *
- * Cada cron hace scrape + ETL en un solo paso:
- *   1. Scraper recoge datos crudos de sidgad.es
+ *   npm run start --workspace=apps/scraper -- --run-once <clave>
+ *
+ * Cada tarea hace scrape + ETL en un solo paso:
+ *   1. El scraper recoge datos crudos de sidgad.es
  *   2. EtlPipeline transforma y persiste en PostgreSQL
+ *
+ * La ejecución PERIÓDICA en producción NO pasa por aquí: la lleva
+ * deploy/etl-scheduler.sh dentro del contenedor `etl`. Este fichero tenía
+ * además un planificador propio con node-cron que duplicaba ese trabajo, no
+ * corría en ningún entorno y arrastraba vulnerabilidades; se eliminó (#37).
  *
  * Competiciones:
  *   idc=3150 — OK Liga Masculina
  *   idc=3481 — OK Liga Masculina Playoff (activo desde abril 2025)
  */
-import cron from 'node-cron';
 import { createLogger } from '@sports/logger';
 import { db, closeDb } from '@sports/db';
-import { analytics, shutdownAnalytics } from '@sports/analytics';
+// `analytics` sólo lo usaba el planificador eliminado; queda el cierre limpio.
+import { shutdownAnalytics } from '@sports/analytics';
 import { EtlPipeline } from '@sports/etl';
 import { FepCalendarScraper }    from './scrapers/fep/fep-calendar.scraper.js';
 import { FepStandingsScraper }   from './scrapers/fep/fep-standings.scraper.js';
@@ -169,62 +176,6 @@ async function runAllWorldskate() {
 
 // ─── Definición de crons ──────────────────────────────────────────────────────
 
-interface CronDef {
-  key: string;
-  cron: string;
-  run: () => Promise<void>;
-}
-
-function buildCrons(seasons: SeasonLookup): CronDef[] {
-  const crons: CronDef[] = [];
-
-  // Datos estructurales — 1×/día a las 06:00
-  crons.push({
-    key: 'structural',
-    cron: process.env['CRON_STRUCTURAL'] ?? '0 6 * * *',
-    run: async () => {
-      await new FepCompetitionsScraper().run();
-      await new FepListadoScraper().run();
-    },
-  });
-
-  // OK Liga — calendario y clasificación cada hora
-  if (seasons.okLigaSeasonId) {
-    crons.push({
-      key: 'calendar_ok_liga',
-      cron: process.env['CRON_CALENDAR'] ?? '5 * * * *',
-      run: () => runCalendar(IDC_OK_LIGA, seasons.okLigaSeasonId, 'OK Liga Masculina'),
-    });
-    crons.push({
-      key: 'standings_ok_liga',
-      cron: process.env['CRON_STANDINGS'] ?? '10 * * * *',
-      run: () => runStandings(IDC_OK_LIGA, seasons.okLigaSeasonId, 'OK Liga Masculina'),
-    });
-  }
-
-  // Playoff — calendario y clasificación cada 15 min
-  if (seasons.playoffSeasonId) {
-    crons.push({
-      key: 'calendar_playoff',
-      cron: process.env['CRON_PLAYOFF_CALENDAR'] ?? '*/15 * * * *',
-      run: () => runCalendar(IDC_PLAYOFF, seasons.playoffSeasonId!, 'OK Liga Playoff'),
-    });
-    crons.push({
-      key: 'standings_playoff',
-      cron: process.env['CRON_PLAYOFF_STANDINGS'] ?? '*/15 * * * *',
-      run: () => runStandings(IDC_PLAYOFF, seasons.playoffSeasonId!, 'OK Liga Playoff'),
-    });
-  }
-
-  // Marcadores en vivo — cada 2 min (todos los partidos activos)
-  crons.push({
-    key: 'live_scores',
-    cron: process.env['CRON_LIVE'] ?? '*/2 * * * *',
-    run: () => runLiveScores(seasons.okLigaSeasonId || seasons.playoffSeasonId || ''),
-  });
-
-  return crons;
-}
 
 // ─── --run-once ───────────────────────────────────────────────────────────────
 
@@ -237,6 +188,15 @@ async function runOnce(key: string, seasons: SeasonLookup) {
   }
 
   const map: Record<string, () => Promise<void>> = {
+    // Datos estructurales (competiciones y listados). Estaba documentado en el
+    // README pero NO existía en este mapa: sólo era alcanzable desde el cron
+    // 'structural' del planificador, así que `--run-once fep_competitions`
+    // fallaba con "Scraper no encontrado". Al eliminar el planificador se
+    // recupera aquí, que es donde tenía que estar.
+    fep_competitions: async () => {
+      await new FepCompetitionsScraper().run();
+      await new FepListadoScraper().run();
+    },
     fep_calendar_ok_liga:   () => runCalendar(IDC_OK_LIGA, seasons.okLigaSeasonId, 'OK Liga'),
     fep_standings_ok_liga:  () => runStandings(IDC_OK_LIGA, seasons.okLigaSeasonId, 'OK Liga'),
     fep_calendar_playoff:   () => runCalendar(IDC_PLAYOFF, seasons.playoffSeasonId!, 'Playoff'),
@@ -253,62 +213,34 @@ async function runOnce(key: string, seasons: SeasonLookup) {
   await Promise.all([closeBrowser(), closeDb(), shutdownAnalytics()]);
 }
 
-// ─── startScheduled ───────────────────────────────────────────────────────────
-
-async function startScheduled(seasons: SeasonLookup) {
-  const crons = buildCrons(seasons);
-
-  // World Skate Europe — solo si hay competiciones actuales sembradas (evita
-  // ruido offseason). Un único cron corre todas (masc + fem + futuras).
-  const wse = await resolveWorldskate();
-  if (wse.length > 0) {
-    crons.push({
-      key: 'worldskate',
-      cron: process.env['CRON_WORLDSKATE'] ?? '*/5 * * * *',
-      run: runAllWorldskate,
-    });
-  }
-
-  log.info({ crons: crons.map(c => `${c.key}(${c.cron})`) }, '🚀 Scrapers programados');
-
-  for (const def of crons) {
-    cron.schedule(def.cron, async () => {
-      log.info({ key: def.key }, 'Cron iniciado');
-      const start = Date.now();
-      try {
-        await def.run();
-        log.info({ key: def.key }, 'Cron completado');
-        analytics.capture({
-          distinctId: 'scraper-cron',
-          event: 'scraper_cron_completed',
-          properties: { cron_key: def.key, duration_ms: Date.now() - start, success: true },
-        });
-      } catch (err) {
-        log.error({ key: def.key, err }, 'Error en cron');
-        analytics.capture({
-          distinctId: 'scraper-cron',
-          event: 'scraper_cron_completed',
-          properties: { cron_key: def.key, duration_ms: Date.now() - start, success: false },
-        });
-      }
-    });
-  }
-
-  const shutdown = async () => { await Promise.all([closeBrowser(), closeDb(), shutdownAnalytics()]); process.exit(0); };
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT',  shutdown);
-}
-
 // ─── Entrada ──────────────────────────────────────────────────────────────────
 
 const RUN_ONCE = process.argv[2] === '--run-once';
 const KEY      = process.argv[3];
 
+const USO = `
+Uso:  npm run start --workspace=apps/scraper -- --run-once <clave>
+
+Claves disponibles:
+  fep_competitions        catálogo de competiciones
+  fep_calendar_ok_liga    calendario de OK Liga
+  fep_standings_ok_liga   clasificación de OK Liga
+  fep_calendar_playoff    calendario del playoff
+  fep_standings_playoff   clasificación del playoff
+  fep_matches_live        marcadores en vivo
+  worldskate              World Skate Europe (todas las activas)
+
+Este comando ejecuta UNA tarea y sale. La ejecución periódica en producción la
+lleva deploy/etl-scheduler.sh dentro del contenedor 'etl'; aquí había un
+segundo planificador con node-cron que duplicaba ese trabajo, no corría en
+ningún sitio y arrastraba vulnerabilidades. Se eliminó (ver issue #37).
+`;
+
 (async () => {
-  const seasons = await resolveSeasonIds();
-  if (RUN_ONCE && KEY) {
-    await runOnce(KEY, seasons);
-  } else {
-    await startScheduled(seasons);
+  if (!RUN_ONCE || !KEY) {
+    console.log(USO);
+    process.exit(1);
   }
+  const seasons = await resolveSeasonIds();
+  await runOnce(KEY, seasons);
 })().catch(err => { log.error({ err }, 'Error fatal'); process.exit(1); });
