@@ -150,9 +150,13 @@ Pendiente y consciente: **el `audit` sigue sin bloquear**. Hay 8 vulnerabilidade
 
 Una vez limpio, quitar el `continue-on-error` del paso de audit en `ci.yml`.
 
-### [ ] 2.7 Sin retención de datos
+### [x] 2.7 Sin retención de datos — **resuelto para `scrape_logs`**
 
-`scrape_logs` inserta una fila por ejecución de loader (`insertScrapeLog` en cada loader) y crece indefinidamente. Igual `match_events` histórico. **Fix:** job de purga (`scrape_logs` > 90 días) y política de archivado.
+`scrape_logs` inserta una fila por ejecución de loader y crecía indefinidamente. Al mirarlo de cerca aparecieron dos cosas: **nadie lee esa tabla** (`getLastScrapeLog` existe en `packages/db` pero no tiene un solo consumidor), y crece más de lo que parecía — con World Skate en el planificador cada 5 minutos son ~1.000 filas al día, más las de `cron-live` en sus bucles de 45 s durante los partidos.
+
+Resuelto con `packages/db/scripts/purge-scrape-logs.ts`, que corre a diario desde `etl-scheduler.sh` y conserva 30 días (`SCRAPE_LOGS_RETENTION_DAYS`). Borra por lotes para no mantener un lock largo ni inflar el WAL de golpe. La migración 037 añade el índice por `scraped_at` que la purga necesita: el que había, `(scraper_key, scraped_at DESC)`, no sirve para barrer por fecha.
+
+**Pendiente:** el archivado de `match_events`, que es harina de otro costal — son datos de producto, no logs, y la vía es particionar por temporada (punto 3.5) en vez de borrar.
 
 ---
 

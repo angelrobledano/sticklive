@@ -63,11 +63,18 @@ while true; do
     $LOCK npx tsx src/run-pipeline.ts --entity=standings  || true
   fi
 
-  # ── Diario a las 06 UTC: actas pendientes ──────────────────
+  # ── Diario a las 06 UTC: actas pendientes + purga de logs ──
   if [ "$NOW_DAY" != "$LAST_DAY" ] && [ "$HOUR_UTC" = "06" ]; then
     LAST_DAY=$NOW_DAY
     echo "[scheduler] fichas-pendientes $(date -u +%T)"
     $LOCK npx tsx src/run-pipeline.ts --entity=fichas-pendientes || true
+
+    # scrape_logs crece ~1.000 filas/día y no lo lee nadie. Se conservan 30
+    # días (SCRAPE_LOGS_RETENTION_DAYS). Va sin lock: borra por lotes y no
+    # compite con el scraping.
+    echo "[scheduler] purga de scrape_logs $(date -u +%T)"
+    npx tsx ../../packages/db/scripts/purge-scrape-logs.ts \
+      || echo "[scheduler] purga fallo (seguimos)"
   fi
 
   sleep 300
