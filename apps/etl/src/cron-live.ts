@@ -265,7 +265,21 @@ async function scrapeSeasonScores(seasonId: string): Promise<void> {
   }
 }
 
-async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promise<number> {
+/**
+ * Marcadores de la FEP (temporada primaria + secundarias de la FEP).
+ *
+ * Separado de `runOneCycle` a propósito. ANTES esto estaba en línea y hacía
+ * `return 0` cuando `rfep_mc_1.php` devolvía 0 partidos, lo que abortaba el
+ * ciclo ENTERO — incluidas las fichas, que operan sobre TODAS las fuentes.
+ *
+ * Con la OK Liga fuera de temporada ese feed devuelve 0 casi siempre, así que
+ * durante el Europeo Sub-17 las actas de World Skate no se habrían pedido nunca
+ * aunque hubiera partidos en directo. Ahora la FEP puede no tener nada que decir
+ * sin llevarse por delante al resto.
+ *
+ * Devuelve cuántos partidos se actualizaron (0 si la fuente no dio nada).
+ */
+async function runFepScores(seasonIds: string[], primarySeasonId: string): Promise<number> {
   const scraper  = new FepMatchesScraper({ seasonId: primarySeasonId });
   const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: primarySeasonId });
 
@@ -291,8 +305,26 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
           'Scraper de marcadores falló (transitorio) — reintento en el próximo ciclo');
       }
     } else {
-      // 200 OK pero 0 partidos: huele a cambio de estructura de la fuente.
-      Sentry.captureMessage('rfep_mc_1.php devolvió 0 partidos — posible cambio/caída de la fuente', 'warning');
+      // 200 OK pero 0 partidos. Sólo es sospechoso si ESPERÁBAMOS partidos: el
+      // ciclo puede estar corriendo por una competición de otra fuente (World
+      // Skate) mientras la OK Liga está fuera de temporada, y entonces el feed
+      // devuelve 0 legítimamente. Sin esta guardia, durante el Europeo Sub-17
+      // Sentry recibiría un aviso cada 45 s — la forma más rápida de aprender a
+      // ignorar los avisos.
+      const esperados = await db.query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM matches
+          WHERE season_id = $1
+            AND (status = 'live'
+                 OR (status = 'scheduled'
+                     AND scheduled_at BETWEEN NOW() - INTERVAL '3 hours'
+                                          AND NOW() + make_interval(hours => $2::int)))`,
+        [primarySeasonId, WINDOW_HOURS]
+      );
+      if (Number(esperados.rows[0]?.count ?? 0) > 0) {
+        Sentry.captureMessage('rfep_mc_1.php devolvió 0 partidos habiendo partidos FEP en juego — posible cambio/caída de la fuente', 'warning');
+      } else {
+        log.debug('rfep_mc_1.php sin partidos y sin actividad FEP esperada — normal fuera de temporada');
+      }
     }
     return 0;
   }
@@ -320,6 +352,23 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
     }
   } catch (err) {
     log.warn({ err }, 'pase de competiciones secundarias fallo — primaria intacta');
+  }
+
+  return etl.upserted;
+}
+
+/**
+ * Un ciclo completo: marcadores de la FEP + actas y notificaciones de TODAS las
+ * fuentes. Las fichas van aparte de los marcadores porque cada fuente actualiza
+ * los suyos por su cuenta (World Skate, desde etl-scheduler.sh).
+ */
+async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promise<number> {
+  let upserted = 0;
+  try {
+    upserted = await runFepScores(seasonIds, primarySeasonId);
+  } catch (err) {
+    // Que la FEP falle no debe impedir que se refresquen las actas del resto.
+    log.warn({ err }, 'marcadores FEP fallaron — el ciclo sigue con las fichas');
   }
 
   // Goles: las fichas traen goleador y minuto, así que snapshot ANTES de
@@ -361,7 +410,7 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
     log.warn({ err }, 'push de final por tipo fallo — el ciclo sigue');
   }
 
-  return etl.upserted;
+  return upserted;
 }
 
 async function sleep(ms: number): Promise<void> {
