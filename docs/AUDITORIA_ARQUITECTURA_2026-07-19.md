@@ -180,7 +180,40 @@ El día que entre la liga portuguesa, **un usuario italiano leerá "Jornada 1" y
 
 Hacer esto **antes** de meter la segunda federación cuesta días; hacerlo después cuesta una migración de datos con riesgo.
 
-### [ ] 3.2 El acoplamiento a la FEP está repartido por todo el código · **Bloqueante para multi-liga**
+### [~] 3.2 El acoplamiento a la FEP está repartido por todo el código · **primer trozo hecho (20/07/2026)**
+
+> **Actualización tras el Europeo Sub-17.** Este punto dejó de ser teórico el
+> 20/07/2026: con el Europeo en juego, World Skate mostraba marcador pero
+> **ninguna** cronología, crono ni alineación. Aparecieron tres acoplamientos
+> encadenados, todos con la misma forma — *una suposición razonable sobre la FEP
+> convertida en requisito para todas las fuentes*:
+>
+> 1. **`cron-live` filtraba las actas con `source_ref LIKE 'fep_match_%'`.**
+>    Todo lo que no fuera FEP se descartaba en silencio. Ninguna otra
+>    competición podía tener eventos *por diseño*.
+> 2. **`FepFichaScraper` usaba `sidgadPost`**, el cliente por defecto de la FEP,
+>    así que ni siquiera podía alcanzar otro portal de sidgad.
+> 3. **`parseLineups` exigía el patrón `"OKM - NOMBRE"`**, el prefijo de licencia
+>    federativa. En un campeonato de selecciones no existe: se descartaban los
+>    20 jugadores y sólo sobrevivía el cuerpo técnico (8 filas de 28).
+>
+> Resuelto con `apps/scraper/src/core/sources.ts`: un registro de fuentes por
+> prefijo de `source_ref` con su configuración de portal. `SidgadClient` ya sabía
+> reescribir `rfep_*` → `{portal}_*`, así que **añadir una fuente sidgad nueva es
+> añadir una entrada en `SOURCES`**. Los `source_ref` de evento llevan el prefijo
+> de su fuente (`wse_event_…`); la FEP conserva `fep_event_` a propósito, porque
+> cambiarlo reescribiría sus refs y con ellas los ids que estabilizó la 035.
+>
+> De rebote apareció un fallo latente: `activeSecondarySeasons` alimentaba
+> `FepMatchesScraper` con temporadas de cualquier fuente. No había hecho daño
+> porque el `ON CONFLICT` no toca `season_id`, pero podía insertar partidos bajo
+> la temporada equivocada. Ahora filtra por competiciones de la FEP.
+>
+> **Lo que sigue pendiente** es la parte de configuración: los `idc` y las
+> temporadas siguen viniendo de constantes y de `SEASON_ID`. La tabla
+> `competition_sources` que se propone abajo sigue siendo el objetivo.
+
+
 
 Puntos duros encontrados:
 
