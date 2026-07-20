@@ -289,3 +289,77 @@ describe('eventSourceRef por fuente', () => {
     expect(fep).not.toBe(wse);
   });
 });
+
+describe('parseLineups — acta de World Skate (selecciones)', () => {
+  /**
+   * El acta del Europeo Sub-17 tiene la MISMA estructura que la de la FEP, pero
+   * los nombres vienen sin prefijo de licencia federativa: "FAILLA ALESSANDRO"
+   * en vez de "OKM - PASCUAL MATÍAS". El parser exigía ese " - " para dar por
+   * buena la celda del nombre, así que descartaba a todos los jugadores y sólo
+   * guardaba el cuerpo técnico: 8 filas en vez de 28.
+   */
+  const wse = () => parseLineups(load('acta-wse-finalizada'), '3095');
+
+  it('extrae las dos plantillas completas, no sólo el cuerpo técnico', () => {
+    const filas = wse();
+    const jugadores = filas.filter((l) => !l.role);
+    const staff = filas.filter((l) => l.role);
+
+    expect(jugadores).toHaveLength(20);
+    expect(staff).toHaveLength(8);
+    expect(filas).toHaveLength(28);
+  });
+
+  it('diez jugadores por selección', () => {
+    const jugadores = wse().filter((l) => !l.role);
+    expect(jugadores.filter((l) => l.isHome)).toHaveLength(10);
+    expect(jugadores.filter((l) => !l.isHome)).toHaveLength(10);
+  });
+
+  it('los nombres llegan limpios y con dorsal', () => {
+    for (const j of wse().filter((l) => !l.role)) {
+      expect(j.playerName.length).toBeGreaterThan(3);
+      expect(j.jerseyNumber).toBeGreaterThan(0);
+      // Sin prefijo de licencia: en selecciones no existe.
+      expect(j.playerName).not.toMatch(/^[A-Z]{2,4}\s*-\s/);
+    }
+  });
+
+  it('marca porteros, capitanes y cinco inicial', () => {
+    const jugadores = wse().filter((l) => !l.role);
+    expect(jugadores.filter((l) => l.isGoalkeeper).length).toBeGreaterThanOrEqual(2);
+    expect(jugadores.filter((l) => l.isCaptain).length).toBeGreaterThanOrEqual(2);
+    expect(jugadores.filter((l) => l.isStarter).length).toBeGreaterThanOrEqual(10);
+  });
+
+  it('los goles de los jugadores cuadran con el 4-0 del marcador', () => {
+    // Comprobación cruzada: si el parseo de la columna G se desalineara, esto
+    // deja de cuadrar aunque el número de filas siga siendo correcto.
+    const jugadores = wse().filter((l) => !l.role);
+    const golesLocal = jugadores.filter((l) => l.isHome).reduce((s, l) => s + (l.goals ?? 0), 0);
+    const golesVisitante = jugadores.filter((l) => !l.isHome).reduce((s, l) => s + (l.goals ?? 0), 0);
+    expect(golesLocal).toBe(4);
+    expect(golesVisitante).toBe(0);
+  });
+
+  it('el acta de World Skate también da eventos', () => {
+    const eventos = parseFicha(load('acta-wse-finalizada'), '3095', { eventPrefix: 'wse_event_' });
+    expect(eventos).toHaveLength(25);
+    expect(eventos.filter((e) => e.eventType === 'goal')).toHaveLength(4);
+    expect(eventos.every((e) => e.sourceRef.startsWith('wse_event_'))).toBe(true);
+  });
+});
+
+describe('parseLineups — la FEP no cambia', () => {
+  it('sigue dando las plantillas completas con prefijo de licencia limpiado', () => {
+    for (const [name, total] of [['acta-finalizada', 30], ['acta-playoff', 31],
+                                 ['acta-live-p1', 30], ['acta-live-p2', 30]] as const) {
+      const filas = parseLineups(load(name), '34259');
+      expect(filas, name).toHaveLength(total);
+      expect(filas.filter((l) => !l.role), `${name}: jugadores`).toHaveLength(20);
+      for (const j of filas.filter((l) => !l.role)) {
+        expect(j.playerName, `${name}: prefijo sin limpiar`).not.toMatch(/^[A-Z]{2,4}\s*-\s/);
+      }
+    }
+  });
+});
