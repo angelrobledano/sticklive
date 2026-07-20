@@ -40,6 +40,21 @@ while true; do
   echo "[scheduler] cron-live $(date -u +%T)"
   $LOCK npx tsx src/cron-live.ts || echo "[scheduler] cron-live saltado o falló (seguimos)"
 
+  # ── Cada 5 min: World Skate Europe ─────────────────────────
+  # OJO: cron-live sólo cubre las competiciones de la FEP. World Skate usa otro
+  # portal de sidgad y su propio scraper, y hasta el 20/07/2026 NO lo ejecutaba
+  # ningún proceso de producción: estaba programado únicamente en el
+  # planificador de apps/scraper/src/index.ts, que nunca corrió en el servidor.
+  # Resultado: durante el Europeo Sub-17 los partidos jugados se quedaban con la
+  # hora y sin resultado hasta que alguien lanzaba el scraper a mano.
+  #
+  # Es barato (un POST por competición) y `resolveWorldskate` devuelve vacío si
+  # no hay competiciones activas, así que fuera de torneo esto es una consulta
+  # a la BD y poco más.
+  echo "[scheduler] worldskate $(date -u +%T)"
+  $LOCK npx tsx ../scraper/src/index.ts --run-once worldskate \
+    || echo "[scheduler] worldskate saltado o falló (seguimos)"
+
   # ── Cada hora: calendario + clasificación ──────────────────
   if [ "$NOW_HOUR" != "$LAST_HOUR" ]; then
     LAST_HOUR=$NOW_HOUR
