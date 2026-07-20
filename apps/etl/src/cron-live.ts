@@ -32,6 +32,9 @@ import { deriveMatchResults } from './derive-results.js';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import {
+  sourceForMatchRef, idpFromMatchRef, idcFromCompetitionRef,
+} from '../../scraper/src/core/sources.js';
+import {
   snapshotMatches, snapshotRounds, snapshotGoals, snapshotEventsByType,
   snapshotExtraPhases, snapshotResults,
   diffAndNotify, diffGoals, diffCardOrFoul, diffBlueAndFouls,
@@ -150,7 +153,12 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
      JOIN competitions comp ON comp.id = s.competition_id
      LEFT JOIN teams ht ON ht.id = m.home_team_id
      WHERE m.season_id = ANY($1)
-       AND m.source_ref LIKE 'fep_match_%'
+       -- Sin filtro por fuente: hasta el 20/07/2026 aquí había un
+       -- \`LIKE 'fep_match_%'\` que descartaba en silencio todo lo que no fuera
+       -- de la FEP. Efecto práctico: World Skate nunca tuvo cronología ni
+       -- crono, sólo marcador. Ahora se resuelve la fuente por prefijo y se
+       -- omite únicamente lo que no sabemos tratar (ver core/sources.ts).
+       AND m.source_ref IS NOT NULL
        AND (
          -- Partidos en directo: siempre actualizar eventos
          m.status = 'live'
@@ -173,11 +181,23 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
   log.info({ count: rows.rows.length }, 'Procesando fichas para partidos activos/recientes');
 
   for (const match of rows.rows) {
-    const idp = match.source_ref.replace('fep_match_', '');
-    const idc = (match.comp_ref ?? '').replace(/^fep_competition_/, '');
+    const source = sourceForMatchRef(match.source_ref);
+    if (!source) {
+      log.debug(
+        { matchId: match.id, sourceRef: match.source_ref },
+        'Fuente no reconocida — omitiendo ficha (añádela en core/sources.ts)'
+      );
+      continue;
+    }
 
-    if (!idc) {
-      log.warn({ matchId: match.id, idp }, 'idc vacio — omitiendo ficha de este partido');
+    const idp = idpFromMatchRef(match.source_ref, source);
+    const idc = idcFromCompetitionRef(match.comp_ref, source);
+
+    if (!idp || !idc) {
+      log.warn(
+        { matchId: match.id, sourceRef: match.source_ref, compRef: match.comp_ref, source: source.key },
+        'idp o idc vacios — omitiendo ficha de este partido'
+      );
       continue;
     }
 
@@ -185,13 +205,14 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
       const scraper = new FepFichaScraper({
         idp,
         idc,
+        source,
         ...(match.home_team_name ? { homeTeamName: match.home_team_name } : {}),
         matchId: match.id,
       });
       await scraper.run();
-      log.debug({ matchId: match.id, idp, idc }, 'Ficha procesada');
+      log.debug({ matchId: match.id, idp, idc, source: source.key }, 'Ficha procesada');
     } catch (err) {
-      log.warn({ err, matchId: match.id, idp, idc }, 'Error en ficha — continuando con siguiente partido');
+      log.warn({ err, matchId: match.id, idp, idc, source: source.key }, 'Error en ficha — continuando con siguiente partido');
     }
 
     // Cortesia con el servidor fuente
@@ -206,12 +227,21 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
 /** Temporadas (≠ primaria) con actividad: live o partido inminente en la ventana. */
 async function activeSecondarySeasons(seasonIds: string[], primarySeasonId: string): Promise<string[]> {
   const res = await db.query<{ season_id: string }>(
-    `SELECT DISTINCT season_id FROM matches
-     WHERE season_id = ANY($1) AND season_id <> $2
-       AND ( status = 'live'
-          OR (status = 'scheduled'
-              AND scheduled_at BETWEEN NOW() - INTERVAL '3 hours'
-                                   AND NOW() + make_interval(hours => $3::int)) )`,
+    `SELECT DISTINCT m.season_id FROM matches m
+     JOIN seasons s      ON s.id = m.season_id
+     JOIN competitions c ON c.id = s.competition_id
+     WHERE m.season_id = ANY($1) AND m.season_id <> $2
+       -- SOLO competiciones de la FEP: quien consume esto es
+       -- \`scrapeSeasonScores\`, que lanza FepMatchesScraper (el feed
+       -- rfep_mc_1.php). Contra una temporada de otra fuente traería partidos
+       -- ajenos y, si alguno no existiese aún, lo insertaría bajo la temporada
+       -- equivocada. Cada fuente actualiza sus marcadores con su propio
+       -- scraper (World Skate, con el suyo desde etl-scheduler.sh).
+       AND c.source_ref LIKE 'fep_%'
+       AND ( m.status = 'live'
+          OR (m.status = 'scheduled'
+              AND m.scheduled_at BETWEEN NOW() - INTERVAL '3 hours'
+                                     AND NOW() + make_interval(hours => $3::int)) )`,
     [seasonIds, primarySeasonId, WINDOW_HOURS]
   );
   return res.rows.map((r) => r.season_id);

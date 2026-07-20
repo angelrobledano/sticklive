@@ -263,3 +263,29 @@ describe('helpers', () => {
     expect(normalizeName('  Igualada   HC  ')).toBe('IGUALADA HC');
   });
 });
+
+describe('eventSourceRef por fuente', () => {
+  const base = { idp: '3095', eventType: 'goal' as const, fallbackIdx: 2, period: 2, clock: '01:59', isHome: true };
+
+  it('sin prefijo usa el histórico de la FEP', () => {
+    // Los eventos de la FEP ya cargados llevan `fep_event_`; cambiarlo
+    // reescribiría sus refs y con ellos los ids que estabilizó la 035.
+    expect(eventSourceRef(base)).toBe('fep_event_3095_p2_0159_goal_H');
+  });
+
+  it('cada fuente lleva el suyo', () => {
+    expect(eventSourceRef({ ...base, prefix: 'wse_event_' }))
+      .toBe('wse_event_3095_p2_0159_goal_H');
+  });
+
+  it('el fallback posicional también respeta el prefijo', () => {
+    expect(eventSourceRef({ ...base, clock: undefined, prefix: 'wse_event_' }))
+      .toBe('wse_event_3095_row2');
+  });
+
+  it('dos fuentes con el mismo idp no colisionan', () => {
+    const fep = eventSourceRef(base);
+    const wse = eventSourceRef({ ...base, prefix: 'wse_event_' });
+    expect(fep).not.toBe(wse);
+  });
+});

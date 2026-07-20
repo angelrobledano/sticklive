@@ -17,7 +17,8 @@
 // fep-ficha.parser.ts. Este módulo sólo hace E/S (red y base de datos).
 import { BaseScraper } from '../../core/base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
-import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
+import { SidgadClient, SIDGAD_LANG } from './sidgad-client.js';
+import { sourceByKey, eventPrefix, type SourceDef } from '../../core/sources.js';
 import { db, replaceMatchEvents, replaceMatchLineups, withTransaction } from '@sports/db';
 // Los parsers viven en fep-ficha.parser.ts (puros, sin E/S) para poder testearlos
 // con HTML congelado sin necesidad de entorno ni base de datos.
@@ -48,6 +49,13 @@ export interface FichaScraperConfig {
    * match_events en cuanto se encuentra el endpoint activo (sin esperar al ETL).
    */
   matchId?: string;
+  /**
+   * Fuente del partido. Por defecto la FEP, que es de donde viene la inmensa
+   * mayoría. World Skate y las que vengan usan el mismo formato de acta pero
+   * otro portal de sidgad: basta con pasar su SourceDef y el cliente reescribe
+   * los endpoints `rfep_*` → `{portal}_*`.
+   */
+  source?: SourceDef;
 }
 
 export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
@@ -55,14 +63,21 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
   // `config` de BaseScraper (que lleva scraperKey/entityType/sourceId) → de ahí
   // el "[undefined/undefined]" en los logs. Se renombra a `cfg` (auditoría Q2/B-).
   private readonly cfg: FichaScraperConfig;
+  /** Fuente del partido (FEP si no se indica otra). */
+  private readonly source: SourceDef;
+  /** Cliente HTTP del portal de esa fuente: reescribe `rfep_*` → `{portal}_*`. */
+  private readonly client: SidgadClient;
 
   constructor(config: FichaScraperConfig) {
+    const source = config.source ?? sourceByKey('fep');
     super({
-      scraperKey: 'fep_hockey',
+      scraperKey: source.key === 'fep' ? 'fep_hockey' : `${source.key}_hockey`,
       entityType: 'match_event',
       sourceId: SOURCE_ID,
     });
     this.cfg = config;
+    this.source = source;
+    this.client = new SidgadClient(source.client);
   }
 
   protected async scrape(): Promise<ScrapedMatchEvent[]> {
@@ -108,7 +123,7 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
     for (const candidate of ENDPOINT_CANDIDATES) {
       this.log.info({ idp, idc, endpoint: candidate.path }, 'Intentando endpoint ficha resumen');
       try {
-        const result = await sidgadPost(candidate.path, candidate.body);
+        const result = await this.client.post(candidate.path, candidate.body);
         // Respuesta válida: tamaño mínimo y sin indicadores de error HTTP
         const snippet = result.slice(0, 1000).toLowerCase();
         const looksEmpty = result.length < 200;
@@ -126,6 +141,7 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
             const events = parseFicha(html, idp, {
               ...(this.cfg.homeTeamName ? { homeTeamName: this.cfg.homeTeamName } : {}),
               log: this.log,
+              eventPrefix: eventPrefix(this.source),
             });
             // Jugadores: upsert en players/team_players desde los links de la
             // ficha (id_player). Devuelve mapa nombre→UUID para vincular
@@ -243,6 +259,7 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
     return parseFicha(html, idp, {
       ...(this.cfg.homeTeamName ? { homeTeamName: this.cfg.homeTeamName } : {}),
       log: this.log,
+      eventPrefix: eventPrefix(this.source),
     });
   }
 

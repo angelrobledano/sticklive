@@ -30,7 +30,16 @@ export interface ParseOptions {
   homeTeamName?: string;
   /** Logger opcional; por defecto no emite nada (los tests agradecen el silencio). */
   log?: ParseLog;
+  /**
+   * Prefijo de los `source_ref` de evento. Por defecto `fep_event_`, que es lo
+   * que hay cargado en producción desde el principio: cambiarlo reescribiría
+   * los refs de la FEP y con ellos los ids, justo lo que la 035 estabilizó.
+   * Las fuentes nuevas pasan el suyo (`wse_event_`…) y nacen ya separadas.
+   */
+  eventPrefix?: string;
 }
+
+const DEFAULT_EVENT_PREFIX = 'fep_event_';
 
 /**
  * Referencia estable de un evento, derivada de su CONTENIDO.
@@ -68,11 +77,14 @@ export function eventSourceRef(input: {
   eventType: FepEventType;
   isHome: boolean | null | undefined;
   fallbackIdx: number;
+  /** Prefijo de la fuente; por defecto el histórico de la FEP. */
+  prefix?: string;
 }): string {
   const { idp, period, clock, eventType, isHome, fallbackIdx } = input;
-  if (!clock) return `fep_event_${idp}_row${fallbackIdx}`;
+  const prefix = input.prefix ?? DEFAULT_EVENT_PREFIX;
+  if (!clock) return `${prefix}${idp}_row${fallbackIdx}`;
   const side = isHome === true ? 'H' : isHome === false ? 'A' : 'x';
-  return `fep_event_${idp}_p${period ?? 'x'}_${clock.replace(':', '')}_${eventType}_${side}`;
+  return `${prefix}${idp}_p${period ?? 'x'}_${clock.replace(':', '')}_${eventType}_${side}`;
 }
 
 export type FepEventType = 'goal' | 'penalty' | 'blue_card' | 'red_card' | 'timeout' | 'period_end' | 'foul' | 'direct_foul';
@@ -188,7 +200,10 @@ export function parseFicha(
 
       // Ref derivada del CONTENIDO, no de la posición en la tabla (ver
       // eventSourceRef). `idx` sólo se usa como último recurso.
-      const sourceRef = eventSourceRef({ idp, period, clock, eventType, isHome, fallbackIdx: idx });
+      const sourceRef = eventSourceRef({
+        idp, period, clock, eventType, isHome, fallbackIdx: idx,
+        ...(opts.eventPrefix ? { prefix: opts.eventPrefix } : {}),
+      });
       rawInstant.set(sourceRef, `${isHome}|${periodText} ${timeText}`);
 
       events.push({
@@ -322,7 +337,7 @@ function tryParseRow(
   opts: ParseOptions = {},
 ): ScrapedMatchEvent | null {
   const log = opts.log ?? SILENT_LOG;
-  const sourceRef = `fep_event_${idp}_${rowIdx}`;
+  const sourceRef = `${opts.eventPrefix ?? DEFAULT_EVENT_PREFIX}${idp}_${rowIdx}`;
 
   // Concatenar todo el texto de la fila para inspeccion
   const rowText = cells.map((_, c) => $(c).text().trim()).get().join(' | ');
