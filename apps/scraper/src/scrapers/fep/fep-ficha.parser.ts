@@ -588,12 +588,27 @@ export function parseLineups(html: string, idp: string): UpsertMatchLineupInput[
 
       if (cells.length < 6) return;
 
-      // Nombre: la celda con el patrón "XXX - NOMBRE" (prefijo de licencia)
+      // Nombre del jugador.
+      //
+      // ANTES se exigía el patrón "XXX - NOMBRE", que es el prefijo de licencia
+      // federativa de la FEP ("OKM - PASCUAL MATÍAS"). En una competición de
+      // selecciones ese prefijo no existe y el nombre viene limpio
+      // ("FAILLA ALESSANDRO"), así que la condición no se cumplía nunca y se
+      // descartaban TODOS los jugadores: del Europeo Sub-17 sólo se guardaba el
+      // cuerpo técnico, cuya rama no pide ese patrón. 8 filas en vez de 30.
+      //
+      // Ahora se busca la primera celda con texto de verdad a partir de la 4ª
+      // (las anteriores son dorsal, portero, capitán y cinco inicial: códigos
+      // de una letra o números). El prefijo de licencia se sigue quitando
+      // después si viene, así que la FEP no cambia.
+      const NAME_MIN_IDX = 4;
       let rawName = '';
       let nameIdx = -1;
       cells.each((i, c) => {
+        if (rawName || i < NAME_MIN_IDX) return;
         const t = $(c).text().replace(/\s+/g, ' ').trim();
-        if (!rawName && / - /.test(t)) { rawName = t; nameIdx = i; }
+        // Al menos dos letras seguidas: descarta "5", "-", "P" y celdas vacías.
+        if (t.length >= 3 && /\p{L}{2,}/u.test(t)) { rawName = t; nameIdx = i; }
       });
       if (!rawName) return;
 
