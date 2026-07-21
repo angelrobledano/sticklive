@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@sports/logger": "*",
+    "@sports/shared-types": "*",
     "pg": "^8.22.0"
   },
   "devDependencies": {

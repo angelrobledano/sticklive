@@ -5,9 +5,20 @@
 #
 # Servicios:
 #   postgres  → datos (volumen persistente)
-#   api       → Hono en :3000 (expuesto)
-#   web       → Next.js en :80 (expuesto)
-#   etl       → scheduler de scraping (live 5min / calendario 1h / actas diario)
+#   migrate   → aplica las migraciones y termina; api y etl esperan a que acabe
+#   api       → Hono en :3000
+#   web       → Next.js en :3001
+#   caddy     → TLS y proxy inverso (:80/:443)
+#   etl       → planificador de scraping
+#
+# Todos los procesos de node arrancan desde `dist/`, ya empaquetado en la
+# imagen (ver deploy/Dockerfile y scripts/build-server.mjs). En producción ya
+# no hay `tsx` ni TypeScript.
+#
+# Límites de memoria: el VPS tiene 4 GB. La suma de los límites (≈3,4 GB) deja
+# margen para el sistema. Sin ellos, una fuga en el ETL —que hace scraping en
+# bucle— podía llevarse por delante a Postgres, que es el único servicio cuyos
+# datos no se reconstruyen volviendo a scrapear.
 # ============================================================
 
 services:
@@ -29,8 +40,19 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    deploy:
+      resources:
+        limits:
+          memory: 1g
 
-  api:
+  # ── Migraciones ──────────────────────────────────────────────────────────
+  # Corre una vez y termina. api y etl no arrancan hasta que sale con código 0.
+  #
+  # Antes esto era un paso MANUAL cuyo orden vivía sólo en docs/DEPLOY.md: si se
+  # te olvidaba, arrancaba código que esperaba un esquema que no estaba, y el
+  # fallo aparecía después y lejos de la causa. Ahora no se puede saltar, y si
+  # una migración falla el despliegue se para en seco en vez de seguir a medias.
+  migrate:
     build: &app-build
       context: .
       dockerfile: deploy/Dockerfile
@@ -42,8 +64,21 @@ services:
         NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-https://eu.i.posthog.com}
         NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
         SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
+    # Sin restart: es una tarea, no un servicio. `on-failure` la reintentaría en
+    # bucle y dejaría el despliegue colgado sin decir por qué.
+    restart: "no"
+    command: node dist/packages/db/src/migrate.js
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sports_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: *app-build
     restart: unless-stopped
-    command: npx tsx apps/api/src/index.ts
+    command: node dist/apps/api/src/index.js
     env_file: .env.prod
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-sports_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}
@@ -51,21 +86,46 @@ services:
       # Mismo volumen de escudos que web/etl (solo lectura): la API sirve los
       # escudos en /teams/:id/logo desde aquí (auditoría A3).
       - escudos:/app/apps/web/public/escudos:ro
+    healthcheck:
+      # Con `node` y no con curl: la imagen slim no lo trae, y añadirlo sólo
+      # para esto es superficie de ataque a cambio de nada.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: 512m
 
   web:
     build: *app-build
     restart: unless-stopped
-    command: npx next start apps/web -p 3001
+    command: node_modules/.bin/next start apps/web -p 3001
     env_file: .env.prod
     volumes:
       # Escudos como DATOS (no horneados en la imagen): los rellena el etl con
       # `run-pipeline --entity=download-logos` y los sirve Next desde public/.
       - escudos:/app/apps/web/public/escudos
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768m
 
   caddy:
     image: caddy:2-alpine
@@ -80,6 +140,10 @@ services:
     depends_on:
       - web
       - api
+    deploy:
+      resources:
+        limits:
+          memory: 128m
 
   etl:
     build: *app-build
@@ -90,11 +154,31 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-sports_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}
     volumes:
       # Mismo volumen que web: el etl escribe los escudos, web los sirve.
-      # OJO: download-logos arma la ruta desde el cwd → ejecutarlo desde /app.
+      # La ruta la fija ESCUDOS_DIR en la imagen (deploy/Dockerfile).
       - escudos:/app/apps/web/public/escudos
+    healthcheck:
+      # El ETL no expone HTTP, así que el latido es un fichero que el
+      # planificador toca en cada vuelta del bucle. Si lleva más de 20 minutos
+      # sin tocarse, el proceso está colgado —no muerto, que eso ya lo ve
+      # Docker— y conviene reiniciarlo. El margen cubre de sobra los ciclos
+      # largos de directo, que tocan el fichero al entrar y al salir.
+      # Los `$$` son escapes de Compose, que interpola `$` antes de pasar la
+      # cadena al contenedor. Con un solo `$` la expresión aritmética se
+      # evaluaría (mal) en el host y el healthcheck no comprobaría nada.
+      test: ["CMD-SHELL", "test -f /tmp/etl-alive && [ $$(( $$(date +%s) - $$(stat -c %Y /tmp/etl-alive) )) -lt 1200 ]"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: 1g
 
 volumes:
   pgdata:

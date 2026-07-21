@@ -98,21 +98,41 @@ Hoy está cubierto por el saneado, pero es un patrón que sólo aguanta mientras
 
 ## Bloque 2 — Corto plazo (rendimiento y madurez de producción)
 
-### [ ] 2.1 Producción ejecuta TypeScript sin compilar
+### [x] 2.1 Producción ejecuta TypeScript sin compilar — **resuelto (21/07/2026)**
 
 `docker-compose.prod.yml`: `command: npx tsx apps/api/src/index.ts` y `sh deploy/etl-scheduler.sh` → `npx tsx src/cron-live.ts`. `tsx` es *devDependency*. Implicaciones: sin type-check en el arranque, transpilación en cada boot, `npx` resolviendo en runtime, y el `npm audit --omit=dev` del CI **no cubre lo que realmente corre en producción**.
 
-Los `package.json` ya tienen `build: tsc` — no se usa en el despliegue. **Fix:** `RUN npm run build` en el Dockerfile y `command: node dist/index.js`.
+> **Resuelto empaquetando, no con `tsc` a secas.** El `build: tsc` que ya había en cada `package.json` no servía tal cual: los paquetes exponen TypeScript directamente (`"main": "./src/index.ts"`), así que compilar por separado obligaba a reescribir todos los `main`/`exports` y a resolver los imports relativos que cruzan de una app a otra (`cron-live.ts` importa `../../scraper/src/...`), que acaban en referencias de proyecto y rutas frágiles.
+>
+> `scripts/build-server.mjs` empaqueta con esbuild los 16 entrypoints a `dist/`, conservando la jerarquía de directorios para que los stack traces de producción se lean sin traducir. Todo `node_modules` queda **externo** a propósito: `@sentry/node` instrumenta interceptando la carga de módulos y dentro de un bundle deja de verla, y `playwright` resuelve rutas propias en runtime.
+>
+> Tres cosas que aparecieron por el camino y no eran obvias:
+>
+> 1. **Rutas resueltas desde el propio fichero.** `migrate.ts` leía `../migrations` y `run-pipeline.ts` escribía en `../../web/public/escudos` —esta última, además, un volumen compartido—. Al correr desde `dist/` esos cálculos apuntan a otro sitio. Ahora se fijan por entorno (`MIGRATIONS_DIR`, `ESCUDOS_DIR`) desde la imagen.
+> 2. **Los runbooks se habrían roto en silencio.** `docs/RUNBOOK_COMPETICIONES.md` está lleno de `$DC exec etl npx tsx <script>.ts`, incluido el alta de una competición nueva. Sin `tsx` en la imagen, ese flujo habría dejado de funcionar y el fallo habría salido en septiembre, al arrancar la temporada. Los scripts operativos autocontenidos van empaquetados; los que leen ficheros del repo o lanzan subprocesos (`import-*`) se ejecutan desde el portátil por el túnel SSH, que es para lo que existe.
+> 3. **Dos dependencias fantasma.** `apps/api` importaba `@sports/analytics` y `packages/db` importaba `@sports/shared-types` sin declararlos; funcionaban sólo porque npm los eleva a la raíz. Y `packages/db/tsconfig.json` excluía `scripts/` del typecheck, justo donde viven `purge-scrape-logs` y `verify-event-upsert`.
 
-### [ ] 2.2 Imagen Docker única, monolítica y como root
+### [x] 2.2 Imagen Docker única, monolítica y como root — **resuelto (21/07/2026)**
 
 Un solo `deploy/Dockerfile` sin multi-stage sirve a `api`, `web` y `etl`. Arrastra Playwright, el build de Next y todas las devDependencies a los tres contenedores. Corre como `root`. No hay `healthcheck` para `api` ni `web` (sólo Postgres lo tiene), ni `deploy.resources.limits`, así que un ETL desbocado puede tumbar la API en el mismo VPS.
 
-**Fix:** multi-stage (deps → build → runtime), `USER node`, healthcheck contra `/health` (ya existe en `apps/api/src/index.ts:52`), y límites de memoria por servicio.
+> Tres etapas: `deps` (cacheable) → `builder` (typecheck + empaquetado + build de Next + `npm ci --omit=dev`) → `runtime`, que sólo recibe el resultado. La imagen final no lleva código fuente, ni toolchain, ni devDependencies, y corre como `node`.
+>
+> El typecheck va **dentro** del build de la imagen, antes de empaquetar: esbuild transpila sin mirar tipos, así que sin esa puerta un error de tipos llegaría a producción convertido en fallo de runtime. El CI ya lo comprueba, pero la imagen no debe depender de que alguien haya mirado el CI.
+>
+> Healthchecks con `node -e` y `fetch`, no con `curl`: la imagen slim no lo trae y añadirlo es superficie de ataque a cambio de nada. El del ETL es distinto —no expone HTTP— y va contra un fichero de latido que el planificador toca en cada vuelta; así se distingue *colgado* de *muerto*, que es lo que Docker ya ve por su cuenta.
+>
+> Límites de memoria por servicio sumando ≈3,4 GB de los 4 GB del VPS. El objetivo concreto es que una fuga en el ETL no se lleve por delante a Postgres, que es el único cuyos datos no se reconstruyen volviendo a scrapear.
 
-### [ ] 2.3 Migraciones fuera del despliegue
+### [x] 2.3 Migraciones fuera del despliegue — **resuelto (21/07/2026)**
 
-No hay servicio `migrate` en `docker-compose.prod.yml`. `packages/db/src/migrate.ts` existe pero se ejecuta a mano (`docs/DEPLOY.md`). 34 migraciones acumuladas y ninguna garantía de que prod esté al día. **Fix:** servicio `migrate` con `restart: "no"` que corra antes de `api`/`etl`, y comprobación de versión de esquema en el arranque de la API.
+No hay servicio `migrate` en `docker-compose.prod.yml`. `packages/db/src/migrate.ts` existe pero se ejecuta a mano (`docs/DEPLOY.md`). 34 migraciones acumuladas y ninguna garantía de que prod esté al día.
+
+> Servicio `migrate` con `restart: "no"`, del que `api` y `etl` dependen con `condition: service_completed_successfully`. Si una migración falla, el despliegue se para ahí en vez de seguir a medias.
+>
+> Esto elimina el procedimiento especial que había en `docs/DEPLOY.md` para releases cuyo código depende del esquema nuevo: cuatro comandos en un orden concreto que sólo funcionaban si te acordabas. El 20/07/2026 un despliegue se quedó exactamente así —`etl` parado una hora, migraciones sin aplicar, `api`/`web` con imagen de 24 h antes—. Un paso manual que hay que recordar en el momento justo no es un procedimiento, es un fallo esperando turno.
+>
+> Queda pendiente la otra mitad del fix propuesto: **comprobación de versión de esquema al arrancar la API**. El servicio `migrate` cubre el despliegue normal, pero no el caso de arrancar contra una base restaurada de un backup viejo.
 
 ### [x] 2.4 `infra/docker/docker-compose.yml` está muerto — **resuelto (PR #36)**
 

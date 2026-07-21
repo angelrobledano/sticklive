@@ -9,8 +9,13 @@ import { readFileSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-// Relativo a este fichero, no al cwd: funciona desde la raíz y desde packages/db
-const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'migrations');
+// Relativo a este fichero, no al cwd: funciona desde la raíz y desde packages/db.
+//
+// MIGRATIONS_DIR permite fijarlo por entorno, que es lo que hace la imagen de
+// producción: allí este fichero corre empaquetado desde dist/, donde el cálculo
+// relativo apuntaría a un directorio que no existe. Ver scripts/build-server.mjs.
+const MIGRATIONS_DIR = process.env['MIGRATIONS_DIR']
+  ?? join(dirname(fileURLToPath(import.meta.url)), '..', 'migrations');
 
 async function ensureMigrationsTable() {
   await db.query(`
