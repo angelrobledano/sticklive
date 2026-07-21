@@ -7,6 +7,17 @@
  *
  * Sin SMTP_HOST la API queda en modo dev (el link se devuelve en la
  * respuesta); con él, este módulo es el único camino.
+ *
+ * ── Nota de versiones ──────────────────────────────────────────────────────
+ * `nodemailer` va en la 9.x y `@types/nodemailer` en la 8.x. NO es un descuido
+ * pendiente de arreglar: a día de hoy (21/07/2026) no existen tipos 9.x
+ * publicados. La 9.0.0 no cambió ninguna firma — su único cambio incompatible
+ * es que valida el certificado TLS al descargar contenido remoto (adjuntos por
+ * URL, endpoints OAuth2, proxy CONNECT), y aquí no hacemos nada de eso: se
+ * envía texto y HTML literales por SMTP directo. Los tipos de la 8 describen
+ * con exactitud lo que usamos.
+ *
+ * Si algún día se añaden adjuntos por URL, releer esto antes.
  */
 import nodemailer from 'nodemailer';
 
