@@ -126,13 +126,28 @@ jobs:
             done
             echo "✓ sin toolchain de desarrollo"'
 
-      # Sin código fuente TypeScript: lo que corre es el bundle de dist/.
+      # Sin código fuente TypeScript NUESTRO: lo que corre es el bundle de dist/.
+      #
+      # Se excluye `.next` además de `node_modules`: Next genera stubs de tipos
+      # en `.next/types/app/**/*.ts` durante el build. Son metadatos suyos, no
+      # código que se ejecute, y no los controlamos.
+      #
+      # Imprime las rutas al fallar. La primera versión sólo daba el número
+      # ("✗ 15 ficheros .ts"), que obliga a otra vuelta entera de CI para saber
+      # de cuáles habla. Un check que detecta y no señala cuesta más de lo que
+      # ahorra.
       - name: sin fuentes .ts en la imagen
         run: |
           docker run --rm --entrypoint sh sticklive:ci -c '
-            n=$(find /app -name "*.ts" -not -path "*/node_modules/*" | wc -l)
-            [ "$n" -eq 0 ] || { echo "✗ $n ficheros .ts en la imagen"; exit 1; }
-            echo "✓ sin fuentes .ts"'
+            sobran=$(find /app -name "*.ts" \
+                       -not -path "*/node_modules/*" \
+                       -not -path "/app/apps/web/.next/*")
+            if [ -n "$sobran" ]; then
+              echo "✗ fuentes .ts en la imagen de producción:"
+              echo "$sobran"
+              exit 1
+            fi
+            echo "✓ sin fuentes .ts propias"'
 
       # Cada proceso que arranca en producción tiene que existir compilado. Un
       # fallo aquí significa que el compose apunta a un fichero que no está, y
