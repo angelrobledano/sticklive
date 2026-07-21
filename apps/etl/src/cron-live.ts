@@ -29,8 +29,10 @@ import { createLogger } from '@sports/logger';
 import { db, closeDb } from '@sports/db';
 import { EtlPipeline } from './pipeline.js';
 import { deriveMatchResults } from './derive-results.js';
+import { sweepStaleLive } from './stale-live-watchdog.js';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
+import { resolveWorldskate, runWorldskate } from '../../scraper/src/scrapers/worldskate/run-worldskate.js';
 import {
   sourceForMatchRef, idpFromMatchRef, idcFromCompetitionRef,
 } from '../../scraper/src/core/sources.js';
@@ -236,7 +238,7 @@ async function activeSecondarySeasons(seasonIds: string[], primarySeasonId: stri
        -- rfep_mc_1.php). Contra una temporada de otra fuente traería partidos
        -- ajenos y, si alguno no existiese aún, lo insertaría bajo la temporada
        -- equivocada. Cada fuente actualiza sus marcadores con su propio
-       -- scraper (World Skate, con el suyo desde etl-scheduler.sh).
+       -- scraper; el de World Skate va en runWorldskateScores, más abajo.
        AND c.source_ref LIKE 'fep_%'
        AND ( m.status = 'live'
           OR (m.status = 'scheduled'
@@ -358,9 +360,40 @@ async function runFepScores(seasonIds: string[], primarySeasonId: string): Promi
 }
 
 /**
- * Un ciclo completo: marcadores de la FEP + actas y notificaciones de TODAS las
- * fuentes. Las fichas van aparte de los marcadores porque cada fuente actualiza
- * los suyos por su cuenta (World Skate, desde etl-scheduler.sh).
+ * Marcadores de World Skate, con el mismo snapshot→diff que las secundarias de
+ * la FEP para que el push de inicio/gol/final funcione igual.
+ *
+ * Está AQUÍ, dentro del ciclo de 45 s, y no sólo en `etl-scheduler.sh`, porque
+ * el bucle del scheduler es secuencial: mientras `cron-live` está en su bucle
+ * activo (hasta MAX_RUNTIME_MIN, 180 por defecto) no le llega el turno a nada
+ * de lo que va detrás. Y el estado `live` de World Skate se infiere de la hora
+ * y caduca a las 3 h, así que los partidos se quedaban colgados "EN JUEGO":
+ * ese `live` fantasma mantenía vivo el bucle, y el bucle impedía la ejecución
+ * que lo habría corregido. Metiéndolo aquí, además, el directo de World Skate
+ * pasa de 5 minutos de resolución a 45 segundos.
+ */
+async function runWorldskateScores(): Promise<void> {
+  const comps = await resolveWorldskate();
+  for (const ctx of comps) {
+    const prev       = pushEnabled ? await snapshotMatches(ctx.seasonId) : new Map();
+    const prevRounds = pushEnabled ? await snapshotRounds(ctx.seasonId)  : new Map();
+    try {
+      await runWorldskate(ctx, (seasonId) =>
+        new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId, createRounds: true }));
+    } catch (err) {
+      log.warn({ err, competition: ctx.name }, 'marcadores World Skate fallaron — sigue');
+      continue;
+    }
+    try { await diffAndNotify(prev, prevRounds, ctx.seasonId); } catch (err) {
+      log.warn({ err, competition: ctx.name }, 'push (World Skate) fallo — sigue');
+    }
+  }
+}
+
+/**
+ * Un ciclo completo: marcadores de TODAS las fuentes (FEP + World Skate) y,
+ * después, actas y notificaciones. Cada fuente tiene su propio scraper y va
+ * aislada: que una caiga no impide que las demás se actualicen.
  */
 async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promise<number> {
   let upserted = 0;
@@ -369,6 +402,12 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
   } catch (err) {
     // Que la FEP falle no debe impedir que se refresquen las actas del resto.
     log.warn({ err }, 'marcadores FEP fallaron — el ciclo sigue con las fichas');
+  }
+
+  try {
+    await runWorldskateScores();
+  } catch (err) {
+    log.warn({ err }, 'marcadores World Skate fallaron — el ciclo sigue');
   }
 
   // Goles: las fichas traen goleador y minuto, así que snapshot ANTES de
@@ -408,6 +447,12 @@ async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promis
   // Final por tipo (reemplaza el final genérico vía mismo tag).
   try { await diffResolution(prevResults, seasonIds); } catch (err) {
     log.warn({ err }, 'push de final por tipo fallo — el ciclo sigue');
+  }
+
+  // Último paso del ciclo, y a propósito: si algo de lo anterior falló y dejó
+  // un partido colgado en `live`, esto lo limpia. Ver stale-live-watchdog.ts.
+  try { await sweepStaleLive(seasonIds); } catch (err) {
+    log.warn({ err }, 'watchdog de live colgados fallo — el ciclo sigue');
   }
 
   return upserted;

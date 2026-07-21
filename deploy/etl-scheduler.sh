@@ -36,17 +36,17 @@ while true; do
   NOW_DAY=$(date -u +%Y%m%d)
   HOUR_UTC=$(date -u +%H)
 
-  # ── Cada 5 min: marcadores en vivo ─────────────────────────
-  echo "[scheduler] cron-live $(date -u +%T)"
-  $LOCK npx tsx src/cron-live.ts || echo "[scheduler] cron-live saltado o falló (seguimos)"
-
   # ── Cada 5 min: World Skate Europe ─────────────────────────
-  # OJO: cron-live sólo cubre las competiciones de la FEP. World Skate usa otro
-  # portal de sidgad y su propio scraper, y hasta el 20/07/2026 NO lo ejecutaba
-  # ningún proceso de producción: estaba programado únicamente en el
-  # planificador de apps/scraper/src/index.ts, que nunca corrió en el servidor.
-  # Resultado: durante el Europeo Sub-17 los partidos jugados se quedaban con la
-  # hora y sin resultado hasta que alguien lanzaba el scraper a mano.
+  # VA ANTES DE cron-live A PROPÓSITO. Este bucle es SECUENCIAL y `cron-live`
+  # se queda dentro de su propio bucle activo mientras haya partidos en juego
+  # (MAX_RUNTIME_MIN, 180 por defecto). Puesto detrás, durante un torneo no le
+  # llegaba nunca el turno: los partidos de World Skate se quedaban colgados en
+  # "EN JUEGO" — y ese `live` fantasma era justo lo que mantenía vivo el bucle
+  # de cron-live, que a su vez impedía esta ejecución. Círculo vicioso.
+  #
+  # El directo de verdad ya NO depende de esta línea: cron-live scrapea World
+  # Skate en cada ciclo de 45 s (runWorldskateScores). Esto cubre el reposo —
+  # cambios de calendario, horas y altas de equipos fuera del bucle activo.
   #
   # Es barato (un POST por competición) y `resolveWorldskate` devuelve vacío si
   # no hay competiciones activas, así que fuera de torneo esto es una consulta
@@ -54,6 +54,13 @@ while true; do
   echo "[scheduler] worldskate $(date -u +%T)"
   $LOCK npx tsx ../scraper/src/index.ts --run-once worldskate \
     || echo "[scheduler] worldskate saltado o falló (seguimos)"
+
+  # ── Cada 5 min: marcadores en vivo ─────────────────────────
+  # Puede quedarse hasta MAX_RUNTIME_MIN dentro de su bucle activo: todo lo que
+  # va DESPUÉS de esta línea espera a que termine. Tenerlo en cuenta al añadir
+  # tareas nuevas.
+  echo "[scheduler] cron-live $(date -u +%T)"
+  $LOCK npx tsx src/cron-live.ts || echo "[scheduler] cron-live saltado o falló (seguimos)"
 
   # ── Cada hora: calendario + clasificación ──────────────────
   if [ "$NOW_HOUR" != "$LAST_HOUR" ]; then
