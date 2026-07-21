@@ -31,13 +31,29 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # El audit SÍ sigue sin bloquear, y conviene saber por qué: hoy hay 8
-      # vulnerabilidades en dependencias de producción (4 altas) y una de ellas
-      # exige subir node-cron con cambio de API. Ponerlo en bloqueante ahora
-      # dejaría el pipeline rojo permanentemente, que es la forma más rápida de
-      # que la gente aprenda a ignorarlo. Se arregla aparte y luego se endurece.
+      # BLOQUEANTE desde el 21/07/2026 (issue #37). Antes no lo era, y por una
+      # razón deliberada: había 8 vulnerabilidades en dependencias de producción
+      # y el pipeline habría quedado rojo de forma permanente, que es la manera
+      # más rápida de enseñar a ignorar el rojo. Primero se limpió (nodemailer 9
+      # y Next 16), y sólo entonces se endureció.
+      #
+      # Además, desde que producción corre JS compilado sin devDependencies
+      # (PR #49), `--omit=dev` audita de verdad lo que se ejecuta en el
+      # servidor. Antes no: corría con `npx tsx`, que es devDependency.
       - name: Audit (prod deps)
         run: npm audit --omit=dev --audit-level=high
+
+      # Informativo, NO bloquea. El umbral de arriba es `high` por una razón
+      # concreta: queda un `postcss` moderate dentro del propio Next
+      # (node_modules/next/node_modules/postcss) que no tiene arreglo — npm
+      # llega a proponer bajar a next@9.3.3. Es de build y el CSS que
+      # procesamos es nuestro, así que no es un riesgo real.
+      #
+      # Pero bloquear en `high` y no mirar nunca lo de abajo es cómodo hoy y
+      # ciego dentro de seis meses. Este paso deja el listado completo visible
+      # en cada ejecución sin frenar a nadie.
+      - name: Audit informativo (incluye moderate)
+        run: npm audit --omit=dev --audit-level=moderate
         continue-on-error: true
 
   # ── Migraciones contra una BD limpia ────────────────────────────────────────
