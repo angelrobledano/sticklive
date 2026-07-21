@@ -17,6 +17,9 @@
       ],
       "@sports/db": [
         "../../packages/db/src/index.ts"
+      ],
+      "@sports/etl": [
+        "../etl/src/pipeline.ts"
       ]
     }
   },

@@ -213,6 +213,36 @@ Hacer esto **antes** de meter la segunda federación cuesta días; hacerlo despu
 > porque el `ON CONFLICT` no toca `season_id`, pero podía insertar partidos bajo
 > la temporada equivocada. Ahora filtra por competiciones de la FEP.
 >
+> **Cuarto acoplamiento, esta vez de planificación (20/07/2026, por la noche).**
+> Con las actas ya funcionando, aparecieron partidos del Europeo colgados en
+> "EN JUEGO" cuatro horas después de empezar. La causa no estaba en ningún
+> scraper sino en cómo se planifican: `deploy/etl-scheduler.sh` es un bucle
+> **secuencial**, y `cron-live` se queda dentro de su bucle activo mientras haya
+> partidos en juego (`MAX_RUNTIME_MIN`, 180 por defecto). World Skate estaba
+> puesto **detrás** de él, así que durante un torneo no le llegaba el turno
+> nunca. Y como su estado `live` lo infiere `inferStatus` del reloj y caduca a
+> las 3 h, hacía falta un scrape para deshacerlo. Círculo cerrado: el `live`
+> fantasma mantenía vivo el bucle, y el bucle impedía el scrape que lo habría
+> borrado.
+>
+> El acoplamiento de fondo es el mismo de siempre con otra cara: **`cron-live`
+> era "el bucle de la FEP" y todo lo demás vivía fuera**, en un planificador que
+> asume tareas cortas. Arreglado moviendo el scrape de World Skate al ciclo de
+> 45 s (`runWorldskateScores`), con su propio snapshot→diff para que el push
+> funcione igual; la lógica compartida se extrajo a
+> `apps/scraper/src/scrapers/worldskate/run-worldskate.ts`, con el pipeline
+> **inyectado** para no invertir la dependencia scraper→ETL. En el scheduler
+> World Skate pasa a ir **antes** de `cron-live` y cubre sólo el reposo. De
+> paso, el directo de World Skate gana resolución: de 5 minutos a 45 segundos.
+>
+> Y una lección que va más allá de este bug: **el estado `live` inferido del
+> reloj es correcto sólo mientras el scraper corra.** Cualquier parón lo
+> convierte en mentira permanente, y la portada es justo donde más se nota. Por
+> eso se añadió `apps/etl/src/stale-live-watchdog.ts`, que al final de cada
+> ciclo devuelve a `scheduled` lo que lleve más de `STALE_LIVE_HOURS` (5) en
+> `live` y avisa a Sentry. No arregla la causa —avisa de ella— pero el usuario
+> deja de ver un directo falso aunque el fallo sea de otro sitio.
+>
 > **Lo que sigue pendiente** es la parte de configuración: los `idc` y las
 > temporadas siguen viniendo de constantes y de `SEASON_ID`. La tabla
 > `competition_sources` que se propone abajo sigue siendo el objetivo.
@@ -229,6 +259,7 @@ Puntos duros encontrados:
 | `cron-live.ts` (`main`) | Concepto de "season **primaria**" vía `SEASON_ID` de entorno; las demás son ciudadanas de segunda (`scrapeSeasonScores` no emite push de gol-jugador) |
 | `deploy/Dockerfile` | `NEXT_PUBLIC_SEASON_ID` **horneada en el build** de la web |
 | `apps/etl/src/` | 8 scripts `seed-*.ts` / `backfill-*.ts` / `merge-*.ts` de un solo uso conviviendo con el código de producción |
+| `deploy/etl-scheduler.sh` | Bucle **secuencial** con `cron-live` dentro: cualquier tarea que vaya detrás se queda sin turno mientras haya partidos en juego (hasta 180 min) |
 
 Traducción operativa: **cada liga nueva exige tocar código, rebuild de la imagen y redeploy.** A 3 años y N ligas eso no escala ni en tiempo ni en riesgo.
 

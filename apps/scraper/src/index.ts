@@ -26,7 +26,10 @@ import { FepStandingsScraper }   from './scrapers/fep/fep-standings.scraper.js';
 import { FepMatchesScraper }     from './scrapers/fep/fep-matches.scraper.js';
 import { FepCompetitionsScraper } from './scrapers/fep/fep-competitions.scraper.js';
 import { FepListadoScraper }     from './scrapers/fep/fep-listado.scraper.js';
-import { WorldskateScraper }     from './scrapers/worldskate/worldskate.scraper.js';
+// La lógica de World Skate vive en su propio módulo porque la comparten este
+// CLI (--run-once worldskate, vía etl-scheduler.sh) y el ciclo de 45 s de
+// apps/etl/src/cron-live.ts. Ver el comentario de cabecera de ese fichero.
+import { runAllWorldskate }      from './scrapers/worldskate/run-worldskate.js';
 import { closeBrowser }          from './core/browser.js';
 
 const log = createLogger({ service: 'scraper' });
@@ -104,76 +107,6 @@ async function runLiveScores(seasonId: string) {
   }, 'Live scores ETL');
 }
 
-// ─── World Skate Europe (Europeo Sub-17) ─────────────────────────────────────
-
-interface WorldskateCtx {
-  seasonId: string;
-  sourceId: string;
-  timezone: string | null;
-  idc: string;
-  name: string;
-}
-
-/**
- * Resuelve TODAS las competiciones worldskate con temporada actual (data-driven):
- * masculino (idc 320), femenino (321) y futuras. El idc sale del source_ref
- * de la competición ('wse_competition_<idc>'). Añadir una nueva = solo seed.
- */
-async function resolveWorldskate(): Promise<WorldskateCtx[]> {
-  try {
-    const res = await db.query<{
-      season_id: string; timezone: string | null; source_id: string;
-      comp_ref: string; comp_name: string;
-    }>(`
-      SELECT s.id AS season_id, s.timezone, ds.id AS source_id,
-             c.source_ref AS comp_ref, c.name AS comp_name
-      FROM seasons s
-      JOIN competitions c   ON c.id = s.competition_id
-      JOIN data_sources ds  ON ds.scraper_key = 'worldskate_hockey'
-      WHERE c.source_ref LIKE 'wse_competition_%'
-        AND s.is_current = TRUE
-    `);
-    if (res.rows.length === 0) { log.warn('World Skate: sin competiciones actuales (¿seed ejecutado?)'); }
-    return res.rows.map((row) => ({
-      seasonId: row.season_id,
-      sourceId: row.source_id,
-      timezone: row.timezone,
-      idc: row.comp_ref.replace('wse_competition_', ''),
-      name: row.comp_name,
-    }));
-  } catch (err) {
-    log.error({ err }, 'Error resolviendo competiciones World Skate');
-    return [];
-  }
-}
-
-async function runWorldskate(ctx: WorldskateCtx) {
-  const scraper = new WorldskateScraper({
-    idc: ctx.idc,
-    seasonId: ctx.seasonId,
-    sourceId: ctx.sourceId,
-    timezone: ctx.timezone ?? undefined,
-    competitionName: ctx.name,
-  });
-  const out = await scraper.run();
-
-  const pipeline = new EtlPipeline({ sportSlug: 'hockey-patines', seasonId: ctx.seasonId, createRounds: true });
-  const mEtl = out.matches.success ? await pipeline.runMatches(out.matches) : { upserted: 0 };
-  const sEtl = out.standings.success ? await pipeline.runStandings(out.standings) : { upserted: 0 };
-  log.info(
-    { competition: ctx.name, idc: ctx.idc,
-      matchesFound: out.matches.data.length, matchesUpserted: mEtl.upserted,
-      standingsFound: out.standings.data.length, standingsUpserted: sEtl.upserted },
-    'World Skate ETL'
-  );
-}
-
-/** Corre todas las competiciones worldskate activas. */
-async function runAllWorldskate() {
-  const comps = await resolveWorldskate();
-  for (const ctx of comps) await runWorldskate(ctx);
-}
-
 // ─── Definición de crons ──────────────────────────────────────────────────────
 
 
@@ -182,7 +115,8 @@ async function runAllWorldskate() {
 async function runOnce(key: string, seasons: SeasonLookup) {
   // World Skate: corre todas las competiciones activas (masc + fem + futuras).
   if (key === 'worldskate_u17' || key === 'worldskate') {
-    await runAllWorldskate();
+    await runAllWorldskate((seasonId) =>
+      new EtlPipeline({ sportSlug: 'hockey-patines', seasonId, createRounds: true }));
     await Promise.all([closeBrowser(), closeDb(), shutdownAnalytics()]);
     return;
   }
