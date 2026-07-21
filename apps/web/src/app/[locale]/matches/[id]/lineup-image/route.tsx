@@ -67,7 +67,8 @@ function place(players: LineupPlayer[], isAway: boolean): Array<{ p: LineupPlaye
   return out.map(({ p, x, y }) => ({ p, x: isAway ? 100 - x / 2 : x / 2, y }));
 }
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   let homeName = 'Local';
   let awayName = 'Visitante';
   let positioned: Placed[] = [];

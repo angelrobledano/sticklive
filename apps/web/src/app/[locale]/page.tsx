@@ -3,7 +3,8 @@ import { getCurrentMatches } from '@/lib/api/client';
 import { MatchesView } from '@/components/shared/MatchesView';
 import { localeAlternates, isSupportedLocale } from '@/lib/seo';
 
-export function generateMetadata({ params }: { params: { locale: string } }): Metadata {
+export async function generateMetadata(props: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const params = await props.params;
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   return { alternates: localeAlternates(locale, '/') };
 }

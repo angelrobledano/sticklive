@@ -11,7 +11,8 @@ const TITLES: Record<string, string> = {
   it: 'Competizioni · Stick Live',
 };
 
-export function generateMetadata({ params }: { params: { locale: string } }): Metadata {
+export async function generateMetadata(props: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const params = await props.params;
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   return {
     title: TITLES[locale],

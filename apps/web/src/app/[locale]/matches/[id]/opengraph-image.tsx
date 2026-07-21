@@ -14,7 +14,11 @@ export const revalidate = 30;
 
 const API = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
-export default async function Image({ params }: { params: { locale: string; id: string } }) {
+// `params` es una promesa desde Next 15, también en las rutas de metadatos
+// (opengraph-image, twitter-image, icon…). El codemod oficial
+// `next-async-request-api` NO cubre estos ficheros: hay que hacerlo a mano.
+export default async function Image(props: { params: Promise<{ locale: string; id: string }> }) {
+  const params = await props.params;
   let home = 'Local';
   let away = 'Visitante';
   let homeId = '';

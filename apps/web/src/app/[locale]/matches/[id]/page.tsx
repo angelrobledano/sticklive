@@ -8,7 +8,7 @@ import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL } from '@/lib
 import { clubName } from '@/lib/names';
 
 interface Props {
-  params: { locale: string; id: string };
+  params: Promise<{ locale: string; id: string }>;
 }
 
 const DESC: Record<string, (h: string, a: string) => string> = {
@@ -19,7 +19,8 @@ const DESC: Record<string, (h: string, a: string) => string> = {
   it: (h, a) => `${h} - ${a} di hockey su pista: risultato in diretta, gol, formazioni e statistiche su Stick Live.`,
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const params = await props.params;
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   const alternates = localeAlternates(locale, `/matches/${params.id}`);
   try {
@@ -42,7 +43,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function MatchDetailPage({ params }: Props) {
+export default async function MatchDetailPage(props: Props) {
+  const params = await props.params;
   const matchId = params.id;
   let data;
   try {
