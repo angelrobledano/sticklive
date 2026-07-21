@@ -114,3 +114,71 @@ jobs:
       # es justo lo que se añadió al Dockerfile y nadie volvería a mirarlo.
       - name: flock presente en la imagen
         run: docker run --rm --entrypoint sh sticklive:ci -c 'command -v flock'
+
+      # La imagen de producción no debe llevar el toolchain de desarrollo. Si
+      # `tsx` reaparece, es que alguien lo movió a `dependencies` o se saltó el
+      # `--omit=dev`, y volveríamos a ejecutar TypeScript sin compilar en prod.
+      - name: sin tsx ni typescript en la imagen
+        run: |
+          docker run --rm --entrypoint sh sticklive:ci -c '
+            for m in tsx typescript ts-node; do
+              if [ -e "node_modules/$m" ]; then echo "✗ $m está en la imagen"; exit 1; fi
+            done
+            echo "✓ sin toolchain de desarrollo"'
+
+      # Sin código fuente TypeScript NUESTRO: lo que corre es el bundle de dist/.
+      #
+      # Se excluye `.next` además de `node_modules`: Next genera stubs de tipos
+      # en `.next/types/app/**/*.ts` durante el build. Son metadatos suyos, no
+      # código que se ejecute, y no los controlamos.
+      #
+      # Imprime las rutas al fallar. La primera versión sólo daba el número
+      # ("✗ 15 ficheros .ts"), que obliga a otra vuelta entera de CI para saber
+      # de cuáles habla. Un check que detecta y no señala cuesta más de lo que
+      # ahorra.
+      - name: sin fuentes .ts en la imagen
+        run: |
+          docker run --rm --entrypoint sh sticklive:ci -c '
+            sobran=$(find /app -name "*.ts" \
+                       -not -path "*/node_modules/*" \
+                       -not -path "/app/apps/web/.next/*")
+            if [ -n "$sobran" ]; then
+              echo "✗ fuentes .ts en la imagen de producción:"
+              echo "$sobran"
+              exit 1
+            fi
+            echo "✓ sin fuentes .ts propias"'
+
+      # Cada proceso que arranca en producción tiene que existir compilado. Un
+      # fallo aquí significa que el compose apunta a un fichero que no está, y
+      # el síntoma en el servidor sería un contenedor reiniciándose en bucle.
+      - name: los entrypoints de producción existen
+        run: |
+          docker run --rm --entrypoint sh sticklive:ci -c '
+            for f in dist/apps/api/src/index.js \
+                     dist/apps/etl/src/cron-live.js \
+                     dist/apps/etl/src/run-pipeline.js \
+                     dist/apps/scraper/src/index.js \
+                     dist/packages/db/src/migrate.js \
+                     dist/packages/db/scripts/purge-scrape-logs.js; do
+              [ -f "$f" ] || { echo "✗ falta $f"; exit 1; }
+            done
+            echo "✓ entrypoints presentes"'
+
+      # El scheduler es un shell script que invoca esos ficheros por ruta. Si
+      # alguien renombra un entrypoint y olvida el script, no lo detecta nada
+      # hasta que la tarea toca correr — que puede ser semanas después.
+      - name: el scheduler apunta a ficheros que existen
+        run: |
+          docker run --rm --entrypoint sh sticklive:ci -c '
+            grep -o "dist/[a-zA-Z0-9/._-]*\.js" deploy/etl-scheduler.sh | sort -u | while read -r f; do
+              [ -f "$f" ] || { echo "✗ el scheduler llama a $f, que no existe"; exit 1; }
+              echo "  ✓ $f"
+            done'
+
+      # No corre como root.
+      - name: la imagen corre sin privilegios
+        run: |
+          u=$(docker run --rm --entrypoint sh sticklive:ci -c 'id -un')
+          [ "$u" = "node" ] || { echo "✗ corre como $u"; exit 1; }
+          echo "✓ corre como $u"

@@ -42,7 +42,11 @@ git pull
 1. **Importar el catálogo + calendario + clasificación + actas** de una o varias `idc`:
 
    ```bash
-   $DC exec etl npx tsx apps/etl/src/import-history.ts --only-idc=3150,3481,3484 --fichas
+   # Desde el PC, con el túnel SSH abierto (ver docs/DEPLOY.md).
+   # NO va en el contenedor: import-history lee apps/scraper/logs/fep-catalog.json
+   # y lanza subprocesos, y la imagen de producción ya no lleva ni el catálogo
+   # ni `tsx`. Además es un trabajo largo que conviene hacer desde IP residencial.
+   npx tsx apps/etl/src/import-history.ts --only-idc=3150,3481,3484 --fichas
    ```
 
    - `--only-idc=` acepta **lista separada por comas**.
@@ -52,7 +56,7 @@ git pull
 2. **Lanzar el pipeline** para crear rondas de playoff/copa y consolidar:
 
    ```bash
-   $DC exec etl npx tsx apps/etl/src/run-pipeline.ts
+   $DC exec etl node dist/apps/etl/src/run-pipeline.js
    ```
 
    - `PLAYOFF_IDCS_PIPELINE = ['3481','3484']` → esas `idc` se tratan como rondas de playoff.
@@ -83,10 +87,13 @@ La BD de producción se vació y se reconstruyó solo con la OK Liga vigente (`i
 1. **Reaplicar TODAS las migraciones** (el esquema se recrea, pero el runner es idempotente):
 
    ```bash
-   $DC exec api npx tsx packages/db/src/migrate.ts
+   $DC run --rm migrate
    ```
 
-   Saltarse esto provoca errores como `column "session_expires_at" does not exist` (migraciones 023/024 sin aplicar) o el magic link devolviendo 500.
+   En un `up` normal esto ya lo hace solo el servicio `migrate`; el comando de
+   arriba es para forzarlo suelto tras un vaciado. Saltárselo provoca errores
+   como `column "session_expires_at" does not exist` (migraciones 023/024 sin
+   aplicar) o el magic link devolviendo 500.
 
 2. **Seed + import + pipeline** de las competiciones deseadas (secciones anteriores).
 

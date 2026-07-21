@@ -8,6 +8,9 @@
       "@sports/shared-types": [
         "../../packages/shared-types/src/index.ts"
       ],
+      "@sports/analytics": [
+        "../../packages/analytics/src/index.ts"
+      ],
       "@sports/logger": [
         "../../packages/logger/src/index.ts"
       ]

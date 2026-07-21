@@ -12,7 +12,8 @@ Procedimiento de despliegue en el VPS. No contiene secretos: la password de BD y
 - **Orquestación**: Docker Compose (`docker-compose.prod.yml`) con servicios `postgres` (16-alpine), `api`, `web`, `caddy`, `etl`.
 - **Proxy/TLS**: Caddy con HTTPS automático para `sticklive.eu` (+ www). Regla `handle_path /api/*` → `api:3000`.
 - **Postgres**: publicado solo en `127.0.0.1:5432` (accesible por túnel SSH, nunca expuesto a internet).
-- **Runtime**: los contenedores ejecutan vía `npx tsx` (el comando va en el compose); `tsx` está disponible dentro de la imagen.
+- **Runtime**: los contenedores ejecutan **JavaScript ya compilado** desde `dist/`, con `node`. La imagen se construye en tres etapas (`deploy/Dockerfile`) y la final no lleva ni `tsx`, ni TypeScript, ni el código fuente; corre como usuario `node`, sin privilegios. El empaquetado lo hace `scripts/build-server.mjs`.
+- **Migraciones**: las aplica el servicio `migrate`, que corre una vez al levantar y del que dependen `api` y `etl`. Ya **no** hay paso manual.
 
 ## Alias imprescindible
 
@@ -27,43 +28,34 @@ Sin `--env-file .env.prod` fallan cosas como `$DC logs` o cualquier `exec`.
 
 ---
 
-## ⚠️ Si la release trae migraciones de las que depende el CÓDIGO
+## Releases con migraciones
 
-El despliegue estándar de abajo **construye primero y migra después**. Eso vale
-cuando la migración sólo añade cosas que el código nuevo aún no exige. Pero si
-el código nuevo *necesita* el esquema nuevo para funcionar, ese orden deja una
-ventana en la que el `etl` corre contra una base que aún no está preparada, y
-en jornada eso es una caída del directo.
+**Ya no hay procedimiento especial.** El servicio `migrate` corre al levantar y
+`api` y `etl` no arrancan hasta que termina bien, así que el orden lo garantiza
+el compose y no la memoria de quien despliega.
 
-Caso real: la migración 034 crea el índice único contra el que
-`replaceMatchEvents` hace `ON CONFLICT`. Con el orden estándar, el `cron-live`
-arrancaba, llamaba a la ficha y reventaba hasta que se ejecutaba el paso 4.
+Lo único que sigue siendo tuyo: `./deploy/backup-db.sh` **antes** si la
+migración reescribe datos existentes. Añadir una columna o un índice no lo
+necesita; reescribir filas, sí.
 
-Secuencia correcta — se para el ETL durante la ventana:
+<details>
+<summary>Qué había antes y por qué se cambió</summary>
 
-```bash
-cd /opt/sticklive
-./deploy/backup-db.sh          # si la migración reescribe datos, respaldo antes
+El despliegue construía primero y migraba después, lo que dejaba una ventana en
+la que el `etl` corría contra una base sin preparar. Con la migración 034 —que
+crea el índice único contra el que `replaceMatchEvents` hace `ON CONFLICT`— el
+`cron-live` arrancaba, pedía la ficha y reventaba hasta que alguien ejecutaba el
+paso de migrar a mano.
 
-git checkout -- deploy/backup-db.sh deploy/restore-sports-dump.sh
-git pull
-DC="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+El remedio era una secuencia de cuatro comandos en un orden concreto,
+documentada aquí y en ningún otro sitio. Funcionaba mientras te acordaras. El
+20/07/2026 un despliegue se quedó a medias justo así: el `etl` parado una hora,
+las migraciones sin aplicar y `api`/`web` con imagen de 24 horas antes.
 
-$DC stop etl                                       # nadie escribe durante la ventana
-$DC up -d --build api web caddy                    # código nuevo, sin ETL
-$DC exec api npx tsx packages/db/src/migrate.ts    # esquema al día
-$DC up -d --build etl                              # ahora sí
+Un paso manual que hay que recordar en el momento exacto no es un procedimiento:
+es un fallo esperando su turno. De ahí el servicio `migrate`.
 
-$DC ps && $DC logs -f --tail=100 etl
-```
-
-Cómo saber si aplica: si el PR incluye migración **y** cambios en `apps/etl`,
-`apps/scraper` o `packages/db`, usa esta secuencia. Si sólo toca `apps/web`,
-el despliegue estándar sirve.
-
-> Esto es un parche de procedimiento. El arreglo de fondo es un servicio
-> `migrate` en el propio compose que corra antes que `api` y `etl` (punto 2.3
-> de la auditoría de arquitectura).
+</details>
 
 ---
 
@@ -82,10 +74,7 @@ git pull
 DC="docker compose -f docker-compose.prod.yml --env-file .env.prod"
 $DC up -d --build
 
-# 4. Aplicar migraciones pendientes (idempotente).
-$DC exec api npx tsx packages/db/src/migrate.ts
-
-# 5. Verificar.
+# 4. Verificar (las migraciones ya las aplicó el servicio `migrate`).
 $DC ps
 $DC logs -f --tail=100 api web etl
 ```
@@ -111,8 +100,9 @@ Las variables `NEXT_PUBLIC_*` (entre ellas `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_S
 
 ## Migraciones
 
-- Runner idempotente con tabla `_migrations`: `$DC exec api npx tsx packages/db/src/migrate.ts`.
-- **Siempre** tras cualquier `git pull` que traiga migraciones nuevas, y **obligatorio** tras reconstruir/vaciar la BD (si no, aparecen errores como `column "session_expires_at" does not exist` y el magic link devuelve 500).
+- Runner idempotente con tabla `_migrations`. Lo ejecuta el **servicio `migrate`** en cada `up`, antes de que arranquen `api` y `etl` (`condition: service_completed_successfully`). Si una migración falla, el despliegue se para ahí en vez de seguir a medias.
+- Para lanzarlo suelto: `$DC run --rm migrate`.
+- Antes esto era manual y su orden vivía sólo en este documento. Olvidarlo producía errores como `column "session_expires_at" does not exist` y un magic link devolviendo 500 — un fallo que aparecía lejos de su causa.
 - Para reconstruir competiciones/datos, ver [RUNBOOK_COMPETICIONES.md](./RUNBOOK_COMPETICIONES.md).
 
 ---
@@ -125,7 +115,9 @@ Postgres no está expuesto; hay que abrir un túnel:
 ssh -i $env:USERPROFILE\.ssh\sticklive -L 5432:localhost:5432 root@167.233.94.156
 ```
 
-Deja esa ventana abierta (solo sostiene el túnel) y, en **otra** terminal del PC, ejecuta los scripts (`npx tsx …`) contra `localhost:5432`.
+Deja esa ventana abierta (solo sostiene el túnel) y, en **otra** terminal del PC, ejecuta los scripts (`npx tsx …`) contra `localhost:5432`. En el PC sí hay `tsx`: es en la imagen de producción donde ya no está.
+
+Este es el camino para todo lo que **no** va empaquetado en la imagen: importaciones históricas masivas (`import-history`, `import-federations`, `import-history-fichas`), depuración y backfills. Son trabajos largos, leen ficheros del repo o lanzan subprocesos, y conviene lanzarlos desde IP residencial. La lista de lo que sí viaja en la imagen está en `scripts/build-server.mjs`.
 
 Notas que ahorran tiempo:
 
@@ -155,6 +147,5 @@ Si se rotan las VAPID, hay que **reconstruir la web** (la pública es build arg)
 - [ ] `git checkout --` de `deploy/backup-db.sh` y `deploy/restore-sports-dump.sh`.
 - [ ] `git pull`.
 - [ ] `$DC up -d --build` (o `--build web` si solo es front).
-- [ ] `$DC exec api npx tsx packages/db/src/migrate.ts`.
 - [ ] `NEXT_PUBLIC_*` pobladas antes de construir.
 - [ ] `$DC ps` todo `Up` + revisar `logs` de `api`/`web`/`etl`.

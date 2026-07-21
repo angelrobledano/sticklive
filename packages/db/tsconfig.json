@@ -5,8 +5,13 @@
     // otros paquetes (que caería fuera de rootDir). Con noEmit (base) no se
     // emite nada, así que no hacen falta (auditoría Q2).
     "paths": {
-      "@sports/logger": ["../logger/src/index.ts"]
+      "@sports/logger": ["../logger/src/index.ts"],
+      "@sports/shared-types": ["../shared-types/src/index.ts"]
     }
   },
-  "include": ["src"]
+  // `scripts/` también: de ahí salen migrate y purge-scrape-logs, que van
+  // empaquetados en la imagen de producción (scripts/build-server.mjs). Sin
+  // esto quedaban fuera del typecheck y un error de tipos sólo aparecería al
+  // ejecutarlos — la purga, por ejemplo, corre una vez al día.
+  "include": ["src", "scripts"]
 }
