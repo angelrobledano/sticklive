@@ -2,10 +2,11 @@ import Link from 'next/link';
 import { PurchaseFailedTracker } from '@/components/shared/PurchaseFailedTracker';
 
 interface Props {
-  searchParams: { order?: string };
+  searchParams: Promise<{ order?: string }>;
 }
 
-export default function PremiumErrorPage({ searchParams }: Props) {
+export default async function PremiumErrorPage(props: Props) {
+  const searchParams = await props.searchParams;
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center gap-5">
       <PurchaseFailedTracker />

@@ -20,7 +20,7 @@ const inter = Inter({
 
 interface Props {
   children: React.ReactNode;
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 }
 
 export function generateStaticParams() {
@@ -60,7 +60,8 @@ const OG_HOME_TITLE: Record<Locale, string> = {
   it: 'Hockey su pista in diretta, al secondo',
 };
 
-export function generateMetadata({ params }: { params: { locale: string } }): Metadata {
+export async function generateMetadata(props: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const params = await props.params;
   const locale: Locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   const { title, description } = SEO_TEXT[locale];
   return {
@@ -84,9 +85,11 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children, params }: Props) {
-  if (!isSupportedLocale(params.locale)) notFound();
-  const locale: Locale = params.locale;
+export default async function RootLayout({ children, params }: Props) {
+  // `params` es una promesa desde Next 15.
+  const { locale: raw } = await params;
+  if (!isSupportedLocale(raw)) notFound();
+  const locale: Locale = raw;
 
   return (
     <html lang={locale} className={inter.variable} suppressHydrationWarning>

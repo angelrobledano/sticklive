@@ -8,10 +8,11 @@ import { localeAlternates, isSupportedLocale } from '@/lib/seo';
  */
 
 interface Props {
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 }
 
-export function generateMetadata({ params }: Props): Metadata {
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const params = await props.params;
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   return {
     title: locale === 'es' ? 'Privacidad | Stick Live' : 'Privacy | Stick Live',
@@ -89,7 +90,8 @@ const EN = {
   ],
 };
 
-export default function PrivacyPage({ params }: Props) {
+export default async function PrivacyPage(props: Props) {
+  const params = await props.params;
   const dict = params.locale === 'es' ? ES : EN;
 
   return (

@@ -13,8 +13,8 @@ import { CompetitionClient } from '@/components/competition/CompetitionClient';
 import { BackLink } from '@/components/shared/BackLink';
 
 interface Props {
-  params: { locale: string; id: string };
-  searchParams: { season?: string };
+  params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<{ season?: string }>;
 }
 
 const DESC: Record<string, (n: string) => string> = {
@@ -25,7 +25,8 @@ const DESC: Record<string, (n: string) => string> = {
   it: (n) => `${n}: classifica, calendario, risultati, playoff e statistiche di hockey su pista su Stick Live.`,
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const params = await props.params;
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   const alternates = localeAlternates(locale, `/competitions/${params.id}`);
   try {
@@ -48,7 +49,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * permite saltar a temporadas anteriores vía ?season=<uuid>.
  * Retrocompatible: si el id resulta ser un id de temporada, se carga directa.
  */
-export default async function CompetitionPage({ params, searchParams }: Props) {
+export default async function CompetitionPage(props: Props) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   let seasons: CompetitionSeason[] = [];
   try {
     seasons = await getCompetitionSeasons(params.id);
