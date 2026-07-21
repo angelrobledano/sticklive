@@ -164,11 +164,19 @@ Objetivo realista: **60% en `packages/db` + `apps/etl/loaders` + parsers** antes
 
 Pendiente y consciente: **el `audit` sigue sin bloquear**. Hay 8 vulnerabilidades en dependencias de producción (4 altas) y una exige subir `node-cron` con cambio de API. Ponerlo en rojo permanente sería la forma más rápida de que se ignore. Ver el punto 2.8.
 
-### [ ] 2.8 Vulnerabilidades en dependencias de producción · **Medio**
+### [x] 2.8 Vulnerabilidades en dependencias de producción — **resuelto (21/07/2026)**
 
-`npm audit --omit=dev` reporta 8 (4 moderadas, 4 altas), concentradas en `undici` y en la cadena `node-cron → uuid`. `npm audit fix` resuelve parte; `node-cron` necesita `--force` y salto de versión mayor, así que hay que revisar la API de los crons antes.
+`npm audit --omit=dev` reportaba 8 (4 moderadas, 4 altas), concentradas en `undici` y en la cadena `node-cron → uuid`.
 
-Una vez limpio, quitar el `continue-on-error` del paso de audit en `ci.yml`.
+> **Al ir a arreglarlo, el diagnóstico ya no valía.** `undici` y `node-cron` habían desaparecido por el camino —`node-cron` ni siquiera seguía siendo dependencia, sólo quedaban menciones en comentarios—. Lo que había realmente eran cinco avisos en dos paquetes: **nodemailer** y **Next**.
+>
+> Y de los cuatro avisos de Next, sólo dos nos aplicaban: el DoS del Image Optimizer (usamos `remotePatterns` con `sidgad.cloud`) y el cache poisoning de RSC. El de *Middleware/Proxy bypass* es específico de **Pages Router con i18n** y usamos App Router. Merece la pena leer los avisos en vez de contarlos.
+>
+> Resuelto en tres PRs: **#51** (nodemailer 8→9, no explotable en nuestro código pero barato de cerrar), **#52** (Next 14→16 manteniendo React 18, que resultó no ser obligatorio) y este, que quita el `continue-on-error`.
+>
+> **Queda un `postcss` moderate sin arreglo** dentro del propio Next (`node_modules/next/node_modules/postcss`): npm llega a proponer bajar a `next@9.3.3`. Es de build y el CSS que procesamos es nuestro. Por eso el gate va a `--audit-level=high`, con un segundo paso informativo que lista los moderate sin bloquear — bloquear en `high` y no mirar nunca lo de abajo es cómodo hoy y ciego en seis meses.
+>
+> Nota que conecta con 2.1: este audit **no significaba lo mismo antes**. Hasta el PR #49 producción corría con `npx tsx`, que es devDependency, así que `--omit=dev` auditaba algo distinto de lo que se ejecutaba en el servidor. Ahora sí coinciden.
 
 ### [x] 2.7 Sin retención de datos — **resuelto para `scrape_logs`**
 
