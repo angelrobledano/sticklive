@@ -9,7 +9,7 @@ interface PlayerRow {
   last_name: string;
   birth_date: Date | null;
   nationality: string | null;
-  position: string | null;
+  is_goalkeeper: boolean;
   source_ref: string | null;
   photo_url: string | null;
 }
@@ -46,7 +46,13 @@ playerDetailRouter.get('/:id', async (c) => {
   try {
     // 1) Datos del jugador
     const playerRes = await db.query<PlayerRow>(
-      `SELECT id, first_name, last_name, birth_date, nationality, position, source_ref, photo_url
+      `SELECT id, first_name, last_name, birth_date, nationality, source_ref, photo_url,
+              -- Portero si aparece marcado como tal en alguna alineación (la
+              -- fuente no da posición de jugador, sólo el portero por partido).
+              EXISTS (
+                SELECT 1 FROM match_lineups ml
+                WHERE ml.player_id = players.id AND ml.is_goalkeeper = TRUE
+              ) AS is_goalkeeper
        FROM players WHERE id = $1`,
       [id]
     );
@@ -126,7 +132,7 @@ playerDetailRouter.get('/:id', async (c) => {
         lastName:    p.last_name,
         birthDate:   p.birth_date,
         nationality: p.nationality,
-        position:    p.position,
+        isGoalkeeper: p.is_goalkeeper,
         sourceRef:   p.source_ref,
         photoUrl:    p.photo_url,
       },

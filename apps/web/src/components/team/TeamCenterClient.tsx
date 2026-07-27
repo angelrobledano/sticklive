@@ -298,19 +298,14 @@ function CalendarTab({ data }: { data: TeamDetail }) {
 
 // ─── Tab C: Plantilla ─────────────────────────────────────────────────────────
 
-/** Devuelve la CLAVE i18n de la posición — traducir con t() en el render */
-function positionKey(pos: string | null): string {
-  return isGoalkeeper(pos) ? 'team.gk_pos' : 'team.player_pos';
-}
-
-function isGoalkeeper(pos: string | null): boolean {
-  if (!pos) return false;
-  return pos.toLowerCase() === 'portero' || pos.toLowerCase() === 'goalkeeper';
+/** Clave i18n de la posición según el flag de portero (traducir con t()). */
+function positionKey(isGK: boolean): string {
+  return isGK ? 'team.gk_pos' : 'team.player_pos';
 }
 
 function PlayerRow({ player }: { player: SquadPlayer }) {
   const { t } = useT();
-  const gk = isGoalkeeper(player.position);
+  const gk = player.isGoalkeeper;
   const hasStats = player.goals > 0 || player.blueCards > 0 || player.redCards > 0;
 
   return (
@@ -336,7 +331,7 @@ function PlayerRow({ player }: { player: SquadPlayer }) {
            title={toTitleCase(`${player.firstName} ${player.lastName}`)}>
           {playerDisplayName(player.firstName, player.lastName)}
         </p>
-        <p className="text-[11px] text-slate-400 dark:text-slate-500">{t(positionKey(player.position))}</p>
+        <p className="text-[11px] text-slate-400 dark:text-slate-500">{t(positionKey(player.isGoalkeeper))}</p>
       </div>
 
       {/* Badge portero */}
@@ -390,8 +385,8 @@ function SquadTab({ data }: { data: TeamDetail }) {
     );
   }
 
-  const goalkeepers = squad.filter((p) => isGoalkeeper(p.position));
-  const outfield    = squad.filter((p) => !isGoalkeeper(p.position));
+  const goalkeepers = squad.filter((p) => p.isGoalkeeper);
+  const outfield    = squad.filter((p) => !p.isGoalkeeper);
 
   return (
     <div className="space-y-4">
