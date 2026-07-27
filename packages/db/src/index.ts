@@ -2,6 +2,7 @@
 export { db, withTransaction, closeDb } from './client.js';
 export * from './queries/sports.js';
 export * from './queries/competitions.js';
+export * from './queries/competition-sources.js';
 export * from './queries/teams.js';
 export * from './queries/seasons.js';
 export * from './queries/matches.js';
