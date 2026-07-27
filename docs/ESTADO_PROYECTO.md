@@ -1,6 +1,8 @@
 # Stick Live — Estado del proyecto
 
-*Actualizado: 17 de junio de 2026 — EN PRODUCCIÓN: https://sticklive.eu*
+*Actualizado: 27 de julio de 2026 — EN PRODUCCIÓN: https://sticklive.eu*
+
+> **Julio 2026:** sprint de endurecimiento de plataforma (bloques 1 y 2 de la [auditoría de arquitectura](./AUDITORIA_ARQUITECTURA_2026-07-19.md) cerrados). Producción corre JS compilado (sin `tsx`), imagen Docker multi-stage como usuario `node` con servicio `migrate` automático, Next 16, audit de dependencias bloqueante en CI y tests de integración contra Postgres real. Detalle en el [CHANGELOG](./CHANGELOG.md). Runtime y comandos de runbook: ver nota de "Runtime de producción" abajo.
 
 > Historial detallado en [CHANGELOG.md](./CHANGELOG.md) · Alta de competiciones en [RUNBOOK_COMPETICIONES.md](./RUNBOOK_COMPETICIONES.md) · Avisos en [NOTIFICACIONES.md](./NOTIFICACIONES.md).
 
@@ -36,7 +38,7 @@ apps/
   scraper/   Playwright + Cheerio — extracción de las fuentes oficiales
   etl/       Pipeline de carga + crons (live, calendario, fichas)
   api/       Hono (Node) — REST + SSE, puerto 3000
-  web/       Next.js 14 App Router — puerto 3001
+  web/       Next.js 16 App Router — puerto 3001
 packages/
   db/        Cliente pg + 16 migraciones SQL versionadas
   analytics/ posthog-node (eventos de servidor)
@@ -57,7 +59,7 @@ Postgres en Docker. Todo TypeScript estricto.
 
 REST: competiciones (+temporadas históricas), overview de temporada (clasificación, jornadas, fases de playoff), estadísticas de temporada (goleadores, asistentes, tarjetas, eficiencia a bola parada por equipo), detalle de partido/equipo/jugador, partidos en vivo. SSE por partido para el directo. Autenticación por magic link con sesiones por token opaco y fusión de favoritos anónimos al iniciar sesión. Pagos Redsys (creación firmada + webhook). Admin protegido por `ADMIN_TOKEN` (comparación en tiempo constante; 503 si no está configurado).
 
-### Web (Next.js 14)
+### Web (Next.js 16)
 
 - **Vistas**: home de partidos por día con sección "Siguiendo", competición (clasificación con zonas, jornadas, playoffs con bracket informativo, estadísticas con top-5 expandibles), ficha de partido (timeline espejo, alineaciones, estadísticas con eficiencias), ficha de equipo (resumen, calendario, plantilla con fotos y cuerpo técnico, estadísticas), ficha de jugador, favoritos, login, ajustes, admin.
 - **Tiempo real**: SSE con reconexión + polling de respaldo (30s) + refresco de partidos atrasados.
@@ -68,7 +70,7 @@ REST: competiciones (+temporadas históricas), overview de temporada (clasificac
 
 ### Base de datos (26 migraciones)
 
-Esquema: competitions/seasons/rounds/teams/season_teams/matches/events/standings/players/team_players/match_lineups + users/orders (premium), auth_tokens/user_favorites (auth progresiva), users.status (admin), push_subscriptions (+ `fav_leagues`/`fav_players` para segmentar avisos). Migrador idempotente con tabla `_migrations` y bootstrap de esquemas preexistentes. Migraciones recientes: **025** (favoritos de liga/jugador en suscripciones push), **026** (fusión del playoff femenino dentro de la liga femenina). El runner se ejecuta contra el contenedor (`$DC exec api npx tsx packages/db/src/migrate.ts`); tras reconstruir la BD hay que reaplicarlas todas.
+Esquema: competitions/seasons/rounds/teams/season_teams/matches/events/standings/players/team_players/match_lineups + users/orders (premium), auth_tokens/user_favorites (auth progresiva), users.status (admin), push_subscriptions (+ `fav_leagues`/`fav_players` para segmentar avisos). Migrador idempotente con tabla `_migrations` y bootstrap de esquemas preexistentes. Migraciones recientes: **025** (favoritos de liga/jugador en suscripciones push), **026** (fusión del playoff femenino dentro de la liga femenina). El runner lo ejecuta el servicio `migrate` del compose en cada `up` (antes de api/etl); para lanzarlo suelto, `$DC run --rm migrate`. Tras reconstruir la BD hay que reaplicarlas todas.
 
 **Deduplicación de equipos al añadir competiciones nuevas:** decisión de modelo — los equipos se resuelven **por referencia FEP** (`source_ref`/`alt_source_refs`), no por slug, de modo que un mismo club que juega OK Liga y Campeonato de España es una sola entidad. Si no hay match, se crea con slug único (sufijo de género/ref). Detalle operativo en el [runbook](./RUNBOOK_COMPETICIONES.md).
 

@@ -1,29 +1,48 @@
 version: 2
 updates:
-  # Dependencias npm de todo el monorepo (raíz + apps + packages).
+  # ── npm (monorepo con workspaces) ──────────────────────────────────────────
+  # UN SOLO directorio: "/". El package-lock.json es único en la raíz y npm
+  # workspaces hace que el escaneo desde "/" recorra TODOS los package.json de
+  # apps/* y packages/*. Se comprobó en la práctica: Dependabot abría PRs a
+  # nivel raíz para dependencias que sólo viven en un workspace (p. ej.
+  # @next/eslint-plugin-next, que no está en el package.json raíz).
+  #
+  # Antes esto listaba además "/apps/*" y "/packages/*", y el resultado era un
+  # DOBLE escaneo: cada dependencia de workspace generaba dos PRs, uno desde "/"
+  # y otro desde su ruta explícita. De ahí los pares duplicados de julio/2026
+  # (pino-pretty, eslint-plugin-react-hooks, @next/eslint-plugin-next).
   - package-ecosystem: "npm"
-    directories:
-      - "/"
-      - "/apps/*"
-      - "/packages/*"
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "06:00"
       timezone: "Europe/Madrid"
     open-pull-requests-limit: 5
-    # Agrupa minor+patch en un solo PR para reducir ruido; los major van sueltos
-    # para revisarlos con cuidado (pueden traer breaking changes).
+    commit-message:
+      prefix: "deps"
+    # Agrupar para que 14 actualizaciones no sean 14 PRs:
+    #
+    #   · desarrollo → TODO el tooling de dev en un PR, incluidos los major. Un
+    #     salto major de un plugin de eslint o de pino-pretty no toca lo que
+    #     corre en producción (la imagen final no lleva devDependencies desde el
+    #     PR #49), así que revisarlos de uno en uno es ruido sin contrapartida.
+    #   · produccion → sólo minor y patch juntos. Los MAJOR de producción NO se
+    #     agrupan a propósito: quedan como PR suelto para mirarlos con cuidado,
+    #     que es como entraron Next 16 y nodemailer 9 (pueden traer breaking
+    #     changes y tocan lo que se ejecuta de verdad).
     groups:
-      minor-and-patch:
+      desarrollo:
+        dependency-type: "development"
+      produccion:
+        dependency-type: "production"
         update-types:
           - "minor"
           - "patch"
-    commit-message:
-      prefix: "deps"
 
-  # Mantener al día las GitHub Actions (esto bumpea actions/checkout y
-  # setup-node, lo que silencia el aviso de Node 20 deprecado en la CI).
+  # ── GitHub Actions ─────────────────────────────────────────────────────────
+  # Mantiene al día actions/checkout y setup-node (silencia el aviso de Node 20
+  # deprecado en el runner).
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
