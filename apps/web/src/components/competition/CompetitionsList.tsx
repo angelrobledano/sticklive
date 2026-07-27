@@ -97,6 +97,7 @@ function CompetitionRow({
   comp,
   isFav,
   onToggleFav,
+  locale,
 }: {
   comp: CompetitionSummary;
   isFav: boolean;
