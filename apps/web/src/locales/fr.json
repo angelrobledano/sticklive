@@ -172,7 +172,8 @@
     "placement_label": "Playoff 9e–10e · Place européenne",
     "placement_help": "Le 9e et le 10e de la saison régulière disputent cette série pour fixer le classement final, qui décide de la dernière place européenne (WSE Cup) de la saison prochaine.",
     "bracket_title": "Tableau des playoffs",
-    "series_wins": "Victoires de la série"
+    "series_wins": "Victoires de la série",
+    "third_place": "3e place"
   },
   "standings": {
     "team": "Équipe",

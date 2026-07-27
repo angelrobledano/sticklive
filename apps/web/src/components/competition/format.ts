@@ -61,6 +61,41 @@ export function roundLabel(r: SeasonRound, t: (key: string, vars?: Record<string
   return r.name ? `Playoffs · ${r.name}` : `Playoffs ${r.number}`;
 }
 
+/**
+ * Fase de eliminatoria como CLAVE canónica, derivada del nombre (que la fuente
+ * da en español/inglés) o, si no hay pista textual, del número de ronda — la
+ * misma regla que usa `groupByPhase` en `lib/playoff`.
+ *
+ * Devuelve `null` cuando no se reconoce la fase: son nombres propios no
+ * traducibles ("Copa del Rey"), que el llamante muestra tal cual.
+ */
+export type PlayoffPhaseKey = 'quarters' | 'semis' | 'final' | 'third_place';
+
+export function playoffPhaseKey(name: string | null, roundNumber: number | null): PlayoffPhaseKey | null {
+  const n = (name ?? '').toLowerCase();
+  if (/cuartos|quarter/.test(n)) return 'quarters';
+  if (/semi/.test(n)) return 'semis';
+  if (/3.*4|tercer|bronce|small\s*final|3º|3rd|third/.test(n)) return 'third_place';
+  if (/final/.test(n)) return 'final';
+  // Sin pista en el texto: derivar del número (igual que groupByPhase).
+  if (roundNumber != null) {
+    if (roundNumber >= 3) return 'final';
+    if (roundNumber === 2) return 'semis';
+    if (roundNumber === 1) return 'quarters';
+  }
+  return null;
+}
+
+/** Etiqueta de fase traducida; cae al nombre propio si no es una fase conocida. */
+export function playoffPhaseLabel(
+  name: string | null,
+  roundNumber: number | null,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): string {
+  const key = playoffPhaseKey(name, roundNumber);
+  return key ? t(`playoffs.${key}`) : (name ?? '');
+}
+
 /** "ALABART GONZALEZ IGNACIO" o "Ferran Font Sánchez" → "Ignacio Alabart" estilo natural */
 export function toLeaderName(raw: string): string {
   const clean = raw.replace(/\s+/g, ' ').trim();
