@@ -34,7 +34,8 @@
   },
   "fixtures": {
     "by_round": "Por jornada",
-    "empty": "No hay partidos programados para esta selección."
+    "empty": "No hay partidos programados para esta selección.",
+    "matchday": "Jornada {n}"
   },
   "match_states": {
     "live": "En directo",

@@ -204,7 +204,7 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
             >
               {!journeyMode && <option value="">{t('fixtures.by_round')}</option>}
               {orderedRounds.map((r) => (
-                <option key={r.id} value={r.number}>{roundLabel(r)}</option>
+                <option key={r.id} value={r.number}>{roundLabel(r, t)}</option>
               ))}
             </select>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}

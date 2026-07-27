@@ -315,5 +315,8 @@
     "pos_df": "Difensore",
     "pos_fw": "Attaccante",
     "pos_pl": "Giocatore"
+  },
+  "fixtures": {
+    "matchday": "Giornata {n}"
   }
 }
