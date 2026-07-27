@@ -27,14 +27,21 @@ import { createLogger } from '@sports/logger';
 const log = createLogger({ service: 'seed-competition-sources' });
 
 /**
- * Asociaciones idc-primario → secundarios, extraídas de las constantes de
- * run-pipeline.ts (PLAYOFF_IDCS_PIPELINE, CUP_IDCS). Sólo se incluye lo que hoy
- * es seguro; el resto se revisa en la Fase 2.
- *   · 3150 = OK Liga masculina → playoff idc 3481.
- * (La femenina y las copas se completan al llegar la Fase 2, con datos reales.)
+ * Asociaciones idc-primario → secundarios. Confirmadas contra la BD de
+ * producción (27/07/2026): sólo las dos ligas de oro tienen un playoff que se
+ * fusiona en la propia liga como round_type (migraciones 014/026), por lo que
+ * su idc no tiene competición propia y vive aquí como secundario:
+ *   · 3150 = OK Liga Masculina → playoff idc 3481.
+ *   · 3151 = OK Liga Femenina (Iberdrola) → playoff idc 3484.
+ *
+ * Las copas (Rey 3258, Reina 3259, Supercopas 3177/3178, SAR 3301/3302) SÍ son
+ * competiciones propias en la BD: el seed les crea fila en el bucle principal,
+ * NO son secundarios. El `Set` CUP_IDCS de run-pipeline.ts sólo enruta partidos
+ * a su temporada; sus 3260/3261 son idc fantasma (no existen en prod).
  */
 const SECONDARIES: Record<string, { playoff_idcs?: string[]; cup_idcs?: string[] }> = {
   '3150': { playoff_idcs: ['3481'] },
+  '3151': { playoff_idcs: ['3484'] },
 };
 
 /** `fep_competition_3150` | `3150` | `wse_competition_320` → `3150` | `320`. */
