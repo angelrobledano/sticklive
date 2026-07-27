@@ -1,11 +1,29 @@
 # Auditoría de arquitectura y escalabilidad — Stick Live
 
-**Fecha:** 19/07/2026 · **Alcance:** monorepo completo (`apps/*`, `packages/*`, `deploy/`, `infra/`)
+**Fecha:** 19/07/2026 · **Última actualización:** 27/07/2026 · **Alcance:** monorepo completo (`apps/*`, `packages/*`, `deploy/`, `infra/`)
 **Horizonte evaluado:** 3 años — multi-liga, picos de tráfico en directo, consistencia de datos.
 
-> Nota previa: el backend **no es FastAPI**. Es un monorepo TypeScript: `apps/api` (Hono + `@hono/node-server`), `apps/etl`, `apps/scraper` (Playwright/Cheerio), `apps/web` (Next.js 14 App Router), `packages/db` (pg + SQL plano, sin ORM). 28.615 líneas de TS/TSX.
+> Nota previa: el backend **no es FastAPI**. Es un monorepo TypeScript: `apps/api` (Hono + `@hono/node-server`), `apps/etl`, `apps/scraper` (Playwright/Cheerio), `apps/web` (Next.js **16** App Router), `packages/db` (pg + SQL plano, sin ORM). ~28.700 líneas de TS/TSX.
 >
 > Esta auditoría **no repite** lo ya resuelto en `AUDITORIA_TECNICA.md` (S1-S9, B1-B4, A1-A4). Parte de ahí y ataca lo que sigue abierto o ha aparecido después.
+
+> ## Estado a 27/07/2026
+>
+> **Bloque 1 (crítico): completo.** Reconexión SSE, índices + caché en `/current` y `/live`, upsert idempotente de eventos, lock del ETL, caché de alineaciones. Todo desplegado.
+>
+> **Bloque 2 (corto plazo): completo.**
+> - 2.1 Producción corre JS compilado desde `dist/`, sin `tsx` (PR #49).
+> - 2.2 Imagen Docker multi-stage, usuario `node`, healthchecks y límites de memoria (#49).
+> - 2.3 Servicio `migrate` en el compose (#49).
+> - 2.4 Compose muerto eliminado (#36).
+> - 2.5 **Infraestructura de tests de integración con Postgres real** + 16 tests de los dos puntos de más riesgo, verificados por mutación (#56). Cobertura ampliándose.
+> - 2.6 CI que bloquea de verdad: typecheck, tests, lint, migraciones desde cero, build de la imagen, tests de integración.
+> - 2.7 Retención de `scrape_logs`.
+> - 2.8 Audit de dependencias **bloqueante** (#53); cinco `high` nuevos resueltos el 27/07 (#57).
+>
+> **Bloque 3 (visión 3 años): abierto.** Es el trabajo estructural pendiente — ver más abajo. Nada de esto es urgente hoy; sí es requisito **antes de la segunda federación**.
+>
+> **Fuera de la auditoría, pendientes operativos:** ampliar cobertura de tests sobre la infraestructura ya montada (loaders, snapshots del push-dispatcher, `runWorldskateScores`); mover el repo a una organización para activar el ruleset de protección de `main` (hoy dormido en repo personal privado); Next 16 y las deps del 27/07 pendientes de **desplegar y verificar los escudos** (`sharp` no lo prueba el CI).
 
 ---
 
@@ -370,18 +388,23 @@ Orden razonable de inversión: (1) entorno de staging con la misma imagen, (2) P
 
 ## Resumen de prioridades
 
-| # | Acción | Bloque | Esfuerzo | Impacto |
-|---|---|---|---|---|
-| 1 | Reconexión SSE tras `timeout` | 1 | 1 h | **Muy alto** |
-| 2 | Índice compuesto + micro-caché + `Cache-Control` en `/current` y `/live` | 1 | 4 h | **Muy alto** |
-| 3 | `UNIQUE(match_id, source_ref)` + upsert de eventos | 1 | 1 día | Alto |
-| 4 | `flock` garantizado / advisory lock en Postgres | 1 | 1 h | Alto |
-| 5 | Cachear alineaciones en el hub SSE | 1 | 2 h | Medio-alto |
-| 6 | ~~Golden files de los parsers de ficha~~ ✅ | 2 | 2 días | **Muy alto** (seguro anti-rotura de la fuente) |
-| 7 | Compilar TS y multi-stage Docker | 2 | 1 día | Medio |
-| 8 | Servicio `migrate` en el compose de prod | 2 | 2 h | Medio |
-| 9 | `position`/`round_type` a claves canónicas | 3 | 1 día | Alto (antes de la 2ª liga) |
-| 10 | `competition_sources` + runner genérico | 3 | 1-2 semanas | **Estructural** |
-| 11 | Redis pub/sub y API sin estado | 3 | 2 semanas | Estructural |
+| # | Acción | Bloque | Estado |
+|---|---|---|---|
+| 1 | Reconexión SSE tras `timeout` | 1 | ✅ hecho |
+| 2 | Índice compuesto + micro-caché + `Cache-Control` en `/current` y `/live` | 1 | ✅ hecho |
+| 3 | `UNIQUE(match_id, source_ref)` + upsert de eventos | 1 | ✅ hecho (migr. 034/035/036) |
+| 4 | `flock` garantizado / advisory lock en Postgres | 1 | ✅ hecho |
+| 5 | Cachear alineaciones en el hub SSE | 1 | ✅ hecho |
+| 6 | Golden files de los parsers de ficha | 2 | ✅ hecho (#36, 37 tests) |
+| 7 | Compilar TS y multi-stage Docker | 2 | ✅ hecho (#49) |
+| 8 | Servicio `migrate` en el compose de prod | 2 | ✅ hecho (#49) |
+| 8b | Tests de integración con Postgres real | 2 | ✅ infraestructura + 16 tests (#56) |
+| 8c | Audit de dependencias bloqueante | 2 | ✅ hecho (#53) |
+| 9 | `position`/`round_type` a claves canónicas | 3 | ⬜ **antes de la 2ª liga** |
+| 10 | `competition_sources` + runner genérico | 3 | ⬜ estructural |
+| 11 | Redis pub/sub y API sin estado | 3 | ⬜ estructural (techo de un solo proceso) |
+| 12 | i18n de datos (no sólo de la interfaz) | 3 | ⬜ bloqueante para expandir |
 
-**Recomendación de secuencia:** 1 → 2 → 4 → 6 → 3 → 9 → 10. Los cuatro primeros son un sprint y resuelven el "minuto final". El 6 es el seguro que evita el próximo apagón del directo. El 9 y el 10 hay que hacerlos **antes** de la siguiente federación, no después.
+**Bloques 1 y 2, cerrados.** Lo que queda es bloque 3, todo estructural y sin urgencia hoy. La regla que no cambia: **9, 10 y 12 hay que hacerlos antes de la siguiente federación**, no después — meter una segunda liga sobre el modelo actual multiplica el acoplamiento a la FEP que ya costó desenredar en el 3.2.
+
+**Siguiente paso recomendado cuando se retome:** el 9 (claves canónicas de `position`/`round_type`), que es un día de trabajo y desbloquea el 10. El 11 (Redis) sólo cuando el tráfico real lo pida; hoy un solo proceso sobra.
