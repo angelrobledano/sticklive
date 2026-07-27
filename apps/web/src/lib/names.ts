@@ -5,6 +5,25 @@
  *  · Jugadores: SIEMPRE "Nombre Apellido" en Sentence case (primer apellido).
  */
 
+/**
+ * Nombre de competición en el idioma activo.
+ *
+ * Elige `nameI18n[locale]`, cae a `nameI18n.es` y por último al `name` plano.
+ * Hoy todas las competiciones son españolas y `nameI18n` es `{es: name}` (o
+ * null), así que devuelve el español — pero deja el mecanismo listo para cuando
+ * entre una competición con traducción. Ver migración 038.
+ *
+ * No aplica `clubName()` aquí: eso es cosa de quien lo pinte (algunos sitios sí
+ * lo formatean, otros lo quieren crudo).
+ */
+export function competitionName(
+  name: string,
+  nameI18n: Record<string, string> | null | undefined,
+  locale: string,
+): string {
+  return nameI18n?.[locale] ?? nameI18n?.['es'] ?? name;
+}
+
 export function toTitleCase(s: string): string {
   return s
     .toLowerCase()

@@ -7,6 +7,7 @@ import { ShareButton } from '@/components/shared/ShareButton';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
 import { fedLabelFromSeason } from './format';
+import { competitionName } from '@/lib/names';
 
 export function CompetitionHeader({ data, seasons, competitionId }: {
   data: SeasonOverview;
@@ -18,6 +19,7 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
   const { t, locale } = useT();
   const hasHistory = !!competitionId && (seasons?.length ?? 0) > 1;
   const fedLabel = fedLabelFromSeason(season, locale);
+  const compName = competitionName(season.competitionName, season.competitionNameI18n, locale);
 
   return (
     <div className="card px-4 py-3.5 flex items-center gap-3.5">
@@ -31,7 +33,7 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
           {fedLabel}
         </p>
         <h1 className="text-base font-bold text-slate-900 dark:text-slate-50 leading-tight truncate">
-          {season.competitionName}
+          {compName}
         </h1>
         {/* Temporada: texto plano si no hay histórico; selector discreto si lo hay.
             Decisión UX: la temporada actual es el 99% de las visitas — el
@@ -58,7 +60,7 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
       </div>
 
       {/* Compartir + favorito de liga */}
-      <ShareButton kind="league" title={season.competitionName} className="shrink-0" />
+      <ShareButton kind="league" title={compName} className="shrink-0" />
       <FavoriteStar
         id={season.competitionId}
         kind="league"
