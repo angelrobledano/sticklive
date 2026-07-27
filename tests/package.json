@@ -1,0 +1,4 @@
+{
+  "//": "Sólo para declarar ESM. Los paquetes del monorepo son 'type: module', pero el package.json de la RAÍZ no lo declara, y tests/ hereda de él: sin esto, TypeScript trata estos ficheros como CommonJS y falla al importar los @sports/* (TS1479) y al usar import.meta (TS1470). No es un workspace npm; no lleva dependencias ni scripts a propósito.",
+  "type": "module"
+}

@@ -1,0 +1,20 @@
+{
+  // Los tests de integración viven fuera de los workspaces (no son un paquete
+  // npm), así que `turbo run typecheck` no los ve. Sin este tsconfig se
+  // quedarían sin comprobar — que es justo el hueco que tenía
+  // `packages/db/scripts/` hasta el 21/07/2026.
+  //
+  // Se comprueba en CI con: npx tsc --noEmit -p tests
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "vitest/globals"],
+    "baseUrl": "..",
+    "paths": {
+      "@sports/db": ["packages/db/src/index.ts"],
+      "@sports/logger": ["packages/logger/src/index.ts"],
+      "@sports/shared-types": ["packages/shared-types/src/index.ts"],
+      "@sports/analytics": ["packages/analytics/src/index.ts"]
+    }
+  },
+  "include": ["integration"]
+}
