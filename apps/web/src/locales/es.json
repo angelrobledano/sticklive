@@ -34,7 +34,8 @@
   },
   "fixtures": {
     "by_round": "Por jornada",
-    "empty": "No hay partidos programados para esta selección."
+    "empty": "No hay partidos programados para esta selección.",
+    "matchday": "Jornada {n}"
   },
   "match_states": {
     "live": "En directo",
@@ -212,7 +213,8 @@
     "placement_label": "Playoff 9º–10º · Plaza europea",
     "placement_help": "El 9º y el 10º de la fase regular disputan esta serie para fijar el orden final, que decide la última plaza europea (WSE Cup) de la próxima temporada.",
     "bracket_title": "Cuadro de playoffs",
-    "series_wins": "Victorias de la serie"
+    "series_wins": "Victorias de la serie",
+    "third_place": "3.er y 4.º puesto"
   },
   "standings": {
     "team": "Equipo",

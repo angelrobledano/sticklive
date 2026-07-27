@@ -197,7 +197,8 @@
     "placement_label": "9th–10th playoff · European spot",
     "placement_help": "The 9th and 10th placed teams play this series to set the final order, which decides next season’s last European spot (WSE Cup).",
     "bracket_title": "Playoff bracket",
-    "series_wins": "Series wins"
+    "series_wins": "Series wins",
+    "third_place": "Third place"
   },
   "standings": {
     "team": "Team",
@@ -340,5 +341,8 @@
     "pos_df": "Defender",
     "pos_fw": "Forward",
     "pos_pl": "Player"
+  },
+  "fixtures": {
+    "matchday": "Matchday {n}"
   }
 }

@@ -172,7 +172,8 @@
     "placement_label": "Playoff 9º–10º · Vaga europeia",
     "placement_help": "O 9º e o 10º da fase regular disputam esta série para fixar a ordem final, que decide a última vaga europeia (WSE Cup) da próxima época.",
     "bracket_title": "Quadro dos playoffs",
-    "series_wins": "Vitórias na série"
+    "series_wins": "Vitórias na série",
+    "third_place": "3.º e 4.º lugar"
   },
   "standings": {
     "team": "Equipa",
@@ -315,5 +316,8 @@
     "pos_df": "Defesa",
     "pos_fw": "Avançado",
     "pos_pl": "Jogador"
+  },
+  "fixtures": {
+    "matchday": "Jornada {n}"
   }
 }

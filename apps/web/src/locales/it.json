@@ -172,7 +172,8 @@
     "placement_label": "Playoff 9°–10° · Posto europeo",
     "placement_help": "La 9ª e la 10ª della stagione regolare giocano questa serie per fissare l’ordine finale, che decide l’ultimo posto europeo (WSE Cup) della prossima stagione.",
     "bracket_title": "Tabellone playoff",
-    "series_wins": "Vittorie della serie"
+    "series_wins": "Vittorie della serie",
+    "third_place": "Finale 3º/4º posto"
   },
   "standings": {
     "team": "Squadra",
@@ -315,5 +316,8 @@
     "pos_df": "Difensore",
     "pos_fw": "Attaccante",
     "pos_pl": "Giocatore"
+  },
+  "fixtures": {
+    "matchday": "Giornata {n}"
   }
 }

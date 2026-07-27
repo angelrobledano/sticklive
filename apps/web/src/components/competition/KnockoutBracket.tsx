@@ -5,7 +5,8 @@ import { useMemo } from 'react';
 import type { SeasonMatch } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
-import { fmtDate, fmtTime } from './format';
+import { useT } from '@/lib/i18n';
+import { fmtDate, fmtTime, playoffPhaseKey } from './format';
 
 /**
  * Cuadro de eliminatorias a partido único (formato World Skate: Cuartos →
@@ -18,13 +19,13 @@ import { fmtDate, fmtTime } from './format';
  */
 
 /** Rango de fase para ordenar las columnas (menor = antes). */
+// Orden de las columnas. Deriva de la clave canónica de fase (misma lógica que
+// el resto del playoff, en format.ts); las fases desconocidas van al final por
+// número de ronda.
+const PHASE_RANK: Record<string, number> = { quarters: 1, semis: 2, final: 3, third_place: 4 };
 function phaseRank(name: string | null, roundNumber: number | null): number {
-  const n = (name ?? '').toLowerCase();
-  if (/cuartos|quarter/.test(n)) return 1;
-  if (/semi/.test(n)) return 2;
-  if (/3.*4|tercer|bronce|small\s*final|3º/.test(n)) return 4; // 3º y 4º puesto → tras la final
-  if (/final/.test(n)) return 3;
-  return 10 + (roundNumber ?? 0); // desconocidas, al final por número
+  const key = playoffPhaseKey(name, roundNumber);
+  return key ? PHASE_RANK[key]! : 10 + (roundNumber ?? 0);
 }
 
 function MatchCard({ m }: { m: SeasonMatch }) {
@@ -79,10 +80,13 @@ function MatchCard({ m }: { m: SeasonMatch }) {
 }
 
 export function KnockoutBracket({ matches }: { matches: SeasonMatch[] }) {
+  const { t } = useT();
   const columns = useMemo(() => {
     const ko = matches.filter((m) => m.roundType === 'playoff');
     const map = new Map<string, SeasonMatch[]>();
     for (const m of ko) {
+      // Se agrupa por el nombre de la fuente (estable dentro de una competición);
+      // la traducción es sólo para MOSTRAR, más abajo.
       const key = m.roundName ?? `Ronda ${m.roundNumber ?? ''}`;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(m);
@@ -90,6 +94,7 @@ export function KnockoutBracket({ matches }: { matches: SeasonMatch[] }) {
     return [...map.entries()]
       .map(([name, ms]) => ({
         name,
+        roundNumber: ms[0]?.roundNumber ?? null,
         rank: phaseRank(name, ms[0]?.roundNumber ?? null),
         matches: ms.sort((a, b) => ((a.scheduledAt ?? '') < (b.scheduledAt ?? '') ? -1 : 1)),
       }))
@@ -104,7 +109,10 @@ export function KnockoutBracket({ matches }: { matches: SeasonMatch[] }) {
         {columns.map((col) => (
           <div key={col.name} className="flex flex-col gap-3 min-w-[220px] flex-1">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">
-              {col.name}
+              {(() => {
+                const k = playoffPhaseKey(col.name, col.roundNumber);
+                return k ? t(`playoffs.${k}`) : col.name; // nombre propio no traducible tal cual
+              })()}
             </h3>
             <div className="flex flex-col gap-3 justify-around h-full">
               {col.matches.map((m) => <MatchCard key={m.id} m={m} />)}
