@@ -29,26 +29,17 @@ function fmtDate(iso: string | null, locale: string): string {
   });
 }
 
-function positionKey(pos: string | null): string | null {
-  if (!pos) return null;
-  const map: Record<string, string> = {
-    portero: 'player.pos_gk', goalkeeper: 'player.pos_gk',
-    defensa: 'player.pos_df', defender: 'player.pos_df',
-    delantero: 'player.pos_fw', forward: 'player.pos_fw',
-    jugador: 'player.pos_pl', player: 'player.pos_pl',
-  };
-  return map[pos.toLowerCase()] ?? null;
-}
-
 // ─── Cabecera del jugador ─────────────────────────────────────────────────────
 
 function PlayerHeader({ data }: { data: PlayerDetail }) {
   const { t, locale } = useT();
   const { player, currentTeam } = data;
   const age = calcAge(player.birthDate);
-  const posKey = positionKey(player.position);
-  const isGK = player.position?.toLowerCase() === 'portero' ||
-               player.position?.toLowerCase() === 'goalkeeper';
+  // La fuente sólo distingue al portero (match_lineups.is_goalkeeper); no da la
+  // posición de los jugadores de pista. Por eso el badge sólo aparece para
+  // porteros — antes mapeaba DF/FW/PL sobre una columna que siempre era NULL.
+  const isGK = player.isGoalkeeper;
+  const posKey = isGK ? 'player.pos_gk' : null;
 
   return (
     <div className="card px-5 py-5 space-y-4">

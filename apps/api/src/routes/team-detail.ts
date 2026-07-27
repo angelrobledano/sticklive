@@ -55,7 +55,7 @@ interface SquadRow {
   player_id: string;
   first_name: string;
   last_name: string;
-  position: string | null;
+  is_goalkeeper: boolean;
   photo_url: string | null;
   jersey_number: number | null;
   goals: string;
@@ -152,7 +152,16 @@ teamDetailRouter.get('/:id', async (c) => {
           p.id            AS player_id,
           p.first_name,
           p.last_name,
-          p.position,
+          -- Portero: si el jugador aparece marcado como tal en CUALQUIER
+          -- alineación de la temporada (match_lineups.is_goalkeeper). La fuente
+          -- no da una posición de jugador; sólo marca al portero por partido.
+          EXISTS (
+            SELECT 1 FROM match_lineups ml
+            JOIN matches mx ON mx.id = ml.match_id
+            WHERE ml.player_id = p.id
+              AND ml.is_goalkeeper = TRUE
+              AND mx.season_id = ANY($1)
+          )               AS is_goalkeeper,
           p.photo_url,
           tp.jersey_number,
           COUNT(DISTINCT me_g.id)  FILTER (WHERE me_g.event_type = 'goal')       AS goals,
@@ -177,9 +186,9 @@ teamDetailRouter.get('/:id', async (c) => {
         WHERE tp.team_id = $2
           AND tp.season_id = ANY($1)
           AND tp.is_active = TRUE
-        GROUP BY p.id, p.first_name, p.last_name, p.position, p.photo_url, tp.jersey_number
+        GROUP BY p.id, p.first_name, p.last_name, p.photo_url, tp.jersey_number
         ORDER BY
-          CASE WHEN p.position = 'portero' THEN 0 ELSE 1 END,
+          is_goalkeeper DESC,          -- porteros primero (ahora sí: dato real)
           tp.jersey_number NULLS LAST,
           p.last_name
       `, [currentSeasonIds, id]);
@@ -343,7 +352,7 @@ teamDetailRouter.get('/:id', async (c) => {
       firstName:    p.first_name,
       lastName:     p.last_name,
       photoUrl:     p.photo_url,
-      position:     p.position,
+      isGoalkeeper: p.is_goalkeeper,
       jerseyNumber: p.jersey_number,
       goals:        Number(p.goals),
       blueCards:    Number(p.blue_cards),

@@ -279,7 +279,8 @@ export interface SquadPlayer {
   playerId: string;
   firstName: string;
   lastName: string;
-  position: string | null;
+  /** Derivado de match_lineups.is_goalkeeper (ver migración 039). */
+  isGoalkeeper: boolean;
   photoUrl?: string | null;
   jerseyNumber: number | null;
   goals: number;
@@ -425,7 +426,7 @@ export interface PlayerDetail {
     lastName: string;
     birthDate: string | null;
     nationality: string | null;
-    position: string | null;
+    isGoalkeeper: boolean;
     sourceRef: string | null;
     photoUrl?: string | null;
   };

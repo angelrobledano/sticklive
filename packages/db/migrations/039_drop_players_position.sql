@@ -1,0 +1,21 @@
+-- ============================================================
+-- 039 — Elimina la columna muerta players.position.
+--
+-- Punto 9 de AUDITORIA_ARQUITECTURA_2026-07-19.md, follow-up de la 038.
+--
+-- `players.position` (TEXT) ha sido NULL desde la 001: el `INSERT INTO players`
+-- de fep-ficha.scraper.ts nunca la escribió y ningún otro loader lo hace. La
+-- fuente (FEP) no da la posición del jugador, sólo marca al portero por partido
+-- en la alineación (match_lineups.is_goalkeeper).
+--
+-- El código que la usaba —el ORDER BY "porteros primero" de team-detail y la
+-- sección de porteros de la web— estaba MUERTO por eso: al ser siempre NULL, el
+-- CASE no separaba a nadie. En el mismo PR se sustituye por la señal real,
+-- derivada de match_lineups.is_goalkeeper, así que "porteros primero" pasa a
+-- funcionar de verdad.
+--
+-- Ningún índice ni vista referencia la columna (comprobado). Reversible:
+-- volver a añadirla saldría vacía, que es su estado actual.
+-- ============================================================
+
+ALTER TABLE players DROP COLUMN IF EXISTS position;
