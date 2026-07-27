@@ -86,6 +86,7 @@ const OPERATIVOS = [
   'apps/etl/src/seed-playoff-teams.ts',
   'apps/etl/src/seed-worldskate-u17.ts',
   'apps/etl/src/seed-worldskate-u17-women.ts',
+  'apps/etl/src/seed-competition-sources.ts',
   'apps/etl/src/link-lineup-players.ts',
   'apps/etl/src/merge-canonical-competitions.ts',
   'apps/etl/src/cleanup-synthetic-dupes.ts',
