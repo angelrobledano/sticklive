@@ -188,6 +188,8 @@ export interface MatchDetail {
 export interface CompetitionSummary {
   id: string;
   name: string;
+  /** Traducciones del nombre por locale; la web cae a `name`. Ver migración 038. */
+  nameI18n?: Record<string, string> | null;
   shortName: string | null;
   slug: string;
   gender: string | null;
@@ -380,6 +382,8 @@ export interface SeasonOverview {
     endDate: string | null;
     competitionId: string;
     competitionName: string;
+    /** Traducciones del nombre por locale; la web cae a `competitionName`. Ver migración 038. */
+    competitionNameI18n?: Record<string, string> | null;
     competitionShort: string | null;
     competitionOrganizer: string;
     competitionScope: string;

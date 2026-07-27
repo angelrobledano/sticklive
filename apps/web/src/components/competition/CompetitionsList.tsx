@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import type { CompetitionSummary } from '@/lib/api/client';
 import { useT } from '@/lib/i18n';
-import { clubName } from '@/lib/names';
+import { clubName, competitionName } from '@/lib/names';
 import { CountryFlag } from '@/components/shared/CountryFlag';
 import { useFavorites } from '@/hooks/useFavorites';
 
@@ -97,6 +97,7 @@ function CompetitionRow({
   comp,
   isFav,
   onToggleFav,
+  locale,
 }: {
   comp: CompetitionSummary;
   isFav: boolean;
@@ -143,7 +144,7 @@ function CompetitionRow({
         {/* Textos */}
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate leading-snug">
-            {clubName(comp.name)}
+            {clubName(competitionName(comp.name, comp.nameI18n, locale))}
           </p>
           {meta && (
             <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate mt-0.5 leading-none">

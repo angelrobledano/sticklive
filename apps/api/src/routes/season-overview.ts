@@ -10,6 +10,7 @@ interface SeasonRow {
   end_date: Date | null;
   competition_id: string;
   competition_name: string;
+  competition_name_i18n: Record<string, string> | null;
   competition_short_name: string | null;
   competition_organizer: string;
   competition_scope: string;
@@ -83,6 +84,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
       SELECT s.id, s.name, s.start_date, s.end_date,
              c.id         AS competition_id,
              c.name       AS competition_name,
+             c.name_i18n  AS competition_name_i18n,
              c.short_name AS competition_short_name,
              c.organizer  AS competition_organizer,
              c.scope      AS competition_scope,
@@ -235,6 +237,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         endDate:          s.end_date,
         competitionId:    s.competition_id,
         competitionName:  s.competition_name,
+        competitionNameI18n: s.competition_name_i18n,
         competitionShort: s.competition_short_name,
         competitionOrganizer: s.competition_organizer,
         competitionScope:     s.competition_scope,

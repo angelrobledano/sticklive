@@ -6,6 +6,7 @@ export const competitionsRouter = new Hono();
 interface CompetitionRow {
   id: string;
   name: string;
+  name_i18n: Record<string, string> | null;
   short_name: string | null;
   slug: string;
   gender: string | null;
@@ -42,7 +43,7 @@ competitionsRouter.get('/', async (c) => {
   try {
     const result = await db.query<CompetitionRow>(`
       SELECT
-        comp.id, comp.name, comp.short_name, comp.slug,
+        comp.id, comp.name, comp.name_i18n, comp.short_name, comp.slug,
         comp.gender, comp.category, comp.country,
         comp.organizer, comp.scope, comp.region, comp.age_category,
         s.id         AS season_id,
@@ -67,6 +68,7 @@ competitionsRouter.get('/', async (c) => {
     const competitions = result.rows.map((r) => ({
       id:         r.id,
       name:       r.name,
+      nameI18n:   r.name_i18n,
       shortName:  r.short_name,
       slug:       r.slug,
       gender:     r.gender,
