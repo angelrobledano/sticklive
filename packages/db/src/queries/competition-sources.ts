@@ -88,6 +88,51 @@ export async function getActiveCompetitionSourcesByScraper(
   return res.rows.map(mapRow);
 }
 
+/**
+ * Una competición lista para scrapear: su temporada vigente y sus idc. Es lo
+ * que consume el modo multi de run-pipeline (punto 10, Fase 2). `seasonId` es
+ * NULL cuando la competición está activa pero no tiene temporada is_current:
+ * el runner la registra y la omite en vez de fallar.
+ */
+export interface ScrapePlanItem {
+  competitionId: string;
+  competitionName: string;
+  seasonId: string | null;
+  primaryIdc: string;
+  playoffIdcs: string[];
+}
+
+/**
+ * Plan de scrape de un scraper: competiciones activas con su temporada vigente
+ * (LEFT JOIN a seasons is_current) y sus idc, en UNA query. Las que no tienen
+ * temporada actual salen con seasonId NULL para poder diagnosticarlas.
+ */
+export async function getActiveScrapePlan(scraperKey: string): Promise<ScrapePlanItem[]> {
+  const res = await db.query<{
+    competition_id: string;
+    competition_name: string;
+    season_id: string | null;
+    external_ids: ExternalIds;
+  }>(
+    `SELECT cs.competition_id, c.name AS competition_name,
+            s.id AS season_id, cs.external_ids
+       FROM competition_sources cs
+       JOIN competitions c  ON c.id = cs.competition_id
+       JOIN data_sources ds ON ds.id = cs.source_id
+       LEFT JOIN seasons s  ON s.competition_id = cs.competition_id AND s.is_current = TRUE
+      WHERE cs.is_active = TRUE AND ds.scraper_key = $1
+      ORDER BY c.name`,
+    [scraperKey],
+  );
+  return res.rows.map((r) => ({
+    competitionId: r.competition_id,
+    competitionName: r.competition_name,
+    seasonId: r.season_id,
+    primaryIdc: r.external_ids.idc,
+    playoffIdcs: r.external_ids.playoff_idcs ?? [],
+  }));
+}
+
 /** Upsert de una configuración (para el seed y, en la Fase 3, el alta por admin). */
 export async function upsertCompetitionSource(input: {
   competitionId: string;
