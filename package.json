@@ -37,5 +37,9 @@
   "dependencies": {
     "@sentry/nextjs": "^10.63.0",
     "@sentry/node": "^10.59.0"
+  },
+  "overrides": {
+    "sharp": "^0.35.0",
+    "postcss": "^8.5.18"
   }
 }
