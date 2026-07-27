@@ -23,6 +23,12 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # `tests/` no es un workspace npm, así que `turbo run typecheck` no lo ve.
+      # Sin esto, los tests de integración serían el único código del repo sin
+      # comprobar — que es exactamente el hueco que tenía `packages/db/scripts/`.
+      - name: Typecheck de los tests de integración
+        run: npx tsc --noEmit -p tests
+
       - name: Tests
         run: npm run test
 
@@ -107,6 +113,47 @@ jobs:
                 'idx_matches_season_scheduled',
                 'idx_matches_live_partial',
                 'idx_matches_season_status_scheduled')" | grep -qx ok
+
+  # ── Tests de integración contra Postgres real ───────────────────────────────
+  # Job aparte de `migrations` a propósito: aquel comprueba que el ESQUEMA se
+  # construye desde cero, este que la LÓGICA que lo usa hace lo que dice. Y son
+  # aparte de `quality` porque los unitarios deben seguir corriendo en segundos
+  # sin depender de nada — mezclarlos acaba en unitarios que necesitan una base,
+  # o en tests de integración que se saltan en silencio.
+  #
+  # Por qué contra Postgres de verdad y no un emulador en memoria: este código
+  # vive de SQL crudo con índices únicos PARCIALES, `ON CONFLICT ... WHERE`,
+  # `make_interval` y borrado por `ctid`. Los emuladores no soportan buena parte
+  # de eso y darían verde donde producción rompe.
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine   # misma mayor que producción
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: sticklive_test
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U test -d sticklive_test"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5433/sticklive_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      # El propio arranque aplica las migraciones desde los .sql reales
+      # (tests/integration/support/global-setup.ts).
+      - name: Tests de integración
+        run: npm run test:integration
 
   # ── La imagen de producción construye ───────────────────────────────────────
   # Hasta ahora un Dockerfile roto sólo se descubría desplegando.

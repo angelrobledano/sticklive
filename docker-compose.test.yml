@@ -1,0 +1,41 @@
+# ============================================================
+# Postgres efímero para los tests de integración.
+#
+#   docker compose -f docker-compose.test.yml up -d
+#   npm run test:integration
+#   docker compose -f docker-compose.test.yml down
+#
+# O de un tirón: npm run test:integration:docker
+#
+# Por qué un Postgres DE VERDAD y no un emulador en memoria: este código vive
+# de SQL crudo con cosas que los emuladores (pg-mem y compañía) no soportan —
+# índices únicos PARCIALES con WHERE, `ON CONFLICT ... WHERE`, `make_interval`,
+# borrado por `ctid`. Un emulador daría verde donde producción rompe, que es
+# peor que no tener test.
+# ============================================================
+
+services:
+  postgres-test:
+    image: postgres:16-alpine   # misma mayor que producción
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: sticklive_test
+    ports:
+      # 5433, no 5432: para no chocar con un Postgres local ni con el túnel SSH
+      # a producción, que usa el 5432. Confundirlos sería... memorable.
+      - "127.0.0.1:5433:5432"
+    # Sin volumen: los datos viven en RAM y mueren con el contenedor. Los tests
+    # parten de cero en cada arranque y van más rápido.
+    tmpfs:
+      - /var/lib/postgresql/data
+    command: >
+      postgres
+      -c fsync=off
+      -c synchronous_commit=off
+      -c full_page_writes=off
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d sticklive_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

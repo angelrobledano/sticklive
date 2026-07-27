@@ -140,18 +140,37 @@ Referenciaba `apps/api/Dockerfile`, que **no existe** (`find . -name Dockerfile*
 
 Reducido a lo que de verdad es: la base de datos de desarrollo. Los dos servicios muertos fuera, `version` fuera, y el README corregido — documentaba `-f docker-compose.dev.yml` en solitario, que no funciona porque ese fichero es un override sin `image`.
 
-### [ ] 2.5 Testing: 4 ficheros de test para 28.615 líneas
+### [~] 2.5 Testing — **infraestructura resuelta (21/07/2026), cobertura en marcha**
 
-Existen: `match-window.test.ts`, `premium.test.ts`, `match.transformer.test.ts`, `match-time.test.ts`. Todos de lógica pura. **Cero cobertura donde más duele:**
+Existían 6 ficheros de test para ~28.700 líneas, **todos de lógica pura**. Ni una línea de SQL probada, que en este código es donde vive la parte difícil.
 
-| Zona | Riesgo si rompe | Cómo testear |
+> **Lo que se montó.** `tests/integration/` con Postgres real y las migraciones reales, `docker-compose.test.yml` para local, y un job `integration` bloqueante en CI.
+>
+> **Postgres de verdad, no un emulador.** Se descartó `pg-mem` y similares: este código usa índices únicos **parciales** con `WHERE`, `ON CONFLICT ... WHERE`, `make_interval` y borrado por `ctid`. Los emuladores no soportan buena parte de eso, así que darían verde donde producción rompe. Un test que miente es peor que no tener test.
+>
+> **Aislamiento por TRUNCATE, no por transacción.** El patrón habitual —abrir transacción, correr el test, ROLLBACK— no sirve aquí: `packages/db` expone un pool singleton y el código de producción llama a `db.query()` cogiendo su propia conexión, así que una transacción del test le sería invisible. Truncar es más lento y más honesto: la función se ejecuta igual que en producción.
+>
+> **Guardarraíl contra el desastre.** `limpiar()` hace TRUNCATE de todo, y en este proyecto es normal tener abierto un túnel SSH contra el Postgres de producción. Si `DATABASE_URL` apunta a una base sin "test" en el nombre, los tests abortan antes de tocar nada.
+>
+> **Las migraciones se aplican desde los `.sql` reales**, no desde un esquema de pruebas paralelo. Un esquema duplicado se desincroniza en la primera migración que alguien olvide copiar, y a partir de ahí los tests validan una base que no existe en ningún sitio.
+
+**Primeros 16 tests**, elegidos por dónde más duele:
+
+| Qué | Por qué justo eso |
+|---|---|
+| `replaceMatchEvents` (9) | Corre cada 45 s por partido en juego y de él depende el diff del push. Cuando hacía DELETE+INSERT, los ids cambiaban en cada ciclo y se re-notificaba cada gol. Motivó las migraciones 034/035/036 |
+| `sweepStaleLive` (7) | El watchdog escrito ese mismo día **sin cobertura**. Cubre tanto que limpie lo colgado como que **no toque un partido en juego de verdad**, que sería peor que el problema original |
+
+**Se verificó que los tests fallan cuando deben.** Se mutaron ambas funciones a propósito —volver a DELETE+INSERT, y bajar el umbral del watchdog a 0 horas— y fallaron exactamente los 4 tests que describen esos fallos. Sin esa comprobación no se sabe si un test verde prueba algo o simplemente no mira.
+
+**Lo que sigue pendiente**, por orden de valor:
+
+| Zona | Riesgo si rompe | Cómo |
 |---|---|---|
-| Parsers de la ficha (`fep-ficha.scraper.ts`, 983 líneas) | La fuente cambia el HTML → se pierde el directo entero | **Golden files**: ya hay dumps en `apps/scraper/logs/*.json` y `fep-ficha-dump.ts`. Congelar 5-6 HTML reales (partido en curso, descanso, prórroga, penaltis, incomparecencia) y assertar el parseo. Es el test de mayor ROI del repo. |
-| Loaders (`match.loader.ts`, lógica de adopción de placeholders sintéticos y self-heal de `alt_source_refs`) | Duplicados y partidos fantasma en producción | Integración con `@testcontainers/postgresql` + migraciones reales |
-| Queries SQL de `packages/db` | Regresiones silenciosas | Igual, contra Postgres efímero |
-| `push-dispatcher.ts` (862 líneas) | Notificaciones duplicadas o perdidas a usuarios reales | Unitario sobre las funciones de diff con snapshots fijos |
-
-Objetivo realista: **60% en `packages/db` + `apps/etl/loaders` + parsers** antes de añadir la siguiente liga.
+| Parsers de la ficha | La fuente cambia el HTML → se pierde el directo entero | Ya hay 37 tests con golden files reales (PR #36). Faltan capturas de descanso, prórroga, penaltis e incomparecencia |
+| Loaders (`match.loader.ts`) | Duplicados y partidos fantasma | Integración; la infraestructura ya está puesta |
+| `push-dispatcher.ts` (862 líneas) | Notificaciones duplicadas o perdidas a usuarios reales | Las funciones de diff ya tienen 16 tests unitarios; faltan las de snapshot, que tocan BD |
+| `runWorldskateScores` | Directo de World Skate | Integración |
 
 ### [x] 2.6 CI que no bloquea nada relevante — **resuelto**
 
