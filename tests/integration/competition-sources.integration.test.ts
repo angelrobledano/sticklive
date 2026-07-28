@@ -113,6 +113,8 @@ describe('getActiveScrapePlan — plan del modo multi (Fase 2)', () => {
     expect(plan[0]!.seasonId).toBe(seasonId);
     expect(plan[0]!.primaryIdc).toBe('3150');
     expect(plan[0]!.playoffIdcs).toEqual(['3481']);
+    // La zona horaria por defecto (migración 042) es Europe/Madrid.
+    expect(plan[0]!.timezone).toBe('Europe/Madrid');
   });
 
   it('sin secundarios, playoffIdcs es un array vacío', async () => {

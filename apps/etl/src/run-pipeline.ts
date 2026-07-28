@@ -139,6 +139,7 @@ async function processCalendar(
   seasonId: string,
   idcs: string[],
   pipeline: EtlPipeline,
+  timezone?: string,
 ): Promise<void> {
   for (const calIdc of idcs) {
     const calName = IDC_NAMES[calIdc] ?? `idc ${calIdc}`;
@@ -168,6 +169,7 @@ async function processCalendar(
       seasonId,
       competitionName: calName,
       roundId,
+      timezone,
     });
     const result = await scraper.run();
     log.info({ idc: calIdc, found: result.data.length, errors: result.errors.length }, 'Calendario scrapeado');
@@ -242,7 +244,7 @@ async function runMultiCompetition(
     const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: item.seasonId, dryRun });
     try {
       if (entity === 'calendar') {
-        await processCalendar(item.seasonId, [item.primaryIdc, ...item.playoffIdcs], pipeline);
+        await processCalendar(item.seasonId, [item.primaryIdc, ...item.playoffIdcs], pipeline, item.timezone);
       } else {
         await processStandings(item.primaryIdc, item.competitionName, pipeline);
       }
