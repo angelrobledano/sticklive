@@ -198,6 +198,7 @@
     "direct_fouls_efficiency": "Efectividad faltas directas"
   },
   "playoffs": {
+    "round_of_16": "Octavos",
     "quarters": "Cuartos",
     "semis": "Semis",
     "final": "Final",
