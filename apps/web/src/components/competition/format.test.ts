@@ -68,6 +68,15 @@ describe('playoffPhaseKey', () => {
     // "Semifinal" contiene "final"; la regla de semi va antes.
     expect(playoffPhaseKey('Semifinal 1', null)).toBe('semis');
   });
+
+  it('reconoce octavos y NO los confunde con la final', () => {
+    // "Octavos de final" contiene "final": antes se clasificaba como 'final'.
+    expect(playoffPhaseKey('Octavos de final', null)).toBe('round_of_16');
+    expect(playoffPhaseKey('Round of 16', null)).toBe('round_of_16');
+    expect(playoffPhaseKey('1/8 de final', null)).toBe('round_of_16');
+    // Y la gran final sigue siendo la final.
+    expect(playoffPhaseKey('Final', null)).toBe('final');
+  });
 });
 
 describe('playoffPhaseLabel', () => {

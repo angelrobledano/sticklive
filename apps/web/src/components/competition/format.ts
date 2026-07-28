@@ -69,10 +69,13 @@ export function roundLabel(r: SeasonRound, t: (key: string, vars?: Record<string
  * Devuelve `null` cuando no se reconoce la fase: son nombres propios no
  * traducibles ("Copa del Rey"), que el llamante muestra tal cual.
  */
-export type PlayoffPhaseKey = 'quarters' | 'semis' | 'final' | 'third_place';
+export type PlayoffPhaseKey = 'round_of_16' | 'quarters' | 'semis' | 'final' | 'third_place';
 
 export function playoffPhaseKey(name: string | null, roundNumber: number | null): PlayoffPhaseKey | null {
   const n = (name ?? '').toLowerCase();
+  // Octavos ANTES que final: "octavos de final" contiene "final" y se
+  // clasificaba mal como la gran final.
+  if (/octavos|1\s*\/\s*8|round\s*of\s*16|eighth/.test(n)) return 'round_of_16';
   if (/cuartos|quarter/.test(n)) return 'quarters';
   if (/semi/.test(n)) return 'semis';
   if (/3.*4|tercer|bronce|small\s*final|3º|3rd|third/.test(n)) return 'third_place';

@@ -51,7 +51,11 @@ export class FepStandingsScraper extends BaseScraper<ScrapedStanding> {
       if ($node.hasClass('div_titulo_fase_idc') || $node.is('.div_titulo_fase_idc')) {
         const rawText = $node.find('.lang_label.lang_es').first().text().trim()
           || $node.text().trim();
-        if (rawText && rawText.toUpperCase() !== 'CLASIFICACION') {
+        // Sólo es un GRUPO real si el título no es el genérico de la tabla. El
+        // filtro anterior comparaba sin normalizar tildes ('CLASIFICACIÓN' !==
+        // 'CLASIFICACION'), así que el título genérico se colaba como grupo y la
+        // web pintaba "Grupo CLASIFICACIÓN" perdiendo las zonas de playoff.
+        if (rawText && !isGenericStandingsTitle(rawText)) {
           currentGroupName = rawText;
         }
       }
@@ -157,7 +161,23 @@ export class FepStandingsScraper extends BaseScraper<ScrapedStanding> {
   }
 }
 
-// ── Helpers ──────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────
+
+/** Quita diacríticos y normaliza a MAYÚSCULAS para comparar títulos. */
+function normalizeTitle(raw: string): string {
+  return raw.normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase().trim();
+}
+
+// Títulos genéricos de la cabecera de la tabla que NO son un grupo real: las
+// ligas son de tabla única. Incluye variantes con/sin tilde (es), catalán y en.
+const GENERIC_STANDINGS_TITLES = new Set([
+  'CLASIFICACION', 'CLASSIFICACIO', 'CLASSIFICACION', 'STANDINGS', 'CLASSIFICATION',
+]);
+
+/** True si el título es el genérico de la tabla (no un grupo distintivo). */
+export function isGenericStandingsTitle(raw: string): boolean {
+  return GENERIC_STANDINGS_TITLES.has(normalizeTitle(raw));
+}
 
 function parseStatInt(text: string): number {
   const clean = text.trim();
