@@ -53,7 +53,7 @@ Postgres en Docker. Todo TypeScript estricto.
 - **Ficha de partido**: parser que extrae eventos con instante de juego (el reloj descuenta de 25:00 → conversión a minuto transcurrido), alineaciones (dorsal, portero, 5 inicial, capitán, goles, asistencias), cuerpo técnico por rol (E1/E2/A/D) y faltas de equipo. El resultado de faltas directas y penaltis (marcado/fallado) se infiere cruzando el instante del lanzamiento con los goles.
 - **Modelo de fases**: liga y playoff comparten temporada; los partidos de playoff se marcan con rounds `round_type='playoff'` y la API deriva cuartos/semis/final por ordenación de series. Las series de colocación (9º–10º) se detectan automáticamente.
 - **Resiliencia**: reconciliación de partidos sintéticos duplicados, recuperación de partidos atascados (overdue 48h), deduplicación de clasificaciones, modo `refichas` para reprocesar actas.
-- **Pipeline por entidades**: `calendar | standings | matches | ficha | fichas-pendientes | refichas | download-logos`, multi-competición (`IDC` como lista).
+- **Pipeline por entidades**: `calendar | standings | matches | ficha | fichas-pendientes | refichas | download-logos`. Con `COMPETITION_SOURCES_DRIVEN=1`, calendar/standings/fichas-pendientes iteran todas las competiciones activas de `competition_sources` (alta de liga = un INSERT); sin el flag, modo single vía `--season-id`/`--idc`.
 
 ### API (Hono)
 
@@ -78,7 +78,7 @@ Esquema: competitions/seasons/rounds/teams/season_teams/matches/events/standings
 
 - Entorno: `docker compose up -d` (Postgres) + `npm run dev` (turbo: scraper/etl/api/web).
 - Migraciones: `npm run db:migrate`.
-- Variables clave: `SEASON_ID`, `IDC=3150,3481`, `ADMIN_TOKEN`, `POSTHOG_*`, `NEXT_PUBLIC_*`.
+- Variables clave: `COMPETITION_SOURCES_DRIVEN=1` (el cron itera `competition_sources`; alta de liga = un INSERT), `ADMIN_TOKEN`, `POSTHOG_*`, `NEXT_PUBLIC_*`. `SEASON_ID`/`IDC` quedan **deprecados** (sólo usos manuales de `run-pipeline` en modo single).
 
 ### Pendiente (prioridad)
 
