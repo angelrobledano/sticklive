@@ -12,8 +12,8 @@
  * (p. ej. el playoff, idc=3481) pasa --idc:
  *   npx tsx --env-file=.env apps/etl/src/run-pipeline.ts --entity=calendar --idc=3481 --season-id=<PLAYOFF_SEASON_ID>
  *
- * Con COMPETITION_SOURCES_DRIVEN=1 y sin --season-id/--idc, calendar y standings
- * iteran TODAS las competiciones FEP activas de `competition_sources` (Fase 2).
+ * Con COMPETITION_SOURCES_DRIVEN=1 y sin --season-id/--idc, calendar, standings
+ * y fichas-pendientes iteran TODAS las competiciones FEP activas (Fases 2 y 3).
  *
  * También acepta --dry-run para validar transformaciones sin persistir.
  */
@@ -49,12 +49,15 @@ const PLAYOFF_IDCS_PIPELINE = ['3481', '3484'];
 // idcs de copas/supercopas (formato eliminatoria): sus rondas se crean a partir
 // del nombre de la fuente (Octavos/Cuartos/Semis/Final) con round_type='playoff',
 // para que la web las pinte como bracket. No tocan la OK Liga ni el loader.
-const CUP_IDCS = new Set(['3258', '3259', '3177', '3178', '3301', '3302', '3260', '3261']);
+// Copas/supercopas verificadas contra prod (28/07/2026): Rey 3258, Reina 3259,
+// Supercopas 3177/3178, SAR 3301/3302. Los 3260/3261 que había aquí eran idc
+// fantasma (no existen como competición) — eliminados.
+const CUP_IDCS = new Set(['3258', '3259', '3177', '3178', '3301', '3302']);
 
 // ── Punto 10, Fase 2: scrape guiado por `competition_sources` ────────────────
 // Con el flag ACTIVO, un `run-pipeline --entity=calendar|standings` SIN
 // --season-id/--idc explícitos deja de mirar sólo la OK Liga (SEASON_ID/IDC del
-// entorno) e itera TODAS las competiciones FEP activas de la tabla, resolviendo
+// entorno) y itera TODAS las competiciones FEP activas de la tabla, resolviendo
 // la temporada vigente (seasons.is_current) y los idc de cada una. Apagado (por
 // defecto) el comportamiento es idéntico al de antes. Palanca de emergencia:
 // bajar is_active de una competición (dato) o apagar el flag.
@@ -280,24 +283,27 @@ async function main() {
   const idc = idcs[0]!; // compat: entidades de un solo idc (ficha)
   const competitionName = IDC_NAMES[idc] ?? `idc ${idc}`;
 
-  // ── Modo multi (punto 10, Fase 2) ────────────────────────────
-  // Con el flag activo y sin --season-id/--idc explícitos, calendar y standings
-  // iteran TODAS las competiciones FEP activas de `competition_sources`. Los
-  // usos manuales que pasan --season-id o --idc mantienen el modo single.
+  // ── Modo multi (punto 10, Fases 2 y 3) ───────────────────────
+  // Con el flag activo y sin --season-id/--idc explícitos, el pipeline itera
+  // TODAS las competiciones FEP activas de `competition_sources` en vez de leer
+  // SEASON_ID/IDC del entorno. Cubre calendar y standings (Fase 2) y el barrido
+  // de respaldo de fichas-pendientes (Fase 3). Los usos manuales que pasan
+  // --season-id o --idc mantienen el modo single.
   const wantsMulti =
     COMPETITION_SOURCES_DRIVEN &&
-    (entity === 'calendar' || entity === 'standings') &&
+    (entity === 'calendar' || entity === 'standings' || entity === 'fichas-pendientes') &&
     !args['season-id'] &&
     !args['idc'];
 
-  if (wantsMulti) {
+  if (wantsMulti && (entity === 'calendar' || entity === 'standings')) {
     log.info({ entity, dryRun }, '🚀 Iniciando pipeline (multi-competición)');
     await runMultiCompetition(entity, dryRun);
     log.info('🏁 Pipeline completado');
     return;
   }
 
-  if (!seasonId && entity !== 'download-logos' && entity !== 'ficha') {
+  // El guard de SEASON_ID no aplica en modo multi (las temporadas salen del plan).
+  if (!seasonId && !wantsMulti && entity !== 'download-logos' && entity !== 'ficha') {
     console.error('\n❌ SEASON_ID requerido.');
     console.error('   Obtén el UUID ejecutando primero:');
     console.error('   npx ts-node --esm apps/etl/src/seed-ok-liga.ts\n');
@@ -308,7 +314,7 @@ async function main() {
 
   const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId, dryRun });
 
-  // ── Calendario ───────────────────────────────────────────────
+  // ── Calendario ─────────────────────────────────────
   if (entity === 'calendar' || entity === 'all') {
     await processCalendar(seasonId!, idcs, pipeline);
     // Reconciliación automática: si un placeholder sintético ya tiene su
@@ -317,12 +323,12 @@ async function main() {
     if (reconciled > 0) log.info({ reconciled }, '🧹 Placeholders sintéticos reconciliados');
   }
 
-  // ── Clasificación ────────────────────────────────────────────
+  // ── Clasificación ─────────────────────────────────
   if (entity === 'standings' || entity === 'all') {
     await processStandings(idc, competitionName, pipeline);
   }
 
-  // ── Marcadores en vivo ───────────────────────────────────────
+  // ── Marcadores en vivo ──────────────────────────────
   if (entity === 'matches' || entity === 'all') {
     log.info('→ Scrapeando marcadores rfep_mc_1.php...');
     const scraper = new FepMatchesScraper({ seasonId: seasonId! });
@@ -339,6 +345,16 @@ async function main() {
   // refichas: re-procesa todas las actas de la temporada (idempotente) —
   // útil tras mejorar el parser (penaltis, staff, lanzadores...).
   if (entity === 'fichas-pendientes' || entity === 'refichas') {
+    // En modo multi (flag activo, sin --season-id), el barrido de respaldo cubre
+    // TODAS las competiciones FEP activas, no sólo la del entorno. Así las 15
+    // ligas de la Fase 2 recuperan actas que el directo no capturara.
+    const seasons = wantsMulti
+      ? (await getActiveScrapePlan(FEP_SCRAPER_KEY))
+          .map((p) => p.seasonId)
+          .filter((s): s is string => s !== null)
+      : [seasonId!];
+    log.info({ seasons: seasons.length, multi: wantsMulti }, '→ Barrido de fichas pendientes');
+
     const { rows: pending } = await db.query<{
       id: string;
       source_ref: string;
@@ -351,12 +367,12 @@ async function main() {
        LEFT JOIN teams ht ON ht.id = m.home_team_id
        JOIN seasons s ON s.id = m.season_id
        JOIN competitions comp ON comp.id = s.competition_id
-       WHERE m.season_id = $1
+       WHERE m.season_id = ANY($1)
          AND m.status IN ('finished', 'live')
          AND m.source_ref LIKE 'fep_match_%'
          AND ($2 OR NOT EXISTS (SELECT 1 FROM match_events e WHERE e.match_id = m.id))
        ORDER BY m.scheduled_at ASC`,
-      [seasonId, entity === 'refichas']
+      [seasons, entity === 'refichas']
     );
 
     log.info({ pending: pending.length }, '→ Fichas pendientes encontradas');
@@ -386,7 +402,7 @@ async function main() {
     log.info({ ok, fail, total: pending.length }, '🏁 Fichas pendientes completadas');
   }
 
-  // ── Ficha resumen (eventos de partido) ─────────────────────
+  // ── Ficha resumen (eventos de partido) ─────────────────
   if (entity === 'ficha') {
     const sourceRefArg = args['source-ref'];
     if (!sourceRefArg) {
@@ -448,7 +464,7 @@ async function main() {
     log.info({ matchId: match.id, eventsFound: result.data.length }, '✅ Ficha de partido procesada');
   }
 
-  // ── Descarga de logos ───────────────────────────────────────
+  // ── Descarga de logos ──────────────────────────────
   if (entity === 'download-logos') {
     // Ruta resuelta desde la ubicación de ESTE módulo (apps/etl/src), NO desde
     // process.cwd(): así da igual desde dónde se lance el comando. Antes, al
