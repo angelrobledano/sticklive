@@ -157,6 +157,7 @@
     "direct_fouls_efficiency": "Eficácia de livres diretos"
   },
   "playoffs": {
+    "round_of_16": "Oitavos",
     "quarters": "Quartos",
     "semis": "Meias",
     "final": "Final",

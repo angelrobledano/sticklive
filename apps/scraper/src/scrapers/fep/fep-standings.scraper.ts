@@ -6,6 +6,7 @@ import type { Element } from 'domhandler';
 import { BaseScraper } from '../../core/base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
+import { isGenericStandingsTitle } from './standings-title.js';
 import type { ScrapedStanding } from '@sports/shared-types';
 
 const BASE_URL = 'https://www.server2.sidgad.es/rfep';
@@ -51,7 +52,11 @@ export class FepStandingsScraper extends BaseScraper<ScrapedStanding> {
       if ($node.hasClass('div_titulo_fase_idc') || $node.is('.div_titulo_fase_idc')) {
         const rawText = $node.find('.lang_label.lang_es').first().text().trim()
           || $node.text().trim();
-        if (rawText && rawText.toUpperCase() !== 'CLASIFICACION') {
+        // Sólo es un GRUPO real si el título no es el genérico de la tabla. El
+        // filtro anterior comparaba sin normalizar tildes ('CLASIFICACIÓN' !==
+        // 'CLASIFICACION'), así que el título genérico se colaba como grupo y la
+        // web pintaba "Grupo CLASIFICACIÓN" perdiendo las zonas de playoff.
+        if (rawText && !isGenericStandingsTitle(rawText)) {
           currentGroupName = rawText;
         }
       }
@@ -157,7 +162,7 @@ export class FepStandingsScraper extends BaseScraper<ScrapedStanding> {
   }
 }
 
-// ── Helpers ──────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────
 
 function parseStatInt(text: string): number {
   const clean = text.trim();
