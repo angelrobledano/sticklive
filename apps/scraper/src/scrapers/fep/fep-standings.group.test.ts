@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isGenericStandingsTitle } from './fep-standings.scraper.js';
+import { isGenericStandingsTitle } from './standings-title.js';
 
 /**
  * El scraper tomaba el título de la cabecera como nombre de grupo. El título
