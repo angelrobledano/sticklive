@@ -50,6 +50,8 @@ export interface Match {
   roundId: string | null;
   competitionId?: string | null;
   competitionName?: string | null;
+  /** IANA TZ de la competición (ver migración 042). La web cae a Europe/Madrid. */
+  competitionTimezone?: string | null;
   status: MatchStatus;
   /** Solo en directo: true durante el descanso (para badge "Descanso" en listas). */
   isHalftime?: boolean;
