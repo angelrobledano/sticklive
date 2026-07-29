@@ -28,6 +28,7 @@ import * as Sentry from '@sentry/node';
 import { createLogger } from '@sports/logger';
 import { db, closeDb } from '@sports/db';
 import { EtlPipeline } from './pipeline.js';
+import { forEachLimited } from './concurrency.js';
 import { deriveMatchResults } from './derive-results.js';
 import { sweepStaleLive } from './stale-live-watchdog.js';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
@@ -54,6 +55,9 @@ const POLL_INTERVAL  = Number(process.env['POLL_INTERVAL_S']  ?? 45) * 1000;
 const WINDOW_HOURS   = Number(process.env['WINDOW_HOURS']     ?? 2);
 const MAX_RUNTIME_MS = Number(process.env['MAX_RUNTIME_MIN']  ?? 180) * 60 * 1000;
 const SPORT_SLUG     = 'hockey-patines';
+// Fichas en paralelo dentro de un ciclo de directo. Un tope moderado acorta el
+// ciclo cuando hay muchos partidos en juego a la vez (más ligas) sin martillear.
+const FICHA_CONCURRENCY = Number(process.env['FICHA_CONCURRENCY'] ?? 3);
 
 // ── Sentry Cron Monitor (heartbeat) ──────────────────────────────────────────
 // Detecta si el cron deja de correr del todo (contenedor/scheduler muerto). Como
@@ -180,16 +184,16 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
 
   if (rows.rows.length === 0) return;
 
-  log.info({ count: rows.rows.length }, 'Procesando fichas para partidos activos/recientes');
+  log.info({ count: rows.rows.length, concurrency: FICHA_CONCURRENCY }, 'Procesando fichas para partidos activos/recientes');
 
-  for (const match of rows.rows) {
+  await forEachLimited(rows.rows, FICHA_CONCURRENCY, async (match) => {
     const source = sourceForMatchRef(match.source_ref);
     if (!source) {
       log.debug(
         { matchId: match.id, sourceRef: match.source_ref },
         'Fuente no reconocida — omitiendo ficha (añádela en core/sources.ts)'
       );
-      continue;
+      return;
     }
 
     const idp = idpFromMatchRef(match.source_ref, source);
@@ -200,7 +204,7 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
         { matchId: match.id, sourceRef: match.source_ref, compRef: match.comp_ref, source: source.key },
         'idp o idc vacios — omitiendo ficha de este partido'
       );
-      continue;
+      return;
     }
 
     try {
@@ -216,10 +220,7 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
     } catch (err) {
       log.warn({ err, matchId: match.id, idp, idc, source: source.key }, 'Error en ficha — continuando con siguiente partido');
     }
-
-    // Cortesia con el servidor fuente
-    await new Promise((r) => setTimeout(r, 1_000));
-  }
+  });
 }
 
 /**
@@ -439,7 +440,7 @@ async function main() {
 
   log.info({ seasonIds }, 'Temporadas monitorizadas');
 
-  // ── 1. Check de ventana ────────────────────────────────────────────────────
+  // ── 1. Check de ventana ────────────────────────────────────────────────
   const initial = await checkWindow(seasonIds);
 
   if (!initial.hasLive && !initial.hasUpcoming) {
