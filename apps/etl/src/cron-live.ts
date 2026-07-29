@@ -223,71 +223,59 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
 }
 
 /**
- * Un ciclo de scraping: captura marcadores, los persiste y luego descarga
- * las fichas resumen de los partidos activos.
+ * Temporadas de la FEP (cualquier competición `fep_%`) con actividad: live o
+ * partido inminente en la ventana. De éstas se hace snapshot→diff para el push.
+ * El feed rfep_mc_1 es de la FEP; World Skate va aparte (runWorldskateScores).
  */
-/** Temporadas (≠ primaria) con actividad: live o partido inminente en la ventana. */
-async function activeSecondarySeasons(seasonIds: string[], primarySeasonId: string): Promise<string[]> {
+async function activeFepSeasons(seasonIds: string[]): Promise<string[]> {
   const res = await db.query<{ season_id: string }>(
     `SELECT DISTINCT m.season_id FROM matches m
      JOIN seasons s      ON s.id = m.season_id
      JOIN competitions c ON c.id = s.competition_id
-     WHERE m.season_id = ANY($1) AND m.season_id <> $2
-       -- SOLO competiciones de la FEP: quien consume esto es
-       -- \`scrapeSeasonScores\`, que lanza FepMatchesScraper (el feed
-       -- rfep_mc_1.php). Contra una temporada de otra fuente traería partidos
-       -- ajenos y, si alguno no existiese aún, lo insertaría bajo la temporada
-       -- equivocada. Cada fuente actualiza sus marcadores con su propio
-       -- scraper; el de World Skate va en runWorldskateScores, más abajo.
+     WHERE m.season_id = ANY($1)
        AND c.source_ref LIKE 'fep_%'
        AND ( m.status = 'live'
           OR (m.status = 'scheduled'
               AND m.scheduled_at BETWEEN NOW() - INTERVAL '3 hours'
-                                     AND NOW() + make_interval(hours => $3::int)) )`,
-    [seasonIds, primarySeasonId, WINDOW_HOURS]
+                                     AND NOW() + make_interval(hours => $2::int)) )`,
+    [seasonIds, WINDOW_HOURS]
   );
   return res.rows.map((r) => r.season_id);
 }
 
 /**
- * Scrapea los marcadores de UNA temporada y dispara el push de eventos de partido
- * (inicio/gol/final) + jornada + competición. No emite gol-jugador (eso queda para
- * la primaria, que tiene el timing fino con las fichas).
- */
-async function scrapeSeasonScores(seasonId: string): Promise<void> {
-  const prev       = pushEnabled ? await snapshotMatches(seasonId) : new Map();
-  const prevRounds = pushEnabled ? await snapshotRounds(seasonId)  : new Map();
-  const scraper  = new FepMatchesScraper({ seasonId });
-  const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId });
-  const result = await scraper.run();
-  if (result.data.length === 0) return;
-  await pipeline.runMatches(result);
-  try { await diffAndNotify(prev, prevRounds, seasonId); } catch (err) {
-    log.warn({ err, seasonId }, 'push (secundaria) fallo — sigue');
-  }
-}
-
-/**
- * Marcadores de la FEP (temporada primaria + secundarias de la FEP).
+ * Marcadores de la FEP. `rfep_mc_1.php` es un feed GLOBAL: un solo POST trae los
+ * partidos en juego de TODAS las competiciones. Antes se scrapeaba por la
+ * temporada "primaria" y se RE-SCRAPEABA el mismo feed una vez por cada
+ * competición secundaria activa, sólo para hacer su diff de push. Ahora:
+ * snapshot de las FEP activas → UN scrape → diff de todas. Menos carga sobre
+ * sidgad y sin temporadas de segunda: todas emiten los mismos avisos.
  *
- * Separado de `runOneCycle` a propósito. ANTES esto estaba en línea y hacía
- * `return 0` cuando `rfep_mc_1.php` devolvía 0 partidos, lo que abortaba el
- * ciclo ENTERO — incluidas las fichas, que operan sobre TODAS las fuentes.
- *
- * Con la OK Liga fuera de temporada ese feed devuelve 0 casi siempre, así que
- * durante el Europeo Sub-17 las actas de World Skate no se habrían pedido nunca
- * aunque hubiera partidos en directo. Ahora la FEP puede no tener nada que decir
- * sin llevarse por delante al resto.
+ * Separado de `runOneCycle` a propósito: si `rfep_mc_1.php` devuelve 0 no debe
+ * abortar el ciclo (las fichas y World Skate operan sobre todas las fuentes).
  *
  * Devuelve cuántos partidos se actualizaron (0 si la fuente no dio nada).
  */
-async function runFepScores(seasonIds: string[], primarySeasonId: string): Promise<number> {
-  const scraper  = new FepMatchesScraper({ seasonId: primarySeasonId });
-  const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: primarySeasonId });
+async function runFepScores(seasonIds: string[]): Promise<number> {
+  // Temporadas FEP con actividad: de éstas hacemos snapshot→diff para el push.
+  const activeSeasons = await activeFepSeasons(seasonIds);
 
-  // Snapshot previo (partidos + jornadas) para push antes de scrapear marcadores
-  const prev       = pushEnabled ? await snapshotMatches(primarySeasonId) : new Map();
-  const prevRounds = pushEnabled ? await snapshotRounds(primarySeasonId)  : new Map();
+  // Snapshot ANTES del scrape (partidos + jornadas), por temporada activa.
+  const prevByS = new Map<string, {
+    matches: Awaited<ReturnType<typeof snapshotMatches>>;
+    rounds: Awaited<ReturnType<typeof snapshotRounds>>;
+  }>();
+  if (pushEnabled) {
+    for (const sid of activeSeasons) {
+      prevByS.set(sid, { matches: await snapshotMatches(sid), rounds: await snapshotRounds(sid) });
+    }
+  }
+
+  // UN scrape del feed global. El seasonId es sólo fallback para partidos que el
+  // calendario aún no cargó; para los existentes, el upsert preserva su season_id.
+  const seasonFallback = activeSeasons[0] ?? seasonIds[0]!;
+  const scraper  = new FepMatchesScraper({ seasonId: seasonFallback });
+  const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: seasonFallback });
 
   const result = await scraper.run();
   if (result.data.length === 0) {
@@ -306,27 +294,12 @@ async function runFepScores(seasonIds: string[], primarySeasonId: string): Promi
         log.warn({ errors: result.errors, consecutiveMcFailures },
           'Scraper de marcadores falló (transitorio) — reintento en el próximo ciclo');
       }
+    } else if (activeSeasons.length > 0) {
+      // 200 OK pero 0 partidos habiendo FEP con actividad esperada: sospechoso.
+      // (Fuera de temporada FEP el feed devuelve 0 legítimamente y no alertamos.)
+      Sentry.captureMessage('rfep_mc_1.php devolvió 0 partidos habiendo partidos FEP en juego — posible cambio/caída de la fuente', 'warning');
     } else {
-      // 200 OK pero 0 partidos. Sólo es sospechoso si ESPERÁBAMOS partidos: el
-      // ciclo puede estar corriendo por una competición de otra fuente (World
-      // Skate) mientras la OK Liga está fuera de temporada, y entonces el feed
-      // devuelve 0 legítimamente. Sin esta guardia, durante el Europeo Sub-17
-      // Sentry recibiría un aviso cada 45 s — la forma más rápida de aprender a
-      // ignorar los avisos.
-      const esperados = await db.query<{ count: string }>(
-        `SELECT COUNT(*)::text AS count FROM matches
-          WHERE season_id = $1
-            AND (status = 'live'
-                 OR (status = 'scheduled'
-                     AND scheduled_at BETWEEN NOW() - INTERVAL '3 hours'
-                                          AND NOW() + make_interval(hours => $2::int)))`,
-        [primarySeasonId, WINDOW_HOURS]
-      );
-      if (Number(esperados.rows[0]?.count ?? 0) > 0) {
-        Sentry.captureMessage('rfep_mc_1.php devolvió 0 partidos habiendo partidos FEP en juego — posible cambio/caída de la fuente', 'warning');
-      } else {
-        log.debug('rfep_mc_1.php sin partidos y sin actividad FEP esperada — normal fuera de temporada');
-      }
+      log.debug('rfep_mc_1.php sin partidos y sin actividad FEP esperada — normal fuera de temporada');
     }
     return 0;
   }
@@ -335,25 +308,16 @@ async function runFepScores(seasonIds: string[], primarySeasonId: string): Promi
 
   const etl = await pipeline.runMatches(result);
 
-  // Eventos de partido (equipo/competición) + jornada (inicio/fin)
-  try { await diffAndNotify(prev, prevRounds, primarySeasonId); } catch (err) {
-    log.warn({ err }, 'push-dispatcher fallo — el scraping sigue');
-  }
-
-  // ── Marcadores de las DEMÁS competiciones con actividad (aditivo) ──────────
-  // El directo de la primaria (OK Liga) ya está hecho arriba; aquí cubrimos el
-  // resto de competiciones en vivo. Aislado: si una falla, no afecta a nada más.
-  // Las fichas/alineaciones de sus partidos se refrescan después, abajo, porque
-  // runFichasForActiveMatches opera sobre TODAS las temporadas.
-  try {
-    for (const sid of await activeSecondarySeasons(seasonIds, primarySeasonId)) {
-      try { await scrapeSeasonScores(sid); } catch (err) {
-        log.warn({ err, seasonId: sid }, 'scores secundaria fallo — continúa');
+  // Push (inicio/gol/final + jornada + competición) para TODAS las FEP activas,
+  // desde el snapshot tomado antes del único scrape.
+  if (pushEnabled) {
+    for (const sid of activeSeasons) {
+      const prev = prevByS.get(sid);
+      if (!prev) continue;
+      try { await diffAndNotify(prev.matches, prev.rounds, sid); } catch (err) {
+        log.warn({ err, seasonId: sid }, 'push-dispatcher fallo — el scraping sigue');
       }
-      await sleep(1000); // cortesía con la fuente
     }
-  } catch (err) {
-    log.warn({ err }, 'pase de competiciones secundarias fallo — primaria intacta');
   }
 
   return etl.upserted;
@@ -395,10 +359,10 @@ async function runWorldskateScores(): Promise<void> {
  * después, actas y notificaciones. Cada fuente tiene su propio scraper y va
  * aislada: que una caiga no impide que las demás se actualicen.
  */
-async function runOneCycle(seasonIds: string[], primarySeasonId: string): Promise<number> {
+async function runOneCycle(seasonIds: string[]): Promise<number> {
   let upserted = 0;
   try {
-    upserted = await runFepScores(seasonIds, primarySeasonId);
+    upserted = await runFepScores(seasonIds);
   } catch (err) {
     // Que la FEP falle no debe impedir que se refresquen las actas del resto.
     log.warn({ err }, 'marcadores FEP fallaron — el ciclo sigue con las fichas');
@@ -473,10 +437,7 @@ async function main() {
     process.exit(1);
   }
 
-  // La temporada "primaria" es la primera configurada explicitamente, o la primera de DB.
-  const primarySeasonId = (process.env['SEASON_ID'] ?? '').trim() || seasonIds[0]!;
-
-  log.info({ seasonIds, primarySeasonId }, 'Temporadas monitorizadas');
+  log.info({ seasonIds }, 'Temporadas monitorizadas');
 
   // ── 1. Check de ventana ────────────────────────────────────────────────────
   const initial = await checkWindow(seasonIds);
@@ -484,7 +445,7 @@ async function main() {
   if (!initial.hasLive && !initial.hasUpcoming) {
     if (initial.hasOverdue) {
       log.info('Partidos atrasados sin resultado — ciclo de recuperacion');
-      const upserted = await runOneCycle(seasonIds, primarySeasonId);
+      const upserted = await runOneCycle(seasonIds);
       log.info({ upserted }, 'Recuperacion completada — saliendo.');
       return;
     }
@@ -516,7 +477,7 @@ async function main() {
 
     const cycleStart = Date.now();
     try {
-      const upserted = await runOneCycle(seasonIds, primarySeasonId);
+      const upserted = await runOneCycle(seasonIds);
       log.info(
         { cycle, upserted, durationMs: Date.now() - cycleStart },
         'Ciclo completado'
