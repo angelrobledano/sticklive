@@ -35,6 +35,7 @@ interface MatchDetailRow {
   away_team_name: string;
   away_team_short_name: string | null;
   away_team_logo_url: string | null;
+  competition_timezone: string | null;
   live_period: number | null;
   live_clock_seconds: number | null;
   live_clock_at: Date | null;
@@ -77,10 +78,13 @@ matchDetailRouter.get('/:id', async (c) => {
         at.id           AS away_team_id,
         at.name         AS away_team_name,
         at.short_name   AS away_team_short_name,
-        at.logo_url     AS away_team_logo_url
+        at.logo_url     AS away_team_logo_url,
+        comp.timezone   AS competition_timezone
       FROM matches m
       LEFT JOIN teams ht ON ht.id = m.home_team_id
       LEFT JOIN teams at ON at.id = m.away_team_id
+      LEFT JOIN seasons s        ON s.id = m.season_id
+      LEFT JOIN competitions comp ON comp.id = s.competition_id
       WHERE m.id = $1
     `, [id]);
 
@@ -235,6 +239,7 @@ matchDetailRouter.get('/:id', async (c) => {
       id:          row.id,
       seasonId:    row.season_id,
       roundId:     row.round_id,
+      competitionTimezone: row.competition_timezone,
       status:      effectiveStatus,
       scheduledAt: row.scheduled_at?.toISOString() ?? null,
       startedAt:   row.started_at?.toISOString()   ?? null,

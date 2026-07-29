@@ -2,19 +2,27 @@
  * Helpers de formato (fecha/hora/nombres) y crono de eventos de la ficha de
  * partido. Funciones puras, sin React.
  */
+import { APP_TZ } from '@/lib/match-time';
 
-export function formatTime(iso: string | null): string {
+/**
+ * Hora del partido. `tz` es la zona de la competición (columna 042); si viene
+ * null/undefined cae a Europe/Madrid, que es como la fuente publica el
+ * calendario hoy → cero cambio para las ligas actuales. La AGRUPACIÓN por día
+ * sigue anclada en Madrid (ver match-time.ts): esto solo afecta a la hora que
+ * se pinta de un partido concreto.
+ */
+export function formatTime(iso: string | null, tz?: string | null): string {
   if (!iso) return '--:--';
   return new Date(iso).toLocaleTimeString('es-ES', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid',
+    hour: '2-digit', minute: '2-digit', timeZone: tz || APP_TZ,
   });
 }
 
-export function formatDate(iso: string | null): string {
+export function formatDate(iso: string | null, tz?: string | null): string {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString('es-ES', {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-    timeZone: 'Europe/Madrid',
+    timeZone: tz || APP_TZ,
   });
 }
 

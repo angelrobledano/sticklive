@@ -201,7 +201,7 @@ export function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?
         )}
         {!isLive && !isFinished && (
           <span className="text-[11px] text-slate-400 dark:text-slate-500">
-            {formatDate(match.scheduledAt)} · {formatTime(match.scheduledAt)}
+            {formatDate(match.scheduledAt, match.competitionTimezone)} · {formatTime(match.scheduledAt, match.competitionTimezone)}
           </span>
         )}
       </div>
@@ -221,7 +221,7 @@ export function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?
             </div>
           ) : (
             <div className="font-score text-3xl font-semibold text-slate-400 dark:text-slate-500 tabular-nums">
-              {formatTime(match.scheduledAt)}
+              {formatTime(match.scheduledAt, match.competitionTimezone)}
             </div>
           )}
           {match.status === 'postponed' && (

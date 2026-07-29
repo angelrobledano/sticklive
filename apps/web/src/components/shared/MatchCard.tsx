@@ -7,6 +7,7 @@ import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName } from '@/components/shared/TeamName';
 import { useT } from '@/lib/i18n';
 import { finalLabelKey, penaltyText } from '@/lib/match-result';
+import { APP_TZ } from '@/lib/match-time';
 
 
 interface MatchCardProps {
@@ -14,13 +15,17 @@ interface MatchCardProps {
   isFavoriteTeam?: boolean;
 }
 
-/** Formatea hora en timezone España */
-function formatTime(iso: string | null): string {
+/**
+ * Hora del partido en la zona de la competición (columna 042); cae a
+ * Europe/Madrid cuando no viene, que es como la fuente publica hoy → cero
+ * cambio para las ligas actuales.
+ */
+function formatTime(iso: string | null, tz?: string | null): string {
   if (!iso) return '--:--';
   return new Date(iso).toLocaleTimeString('es-ES', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Madrid',
+    timeZone: tz || APP_TZ,
   });
 }
 
@@ -152,7 +157,7 @@ function ScoreBlock({ match }: { match: Match }) {
   return (
     <div className="flex flex-col items-center gap-0.5 px-3 shrink-0">
       <span className="font-score text-lg font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
-        {formatTime(startedAt ?? scheduledAt)}
+        {formatTime(startedAt ?? scheduledAt, match.competitionTimezone)}
       </span>
     </div>
   );
