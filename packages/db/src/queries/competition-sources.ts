@@ -100,6 +100,8 @@ export interface ScrapePlanItem {
   seasonId: string | null;
   primaryIdc: string;
   playoffIdcs: string[];
+  /** Zona IANA en la que la fuente publica los horarios (default Europe/Madrid). */
+  timezone: string;
 }
 
 /**
@@ -113,9 +115,10 @@ export async function getActiveScrapePlan(scraperKey: string): Promise<ScrapePla
     competition_name: string;
     season_id: string | null;
     external_ids: ExternalIds;
+    timezone: string;
   }>(
     `SELECT cs.competition_id, c.name AS competition_name,
-            s.id AS season_id, cs.external_ids
+            s.id AS season_id, cs.external_ids, c.timezone
        FROM competition_sources cs
        JOIN competitions c  ON c.id = cs.competition_id
        JOIN data_sources ds ON ds.id = cs.source_id
@@ -130,6 +133,7 @@ export async function getActiveScrapePlan(scraperKey: string): Promise<ScrapePla
     seasonId: r.season_id,
     primaryIdc: r.external_ids.idc,
     playoffIdcs: r.external_ids.playoff_idcs ?? [],
+    timezone: r.timezone,
   }));
 }
 

@@ -20,7 +20,10 @@ import { BaseScraper } from '../../core/base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
 import type { ScrapedMatch, MatchStatus } from '@sports/shared-types';
-import { madridToUtc } from './fep-matches.scraper.js';
+import { zonedToUtc } from '../../core/eu-timezone.js';
+
+/** Zona por defecto si la competición no trae una (competitions.timezone). */
+const DEFAULT_TIMEZONE = 'Europe/Madrid';
 
 const BASE_URL = 'https://www.server2.sidgad.es/rfep';
 const SOURCE_ID = requireFepSourceId();
@@ -37,6 +40,11 @@ export interface CalendarScraperConfig {
    * fase de playoff dentro de la temporada de liga). Sin indicar = regular.
    */
   roundId?: string;
+  /**
+   * Zona IANA en la que la fuente publica las horas (competitions.timezone).
+   * Sin indicar = Europe/Madrid (comportamiento histórico).
+   */
+  timezone?: string;
 }
 
 export class FepCalendarScraper extends BaseScraper<ScrapedMatch> {
@@ -129,7 +137,7 @@ export class FepCalendarScraper extends BaseScraper<ScrapedMatch> {
     const cells = $row.find('td');
     const timeStr = cells.eq(2).text().trim(); // "21:00"
     const scheduledAt = dateparts
-      ? combineDateAndTime(dateparts, timeStr)
+      ? combineDateAndTime(dateparts, timeStr, this.calendarConfig.timezone ?? DEFAULT_TIMEZONE)
       : undefined;
 
     // Nombres de equipo (para logging/debug, no los usamos como ref)
@@ -188,7 +196,7 @@ export class FepCalendarScraper extends BaseScraper<ScrapedMatch> {
   }
 }
 
-// ── Helpers de parsing ───────────────────────────────────────────
+// ── Helpers de parsing ──────────────────────────────────
 
 function parseGamedate(gamedateStr: string): { year: number; month: number; day: number } | null {
   if (!gamedateStr || gamedateStr.length !== 8) return null;
@@ -201,23 +209,26 @@ function parseGamedate(gamedateStr: string): { year: number; month: number; day:
 
 /**
  * Combina la fecha del gamedate y la hora del calendario en un Date UTC,
- * interpretando ambos como hora española (Europe/Madrid / CEST o CET).
+ * interpretando ambos en la zona horaria de la competición (IANA). Con
+ * `Europe/Madrid` (default) el resultado es el histórico; con otra zona, la
+ * conversión usa el offset correcto (ver `eu-timezone.ts`).
  */
 function combineDateAndTime(
   dateparts: { year: number; month: number; day: number },
-  timeStr: string
+  timeStr: string,
+  timezone: string
 ): Date | undefined {
   if (!timeStr || !timeStr.includes(':')) {
-    // Sin hora: usamos medianoche Madrid (00:00 CEST/CET → UTC)
-    return madridToUtc(dateparts.year, dateparts.month, dateparts.day, 0, 0);
+    // Sin hora: medianoche en la zona de la competición → UTC.
+    return zonedToUtc(timezone, dateparts.year, dateparts.month, dateparts.day, 0, 0);
   }
   const parts = timeStr.split(':').map(Number);
   const h = parts[0];
   const m = parts[1];
   if (h === undefined || m === undefined || isNaN(h) || isNaN(m)) {
-    return madridToUtc(dateparts.year, dateparts.month, dateparts.day, 0, 0);
+    return zonedToUtc(timezone, dateparts.year, dateparts.month, dateparts.day, 0, 0);
   }
-  return madridToUtc(dateparts.year, dateparts.month, dateparts.day, h, m);
+  return zonedToUtc(timezone, dateparts.year, dateparts.month, dateparts.day, h, m);
 }
 
 function parseScore(scoreText: string): { homeScore?: number; awayScore?: number } {
