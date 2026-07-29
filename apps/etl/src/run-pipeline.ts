@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url';
 import { createLogger } from '@sports/logger';
 import { db, closeDb, getActiveScrapePlan } from '@sports/db';
 import { EtlPipeline } from './pipeline.js';
+import { forEachLimited } from './concurrency.js';
 
 // Los scrapers viven en apps/scraper — importamos via ruta relativa (ts-node lo resuelve)
 import { FepCalendarScraper } from '../../scraper/src/scrapers/fep/fep-calendar.scraper.js';
@@ -65,8 +66,9 @@ const FEP_SCRAPER_KEY = 'fep_hockey';
 const COMPETITION_SOURCES_DRIVEN =
   process.env['COMPETITION_SOURCES_DRIVEN'] === '1' ||
   process.env['COMPETITION_SOURCES_DRIVEN'] === 'true';
-// Pausa de cortesía entre competiciones en modo multi (no martillear sidgad).
-const MULTI_COURTESY_MS = Number(process.env['MULTI_COURTESY_MS'] ?? 2000);
+// Competiciones en paralelo en el modo multi. Un tope moderado escala el scrape
+// a decenas de ligas sin martillear sidgad (secuencial + pausa se quedaba corto).
+const SCRAPE_CONCURRENCY = Number(process.env['SCRAPE_CONCURRENCY'] ?? 4);
 
 /** Número de orden de una ronda de copa por su fase (para ordenar el bracket). */
 function cupRoundNumber(name: string): number {
@@ -231,15 +233,18 @@ async function runMultiCompetition(
   dryRun: boolean,
 ): Promise<void> {
   const plan = await getActiveScrapePlan(FEP_SCRAPER_KEY);
-  log.info({ count: plan.length, entity }, '🗂️  Modo multi-competición (competition_sources)');
+  log.info({ count: plan.length, entity, concurrency: SCRAPE_CONCURRENCY }, '🗂️  Modo multi-competición (competition_sources)');
 
   let done = 0;
   let skipped = 0;
-  for (const item of plan) {
+  // En paralelo con tope (forEachLimited): a decenas de ligas, el bucle
+  // secuencial con pausa de cortesía tardaba de más. Cada competición va
+  // aislada — un fallo se registra y no aborta al resto.
+  await forEachLimited(plan, SCRAPE_CONCURRENCY, async (item) => {
     if (!item.seasonId) {
       log.warn({ competition: item.competitionName }, 'Sin temporada is_current — se omite');
       skipped++;
-      continue;
+      return;
     }
     const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: item.seasonId, dryRun });
     try {
@@ -253,8 +258,7 @@ async function runMultiCompetition(
       log.error({ competition: item.competitionName, idc: item.primaryIdc, err }, 'Competición falló — continúo con la siguiente');
       Sentry.captureException(err);
     }
-    await new Promise((r) => setTimeout(r, MULTI_COURTESY_MS));
-  }
+  });
 
   // Reconciliación una sola vez tras recorrer el calendario de todas.
   if (entity === 'calendar') {
@@ -262,7 +266,7 @@ async function runMultiCompetition(
     if (reconciled > 0) log.info({ reconciled }, '🧹 Placeholders sintéticos reconciliados');
   }
 
-  log.info({ done, skipped, total: plan.length }, '🏁 Multi-competición completado');
+  log.info({ done, skipped, total: plan.length, concurrency: SCRAPE_CONCURRENCY }, '🏁 Multi-competición completado');
 }
 
 function parseArgs() {
