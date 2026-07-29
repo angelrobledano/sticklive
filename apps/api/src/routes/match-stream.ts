@@ -6,6 +6,10 @@
  * hace fan-out a todos los suscriptores SSE de ese partido. Así el coste pasa
  * de O(clientes) queries a O(partidos en directo) queries.
  *
+ * Punto 11 (LISTEN/NOTIFY): el refresco del hub ya no depende del poll de 15 s;
+ * lo dispara la BD (migración 043) cuando el partido cambia. El poll queda como
+ * respaldo lento.
+ *
  * Protocolo SSE (sin cambios para el cliente):
  *   event: snapshot   → primer envío con el estado completo
  *   event: update     → cambios (score/eventos)
@@ -16,13 +20,17 @@
 
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
-import { db } from '@sports/db';
+import { db, listenForNotifications } from '@sports/db';
 import { logger } from '@sports/logger';
 
 export const matchStreamRouter = new Hono();
 
-// ─── Configuración ────────────────────────────────────────────────────────────
-const POLL_INTERVAL_MS       = 15_000;
+// ─── Configuración ──────────────────────────────────────────────────
+// Poll de RESPALDO. Desde el punto 11 el refresco lo dispara la BD por
+// LISTEN/NOTIFY (migración 043): cuando un partido cambia, la API refresca su
+// hub al instante. Este intervalo es sólo la red de seguridad por si se pierde
+// un aviso (reconexión del listener, etc.), de ahí que sea lento.
+const BACKUP_POLL_MS         = Number(process.env['SSE_BACKUP_POLL_MS'] ?? 60_000);
 const KEEPALIVE_INTERVAL_MS   = 25_000;
 // Duración máxima de UNA conexión SSE. Es una válvula de seguridad contra
 // conexiones zombi, no un límite de producto: un partido de hockey patines
@@ -36,7 +44,7 @@ const MAX_CONNECTIONS = Number(process.env['SSE_MAX_CONNECTIONS'] ?? 1000);
 // partido en vivo es el grueso del coste del hub, así que se cachea.
 const LINEUPS_TTL_MS = Number(process.env['SSE_LINEUPS_TTL_MS'] ?? 5 * 60 * 1_000);
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// ─── Tipos ─────────────────────────────────────────────────────────
 
 interface MatchRow {
   id: string; season_id: string; round_id: string | null;
@@ -52,7 +60,7 @@ interface EventRow {
   player_first_name: string | null; player_last_name: string | null;
 }
 
-// ─── Query helpers (sin cambios funcionales) ────────────────────────────────────
+// ─── Query helpers (sin cambios funcionales) ──────────────────────────────
 
 async function fetchMatchSnapshot(matchId: string) {
   const matchResult = await db.query<MatchRow>(`
@@ -192,7 +200,7 @@ async function fetchLineups(matchId: string): Promise<LineupsPayload> {
   return lineups;
 }
 
-// ─── Hub: un poller por partido, fan-out a N suscriptores ───────────────────────
+// ─── Hub: un poller por partido, fan-out a N suscriptores ──────────────────────
 
 type Kind = 'data' | 'finished' | 'error';
 type Subscriber = (json: string, kind: Kind) => void;
@@ -200,6 +208,8 @@ type Subscriber = (json: string, kind: Kind) => void;
 interface Hub {
   subscribers: Set<Subscriber>;
   timer: ReturnType<typeof setInterval> | null;
+  /** Debounce de los avisos NOTIFY: colapsa una ráfaga en un solo refresh. */
+  refreshTimer: ReturnType<typeof setTimeout> | null;
   lastEventCount: number;
   lastHome: number | null;
   lastAway: number | null;
@@ -208,6 +218,20 @@ interface Hub {
 }
 
 const hubs = new Map<string, Hub>();
+
+// Un partido que marca escribe, en el mismo scrape, el marcador y varios
+// eventos: cada uno emite su NOTIFY. Coalescemos esa ráfaga en un refresh.
+const NOTIFY_DEBOUNCE_MS = 250;
+
+function scheduleRefresh(matchId: string) {
+  const hub = hubs.get(matchId);
+  if (!hub || hub.refreshTimer) return; // ya hay un refresh en cola
+  hub.refreshTimer = setTimeout(() => {
+    hub.refreshTimer = null;
+    void pollHub(matchId);
+  }, NOTIFY_DEBOUNCE_MS);
+  hub.refreshTimer.unref?.();
+}
 
 function fanout(hub: Hub, json: string, kind: Kind) {
   for (const cb of hub.subscribers) {
@@ -219,6 +243,7 @@ function stopHub(matchId: string) {
   const hub = hubs.get(matchId);
   if (!hub) return;
   if (hub.timer) clearInterval(hub.timer);
+  if (hub.refreshTimer) clearTimeout(hub.refreshTimer);
   hubs.delete(matchId);
   lineupsCache.delete(matchId); // no acumular alineaciones de partidos cerrados
 }
@@ -265,9 +290,9 @@ async function pollHub(matchId: string) {
 function subscribe(matchId: string, cb: Subscriber) {
   let hub = hubs.get(matchId);
   if (!hub) {
-    hub = { subscribers: new Set(), timer: null, lastEventCount: -1, lastHome: -1, lastAway: -1, lastPhase: null, lastSnapshotJson: null };
+    hub = { subscribers: new Set(), timer: null, refreshTimer: null, lastEventCount: -1, lastHome: -1, lastAway: -1, lastPhase: null, lastSnapshotJson: null };
     hubs.set(matchId, hub);
-    hub.timer = setInterval(() => { void pollHub(matchId); }, POLL_INTERVAL_MS);
+    hub.timer = setInterval(() => { void pollHub(matchId); }, BACKUP_POLL_MS);
     void pollHub(matchId); // primer poll inmediato
   }
   hub.subscribers.add(cb);
@@ -282,7 +307,18 @@ function unsubscribe(matchId: string, cb: Subscriber) {
   if (hub.subscribers.size === 0) stopHub(matchId);
 }
 
-// ─── Endpoint SSE ─────────────────────────────────────────────────────────────
+// ─── Push desde la BD (LISTEN/NOTIFY, migración 043) ───────────────────────
+// Una conexión dedicada escucha el canal `match_update`; cuando la BD avisa de
+// un cambio en un partido, refrescamos su hub AL INSTANTE (si tiene
+// espectadores). Los avisos de partidos sin hub abierto se ignoran, así que el
+// coste en la API es nulo salvo para los partidos que alguien está viendo. Es la
+// vía PRINCIPAL de refresco; el poll de respaldo (BACKUP_POLL_MS) sólo cubre el
+// hueco si se pierde un aviso (p. ej. mientras el listener reconecta).
+listenForNotifications('match_update', (matchId) => {
+  scheduleRefresh(matchId); // no-op si no hay hub para ese partido
+});
+
+// ─── Endpoint SSE ──────────────────────────────────────────────────
 
 let activeConnections = 0;
 
