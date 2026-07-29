@@ -156,7 +156,7 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
      LEFT JOIN teams ht ON ht.id = m.home_team_id
      WHERE m.season_id = ANY($1)
        -- Sin filtro por fuente: hasta el 20/07/2026 aquí había un
-       -- `LIKE 'fep_match_%'` que descartaba en silencio todo lo que no fuera
+       -- \`LIKE 'fep_match_%'\` que descartaba en silencio todo lo que no fuera
        -- de la FEP. Efecto práctico: World Skate nunca tuvo cronología ni
        -- crono, sólo marcador. Ahora se resuelve la fuente por prefijo y se
        -- omite únicamente lo que no sabemos tratar (ver core/sources.ts).
