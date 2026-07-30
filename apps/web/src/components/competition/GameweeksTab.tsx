@@ -49,7 +49,7 @@ function MatchCard({ match }: { match: SeasonMatch }) {
           </>
         ) : (
           <span className="font-score text-sm font-semibold text-slate-500 dark:text-slate-400 tabular-nums">
-            {fmtTime(match.scheduledAt)}
+            {fmtTime(match.scheduledAt, match.competitionTimezone)}
           </span>
         )}
       </div>
@@ -85,7 +85,7 @@ function FixturesByDate({ matches }: { matches: SeasonMatch[] }) {
   const groups = useMemo(() => {
     const map = new Map<string, SeasonMatch[]>();
     for (const m of matches) {
-      const d = madridDay(m.scheduledAt) ?? 'Sin fecha';
+      const d = madridDay(m.scheduledAt, m.competitionTimezone) ?? 'Sin fecha';
       const arr = map.get(d);
       if (arr) arr.push(m); else map.set(d, [m]);
     }
@@ -139,7 +139,7 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
   // Días con actividad (Madrid), únicos y ordenados.
   const dates = useMemo(() => {
     const set = new Set<string>();
-    for (const m of matches) { const d = madridDay(m.scheduledAt); if (d) set.add(d); }
+    for (const m of matches) { const d = madridDay(m.scheduledAt, m.competitionTimezone); if (d) set.add(d); }
     return [...set].sort();
   }, [matches]);
 
@@ -164,7 +164,7 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
     }
     if (dateParam) {
       return matches
-        .filter((m) => madridDay(m.scheduledAt) === dateParam)
+        .filter((m) => madridDay(m.scheduledAt, m.competitionTimezone) === dateParam)
         .sort((a, b) => (a.scheduledAt ?? '').localeCompare(b.scheduledAt ?? ''));
     }
     return matches.filter((m) => (m.roundNumber ?? null) === activeJourney);
@@ -189,7 +189,7 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
 
   return (
     <div className="space-y-3">
-      {/* ── Toolbar de filtros ─────────────────────────────────────────────── */}
+      {/* ── Toolbar de filtros ────────────────────────────────── */}
       <div className="space-y-2.5">
         {/* Jornada + chip de equipo activo */}
         <div className="flex items-center gap-2">
@@ -267,7 +267,7 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
         )}
       </div>
 
-      {/* ── Resultados ─────────────────────────────────────────────────────── */}
+      {/* ── Resultados ────────────────────────────────────── */}
       {filtered.length === 0 ? (
         <EmptyFixtures />
       ) : selectedTeam ? (
