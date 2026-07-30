@@ -268,6 +268,8 @@ export interface TeamStanding {
 export interface TeamMatchSummary {
   id: string;
   status: string;
+  /** IANA TZ de la competición (migración 042). La web cae a Europe/Madrid. */
+  competitionTimezone?: string | null;
   scheduledAt: string | null;
   startedAt: string | null;
   finishedAt: string | null;
@@ -361,6 +363,8 @@ export interface SeasonRound {
 export interface SeasonMatch {
   id: string;
   status: string;
+  /** IANA TZ de la competición (migración 042). La web cae a Europe/Madrid. */
+  competitionTimezone?: string | null;
   scheduledAt: string | null;
   startedAt: string | null;
   finishedAt: string | null;
@@ -392,6 +396,8 @@ export interface SeasonOverview {
     competitionScope: string;
     competitionCountry: string | null;
     competitionRegion: string | null;
+    /** IANA TZ de la competición (migración 042). La web cae a Europe/Madrid. */
+    competitionTimezone?: string | null;
   };
   standings: SeasonStandingRow[];
   rounds: SeasonRound[];
