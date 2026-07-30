@@ -36,10 +36,15 @@ import type { Element } from 'domhandler';
 import { BaseScraper } from '../../core/base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost } from './sidgad-client.js';
+import { zonedToUtc } from '../../core/eu-timezone.js';
 import type { ScrapedMatch, MatchStatus } from '@sports/shared-types';
 
 const BASE_URL = 'https://www.server2.sidgad.es/rfep';
 const SOURCE_ID = requireFepSourceId();
+// El feed rfep_mc_1 es global (todas las competiciones FEP) y la FEP publica
+// siempre en hora peninsular española; por eso aquí la zona es fija. Una fuente
+// futura en otra zona pasaría su TZ a zonedToUtc (como hace fep-calendar).
+const DEFAULT_TIMEZONE = 'Europe/Madrid';
 
 export interface MatchesScraperConfig {
   /**
@@ -191,13 +196,13 @@ export class FepMatchesScraper extends BaseScraper<ScrapedMatch> {
   }
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────
 
 function parseScore(scoreRaw: string): { homeScore?: number; awayScore?: number } {
   if (!scoreRaw) return {};
   // Normalizar: quitar espacios, unificar separadores (en-dash, em-dash, slash -> guion)
   const normalized = scoreRaw
-    .replace(/[\u2013\u2014\u00B7]/g, '-')  // en-dash, em-dash, middle-dot
+    .replace(/[–—·]/g, '-')  // en-dash, em-dash, middle-dot
     .replace(/\s+/g, '');
   // Aceptar separadores : - / (Playoffs a veces usa formatos distintos)
   const m = normalized.match(/^(\d+)[:\-/](\d+)$/);
@@ -257,38 +262,10 @@ function parseDatetime(text: string): Date | undefined {
   let year = now.getFullYear();
 
   // Si el mes está en el futuro lejano, probablemente sea de la temporada anterior
-  const candidate = madridToUtc(year, month, day, hour, min);
+  const candidate = zonedToUtc(DEFAULT_TIMEZONE, year, month, day, hour, min);
   if (candidate && candidate.getTime() - now.getTime() > 180 * 24 * 3_600_000) {
     year -= 1;
   }
 
-  return madridToUtc(year, month, day, hour, min);
-}
-
-/**
- * Convierte una fecha/hora en zona horaria Europe/Madrid a un Date UTC.
- * Calcula el offset DST sin dependencias externas:
- *   DST empieza: ultimo domingo de marzo a las 02:00 (01:00 UTC), offset +2
- *   DST termina: ultimo domingo de octubre a las 03:00 (01:00 UTC), offset +1
- */
-export function madridToUtc(
-  year: number, month: number, day: number, hour: number, min: number
-): Date {
-  const lastSundayOf = (y: number, mo: number): number => {
-    // Ultimo domingo del mes mo (0-based). Calcula en UTC puro.
-    const lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
-    const dow     = new Date(Date.UTC(y, mo, lastDay)).getUTCDay(); // 0=domingo
-    return lastDay - dow;
-  };
-  // Transiciones expresadas en UTC (momento en que el reloj cambia en Madrid)
-  const dstStart = Date.UTC(year, 2, lastSundayOf(year, 2), 1, 0, 0); // Mar -> 01:00 UTC
-  const dstEnd   = Date.UTC(year, 9, lastSundayOf(year, 9), 1, 0, 0); // Oct -> 01:00 UTC
-
-  // Primera aproximacion: tratamos la hora como UTC para decidir el offset
-  const approxUtc = Date.UTC(year, month, day, hour, min, 0);
-  const offset    = (approxUtc >= dstStart && approxUtc < dstEnd) ? 2 : 1; // CEST=+2, CET=+1
-
-  const utcMs = approxUtc - offset * 3_600_000;
-  const d = new Date(utcMs);
-  return isNaN(d.getTime()) ? new Date(NaN) : d;
+  return zonedToUtc(DEFAULT_TIMEZONE, year, month, day, hour, min);
 }
