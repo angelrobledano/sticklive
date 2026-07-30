@@ -22,7 +22,10 @@ import {
   type MatchRef,
 } from '../../api/src/lib/notification-copy.js';
 import type { NotificationPreset } from '@sports/shared-types';
-import { freshEvents, collapsePerScorer, type EventSnap } from './push-diff.js';
+import {
+  freshEvents, collapsePerScorer, decideMatchTransitions, decideRoundTransitions,
+  type EventSnap,
+} from './push-diff.js';
 
 const log = createLogger({ service: 'push-dispatcher' });
 
@@ -36,7 +39,7 @@ if (pushEnabled) {
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 }
 
-// ── Snapshot/diff ─────────────────────────────────────────────────────────────
+// ── Snapshot/diff ─────────────────────────────────────────────────────────
 
 export interface MatchSnap {
   id: string;
@@ -75,7 +78,7 @@ export async function seasonCompetitionId(seasonId: string): Promise<string | nu
   return res.rows[0]?.competition_id ?? null;
 }
 
-// ── Jornadas (rondas) ──────────────────────────────────────────────────────────
+// ── Jornadas (rondas) ───────────────────────────────────────────────────
 
 export interface RoundSnap {
   number: number;
@@ -103,7 +106,7 @@ export async function snapshotRounds(seasonId: string): Promise<Map<string, Roun
   }]));
 }
 
-// ── Goles por jugador ───────────────────────────────────────────────────────────
+// ── Goles por jugador ────────────────────────────────────────────────────
 
 // El tipo y las funciones de diff viven en `push-diff.ts` (lógica pura, sin
 // dependencias) para poder testearlos sin base de datos. Se re-exporta el tipo
@@ -258,7 +261,7 @@ export async function flushPushAnalytics(): Promise<void> {
   try { await analyticsMod?.shutdownAnalytics(); } catch { /* noop */ }
 }
 
-// ── Presets de notificación ─────────────────────────────────────────────────────
+// ── Presets de notificación ────────────────────────────────────────────────
 // Cada preset es una colección de tipos de evento (no booleanos sueltos), para
 // poder ampliar el catálogo sin rediseñar la segmentación.
 type PushEventType = 'start' | 'goal' | 'blue_card' | 'direct_foul' | 'red_card' | 'overtime' | 'penalties' | 'final';
@@ -333,23 +336,23 @@ export async function diffAndNotify(
   const current = await snapshotMatches(seasonId);
   const toSend: Ev[] = [];
 
-  // ── Eventos de partido ──────────────────────────────────────────────────────
-  for (const [id, now] of current) {
-    const before = prev.get(id);
-    if (!before) {
+  // ── Eventos de partido ────────────────────────────────────────────────
+  // La DECISIÓN (qué transiciones han ocurrido) es lógica pura y testeada en
+  // push-diff.ts; aquí sólo se construyen los payloads a partir de ella.
+  for (const t of decideMatchTransitions(prev, current)) {
+    const now = current.get(t.matchId)!; // la transición viene de `current`
+    if (t.kind === 'start_lost') {
       // Partido que aparece directamente como 'live' sin estar en el snapshot
       // previo: no pudimos observar el borde scheduled→live y el aviso de inicio
       // se pierde en silencio (típico de scheduled_at fuera de la ventana ±4h del
       // snapshot, p.ej. por desfase de la fuente). Avisamos para enterarnos.
-      if (now.status === 'live') {
-        Sentry.withScope((scope) => {
-          scope.setLevel('warning');
-          scope.setTag('phase', 'push-start-edge');
-          scope.setExtra('matchId', id);
-          scope.setExtra('teams', `${now.home_name ?? '?'}–${now.away_name ?? '?'}`);
-          Sentry.captureMessage('Inicio no notificado: partido apareció "live" sin verse el borde scheduled→live');
-        });
-      }
+      Sentry.withScope((scope) => {
+        scope.setLevel('warning');
+        scope.setTag('phase', 'push-start-edge');
+        scope.setExtra('matchId', t.matchId);
+        scope.setExtra('teams', `${now.home_name ?? '?'}–${now.away_name ?? '?'}`);
+        Sentry.captureMessage('Inicio no notificado: partido apareció "live" sin verse el borde scheduled→live');
+      });
       continue;
     }
 
@@ -359,37 +362,31 @@ export async function diffAndNotify(
       homeScore: now.home_score ?? 0,
       awayScore: now.away_score ?? 0,
     };
-    const teams = [now.home_team_id, now.away_team_id].filter(Boolean) as string[];
-    const url = `${WEB_BASE}/matches/${id}`;
-    const tag = matchTag(id);
-
-    if (before.status === 'scheduled' && now.status === 'live') {
-      toSend.push({ kind: 'start', matchTeams: teams,
-        payload: { title: branded(`${ref.homeShort} – ${ref.awayShort} ¡en juego!`), body: liveBody(ref), tag, url, type: 'start' } });
-    }
+    const url = `${WEB_BASE}/matches/${t.matchId}`;
+    const tag = matchTag(t.matchId);
 
     // El GOL ya no se notifica aquí (por marcador, sin goleador): se emite en
     // diffGoals tras las fichas, con goleador y minuto, y un solo tag por partido.
-
-    if (before.status !== 'finished' && now.status === 'finished') {
-      toSend.push({ kind: 'final', matchTeams: teams,
+    if (t.kind === 'start') {
+      toSend.push({ kind: 'start', matchTeams: t.teams,
+        payload: { title: branded(`${ref.homeShort} – ${ref.awayShort} ¡en juego!`), body: liveBody(ref), tag, url, type: 'start' } });
+    } else { // 'final'
+      toSend.push({ kind: 'final', matchTeams: t.teams,
         payload: { title: branded(finalAlert(ref)), body: '', tag, url, type: 'final' } });
     }
   }
 
-  // ── Jornada (inicio/fin) — global ───────────────────────────────────────────
+  // ── Jornada (inicio/fin) — global ──────────────────────────────────────
   const curRounds = await snapshotRounds(seasonId);
-  for (const [rid, cur] of curRounds) {
-    const before = prevRounds.get(rid);
-    if (!before) continue;
+  for (const t of decideRoundTransitions(prevRounds, curRounds)) {
+    const cur = curRounds.get(t.roundId)!;
     const roundName = cur.name || `Jornada ${cur.number}`;
-    if (before.live === 0 && cur.live > 0) {
+    if (t.kind === 'jornada_start') {
       toSend.push({ kind: 'jornada_start',
-        payload: { title: branded(jornadaStartAlert(roundName)), body: '', tag: jornadaTag(rid, 'start'), url: `${WEB_BASE}/`, type: 'jornada_start' } });
-    }
-    if (cur.total > 0 && cur.finished === cur.total && before.finished < before.total) {
+        payload: { title: branded(jornadaStartAlert(roundName)), body: '', tag: jornadaTag(t.roundId, 'start'), url: `${WEB_BASE}/`, type: 'jornada_start' } });
+    } else { // 'jornada_end'
       toSend.push({ kind: 'jornada_end',
-        payload: { title: branded(jornadaEndAlert(roundName)), body: '', tag: jornadaTag(rid, 'end'), url: `${WEB_BASE}/`, type: 'jornada_end' } });
+        payload: { title: branded(jornadaEndAlert(roundName)), body: '', tag: jornadaTag(t.roundId, 'end'), url: `${WEB_BASE}/`, type: 'jornada_end' } });
     }
   }
 
