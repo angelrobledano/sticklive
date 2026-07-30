@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { freshEvents, collapsePerScorer, type EventSnap } from './push-diff.js';
+import {
+  freshEvents, collapsePerScorer, decideMatchTransitions, decideRoundTransitions,
+  type EventSnap, type MatchStatusSnap,
+} from './push-diff.js';
 
 /** Evento mínimo: sólo importan eventId, matchId, playerId y minute. */
 function snap(over: Partial<EventSnap> & Pick<EventSnap, 'eventId'>): EventSnap {
@@ -163,5 +166,69 @@ describe('freshEvents + collapsePerScorer (como los usa diffGoals)', () => {
     const out = collapsePerScorer(freshEvents(new Map(), cur));
     expect(out).toHaveLength(1);
     expect(out[0]!.eventId).toBe('gol-p2');
+  });
+});
+
+describe('decideMatchTransitions', () => {
+  const m = (status: string): MatchStatusSnap => ({ status, home_team_id: 'H', away_team_id: 'A' });
+
+  it('scheduled → live emite start con los dos equipos', () => {
+    const out = decideMatchTransitions(new Map([['a', m('scheduled')]]), new Map([['a', m('live')]]));
+    expect(out).toEqual([{ kind: 'start', matchId: 'a', teams: ['H', 'A'] }]);
+  });
+
+  it('cualquier estado no terminal → finished emite final', () => {
+    const prev = new Map([['a', m('live')], ['b', m('scheduled')]]);
+    const cur = new Map([['a', m('finished')], ['b', m('finished')]]);
+    expect(decideMatchTransitions(prev, cur).map((t) => [t.kind, t.matchId]))
+      .toEqual([['final', 'a'], ['final', 'b']]);
+  });
+
+  it('scheduled → finished da SOLO final, no start', () => {
+    const out = decideMatchTransitions(new Map([['a', m('scheduled')]]), new Map([['a', m('finished')]]));
+    expect(out).toEqual([{ kind: 'final', matchId: 'a', teams: ['H', 'A'] }]);
+  });
+
+  it('un partido que sigue live no emite nada', () => {
+    expect(decideMatchTransitions(new Map([['a', m('live')]]), new Map([['a', m('live')]]))).toEqual([]);
+  });
+
+  it('un partido nuevo ya en live marca start_lost (borde de inicio perdido)', () => {
+    const out = decideMatchTransitions(new Map(), new Map([['x', m('live')]]));
+    expect(out).toEqual([{ kind: 'start_lost', matchId: 'x' }]);
+  });
+
+  it('un partido nuevo scheduled no emite nada (aún no ha empezado)', () => {
+    expect(decideMatchTransitions(new Map(), new Map([['x', m('scheduled')]]))).toEqual([]);
+  });
+
+  it('teams omite los equipos nulos', () => {
+    const before = new Map<string, MatchStatusSnap>([['a', { status: 'scheduled', home_team_id: 'H', away_team_id: null }]]);
+    const after = new Map<string, MatchStatusSnap>([['a', { status: 'live', home_team_id: 'H', away_team_id: null }]]);
+    expect(decideMatchTransitions(before, after)).toEqual([{ kind: 'start', matchId: 'a', teams: ['H'] }]);
+  });
+});
+
+describe('decideRoundTransitions', () => {
+  it('la ronda que estrena su primer live emite jornada_start', () => {
+    const prev = new Map([['r', { total: 4, finished: 0, live: 0 }]]);
+    const cur = new Map([['r', { total: 4, finished: 0, live: 2 }]]);
+    expect(decideRoundTransitions(prev, cur)).toEqual([{ kind: 'jornada_start', roundId: 'r' }]);
+  });
+
+  it('la ronda que se completa emite jornada_end', () => {
+    const prev = new Map([['r', { total: 2, finished: 1, live: 1 }]]);
+    const cur = new Map([['r', { total: 2, finished: 2, live: 0 }]]);
+    expect(decideRoundTransitions(prev, cur)).toEqual([{ kind: 'jornada_end', roundId: 'r' }]);
+  });
+
+  it('una ronda ya completa antes no vuelve a emitir jornada_end', () => {
+    const prev = new Map([['r', { total: 3, finished: 3, live: 0 }]]);
+    const cur = new Map([['r', { total: 3, finished: 3, live: 0 }]]);
+    expect(decideRoundTransitions(prev, cur)).toEqual([]);
+  });
+
+  it('una ronda sin snapshot previo se ignora', () => {
+    expect(decideRoundTransitions(new Map(), new Map([['r', { total: 1, finished: 0, live: 0 }]]))).toEqual([]);
   });
 });
