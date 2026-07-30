@@ -49,6 +49,7 @@ interface MatchRow {
   away_team_name: string;
   away_team_short_name: string | null;
   away_team_logo_url: string | null;
+  competition_timezone: string | null;
 }
 
 interface SquadRow {
@@ -133,10 +134,13 @@ teamDetailRouter.get('/:id', async (c) => {
           at.id           AS away_team_id,
           at.name         AS away_team_name,
           at.short_name   AS away_team_short_name,
-          at.logo_url     AS away_team_logo_url
+          at.logo_url     AS away_team_logo_url,
+          c.timezone      AS competition_timezone
         FROM matches m
         LEFT JOIN teams ht ON ht.id = m.home_team_id
         LEFT JOIN teams at ON at.id = m.away_team_id
+        LEFT JOIN seasons se ON se.id = m.season_id
+        LEFT JOIN competitions c ON c.id = se.competition_id
         WHERE m.season_id = ANY($1)
           AND (m.home_team_id = $2 OR m.away_team_id = $2)
         ORDER BY m.scheduled_at ASC NULLS LAST
@@ -328,6 +332,7 @@ teamDetailRouter.get('/:id', async (c) => {
     const matches = matchRows.map((m) => ({
       id:          m.id,
       status:      m.status,
+      competitionTimezone: m.competition_timezone,
       scheduledAt: m.scheduled_at,
       startedAt:   m.started_at,
       finishedAt:  m.finished_at,

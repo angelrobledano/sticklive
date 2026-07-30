@@ -10,25 +10,28 @@ import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { useT } from '@/lib/i18n';
+import { APP_TZ } from '@/lib/match-time';
 
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────────────
 
-function formatTime(iso: string | null, locale = 'es'): string {
+// La zona de la competición del partido (columna 042); cae a Europe/Madrid. Un
+// equipo puede jugar en varias competiciones, así que la TZ es por partido.
+function formatTime(iso: string | null, locale = 'es', tz?: string | null): string {
   if (!iso) return '--:--';
   return new Date(iso).toLocaleTimeString(locale, {
-    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid',
+    hour: '2-digit', minute: '2-digit', timeZone: tz || APP_TZ,
   });
 }
 
-function formatMatchDate(iso: string | null, locale = 'es'): string {
+function formatMatchDate(iso: string | null, locale = 'es', tz?: string | null): string {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString(locale, {
-    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Madrid',
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: tz || APP_TZ,
   });
 }
 
-// ─── Cabecera del club ────────────────────────────────────────────────────────
+// ─── Cabecera del club ──────────────────────────────────────────────────
 
 function FormBadge({ result }: { result: string }) {
   const { t } = useT();
@@ -100,7 +103,7 @@ function TeamHeader({ data }: { data: TeamDetail }) {
   );
 }
 
-// ─── Tab A: Resumen ───────────────────────────────────────────────────────────
+// ─── Tab A: Resumen ──────────────────────────────────────────────────
 
 function MiniMatchCard({ match, teamId }: { match: TeamMatchSummary; teamId: string }) {
   const { t, locale } = useT();
@@ -135,7 +138,7 @@ function MiniMatchCard({ match, teamId }: { match: TeamMatchSummary; teamId: str
           {isHome ? 'vs' : '@'} {opp.shortName ?? opp.name}
         </p>
         <p className="text-xs text-slate-400 dark:text-slate-500">
-          {showScore ? (isLive ? t('playoffs.live') : formatMatchDate(match.scheduledAt ?? match.finishedAt, locale)) : formatMatchDate(match.scheduledAt, locale)}
+          {showScore ? (isLive ? t('playoffs.live') : formatMatchDate(match.scheduledAt ?? match.finishedAt, locale, match.competitionTimezone)) : formatMatchDate(match.scheduledAt, locale, match.competitionTimezone)}
         </p>
       </div>
 
@@ -147,7 +150,7 @@ function MiniMatchCard({ match, teamId }: { match: TeamMatchSummary; teamId: str
           </span>
         ) : (
           <span className="font-score text-sm font-semibold text-slate-500 dark:text-slate-400 tabular-nums">
-            {formatTime(match.scheduledAt, locale)}
+            {formatTime(match.scheduledAt, locale, match.competitionTimezone)}
           </span>
         )}
       </div>
@@ -252,7 +255,7 @@ function SummaryTab({ data }: { data: TeamDetail }) {
   );
 }
 
-// ─── Tab B: Calendario ────────────────────────────────────────────────────────
+// ─── Tab B: Calendario ───────────────────────────────────────────────
 
 function CalendarTab({ data }: { data: TeamDetail }) {
   const { t, locale } = useT();
@@ -266,7 +269,8 @@ function CalendarTab({ data }: { data: TeamDetail }) {
     );
   }
 
-  // Agrupar por mes
+  // Agrupar por mes. El encabezado de mes se ancla en Madrid a propósito: el mes
+  // no cambia por 1 h de zona y así el agrupado es estable entre competiciones.
   const groups = new Map<string, TeamMatchSummary[]>();
   for (const m of matches) {
     const date = new Date(m.scheduledAt ?? m.finishedAt ?? '');
@@ -296,7 +300,7 @@ function CalendarTab({ data }: { data: TeamDetail }) {
   );
 }
 
-// ─── Tab C: Plantilla ─────────────────────────────────────────────────────────
+// ─── Tab C: Plantilla ───────────────────────────────────────────────
 
 /** Clave i18n de la posición según el flag de portero (traducir con t()). */
 function positionKey(isGK: boolean): string {
@@ -418,7 +422,7 @@ function SquadTab({ data }: { data: TeamDetail }) {
   );
 }
 
-// ─── Cuerpo técnico ──────────────────────────────────────────────────────────
+// ─── Cuerpo técnico ────────────────────────────────────────────────
 
 const STAFF_ROLE_LABELS: Record<string, string> = {
   E:  'team.coach',
@@ -468,7 +472,7 @@ function StaffSection({ staff }: { staff: TeamDetail['staff'] }) {
   );
 }
 
-// ─── Tab D: Estadísticas del equipo ──────────────────────────────────────────
+// ─── Tab D: Estadísticas del equipo ──────────────────────────────────
 
 function StatTile({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
@@ -555,7 +559,7 @@ function TeamStatsTab({ data }: { data: TeamDetail }) {
   );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+// ─── Componente principal ──────────────────────────────────────────
 
 const TABS = ['Resumen', 'Calendario', 'Plantilla', 'Estadísticas'] as const;
 type Tab = typeof TABS[number];

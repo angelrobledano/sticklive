@@ -16,6 +16,7 @@ interface SeasonRow {
   competition_scope: string;
   competition_country: string | null;
   competition_region: string | null;
+  competition_timezone: string | null;
 }
 
 interface StandingRow {
@@ -89,7 +90,8 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
              c.organizer  AS competition_organizer,
              c.scope      AS competition_scope,
              c.country    AS competition_country,
-             c.region     AS competition_region
+             c.region     AS competition_region,
+             c.timezone   AS competition_timezone
       FROM seasons s
       JOIN competitions c ON c.id = s.competition_id
       WHERE s.id = $1
@@ -163,7 +165,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         m.scheduled_at ASC NULLS LAST
     `, [seasonId]);
 
-    // ── Fases derivadas de la fase de playoff ─────────────────────────────
+    // ── Fases derivadas de la fase de playoff ──────────────────────
     // Modelo de fases: los partidos de playoff viven en la misma temporada
     // que la liga, marcados con rounds.round_type='playoff' (la ronda de
     // fase no distingue QF/SF/F). Derivamos la fase agrupando por
@@ -243,6 +245,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         competitionScope:     s.competition_scope,
         competitionCountry:   s.competition_country,
         competitionRegion:    s.competition_region,
+        competitionTimezone:  s.competition_timezone,
       },
       standings: standingsRes.rows.map((r) => ({
         id:                 r.id,
@@ -272,6 +275,10 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
       matches: matchesRes.rows.map((m) => ({
         id:          m.id,
         status:      m.status,
+        // Todos los partidos de la temporada son de la misma competición, así
+        // que comparten su TZ (columna 042). Se pone por partido para que los
+        // componentes lo consuman igual que en la home (patrón de #77).
+        competitionTimezone: s.competition_timezone,
         scheduledAt: m.scheduled_at,
         startedAt:   m.started_at,
         finishedAt:  m.finished_at,

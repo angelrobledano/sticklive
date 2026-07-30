@@ -71,8 +71,8 @@ function MatchCard({ m }: { m: SeasonMatch }) {
       <div className="px-2.5 pb-1.5 pt-1">
         <span className={`text-[9px] font-bold uppercase tracking-wider ${isLive ? 'text-emerald-500' : 'text-slate-400 dark:text-slate-500'}`}>
           {isLive ? '🟢 Live'
-            : isFinished ? `Final · ${fmtDate(m.finishedAt ?? m.scheduledAt)}`
-            : `${fmtDate(m.scheduledAt)} · ${fmtTime(m.scheduledAt)}`}
+            : isFinished ? `Final · ${fmtDate(m.finishedAt ?? m.scheduledAt, m.competitionTimezone)}`
+            : `${fmtDate(m.scheduledAt, m.competitionTimezone)} · ${fmtTime(m.scheduledAt, m.competitionTimezone)}`}
         </span>
       </div>
     </Link>
