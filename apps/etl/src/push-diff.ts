@@ -13,7 +13,7 @@ export interface EventSnap {
    *
    * Antes esto se diffeaba por CONTEO agregado por (partido, jugador), porque
    * la ficha reescribía los eventos con DELETE + INSERT y los ids cambiaban en
-   * cada ciclo. Ese enfoque perdía notificaciones: si la fuente corregía el
+   * cada ciclo. Ese enfoque perdía notificaciones: si la fuente corcegía el
    * acta dentro del mismo ciclo (quita un evento y añade otro), el conteo no
    * variaba y no se emitía nada. Desde la migración 034 los ids son estables
    * (upsert por source_ref), así que diffeamos por identidad: exacto.
@@ -78,4 +78,95 @@ export function collapsePerScorer(events: EventSnap[]): EventSnap[] {
   const byScorer = new Map<string, EventSnap>();
   for (const ev of events) byScorer.set(`${ev.matchId}:${ev.playerId ?? 'np'}`, ev);
   return [...byScorer.values()];
+}
+
+// ── Transiciones de partido (inicio / final) ────────────────────────────────
+
+/** Lo mínimo de un partido para decidir su transición de estado. */
+export interface MatchStatusSnap {
+  status: string;
+  home_team_id: string | null;
+  away_team_id: string | null;
+}
+
+export type MatchTransition =
+  /** scheduled → live: el partido acaba de empezar. */
+  | { kind: 'start'; matchId: string; teams: string[] }
+  /** (no finished) → finished: el partido acaba de terminar. */
+  | { kind: 'final'; matchId: string; teams: string[] }
+  /**
+   * El partido aparece por primera vez ya como 'live': no se pudo observar el
+   * borde scheduled→live y el aviso de inicio se pierde. El llamante lo reporta
+   * (Sentry) pero NO emite push de inicio. Se modela como decisión para que sea
+   * testeable y no un efecto escondido en el bucle.
+   */
+  | { kind: 'start_lost'; matchId: string };
+
+/**
+ * Decide, comparando el snapshot previo con el actual, qué transiciones de
+ * partido han ocurrido. Pura: es la lógica que antes vivía embebida en
+ * `diffAndNotify`, extraída para poder fijarla con tests (como `freshEvents`).
+ *
+ * Las condiciones son EXACTAMENTE las del despacho: `start` sólo desde
+ * 'scheduled', `final` desde cualquier estado no terminal. Por partido puede
+ * salir a lo sumo una (nunca se solapan en un mismo ciclo).
+ */
+export function decideMatchTransitions(
+  prev: ReadonlyMap<string, MatchStatusSnap>,
+  cur: ReadonlyMap<string, MatchStatusSnap>,
+): MatchTransition[] {
+  const out: MatchTransition[] = [];
+  for (const [id, now] of cur) {
+    const before = prev.get(id);
+    if (!before) {
+      if (now.status === 'live') out.push({ kind: 'start_lost', matchId: id });
+      continue;
+    }
+    const teams = [now.home_team_id, now.away_team_id].filter(Boolean) as string[];
+    if (before.status === 'scheduled' && now.status === 'live') {
+      out.push({ kind: 'start', matchId: id, teams });
+    }
+    if (before.status !== 'finished' && now.status === 'finished') {
+      out.push({ kind: 'final', matchId: id, teams });
+    }
+  }
+  return out;
+}
+
+// ── Transiciones de jornada (inicio / fin) ───────────────────────────────
+
+/** Conteos agregados de una ronda para decidir su transición. */
+export interface RoundCountSnap {
+  total: number;
+  finished: number;
+  live: number;
+}
+
+export type RoundTransition =
+  /** La ronda pasa a tener algún partido en juego. */
+  | { kind: 'jornada_start'; roundId: string }
+  /** La ronda pasa a estar completa (todos finished). */
+  | { kind: 'jornada_end'; roundId: string };
+
+/**
+ * Decide las transiciones de jornada entre dos snapshots de rondas. Pura, misma
+ * lógica que `diffAndNotify`: inicio cuando aparece el primer 'live', fin cuando
+ * se completan todos los partidos (y antes no lo estaban).
+ */
+export function decideRoundTransitions(
+  prev: ReadonlyMap<string, RoundCountSnap>,
+  cur: ReadonlyMap<string, RoundCountSnap>,
+): RoundTransition[] {
+  const out: RoundTransition[] = [];
+  for (const [rid, now] of cur) {
+    const before = prev.get(rid);
+    if (!before) continue;
+    if (before.live === 0 && now.live > 0) {
+      out.push({ kind: 'jornada_start', roundId: rid });
+    }
+    if (now.total > 0 && now.finished === now.total && before.finished < before.total) {
+      out.push({ kind: 'jornada_end', roundId: rid });
+    }
+  }
+  return out;
 }
