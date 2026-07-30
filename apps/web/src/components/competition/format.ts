@@ -3,18 +3,25 @@
  * Funciones puras, sin React.
  */
 import type { SeasonOverview, SeasonRound } from '@/lib/api/client';
+import { APP_TZ } from '@/lib/match-time';
 
-export function fmtTime(iso: string | null): string {
+/**
+ * Hora/fecha de un partido en la zona de SU competición (columna 042). Cae a
+ * Europe/Madrid cuando no viene. En la ficha de competición toda la vista es una
+ * única competición, así que agrupar y formatear en su TZ es coherente (para las
+ * ligas ES no cambia nada; para una liga PT/IT en hora local, cuadra el día).
+ */
+export function fmtTime(iso: string | null, tz?: string | null): string {
   if (!iso) return '--:--';
   return new Date(iso).toLocaleTimeString('es-ES', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid',
+    hour: '2-digit', minute: '2-digit', timeZone: tz || APP_TZ,
   });
 }
 
-export function fmtDate(iso: string | null): string {
+export function fmtDate(iso: string | null, tz?: string | null): string {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString('es-ES', {
-    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Madrid',
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: tz || APP_TZ,
   });
 }
 
@@ -28,18 +35,18 @@ export function fedLabelFromSeason(season: SeasonOverview['season'], locale: str
   }
 }
 
-/** YYYY-MM-DD en Europe/Madrid (clave de día estable). */
-export function madridDay(iso: string | null): string | null {
+/** YYYY-MM-DD en la TZ de la competición (default Madrid): clave de día estable. */
+export function madridDay(iso: string | null, tz?: string | null): string | null {
   if (!iso) return null;
   return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit',
+    timeZone: tz || APP_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(new Date(iso));
 }
 
-/** "2026-06-20" → "Vie 20 jun" (sin desfase de zona). */
+/** "2026-06-20" → "Vie 20 jun" (mediodía UTC, no cruza fecha entre zonas). */
 export function dayPillLabel(d: string): string {
-  const s = new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', {
-    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Madrid',
+  const s = new Date(`${d}T12:00:00Z`).toLocaleDateString('es-ES', {
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC',
   });
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
