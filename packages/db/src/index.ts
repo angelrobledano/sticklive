@@ -1,6 +1,7 @@
 // Re-exportar todo desde un único punto de entrada
 export { db, withTransaction, closeDb } from './client.js';
 export { listenForNotifications, type NotificationListener } from './notify.js';
+export { assertSchemaCurrent, SchemaOutdatedError } from './schema-version.js';
 export * from './queries/sports.js';
 export * from './queries/competitions.js';
 export * from './queries/competition-sources.js';

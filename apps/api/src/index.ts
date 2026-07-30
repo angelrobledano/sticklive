@@ -6,6 +6,7 @@ import { logger as honoLogger } from 'hono/logger';
 import { cors } from 'hono/cors';
 import { bodyLimit } from 'hono/body-limit';
 import { logger } from '@sports/logger';
+import { assertSchemaCurrent, SchemaOutdatedError } from '@sports/db';
 import { assertEnv } from './lib/env.js';
 import { standingsRouter } from './routes/standings.js';
 import { matchesRouter } from './routes/matches.js';
@@ -102,20 +103,37 @@ app.onError((err, c) => {
   return c.json({ error: 'internal_error' }, 500);
 });
 
-// Validación de entorno antes de aceptar tráfico (fail fast, auditoría B1).
-assertEnv();
+async function start(): Promise<void> {
+  // Validación de entorno antes de aceptar tráfico (fail fast, auditoría B1).
+  assertEnv();
 
-const PORT = Number(process.env['PORT'] ?? 3000);
+  // Versión de esquema (auditoría 2.3): no arrancar contra una BD cuyo esquema
+  // va por detrás del código (p. ej. un backup viejo restaurado a mano). El
+  // servicio migrate cubre el despliegue normal, no ese caso.
+  await assertSchemaCurrent();
 
-const server = serve({ fetch: app.fetch, port: PORT }, () => {
-  logger.info({ service: 'api', port: PORT }, `API escuchando en http://localhost:${PORT}`);
-});
+  const PORT = Number(process.env['PORT'] ?? 3000);
 
-// Cierre limpio (auditoría B3): drenar conexiones al recibir SIGTERM/SIGINT.
-for (const sig of ['SIGTERM', 'SIGINT'] as const) {
-  process.on(sig, () => {
-    logger.info({ sig }, 'Apagando API…');
-    server.close(() => process.exit(0));
-    setTimeout(() => process.exit(0), 10_000).unref();
+  const server = serve({ fetch: app.fetch, port: PORT }, () => {
+    logger.info({ service: 'api', port: PORT }, `API escuchando en http://localhost:${PORT}`);
   });
+
+  // Cierre limpio (auditoría B3): drenar conexiones al recibir SIGTERM/SIGINT.
+  for (const sig of ['SIGTERM', 'SIGINT'] as const) {
+    process.on(sig, () => {
+      logger.info({ sig }, 'Apagando API…');
+      server.close(() => process.exit(0));
+      setTimeout(() => process.exit(0), 10_000).unref();
+    });
+  }
 }
+
+start().catch((err) => {
+  if (err instanceof SchemaOutdatedError) {
+    logger.error({ err: err.message }, 'Arranque abortado: esquema de BD desactualizado');
+  } else {
+    logger.error({ err }, 'Arranque de la API fallido');
+  }
+  Sentry.captureException(err);
+  process.exit(1);
+});
