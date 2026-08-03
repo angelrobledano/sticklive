@@ -21,6 +21,8 @@ import {
   findTeamByNormalizedAlias,
   generateFuzzyCandidates,
   enqueueResolution,
+  autoConfirmTeam,
+  upsertTeamAlias,
   findCompetitionBySourceRef,
   findCompetitionBySlug,
   findSeasonBySourceRef,
@@ -61,7 +63,11 @@ export class RefResolver {
    * ALIMENTE el mapa al resolver por el puente, para que la próxima vez entre
    * por el escalón 1 (coste cero).
    */
-  async resolveTeam(teamRef: string, sourceId?: string): Promise<string> {
+  async resolveTeam(
+    teamRef: string,
+    sourceId?: string,
+    signals?: { gender?: string | null; ageCategory?: string | null },
+  ): Promise<string> {
     const cacheKey = `${sourceId ?? ''}|${teamRef}`;
     const cached = this.teamCache.get(cacheKey);
     if (cached) return cached;
@@ -103,29 +109,50 @@ export class RefResolver {
       }
     }
 
-    // 5. Fuzzy con bloqueo (escalón 3) + cola HITL (escalón 4).
-    //    Cambio de política respecto a la versión anterior: ya NO se
-    //    auto-confirma a ciegas por similitud (el viejo umbral 0.4 fue el origen
-    //    del duplicado del Liceo). Lo dudoso se APARCA en resolution_queue con
-    //    candidatos pre-rankeados para revisión humana; la auto-confirmación
-    //    (≥0.95 + señales de dominio) llega en la Fase 3. Ante la duda, se aparca.
+    // 5. Fuzzy con bloqueo: auto-confirmación con señales (escalón 3, Fase 3)
+    //    o, si hay duda, cola HITL (escalón 4). NUNCA se auto-confirma a ciegas
+    //    por similitud (el viejo umbral 0.4 fue el origen del duplicado del Liceo).
     if (!teamId && sourceId) {
       const normalized = normalizeTeamName(teamRef);
-      const candidates = await generateFuzzyCandidates(normalized, this.sportId, 3);
-      await enqueueResolution({
-        rawText: teamRef,
-        normalized,
-        sourceId,
-        sourceRef: teamRef,
-        context: { sportId: this.sportId },
-        candidates,
-      }).catch((err) => {
-        log.debug({ teamRef, err }, 'No se pudo encolar en resolution_queue');
-      });
-      log.warn(
-        { teamRef, candidatos: candidates.length, method: 'queue' },
-        'Ref no resuelto por escalones deterministas → encolado para revisión (HITL)'
-      );
+
+      // 5a. Auto-confirmación (Fase 3): SÓLO con similitud ≥0.95 Y señales
+      //     consistentes (mismo género y categoría) Y candidato inequívoco. Sin
+      //     señales no se auto-confirma: género+categoría son lo que evita el
+      //     falso positivo semántico.
+      if (signals?.gender && signals?.ageCategory) {
+        const auto = await autoConfirmTeam(normalized, this.sportId, signals.gender, signals.ageCategory);
+        if (auto) {
+          teamId = auto.teamId;
+          // Aprendizaje: registrar el alias (created_by='fuzzy', reversible y auditable).
+          await upsertTeamAlias({
+            teamId, rawText: teamRef, normalized, sourceId,
+            createdBy: 'fuzzy', confidence: auto.score,
+          }).catch((err) => log.debug({ teamRef, err }, 'No se pudo registrar alias auto-confirmado'));
+          log.info(
+            { teamRef, resolvedName: auto.name, score: auto.score, method: 'auto-fuzzy' },
+            'Auto-confirmado por similitud + señales (≥0.95)'
+          );
+        }
+      }
+
+      // 5b. Si no se auto-confirmó, a la cola HITL para revisión humana.
+      if (!teamId) {
+        const candidates = await generateFuzzyCandidates(normalized, this.sportId, 3);
+        await enqueueResolution({
+          rawText: teamRef,
+          normalized,
+          sourceId,
+          sourceRef: teamRef,
+          context: { sportId: this.sportId },
+          candidates,
+        }).catch((err) => {
+          log.debug({ teamRef, err }, 'No se pudo encolar en resolution_queue');
+        });
+        log.warn(
+          { teamRef, candidatos: candidates.length, method: 'queue' },
+          'Ref no resuelto por escalones deterministas → encolado para revisión (HITL)'
+        );
+      }
     }
 
     if (!teamId) {
