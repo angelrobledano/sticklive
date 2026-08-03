@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions } from '@sports/db';
+import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem } from '@sports/db';
 
 /**
  * Panel de administracion nivel 1 (token compartido).
@@ -111,7 +111,7 @@ adminRouter.delete('/users/:id', async (c) => {
   }
 });
 
-// ── Competiciones ─────────────────────────────────────────────────────────────
+// ── Competiciones ────────────────────────────────────────────────────
 
 /**
  * GET /admin/competitions/archived
@@ -206,5 +206,58 @@ adminRouter.post('/competitions/merge', async (c) => {
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     return c.json({ error: 'Merge failed', detail }, detail.includes('no existen') ? 404 : 500);
+  }
+});
+
+// ── Resolución de entidades (cola HITL, Fase 2b) ──────────────────────────
+
+/**
+ * GET /admin/resolution-queue?status=pending&limit=100
+ * Bandeja del panel: ítems no resueltos, ordenados por impacto (occurrences).
+ */
+adminRouter.get('/resolution-queue', async (c) => {
+  const status = c.req.query('status') ?? 'pending';
+  const limit = Math.min(500, Math.max(1, parseInt(c.req.query('limit') ?? '100', 10) || 100));
+  try {
+    const items = await listResolutionQueue(status, limit);
+    return c.json({ status, count: items.length, items });
+  } catch (err) {
+    console.error('[admin] resolution-queue error:', err);
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/**
+ * POST /admin/resolution-queue/:id/resolve  Body: { teamId }
+ * Asigna el ref al team elegido, marca resuelto y APRENDE (escribe el alias),
+ * así el mismo nombre se resuelve solo la próxima vez.
+ */
+adminRouter.post('/resolution-queue/:id/resolve', async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({})) as { teamId?: string };
+  if (!body.teamId) return c.json({ error: 'Body must contain teamId' }, 400);
+  try {
+    const result = await resolveQueueItem(id, body.teamId, 'human:admin');
+    if (!result) return c.json({ error: 'Item not found or not pending' }, 404);
+    return c.json({ ok: true, ...result });
+  } catch (err) {
+    console.error('[admin] resolve error:', err);
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/**
+ * POST /admin/resolution-queue/:id/reject
+ * Descarta el ítem (ruido, no es un club real). No crea alias.
+ */
+adminRouter.post('/resolution-queue/:id/reject', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const ok = await rejectQueueItem(id);
+    if (!ok) return c.json({ error: 'Item not found or not pending' }, 404);
+    return c.json({ ok: true, rejected: id });
+  } catch (err) {
+    console.error('[admin] reject error:', err);
+    return c.json({ error: 'Database error' }, 500);
   }
 });

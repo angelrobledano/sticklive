@@ -9,7 +9,7 @@
  * docs/ARQUITECTURA_ENTITY_RESOLUTION.md §3.
  */
 import pg from 'pg';
-import { db } from '../client.js';
+import { db, withTransaction } from '../client.js';
 
 type Ejecutor = pg.PoolClient | typeof db;
 
@@ -179,4 +179,99 @@ export async function enqueueResolution(
       JSON.stringify(input.candidates ?? []),
     ],
   );
+}
+
+// ── Fase 2b: panel HITL (lectura + resolución) ─────────────────────────
+
+export interface ResolutionQueueItem {
+  id: string;
+  rawText: string;
+  normalized: string;
+  sourceId: string;
+  sourceRef: string | null;
+  context: Record<string, unknown>;
+  candidates: FuzzyCandidate[];
+  occurrences: number;
+  status: string;
+  resolvedTeamId: string | null;
+  createdAt: Date;
+}
+
+/** Bandeja del panel: ordenada por impacto (occurrences) entre los de un estado. */
+export async function listResolutionQueue(
+  status = 'pending',
+  limit = 100,
+): Promise<ResolutionQueueItem[]> {
+  const { rows } = await db.query<{
+    id: string; raw_text: string; normalized: string; source_id: string;
+    source_ref: string | null; context: Record<string, unknown>;
+    candidates: FuzzyCandidate[]; occurrences: number; status: string;
+    resolved_team_id: string | null; created_at: Date;
+  }>(
+    `SELECT id, raw_text, normalized, source_id, source_ref, context, candidates,
+            occurrences, status, resolved_team_id, created_at
+       FROM resolution_queue
+      WHERE status = $1
+      ORDER BY occurrences DESC, created_at ASC
+      LIMIT $2`,
+    [status, limit],
+  );
+  return rows.map((r) => ({
+    id: r.id, rawText: r.raw_text, normalized: r.normalized, sourceId: r.source_id,
+    sourceRef: r.source_ref, context: r.context, candidates: r.candidates,
+    occurrences: r.occurrences, status: r.status, resolvedTeamId: r.resolved_team_id,
+    createdAt: r.created_at,
+  }));
+}
+
+/**
+ * Resuelve un ítem de la cola: lo marca `resolved`, apunta al team elegido y
+ * ESCRIBE el alias (created_by='human:…', confirmed). Así la próxima resolución
+ * de ese nombre entra por el escalón 2 (aprendizaje) y jamás vuelve a la cola.
+ * Idempotente: si el ítem ya no está `pending`, devuelve null sin tocar nada.
+ */
+export async function resolveQueueItem(
+  id: string,
+  teamId: string,
+  createdBy = 'human',
+): Promise<{ id: string; teamId: string } | null> {
+  return withTransaction(async (client) => {
+    const { rows } = await client.query<{ normalized: string; source_id: string; raw_text: string }>(
+      `SELECT normalized, source_id, raw_text FROM resolution_queue
+        WHERE id = $1 AND status = 'pending' FOR UPDATE`,
+      [id],
+    );
+    const item = rows[0];
+    if (!item) return null;
+
+    await client.query(
+      `UPDATE resolution_queue
+          SET status = 'resolved', resolved_team_id = $2, updated_at = NOW()
+        WHERE id = $1`,
+      [id, teamId],
+    );
+    await upsertTeamAlias(
+      {
+        teamId,
+        rawText: item.raw_text,
+        normalized: item.normalized,
+        sourceId: item.source_id,
+        createdBy,
+        confidence: 1.0,
+        status: 'confirmed',
+      },
+      client,
+    );
+    return { id, teamId };
+  });
+}
+
+/** Descarta un ítem (ruido, no es un club real). No crea alias. */
+export async function rejectQueueItem(id: string): Promise<boolean> {
+  const { rowCount } = await db.query(
+    `UPDATE resolution_queue SET status = 'rejected', updated_at = NOW()
+      WHERE id = $1 AND status = 'pending'`,
+    [id],
+  );
+  return (rowCount ?? 0) > 0;
 }
