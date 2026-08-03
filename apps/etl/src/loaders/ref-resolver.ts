@@ -18,12 +18,16 @@ import {
   findTeamBySlug,
   findTeamByNameSimilarity,
   addTeamAltRef,
+  resolveTeamViaSourceMap,
+  upsertSourceEntityMapTeam,
+  findTeamByNormalizedAlias,
   findCompetitionBySourceRef,
   findCompetitionBySlug,
   findSeasonBySourceRef,
 } from '@sports/db';
 import { createLogger } from '@sports/logger';
 import { slugify } from '../transformers/slugify.js';
+import { normalizeTeamName } from '../transformers/normalize.js';
 
 const log = createLogger({ module: 'ref-resolver' });
 
@@ -40,51 +44,91 @@ export class RefResolver {
   }
 
   /**
-   * Resuelve teamRef (ID de la fuente o nombre) → team UUID en nuestra DB.
-   * teamRef puede ser: source_ref, nombre completo, o slug.
+   * Resuelve teamRef (ID de la fuente o nombre) → team UUID.
+   *
+   * Cascada del embudo (Fase 1). El orden preserva el comportamiento previo: el
+   * escalón nuevo de `team_aliases` va ENTRE el slug y la similitud, nunca antes,
+   * así que jamás resuelve peor que la versión anterior; sólo añade caminos
+   * deterministas más tempranos.
+   *
+   *   1. source_entity_map (ID de fuente → team, determinista)     [escalón 1]
+   *   2. teams.source_ref / alt_source_refs (puente hacia el mapa)  [escalón 1 bis]
+   *   3. slug (nombre slugificado, exacto)
+   *   4. team_aliases.normalized (alias exacto normalizado)        [escalón 2]
+   *   5. similitud de nombre (pg_trgm, fallback)
+   *
+   * `sourceId` (UUID de data_sources) habilita el escalón 1 y que el resolver
+   * ALIMENTE el mapa al resolver por el puente, para que la próxima vez entre
+   * por el escalón 1 (coste cero).
    */
-  async resolveTeam(teamRef: string): Promise<string> {
-    const cached = this.teamCache.get(teamRef);
+  async resolveTeam(teamRef: string, sourceId?: string): Promise<string> {
+    const cacheKey = `${sourceId ?? ''}|${teamRef}`;
+    const cached = this.teamCache.get(cacheKey);
     if (cached) return cached;
 
-    // 1. Por source_ref exacto
-    let team = await findTeamBySourceRef(teamRef);
+    // 1. source_entity_map (escalón 1 determinista)
+    let teamId = await resolveTeamViaSourceMap(teamRef, sourceId);
 
-    // 2. Por slug
-    if (!team) {
-      const slug = slugify(teamRef);
-      team = await findTeamBySlug(this.sportId, slug);
+    // 2. Puente: teams.source_ref / alt_source_refs. Si resuelve y tenemos
+    //    fuente, se alimenta el mapa para que la próxima entre por el escalón 1.
+    if (!teamId) {
+      const team = await findTeamBySourceRef(teamRef);
       if (team) {
+        teamId = team.id;
+        if (sourceId) {
+          await upsertSourceEntityMapTeam(sourceId, teamRef, team.id).catch((err) => {
+            log.debug({ teamRef, sourceId, err }, 'No se pudo alimentar source_entity_map');
+          });
+        }
+      }
+    }
+
+    // 3. Por slug (nombre slugificado)
+    if (!teamId) {
+      const slug = slugify(teamRef);
+      const team = await findTeamBySlug(this.sportId, slug);
+      if (team) {
+        teamId = team.id;
         log.debug({ teamRef, slug, method: 'slug' }, 'Equipo resuelto por slug');
       }
     }
 
-    // 3. Por similitud de nombre (fallback)
-    if (!team) {
-      team = await findTeamByNameSimilarity(this.sportId, teamRef);
+    // 4. team_aliases: alias exacto normalizado (escalón 2)
+    if (!teamId) {
+      const normalized = normalizeTeamName(teamRef);
+      const aliasTeamId = await findTeamByNormalizedAlias(normalized, sourceId);
+      if (aliasTeamId) {
+        teamId = aliasTeamId;
+        log.debug({ teamRef, normalized, method: 'alias' }, 'Equipo resuelto por alias normalizado');
+      }
+    }
+
+    // 5. Por similitud de nombre (fallback)
+    if (!teamId) {
+      const team = await findTeamByNameSimilarity(this.sportId, teamRef);
       if (team) {
+        teamId = team.id;
         log.warn(
           { teamRef, resolvedName: team.name, method: 'similarity' },
           '⚠️  Equipo resuelto por similitud de nombre — verificar que es correcto'
         );
-        // Auto-registro: guardar este ref como alternativo para que la
-        // próxima ejecución lo resuelva directamente sin pasar por similitud.
-        // Solo útil para refs legibles (nombres), no para IDs opacos (fep_club_44).
+        // Auto-registro del ref como alternativo (sólo refs legibles, no IDs
+        // opacos): la próxima vez lo resuelve el puente/escalón 1 sin similitud.
         await addTeamAltRef(team.id, teamRef).catch((err) => {
-          log.debug({ teamId: team!.id, teamRef, err }, 'No se pudo registrar alt_ref');
+          log.debug({ teamId: team.id, teamRef, err }, 'No se pudo registrar alt_ref');
         });
       }
     }
 
-    if (!team) {
+    if (!teamId) {
       throw new Error(
         `No se encontró equipo para ref "${teamRef}" (sport_id: ${this.sportId}). ` +
         `¿Se ha ejecutado el scraper de equipos antes que el de partidos?`
       );
     }
 
-    this.teamCache.set(teamRef, team.id);
-    return team.id;
+    this.teamCache.set(cacheKey, teamId);
+    return teamId;
   }
 
   async resolveCompetition(ref: string, slug?: string): Promise<string> {
