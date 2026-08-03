@@ -11,6 +11,13 @@ interface TeamRow {
   country: string;
   logo_url: string | null;
   website_url: string | null;
+  // Club canónico (Fase 0.3). NULL mientras no se haya corrido el backfill 0.2.
+  club_id: string | null;
+  club_canonical_name: string | null;
+  club_slug: string | null;
+  club_crest_url: string | null;
+  club_city: string | null;
+  club_country: string | null;
 }
 
 interface StandingRow {
@@ -75,8 +82,16 @@ teamDetailRouter.get('/:id', async (c) => {
   try {
     // 1) Info del equipo
     const teamRes = await db.query<TeamRow>(
-      `SELECT id, name, short_name, city, country, logo_url, website_url
-       FROM teams WHERE id = $1`,
+      `SELECT t.id, t.name, t.short_name, t.city, t.country, t.logo_url, t.website_url,
+              t.club_id,
+              cl.canonical_name AS club_canonical_name,
+              cl.slug           AS club_slug,
+              cl.crest_url      AS club_crest_url,
+              cl.city           AS club_city,
+              cl.country        AS club_country
+       FROM teams t
+       LEFT JOIN clubs cl ON cl.id = t.club_id
+       WHERE t.id = $1`,
       [id]
     );
     if (teamRes.rows.length === 0) return c.json({ error: 'Team not found' }, 404);
@@ -301,6 +316,18 @@ teamDetailRouter.get('/:id', async (c) => {
 
     // ─── Serialización ────────────────────────────────────────────────────────
 
+    // Club canónico (Fase 0.3): identidad estable por encima de la sección.
+    // NULL hasta que el backfill 0.2 rellene teams.club_id; el consumidor debe
+    // degradar al propio team (name/logo) en ese caso.
+    const club = teamRow.club_id ? {
+      id:            teamRow.club_id,
+      canonicalName: teamRow.club_canonical_name,
+      slug:          teamRow.club_slug,
+      crestUrl:      teamRow.club_crest_url,
+      city:          teamRow.club_city,
+      country:       teamRow.club_country,
+    } : null;
+
     const team = {
       id:         teamRow.id,
       name:       teamRow.name,
@@ -309,6 +336,7 @@ teamDetailRouter.get('/:id', async (c) => {
       country:    teamRow.country,
       logoUrl:    teamRow.logo_url,
       websiteUrl: teamRow.website_url,
+      club,
     };
 
     const standing = standingRow ? {
