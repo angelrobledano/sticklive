@@ -17,7 +17,7 @@
  * fuera de jornada (aunque es aditivo y no bloquea escrituras).
  */
 import { fileURLToPath } from 'node:url';
-import { db, withTransaction, closeDb } from '@sports/db';
+import { withTransaction, closeDb } from '@sports/db';
 import { createLogger } from '@sports/logger';
 
 const log = createLogger({ service: 'backfill-clubs' });
