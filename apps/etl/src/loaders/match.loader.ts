@@ -7,7 +7,7 @@
  * 3. Procesar en batches para no sobrecargar la DB
  * 4. Usar transacciones por batch (no por partido individual — más eficiente)
  */
-import { upsertMatch, insertScrapeLog, addTeamAltRef, upsertSourceEntityMapTeam, upsertRound, db } from '@sports/db';
+import { upsertMatch, insertScrapeLog, addTeamAltRef, upsertSourceEntityMapTeam, getSeasonSignals, upsertRound, db } from '@sports/db';
 import type { ScrapedMatch, ScrapeResult } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { transformMatch } from '../transformers/match.transformer.js';
@@ -59,6 +59,20 @@ export async function loadMatches(
     return id;
   }
 
+  // Señales de dominio por temporada (género/categoría de la competición), para
+  // la auto-confirmación del resolver (Fase 3). Cacheado por ejecución.
+  const signalsCache = new Map<string, { gender: string | null; ageCategory: string | null }>();
+  async function signalsFor(
+    seasonId: string | undefined,
+  ): Promise<{ gender: string | null; ageCategory: string | null } | undefined> {
+    if (!seasonId) return undefined;
+    const cached = signalsCache.get(seasonId);
+    if (cached) return cached;
+    const s = await getSeasonSignals(seasonId);
+    signalsCache.set(seasonId, s);
+    return s;
+  }
+
   log.info({ total: items.length, batchSize: BATCH_SIZE }, 'Cargando partidos');
 
   // Procesar en batches (logging/control de flujo) pero cada upsert es independiente
@@ -82,10 +96,12 @@ export async function loadMatches(
 
         let resolved = false;
         try {
-          // Resolver referencias de equipos
+          // Resolver referencias de equipos (con señales de dominio de la
+          // temporada para la auto-confirmación del escalón 3, Fase 3).
+          const signals = await signalsFor(input.seasonId);
           const [homeTeamId, awayTeamId] = await Promise.all([
-            resolver.resolveTeam(homeTeamRef, raw.sourceId),
-            resolver.resolveTeam(awayTeamRef, raw.sourceId),
+            resolver.resolveTeam(homeTeamRef, raw.sourceId, signals),
+            resolver.resolveTeam(awayTeamRef, raw.sourceId, signals),
           ]);
 
           // ADOPCIÓN de placeholders sintéticos: algunas fuentes (World Skate)

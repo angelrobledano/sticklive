@@ -275,3 +275,58 @@ export async function rejectQueueItem(id: string): Promise<boolean> {
   );
   return (rowCount ?? 0) > 0;
 }
+
+// ── Fase 3: auto-confirmación con señales de dominio ────────────────────────
+
+export interface EntitySignals {
+  gender: string | null;
+  ageCategory: string | null;
+}
+
+/** Señales de dominio (género/categoría) de la competición de una temporada. */
+export async function getSeasonSignals(seasonId: string): Promise<EntitySignals> {
+  const { rows } = await db.query<{ gender: string | null; age_category: string | null }>(
+    `SELECT c.gender, c.age_category
+       FROM seasons s JOIN competitions c ON c.id = s.competition_id
+      WHERE s.id = $1`,
+    [seasonId],
+  );
+  return { gender: rows[0]?.gender ?? null, ageCategory: rows[0]?.age_category ?? null };
+}
+
+/**
+ * Fase 3: auto-confirmación. Devuelve el team SÓLO si hay un candidato con
+ * similitud ≥ `minScore` Y señales consistentes (mismo género y categoría) Y es
+ * inequívoco (hueco ≥ `gap` con el 2º). Ante la duda, null (se encola). El
+ * género+categoría son más discriminantes que el nombre: son los que evitan el
+ * falso positivo semántico. Nunca fusiona a ciegas.
+ */
+export async function autoConfirmTeam(
+  normalized: string,
+  sportId: string,
+  gender: string,
+  ageCategory: string,
+  minScore = 0.95,
+  gap = 0.05,
+): Promise<FuzzyCandidate | null> {
+  const { rows } = await db.query<{ team_id: string; name: string; score: number }>(
+    `SELECT ta.team_id, t.name, MAX(similarity(ta.normalized, $1))::float AS score
+       FROM team_aliases ta
+       JOIN teams t ON t.id = ta.team_id
+      WHERE t.sport_id = $2
+        AND ta.status = 'confirmed'
+        AND ta.normalized % $1
+        AND t.gender = $3
+        AND t.age_category = $4
+      GROUP BY ta.team_id, t.name
+     HAVING MAX(similarity(ta.normalized, $1)) >= $5
+      ORDER BY score DESC
+      LIMIT 2`,
+    [normalized, sportId, gender, ageCategory, minScore],
+  );
+  const top = rows[0];
+  if (!top) return null;
+  const second = rows[1];
+  if (second && top.score - Number(second.score) < gap) return null; // ambiguo → no auto
+  return { teamId: top.team_id, name: top.name, score: Number(top.score) };
+}
