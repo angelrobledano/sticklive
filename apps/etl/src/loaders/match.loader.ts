@@ -7,7 +7,7 @@
  * 3. Procesar en batches para no sobrecargar la DB
  * 4. Usar transacciones por batch (no por partido individual — más eficiente)
  */
-import { upsertMatch, insertScrapeLog, addTeamAltRef, upsertRound, db } from '@sports/db';
+import { upsertMatch, insertScrapeLog, addTeamAltRef, upsertSourceEntityMapTeam, upsertRound, db } from '@sports/db';
 import type { ScrapedMatch, ScrapeResult } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { transformMatch } from '../transformers/match.transformer.js';
@@ -84,8 +84,8 @@ export async function loadMatches(
         try {
           // Resolver referencias de equipos
           const [homeTeamId, awayTeamId] = await Promise.all([
-            resolver.resolveTeam(homeTeamRef),
-            resolver.resolveTeam(awayTeamRef),
+            resolver.resolveTeam(homeTeamRef, raw.sourceId),
+            resolver.resolveTeam(awayTeamRef, raw.sourceId),
           ]);
 
           // ADOPCIÓN de placeholders sintéticos: algunas fuentes (World Skate)
@@ -194,9 +194,17 @@ export async function loadMatches(
               const learn: Array<Promise<unknown>> = [];
               if (row?.home_team_id && homeTeamRef.startsWith('fep_club_')) {
                 learn.push(addTeamAltRef(row.home_team_id, homeTeamRef).catch(() => {}));
+                // Escalón 1: además del array, alimenta source_entity_map para
+                // que la próxima resolución entre por el mapa determinista.
+                if (raw.sourceId) {
+                  learn.push(upsertSourceEntityMapTeam(raw.sourceId, homeTeamRef, row.home_team_id).catch(() => {}));
+                }
               }
               if (row?.away_team_id && awayTeamRef.startsWith('fep_club_')) {
                 learn.push(addTeamAltRef(row.away_team_id, awayTeamRef).catch(() => {}));
+                if (raw.sourceId) {
+                  learn.push(upsertSourceEntityMapTeam(raw.sourceId, awayTeamRef, row.away_team_id).catch(() => {}));
+                }
               }
               if (learn.length > 0) {
                 await Promise.all(learn);
