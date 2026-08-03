@@ -108,3 +108,75 @@ export async function upsertTeamAlias(
     ],
   );
 }
+
+// ── Fase 2: fuzzy con bloqueo (escalón 3) + cola HITL (escalón 4) ────────────
+
+export interface FuzzyCandidate {
+  teamId: string;
+  name: string;
+  score: number;
+}
+
+/**
+ * Escalón 3: genera candidatos por similitud de trigramas sobre `team_aliases`,
+ * ACOTADO por deporte (clave de bloqueo básica) y por el operador `%`, que usa
+ * el índice GIN y el umbral de pg_trgm (evita el O(n²)). NO decide: sólo propone
+ * top-N para la cola/panel. Un candidato por team (máxima similitud de sus aliases).
+ */
+export async function generateFuzzyCandidates(
+  normalized: string,
+  sportId: string,
+  limit = 3,
+): Promise<FuzzyCandidate[]> {
+  const { rows } = await db.query<{ team_id: string; name: string; score: number }>(
+    `SELECT ta.team_id, t.name, MAX(similarity(ta.normalized, $1))::float AS score
+       FROM team_aliases ta
+       JOIN teams t ON t.id = ta.team_id
+      WHERE t.sport_id = $2
+        AND ta.status = 'confirmed'
+        AND ta.normalized % $1
+      GROUP BY ta.team_id, t.name
+      ORDER BY score DESC
+      LIMIT $3`,
+    [normalized, sportId, limit],
+  );
+  return rows.map((r) => ({ teamId: r.team_id, name: r.name, score: Number(r.score) }));
+}
+
+export interface EnqueueResolutionInput {
+  rawText: string;
+  normalized: string;
+  sourceId: string;
+  sourceRef?: string | null;
+  context?: Record<string, unknown>;
+  candidates?: FuzzyCandidate[];
+}
+
+/**
+ * Escalón 4: aparca en `resolution_queue` un ref que no se resolvió con
+ * confianza. Una entrada por (normalized, source_id); reencolar sólo incrementa
+ * `occurrences` (prioridad del panel) y refresca candidatos, y SÓLO si el ítem
+ * sigue `pending` (no toca lo ya resuelto/rechazado por un humano).
+ */
+export async function enqueueResolution(
+  input: EnqueueResolutionInput,
+  client: Ejecutor = db,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO resolution_queue (raw_text, normalized, source_id, source_ref, context, candidates)
+          VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb)
+     ON CONFLICT (normalized, source_id) DO UPDATE
+        SET occurrences = resolution_queue.occurrences + 1,
+            candidates  = EXCLUDED.candidates,
+            updated_at  = NOW()
+      WHERE resolution_queue.status = 'pending'`,
+    [
+      input.rawText,
+      input.normalized,
+      input.sourceId,
+      input.sourceRef ?? null,
+      JSON.stringify(input.context ?? {}),
+      JSON.stringify(input.candidates ?? []),
+    ],
+  );
+}

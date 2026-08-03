@@ -16,11 +16,11 @@
 import {
   findTeamBySourceRef,
   findTeamBySlug,
-  findTeamByNameSimilarity,
-  addTeamAltRef,
   resolveTeamViaSourceMap,
   upsertSourceEntityMapTeam,
   findTeamByNormalizedAlias,
+  generateFuzzyCandidates,
+  enqueueResolution,
   findCompetitionBySourceRef,
   findCompetitionBySlug,
   findSeasonBySourceRef,
@@ -55,7 +55,7 @@ export class RefResolver {
    *   2. teams.source_ref / alt_source_refs (puente hacia el mapa)  [escalón 1 bis]
    *   3. slug (nombre slugificado, exacto)
    *   4. team_aliases.normalized (alias exacto normalizado)        [escalón 2]
-   *   5. similitud de nombre (pg_trgm, fallback)
+   *   5. fuzzy con bloqueo → cola HITL (no auto-confirma)          [escalón 3-4]
    *
    * `sourceId` (UUID de data_sources) habilita el escalón 1 y que el resolver
    * ALIMENTE el mapa al resolver por el puente, para que la próxima vez entre
@@ -103,21 +103,29 @@ export class RefResolver {
       }
     }
 
-    // 5. Por similitud de nombre (fallback)
-    if (!teamId) {
-      const team = await findTeamByNameSimilarity(this.sportId, teamRef);
-      if (team) {
-        teamId = team.id;
-        log.warn(
-          { teamRef, resolvedName: team.name, method: 'similarity' },
-          '⚠️  Equipo resuelto por similitud de nombre — verificar que es correcto'
-        );
-        // Auto-registro del ref como alternativo (sólo refs legibles, no IDs
-        // opacos): la próxima vez lo resuelve el puente/escalón 1 sin similitud.
-        await addTeamAltRef(team.id, teamRef).catch((err) => {
-          log.debug({ teamId: team.id, teamRef, err }, 'No se pudo registrar alt_ref');
-        });
-      }
+    // 5. Fuzzy con bloqueo (escalón 3) + cola HITL (escalón 4).
+    //    Cambio de política respecto a la versión anterior: ya NO se
+    //    auto-confirma a ciegas por similitud (el viejo umbral 0.4 fue el origen
+    //    del duplicado del Liceo). Lo dudoso se APARCA en resolution_queue con
+    //    candidatos pre-rankeados para revisión humana; la auto-confirmación
+    //    (≥0.95 + señales de dominio) llega en la Fase 3. Ante la duda, se aparca.
+    if (!teamId && sourceId) {
+      const normalized = normalizeTeamName(teamRef);
+      const candidates = await generateFuzzyCandidates(normalized, this.sportId, 3);
+      await enqueueResolution({
+        rawText: teamRef,
+        normalized,
+        sourceId,
+        sourceRef: teamRef,
+        context: { sportId: this.sportId },
+        candidates,
+      }).catch((err) => {
+        log.debug({ teamRef, err }, 'No se pudo encolar en resolution_queue');
+      });
+      log.warn(
+        { teamRef, candidatos: candidates.length, method: 'queue' },
+        'Ref no resuelto por escalones deterministas → encolado para revisión (HITL)'
+      );
     }
 
     if (!teamId) {
