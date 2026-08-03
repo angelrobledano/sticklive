@@ -314,6 +314,15 @@ export interface TeamSeasonStats {
   penalties: { total: number; scored: number; pct: number | null };
 }
 
+export interface TeamClub {
+  id: string;
+  canonicalName: string;
+  slug: string;
+  crestUrl: string | null;
+  city: string | null;
+  country: string;
+}
+
 export interface TeamDetail {
   team: {
     id: string;
@@ -323,6 +332,8 @@ export interface TeamDetail {
     country: string;
     logoUrl: string | null;
     websiteUrl: string | null;
+    // Club canónico (Fase 0.3). NULL hasta que el backfill 0.2 corra en prod.
+    club: TeamClub | null;
   };
   standing: TeamStanding | null;
   matches: TeamMatchSummary[];

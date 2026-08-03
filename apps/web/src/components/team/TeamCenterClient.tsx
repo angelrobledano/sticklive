@@ -60,7 +60,10 @@ function TeamHeader({ data }: { data: TeamDetail }) {
         <TeamShield teamId={team.id} teamName={team.name} size={80} rounded="rounded-2xl" className="p-1" />
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50 leading-tight">
-            {clubName(team.name)}
+            {/* Fase 0.3: preferimos el nombre canónico del club cuando existe;
+                si no (club_id NULL en prod hasta el backfill 0.2), fallback al
+                team. Pasa por clubName() igual, así no hay regresión visual. */}
+            {clubName(team.club?.canonicalName ?? team.name)}
           </h1>
           {team.city && (
             <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">{team.city}</p>
