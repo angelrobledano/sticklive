@@ -4,6 +4,20 @@ Historial de hitos de producto y plataforma. El estado vivo está en [ESTADO_PRO
 
 ---
 
+## Hito agosto 2026 — Entity Resolution (identidad de clubes)
+
+Bloque completo (Fases 0→3) para separar la **identidad estable del club** de sus **secciones** (equipo = club × género × categoría × filial) y de sus **nombres de patrocinio**, y para resolver de forma robusta los equipos entrantes del scraping. As-built y operativa en [RUNBOOK_ENTITY_RESOLUTION.md](./RUNBOOK_ENTITY_RESOLUTION.md); diseño en [ARQUITECTURA_ENTITY_RESOLUTION.md](./ARQUITECTURA_ENTITY_RESOLUTION.md).
+
+- **Fase 0 — Modelo (migración 044).** `clubs`, `sponsors`, `club_names` y `source_entity_map` (ID de fuente → entidad), más `teams.club_id`/`squad_level`. Backfill 1:1 (108 clubs) y la API/web exponen el club canónico. Aditivo; ejecutado en producción.
+- **Fase 1 — Embudo determinista (migración 045).** `normalizeTeamName()` pura + `team_aliases`; el resolver pasa a resolver por `source_entity_map` (escalón 1) y por alias normalizado (escalón 2), alimentándose solo. El escalón nuevo va entre el slug y la similitud: nunca resuelve peor que antes.
+- **Fase 2 — Fuzzy + cola HITL (migración 046).** Sustituye el auto-confirm ciego a 0.4 de similitud (origen del duplicado del Liceo) por fuzzy con bloqueo que **encola** lo dudoso en `resolution_queue`, más el panel de moderación `/admin/resolucion` (bandeja por impacto, resolver/descartar, aprendizaje del alias con cada clic).
+- **Fase 3 — Auto-confirmación con señales.** La máquina resuelve sola sólo con similitud ≥0.95 **y** señales de dominio consistentes (género + categoría); si no, encola. Falla en cerrado (hoy no dispara en OK Liga porque resuelve por ID).
+- **Métrica de salud** de la cola (`/admin/resolution-queue/stats`) y specs de diseño commiteados.
+
+Todo validado con tests de integración contra Postgres real. Pendiente futuro: **Fase 4** (LLM en lote sobre el backlog) y el cruce **inter-fuente PT/IT**, que es lo que activa de verdad el embudo.
+
+---
+
 ## Hito julio 2026 (19–27 jul) — Endurecimiento de plataforma tras la auditoría de arquitectura
 
 Sprint centrado en robustez de producción, no en producto. Cierra los bloques 1 y 2 de [AUDITORIA_ARQUITECTURA_2026-07-19.md](./AUDITORIA_ARQUITECTURA_2026-07-19.md).
