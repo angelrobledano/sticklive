@@ -34,6 +34,11 @@ interface QueueData {
   items: QueueItem[];
 }
 
+interface Stats {
+  queue: { pending: number; resolved: number; rejected: number; pendingOccurrences: number };
+  aliases: { deterministic: number; fuzzy: number; human: number; total: number };
+}
+
 export default function ResolucionPage() {
   const [token, setToken]     = useState('');
   const [input, setInput]     = useState('');
@@ -42,6 +47,7 @@ export default function ResolucionPage() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy]       = useState<string | null>(null);
   const [manual, setManual]   = useState<Record<string, string>>({});
+  const [stats, setStats]     = useState<Stats | null>(null);
 
   useEffect(() => {
     try {
@@ -61,6 +67,8 @@ export default function ResolucionPage() {
       if (res.status === 503) throw new Error('ADMIN_TOKEN no configurado en la API');
       if (!res.ok) throw new Error(`Error ${res.status}`);
       setData(await res.json() as QueueData);
+      const sres = await fetch(`${API_URL}/admin/resolution-queue/stats`, { headers: { 'X-Admin-Token': tk } });
+      if (sres.ok) setStats(await sres.json() as Stats);
       try { sessionStorage.setItem(TOKEN_KEY, tk); } catch { /* noop */ }
     } catch (err) {
       setData(null);
@@ -160,6 +168,22 @@ export default function ResolucionPage() {
         Refs que el ETL no resolvió, por impacto. Asignar escribe un alias: ese nombre se resuelve solo a partir de ahora.
       </p>
 
+      {stats && (
+        <div className="grid grid-cols-4 gap-2">
+          {([
+            ['Pendientes',  stats.queue.pending],
+            ['Ocurrencias', stats.queue.pendingOccurrences],
+            ['Resueltos',   stats.queue.resolved],
+            ['Aprendidos',  stats.aliases.human + stats.aliases.fuzzy],
+          ] as [string, number][]).map(([label, value]) => (
+            <div key={label} className="card px-3 py-2 text-center">
+              <p className="text-xl font-extrabold text-slate-900 dark:text-slate-50 tabular-nums">{value}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">{label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {error && <p className="text-xs text-red-500">{error}</p>}
 
       {data.items.map((it) => (
@@ -179,15 +203,15 @@ export default function ResolucionPage() {
 
           {it.candidates.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {it.candidates.map((c) => (
+              {it.candidates.map((cnd) => (
                 <button
-                  key={c.teamId}
-                  onClick={() => resolve(it.id, c.teamId)}
+                  key={cnd.teamId}
+                  onClick={() => resolve(it.id, cnd.teamId)}
                   disabled={busy === it.id}
                   className="text-xs font-semibold px-3 min-h-[36px] rounded-xl border border-slate-200 dark:border-slate-700
                              text-slate-700 dark:text-slate-300 hover:border-rink-passion hover:text-rink-passion disabled:opacity-40"
                 >
-                  {c.name} <span className="text-slate-400 tabular-nums">{Math.round(c.score * 100)}%</span>
+                  {cnd.name} <span className="text-slate-400 tabular-nums">{Math.round(cnd.score * 100)}%</span>
                 </button>
               ))}
             </div>

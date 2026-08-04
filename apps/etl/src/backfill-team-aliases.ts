@@ -13,7 +13,7 @@
  *   npx tsx --env-file=.env apps/etl/src/backfill-team-aliases.ts
  */
 import { fileURLToPath } from 'node:url';
-import { db, withTransaction, closeDb } from '@sports/db';
+import { withTransaction, closeDb } from '@sports/db';
 import { createLogger } from '@sports/logger';
 import { normalizeTeamName } from './transformers/normalize.js';
 

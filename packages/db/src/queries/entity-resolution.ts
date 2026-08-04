@@ -330,3 +330,46 @@ export async function autoConfirmTeam(
   if (second && top.score - Number(second.score) < gap) return null; // ambiguo → no auto
   return { teamId: top.team_id, name: top.name, score: Number(top.score) };
 }
+
+// ── Salud del embudo (métrica arch §5.3) ──────────────────────────────
+
+export interface ResolutionStats {
+  queue: { pending: number; resolved: number; rejected: number; pendingOccurrences: number };
+  aliases: { deterministic: number; fuzzy: number; human: number; total: number };
+}
+
+/**
+ * Snapshot de salud del embudo. Lo clave (arch §5.3): cuánto se aparca (backlog
+ * `pending` y sus `occurrences`, que debe decaer) y cuánto aprende el sistema
+ * (aliases por origen: `deterministic` de arranque, `fuzzy` auto-confirmados,
+ * `human` de las resoluciones del panel).
+ */
+export async function getResolutionStats(): Promise<ResolutionStats> {
+  const q = await db.query<{ status: string; n: string; occ: string }>(
+    `SELECT status, COUNT(*)::int AS n, COALESCE(SUM(occurrences), 0)::int AS occ
+       FROM resolution_queue GROUP BY status`,
+  );
+  const st = (s: string) => q.rows.find((r) => r.status === s);
+
+  const a = await db.query<{ bucket: string; n: string }>(
+    `SELECT CASE WHEN created_by LIKE 'human%' THEN 'human' ELSE created_by END AS bucket,
+            COUNT(*)::int AS n
+       FROM team_aliases GROUP BY bucket`,
+  );
+  const al = (b: string) => Number(a.rows.find((r) => r.bucket === b)?.n ?? 0);
+
+  return {
+    queue: {
+      pending: Number(st('pending')?.n ?? 0),
+      resolved: Number(st('resolved')?.n ?? 0),
+      rejected: Number(st('rejected')?.n ?? 0),
+      pendingOccurrences: Number(st('pending')?.occ ?? 0),
+    },
+    aliases: {
+      deterministic: al('deterministic'),
+      fuzzy: al('fuzzy'),
+      human: al('human'),
+      total: a.rows.reduce((s, r) => s + Number(r.n), 0),
+    },
+  };
+}

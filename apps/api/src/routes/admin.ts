@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem } from '@sports/db';
+import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats } from '@sports/db';
 
 /**
  * Panel de administracion nivel 1 (token compartido).
@@ -111,7 +111,7 @@ adminRouter.delete('/users/:id', async (c) => {
   }
 });
 
-// ── Competiciones ────────────────────────────────────────────────────
+// ── Competiciones ─────────────────────
 
 /**
  * GET /admin/competitions/archived
@@ -209,7 +209,7 @@ adminRouter.post('/competitions/merge', async (c) => {
   }
 });
 
-// ── Resolución de entidades (cola HITL, Fase 2b) ──────────────────────────
+// ── Resolución de entidades (cola HITL, Fase 2b) ──────────────────
 
 /**
  * GET /admin/resolution-queue?status=pending&limit=100
@@ -223,6 +223,19 @@ adminRouter.get('/resolution-queue', async (c) => {
     return c.json({ status, count: items.length, items });
   } catch (err) {
     console.error('[admin] resolution-queue error:', err);
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/**
+ * GET /admin/resolution-queue/stats
+ * Salud del embudo: backlog de la cola y aprendizaje (aliases por origen).
+ */
+adminRouter.get('/resolution-queue/stats', async (c) => {
+  try {
+    return c.json(await getResolutionStats());
+  } catch (err) {
+    console.error('[admin] resolution-queue stats error:', err);
     return c.json({ error: 'Database error' }, 500);
   }
 });
