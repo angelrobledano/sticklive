@@ -105,7 +105,7 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
         {/* Cabecera */}
         <div style={{
           height: 96, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0 48',
+          padding: '0 48px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 14, height: 14, borderRadius: 9999, background: '#dc2626' }} />
@@ -124,7 +124,7 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
         </div>
 
         {/* Pista */}
-        <div style={{ display: 'flex', position: 'relative', width: RW, height: RH, margin: '0 48' }}>
+        <div style={{ display: 'flex', position: 'relative', width: RW, height: RH, margin: '0 48px' }}>
           {/* Superficie */}
           <div style={{
             position: 'absolute', left: 0, top: 0, width: RW, height: RH,
@@ -185,7 +185,7 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
         </div>
 
         {/* Pie */}
-        <div style={{ display: 'flex', alignItems: 'center', height: 64, padding: '0 48', fontSize: 22, color: '#94a3b8' }}>
+        <div style={{ display: 'flex', alignItems: 'center', height: 64, padding: '0 48px', fontSize: 22, color: '#94a3b8' }}>
           sticklive.eu · Cinco inicial
         </div>
       </div>
