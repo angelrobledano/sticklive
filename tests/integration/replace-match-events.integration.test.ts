@@ -239,6 +239,15 @@ describe('particionado de match_events (migración 047)', () => {
   });
 
   it('DETACH saca una temporada del árbol sin borrar el resto', async () => {
+    // Fechamos el partido en una temporada PASADA sin uso (2005/06): así el
+    // DROP de su partición no afecta a la temporada actual, que es la que usan
+    // el resto de tests (comparten la misma BD). Si aquí se dropease la
+    // partición de "hoy", cualquier test posterior que cree un partido actual
+    // fallaría con "no partition found".
+    await db.query(
+      `UPDATE matches SET scheduled_at = '2005-11-10T18:00:00Z' WHERE id = $1`,
+      [escenario.matchId]
+    );
     await replaceMatchEvents(escenario.matchId, [evento('fep_event_1_p1_1500_goal_H')]);
 
     const { rows: pr } = await db.query<{ particion: string }>(
@@ -247,6 +256,7 @@ describe('particionado de match_events (migración 047)', () => {
       [escenario.matchId]
     );
     const particion = pr[0]!.particion;
+    expect(particion).toBe('match_events_s2005');
 
     await db.query(`ALTER TABLE match_events DETACH PARTITION ${particion}`);
     // Ya no se ve desde el padre...
@@ -257,8 +267,8 @@ describe('particionado de match_events (migración 047)', () => {
     );
     expect(Number(cnt[0]!.n)).toBe(1);
 
-    // Se elimina la partición desacoplada para que el TRUNCATE del padre
-    // (limpiar) no deje filas huérfanas entre tests.
+    // Se elimina la partición desacoplada (temporada sin uso) para no dejar una
+    // tabla suelta que el TRUNCATE del padre ya no cubre.
     await db.query(`DROP TABLE ${particion}`);
   });
 });
