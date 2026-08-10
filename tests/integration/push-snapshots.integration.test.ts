@@ -40,9 +40,13 @@ async function crearEvento(matchId: string, opts: {
   period?: number | null;
 }): Promise<string> {
   n += 1;
+  // match_date (particionado, migración 047) se deriva del partido: es NOT NULL
+  // y no tiene default a propósito.
   const { rows } = await db.query<{ id: string }>(
-    `INSERT INTO match_events (match_id, event_type, player_id, team_id, minute, period, source_ref)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+    `INSERT INTO match_events (match_id, event_type, player_id, team_id, minute, period, source_ref, match_date)
+     VALUES ($1, $2, $3, $4, $5, $6, $7,
+             (SELECT COALESCE(scheduled_at::date, finished_at::date, DATE '1900-01-01') FROM matches WHERE id = $1))
+     RETURNING id`,
     [matchId, opts.eventType, opts.playerId ?? null, opts.teamId ?? null,
       opts.minute ?? null, opts.period ?? null, `ev-snap-${n}`],
   );

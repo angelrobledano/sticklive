@@ -175,6 +175,7 @@ describe('replaceMatchEvents', () => {
   it('el índice único parcial de la migración 034 existe y es el que se usa', async () => {
     // Si este índice desaparece, el ON CONFLICT deja de tener destino y todo
     // lo de arriba falla de forma críptica. Mejor que se diga aquí.
+    // Desde la 047 la tabla es particionada y match_date entra en la clave.
     const { rows } = await db.query<{ indexdef: string }>(
       `SELECT indexdef FROM pg_indexes
         WHERE tablename = 'match_events' AND indexname = 'uq_match_events_match_source_ref'`
@@ -182,5 +183,92 @@ describe('replaceMatchEvents', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]!.indexdef).toContain('UNIQUE');
     expect(rows[0]!.indexdef).toContain('source_ref IS NOT NULL');
+    expect(rows[0]!.indexdef).toContain('match_date');
+  });
+});
+
+describe('particionado de match_events (migración 047)', () => {
+  // Mismo montaje que el bloque de arriba: `evento()` usa `escenario`, así que
+  // hay que refrescarlo tras el limpiar() (si no, apuntaría a un equipo ya
+  // truncado y el INSERT violaría la FK).
+  beforeEach(async () => {
+    await limpiar();
+    sourceId = await crearFuente();
+    escenario = await crearPartido({ status: 'live' });
+  });
+
+  it('match_events es una tabla particionada por RANGE', async () => {
+    const { rows } = await db.query<{ partstrat: string }>(
+      `SELECT partstrat FROM pg_partitioned_table
+         WHERE partrelid = 'match_events'::regclass`
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.partstrat).toBe('r'); // 'r' = RANGE
+  });
+
+  it('un evento aterriza en la partición de la temporada del partido', async () => {
+    // crearPartido usa scheduled_at = NOW(): cae en la temporada actual.
+    await replaceMatchEvents(escenario.matchId, [evento('fep_event_1_p1_1500_goal_H')]);
+
+    const { rows } = await db.query<{ particion: string }>(
+      `SELECT tableoid::regclass::text AS particion
+         FROM match_events WHERE match_id = $1`,
+      [escenario.matchId]
+    );
+    expect(rows).toHaveLength(1);
+    // Nombre de partición estacional: match_events_sYYYY (no el centinela).
+    expect(rows[0]!.particion).toMatch(/match_events_s\d{4}$/);
+  });
+
+  it('pasar match_date poda a una sola partición (no barre todas)', async () => {
+    await replaceMatchEvents(escenario.matchId, [evento('fep_event_1_p1_1500_goal_H')]);
+
+    // Fecha literal (poda en tiempo de plan). Un EXPLAIN que barre todas listaría
+    // decenas de particiones; con match_date debe quedar una sola exploración.
+    const { rows } = await db.query<{ 'QUERY PLAN': string }>(
+      `EXPLAIN (COSTS OFF)
+         SELECT * FROM match_events
+          WHERE match_id = $1 AND match_date = CURRENT_DATE`,
+      [escenario.matchId]
+    );
+    const plan = rows.map((r) => r['QUERY PLAN']).join('\n');
+    // El nombre de la partición aparece más de una vez por línea (relación +
+    // índice), así que contamos particiones DISTINTAS.
+    const particiones = new Set(plan.match(/match_events_s\d{4}/g) ?? []);
+    expect(particiones.size).toBe(1);
+  });
+
+  it('DETACH saca una temporada del árbol sin borrar el resto', async () => {
+    // Fechamos el partido en una temporada PASADA sin uso (2005/06): así el
+    // DROP de su partición no afecta a la temporada actual, que es la que usan
+    // el resto de tests (comparten la misma BD). Si aquí se dropease la
+    // partición de "hoy", cualquier test posterior que cree un partido actual
+    // fallaría con "no partition found".
+    await db.query(
+      `UPDATE matches SET scheduled_at = '2005-11-10T18:00:00Z' WHERE id = $1`,
+      [escenario.matchId]
+    );
+    await replaceMatchEvents(escenario.matchId, [evento('fep_event_1_p1_1500_goal_H')]);
+
+    const { rows: pr } = await db.query<{ particion: string }>(
+      `SELECT tableoid::regclass::text AS particion
+         FROM match_events WHERE match_id = $1 LIMIT 1`,
+      [escenario.matchId]
+    );
+    const particion = pr[0]!.particion;
+    expect(particion).toBe('match_events_s2005');
+
+    await db.query(`ALTER TABLE match_events DETACH PARTITION ${particion}`);
+    // Ya no se ve desde el padre...
+    expect(await eventosDe(escenario.matchId)).toHaveLength(0);
+    // ...pero el dato sigue existiendo en la partición desacoplada.
+    const { rows: cnt } = await db.query<{ n: string }>(
+      `SELECT count(*) AS n FROM ${particion}`
+    );
+    expect(Number(cnt[0]!.n)).toBe(1);
+
+    // Se elimina la partición desacoplada (temporada sin uso) para no dejar una
+    // tabla suelta que el TRUNCATE del padre ya no cubre.
+    await db.query(`DROP TABLE ${particion}`);
   });
 });
