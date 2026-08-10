@@ -59,7 +59,9 @@ describe('trigger match_update (migración 043)', () => {
   it('un evento nuevo emite un NOTIFY adicional', async () => {
     const { matchId, base } = await crearYesperarAlta();
     await db.query(
-      "INSERT INTO match_events (match_id, event_type) VALUES ($1, 'goal')",
+      `INSERT INTO match_events (match_id, event_type, match_date)
+       VALUES ($1, 'goal',
+               (SELECT COALESCE(scheduled_at::date, finished_at::date, DATE '1900-01-01') FROM matches WHERE id = $1))`,
       [matchId],
     );
     expect(await waitFor(() => countOf(matchId) > base)).toBe(true);
