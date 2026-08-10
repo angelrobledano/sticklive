@@ -31,7 +31,7 @@
  * ni el resto de devDependencies, y `npm audit --omit=dev` pasa a auditar lo
  * que de verdad corre.
  *
- * ── Estructura de salida ───────────────────────────────────────────────────
+ * ── Estructura de salida ──────────────────────────────────────────────────
  *
  * `outbase` es la raíz del repo, así que la jerarquía se conserva:
  *
@@ -56,6 +56,7 @@ const SERVICIOS = [
   'apps/scraper/src/index.ts',                // CLI de scrapers (--run-once)
   'packages/db/src/migrate.ts',               // migraciones (servicio `migrate`)
   'packages/db/scripts/purge-scrape-logs.ts', // purga diaria
+  'apps/etl/src/partition-guard.ts',          // guarda diaria del particionado (047)
 ];
 
 /**
