@@ -233,14 +233,34 @@ export interface UpsertMatchEventInput {
  * Sigue siendo idempotente: la ficha manda siempre el listado completo.
  * Debe llamarse dentro de una transacción para que un lector concurrente
  * (el hub SSE) no vea un estado intermedio.
+ *
+ * PARTICIONADO (migración 047): match_events está particionada por `match_date`
+ * (RANGE por temporada). match_date se deriva AQUÍ desde el partido (es inmutable
+ * y funcionalmente dependiente de match_id), no lo pasa el caller. Va en el
+ * INSERT, en la clave del ON CONFLICT y en el DELETE, para que Postgres pode a la
+ * partición del partido en vez de barrer todas.
  */
 export async function replaceMatchEvents(
   matchId: string,
   events: UpsertMatchEventInput[],
   client: pg.PoolClient | typeof db = db
 ): Promise<void> {
+  // Fecha de partición del partido: la del calendario, con centinela 1900 para
+  // partidos sin fecha (caen en match_events_undated). Igual que el COALESCE de
+  // la migración 047.
+  const { rows: mrows } = await client.query<{ match_date: string }>(
+    `SELECT COALESCE(scheduled_at::date, finished_at::date, DATE '1900-01-01')::text AS match_date
+       FROM matches WHERE id = $1`,
+    [matchId]
+  );
+  const matchDate = mrows[0]?.match_date;
+  if (!matchDate) throw new Error(`replaceMatchEvents: el partido ${matchId} no existe`);
+
   if (events.length === 0) {
-    await client.query('DELETE FROM match_events WHERE match_id = $1', [matchId]);
+    await client.query(
+      'DELETE FROM match_events WHERE match_id = $1 AND match_date = $2',
+      [matchId, matchDate]
+    );
     return;
   }
 
@@ -258,7 +278,7 @@ export async function replaceMatchEvents(
 
   for (const ev of rows) {
     placeholders.push(
-      `($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`
+      `($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`
     );
     values.push(
       matchId,
@@ -271,15 +291,16 @@ export async function replaceMatchEvents(
       ev.detail,
       ev.sourceId ?? null,
       ev.sourceRef,
-      ev.scrapedAt ?? null
+      ev.scrapedAt ?? null,
+      matchDate
     );
   }
 
   await client.query(
     `INSERT INTO match_events
-       (match_id, team_id, player_id, event_type, minute, period, clock, detail, source_id, source_ref, scraped_at)
+       (match_id, team_id, player_id, event_type, minute, period, clock, detail, source_id, source_ref, scraped_at, match_date)
      VALUES ${placeholders.join(', ')}
-     ON CONFLICT (match_id, source_ref) WHERE source_ref IS NOT NULL
+     ON CONFLICT (match_id, source_ref, match_date) WHERE source_ref IS NOT NULL
      DO UPDATE SET
        team_id    = EXCLUDED.team_id,
        player_id  = EXCLUDED.player_id,
@@ -293,16 +314,18 @@ export async function replaceMatchEvents(
     values
   );
 
-  // Eventos que la ficha ya no lista (correcciones del acta): fuera.
+  // Eventos que la ficha ya no lista (correcciones del acta): fuera. match_date
+  // acota el DELETE a la partición del partido (poda), en vez de barrer todas.
   await client.query(
     `DELETE FROM match_events
      WHERE match_id = $1
-       AND (source_ref IS NULL OR source_ref <> ALL($2::text[]))`,
-    [matchId, rows.map((e) => e.sourceRef)]
+       AND match_date = $2
+       AND (source_ref IS NULL OR source_ref <> ALL($3::text[]))`,
+    [matchId, matchDate, rows.map((e) => e.sourceRef)]
   );
 }
 
-// ── Alineaciones ─────────────────────────────────────────────────────────────
+// ── Alineaciones ───────────────────────────────────────────────────
 
 export interface UpsertMatchLineupInput {
   isHome: boolean;
