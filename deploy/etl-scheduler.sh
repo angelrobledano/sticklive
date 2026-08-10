@@ -94,6 +94,13 @@ while true; do
     echo "[scheduler] purga de scrape_logs $(date -u +%T)"
     node dist/packages/db/scripts/purge-scrape-logs.js \
       || echo "[scheduler] purga fallo (seguimos)"
+
+    # Guarda del particionado de match_events (047): asegura las particiones de
+    # la temporada actual + siguientes (idempotente) y avisa a Sentry si
+    # match_events_undated recibe filas. Sin lock: DDL IF NOT EXISTS + un count.
+    echo "[scheduler] partition-guard $(date -u +%T)"
+    node dist/apps/etl/src/partition-guard.js \
+      || echo "[scheduler] partition-guard fallo (seguimos)"
   fi
 
   touch "$ALIVE"   # latido: vuelta completada
