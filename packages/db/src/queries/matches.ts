@@ -325,7 +325,7 @@ export async function replaceMatchEvents(
   );
 }
 
-// ── Alineaciones ───────────────────────────────────────────────────
+// ── Alineaciones ─────────────────────────────────────────────────────────────
 
 export interface UpsertMatchLineupInput {
   isHome: boolean;
