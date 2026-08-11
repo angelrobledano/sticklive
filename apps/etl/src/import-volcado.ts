@@ -15,8 +15,8 @@
  *     temporada 'Histórico'. scheduled_at queda NULL a propósito.
  *   · PROD MANDA: los equipos se deduplican por source_ref (mismos ids FEP que
  *     prod), así que se enganchan a los equipos existentes; solo se crean los
- *     clubes antiguos que ya no están. Y cada partido lleva guarda NOT EXISTS
- *     contra matches.source_ref de prod: no se reimporta lo que prod ya tiene.
+ *     clubes antiguos que ya no están. Y cada partido lleva guarda contra los
+ *     source_ref de prod: no se reimporta lo que prod ya tiene.
  *
  * ── Trazabilidad y reversibilidad ────────────────────────────────────────────
  *   Todo cuelga de un import_batch (kind='historic') y de la data_source
@@ -74,17 +74,21 @@ async function main() {
      ON CONFLICT (scraper_key) DO UPDATE SET updated_at = NOW()
      RETURNING id`)).rows[0]!.id;
 
+  // Guarda "prod manda" en UNA sola consulta: precargamos los source_ref NATIVOS
+  // de prod (import_batch_id IS NULL) en memoria. Un partido del volcado cuyo ref
+  // ya esté aquí NO se reimporta. Evita 8.828 idas y vueltas por el túnel.
+  const prodRefs = new Set(
+    (await db.query<{ source_ref: string }>(
+      `SELECT source_ref FROM matches WHERE source_ref IS NOT NULL AND import_batch_id IS NULL`,
+    )).rows.map((r) => r.source_ref));
+  log.info({ refs_nativos_prod: prodRefs.size }, 'Refs de prod precargados');
+
   if (dryRun) {
-    log.info('DRY-RUN: no se escribe nada. Resumen de lo que entraría:');
-    let yaEnProd = 0;
-    for (const m of payload.matches) {
-      if (!m.ref) continue;
-      const ex = await db.query(`SELECT 1 FROM matches WHERE source_ref = $1`, [m.ref]);
-      if (ex.rows.length) yaEnProd++;
-    }
+    const yaEnProd = payload.matches.filter((m) => m.ref && prodRefs.has(m.ref)).length;
     log.info({ competiciones: payload.competitions.length, equipos: payload.teams.length,
                partidos: payload.matches.length, ya_en_prod: yaEnProd,
-               a_importar: payload.matches.length - yaEnProd }, 'DRY-RUN');
+               a_importar: payload.matches.length - yaEnProd },
+             'DRY-RUN: no se escribe nada. Resumen de lo que entraría');
     return;
   }
 
@@ -165,11 +169,7 @@ async function main() {
     if (!seasonId) { skipTeam++; continue; }
 
     // PROD MANDA: si prod ya tiene esta acta (mismo ref FEP), no la reimportamos.
-    if (m.ref) {
-      const inProd = await db.query(
-        `SELECT 1 FROM matches WHERE source_ref = $1 AND import_batch_id IS NULL`, [m.ref]);
-      if (inProd.rows.length) { skipProd++; continue; }
-    }
+    if (m.ref && prodRefs.has(m.ref)) { skipProd++; continue; }
 
     const status = (m.hs != null && m.as != null) ? 'finished' : 'postponed';
     const r = await db.query(
