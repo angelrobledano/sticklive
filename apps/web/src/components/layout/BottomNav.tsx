@@ -60,7 +60,7 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden
+    <nav aria-label={t('a11y.nav_primary')} className="fixed bottom-0 left-0 right-0 z-50 md:hidden
                     bg-white dark:bg-slate-900
                     border-t border-slate-200 dark:border-slate-800
                     pb-[env(safe-area-inset-bottom)]">
@@ -72,6 +72,7 @@ export function BottomNav() {
             <li key={href} className="flex-1">
               <Link
                 href={href}
+                aria-current={active ? 'page' : undefined}
                 className={`flex flex-col items-center justify-center h-full gap-0.5 text-xs
                             transition-colors duration-150
                             ${active

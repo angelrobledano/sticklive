@@ -33,21 +33,30 @@ export function AuthUpsell() {
     setOpen(false);
   };
 
+  // Cierra con Escape mientras está abierto (igual que NotificationPresetSheet)
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') dismiss(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end md:items-center md:justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={dismiss} />
+      <div aria-hidden="true" className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={dismiss} />
 
       {/* Sheet (móvil) / modal (escritorio) */}
-      <div className="relative w-full md:max-w-sm bg-white dark:bg-slate-900
+      <div role="dialog" aria-modal="true" aria-labelledby="auth-upsell-title"
+           className="relative w-full md:max-w-sm bg-white dark:bg-slate-900
                       rounded-t-3xl md:rounded-2xl p-6 pb-8 md:pb-6 space-y-4 shadow-2xl
                       animate-[slideUp_.25s_ease-out]">
         <div className="mx-auto w-10 h-1 rounded-full bg-slate-200 dark:bg-slate-700 md:hidden" />
 
         <div className="text-center space-y-1.5">
-          <h2 className="text-lg font-extrabold text-slate-900 dark:text-slate-50">
+          <h2 id="auth-upsell-title" className="text-lg font-extrabold text-slate-900 dark:text-slate-50">
             {t('auth.upsell_title')}
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
