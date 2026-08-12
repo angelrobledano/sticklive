@@ -1,4 +1,12 @@
 {
+  "a11y": {
+    "skip_to_content": "Skip to content",
+    "nav_primary": "Primary navigation",
+    "nav_sections": "Sections",
+    "email_label": "Email",
+    "search_competitions": "Search league, country or federation",
+    "home_heading": "Live matches"
+  },
   "navigation": {
     "matches": "Matches",
     "competitions": "Competitions",

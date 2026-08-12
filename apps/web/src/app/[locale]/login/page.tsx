@@ -28,7 +28,7 @@ function LoginInner() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [devLink, setDevLink] = useState<string | null>(null);
 
-  // ── Canjear magic link (?token=) ─────────────────────────────────────────
+  // ── Canjear magic link (?token=) ─────────────────────────────────────────────
   useEffect(() => {
     const token = params.get('token');
     if (!token || attemptedTokens.has(token)) return;
@@ -159,7 +159,7 @@ function LoginInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Pedir magic link ─────────────────────────────────────────────────────
+  // ── Pedir magic link ──────────────────────────────────────────────────────────
   const requestLink = async (e: React.FormEvent) => {
     e.preventDefault();
     track('login_started', { method: 'magic_link' });
@@ -269,6 +269,7 @@ function LoginInner() {
           <input
             type="email"
             required
+            aria-label={t('a11y.email_label')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="tu@email.com"

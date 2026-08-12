@@ -1,4 +1,12 @@
 {
+  "a11y": {
+    "skip_to_content": "Aller au contenu",
+    "nav_primary": "Navigation principale",
+    "nav_sections": "Sections",
+    "email_label": "E-mail",
+    "search_competitions": "Rechercher une ligue, un pays ou une fédération",
+    "home_heading": "Matchs en direct"
+  },
   "navigation": {
     "matches": "Matchs",
     "competitions": "Compétitions",

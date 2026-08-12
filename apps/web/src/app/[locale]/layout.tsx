@@ -7,6 +7,7 @@ import { PwaSetup } from '@/components/layout/PwaSetup';
 import { AuthUpsell } from '@/components/shared/AuthUpsell';
 import { I18nProvider } from '@/lib/i18n';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { SkipToContent } from '@/components/layout/SkipToContent';
 import { PremiumProvider } from '@/context/PremiumContext';
 import { AnalyticsPageview } from '@/lib/analytics';
 import { SUPPORTED_LOCALES, isSupportedLocale, type Locale } from '@/lib/locales';
@@ -102,12 +103,14 @@ export default async function RootLayout({ children, params }: Props) {
             de <AdBanner> en caliente al volver de /premium/success */}
         <PremiumProvider>
           <I18nProvider initialLocale={locale}>
+          {/* Enlace de salto al contenido — primer foco tabulable (WCAG 2.4.1) */}
+          <SkipToContent />
           <div className="flex min-h-screen">
             {/* Sidebar — solo visible en md+ */}
             <Sidebar />
 
             {/* Contenido principal */}
-            <main className="flex-1 min-w-0
+            <main id="main" className="flex-1 min-w-0
                              pb-20 md:pb-0
                              px-0 md:px-0">
               {children}

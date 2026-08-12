@@ -239,6 +239,9 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Encabezado principal de la home (oculto visualmente, para lectores y SEO) */}
+      <h1 className="sr-only">{t('a11y.home_heading')}</h1>
+
       {/* Selector de fecha — sticky bajo el header */}
       <div className="sticky top-0 z-30">
         <DateSelector selected={selectedDate} onChange={setSelectedDate} />
