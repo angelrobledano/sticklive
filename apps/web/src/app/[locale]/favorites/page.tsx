@@ -161,6 +161,7 @@ function FavoritesInner() {
       {/* Buscador */}
       <input
         type="search"
+        aria-label={t('favorites.search_placeholder')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={t('favorites.search_placeholder')}
