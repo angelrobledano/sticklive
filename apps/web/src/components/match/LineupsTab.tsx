@@ -204,7 +204,7 @@ function StartingFiveRink({ home, away, homeName, awayName, matchId }: {
         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
           {t('match_detail.starter')}
         </span>
-        <span className="flex items-center gap-3 text-[10px] text-slate-400 dark:text-slate-500">
+        <span className="flex items-center gap-3 text-[10px] text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-full bg-rink-passion inline-block" />{homeName}
           </span>
@@ -357,7 +357,7 @@ export function LineupsTab({ data }: { data: MatchDetail }) {
                       </span>
                     )}
                     {(p.assists ?? 0) > 0 && (
-                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                      <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                         🅰 {p.assists}
                       </span>
                     )}

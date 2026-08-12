@@ -132,7 +132,7 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
       {/* Enlace home secundario */}
       <a
         href="/"
-        className="text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300
+        className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300
                    underline underline-offset-2 transition-colors"
       >
         Volver al inicio

@@ -131,7 +131,7 @@ function ScoreBlock({ match }: { match: Match }) {
           {score.away ?? '-'}
         </span>
         {pen && (
-          <span className="text-[9px] font-semibold tabular-nums text-slate-400 dark:text-slate-500">
+          <span className="text-[9px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
             {t('match_states.penalties_label')} {pen}
           </span>
         )}

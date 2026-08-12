@@ -36,7 +36,7 @@ export function ManageNotificationsButton({ kind, id, name, className = '' }: {
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}
         aria-label="Gestionar notificaciones"
         className={`inline-flex items-center justify-center w-11 h-11 rounded-full
-                    text-slate-400 dark:text-slate-500 hover:text-rink-passion
+                    text-slate-500 dark:text-slate-400 hover:text-rink-passion
                     transition-transform active:scale-90 ${className}`}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} className="w-5 h-5">

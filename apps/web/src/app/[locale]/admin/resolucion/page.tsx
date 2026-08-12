@@ -164,7 +164,7 @@ export default function ResolucionPage() {
         </button>
       </div>
 
-      <p className="text-xs text-slate-400 dark:text-slate-500">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         Refs que el ETL no resolvió, por impacto. Asignar escribe un alias: ese nombre se resuelve solo a partir de ahora.
       </p>
 
@@ -178,7 +178,7 @@ export default function ResolucionPage() {
           ] as [string, number][]).map(([label, value]) => (
             <div key={label} className="card px-3 py-2 text-center">
               <p className="text-xl font-extrabold text-slate-900 dark:text-slate-50 tabular-nums">{value}</p>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">{label}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{label}</p>
             </div>
           ))}
         </div>

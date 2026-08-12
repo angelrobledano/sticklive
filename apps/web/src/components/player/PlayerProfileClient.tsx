@@ -89,14 +89,14 @@ function PlayerHeader({ data }: { data: PlayerDetail }) {
             {toTitleCase(`${player.firstName} ${player.lastName}`)}
           </h1>
           {player.birthDate && (
-            <p className="text-sm text-slate-400 dark:text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               <CountryFlag code={player.nationality} className="inline-block w-4 h-auto rounded-[2px] mr-1.5 align-[-1px]" />
               {fmtDate(player.birthDate, locale)}
               {age != null && <span className="ml-2 text-slate-300 dark:text-slate-600">({t('player.years_old', { n: age })})</span>}
             </p>
           )}
           {!player.birthDate && player.nationality && (
-            <p className="text-sm text-slate-400 dark:text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               <CountryFlag code={player.nationality} className="inline-block w-4 h-auto rounded-[2px] mr-1.5 align-[-1px]" />
               {player.nationality}
             </p>
@@ -121,7 +121,7 @@ function PlayerHeader({ data }: { data: PlayerDetail }) {
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('player.current_team')}</p>
+            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('player.current_team')}</p>
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{currentTeam.name}</p>
           </div>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0">
@@ -147,7 +147,7 @@ function StatCard({ label, value, accent = false }: {
       }`}>
         {value}
       </span>
-      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">
+      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-center">
         {label}
       </span>
     </div>
@@ -171,7 +171,7 @@ function StatsGrid({ data }: { data: PlayerDetail }) {
 
   return (
     <div>
-      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 px-1">
+      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 px-1">
         {t('player.current_season')}
       </p>
       <div className="grid grid-cols-5 gap-2">
@@ -214,12 +214,12 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
     <div className="card overflow-hidden">
       {/* Cabecera */}
       <div className="grid grid-cols-[1fr_repeat(7,32px)] gap-x-1 px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
-        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('player.competition')}</span>
+        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('player.competition')}</span>
         {cols.map((h, i) => (
           <span key={h} className={`text-[9px] font-bold text-center uppercase tracking-wider ${
             i >= 5
               ? 'text-slate-300 dark:text-slate-600'
-              : 'text-slate-400 dark:text-slate-500'
+              : 'text-slate-500 dark:text-slate-400'
           }`}>
             {h}
           </span>
@@ -326,7 +326,7 @@ export function PlayerProfileClient({ data }: { data: PlayerDetail }) {
       {/* Tabla por competición */}
       {data.statsByCompetition.length > 0 && (
         <div>
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 px-1">
+          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 px-1">
             {t('player.breakdown')}
           </p>
           <CompStatsTable rows={data.statsByCompetition} />

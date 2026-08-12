@@ -77,7 +77,7 @@ export function BottomNav() {
                             transition-colors duration-150
                             ${active
                               ? 'text-rink-passion dark:text-red-500'
-                              : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                             }`}
               >
                 {icon(active)}

@@ -52,7 +52,7 @@ export function AccountCard() {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{email}</p>
-          <p className="text-[11px] text-slate-400 dark:text-slate-500">{t('settings.account_synced')}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('settings.account_synced')}</p>
         </div>
         <button onClick={logout}
                 className="text-xs font-medium text-slate-400 hover:text-red-500 transition-colors px-2 min-h-[44px]">
@@ -141,7 +141,7 @@ export function FavoriteRow({ href, name, fallback, logoSrc, onRemove }: {
 export function SubHeader({ label }: { label: string }) {
   return (
     <div className="pt-3 pb-1">
-      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
         {label}
       </p>
     </div>

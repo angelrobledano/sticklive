@@ -104,7 +104,7 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
           {t('notif_presets.title')}
         </h2>
         {name && (
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 mb-3 truncate">{name}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 mb-3 truncate">{name}</p>
         )}
 
         <div className="space-y-2 mt-3">
@@ -122,7 +122,7 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
                     : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                 }`}
               >
-                <span className={`mt-0.5 ${active ? 'text-rink-passion' : 'text-slate-400 dark:text-slate-500'}`}>
+                <span className={`mt-0.5 ${active ? 'text-rink-passion' : 'text-slate-500 dark:text-slate-400'}`}>
                   <PresetIcon preset={p} />
                 </span>
                 <span className="min-w-0 flex-1">

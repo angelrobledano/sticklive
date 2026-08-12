@@ -44,7 +44,7 @@ function MatchCard({ match }: { match: SeasonMatch }) {
               </span>
             )}
             {isFinished && (
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">Final</span>
+              <span className="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">Final</span>
             )}
           </>
         ) : (
@@ -97,7 +97,7 @@ function FixturesByDate({ matches }: { matches: SeasonMatch[] }) {
       {groups.map(([d, ms]) => (
         <div key={d} className="card overflow-hidden">
           <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
               {d === 'Sin fecha' ? d : dayPillLabel(d)}
             </span>
           </div>

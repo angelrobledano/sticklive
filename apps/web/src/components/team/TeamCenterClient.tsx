@@ -66,7 +66,7 @@ function TeamHeader({ data }: { data: TeamDetail }) {
             {clubName(team.club?.canonicalName ?? team.name)}
           </h1>
           {team.city && (
-            <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">{team.city}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{team.city}</p>
           )}
           {standing && (
             <Link
@@ -140,7 +140,7 @@ function MiniMatchCard({ match, teamId }: { match: TeamMatchSummary; teamId: str
         <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
           {isHome ? 'vs' : '@'} {opp.shortName ?? opp.name}
         </p>
-        <p className="text-xs text-slate-400 dark:text-slate-500">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           {showScore ? (isLive ? t('playoffs.live') : formatMatchDate(match.scheduledAt ?? match.finishedAt, locale, match.competitionTimezone)) : formatMatchDate(match.scheduledAt, locale, match.competitionTimezone)}
         </p>
       </div>
@@ -194,13 +194,13 @@ function SummaryTab({ data }: { data: TeamDetail }) {
               <p className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 leading-none">
                 {standing.position ?? '—'}
               </p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wide mt-1">{t('team.position')}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide mt-1">{t('team.position')}</p>
             </div>
             <div className="w-px self-stretch bg-slate-100 dark:bg-slate-800" />
             {/* Puntos */}
             <div className="text-center">
               <p className="text-3xl font-extrabold text-rink-passion leading-none">{standing.points}</p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wide mt-1">{t('team.points')}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide mt-1">{t('team.points')}</p>
             </div>
             <div className="w-px self-stretch bg-slate-100 dark:bg-slate-800" />
             {/* PJ / W / D / L */}
@@ -213,7 +213,7 @@ function SummaryTab({ data }: { data: TeamDetail }) {
               ] as [string, number][]).map(([label, val]) => (
                 <div key={label} className="text-center">
                   <p className="text-base font-bold text-slate-800 dark:text-slate-200 leading-none">{val}</p>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wide mt-1">{label}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide mt-1">{label}</p>
                 </div>
               ))}
             </div>
@@ -237,7 +237,7 @@ function SummaryTab({ data }: { data: TeamDetail }) {
       {nextMatch && (
         <div className="card overflow-hidden">
           <div className="px-4 pt-4 pb-2">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
               {nextMatch.status === 'live' ? `🟢 ${t('team.now')}` : t('team.next_match')}
             </p>
           </div>
@@ -249,7 +249,7 @@ function SummaryTab({ data }: { data: TeamDetail }) {
       {lastFinished && (
         <div className="card overflow-hidden">
           <div className="px-4 pt-4 pb-2">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('team.last_result')}</p>
+            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('team.last_result')}</p>
           </div>
           <MiniMatchCard match={lastFinished} teamId={team.id} />
         </div>
@@ -288,7 +288,7 @@ function CalendarTab({ data }: { data: TeamDetail }) {
       {Array.from(groups.entries()).map(([month, group]) => (
         <div key={month} className="card overflow-hidden">
           <div className="px-4 pt-4 pb-2">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest capitalize">
+            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest capitalize">
               {month}
             </p>
           </div>
@@ -338,7 +338,7 @@ function PlayerRow({ player }: { player: SquadPlayer }) {
            title={toTitleCase(`${player.firstName} ${player.lastName}`)}>
           {playerDisplayName(player.firstName, player.lastName)}
         </p>
-        <p className="text-[11px] text-slate-400 dark:text-slate-500">{t(positionKey(player.isGoalkeeper))}</p>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400">{t(positionKey(player.isGoalkeeper))}</p>
       </div>
 
       {/* Badge portero */}
@@ -400,7 +400,7 @@ function SquadTab({ data }: { data: TeamDetail }) {
       {goalkeepers.length > 0 && (
         <div className="card overflow-hidden">
           <div className="px-4 pt-3 pb-2">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('team.gk_pos')}</p>
+            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('team.gk_pos')}</p>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
             {goalkeepers.map((p) => <PlayerRow key={p.playerId} player={p} />)}
@@ -411,7 +411,7 @@ function SquadTab({ data }: { data: TeamDetail }) {
       {outfield.length > 0 && (
         <div className="card overflow-hidden">
           <div className="px-4 pt-3 pb-2">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('team.players')}</p>
+            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('team.players')}</p>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
             {outfield.map((p) => <PlayerRow key={p.playerId} player={p} />)}
@@ -465,7 +465,7 @@ function StaffSection({ staff }: { staff: TeamDetail['staff'] }) {
             <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
               {staffDisplayName(s.name)}
             </span>
-            <span className="text-[11px] text-slate-400 dark:text-slate-500">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
               {STAFF_ROLE_LABELS[s.role] ? t(STAFF_ROLE_LABELS[s.role]!) : s.role}
             </span>
           </div>
@@ -482,7 +482,7 @@ function StatTile({ label, value, sub }: { label: string; value: string | number
     <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 px-3 py-2.5 text-center">
       <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-50 leading-tight">{value}</p>
       <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide leading-tight mt-0.5">{label}</p>
-      {sub && <p className="text-[10px] text-slate-400 dark:text-slate-500">{sub}</p>}
+      {sub && <p className="text-[10px] text-slate-500 dark:text-slate-400">{sub}</p>}
     </div>
   );
 }

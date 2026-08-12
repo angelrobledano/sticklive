@@ -29,7 +29,7 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
         </svg>
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+        <p className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
           {fedLabel}
         </p>
         <h1 className="text-base font-bold text-slate-900 dark:text-slate-50 leading-tight truncate">
@@ -42,7 +42,7 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
           <select
             value={season.id}
             onChange={(e) => router.push(`/competitions/${competitionId}?season=${e.target.value}`)}
-            className="mt-0.5 -ml-1 text-xs font-light text-slate-400 dark:text-slate-500 bg-transparent
+            className="mt-0.5 -ml-1 text-xs font-light text-slate-500 dark:text-slate-400 bg-transparent
                        border-0 rounded-md px-1 py-0 pr-6 cursor-pointer appearance-auto
                        hover:text-slate-600 dark:hover:text-slate-300
                        focus:outline-none focus:ring-1 focus:ring-rink-passion/40"
@@ -55,7 +55,7 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
             ))}
           </select>
         ) : (
-          <p className="text-xs font-light text-slate-400 dark:text-slate-500">{season.name}</p>
+          <p className="text-xs font-light text-slate-500 dark:text-slate-400">{season.name}</p>
         )}
       </div>
 

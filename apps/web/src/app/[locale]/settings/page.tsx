@@ -28,7 +28,7 @@ function NavRow({ label, href, count }: { label: string; href: string; count?: n
     <Link href={href} className="flex items-center gap-3 py-3.5 group">
       <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200">{label}</span>
       {typeof count === 'number' && count > 0 && (
-        <span className="text-xs text-slate-400 dark:text-slate-500 tabular-nums">{count}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">{count}</span>
       )}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
            className="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0 group-hover:text-rink-passion transition-colors">
@@ -136,7 +136,7 @@ export default function SettingsPage() {
       {/* Cabecera */}
       <div className="space-y-1 pt-2">
         <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-50">{t('settings.title')}</h1>
-        <p className="text-sm text-slate-400 dark:text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           {t('settings.subtitle')}
         </p>
       </div>
@@ -204,7 +204,7 @@ export default function SettingsPage() {
           </div>
         ) : myTeams.length === 0 ? (
           <div className="py-4">
-            <p className="text-xs text-slate-400 dark:text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {t('favorites.onboarding_body')}
             </p>
           </div>
