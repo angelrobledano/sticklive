@@ -78,7 +78,7 @@ export function AuthUpsell() {
           </Link>
           <button onClick={dismiss}
                   className="block w-full py-2.5 text-center text-xs font-medium
-                             text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
+                             text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
             {t('auth.upsell_guest')}
           </button>
         </div>

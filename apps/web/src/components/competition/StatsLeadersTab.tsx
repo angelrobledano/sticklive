@@ -37,7 +37,7 @@ function LeaderBoard({ title, leaders, valueLabel, extraLabel }: {
       <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
         {visible.map((l, idx) => (
           <div key={`${l.playerId ?? l.playerName}-${idx}`} className="flex items-center gap-2.5 px-3 py-2">
-            <span className="w-5 text-xs font-semibold text-slate-400 dark:text-slate-500 tabular-nums text-center">{idx + 1}</span>
+            <span className="w-5 text-xs font-semibold text-slate-500 dark:text-slate-400 tabular-nums text-center">{idx + 1}</span>
             <PlayerAvatar
               photoUrl={l.photoUrl}
               name={toLeaderName(l.playerName)}
@@ -52,7 +52,7 @@ function LeaderBoard({ title, leaders, valueLabel, extraLabel }: {
               ) : (
                 <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate block">{toLeaderName(l.playerName)}</span>
               )}
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 truncate block">{clubName(l.teamName ?? l.teamShort ?? '')}</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate block">{clubName(l.teamName ?? l.teamShort ?? '')}</span>
             </div>
             <span className="text-sm font-bold tabular-nums text-slate-900 dark:text-slate-50">{l.value}</span>
             {extraLabel && (

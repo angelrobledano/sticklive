@@ -65,7 +65,7 @@ export function SettingRow({
           {label}
         </p>
         {description && (
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 leading-snug">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
             {description}
           </p>
         )}
@@ -89,8 +89,8 @@ export function SettingsBlock({
   return (
     <section className="space-y-1">
       <div className="flex items-center gap-2 px-1 mb-2">
-        <span className="text-slate-400 dark:text-slate-500">{icon}</span>
-        <h2 className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+        <span className="text-slate-500 dark:text-slate-400">{icon}</span>
+        <h2 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
           {title}
         </h2>
       </div>

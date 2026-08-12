@@ -36,7 +36,7 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
 function CompetitionCaption({ name }: { name?: string | null }) {
   if (!name) return null;
   return (
-    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1 pb-0.5">
+    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1 pb-0.5">
       {name}
     </p>
   );
@@ -117,12 +117,12 @@ function UpcomingMatches({ matches, selectedDate, todayKey }: {
           {isToday ? t('common.no_matches_today') : t('common.no_matches_this_day')}
         </p>
         {!isPast && groups.length > 0 && (
-          <p className="text-xs text-slate-400 dark:text-slate-500">{t('common.upcoming_intro')}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('common.upcoming_intro')}</p>
         )}
       </div>
 
       {isPast ? null : groups.length === 0 ? (
-        <p className="text-center text-xs text-slate-400 dark:text-slate-500 px-8 pb-12">
+        <p className="text-center text-xs text-slate-500 dark:text-slate-400 px-8 pb-12">
           {t('common.no_upcoming')}
         </p>
       ) : (

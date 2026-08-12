@@ -72,11 +72,11 @@ function StandingsTable({
     <div className="card overflow-hidden">
       <div className="grid grid-cols-[24px_1fr_repeat(8,26px)] gap-x-1 px-3 py-1.5 border-l-2 border-l-transparent
                       bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
-        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">#</span>
-        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('standings.team')}</span>
+        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">#</span>
+        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('standings.team')}</span>
         {[t('standings.cols.pts'), t('standings.cols.played'), t('standings.cols.won'), t('standings.cols.drawn'),
           t('standings.cols.lost'), t('standings.cols.gf'), t('standings.cols.ga'), t('standings.cols.gd')].map((h) => (
-          <span key={h} className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">{h}</span>
+          <span key={h} className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">{h}</span>
         ))}
       </div>
 
@@ -152,11 +152,11 @@ function StandingsTable({
         <div className="px-3 py-1.5 flex flex-wrap gap-x-3 gap-y-0.5 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-rink-passion dark:bg-red-400 shrink-0" />
-            <span className="text-[10px] text-slate-400 dark:text-slate-500">{t('standings.playoffs_zone')}</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('standings.playoffs_zone')}</span>
           </div>
           <div className="flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-orange-500 dark:bg-orange-400 shrink-0" />
-            <span className="text-[10px] text-slate-400 dark:text-slate-500">{t('standings.relegation_zone')}</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('standings.relegation_zone')}</span>
           </div>
         </div>
       )}

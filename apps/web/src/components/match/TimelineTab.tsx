@@ -250,7 +250,7 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
           </div>
           <div className="space-y-2 max-w-sm">
             <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">{t('match_detail.report_pending_title')}</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               {t('match_detail.report_pending_body')}
             </p>
           </div>

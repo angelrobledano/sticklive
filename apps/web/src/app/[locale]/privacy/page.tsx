@@ -97,7 +97,7 @@ export default async function PrivacyPage(props: Props) {
   return (
     <div className="px-4 py-8 max-w-2xl mx-auto">
       <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-50">{dict.title}</h1>
-      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 mb-8">{dict.updated}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-8">{dict.updated}</p>
 
       <div className="space-y-6">
         {dict.sections.map((s) => (

@@ -37,25 +37,25 @@ function PenaltyShootout({ shootout, homeName, awayName }: {
       }`}>
         {k.scored ? '✓' : '✗'}
       </span>
-      <span className={`truncate ${k.scored ? 'text-slate-800 dark:text-slate-100 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
+      <span className={`truncate ${k.scored ? 'text-slate-800 dark:text-slate-100 font-medium' : 'text-slate-500 dark:text-slate-400'}`}>
         {k.player}
       </span>
     </li>
   );
   return (
     <div className="card p-3">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-center text-slate-400 dark:text-slate-500 mb-2">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-center text-slate-500 dark:text-slate-400 mb-2">
         {t('match_states.penalties_label')}
       </p>
       <div className="flex gap-4">
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5 truncate">{homeName}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 truncate">{homeName}</p>
           <ul className="space-y-1.5">
             {shootout.home.map((k, i) => <Kick key={i} k={k} />)}
           </ul>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5 truncate text-right">{awayName}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 truncate text-right">{awayName}</p>
           <ul className="space-y-1.5">
             {shootout.away.map((k, i) => <Kick key={i} k={k} right />)}
           </ul>
@@ -80,7 +80,7 @@ function EventSummary({ events }: { events: MatchDetail['events'] }) {
             e.eventType === 'blue_card' ? 'bg-blue-500' : 'bg-red-500'
           }`} />}
       <span className="truncate max-w-[100px]">{eventSurname(e.player!)}</span>
-      <span className="tabular-nums text-slate-400 dark:text-slate-500 whitespace-nowrap">
+      <span className="tabular-nums text-slate-500 dark:text-slate-400 whitespace-nowrap">
         {(e.period === 1 ? t('match_detail.p1_short') + ' ' : e.period === 2 ? t('match_detail.p2_short') + ' ' : e.period && e.period > 2 ? t('match_detail.ot_short') + ' ' : '')}
         {fmtEventClock(e)}
       </span>
@@ -197,10 +197,10 @@ export function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?
           </span>
         )}
         {isFinished && (
-          <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t(finalLabelKey(match.winType))}</span>
+          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t(finalLabelKey(match.winType))}</span>
         )}
         {!isLive && !isFinished && (
-          <span className="text-[11px] text-slate-400 dark:text-slate-500">
+          <span className="text-[11px] text-slate-500 dark:text-slate-400">
             {formatDate(match.scheduledAt, match.competitionTimezone)} · {formatTime(match.scheduledAt, match.competitionTimezone)}
           </span>
         )}
@@ -214,13 +214,15 @@ export function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?
 
         <div className="flex flex-col items-center shrink-0 px-2 gap-1">
           {showScore ? (
-            <div className="font-score text-5xl font-bold tracking-tighter text-slate-900 dark:text-slate-50 tabular-nums leading-none">
+            <div role="status" aria-live="polite" aria-atomic="true"
+                 aria-label={`${ht.shortName ?? ht.name} ${match.score.home ?? 0} - ${match.score.away ?? 0} ${at.shortName ?? at.name}`}
+                 className="font-score text-5xl font-bold tracking-tighter text-slate-900 dark:text-slate-50 tabular-nums leading-none">
               {match.score.home ?? 0}
               <span className="text-slate-300 dark:text-slate-600 mx-2 font-light">:</span>
               {match.score.away ?? 0}
             </div>
           ) : (
-            <div className="font-score text-3xl font-semibold text-slate-400 dark:text-slate-500 tabular-nums">
+            <div className="font-score text-3xl font-semibold text-slate-500 dark:text-slate-400 tabular-nums">
               {formatTime(match.scheduledAt, match.competitionTimezone)}
             </div>
           )}
@@ -266,11 +268,11 @@ export function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?
         <div className="flex justify-between items-center px-2">
           <div className="flex items-baseline gap-1.5">
             <span className="font-mono text-lg font-bold text-slate-800 dark:text-slate-100">{stats.homeFouls}</span>
-            <span className="text-xs text-slate-400 dark:text-slate-500">{t('match_detail.fouls')}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{t('match_detail.fouls')}</span>
           </div>
           <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-medium">{t('match_detail.team_fouls_header')}</span>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-xs text-slate-400 dark:text-slate-500">{t('match_detail.fouls')}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{t('match_detail.fouls')}</span>
             <span className="font-mono text-lg font-bold text-slate-800 dark:text-slate-100">{stats.awayFouls}</span>
           </div>
         </div>
@@ -280,12 +282,12 @@ export function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?
       {(match.venue || match.referee) && (
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-0.5 pt-3 border-t border-slate-100 dark:border-slate-800">
           {match.venue && (
-            <span className="text-[11px] text-slate-400 dark:text-slate-500">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
               {match.venue.name}{match.venue.city ? ` · ${match.venue.city}` : ''}
             </span>
           )}
           {match.referee && (
-            <span className="text-[11px] text-slate-400 dark:text-slate-500">Árb. {match.referee}</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">Árb. {match.referee}</span>
           )}
         </div>
       )}

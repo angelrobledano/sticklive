@@ -43,7 +43,7 @@ function KpiCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="card px-4 py-3 text-center">
       <p className="text-2xl font-extrabold text-slate-900 dark:text-slate-50 tabular-nums">{value}</p>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-0.5">{label}</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-0.5">{label}</p>
     </div>
   );
 }
@@ -181,7 +181,7 @@ export default function AdminPage() {
         <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800
-                           text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                           text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
               <th className="text-left px-4 py-2.5">Usuario</th>
               <th className="text-center px-2 py-2.5">Favoritos</th>
               <th className="text-center px-2 py-2.5">Premium</th>
@@ -212,7 +212,7 @@ export default function AdminPage() {
                     {u.status === 'active' ? 'Activo' : 'Bloqueado'}
                   </span>
                 </td>
-                <td className="px-2 py-2.5 text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">{fmtDate(u.createdAt)}</td>
+                <td className="px-2 py-2.5 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(u.createdAt)}</td>
                 <td className="px-4 py-2.5 text-right whitespace-nowrap">
                   <button
                     onClick={() => setStatus(u.id, u.status === 'active' ? 'disabled' : 'active')}

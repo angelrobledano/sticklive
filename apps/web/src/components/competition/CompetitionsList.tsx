@@ -85,7 +85,7 @@ function ChevronRight() {
 function ChevronDown({ open }: { open: boolean }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
-         className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`}>
+         className={`w-3.5 h-3.5 text-slate-500 dark:text-slate-400 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`}>
       <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -147,7 +147,7 @@ function CompetitionRow({
             {clubName(competitionName(comp.name, comp.nameI18n, locale))}
           </p>
           {meta && (
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate mt-0.5 leading-none">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 leading-none">
               {meta}
             </p>
           )}
@@ -345,7 +345,7 @@ function FlatList({
   const { t } = useT();
   if (comps.length === 0) {
     return (
-      <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-10">
+      <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-10">
         {t(emptyKey)}
       </p>
     );
@@ -443,7 +443,7 @@ export function CompetitionsList({
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-8 text-center gap-3">
         <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('standings.no_data')}</p>
-        <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">{error}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{error}</p>
       </div>
     );
   }
@@ -472,7 +472,7 @@ export function CompetitionsList({
             placeholder="Buscar liga, país o federación..."
             className="w-full h-10 pl-9 pr-4 rounded-xl border border-slate-200 dark:border-slate-700
                        bg-slate-50 dark:bg-slate-900 text-[13px] text-slate-800 dark:text-slate-200
-                       placeholder:text-slate-400 dark:placeholder:text-slate-500
+                       placeholder:text-slate-500 dark:placeholder:text-slate-500 dark:placeholder:text-slate-400
                        focus:outline-none focus:ring-2 focus:ring-rink-passion/40 focus:bg-white dark:focus:bg-slate-900
                        transition-colors"
           />
@@ -554,7 +554,7 @@ export function CompetitionsList({
               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
                 Todavía no tienes ligas favoritas
               </p>
-              <p className="text-xs text-slate-400 dark:text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Pulsa la estrella en cualquier competición para guardarla aquí.
               </p>
             </div>
@@ -624,7 +624,7 @@ export function CompetitionsList({
             </div>
 
             {byCountry.length === 0 && international.length === 0 && (
-              <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-10">
+              <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-10">
                 {t('common.no_search_results')}
               </p>
             )}

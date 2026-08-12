@@ -213,7 +213,7 @@ function LoginInner() {
                          text-sm font-semibold hover:opacity-90 transition-opacity">
           {t('auth.welcome_cta')}
         </Link>
-        <Link href="/" className="block text-xs text-slate-400 dark:text-slate-500 hover:underline">
+        <Link href="/" className="block text-xs text-slate-500 dark:text-slate-400 hover:underline">
           {t('auth.go_today')}
         </Link>
       </div>
@@ -275,7 +275,7 @@ function LoginInner() {
             placeholder="tu@email.com"
             className="w-full min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-slate-700
                        bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
-                       placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion/40"
+                       placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion/40"
           />
           <button
             type="submit"
@@ -292,7 +292,7 @@ function LoginInner() {
         <p className="text-xs text-red-600 dark:text-red-400 leading-relaxed text-center">{errorMsg}</p>
       )}
 
-      <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed text-center">
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed text-center">
         {t('auth.privacy')}
       </p>
     </div>
