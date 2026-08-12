@@ -8,11 +8,11 @@ import { clubName, competitionName } from '@/lib/names';
 import { CountryFlag } from '@/components/shared/CountryFlag';
 import { useFavorites } from '@/hooks/useFavorites';
 
-// ── Tipos ─────────────────────────────────────────────────────────────────────
+// ── Tipos ───────────────────────────────────────────────────────────────────
 
 type Tab = 'mis-ligas' | 'principales' | 'todas';
 
-// ── Helpers generales ─────────────────────────────────────────────────────────
+// ── Helpers generales ────────────────────────────────────────────────────────
 
 function norm(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -51,7 +51,7 @@ function countrySortKey(code: string | null): number {
   return i === -1 ? 100 : i;
 }
 
-// ── Iconos ────────────────────────────────────────────────────────────────────
+// ── Iconos ───────────────────────────────────────────────────────────────────
 
 function StarIcon({ filled }: { filled: boolean }) {
   return (
@@ -91,7 +91,7 @@ function ChevronDown({ open }: { open: boolean }) {
   );
 }
 
-// ── Tarjeta de competición (compacta) ─────────────────────────────────────────
+// ── Tarjeta de competición (compacta) ────────────────────────────────────────
 
 function CompetitionRow({
   comp,
@@ -169,7 +169,7 @@ function CompetitionRow({
   );
 }
 
-// ── Sub-acordeón de región ────────────────────────────────────────────────────
+// ── Sub-acordeón de región ───────────────────────────────────────────────────
 
 function RegionAccordion({
   region,
@@ -217,7 +217,7 @@ function RegionAccordion({
   );
 }
 
-// ── Acordeón de país ──────────────────────────────────────────────────────────
+// ── Acordeón de país ─────────────────────────────────────────────────────────
 
 function CountryAccordion({
   countryCode,
@@ -327,7 +327,7 @@ function CountryAccordion({
   );
 }
 
-// ── Lista plana (búsqueda / Principales / Mis Ligas) ──────────────────────────
+// ── Lista plana (búsqueda / Principales / Mis Ligas) ───────────────────────
 
 function FlatList({
   comps,
@@ -365,7 +365,7 @@ function FlatList({
   );
 }
 
-// ── Componente principal ──────────────────────────────────────────────────────
+// ── Componente principal ─────────────────────────────────────────────────────
 
 export function CompetitionsList({
   competitions,
@@ -450,7 +450,7 @@ export function CompetitionsList({
 
   return (
     <div className="flex flex-col min-h-screen max-w-2xl mx-auto">
-      {/* ── Cabecera fija ──────────────────────────────────────────────────── */}
+      {/* ── Cabecera fija ───────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-20 bg-white/95 dark:bg-slate-950/95 backdrop-blur-sm
                       border-b border-slate-100 dark:border-slate-800 px-4 pt-5 pb-0">
         <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-3">
@@ -459,13 +459,14 @@ export function CompetitionsList({
 
         {/* Buscador */}
         <div className="relative mb-3">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none">
             <circle cx="11" cy="11" r="7" />
             <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
           </svg>
           <input
             type="search"
+            aria-label={t('a11y.search_competitions')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar liga, país o federación..."
