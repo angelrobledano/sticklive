@@ -17,7 +17,6 @@ import { teamLogoRouter } from './routes/team-logo.js';
 import { seasonOverviewRouter } from './routes/season-overview.js';
 import { playerDetailRouter } from './routes/player-detail.js';
 import { playerPhotoRouter } from './routes/player-photo.js';
-import { paymentsRouter } from './routes/payments.js';
 import { matchStreamRouter } from './routes/match-stream.js';
 import { competitionsRouter } from './routes/competitions.js';
 import { seasonStatsRouter } from './routes/season-stats.js';
@@ -65,8 +64,6 @@ app.get('/', (c) => {
       'GET /seasons/:id/matches[?gameweek=&status=&teamId=]',
       'GET /matches/live',
       'GET /matches/:id/stream',
-      'POST /payments/redsys/create-json',
-      'POST /payments/redsys/webhook',
     ],
   });
 });
@@ -84,7 +81,6 @@ app.route('/seasons', seasonOverviewRouter); // /seasons/:id/overview — despu�
 app.route('/seasons', seasonStatsRouter);    // /seasons/:id/stats — líderes de temporada
 app.route('/players',  playerPhotoRouter);   // /players/:id/photo — foto (proxy CDN)
 app.route('/players',  playerDetailRouter);  // /players/:id
-app.route('/payments/redsys', paymentsRouter); // proveedor alternativo (inactivo)
 app.route('/payments/stripe', stripeRouter);   // proveedor ACTIVO: checkout + webhook
 app.route('/auth', authRouter);                // magic links + favoritos en nube
 app.route('/admin', adminRouter);              // panel de admin (X-Admin-Token)
