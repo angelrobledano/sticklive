@@ -9,8 +9,9 @@
  *   3. En UNA transacción en prod: crea las temporadas destino que falten (mismo
  *      UUID que staging), y por cada partido del lote —casado por source_ref y
  *      SOLO si en prod sigue en 'Histórico'— guarda el valor anterior en
- *      enrich_changes y aplica `UPDATE matches SET season_id=…, scheduled_at=…`.
- *      LISTA BLANCA: el UPDATE toca EXCLUSIVAMENTE esas dos columnas.
+ *      enrich_changes y aplica el UPDATE. LISTA BLANCA: season_id, scheduled_at
+ *      y —solo si la clasificación reconcilia, prueba de que el re-scrape es
+ *      fuente de verdad— home_score/away_score. Nada más.
  *   4. Marca el lote 'promoted'.
  *
  * Idempotente (re-ejecutar no vuelve a mover: el partido ya no está en
@@ -71,8 +72,9 @@ async function main() {
 
     // ── REVERT ─────────────────────────────────────────────────────────────────
     if (revert) {
-      const changes = (await prod.query<{ match_id: string; old_season_id: string | null; old_scheduled_at: Date | null }>(
-        `SELECT match_id, old_season_id, old_scheduled_at FROM enrich_changes WHERE batch_id = $1`, bp)).rows;
+      const changes = (await prod.query<{ match_id: string; old_season_id: string | null; old_scheduled_at: Date | null; old_home_score: number | null; old_away_score: number | null }>(
+        `SELECT match_id, old_season_id, old_scheduled_at, old_home_score, old_away_score
+           FROM enrich_changes WHERE batch_id = $1`, bp)).rows;
       if (!commit) {
         process.stdout.write(`\n─── DRY-RUN revert enrich '${batchLabel}' ───\n  ${changes.length} partidos volverían a su season_id/scheduled_at anterior.\n  Repite con --commit --revert para deshacer.\n\n`);
         return;
@@ -83,8 +85,9 @@ async function main() {
         let n = 0;
         for (const ch of changes) {
           const r = await client.query(
-            `UPDATE matches SET season_id = $2, scheduled_at = $3, updated_at = NOW() WHERE id = $1`,
-            [ch.match_id, ch.old_season_id, ch.old_scheduled_at]);
+            `UPDATE matches SET season_id = $2, scheduled_at = $3, home_score = $4, away_score = $5, updated_at = NOW()
+              WHERE id = $1`,
+            [ch.match_id, ch.old_season_id, ch.old_scheduled_at, ch.old_home_score, ch.old_away_score]);
           n += r.rowCount ?? 0;
         }
         await client.query(`UPDATE import_batches SET status = 'reverted', finished_at = NOW() WHERE id = $1`, bp);
@@ -109,10 +112,25 @@ async function main() {
          AND EXISTS (SELECT 1 FROM matches o WHERE o.id <> b.id AND o.season_id = b.season_id
                        AND o.home_team_id = b.home_team_id AND o.away_team_id = b.away_team_id
                        AND o.scheduled_at::date = b.scheduled_at::date)`);
+    await guard('la clasificación no reconcilia con los partidos (re-scrape no fiable)',
+      `SELECT count(*) n FROM (
+         SELECT st.goals_for, st.goals_against, COALESCE(c.gf,0) gf, COALESCE(c.ga,0) ga
+           FROM standings st
+           LEFT JOIN (
+             SELECT season_id, team_id, SUM(gf) gf, SUM(ga) ga FROM (
+               SELECT season_id, home_team_id AS team_id, home_score AS gf, away_score AS ga FROM matches
+                 WHERE status='finished' AND home_score IS NOT NULL
+               UNION ALL
+               SELECT season_id, away_team_id, away_score, home_score FROM matches
+                 WHERE status='finished' AND away_score IS NOT NULL
+             ) t GROUP BY season_id, team_id
+           ) c ON c.season_id = st.season_id AND c.team_id = st.team_id
+          WHERE st.season_id IN (SELECT DISTINCT season_id FROM matches WHERE import_batch_id = $1)
+       ) r WHERE r.goals_for <> r.gf OR r.goals_against <> r.ga`);
 
     // Conjunto a enriquecer: cada partido del lote con su temporada real y su fecha.
-    const targets = (await staging.query<{ source_ref: string; season_id: string; scheduled_at: Date }>(
-      `SELECT source_ref, season_id, scheduled_at FROM matches
+    const targets = (await staging.query<{ source_ref: string; season_id: string; scheduled_at: Date; home_score: number | null; away_score: number | null }>(
+      `SELECT source_ref, season_id, scheduled_at, home_score, away_score FROM matches
         WHERE import_batch_id = $1 AND source_ref IS NOT NULL AND scheduled_at IS NOT NULL`, bp)).rows;
 
     // ── Dry-run: cuánto se movería realmente (solo lo que en prod sigue en 'Histórico') ──
@@ -146,19 +164,20 @@ async function main() {
       // 3. Por partido: capturar valor anterior y aplicar el UPDATE (lista blanca).
       let updated = 0, skipped = 0;
       for (const t of targets) {
-        const cur = (await client.query<{ id: string; season_id: string; scheduled_at: Date | null }>(
-          `SELECT id, season_id, scheduled_at FROM matches
+        const cur = (await client.query<{ id: string; season_id: string; scheduled_at: Date | null; home_score: number | null; away_score: number | null }>(
+          `SELECT id, season_id, scheduled_at, home_score, away_score FROM matches
             WHERE source_ref = $1 AND season_id IN (SELECT id FROM seasons WHERE slug = 'historico')`,
           [t.source_ref])).rows[0];
         if (!cur) { skipped++; continue; } // ya movido / inexistente en prod → nada que hacer
         await client.query(
-          `INSERT INTO enrich_changes (batch_id, match_id, old_season_id, old_scheduled_at)
-                VALUES ($1, $2, $3, $4) ON CONFLICT (batch_id, match_id) DO NOTHING`,
-          [batchId, cur.id, cur.season_id, cur.scheduled_at]);
-        // LISTA BLANCA: solo season_id + scheduled_at. Nada más.
+          `INSERT INTO enrich_changes (batch_id, match_id, old_season_id, old_scheduled_at, old_home_score, old_away_score)
+                VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (batch_id, match_id) DO NOTHING`,
+          [batchId, cur.id, cur.season_id, cur.scheduled_at, cur.home_score, cur.away_score]);
+        // LISTA BLANCA: season_id + scheduled_at + marcador (el re-scrape reconcilió). Nada más.
         await client.query(
-          `UPDATE matches SET season_id = $2, scheduled_at = $3, updated_at = NOW() WHERE id = $1`,
-          [cur.id, t.season_id, t.scheduled_at]);
+          `UPDATE matches SET season_id = $2, scheduled_at = $3, home_score = $4, away_score = $5, updated_at = NOW()
+            WHERE id = $1`,
+          [cur.id, t.season_id, t.scheduled_at, t.home_score, t.away_score]);
         updated++;
       }
 
