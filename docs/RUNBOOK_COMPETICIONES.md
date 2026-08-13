@@ -155,3 +155,65 @@ Notas: staging es **desechable** — se recrea en cada corrida y nunca deriva de
 - [ ] Migraciones aplicadas si se reconstruyó la BD.
 - [ ] Verificación en web: partidos visibles, equipo compartido no duplicado, etiqueta de competición correcta.
 - [ ] Scraping masivo: ciclo staging (sembrar → scrapear(staging) → validate-staging → promote-to-prod --commit), nunca directo a prod.
+
+---
+
+## Recuperar fechas y temporadas del histórico (enrich · A5)
+
+El volcado dejó el archivo en la temporada colapsada `'Histórico'` con `scheduled_at` NULL. Este ciclo recupera la **fecha** y la **temporada real** de una competición-temporada, de forma segura: se scrapea a staging, se valida, y solo entonces se aplica a prod con `enrich-promote` — la ÚNICA operación que escribe sobre filas nativas de prod (solo `scheduled_at` + `season_id`, nunca marcador/equipos). Diseño en [A5_ENRICH_PROMOTE.md](./A5_ENRICH_PROMOTE.md).
+
+**Requisito previo:** migración `049` aplicada en staging Y prod (`$DC run --rm migrate`). Sin ella, `kind='enrich'` falla el CHECK.
+
+Ciclo (desde el portátil, túnel SSH abierto, `PGPASSWORD` puesto — comillas simples en PowerShell):
+
+0. **Re-sembrar staging** fresco de prod (en el servidor):
+
+   ```bash
+   cd /opt/sticklive && bash deploy/seed-staging.sh
+   ```
+
+1. **Enrich-scrape a staging** — mueve los partidos de `'Histórico'` a su temporada real con fecha, bajo un lote `kind='enrich'`. `DATABASE_URL` apunta a `sports_staging`:
+
+   ```powershell
+   $env:PGPASSWORD='<POSTGRES_PASSWORD>'
+   $env:DATABASE_URL='postgresql://sports_user@localhost:5432/sports_staging'
+   npx tsx apps/etl/src/import-history.ts --only-idc=<idc> --run --enrich
+   ```
+
+   Apunta el **label** del lote (`enrich-<idc>-...`).
+
+2. **Validar** (staging vs prod). Desde `apps/etl`:
+
+   ```powershell
+   $env:STAGING_URL='postgresql://sports_user@localhost:5432/sports_staging'
+   $env:PROD_URL='postgresql://sports_user@localhost:5432/sports_results'
+   npx tsx src/validate-enrich.ts --batch '<label>'
+   ```
+
+   Debe dar **PASA**. Si FALLA, para y revisa (no se promociona nada).
+
+3. **Promover** — dry-run y luego commit:
+
+   ```powershell
+   npx tsx src/enrich-promote.ts --batch '<label>'            # dry-run: cuenta lo que se movería
+   npx tsx src/enrich-promote.ts --batch '<label>' --commit   # UPDATE transaccional en prod
+   ```
+
+4. **Verificar** en la web: la ficha de esos partidos muestra fecha y la temporada real aparece poblada.
+
+**Revertir** (si algo no cuadra): restaura `season_id`/`scheduled_at` anteriores desde `enrich_changes` y marca el lote `reverted`.
+
+```powershell
+npx tsx src/enrich-promote.ts --batch '<label>' --revert --commit
+```
+
+**Qué toca y qué no:** enrich SOLO cambia `scheduled_at` + `season_id` de partidos que en prod siguen en `'Histórico'`. Marcador, equipos, estado y `source_ref` quedan intactos (prod manda). Es idempotente (re-ejecutar no re-mueve) y reversible al valor exacto.
+
+### Checklist enrich
+
+- [ ] Migración `049` aplicada (staging + prod).
+- [ ] `seed-staging.sh` fresco.
+- [ ] `import-history --only-idc=<idc> --run --enrich` → label del lote.
+- [ ] `validate-enrich --batch <label>` = PASA.
+- [ ] `enrich-promote --batch <label>` dry-run revisado → `--commit`.
+- [ ] Verificación en web (fecha + temporada).
