@@ -270,6 +270,7 @@ interface RawMatchDetail {
     seasonId: string;
     roundId: string | null;
     status: MatchStatus;
+    eventCoverage: 'full' | 'partial' | 'none';
     scheduledAt: string | null;
     startedAt: string | null;
     finishedAt: string | null;
@@ -302,6 +303,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
       seasonId:    raw.match.seasonId,
       roundId:     raw.match.roundId,
       status:      raw.match.status,
+      eventCoverage: raw.match.eventCoverage,
       scheduledAt: raw.match.scheduledAt,
       startedAt:   raw.match.startedAt,
       finishedAt:  raw.match.finishedAt,
