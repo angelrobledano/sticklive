@@ -31,6 +31,9 @@ export interface PipelineContext {
    *  (solo para fuentes que emiten estructura de fases, p. ej. World Skate).
    *  El flujo FEP lo deja en false → comportamiento sin cambios. */
   createRounds?: boolean;
+  /** Lote de importación (A4). Se propaga al loader de partidos para etiquetar
+   *  las filas nuevas del re-scrape; NULL/undefined = sin lote (directo, live). */
+  importBatchId?: string;
 }
 
 export interface PipelineResult {
@@ -90,6 +93,7 @@ export class EtlPipeline {
     log.info({ scraperKey: scrapeResult.scraperKey }, 'Pipeline: partidos');
     const result = await loadMatches(scrapeResult, sport.id, {
       createRounds: this.ctx.createRounds ?? false,
+      importBatchId: this.ctx.importBatchId,
     });
 
     return {

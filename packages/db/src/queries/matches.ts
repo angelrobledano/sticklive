@@ -51,6 +51,10 @@ export interface UpsertMatchInput {
   sourceRef: string;  // Obligatorio — es la clave de deduplicación
   sourceUrl?: string;
   scrapedAt?: Date;
+  /** Lote de importación (A4). Solo se fija en el INSERT de partidos NUEVOS;
+   *  NULL = partido nativo. El ON CONFLICT no lo toca, para no arrastrar nativos
+   *  de prod al lote de promoción. */
+  importBatchId?: string;
 }
 
 /**
@@ -75,8 +79,8 @@ export async function upsertMatch(
         home_score, away_score, status,
         scheduled_at, started_at, finished_at,
         venue_name, venue_city, is_neutral, attendance, referee, notes,
-        source_id, source_ref, source_url, scraped_at, video_url)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+        source_id, source_ref, source_url, scraped_at, video_url, import_batch_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
      ON CONFLICT (source_ref) WHERE (source_ref IS NOT NULL) DO UPDATE SET
        home_score   = COALESCE(EXCLUDED.home_score,  matches.home_score),
        away_score   = COALESCE(EXCLUDED.away_score,  matches.away_score),
@@ -114,6 +118,7 @@ export async function upsertMatch(
       input.sourceUrl ?? null,
       input.scrapedAt ?? null,
       input.videoUrl ?? null,
+      input.importBatchId ?? null,
     ]
   );
   return result.rows[0]!;

@@ -283,6 +283,9 @@ async function main() {
   const entity = args['entity'] ?? 'all';
   const seasonId = args['season-id'] ?? process.env['SEASON_ID'];
   const dryRun = args['dry-run'] === 'true' || process.env['ETL_DRY_RUN'] === 'true';
+  // Lote de importación (A4): si import-history lo pasa, las filas nuevas del
+  // calendario se etiquetan con él para validarlas/promoverlas por lote.
+  const importBatchId = args['batch-id'] ?? undefined;
   // Acepta varios idc separados por coma (liga regular + playoff de la
   // misma temporada): --idc=3150,3481
   const idcs = (args['idc'] ?? process.env['IDC'] ?? IDC_OK_LIGA).split(',').map((s) => s.trim()).filter(Boolean);
@@ -318,7 +321,7 @@ async function main() {
 
   log.info({ entity, seasonId, idc, dryRun }, '🚀 Iniciando pipeline');
 
-  const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId, dryRun });
+  const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId, dryRun, importBatchId });
 
   // ── Calendario ─────────────────────────────────────
   if (entity === 'calendar' || entity === 'all') {

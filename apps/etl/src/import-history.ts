@@ -265,13 +265,31 @@ async function main() {
   // lentas (una por partido), así que solo si se pide con --fichas.
   const entities = ['calendar', 'standings', ...(doFichas ? ['fichas-pendientes'] : [])];
   console.log(`\n▶ Scrapeando ${seeded.length} temporadas (${entities.join(' + ')})...`);
+
+  // ── Lote de importación (A4) ────────────────────────────────────────────────
+  // Todo partido NUEVO del re-scrape cuelga de este import_batch, para poder
+  // validarlo en staging y promoverlo a prod por lote (kind='backfill'). Los
+  // partidos ya existentes que se re-scrapean se actualizan pero NO se etiquetan
+  // (el ON CONFLICT de upsertMatch no toca import_batch_id), así el lote solo
+  // contiene lo genuinamente nuevo. Revertir = DELETE ... WHERE import_batch_id.
+  const batchLabel = args.find((a) => a.startsWith('--batch-label='))?.split('=')[1]
+    ?? `rescrape-${onlyIdcRaw?.replace(/,/g, '_') ?? 'catalogo'}-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
+  const batchId = (await db.query<{ id: string }>(
+    `INSERT INTO import_batches (source_id, label, kind, status, scope_note)
+          VALUES ($1, $2, 'backfill', 'running', $3)
+     ON CONFLICT (label) DO UPDATE SET status='running', started_at=NOW()
+     RETURNING id`,
+    [sourceId, batchLabel, `Re-scrape import-history idc=${onlyIdcRaw ?? 'catálogo'}${doFichas ? ' +fichas' : ''}`])).rows[0]!.id;
+  console.log(`\n📦 import_batch: ${batchLabel}`);
+  console.log(`   Para validar/promover:  --batch '${batchLabel}'\n`);
+
   let ok = 0, fail = 0;
   for (const [i, s] of seeded.entries()) {
     console.log(`\n[${i + 1}/${seeded.length}] ${s.label} (idc=${s.idc})`);
     for (const entity of entities) {
       try {
         execSync(
-          `npx tsx --env-file=../../.env src/run-pipeline.ts --entity=${entity} --idc=${s.idc} --season-id=${s.seasonId}`,
+          `npx tsx --env-file=../../.env src/run-pipeline.ts --entity=${entity} --idc=${s.idc} --season-id=${s.seasonId} --batch-id=${batchId}`,
           // Las actas de una temporada entera pueden tardar bastante.
           { cwd: resolve(HERE, '..'), stdio: 'inherit', timeout: entity === 'fichas-pendientes' ? 3_600_000 : 180_000 }
         );
@@ -286,6 +304,13 @@ async function main() {
   }
   console.log(`\n✅ Histórico scrapeado: ${ok} cargas OK, ${fail} fallos.`);
   console.log('Los fallos suelen ser competiciones antiguas sin datos en la fuente.');
+
+  await db.query(
+    `UPDATE import_batches
+        SET status='completed', finished_at=NOW(), stats=$2::jsonb
+      WHERE id=$1`,
+    [batchId, JSON.stringify({ cargas_ok: ok, cargas_fail: fail, temporadas: seeded.length, fichas: doFichas })]);
+  console.log(`\n📦 Lote '${batchLabel}' → completed. Siguiente: validate-staging --batch '${batchLabel}', luego promote-to-prod.`);
 }
 
 main()
