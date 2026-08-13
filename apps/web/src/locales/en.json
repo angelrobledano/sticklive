@@ -168,6 +168,8 @@
     "no_events": "No events recorded",
     "waiting_start": "Waiting for the match to start",
     "waiting_start_body": "Goals, fouls and cards will show up here as soon as the ball starts rolling on the rink.",
+    "historic_title": "Historic match",
+    "historic_body": "We keep the official result for this match. The detailed report (goals, cards, lineups) isn't available for archived matches.",
     "report_pending_title": "Match report pending sync",
     "report_pending_body": "The detailed digital report for this match is pending synchronisation. The overall score is official and final.",
     "overtime": "Overtime {n}",

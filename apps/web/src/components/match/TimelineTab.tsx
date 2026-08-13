@@ -238,6 +238,25 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
       );
     }
 
+    // Partido histórico (solo marcador, sin acta): mensaje propio, no "pendiente".
+    if ((isLive || isFinished) && data.match.eventCoverage === 'none') {
+      return (
+        <div className="card p-8 flex flex-col items-center gap-5 text-center">
+          <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-7 h-7 text-slate-400 dark:text-slate-500">
+              <path d="M3 7h18M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div className="space-y-2 max-w-sm">
+            <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">{t('match_detail.historic_title')}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              {t('match_detail.historic_body')}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     // Live o Finished con eventsCount === 0: acta de Playoff pendiente de sincronizacion
     if (isLive || isFinished) {
       return (

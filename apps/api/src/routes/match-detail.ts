@@ -19,6 +19,7 @@ interface MatchDetailRow {
   home_fouls: number | null;
   away_fouls: number | null;
   status: string;
+  event_coverage: string;
   scheduled_at: Date | null;
   started_at: Date | null;
   finished_at: Date | null;
@@ -66,7 +67,7 @@ matchDetailRouter.get('/:id', async (c) => {
     const matchResult = await db.query<MatchDetailRow>(`
       SELECT
         m.id, m.season_id, m.round_id,
-        m.home_score, m.away_score, m.home_fouls, m.away_fouls, m.status,
+        m.home_score, m.away_score, m.home_fouls, m.away_fouls, m.status, m.event_coverage,
         m.home_goals_reg, m.away_goals_reg, m.home_pen, m.away_pen, m.win_type, m.winner_team_id, m.penalty_shootout,
         m.scheduled_at, m.started_at, m.finished_at,
         m.venue_name, m.venue_city, m.referee, m.source_ref, m.video_url,
@@ -241,6 +242,7 @@ matchDetailRouter.get('/:id', async (c) => {
       roundId:     row.round_id,
       competitionTimezone: row.competition_timezone,
       status:      effectiveStatus,
+      eventCoverage: row.event_coverage,
       scheduledAt: row.scheduled_at?.toISOString() ?? null,
       startedAt:   row.started_at?.toISOString()   ?? null,
       finishedAt:  row.finished_at?.toISOString()  ?? null,

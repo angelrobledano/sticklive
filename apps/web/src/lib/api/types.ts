@@ -45,6 +45,8 @@ export type MatchStatus =
   | 'cancelled';
 
 export interface Match {
+  /** Cobertura de eventos: 'none' = solo marcador (partido histórico). */
+  eventCoverage?: 'full' | 'partial' | 'none';
   id: string;
   seasonId: string;
   roundId: string | null;
