@@ -184,6 +184,8 @@
     "no_events": "Sin eventos registrados",
     "waiting_start": "Esperando el inicio del encuentro",
     "waiting_start_body": "Los goles, faltas y tarjetas aparecerán aquí en cuanto comience a rodar la bola en la pista.",
+    "historic_title": "Partido histórico",
+    "historic_body": "De este partido guardamos el resultado oficial. El acta detallada (goles, tarjetas, alineaciones) no está disponible para partidos de archivo.",
     "report_pending_title": "Acta pendiente de sincronización",
     "report_pending_body": "El acta digital detallada de este encuentro está pendiente de sincronización. El marcador global es oficial y definitivo.",
     "overtime": "Prórroga {n}",
