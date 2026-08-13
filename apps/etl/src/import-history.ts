@@ -272,14 +272,23 @@ async function main() {
   // partidos ya existentes que se re-scrapean se actualizan pero NO se etiquetan
   // (el ON CONFLICT de upsertMatch no toca import_batch_id), así el lote solo
   // contiene lo genuinamente nuevo. Revertir = DELETE ... WHERE import_batch_id.
+  // Enrich (A5): recuperación de fecha/temporada del histórico. Cambia el kind
+  // del lote a 'enrich' y activa el upsert enrich en el pipeline (--enrich): el
+  // ON CONFLICT reasigna season_id y etiqueta, en vez de dejar el partido en
+  // 'Histórico'. Sin --enrich, comportamiento de re-scrape normal ('backfill').
+  const doEnrich = args.includes('--enrich');
+  const kind = doEnrich ? 'enrich' : 'backfill';
+  const modeTag = doEnrich ? 'enrich' : 'rescrape';
   const batchLabel = args.find((a) => a.startsWith('--batch-label='))?.split('=')[1]
-    ?? `rescrape-${onlyIdcRaw?.replace(/,/g, '_') ?? 'catalogo'}-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
+    ?? `${modeTag}-${onlyIdcRaw?.replace(/,/g, '_') ?? 'catalogo'}-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
   const batchId = (await db.query<{ id: string }>(
     `INSERT INTO import_batches (source_id, label, kind, status, scope_note)
-          VALUES ($1, $2, 'backfill', 'running', $3)
+          VALUES ($1, $2, $4, 'running', $3)
      ON CONFLICT (label) DO UPDATE SET status='running', started_at=NOW()
      RETURNING id`,
-    [sourceId, batchLabel, `Re-scrape import-history idc=${onlyIdcRaw ?? 'catálogo'}${doFichas ? ' +fichas' : ''}`])).rows[0]!.id;
+    [sourceId, batchLabel,
+     `${doEnrich ? 'Enrich (recupera fecha/temporada)' : 'Re-scrape'} import-history idc=${onlyIdcRaw ?? 'catálogo'}${doFichas ? ' +fichas' : ''}`,
+     kind])).rows[0]!.id;
   console.log(`\n📦 import_batch: ${batchLabel}`);
   console.log(`   Para validar/promover:  --batch '${batchLabel}'\n`);
 
@@ -289,7 +298,7 @@ async function main() {
     for (const entity of entities) {
       try {
         execSync(
-          `npx tsx --env-file=../../.env src/run-pipeline.ts --entity=${entity} --idc=${s.idc} --season-id=${s.seasonId} --batch-id=${batchId}`,
+          `npx tsx --env-file=../../.env src/run-pipeline.ts --entity=${entity} --idc=${s.idc} --season-id=${s.seasonId} --batch-id=${batchId}${doEnrich ? ' --enrich=true' : ''}`,
           // Las actas de una temporada entera pueden tardar bastante.
           { cwd: resolve(HERE, '..'), stdio: 'inherit', timeout: entity === 'fichas-pendientes' ? 3_600_000 : 180_000 }
         );

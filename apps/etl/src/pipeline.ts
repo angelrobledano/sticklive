@@ -34,6 +34,9 @@ export interface PipelineContext {
   /** Lote de importación (A4). Se propaga al loader de partidos para etiquetar
    *  las filas nuevas del re-scrape; NULL/undefined = sin lote (directo, live). */
   importBatchId?: string;
+  /** Enrich (A5). Se propaga al loader; activa el upsert que reasigna temporada
+   *  y etiqueta en el ON CONFLICT (recuperación de fechas del histórico). */
+  enrich?: boolean;
 }
 
 export interface PipelineResult {
@@ -94,6 +97,7 @@ export class EtlPipeline {
     const result = await loadMatches(scrapeResult, sport.id, {
       createRounds: this.ctx.createRounds ?? false,
       importBatchId: this.ctx.importBatchId,
+      enrich: this.ctx.enrich,
     });
 
     return {

@@ -28,6 +28,9 @@ export interface LoadMatchesOptions {
   /** Lote de importación (A4): se propaga a upsertMatch para los partidos
    *  nuevos, de modo que el re-scrape sea validable y promovible por lote. */
   importBatchId?: string;
+  /** Enrich (A5): activa el upsert que reasigna season_id + etiqueta en el
+   *  ON CONFLICT (recuperación de histórico). Por defecto false. */
+  enrich?: boolean;
 }
 
 export async function loadMatches(
@@ -170,7 +173,7 @@ export async function loadMatches(
             }
           }
 
-          await upsertMatch({ ...input, homeTeamId, awayTeamId, importBatchId: options.importBatchId });
+          await upsertMatch({ ...input, homeTeamId, awayTeamId, importBatchId: options.importBatchId, enrich: options.enrich });
           upserted++;
           resolved = true;
         } catch (teamErr) {

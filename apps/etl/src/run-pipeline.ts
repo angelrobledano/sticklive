@@ -286,6 +286,9 @@ async function main() {
   // Lote de importación (A4): si import-history lo pasa, las filas nuevas del
   // calendario se etiquetan con él para validarlas/promoverlas por lote.
   const importBatchId = args['batch-id'] ?? undefined;
+  // Enrich (A5): recuperación de histórico. El upsert reasigna season_id y
+  // etiqueta en el ON CONFLICT en vez de dejar el partido en 'Histórico'.
+  const enrich = args['enrich'] === 'true';
   // Acepta varios idc separados por coma (liga regular + playoff de la
   // misma temporada): --idc=3150,3481
   const idcs = (args['idc'] ?? process.env['IDC'] ?? IDC_OK_LIGA).split(',').map((s) => s.trim()).filter(Boolean);
@@ -321,7 +324,7 @@ async function main() {
 
   log.info({ entity, seasonId, idc, dryRun }, '🚀 Iniciando pipeline');
 
-  const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId, dryRun, importBatchId });
+  const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId, dryRun, importBatchId, enrich });
 
   // ── Calendario ─────────────────────────────────────
   if (entity === 'calendar' || entity === 'all') {
