@@ -62,23 +62,29 @@ async function main() {
   await add('finished_no_score', 'Terminados sin marcador', 'FAIL',
     `SELECT count(*) n FROM matches m WHERE ${scope} AND m.status = 'finished' AND (m.home_score IS NULL OR m.away_score IS NULL)`);
 
-  // Actas duplicadas dentro del ámbito: mismo (temporada, local, visitante) >1 vez.
-  await add('dup_in_scope', 'Actas duplicadas en el ámbito (misma tripleta temporada/local/visitante)', 'FAIL',
+  // Actas duplicadas POR FECHA: mismo (temporada, local, visitante, día). Se usa la
+  // fecha porque el archivo histórico colapsa años en una temporada 'Histórico' con
+  // scheduled_at NULL — ahí la tripleta se repite legítimamente (un partido por año),
+  // y su identidad real es el source_ref (ya único por índice). Por eso este check
+  // solo mira partidos CON fecha; los históricos sin fecha se deduplican por source_ref.
+  await add('dup_in_scope', 'Actas duplicadas por fecha (temporada/local/visitante/día)', 'FAIL',
     `SELECT COALESCE(SUM(c) - COUNT(*), 0) n FROM (
-        SELECT count(*) c FROM matches m WHERE ${scope}
-        GROUP BY m.season_id, m.home_team_id, m.away_team_id HAVING count(*) > 1) x`);
+        SELECT count(*) c FROM matches m WHERE ${scope} AND m.scheduled_at IS NOT NULL
+        GROUP BY m.season_id, m.home_team_id, m.away_team_id, m.scheduled_at::date
+        HAVING count(*) > 1) x`);
 
-  // Cruce contra el resto de staging (solo con --batch): el partido del lote ya
-  // existe fuera del lote con OTRO source_ref → duplicado que la promoción por
-  // source_ref no ve. Esta es la comprobación estrella.
+  // Cruce contra el resto de staging (solo con --batch): el partido del lote (con
+  // fecha) ya existe fuera del lote el MISMO día con OTRO source_ref → duplicado que
+  // la promoción por source_ref no ve. Comprobación estrella (fallo de la 23/24).
   if (batchId) {
-    await add('cross_dup', 'Partidos del lote que duplican otro ya existente (distinto source_ref)', 'FAIL',
+    await add('cross_dup', 'Partidos del lote que duplican otro del mismo día (distinto source_ref)', 'FAIL',
       `SELECT count(*) n FROM matches b
-        WHERE b.import_batch_id = $1
+        WHERE b.import_batch_id = $1 AND b.scheduled_at IS NOT NULL
           AND EXISTS (SELECT 1 FROM matches o
                         WHERE o.season_id = b.season_id
                           AND o.home_team_id = b.home_team_id
                           AND o.away_team_id = b.away_team_id
+                          AND o.scheduled_at::date = b.scheduled_at::date
                           AND o.id <> b.id
                           AND (o.import_batch_id IS DISTINCT FROM $1)
                           AND o.source_ref IS DISTINCT FROM b.source_ref)`);
