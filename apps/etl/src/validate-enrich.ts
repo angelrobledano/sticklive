@@ -94,6 +94,27 @@ async function main() {
         WHERE m.source_ref = ANY($1) AND se.name <> $2`, [refs, HISTORICO])).rows[0]?.n ?? 0) : 0;
     add("Partidos del lote que en prod NO vienen de 'Histórico'", 'FAIL', originNotHist);
 
+    // Reconciliación (staging): la clasificación de la temporada destino debe
+    // cuadrar con la suma de goles de sus partidos. Es la prueba de que el
+    // re-scrape es fuente de verdad; solo entonces el enrich pisará el marcador
+    // nativo de prod (Fase 3). Si NO reconcilia, no nos fiamos → FALLA.
+    const reconMismatch = Number((await staging.query<{ n: string }>(
+      `SELECT count(*) n FROM (
+         SELECT st.goals_for, st.goals_against, COALESCE(c.gf,0) gf, COALESCE(c.ga,0) ga
+           FROM standings st
+           LEFT JOIN (
+             SELECT season_id, team_id, SUM(gf) gf, SUM(ga) ga FROM (
+               SELECT season_id, home_team_id AS team_id, home_score AS gf, away_score AS ga FROM matches
+                 WHERE status='finished' AND home_score IS NOT NULL
+               UNION ALL
+               SELECT season_id, away_team_id, away_score, home_score FROM matches
+                 WHERE status='finished' AND away_score IS NOT NULL
+             ) t GROUP BY season_id, team_id
+           ) c ON c.season_id = st.season_id AND c.team_id = st.team_id
+          WHERE st.season_id IN (SELECT DISTINCT season_id FROM matches WHERE import_batch_id = $1)
+       ) r WHERE r.goals_for <> r.gf OR r.goals_against <> r.ga`, [batchId])).rows[0]?.n ?? 0);
+    add('Clasificación NO reconcilia con los partidos (re-scrape no fiable → no se pisa marcador)', 'FAIL', reconMismatch);
+
     // ── Avisos (WARN) ──────────────────────────────────────────────────────────
     // Marcador/equipos distintos en staging vs prod. La Fase 3 solo promueve
     // fecha+temporada (no toca esto), pero una discrepancia merece un vistazo.
@@ -105,7 +126,7 @@ async function main() {
         prodByRef.set(r.source_ref, { hs: r.hs, as_: r.as_, home: r.home, away: r.away });
       }
     }
-    add('Marcador/equipos distintos vs prod (la Fase 3 no los toca; solo aviso)', 'WARN',
+    add('Marcador distinto vs prod (el enrich lo corregirá; los equipos deben coincidir)', 'WARN',
       rows.filter((r) => {
         const p = prodByRef.get(r.source_ref);
         return p ? (p.hs !== r.hs || p.as_ !== r.as_ || p.home !== r.home || p.away !== r.away) : false;
