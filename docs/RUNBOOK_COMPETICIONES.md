@@ -107,6 +107,45 @@ El cron de directo (`cron-live.ts`) mantiene su camino crítico para la OK Liga 
 
 ---
 
+## Scraping masivo seguro: ciclo con staging (A4)
+
+Todo scraping masivo (re-scrapes, volcados, `import-*`, backfills) se hace primero contra una BD de **staging**, se valida, y solo lo limpio se **promociona** a prod. Así el dato en bruto nunca toca producción. Diseño completo en [A4_STAGING_SCRAPING.md](./A4_STAGING_SCRAPING.md).
+
+El ciclo, con el túnel SSH abierto y `PGPASSWORD` en el entorno:
+
+1. **Sembrar staging desde prod** (en el servidor). Recrea `sports_staging` como copia fresca de prod (mismos UUID), así la resolución de refs y el dedup se comportan igual que prod:
+
+   ```bash
+   cd /opt/sticklive && bash deploy/seed-staging.sh
+   ```
+
+2. **Scrapear/importar contra staging** (desde el PC). Igual que siempre, pero con `DATABASE_URL` apuntando a `sports_staging` (mismo túnel, solo cambia el nombre de BD):
+
+   ```bash
+   export DATABASE_URL='postgresql://sports_user@localhost:5432/sports_staging'
+   npx tsx apps/etl/src/import-history.ts --only-idc=… --fichas
+   ```
+
+3. **Validar** el lote en staging. Veredicto PASA/FALLA; sale con exit≠0 si el dato no es promocionable:
+
+   ```bash
+   cd apps/etl
+   npx tsx src/validate-staging.ts --batch <label>   # o sin --batch para auditar todo staging
+   ```
+
+4. **Promocionar** a prod solo si validó. Dry-run por defecto; escribe con `--commit`. Re-valida las guardas antes de tocar prod, copia en una transacción con `ON CONFLICT DO NOTHING` (no sobrescribe nativos) y es idempotente:
+
+   ```bash
+   export STAGING_URL='postgresql://sports_user@localhost:5432/sports_staging'
+   export PROD_URL='postgresql://sports_user@localhost:5432/sports_results'
+   npx tsx src/promote-to-prod.ts --batch <label>            # dry-run: cuenta
+   npx tsx src/promote-to-prod.ts --batch <label> --commit   # promueve
+   ```
+
+Notas: staging es **desechable** — se recrea en cada corrida y nunca deriva de prod; si el disco aprieta, `DROP DATABASE sports_staging` entre corridas libera el espacio (el seed avisa del uso de disco). **Revertir** una promoción en prod: `DELETE FROM matches WHERE import_batch_id = '<id>';`. **No** hace falta reaplicar migraciones en staging: el seed trae el esquema completo del dump.
+
+---
+
 ## Checklist rápido
 
 - [ ] `git checkout --` de los scripts del server antes de `git pull`.
@@ -115,3 +154,4 @@ El cron de directo (`cron-live.ts`) mantiene su camino crítico para la OK Liga 
 - [ ] `run-pipeline` para rondas de playoff/copa.
 - [ ] Migraciones aplicadas si se reconstruyó la BD.
 - [ ] Verificación en web: partidos visibles, equipo compartido no duplicado, etiqueta de competición correcta.
+- [ ] Scraping masivo: ciclo staging (sembrar → scrapear(staging) → validate-staging → promote-to-prod --commit), nunca directo a prod.
