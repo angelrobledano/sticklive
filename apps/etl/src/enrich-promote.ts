@@ -160,6 +160,22 @@ async function main() {
       // 2. Copiar el propio lote a prod para que enrich_changes.batch_id resuelva.
       await copyRows(staging, client, 'import_batches',
         `SELECT * FROM import_batches WHERE id = $1`, bp);
+      // 2b. Extras de la(s) temporada(s) del lote: clasificación, jugadores, actas
+      // y alineaciones (add-only, ON CONFLICT DO NOTHING). Los partidos ya existen
+      // en prod (se mueven en el paso 3); esto completa la foto de la temporada.
+      await copyRows(staging, client, 'players',
+        `SELECT DISTINCT p.* FROM players p
+           JOIN match_events e ON e.player_id = p.id
+           JOIN matches m ON e.match_id = m.id WHERE m.import_batch_id = $1`, bp);
+      await copyRows(staging, client, 'standings',
+        `SELECT s.* FROM standings s
+          WHERE s.season_id IN (SELECT DISTINCT season_id FROM matches WHERE import_batch_id = $1)`, bp);
+      await copyRows(staging, client, 'match_events',
+        `SELECT e.* FROM match_events e JOIN matches m ON e.match_id = m.id
+          WHERE m.import_batch_id = $1`, bp);
+      await copyRows(staging, client, 'match_lineups',
+        `SELECT l.* FROM match_lineups l JOIN matches m ON l.match_id = m.id
+          WHERE m.import_batch_id = $1`, bp);
 
       // 3. Por partido: capturar valor anterior y aplicar el UPDATE (lista blanca).
       let updated = 0, skipped = 0;
