@@ -25,6 +25,9 @@ export interface LoadMatchesResult {
 export interface LoadMatchesOptions {
   /** Crear/asignar rondas desde roundRef+roundNumber (fuentes con fases). */
   createRounds?: boolean;
+  /** Lote de importación (A4): se propaga a upsertMatch para los partidos
+   *  nuevos, de modo que el re-scrape sea validable y promovible por lote. */
+  importBatchId?: string;
 }
 
 export async function loadMatches(
@@ -167,7 +170,7 @@ export async function loadMatches(
             }
           }
 
-          await upsertMatch({ ...input, homeTeamId, awayTeamId });
+          await upsertMatch({ ...input, homeTeamId, awayTeamId, importBatchId: options.importBatchId });
           upserted++;
           resolved = true;
         } catch (teamErr) {
