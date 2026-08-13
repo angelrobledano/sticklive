@@ -143,6 +143,8 @@
     "no_events": "Sem eventos registados",
     "waiting_start": "À espera do início do jogo",
     "waiting_start_body": "Os golos, faltas e cartões aparecerão aqui assim que a bola começar a rolar no rinque.",
+    "historic_title": "Jogo histórico",
+    "historic_body": "Deste jogo guardamos o resultado oficial. A ficha detalhada (golos, cartões, alinhamentos) não está disponível para jogos de arquivo.",
     "report_pending_title": "Ficha de jogo pendente de sincronização",
     "report_pending_body": "A ficha digital detalhada deste jogo está pendente de sincronização. O resultado global é oficial e definitivo.",
     "overtime": "Prolongamento {n}",
