@@ -55,6 +55,10 @@ export interface UpsertMatchInput {
    *  NULL = partido nativo. El ON CONFLICT no lo toca, para no arrastrar nativos
    *  de prod al lote de promoción. */
   importBatchId?: string;
+  /** Enrich (A5). Si true, el ON CONFLICT ADEMÁS reasigna season_id a la
+   *  temporada real y etiqueta la fila con el import_batch, para sacar el partido
+   *  del 'Histórico' colapsado. Por defecto false → comportamiento add-only (#114). */
+  enrich?: boolean;
 }
 
 /**
@@ -73,6 +77,13 @@ export async function upsertMatch(
   input: UpsertMatchInput,
   client: pg.PoolClient | typeof db = db
 ): Promise<DbMatch> {
+  // Enrich (A5): en el ON CONFLICT, además de la fecha, mueve el partido a su
+  // temporada real y lo etiqueta con el lote. En add-only (#114) estas dos
+  // columnas NO se tocan al hacer UPDATE, para no arrastrar nativos al lote.
+  const enrichSet = input.enrich
+    ? `season_id       = EXCLUDED.season_id,
+       import_batch_id = EXCLUDED.import_batch_id,\n       `
+    : '';
   const result = await client.query<DbMatch>(
     `INSERT INTO matches
        (season_id, round_id, home_team_id, away_team_id,
@@ -82,7 +93,7 @@ export async function upsertMatch(
         source_id, source_ref, source_url, scraped_at, video_url, import_batch_id)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
      ON CONFLICT (source_ref) WHERE (source_ref IS NOT NULL) DO UPDATE SET
-       home_score   = COALESCE(EXCLUDED.home_score,  matches.home_score),
+       ${enrichSet}home_score   = COALESCE(EXCLUDED.home_score,  matches.home_score),
        away_score   = COALESCE(EXCLUDED.away_score,  matches.away_score),
        status       = EXCLUDED.status,
        scheduled_at = COALESCE(EXCLUDED.scheduled_at, matches.scheduled_at),
