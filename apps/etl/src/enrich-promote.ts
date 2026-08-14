@@ -31,11 +31,14 @@ const { Pool } = pg;
 
 // Copia genérica de filas src→dst preservando columnas (incl. UUID). Para crear
 // en prod las temporadas/competiciones destino que aún no existan.
-async function copyRows(src: PgPool, dst: PoolClient, table: string, selectSql: string, params: unknown[]) {
+async function copyRows(src: PgPool, dst: PoolClient, table: string, selectSql: string,
+                        params: unknown[], excludeCols: string[] = []) {
   const rows = (await src.query(selectSql, params)).rows;
   let inserted = 0;
   for (const row of rows) {
-    const cols = Object.keys(row);
+    // Excluir columnas GENERATED (p. ej. standings.goal_diff): Postgres las calcula
+    // y rechaza un INSERT con valor. copyRows es genérico y no las distingue.
+    const cols = Object.keys(row).filter((c) => !excludeCols.includes(c));
     const ph = cols.map((_, i) => `$${i + 1}`).join(', ');
     const colList = cols.map((c) => `"${c}"`).join(', ');
     const r = await dst.query(
@@ -169,7 +172,8 @@ async function main() {
            JOIN matches m ON e.match_id = m.id WHERE m.import_batch_id = $1`, bp);
       await copyRows(staging, client, 'standings',
         `SELECT s.* FROM standings s
-          WHERE s.season_id IN (SELECT DISTINCT season_id FROM matches WHERE import_batch_id = $1)`, bp);
+          WHERE s.season_id IN (SELECT DISTINCT season_id FROM matches WHERE import_batch_id = $1)`,
+        bp, ['goal_diff']);
       await copyRows(staging, client, 'match_events',
         `SELECT e.* FROM match_events e JOIN matches m ON e.match_id = m.id
           WHERE m.import_batch_id = $1`, bp);
