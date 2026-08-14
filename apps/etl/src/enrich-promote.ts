@@ -31,11 +31,14 @@ const { Pool } = pg;
 
 // Copia genérica de filas src→dst preservando columnas (incl. UUID). Para crear
 // en prod las temporadas/competiciones destino que aún no existan.
-async function copyRows(src: PgPool, dst: PoolClient, table: string, selectSql: string, params: unknown[]) {
+async function copyRows(src: PgPool, dst: PoolClient, table: string, selectSql: string,
+                        params: unknown[], excludeCols: string[] = []) {
   const rows = (await src.query(selectSql, params)).rows;
   let inserted = 0;
   for (const row of rows) {
-    const cols = Object.keys(row);
+    // Excluir columnas GENERATED (p. ej. standings.goal_diff): Postgres las calcula
+    // y rechaza un INSERT con valor. copyRows es genérico y no las distingue.
+    const cols = Object.keys(row).filter((c) => !excludeCols.includes(c));
     const ph = cols.map((_, i) => `$${i + 1}`).join(', ');
     const colList = cols.map((c) => `"${c}"`).join(', ');
     const r = await dst.query(
@@ -160,6 +163,23 @@ async function main() {
       // 2. Copiar el propio lote a prod para que enrich_changes.batch_id resuelva.
       await copyRows(staging, client, 'import_batches',
         `SELECT * FROM import_batches WHERE id = $1`, bp);
+      // 2b. Extras de la(s) temporada(s) del lote: clasificación, jugadores, actas
+      // y alineaciones (add-only, ON CONFLICT DO NOTHING). Los partidos ya existen
+      // en prod (se mueven en el paso 3); esto completa la foto de la temporada.
+      await copyRows(staging, client, 'players',
+        `SELECT DISTINCT p.* FROM players p
+           JOIN match_events e ON e.player_id = p.id
+           JOIN matches m ON e.match_id = m.id WHERE m.import_batch_id = $1`, bp);
+      await copyRows(staging, client, 'standings',
+        `SELECT s.* FROM standings s
+          WHERE s.season_id IN (SELECT DISTINCT season_id FROM matches WHERE import_batch_id = $1)`,
+        bp, ['goal_diff']);
+      await copyRows(staging, client, 'match_events',
+        `SELECT e.* FROM match_events e JOIN matches m ON e.match_id = m.id
+          WHERE m.import_batch_id = $1`, bp);
+      await copyRows(staging, client, 'match_lineups',
+        `SELECT l.* FROM match_lineups l JOIN matches m ON l.match_id = m.id
+          WHERE m.import_batch_id = $1`, bp);
 
       // 3. Por partido: capturar valor anterior y aplicar el UPDATE (lista blanca).
       let updated = 0, skipped = 0;
