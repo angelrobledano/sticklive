@@ -167,9 +167,12 @@ async function main() {
       // y alineaciones (add-only, ON CONFLICT DO NOTHING). Los partidos ya existen
       // en prod (se mueven en el paso 3); esto completa la foto de la temporada.
       await copyRows(staging, client, 'players',
-        `SELECT DISTINCT p.* FROM players p
-           JOIN match_events e ON e.player_id = p.id
-           JOIN matches m ON e.match_id = m.id WHERE m.import_batch_id = $1`, bp);
+        `SELECT DISTINCT p.* FROM players p WHERE p.id IN (
+           SELECT e.player_id FROM match_events e JOIN matches m ON e.match_id = m.id
+             WHERE m.import_batch_id = $1 AND e.player_id IS NOT NULL
+           UNION
+           SELECT l.player_id FROM match_lineups l JOIN matches m ON l.match_id = m.id
+             WHERE m.import_batch_id = $1 AND l.player_id IS NOT NULL)`, bp);
       await copyRows(staging, client, 'standings',
         `SELECT s.* FROM standings s
           WHERE s.season_id IN (SELECT DISTINCT season_id FROM matches WHERE import_batch_id = $1)`,
