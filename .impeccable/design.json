@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-11T00:00:00Z",
+  "title": "Design System: Stick Live",
+  "extensions": {
+    "colorMeta": {
+      "rink-passion": { "role": "primary", "displayName": "Granate de Pista", "canonical": "#991b1b", "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#fca5a5", "#fee2e2"] },
+      "live": { "role": "secondary", "displayName": "Esmeralda En Directo", "canonical": "#10b981", "tonalRamp": ["#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7", "#d1fae5"] },
+      "halftime": { "role": "secondary", "displayName": "Ámbar Descanso", "canonical": "#f59e0b", "tonalRamp": ["#78350f", "#92400e", "#b45309", "#d97706", "#f59e0b", "#fbbf24", "#fcd34d", "#fef3c7"] },
+      "relegation": { "role": "tertiary", "displayName": "Naranja Descenso", "canonical": "#f97316", "tonalRamp": ["#7c2d12", "#9a3412", "#c2410c", "#ea580c", "#f97316", "#fb923c", "#fdba74", "#ffedd5"] },
+      "surface-bg": { "role": "neutral", "displayName": "Parqué Claro", "canonical": "#f8fafc", "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#f8fafc"] },
+      "surface-bg-dark": { "role": "neutral", "displayName": "Azul Noche", "canonical": "#0b1220", "tonalRamp": ["#0b1220", "#0d1426", "#111a2e", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8"] }
+    },
+    "typographyMeta": {
+      "score": { "displayName": "Score", "purpose": "Marcadores, reloj y estadísticas. Monoespaciado + tabular-nums; jamás desplaza el layout." },
+      "display": { "displayName": "Display", "purpose": "Marca, nombres de equipo en ficha, títulos de bloque." },
+      "body": { "displayName": "Body", "purpose": "Texto de interfaz, listas y filas de ajuste." },
+      "label": { "displayName": "Label", "purpose": "Encabezados de sección, cabeceras de tabla y badges: MAYÚSCULAS con tracking amplio." }
+    },
+    "shadows": [
+      { "name": "card-hover", "value": "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)", "purpose": "Realce de tarjeta enlazable en hover (claro)." },
+      { "name": "dark-card-lift", "value": "0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px -16px rgba(0,0,0,0.6)", "purpose": "Elevación tonal de tarjeta en modo oscuro, sin borde duro." },
+      { "name": "toggle-inset", "value": "inset 0 1px 2px rgba(0,0,0,0.25)", "purpose": "Hundido interior del switch de ajustes." }
+    ],
+    "motion": [
+      { "name": "state-transition", "value": "150ms ease (color)", "purpose": "Transición por defecto de color en enlaces, botones y navegación." },
+      { "name": "toggle-move", "value": "200ms ease-out (transform)", "purpose": "Desplazamiento del pulgar del toggle." },
+      { "name": "live-pulse", "value": "animate-pulse (Tailwind)", "purpose": "Punto de estado en directo y del isotipo." },
+      { "name": "rink-shot", "value": "@keyframes rinkShot/rinkStick/rinkGoalFlash/rinkNet", "purpose": "Animación del estado vacío: la bola cruza la pista, gol y celebración." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px (bottom-nav móvil ↔ sidebar escritorio)" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal; granate de identidad usado con moderación.",
+      "html": "<button class=\"ds-btn-primary\">Seguir equipo</button>",
+      "css": ".ds-btn-primary{background:#991b1b;color:#fff;padding:8px 16px;border:none;border-radius:8px;font-size:.875rem;font-weight:600;font-family:var(--font-inter,system-ui,sans-serif);cursor:pointer;transition:background .15s}.ds-btn-primary:hover{background:#b91c1c}.ds-btn-primary:active{background:#7f1d1d}.ds-btn-primary:focus-visible{outline:none;box-shadow:0 0 0 2px #7f1d1d}"
+    },
+    {
+      "name": "Match Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Tarjeta de partido en lista: dos equipos y marcador central, toda clicable.",
+      "html": "<a class=\"ds-match-card\"><span class=\"ds-team\">Barça</span><span class=\"ds-score\">3<span class=\"ds-sep\">–</span>2</span><span class=\"ds-team ds-team-right\">Liceo</span></a>",
+      "css": ".ds-match-card{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;text-decoration:none;transition:box-shadow .15s,border-color .15s}.ds-match-card:hover{box-shadow:0 4px 6px -1px rgba(0,0,0,.1);border-color:#cbd5e1}.ds-team{flex:1;font-size:.875rem;font-weight:500;color:#1e293b}.ds-team-right{text-align:right}.ds-score{font-family:var(--font-mono,ui-monospace,monospace);font-size:1.5rem;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:#0f172a;padding:0 12px}.ds-sep{color:#cbd5e1;margin:0 6px;font-weight:700}"
+    },
+    {
+      "name": "Live Badge",
+      "kind": "chip",
+      "refersTo": "badge-live",
+      "description": "Estado en directo: esmeralda con punto pulsante. Solo existe con partido vivo.",
+      "html": "<span class=\"ds-badge-live\"><span class=\"ds-dot\"></span>En directo</span>",
+      "css": ".ds-badge-live{display:inline-flex;align-items:center;gap:4px;background:#10b981;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:9999px;font-family:var(--font-inter,system-ui,sans-serif)}.ds-dot{width:6px;height:6px;border-radius:9999px;background:#fff;animation:ds-pulse 1.5s ease-in-out infinite}@keyframes ds-pulse{50%{opacity:.4}}"
+    },
+    {
+      "name": "iOS Toggle",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Switch de ajustes; ON con degradado granate y pulgar deslizante.",
+      "html": "<button class=\"ds-toggle ds-on\" role=\"switch\" aria-checked=\"true\"><span class=\"ds-thumb\"></span></button>",
+      "css": ".ds-toggle{position:relative;width:48px;height:28px;border:none;border-radius:9999px;background:#e2e8f0;box-shadow:inset 0 1px 2px rgba(0,0,0,.08);cursor:pointer;transition:background .2s}.ds-toggle.ds-on{background:linear-gradient(90deg,#991b1b,#dc2626);box-shadow:inset 0 1px 2px rgba(0,0,0,.25)}.ds-thumb{position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:9999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s ease-out}.ds-toggle.ds-on .ds-thumb{transform:translateX(20px)}.ds-toggle:focus-visible{outline:none;box-shadow:0 0 0 2px #fff,0 0 0 4px rgba(153,27,27,.6)}"
+    },
+    {
+      "name": "Date Chip",
+      "kind": "chip",
+      "refersTo": null,
+      "description": "Chip del carrusel de fechas; activo en granate translúcido.",
+      "html": "<button class=\"ds-date-chip ds-active\"><span class=\"ds-rel\">Hoy</span><span class=\"ds-day\">14</span></button>",
+      "css": ".ds-date-chip{display:flex;flex-direction:column;align-items:center;min-width:52px;padding:6px 12px;border:none;background:transparent;border-radius:12px;cursor:pointer;color:#64748b;transition:all .15s}.ds-date-chip:hover{background:#f1f5f9}.ds-date-chip.ds-active{background:rgba(153,27,27,.1);color:#991b1b}.ds-rel{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;line-height:1;margin-bottom:2px}.ds-day{font-size:1rem;font-weight:700;line-height:1;color:#334155}.ds-date-chip.ds-active .ds-day{color:#991b1b}"
+    },
+    {
+      "name": "Bottom Nav Item",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "Destino de la bottom nav móvil; activo en granate, icono de trazo más grueso.",
+      "html": "<a class=\"ds-nav-item ds-active\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" class=\"ds-nav-icon\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 3v18M3 12h18\"/></svg><span class=\"ds-nav-label\">Partidos</span></a>",
+      "css": ".ds-nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;text-decoration:none;color:#64748b;transition:color .15s}.ds-nav-item.ds-active{color:#991b1b}.ds-nav-icon{width:24px;height:24px}.ds-nav-label{font-size:11px;line-height:1;font-family:var(--font-inter,system-ui,sans-serif)}.ds-nav-item.ds-active .ds-nav-label{font-weight:600}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Living Scoreboard",
+    "overview": "Stick Live se diseña como un marcador vivo de bolsillo, no como un panel de datos. Todo lo que el aficionado necesita cabe en un vistazo desde la grada, con una mano y mala conexión; la densidad manda y la decoración se reduce al mínimo porque el dato es el protagonista. El color es deliberadamente escaso: lienzo sobrio en slate/azul-noche, granate de identidad con moderación, y un lenguaje cromático funcional donde el verde esmeralda pulsante significa 'en directo' y el ámbar 'descanso', existiendo solo mientras hay un partido vivo. El modo oscuro es un modo premium con degradado de profundidad, la cara nocturna del mismo marcador.",
+    "keyCharacteristics": [
+      "Mobile-first real: bottom nav en móvil, sidebar en escritorio, áreas táctiles generosas.",
+      "Densidad legible: cifras monoespaciadas y tabulares para marcadores y estadísticas.",
+      "Color escaso y funcional: granate de identidad + verde/ámbar solo para estado en vivo.",
+      "Superficies planas en reposo; profundidad tonal y sombra reservadas al estado.",
+      "Modo oscuro de primera clase, con degradado de profundidad."
+    ],
+    "rules": [
+      { "name": "The Live-Only Color Rule", "body": "El verde esmeralda y el ámbar solo aparecen cuando un partido está en directo o en descanso. Si la pantalla está verde, algo está pasando ahora.", "section": "colors" },
+      { "name": "The Quiet Passion Rule", "body": "El granate es identidad y señal, no fondo: marca, estado activo, un acento. Un exceso mata su valor como señal.", "section": "colors" },
+      { "name": "The Tabular Scoreboard Rule", "body": "Todo número que cambie en vivo o se alinee en columna va en monoespaciado con tabular-nums y nunca desplaza el layout.", "section": "typography" },
+      { "name": "The Flat-At-Rest Rule", "body": "Las superficies son planas en reposo; la sombra responde al estado (hover, foco). En oscuro la profundidad es tonal, no de sombras duras.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do reservar el esmeralda y el ámbar para estado en directo/descanso.",
+      "Do usar monoespaciado con tabular-nums en todo número que cambie en vivo o se alinee en columna.",
+      "Do mantener superficies planas en reposo y elevar solo con el estado; en oscuro, profundidad tonal.",
+      "Do diseñar para una mano en móvil: bottom nav fija, áreas táctiles amplias, sin scroll horizontal en tablas.",
+      "Do respetar safe-area-inset y el cambio bottom-nav (móvil) ↔ sidebar (md+)."
+    ],
+    "donts": [
+      "Don't usar el granate como relleno decorativo.",
+      "Don't pintar de verde/ámbar estados que no son 'en vivo'/'descanso'.",
+      "Don't introducir fuentes nuevas fuera de Inter + monoespaciada.",
+      "Don't usar negro plano ni sombras duras en modo oscuro.",
+      "Don't dejar que las cifras desplacen el layout al actualizarse."
+    ]
+  }
+}
