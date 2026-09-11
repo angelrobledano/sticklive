@@ -120,7 +120,8 @@
     "share": "Partager",
     "male": "Masculine",
     "female": "Féminine",
-    "current": "actuelle"
+    "current": "actuelle",
+    "upcoming": "À venir"
   },
   "age_categories": {
     "senior": "Seniors",
@@ -201,6 +202,17 @@
       "gf": "BP",
       "ga": "BC",
       "gd": "DB"
+    },
+    "legend_title": "Signification des colonnes",
+    "cols_full": {
+      "pts": "Points",
+      "played": "Joués",
+      "won": "Gagnés",
+      "drawn": "Nuls",
+      "lost": "Perdus",
+      "gf": "Buts pour",
+      "ga": "Buts contre",
+      "gd": "Différence de buts"
     }
   },
   "leaders": {

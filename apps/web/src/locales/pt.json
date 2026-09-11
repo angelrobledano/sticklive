@@ -120,7 +120,8 @@
     "share": "Partilhar",
     "male": "Masculina",
     "female": "Feminina",
-    "current": "atual"
+    "current": "atual",
+    "upcoming": "Próximos"
   },
   "age_categories": {
     "senior": "Seniores",
@@ -202,6 +203,17 @@
       "gf": "GM",
       "ga": "GS",
       "gd": "DG"
+    },
+    "legend_title": "O que significam as colunas",
+    "cols_full": {
+      "pts": "Pontos",
+      "played": "Jogados",
+      "won": "Vitórias",
+      "drawn": "Empates",
+      "lost": "Derrotas",
+      "gf": "Golos marcados",
+      "ga": "Golos sofridos",
+      "gd": "Diferença de golos"
     }
   },
   "leaders": {

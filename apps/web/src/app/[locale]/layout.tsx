@@ -110,10 +110,12 @@ export default async function RootLayout({ children, params }: Props) {
             <Sidebar />
 
             {/* Contenido principal */}
-            <main id="main" className="flex-1 min-w-0
-                             pb-20 md:pb-0
-                             px-0 md:px-0">
-              {children}
+            <main id="main" className="flex-1 min-w-0 pb-20 md:pb-0">
+              {/* Ancho máximo cómodo y centrado: en escritorio el contenido deja
+                  de flotar pegado a la izquierda junto a la sidebar. */}
+              <div className="mx-auto w-full max-w-5xl">
+                {children}
+              </div>
             </main>
           </div>
 
