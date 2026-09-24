@@ -21,11 +21,11 @@ import {
   overtimeStartAlert, penaltyStartAlert, finalOvertimeAlert, finalPenaltiesAlert,
   type MatchRef,
 } from '../../api/src/lib/notification-copy.js';
-import type { NotificationPreset } from '@sports/shared-types';
 import {
   freshEvents, collapsePerScorer, decideMatchTransitions, decideRoundTransitions,
   type EventSnap,
 } from './push-diff.js';
+import { wants, type PushEventType } from './push-segmentation.js';
 
 const log = createLogger({ service: 'push-dispatcher' });
 
@@ -261,40 +261,6 @@ export async function flushPushAnalytics(): Promise<void> {
   try { await analyticsMod?.shutdownAnalytics(); } catch { /* noop */ }
 }
 
-// ── Presets de notificación ────────────────────────────────────────────────
-// Cada preset es una colección de tipos de evento (no booleanos sueltos), para
-// poder ampliar el catálogo sin rediseñar la segmentación.
-type PushEventType = 'start' | 'goal' | 'blue_card' | 'direct_foul' | 'red_card' | 'overtime' | 'penalties' | 'final';
-
-const PRESET_EVENTS: Record<NotificationPreset, PushEventType[]> = {
-  complete:   ['start', 'goal', 'blue_card', 'direct_foul', 'red_card', 'overtime', 'penalties', 'final'],
-  key_events: ['goal', 'blue_card', 'direct_foul', 'red_card', 'overtime', 'penalties', 'final'],
-  results:    ['start', 'overtime', 'penalties', 'final'],
-  silent:     [],
-};
-
-/** Preset efectivo de una entidad seguida; "seguido sin preset" = complete (compat). */
-function effectivePreset(sub: SubRow, key: string): NotificationPreset {
-  const p = sub.presets?.[key];
-  return (p === 'complete' || p === 'key_events' || p === 'results' || p === 'silent') ? p : 'complete';
-}
-
-/**
- * ¿La suscripción quiere este evento? Resuelve las entidades por las que sigue el
- * partido (cualquiera de los dos equipos, la competición o el jugador implicado) y
- * comprueba si el preset de ALGUNA de ellas incluye el tipo de evento.
- */
-function wants(
-  sub: SubRow, ev: PushEventType,
-  teamIds: string[], competitionId: string | null, playerId: string | null,
-): boolean {
-  const keys: string[] = [];
-  for (const t of teamIds) if (t && (sub.fav_teams ?? []).includes(t)) keys.push(`team:${t}`);
-  if (competitionId && (sub.fav_leagues ?? []).includes(competitionId)) keys.push(`competition:${competitionId}`);
-  if (playerId && (sub.fav_players ?? []).includes(playerId)) keys.push(`player:${playerId}`);
-  if (keys.length === 0) return false;
-  return keys.some((k) => PRESET_EVENTS[effectivePreset(sub, k)].includes(ev));
-}
 
 /** Envía un payload a una suscripción; poda la fila si está muerta (404/410). */
 async function deliver(sub: SubRow, payload: PushPayload): Promise<'sent' | 'pruned' | 'error'> {
