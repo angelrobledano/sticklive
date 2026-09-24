@@ -145,7 +145,8 @@
     "share": "Share",
     "male": "Men's",
     "female": "Women's",
-    "current": "current"
+    "current": "current",
+    "upcoming": "Upcoming"
   },
   "age_categories": {
     "senior": "Senior",
@@ -226,6 +227,17 @@
       "gf": "GF",
       "ga": "GA",
       "gd": "GD"
+    },
+    "legend_title": "What the columns mean",
+    "cols_full": {
+      "pts": "Points",
+      "played": "Played",
+      "won": "Won",
+      "drawn": "Drawn",
+      "lost": "Lost",
+      "gf": "Goals for",
+      "ga": "Goals against",
+      "gd": "Goal difference"
     }
   },
   "leaders": {

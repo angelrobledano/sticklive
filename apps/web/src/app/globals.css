@@ -29,6 +29,11 @@
   72%, 100% { transform: translateX(0); }
 }
 
+/* Respeto de reduce-motion para la escena del estado vacío */
+@media (prefers-reduced-motion: reduce) {
+  .rink-empty-anim { animation: none !important; }
+}
+
 /* Animaciones de toasts y bottom sheets */
 @keyframes fadeIn {
   from { opacity: 0; transform: translate(-50%, 6px); }

@@ -14,6 +14,103 @@ import { madridDateKey, madridTodayKey, addDaysToKey, dayDiff } from '@/lib/matc
 /** Nº de partidos favoritos visibles antes de colapsar el resto */
 const FAV_PREVIEW = 3;
 
+/**
+ * Escena del estado vacío: la bola cruza la pista, gol y celebración.
+ * Reutiliza los @keyframes rink* de globals.css (respetan reduce-motion).
+ * Decorativa: aria-hidden.
+ */
+function EmptyRinkScene() {
+  const anim = (name: string) => ({ animation: `${name} 3s ease-in-out infinite` });
+  return (
+    <div aria-hidden="true" className="relative mx-auto mb-1 h-[72px] w-[200px] select-none">
+      {/* Línea de pista */}
+      <span className="absolute left-0 right-0 bottom-3 h-px bg-slate-200 dark:bg-slate-700" />
+      {/* Portería / red a la derecha */}
+      <svg viewBox="0 0 24 24" className="rink-empty-anim absolute bottom-2 right-1 w-8 h-10 text-slate-300 dark:text-slate-600"
+           style={anim('rinkNet')} fill="none" stroke="currentColor" strokeWidth={1.5}>
+        <path d="M4 4h16v14H4z" />
+        <path d="M4 8h16M4 12h16M8 4v14M12 4v14M16 4v14" strokeWidth={0.5} />
+      </svg>
+      {/* Stick */}
+      <svg viewBox="0 0 24 24" className="rink-empty-anim absolute bottom-2 left-2 w-6 h-8 text-slate-500 dark:text-slate-400"
+           style={{ ...anim('rinkStick'), transformOrigin: 'bottom center' }}
+           fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2v14M12 16c-2 0-4 1-5 3" />
+      </svg>
+      {/* Bola */}
+      <span className="rink-empty-anim absolute bottom-[10px] left-[26px] w-2.5 h-2.5 rounded-full bg-rink-passion"
+            style={anim('rinkShot')} />
+      {/* Destello de gol */}
+      <svg viewBox="0 0 24 24" className="rink-empty-anim absolute bottom-4 right-3 w-6 h-6 text-emerald-500"
+           style={anim('rinkGoalFlash')} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+        <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2" />
+      </svg>
+    </div>
+  );
+}
+
+/**
+ * Carril de contexto en escritorio (lg+): próximos partidos y, si no sigues a
+ * nadie, una llamada a explorar competiciones. Reutiliza datos ya calculados,
+ * sin peticiones nuevas. Oculto en móvil.
+ */
+function DesktopAside({ matches, hasFavorites }: { matches: Match[]; hasFavorites: boolean }) {
+  const { t } = useT();
+  const upcoming = useMemo(() => {
+    const now = Date.now();
+    return matches
+      .filter((m) => m.scheduledAt && new Date(m.scheduledAt).getTime() > now)
+      .sort((a, b) => ((a.scheduledAt ?? '') < (b.scheduledAt ?? '') ? -1 : 1))
+      .slice(0, 4);
+  }, [matches]);
+
+  return (
+    <aside className="hidden lg:block lg:w-80 lg:shrink-0 lg:py-4">
+      <div className="sticky top-4 flex flex-col gap-4">
+        {upcoming.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between px-1 pb-2">
+              <span className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                {t('common.upcoming')}
+              </span>
+              <span className="text-[11px] font-light text-slate-400 dark:text-slate-600 tabular-nums">
+                {upcoming.length}
+              </span>
+            </div>
+            <ul className="space-y-2">
+              {upcoming.map((m) => (
+                <li key={m.id}>
+                  <CompetitionCaption name={m.competitionName} />
+                  <MatchCard match={m} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {!hasFavorites && (
+          <Link href="/competitions"
+                className="card p-4 flex items-center gap-3 transition-colors
+                           hover:border-slate-300 dark:hover:border-slate-600">
+            <div className="w-10 h-10 rounded-2xl bg-rink-passion/10 flex items-center justify-center shrink-0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
+                   className="w-5 h-5 text-rink-passion">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                      strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-50">{t('favorites.onboarding_title')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug mt-0.5">
+                {t('favorites.onboarding_cta')} →
+              </p>
+            </div>
+          </Link>
+        )}
+      </div>
+    </aside>
+  );
+}
+
 interface MatchesViewProps {
   matches: Match[];
 }
@@ -113,6 +210,7 @@ function UpcomingMatches({ matches, selectedDate, todayKey }: {
   return (
     <div>
       <div className={`flex flex-col items-center text-center pt-10 px-8 gap-1 ${isPast ? 'pb-12' : 'pb-4'}`}>
+        <EmptyRinkScene />
         <p className="text-base font-bold text-slate-800 dark:text-slate-100">
           {isToday ? t('common.no_matches_today') : t('common.no_matches_this_day')}
         </p>
@@ -255,8 +353,10 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
       */}
       <AdBanner zone="home-top" className="z-20" />
 
-      {/* Lista de partidos — con swipe horizontal para cambiar de día */}
-      <div className="flex-1" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {/* Lista de partidos — swipe horizontal para cambiar de día. En escritorio,
+          carril de contexto (próximos + favoritos) a la derecha. */}
+      <div className="flex-1 lg:flex lg:justify-center lg:gap-6 lg:px-6">
+        <div className="w-full lg:max-w-2xl" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {dayMatches.length === 0 ? (
           <UpcomingMatches
             matches={matches}
@@ -326,6 +426,8 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
             ))}
           </>
         )}
+        </div>
+        <DesktopAside matches={matches} hasFavorites={favorites.length > 0} />
       </div>
     </div>
   );

@@ -120,7 +120,8 @@
     "share": "Condividi",
     "male": "Maschile",
     "female": "Femminile",
-    "current": "attuale"
+    "current": "attuale",
+    "upcoming": "Prossime"
   },
   "age_categories": {
     "senior": "Senior",
@@ -201,6 +202,17 @@
       "gf": "GF",
       "ga": "GS",
       "gd": "DR"
+    },
+    "legend_title": "Cosa significano le colonne",
+    "cols_full": {
+      "pts": "Punti",
+      "played": "Giocate",
+      "won": "Vinte",
+      "drawn": "Pareggi",
+      "lost": "Perse",
+      "gf": "Gol fatti",
+      "ga": "Gol subiti",
+      "gd": "Differenza reti"
     }
   },
   "leaders": {

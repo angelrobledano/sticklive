@@ -48,7 +48,8 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
       <CompetitionHeader data={data} seasons={seasons} competitionId={competitionId} />
 
       {/* Pestañas principales */}
-      <div className="flex gap-0 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex gap-0 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none"
+           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {visibleTabs.map((tab) => (
           <button
             key={tab}

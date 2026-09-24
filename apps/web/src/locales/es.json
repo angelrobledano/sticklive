@@ -161,7 +161,8 @@
     "share": "Compartir",
     "male": "Masculina",
     "female": "Femenina",
-    "current": "actual"
+    "current": "actual",
+    "upcoming": "Próximos"
   },
   "age_categories": {
     "senior": "Senior",
@@ -243,6 +244,17 @@
       "gf": "GF",
       "ga": "GC",
       "gd": "DG"
+    },
+    "legend_title": "Qué significan las columnas",
+    "cols_full": {
+      "pts": "Puntos",
+      "played": "Jugados",
+      "won": "Ganados",
+      "drawn": "Empatados",
+      "lost": "Perdidos",
+      "gf": "Goles a favor",
+      "ga": "Goles en contra",
+      "gd": "Diferencia de goles"
     }
   },
   "leaders": {
