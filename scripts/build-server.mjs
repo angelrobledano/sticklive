@@ -2,7 +2,7 @@
  * Empaqueta los procesos de servidor (api, etl, scraper, scripts de BD) a
  * JavaScript ejecutable con `node`, sin `tsx` ni `ts-node`.
  *
- * ── Por qué empaquetar y no `tsc` a secas ──────────────────────────────────
+ * ── Por qué empaquetar y no `tsc` a secas ─────────────────────────
  *
  * Los paquetes del workspace exponen TypeScript directamente:
  *
@@ -16,7 +16,7 @@
  * frágiles. Empaquetar resuelve todo eso de una vez: cada entrypoint sale como
  * un único fichero con nuestro código dentro.
  *
- * ── Qué queda FUERA del bundle ─────────────────────────────────────────────
+ * ── Qué queda FUERA del bundle ────────────────────────────────
  *
  * Todo `node_modules` es external; sólo se empaqueta el código propio
  * (`@sports/*` y las rutas relativas). Dos razones:
@@ -31,7 +31,7 @@
  * ni el resto de devDependencies, y `npm audit --omit=dev` pasa a auditar lo
  * que de verdad corre.
  *
- * ── Estructura de salida ──────────────────────────────────────────────────
+ * ── Estructura de salida ────────────────────────────────────
  *
  * `outbase` es la raíz del repo, así que la jerarquía se conserva:
  *
@@ -57,6 +57,7 @@ const SERVICIOS = [
   'packages/db/src/migrate.ts',               // migraciones (servicio `migrate`)
   'packages/db/scripts/purge-scrape-logs.ts', // purga diaria
   'apps/etl/src/partition-guard.ts',          // guarda diaria del particionado (047)
+  'apps/etl/src/scrape-health-watch.ts',      // vigilante diario de salud del scraping (I3)
 ];
 
 /**
