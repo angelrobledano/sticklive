@@ -48,7 +48,7 @@ while true; do
   NOW_DAY=$(date -u +%Y%m%d)
   HOUR_UTC=$(date -u +%H)
 
-  # ── Cada 5 min: World Skate Europe ─────────────────────────
+  # ── Cada 5 min: World Skate Europe ──────────────────────
   # VA ANTES DE cron-live A PROPÓSITO. Este bucle es SECUENCIAL y `cron-live`
   # se queda dentro de su propio bucle activo mientras haya partidos en juego
   # (MAX_RUNTIME_MIN, 180 por defecto). Puesto detrás, durante un torneo no le
@@ -67,7 +67,7 @@ while true; do
   $LOCK node dist/apps/scraper/src/index.js --run-once worldskate \
     || echo "[scheduler] worldskate saltado o falló (seguimos)"
 
-  # ── Cada 5 min: marcadores en vivo ─────────────────────────
+  # ── Cada 5 min: marcadores en vivo ──────────────────────
   # Puede quedarse hasta MAX_RUNTIME_MIN dentro de su bucle activo: todo lo que
   # va DESPUÉS de esta línea espera a que termine. Tenerlo en cuenta al añadir
   # tareas nuevas.
@@ -101,6 +101,13 @@ while true; do
     echo "[scheduler] partition-guard $(date -u +%T)"
     node dist/apps/etl/src/partition-guard.js \
       || echo "[scheduler] partition-guard fallo (seguimos)"
+
+    # Vigilante de salud del scraping (I3): avisa a Sentry si un scraper clave
+    # está parado (> SCRAPE_STALE_HOURS) o terminó OK con 0 resultados (éxito
+    # silencioso por cambio de la fuente). Sin lock: solo lee scrape_logs.
+    echo "[scheduler] scrape-health-watch $(date -u +%T)"
+    node dist/apps/etl/src/scrape-health-watch.js \
+      || echo "[scheduler] scrape-health-watch fallo (seguimos)"
   fi
 
   touch "$ALIVE"   # latido: vuelta completada
