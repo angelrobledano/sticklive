@@ -5,6 +5,10 @@
 #   · calendario+standings: cada hora (en punto)
 #   · fichas-pendientes:  una vez al día (~06:00 UTC)
 # Sencillo y visible: un loop con marcas de tiempo, sin crond.
+# INVARIANTE DE ORDEN (auditoría M3): worldskate y cron-live van PRIMERO;
+# cron-live puede ocupar el bucle hasta MAX_RUNTIME_MIN (180) durante un
+# torneo, así que TODA tarea nueva se añade DESPUÉS y debe tolerar no correr
+# mientras haya directo. No reordenar sin releer los comentarios de cada bloque.
 # ============================================================
 set -u
 # Desde la raíz: los procesos van empaquetados en /app/dist y las rutas de
