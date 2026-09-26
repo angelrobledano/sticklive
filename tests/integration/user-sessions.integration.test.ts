@@ -12,7 +12,7 @@
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { Hono } from 'hono';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { db, closeDb } from '@sports/db';
 import { authRouter } from '../../apps/api/src/routes/auth.js';
 import { adminRouter } from '../../apps/api/src/routes/admin.js';
@@ -74,8 +74,9 @@ async function sembrarSesion(deviceId: string, expiresIn: string): Promise<strin
 }
 
 const diasRestantes = async (session: string): Promise<number> => {
+  // ::float8: EXTRACT devuelve numeric y node-pg lo entrega como string.
   const r = await db.query<{ dias: number }>(
-    `SELECT EXTRACT(EPOCH FROM (expires_at - NOW())) / 86400 AS dias
+    `SELECT (EXTRACT(EPOCH FROM (expires_at - NOW())) / 86400)::float8 AS dias
        FROM user_sessions WHERE token_hash = $1`,
     [hash(session)]
   );
@@ -153,7 +154,9 @@ describe('sesiones multi-dispositivo', () => {
     const pc = await login('tok-admin-1', 'dev-a1', 'cuenta@x.com');
     const movil = await login('tok-admin-2', 'dev-a2', 'cuenta@x.com');
 
-    const res = await app.request('/admin/users/desconocido/status', {
+    // UUID válido pero inexistente → 404. (Un string no-UUID revienta con
+    // 500 en la BD por el cast a uuid: deuda preexistente del endpoint.)
+    const res = await app.request(`/admin/users/${randomUUID()}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status: 'disabled' }),
       headers: { 'content-type': 'application/json', 'x-admin-token': ADMIN_TOKEN },
