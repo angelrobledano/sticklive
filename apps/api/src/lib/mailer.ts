@@ -9,27 +9,26 @@
  * respuesta); con él, este módulo es el único camino.
  *
  * ── Nota de versiones ──────────────────────────────────────────────────────
- * `nodemailer` va en la 9.x y `@types/nodemailer` en la 8.x. NO es un descuido
- * pendiente de arreglar: a día de hoy (21/07/2026) no existen tipos 9.x
- * publicados. La 9.0.0 no cambió ninguna firma — su único cambio incompatible
- * es que valida el certificado TLS al descargar contenido remoto (adjuntos por
- * URL, endpoints OAuth2, proxy CONNECT), y aquí no hacemos nada de eso: se
- * envía texto y HTML literales por SMTP directo. Los tipos de la 8 describen
- * con exactitud lo que usamos.
+ * `nodemailer` va en la 10.x, que YA trae sus propios tipos (no hace falta
+ * `@types/nodemailer`, que se quedó en la 8.x). El salto 9→10 se hizo por el
+ * aviso de seguridad de npm audit (bypass de validación de dominio y DoS del
+ * parser de direcciones); ninguna de esas rutas se usa aquí (se envía texto y
+ * HTML literales a un email ya validado, por SMTP directo). Las firmas de
+ * createTransport/sendMail que usamos no cambiaron.
  *
  * Si algún día se añaden adjuntos por URL, releer esto antes.
  */
-import nodemailer from 'nodemailer';
+import { createTransport, type Transporter } from 'nodemailer';
 
 const FROM = process.env['SMTP_FROM'] ?? 'Stick Live <no-reply@sticklive.eu>';
 
-let _transporter: nodemailer.Transporter | null = null;
+let _transporter: Transporter | null = null;
 
-function transporter(): nodemailer.Transporter {
+function transporter(): Transporter {
   if (_transporter) return _transporter;
   const host = process.env['SMTP_HOST'];
   if (!host) throw new Error('SMTP_HOST no configurado');
-  _transporter = nodemailer.createTransport({
+  _transporter = createTransport({
     host,
     port: Number(process.env['SMTP_PORT'] ?? 587),
     secure: Number(process.env['SMTP_PORT'] ?? 587) === 465,
