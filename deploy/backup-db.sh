@@ -43,7 +43,7 @@ ls -1t "$BACKUP_DIR"/sticklive-*.sql.gz 2>/dev/null | tail -n +8 | xargs -r rm -
 
 echo "[backup] $(date -u +%FT%TZ) OK → $(basename "$OUT") ($(du -h "$OUT" | cut -f1))"
 
-# ── Copia off-site (opcional) ────────────────────────────────────────────────
+# ── Copia off-site (opcional) ──────────────────────────────────────────
 # Si existe /opt/sticklive/.backup-offsite.env con OFFSITE_TARGET, sincroniza los
 # .sql.gz a esa Storage Box por rsync-over-SSH (sin --delete: el destino acumula
 # histórico → retención larga off-site). Sin el fichero, se omite (backup local
@@ -56,7 +56,14 @@ if [ -f "$OFFSITE_CONF" ]; then
   . "$OFFSITE_CONF"
   if [ -n "${OFFSITE_TARGET:-}" ]; then
     echo "[backup] off-site → $OFFSITE_TARGET"
-    rsync -az -e "ssh ${OFFSITE_SSH_OPTS:-}" "$BACKUP_DIR"/sticklive-*.sql.gz "$OFFSITE_TARGET"
+    # Alerta si el push off-site falla (auditoría C2): el backup local ya está
+    # OK y rotado, pero perder la copia off-site sin enterarse reintroduce el
+    # riesgo de "todo en el mismo VPS". Se sale con código 2 (distinto del 1 de
+    # los fallos de dump) para que el cron/monitor pueda alertar específicamente.
+    if ! rsync -az -e "ssh ${OFFSITE_SSH_OPTS:-}" "$BACKUP_DIR"/sticklive-*.sql.gz "$OFFSITE_TARGET"; then
+      echo "[backup] $(date -u +%FT%TZ) ALERTA: la copia OFF-SITE FALLÓ (backup local OK). Revisar Storage Box/SSH." >&2
+      exit 2
+    fi
     echo "[backup] $(date -u +%FT%TZ) off-site OK"
   fi
 fi

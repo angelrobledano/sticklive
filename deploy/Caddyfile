@@ -7,6 +7,18 @@
 sticklive.eu, www.sticklive.eu {
 	encode gzip
 
+	# Cabeceras de seguridad (auditoría M1). Endurecimiento del borde: aplican a
+	# TODA respuesta (API JSON + PWA). HSTS sin `preload` a propósito (preload es
+	# irreversible y compromete el apex + subdominios en las listas de navegador).
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# No revelar el servidor.
+		-Server
+	}
+
 	# API — el prefijo /api se elimina antes de llegar a Hono.
 	# flush_interval -1: imprescindible para el SSE del directo.
 	handle_path /api/* {

@@ -8,6 +8,8 @@ import { bodyLimit } from 'hono/body-limit';
 import { logger } from '@sports/logger';
 import { assertSchemaCurrent, SchemaOutdatedError } from '@sports/db';
 import { assertEnv } from './lib/env.js';
+import { rateLimit } from './lib/rate-limit.js';
+import { cacheControlFor } from './lib/read-cache.js';
 import { standingsRouter } from './routes/standings.js';
 import { matchesRouter } from './routes/matches.js';
 import { liveRouter } from './routes/live.js';
@@ -47,6 +49,23 @@ app.use('*', bodyLimit({
   maxSize: 64 * 1024,
   onError: (c) => c.json({ error: 'payload_too_large' }, 413),
 }));
+
+// Caché de lectura (I1): Cache-Control por defecto en los GET estables (la
+// política vive en lib/read-cache.ts). Se fija ANTES del handler; live/meta la
+// sobreescriben con la suya. Reduce carga de Postgres en las repeticiones.
+app.use('*', async (c, next) => {
+  const cc = cacheControlFor(c.req.method, c.req.path);
+  if (cc) c.header('Cache-Control', cc);
+  await next();
+});
+
+// Rate-limit de lectura (I1): tope generoso por IP en los GET más caros de BD.
+// Defensivo anti-DoS; no toca /matches/:id/stream (SSE) ni /matches/live.
+const readLimit = rateLimit(120, 60_000);
+app.use('/seasons/:id/overview', readLimit);
+app.use('/seasons/:id/stats', readLimit);
+app.use('/teams/:id', readLimit);
+app.use('/players/:id', readLimit);
 
 // Health check
 app.get('/health', (c) => {
@@ -94,6 +113,7 @@ app.notFound((c) => {
 
 // Error handler global: nunca filtrar detalles internos al cliente (auditoría S7).
 app.onError((err, c) => {
+  c.header('Cache-Control', 'no-store'); // nunca cachear un 500 (I1)
   logger.error({ path: c.req.path, err }, 'Error no controlado en la API');
   Sentry.captureException(err, { tags: { path: c.req.path } });
   return c.json({ error: 'internal_error' }, 500);

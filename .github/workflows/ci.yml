@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  # ── Calidad del código ──────────────────────────────────────────────────────
+  # ── Calidad del código ──────────────────────────────────────────────
   quality:
     runs-on: ubuntu-latest
     steps:
@@ -62,7 +62,7 @@ jobs:
         run: npm audit --omit=dev --audit-level=moderate
         continue-on-error: true
 
-  # ── Migraciones contra una BD limpia ────────────────────────────────────────
+  # ── Migraciones contra una BD limpia ──────────────────────────────────
   # Aplica todas las migraciones desde cero. Detecta las que sólo funcionan
   # sobre una base con historia previa, o las que se pisan entre sí. Es la red
   # que faltaba: la 034 y la 035 se validaron a mano en un portátil.
@@ -106,15 +106,16 @@ jobs:
         run: |
           PGPASSWORD=sports_pass psql -h localhost -U sports_user -d sports_results_ci -qtAX \
             -v ON_ERROR_STOP=1 -c "
-              SELECT CASE WHEN COUNT(*) = 4 THEN 'ok'
-                          ELSE 'FALTAN INDICES: ' || COUNT(*)::text || ' de 4' END
+              SELECT CASE WHEN COUNT(*) = 5 THEN 'ok'
+                          ELSE 'FALTAN INDICES: ' || COUNT(*)::text || ' de 5' END
               FROM pg_indexes WHERE indexname IN (
                 'uq_match_events_match_source_ref',
                 'idx_matches_season_scheduled',
                 'idx_matches_live_partial',
-                'idx_matches_season_status_scheduled')" | grep -qx ok
+                'idx_matches_season_status_scheduled',
+                'idx_match_events_player')" | grep -qx ok
 
-  # ── Tests de integración contra Postgres real ───────────────────────────────
+  # ── Tests de integración contra Postgres real ─────────────────────────────
   # Job aparte de `migrations` a propósito: aquel comprueba que el ESQUEMA se
   # construye desde cero, este que la LÓGICA que lo usa hace lo que dice. Y son
   # aparte de `quality` porque los unitarios deben seguir corriendo en segundos
@@ -155,7 +156,7 @@ jobs:
       - name: Tests de integración
         run: npm run test:integration
 
-  # ── La imagen de producción construye ───────────────────────────────────────
+  # ── La imagen de producción construye ────────────────────────────────────
   # Hasta ahora un Dockerfile roto sólo se descubría desplegando.
   docker:
     runs-on: ubuntu-latest
