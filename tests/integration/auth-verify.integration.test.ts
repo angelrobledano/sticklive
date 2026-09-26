@@ -99,16 +99,22 @@ describe('POST /auth/verify', () => {
     expect(await res.json()).toMatchObject({ error: 'account_disabled' });
   });
 
-  it('T-022: la sesión se guarda HASHEADA (el claro solo va al cliente)', async () => {
+  it('T-022: la sesión se guarda HASHEADA en user_sessions (el claro solo va al cliente)', async () => {
     await sembrarToken('tok-sess', 'sess@x.com');
     const res = await verify({ token: 'tok-sess', deviceId: 'dev-sess' });
     const { session } = await res.json() as { session: string };
     expect(session).toBeTruthy();
 
-    const row = await db.query<{ session_token: string }>(
-      `SELECT session_token FROM users WHERE device_id = 'dev-sess'`
+    // Desde la 053 las sesiones viven en user_sessions (multi-dispositivo),
+    // ya no en users.session_token. El contrato con la BD no cambia: hash.
+    const row = await db.query<{ token_hash: string }>(
+      `SELECT s.token_hash
+         FROM user_sessions s
+         JOIN users u ON u.id = s.user_id
+        WHERE u.device_id = 'dev-sess'`
     );
-    expect(row.rows[0]!.session_token).toBe(hash(session)); // hash, no el claro
-    expect(row.rows[0]!.session_token).not.toBe(session);
+    expect(row.rows).toHaveLength(1);
+    expect(row.rows[0]!.token_hash).toBe(hash(session)); // hash, no el claro
+    expect(row.rows[0]!.token_hash).not.toBe(session);
   });
 });

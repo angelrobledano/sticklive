@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { randomBytes, createHash } from 'node:crypto';
-import { db } from '@sports/db';
+import { db, withTransaction } from '@sports/db';
 import { rateLimit } from '../lib/rate-limit.js';
 import { signState, verifyState } from '../lib/auth-state.js';
 
@@ -8,6 +8,10 @@ export const authRouter = new Hono();
 
 const MAGIC_LINK_TTL_MIN = 15;
 const SESSION_TTL_DAYS = 90;
+// Tope de sesiones simultáneas por usuario (PC + móvil + tablet con margen).
+// Al crear la 6ª se expulsa la más antigua: acota el daño de un token filtrado
+// sin expulsar dispositivos reales (decisión de producto 26/09/2026).
+const MAX_SESSIONS_PER_USER = 5;
 const WEB_BASE = process.env['WEB_BASE_URL'] ?? 'http://localhost:3001';
 
 // Enlaces de login en la respuesta: SOLO en desarrollo y con opt-in EXPLÍCITO.
@@ -28,25 +32,60 @@ async function userFromBearer(authHeader: string | undefined) {
   if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.slice(7);
   if (!token) return null;
-  const res = await db.query<{ id: string; email: string | null }>(
-    `SELECT id, email FROM users
-     WHERE session_token = $1 AND status = 'active'
-       AND (session_expires_at IS NULL OR session_expires_at > NOW())`,
+  const res = await db.query<{ id: string; email: string | null; session_id: string }>(
+    `SELECT u.id, u.email, s.id AS session_id
+       FROM user_sessions s
+       JOIN users u ON u.id = s.user_id
+      WHERE s.token_hash = $1
+        AND s.expires_at > NOW()
+        AND u.status = 'active'`,
     [hashToken(token)]
   );
-  return res.rows[0] ?? null;
+  const user = res.rows[0];
+  if (!user) return null;
+
+  // Caducidad renovable (sliding): cada uso empuja expires_at a +90 días.
+  // El WHERE acota la escritura a una vez al día por sesión como mucho: con
+  // más de TTL-1 días por delante no hay nada que renovar.
+  await db.query(
+    `UPDATE user_sessions
+        SET expires_at = NOW() + make_interval(days => $2::int),
+            last_used_at = NOW()
+      WHERE id = $1
+        AND expires_at < NOW() + make_interval(days => ($2::int - 1))`,
+    [user.session_id, SESSION_TTL_DAYS]
+  );
+
+  return { id: user.id, email: user.email };
 }
 
 async function openSession(userId: string): Promise<string> {
   const session = newToken();
-  await db.query(
-    `UPDATE users
-        SET session_token = $2,
-            session_expires_at = NOW() + make_interval(days => $3::int),
-            updated_at = NOW()
-      WHERE id = $1`,
-    [userId, hashToken(session), SESSION_TTL_DAYS]
-  );
+  await withTransaction(async (tx) => {
+    // Higiene local: las caducadas de este usuario fuera.
+    await tx.query(
+      `DELETE FROM user_sessions WHERE user_id = $1 AND expires_at < NOW()`,
+      [userId]
+    );
+    await tx.query(
+      `INSERT INTO user_sessions (user_id, token_hash, expires_at)
+       VALUES ($1, $2, NOW() + make_interval(days => $3::int))`,
+      [userId, hashToken(session), SESSION_TTL_DAYS]
+    );
+    // Multi-dispositivo: la sesión nueva NO invalida las anteriores. Solo se
+    // recorta al tope expulsando las más antiguas.
+    await tx.query(
+      `DELETE FROM user_sessions
+        WHERE user_id = $1
+          AND id NOT IN (
+            SELECT id FROM user_sessions
+             WHERE user_id = $1
+             ORDER BY created_at DESC, id DESC
+             LIMIT $2
+          )`,
+      [userId, MAX_SESSIONS_PER_USER]
+    );
+  });
   return session; // en claro, solo para el cliente
 }
 

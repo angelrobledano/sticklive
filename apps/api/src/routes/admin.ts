@@ -41,7 +41,8 @@ adminRouter.get('/users', async (c) => {
         u.premium_until,
         u.created_at,
         u.updated_at,
-        (u.session_token IS NOT NULL)                    AS has_session,
+        (EXISTS (SELECT 1 FROM user_sessions s
+                  WHERE s.user_id = u.id AND s.expires_at > NOW())) AS has_session,
         COUNT(f.id)::int                                 AS favorites
       FROM users u
       LEFT JOIN user_favorites f ON f.user_id = u.id
@@ -83,9 +84,17 @@ adminRouter.patch('/users/:id/status', async (c) => {
   }
 
   try {
+    // Deshabilitar cierra todas las sesiones vivas del usuario (multi-
+    // dispositivo desde 053): sin esto, los tokens ya emitidos seguirían
+    // válidos y el bloqueo sería cosmético.
     const res = await db.query(
       body.status === 'disabled'
-        ? `UPDATE users SET status = $2, session_token = NULL, updated_at = NOW() WHERE id = $1 RETURNING id, status`
+        ? `WITH closed AS (
+             DELETE FROM user_sessions WHERE user_id = $1 RETURNING 1
+           )
+           UPDATE users SET status = $2, updated_at = NOW()
+            WHERE id = $1
+            RETURNING id, status, (SELECT COUNT(*)::int FROM closed) AS closed_sessions`
         : `UPDATE users SET status = $2, updated_at = NOW() WHERE id = $1 RETURNING id, status`,
       [id, body.status]
     );
