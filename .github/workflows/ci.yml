@@ -229,6 +229,19 @@ jobs:
             done
             echo "✓ entrypoints presentes"'
 
+      # Los bundles dejan node_modules externo: el runtime resuelve cada import
+      # desde dist/ hacia /app/node_modules. Un paquete anidado en el lockfile
+      # (apps/api/node_modules/...) u olvidado en devDependencies no se
+      # descubre hasta que el proceso importa — y aquí nadie ejecutaba la API.
+      # Así fue el crash-loop de nodemailer del 26/09/2026: imagen compilada,
+      # entrypoints presentes y producción caída. Este paso reproduce la
+      # resolución real de Node para cada paquete externo de cada bundle.
+      - name: las dependencias externas de dist/ resuelven en la imagen
+        run: |
+          docker run --rm --network none \
+            -v "$PWD/scripts/verify-image-deps.mjs:/app/verify-image-deps.mjs:ro" \
+            --entrypoint node sticklive:ci /app/verify-image-deps.mjs /app/dist
+
       # El scheduler es un shell script que invoca esos ficheros por ruta. Si
       # alguien renombra un entrypoint y olvida el script, no lo detecta nada
       # hasta que la tarea toca correr — que puede ser semanas después.
