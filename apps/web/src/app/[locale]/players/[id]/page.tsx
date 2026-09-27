@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getPlayerDetail } from '@/lib/api/client';
+import { getPlayerDetail, isApiNotFound } from '@/lib/api/client';
 import type { PlayerDetail } from '@/lib/api/client';
 import { PlayerProfileClient } from '@/components/player/PlayerProfileClient';
 import { JsonLd } from '@/components/shared/JsonLd';
@@ -40,8 +40,9 @@ export default async function PlayerProfilePage(props: Props) {
   let data: PlayerDetail;
   try {
     data = await getPlayerDetail(params.id);
-  } catch {
-    notFound();
+  } catch (err) {
+    if (isApiNotFound(err)) notFound();
+    throw err; // error boundary con reintento — la API puede estar reiniciándose
   }
 
   const name = toTitleCase(`${data.player.firstName} ${data.player.lastName}`);
