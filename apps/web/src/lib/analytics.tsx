@@ -13,6 +13,8 @@
  *
  * Plan de eventos:
  *  $pageview                 route, locale
+ *  competition_view          competition_id, locale
+ *  team_view                 team_id, locale
  *  match_view                match_id, status (scheduled|live|finished)
  *  favorite_added/removed    kind (team|league), ref_id, total_favorites
  *  locale_changed            from, to (+person prop locale)
@@ -26,6 +28,7 @@
 import posthog from 'posthog-js';
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { entityViewFromPath } from '@/lib/analytics-entity';
 
 const KEY  = process.env['NEXT_PUBLIC_POSTHOG_KEY'];
 const HOST = process.env['NEXT_PUBLIC_POSTHOG_HOST'] ?? 'https://eu.i.posthog.com';
@@ -99,6 +102,13 @@ export function AnalyticsPageview() {
       route,
       locale,
     });
+    // El pageview normaliza los UUID a `:id`; estas vistas conservan QUÉ
+    // competición/equipo se consultó (#171).
+    const view = entityViewFromPath(pathname);
+    if (view) {
+      const idProp = view.event === 'competition_view' ? 'competition_id' : 'team_id';
+      posthog.capture(view.event, { [idProp]: view.id, locale });
+    }
   }, [pathname]);
 
   return null;
