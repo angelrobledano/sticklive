@@ -36,13 +36,18 @@ const log = createLogger({ service: 'seed-competition-sources' });
  *
  * Las copas (Rey 3258, Reina 3259, Supercopas 3177/3178, SAR 3301/3302) SÍ son
  * competiciones propias en la BD: el seed les crea fila en el bucle principal,
- * NO son secundarios. El `Set` CUP_IDCS de run-pipeline.ts sólo enruta partidos
- * a su temporada; sus 3260/3261 son idc fantasma (no existen en prod).
+ * NO son secundarios. Se marcan con `format: 'bracket'` (#166) para que
+ * run-pipeline cree sus rondas de eliminatoria (Octavos/Cuartos/Semis/Final) sin
+ * la lista de idc CUP_IDCS que estaba hardcodeada. Los 3260/3261 que había en esa
+ * lista eran idc fantasma (no existen en prod).
  */
 const SECONDARIES: Record<string, { playoff_idcs?: string[]; cup_idcs?: string[] }> = {
   '3150': { playoff_idcs: ['3481'] },
   '3151': { playoff_idcs: ['3484'] },
 };
+
+/** Copas/supercopas que se scrapean como eliminatoria (bracket). #166 */
+const CUP_COMPETITIONS = new Set(['3258', '3259', '3177', '3178', '3301', '3302']);
 
 /** `fep_competition_3150` | `3150` | `wse_competition_320` → `3150` | `320`. */
 function idcFromSourceRef(ref: string): string {
@@ -83,7 +88,11 @@ async function main() {
       continue;
     }
     const idc = idcFromSourceRef(ref);
-    const externalIds: ExternalIds = { idc, ...(SECONDARIES[idc] ?? {}) };
+    const externalIds: ExternalIds = {
+      idc,
+      ...(SECONDARIES[idc] ?? {}),
+      ...(CUP_COMPETITIONS.has(idc) ? { format: 'bracket' as const } : {}),
+    };
 
     log.info({ competition: c.name, scraperKey, externalIds }, write ? '→ escribiendo' : '→ (dry-run)');
 

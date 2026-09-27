@@ -55,6 +55,10 @@ const PLAYOFF_IDCS_PIPELINE = ['3481', '3484'];
 // fantasma (no existen como competición) — eliminados.
 const CUP_IDCS = new Set(['3258', '3259', '3177', '3178', '3301', '3302']);
 
+// Defaults del modo manual `--idc` (sin competition_sources). El modo driven toma
+// los playoff/copas y el formato de `competition_sources.external_ids` (#166).
+const LEGACY_PLAYOFF_IDCS = new Set(PLAYOFF_IDCS_PIPELINE);
+
 // ── Punto 10, Fase 2: scrape guiado por `competition_sources` ────────────────
 // Con el flag ACTIVO, un `run-pipeline --entity=calendar|standings` SIN
 // --season-id/--idc explícitos deja de mirar sólo la OK Liga (SEASON_ID/IDC del
@@ -142,6 +146,8 @@ async function processCalendar(
   idcs: string[],
   pipeline: EtlPipeline,
   timezone?: string,
+  playoffIdcs: ReadonlySet<string> = LEGACY_PLAYOFF_IDCS,
+  cupIdcs: ReadonlySet<string> = CUP_IDCS,
 ): Promise<void> {
   for (const calIdc of idcs) {
     const calName = IDC_NAMES[calIdc] ?? `idc ${calIdc}`;
@@ -150,7 +156,7 @@ async function processCalendar(
     // Los partidos del playoff (idc 3481/3484) van a la MISMA temporada que la
     // liga, marcados con la ronda de fase playoff (modelo de fases).
     let roundId: string | undefined;
-    if (PLAYOFF_IDCS_PIPELINE.includes(calIdc)) {
+    if (playoffIdcs.has(calIdc)) {
       const r = await db.query<{ id: string }>(
         `SELECT id FROM rounds WHERE season_id = $1 AND round_type = 'playoff' AND number = 100`,
         [seasonId]
@@ -178,7 +184,7 @@ async function processCalendar(
 
     // Copas: crear rondas por nombre (Octavos/Cuartos/Semis/Final) como
     // 'playoff' y asignarlas a cada partido → la web las pinta como bracket.
-    if (CUP_IDCS.has(calIdc)) {
+    if (cupIdcs.has(calIdc)) {
       const cache = new Map<string, string>();
       for (const m of result.data) {
         const rname = m.roundRef?.trim();
@@ -208,8 +214,9 @@ async function processStandings(
   idc: string,
   competitionName: string,
   pipeline: EtlPipeline,
+  playoffIdcs: ReadonlySet<string> = LEGACY_PLAYOFF_IDCS,
 ): Promise<void> {
-  if (idc === '3481') {
+  if (playoffIdcs.has(idc)) {
     log.info('→ Playoff sin clasificación (eliminatorias) — skip standings');
     return;
   }
@@ -248,10 +255,15 @@ async function runMultiCompetition(
     }
     const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: item.seasonId, dryRun });
     try {
+      const playoff = new Set(item.playoffIdcs);
+      // `format: 'bracket'` en competition_sources marca las copas (#166): su
+      // propio idc primario es el que crea las rondas de eliminatoria, sin la
+      // lista CUP_IDCS hardcodeada.
+      const cups = item.format === 'bracket' ? new Set([item.primaryIdc]) : new Set<string>();
       if (entity === 'calendar') {
-        await processCalendar(item.seasonId, [item.primaryIdc, ...item.playoffIdcs], pipeline, item.timezone);
+        await processCalendar(item.seasonId, [item.primaryIdc, ...item.playoffIdcs], pipeline, item.timezone, playoff, cups);
       } else {
-        await processStandings(item.primaryIdc, item.competitionName, pipeline);
+        await processStandings(item.primaryIdc, item.competitionName, pipeline, playoff);
       }
       done++;
     } catch (err) {
