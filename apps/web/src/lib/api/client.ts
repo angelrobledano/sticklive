@@ -65,6 +65,7 @@ interface RawLiveMatch {
   competitionId?: string | null;
   competitionName?: string | null;
   competitionSlug?: string | null;
+  competitionTimezone?: string | null;
   status: MatchStatus;
   isHalftime?: boolean;
   winType?: 'regular' | 'overtime' | 'penalties' | null;
@@ -132,6 +133,7 @@ function normalizeLiveMatch(raw: RawLiveMatch): Match {
     competitionId:   raw.competitionId ?? null,
     competitionName: raw.competitionName ?? null,
     competitionSlug: raw.competitionSlug ?? null,
+    competitionTimezone: raw.competitionTimezone ?? null,
     status:      raw.status,
     isHalftime:  raw.isHalftime ?? false,
     winType:      raw.winType ?? null,

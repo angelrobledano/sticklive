@@ -160,8 +160,9 @@ liveRouter.get('/live', async (c) => {
     c.header('Cache-Control', 'public, max-age=5, stale-while-revalidate=30');
     return c.json(payload);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return c.json({ error: 'Database error', detail: message }, 500);
+    // El detalle se queda en el log del servidor: nunca al cliente (S7; #152).
+    console.error('[live] error:', err);
+    return c.json({ error: 'Database error' }, 500);
   }
 });
 
@@ -235,7 +236,8 @@ liveRouter.get('/current', async (c) => {
     c.header('Cache-Control', 'public, max-age=5, stale-while-revalidate=30');
     return c.json(payload);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return c.json({ error: 'Database error', detail: message }, 500);
+    // El detalle se queda en el log del servidor: nunca al cliente (S7; #152).
+    console.error('[live] error:', err);
+    return c.json({ error: 'Database error' }, 500);
   }
 });
