@@ -31,6 +31,7 @@ import { EtlPipeline } from './pipeline.js';
 import { forEachLimited } from './concurrency.js';
 import { deriveMatchResults } from './derive-results.js';
 import { sweepStaleLive } from './stale-live-watchdog.js';
+import { checkWindow } from './live-window.js';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import { resolveWorldskate, runWorldskate } from '../../scraper/src/scrapers/worldskate/run-worldskate.js';
@@ -76,11 +77,6 @@ function heartbeat(): void {
   catch { /* nunca romper el cron por el monitor */ }
 }
 
-interface WindowStatus {
-  hasLive:     boolean;  // al menos un partido con status='live'
-  hasUpcoming: boolean;  // al menos un partido 'scheduled' en las próximas WINDOW_HOURS
-  hasOverdue:  boolean;  // partidos cuya hora ya pasó (últimas 48h) sin estado final
-}
 
 /**
  * Resuelve el conjunto de IDs de temporada a monitorizar:
@@ -103,43 +99,6 @@ async function resolveSeasonIds(): Promise<string[]> {
   return all;
 }
 
-/**
- * Consulta rápida: ¿hay actividad en la ventana de tiempo?
- * Opera sobre TODAS las temporadas activas a la vez (ANY($1)).
- */
-async function checkWindow(seasonIds: string[]): Promise<WindowStatus> {
-  const [liveRes, upcomingRes, overdueRes] = await Promise.all([
-    db.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count
-       FROM matches
-       WHERE season_id = ANY($1) AND status = 'live'`,
-      [seasonIds]
-    ),
-    db.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count
-       FROM matches
-       WHERE season_id    = ANY($1)
-         AND status       = 'scheduled'
-         AND scheduled_at BETWEEN NOW() AND NOW() + make_interval(hours => $2::int)`,
-      [seasonIds, WINDOW_HOURS]
-    ),
-    // Partidos zombi: su hora pasó pero siguen sin estado final.
-    db.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count
-       FROM matches
-       WHERE season_id    = ANY($1)
-         AND status       IN ('scheduled', 'live')
-         AND scheduled_at BETWEEN NOW() - INTERVAL '48 hours' AND NOW()`,
-      [seasonIds]
-    ),
-  ]);
-
-  return {
-    hasLive:     Number(liveRes.rows[0]?.count     ?? 0) > 0,
-    hasUpcoming: Number(upcomingRes.rows[0]?.count  ?? 0) > 0,
-    hasOverdue:  Number(overdueRes.rows[0]?.count   ?? 0) > 0,
-  };
-}
 
 /**
  * Descarga y persiste la ficha resumen (eventos, alineaciones, faltas) de todos
@@ -441,7 +400,7 @@ async function main() {
   log.info({ seasonIds }, 'Temporadas monitorizadas');
 
   // ── 1. Check de ventana ────────────────────────────────────────────────
-  const initial = await checkWindow(seasonIds);
+  const initial = await checkWindow(seasonIds, WINDOW_HOURS);
 
   if (!initial.hasLive && !initial.hasUpcoming) {
     if (initial.hasOverdue) {
@@ -488,7 +447,7 @@ async function main() {
       Sentry.captureException(err, { tags: { phase: 'cron-cycle' }, extra: { cycle } });
     }
 
-    const status = await checkWindow(seasonIds);
+    const status = await checkWindow(seasonIds, WINDOW_HOURS);
 
     if (!status.hasLive && !status.hasUpcoming) {
       log.info({ cycle }, 'Todos los partidos finalizados — ciclo final de fichas y saliendo.');
