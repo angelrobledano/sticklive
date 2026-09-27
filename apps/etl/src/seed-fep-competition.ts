@@ -158,7 +158,7 @@ async function main() {
   // ── Equipos (identidad por temporada) ──
   let created = 0, reused = 0, aliased = 0;
   for (const t of teams) {
-    let team = await findTeamBySourceRef(t.ref);
+    let team: { id: string } | null = await findTeamBySourceRef(t.ref);
     if (team) {
       reused++;
     } else {
@@ -168,11 +168,11 @@ async function main() {
         await addTeamAltRef(bySlug.id, t.ref); // nuevo ref de temporada, no pisar source_ref
         team = bySlug; aliased++;
       } else {
-        team = (await db.query(
+        team = (await db.query<{ id: string }>(
           `INSERT INTO teams (sport_id, name, short_name, slug, country, source_id, source_ref, scraped_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,NOW()) RETURNING *`,
+           VALUES ($1,$2,$3,$4,$5,$6,$7,NOW()) RETURNING id`,
           [sportId, t.name, t.abbr || null, slug, COUNTRY, sourceId, t.ref],
-        )).rows[0]! as any;
+        )).rows[0]!;
         created++;
       }
     }
