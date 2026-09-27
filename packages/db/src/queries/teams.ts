@@ -110,8 +110,7 @@ export async function addTeamAltRef(
   );
 }
 
-export async function findTeamBySlug(sportId: string, slug: string): Promise<DbTeam | null> {
-  const result = await db.query<DbTeam>(
+export async function findTeamBySlug(sportId: string, slug: string): Promise<DbTeam | null> {  const result = await db.query<DbTeam>(
     'SELECT * FROM teams WHERE sport_id = $1 AND slug = $2',
     [sportId, slug]
   );
@@ -145,4 +144,30 @@ export async function findTeamByNameSimilarity(
     [sportId, name]
   );
   return result.rows[0] ?? null;
+}
+
+/**
+ * Equipo de ESTA temporada cuyo nombre coincide con el de la fuente.
+ *
+ * Las clasificaciones traen solo el NOMBRE (sin ref), así que resolverlas contra
+ * toda la tabla reencuentra al primer equipo cuando un filial se llama igual
+ * (caso NOIA A/B). Mirando SOLO los equipos de la temporada, el primer equipo no
+ * está (juega en otra liga) y el filial sí: primero coincidencia exacta y, si no,
+ * con el sufijo " B" que añade la reparación de filiales.
+ */
+export async function findTeamInSeasonByName(
+  seasonId: string,
+  name: string,
+  client: pg.PoolClient | typeof db = db,
+): Promise<string | null> {
+  const result = await client.query<{ id: string }>(
+    `SELECT t.id
+       FROM season_teams st JOIN teams t ON t.id = st.team_id
+      WHERE st.season_id = $1
+        AND (lower(t.name) = lower($2) OR lower(t.name) LIKE lower($2) || ' b%')
+      ORDER BY (lower(t.name) = lower($2)) DESC
+      LIMIT 1`,
+    [seasonId, name],
+  );
+  return result.rows[0]?.id ?? null;
 }

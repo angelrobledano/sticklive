@@ -1,4 +1,4 @@
-import { upsertStanding, updateTeamLogoUrl, withTransaction, insertScrapeLog } from '@sports/db';
+import { upsertStanding, updateTeamLogoUrl, withTransaction, insertScrapeLog, findTeamInSeasonByName } from '@sports/db';
 import type { ScrapedStanding, ScrapeResult } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { RefResolver } from './ref-resolver.js';
@@ -45,7 +45,12 @@ export async function loadStandings(
     try {
       await withTransaction(async (client) => {
         for (const raw of groupItems) {
-          const teamId = await resolver.resolveTeam(raw.teamRef);
+          // Las clasificaciones traen solo el NOMBRE (sin ref): se busca primero
+          // dentro de los equipos de ESTA temporada, así un filial nombrado igual
+          // no cae en el primer equipo (que juega en otra liga). Si no aparece,
+          // cascada normal del resolver.
+          const teamId = (await findTeamInSeasonByName(seasonId, raw.teamRef, client))
+            ?? await resolver.resolveTeam(raw.teamRef);
 
           await upsertStanding({
             seasonId,
