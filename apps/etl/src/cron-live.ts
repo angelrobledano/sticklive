@@ -32,6 +32,7 @@ import { forEachLimited } from './concurrency.js';
 import { deriveMatchResults } from './derive-results.js';
 import { sweepStaleLive } from './stale-live-watchdog.js';
 import { checkWindow } from './live-window.js';
+import { touchAlive } from './heartbeat-file.js';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import { resolveWorldskate, runWorldskate } from '../../scraper/src/scrapers/worldskate/run-worldskate.js';
@@ -72,7 +73,12 @@ const CRON_MONITOR_CONFIG = {
   maxRuntime: 200,  // minutos (el bucle activo puede durar hasta 180)
   timezone: 'Etc/UTC',
 };
+// Latido doble: al monitor de Sentry (muerte del cron) y al FICHERO que mira el
+// healthcheck del contenedor (#146). El segundo es el que evita el falso
+// `unhealthy` durante un directo largo: el scheduler solo toca el fichero entre
+// vueltas, así que sin este toque interno un ETL OCUPADO parecía colgado.
 function heartbeat(): void {
+  touchAlive();
   try { Sentry.captureCheckIn({ monitorSlug: CRON_MONITOR_SLUG, status: 'ok' }, CRON_MONITOR_CONFIG); }
   catch { /* nunca romper el cron por el monitor */ }
 }

@@ -70,6 +70,7 @@ while true; do
   echo "[scheduler] worldskate $(date -u +%T)"
   $LOCK node dist/apps/scraper/src/index.js --run-once worldskate \
     || echo "[scheduler] worldskate saltado o falló (seguimos)"
+  touch "$ALIVE"   # latido entre fases (#146)
 
   # ── Cada 5 min: marcadores en vivo ──────────────────────
   # Puede quedarse hasta MAX_RUNTIME_MIN dentro de su bucle activo: todo lo que
@@ -77,13 +78,16 @@ while true; do
   # tareas nuevas.
   echo "[scheduler] cron-live $(date -u +%T)"
   $LOCK node dist/apps/etl/src/cron-live.js || echo "[scheduler] cron-live saltado o falló (seguimos)"
+  touch "$ALIVE"   # latido tras el directo (cron-live además late por dentro cada ciclo, #146)
 
   # ── Cada hora: calendario + clasificación ──────────────────
   if [ "$NOW_HOUR" != "$LAST_HOUR" ]; then
     LAST_HOUR=$NOW_HOUR
     echo "[scheduler] calendario+standings $(date -u +%T)"
     $LOCK node dist/apps/etl/src/run-pipeline.js --entity=calendar   || true
+    touch "$ALIVE"   # latido entre fases (#146)
     $LOCK node dist/apps/etl/src/run-pipeline.js --entity=standings  || true
+    touch "$ALIVE"
   fi
 
   # ── Diario a las 06 UTC: actas pendientes + purga de logs ──
@@ -91,6 +95,7 @@ while true; do
     LAST_DAY=$NOW_DAY
     echo "[scheduler] fichas-pendientes $(date -u +%T)"
     $LOCK node dist/apps/etl/src/run-pipeline.js --entity=fichas-pendientes || true
+    touch "$ALIVE"   # latido entre fases (#146)
 
     # scrape_logs crece ~1.000 filas/día y no lo lee nadie. Se conservan 30
     # días (SCRAPE_LOGS_RETENTION_DAYS). Va sin lock: borra por lotes y no
