@@ -7,7 +7,7 @@ import { useT } from '@/lib/i18n';
 import { clubName, competitionName } from '@/lib/names';
 import { CountryFlag } from '@/components/shared/CountryFlag';
 import { useFavorites } from '@/hooks/useFavorites';
-import { hasSeason2026, orderByImportance } from './order';
+import { hasSeason2026, orderByImportance } from '@/lib/competition-importance';
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 

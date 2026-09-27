@@ -10,6 +10,7 @@ import { AdBanner } from '@/components/shared/AdBanner';
 import Link from 'next/link';
 import { useT } from '@/lib/i18n';
 import { madridDateKey, madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
+import { importanceRank } from '@/lib/competition-importance';
 
 /** Nº de partidos favoritos visibles antes de colapsar el resto */
 const FAV_PREVIEW = 3;
@@ -271,7 +272,7 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
   }, []);
   const [showAllFavs, setShowAllFavs] = useState(false);
   const { favorites, isFavorite } = useFavorites();
-  const { t } = useT();
+  const { t, locale } = useT();
 
   // ── Swipe horizontal: día anterior / siguiente ─────────────────────────────
   const shiftDay = (delta: number) => {
@@ -322,7 +323,9 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
   }, [dayMatches, favorites, isFavorite]);
 
   // Los no-favoritos se agrupan POR COMPETICIÓN (antes había una cabecera fija
-  // "OK Liga Masculina" que etiquetaba mal los partidos de otras competiciones).
+  // "OK Liga Masculina" que etiquetaba mal los partidos de otras competiciones)
+  // y los bloques se ordenan por IMPORTANCIA, el mismo criterio que el listado
+  // de competiciones. Una competición sin partidos ese día no tiene bloque.
   const restByCompetition = useMemo(() => {
     const map = new Map<string, Match[]>();
     for (const m of restMatches) {
@@ -330,8 +333,11 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
       const arr = map.get(key);
       if (arr) arr.push(m); else map.set(key, [m]);
     }
-    return Array.from(map.entries());
-  }, [restMatches]);
+    return [...map.entries()].sort(([aName, aMs], [bName, bMs]) => {
+      const d = importanceRank(aMs[0]?.competitionSlug) - importanceRank(bMs[0]?.competitionSlug);
+      return d !== 0 ? d : aName.localeCompare(bName, locale);
+    });
+  }, [restMatches, locale]);
 
   const hasBothSections = favMatches.length > 0 && restMatches.length > 0;
 

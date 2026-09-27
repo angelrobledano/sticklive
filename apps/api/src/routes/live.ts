@@ -53,6 +53,7 @@ interface LiveMatchRow {
   source_ref: string | null;
   competition_id: string | null;
   competition_name: string | null;
+  competition_slug: string | null;
   competition_timezone: string | null;
   // equipo local
   home_team_id: string;
@@ -73,6 +74,7 @@ function mapLiveRow(row: LiveMatchRow) {
     roundId:     row.round_id,
     competitionId:   row.competition_id,
     competitionName: row.competition_name,
+    competitionSlug: row.competition_slug,
     competitionTimezone: row.competition_timezone,
     status:      row.status,
     isHalftime:  row.live_is_halftime ?? false,
@@ -129,6 +131,7 @@ liveRouter.get('/live', async (c) => {
         m.source_ref,
         comp.id         AS competition_id,
         comp.name       AS competition_name,
+        comp.slug       AS competition_slug,
         comp.timezone   AS competition_timezone,
         -- equipo local
         ht.id           AS home_team_id,
@@ -209,6 +212,7 @@ liveRouter.get('/current', async (c) => {
         m.win_type, m.winner_team_id, m.home_pen, m.away_pen,
         m.scheduled_at, m.started_at, m.venue_name, m.venue_city, m.source_ref,
         comp.id AS competition_id, comp.name AS competition_name,
+        comp.slug AS competition_slug,
         comp.timezone AS competition_timezone,
         ht.id AS home_team_id, ht.name AS home_team_name,
         ht.short_name AS home_team_short_name, ht.logo_url AS home_team_logo_url,

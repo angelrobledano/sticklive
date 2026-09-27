@@ -52,6 +52,8 @@ export interface Match {
   roundId: string | null;
   competitionId?: string | null;
   competitionName?: string | null;
+  /** Slug de la competición: el listado del día ordena los bloques por importancia con él. */
+  competitionSlug?: string | null;
   /** IANA TZ de la competición (ver migración 042). La web cae a Europe/Madrid. */
   competitionTimezone?: string | null;
   status: MatchStatus;
