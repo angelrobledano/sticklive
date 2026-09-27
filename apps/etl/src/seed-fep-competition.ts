@@ -62,11 +62,14 @@ const ACTIVE = argv['active'] !== 'false';
 const WRITE = argv['write'] === 'true' || argv['write'] === '1';
 
 function slugify(s: string): string {
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '')
     .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
 interface DiscTeam { ref: string; name: string; abbr: string; }
+
+// La fuente mete un pseudo-equipo 'DESCANSO' como bye en ligas de nº impar (Bronce N/S).
+const isBye = (n: string): boolean => /^\s*descanso\s*$/i.test(n || '');
 
 function parseTeamsArray(html: string): DiscTeam[] {
   const $ = cheerio.load(html);
@@ -76,7 +79,7 @@ function parseTeamsArray(html: string): DiscTeam[] {
   return val.split(';').filter(Boolean).map((chunk) => {
     const [, ref = '', abbr = '', ...nameParts] = chunk.split(',');
     return { ref: ref.trim(), abbr: abbr.trim(), name: nameParts.join(',').trim() };
-  }).filter((t) => t.ref && t.name);
+  }).filter((t) => t.ref && t.name && !isBye(t.name));
 }
 
 function parseTeamsFromCalendar(html: string): DiscTeam[] {
@@ -88,7 +91,8 @@ function parseTeamsFromCalendar(html: string): DiscTeam[] {
       .filter((c) => c.startsWith('team_') && c !== 'team_class').map((c) => c.replace('team_', ''));
     const names = $row.find('.nombre_junto_logo').map((_, el) => $(el).text().trim()).get();
     teamClasses.forEach((ref, i) => {
-      if (ref && !byRef.has(ref)) byRef.set(ref, { ref, name: names[i] ?? `Equipo ${ref}`, abbr: '' });
+      const nm = names[i] ?? '';
+      if (ref && !byRef.has(ref) && !isBye(nm)) byRef.set(ref, { ref, name: nm || `Equipo ${ref}`, abbr: '' });
     });
   });
   return [...byRef.values()];
