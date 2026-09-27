@@ -60,12 +60,15 @@ app.use('*', async (c, next) => {
 });
 
 // Rate-limit de lectura (I1): tope generoso por IP en los GET más caros de BD.
-// Defensivo anti-DoS; no toca /matches/:id/stream (SSE) ni /matches/live.
+// Defensivo anti-DoS; no toca /matches/:id/stream (SSE).
 const readLimit = rateLimit(120, 60_000);
 app.use('/seasons/:id/overview', readLimit);
 app.use('/seasons/:id/stats', readLimit);
 app.use('/teams/:id', readLimit);
 app.use('/players/:id', readLimit);
+// La home (la ruta más pesada) también: ver #153.
+app.use('/matches/current', readLimit);
+app.use('/matches/live', readLimit);
 
 // Health check
 app.get('/health', (c) => {

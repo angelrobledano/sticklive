@@ -28,4 +28,16 @@ describe('resolveCurrentWindow', () => {
   it('solo from (sin to) ignora el rango y usa el por defecto', () => {
     expect(resolveCurrentWindow({ from: '2026-06-01' })).toEqual({ kind: 'relative', backDays: 8, fwdDays: 15 });
   });
+
+  it('#153 acota la amplitud del rango explícito a 90 días', () => {
+    expect(resolveCurrentWindow({ from: '2026-01-01', to: '2027-01-01' }))
+      .toEqual({ kind: 'range', from: '2026-01-01', to: '2026-04-01' });
+  });
+
+  it('#153 normaliza el orden y una fecha inválida cae al modo relativo', () => {
+    expect(resolveCurrentWindow({ from: '2026-06-30', to: '2026-06-01' }))
+      .toEqual({ kind: 'range', from: '2026-06-01', to: '2026-06-30' });
+    expect(resolveCurrentWindow({ from: '9999-99-99', to: '9999-99-99' }))
+      .toEqual({ kind: 'relative', backDays: 8, fwdDays: 15 });
+  });
 });
