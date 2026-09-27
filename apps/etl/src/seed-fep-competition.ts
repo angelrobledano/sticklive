@@ -68,6 +68,10 @@ const END = argv['end'] ?? '2027-06-30';
 const TEMP = argv['temp'] ? `temp_${argv['temp']}` : null;
 const ACTIVE = argv['active'] !== 'false';
 const WRITE = argv['write'] === 'true' || argv['write'] === '1';
+// Altas de club confirmadas por un humano (el panel HITL no crea entidades, solo
+// asigna o descarta): estas refs se fuerzan a "nuevo" aunque la similitud
+// encuentre candidatos. Formato: --force-new=3729,3737,3695
+const FORCE_NEW = (argv['force-new'] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 
 function slugify(s: string): string {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -170,6 +174,8 @@ async function main() {
       const g = (await db.query<{ gender: string | null; age_category: string | null }>(`SELECT gender, age_category FROM teams WHERE id=$1`, [aliasId])).rows[0];
       if (mismoGenero(g?.gender) && mismaCategoria(g?.age_category)) { plan.push({ t, accion: 'reusar-alias', teamId: aliasId }); continue; }
     }
+    // Alta confirmada a mano: se crea aunque haya candidatos por similitud.
+    if (FORCE_NEW.includes(t.ref)) { plan.push({ t, accion: 'nuevo' }); continue; }
     const candidatos = await findSimilarTeamNames(t.name, sportId, { gender: GENDER, ageCategory: AGE }, 3);
     if (candidatos.length > 0) { plan.push({ t, accion: 'dudoso', candidatos }); continue; }
     plan.push({ t, accion: 'nuevo' });
