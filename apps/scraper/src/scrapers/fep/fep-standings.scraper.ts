@@ -6,6 +6,7 @@ import type { Element } from 'domhandler';
 import { BaseScraper } from '../../core/base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
+import { isByeTeamName } from './bye-team.js';
 import { isGenericStandingsTitle } from './standings-title.js';
 import type { ScrapedStanding } from '@sports/shared-types';
 
@@ -121,6 +122,10 @@ export class FepStandingsScraper extends BaseScraper<ScrapedStanding> {
       || cells.eq(2).text().trim();
     const abbreviation = cells.eq(2).find('.mobile').first().text().trim();
     if (!teamName) return null;
+    // La tabla de Bronce (nº impar de equipos) incluye una fila de bye
+    // ("DESCANSO") que no es un equipo: sin filtrarla, la resolución falla y
+    // tumba la transacción del grupo entero (clasificación a 0).
+    if (isByeTeamName(teamName)) return null;
 
     const points       = parseStatInt(cells.eq(3).text());
     const played       = parseStatInt(cells.eq(4).text());
