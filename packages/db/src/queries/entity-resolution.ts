@@ -143,6 +143,45 @@ export async function generateFuzzyCandidates(
   return rows.map((r) => ({ teamId: r.team_id, name: r.name, score: Number(r.score) }));
 }
 
+export interface SimilarNameCandidate {
+  teamId: string;
+  name: string;
+  score: number;
+}
+
+/**
+ * Candidatos por similitud de NOMBRE contra los equipos existentes.
+ *
+ * `generateFuzzyCandidates` busca en `team_aliases`, que solo cubre los equipos
+ * ya aprendidos. Antes de dar de alta una temporada nueva hace falta comparar
+ * contra los nombres REALES de los equipos del mismo deporte, para detectar
+ * clubs renombrados por patrocinio (p. ej. "OXIGEN PHC SANT CUGAT" →
+ * "VICIO PHC SANT CUGAT") y no crear un duplicado.
+ *
+ * Bloqueo por deporte, con género/categoría PERMISIVOS: hay equipos históricos
+ * con `gender`/`age_category` NULL y excluirlos haría perder al candidato bueno.
+ * El umbral es bajo a propósito: esto solo decide "¿hay que preguntar?".
+ */
+export async function findSimilarTeamNames(
+  name: string,
+  sportId: string,
+  opts?: { gender?: string | null; ageCategory?: string | null },
+  limit = 3,
+): Promise<SimilarNameCandidate[]> {
+  const { rows } = await db.query<{ team_id: string; name: string; score: number }>(
+    `SELECT t.id AS team_id, t.name, similarity(lower(t.name), lower($1))::float AS score
+       FROM teams t
+      WHERE t.sport_id = $2
+        AND ($3::text IS NULL OR t.gender = $3 OR t.gender IS NULL)
+        AND ($4::text IS NULL OR t.age_category = $4 OR t.age_category IS NULL)
+        AND similarity(lower(t.name), lower($1)) >= 0.35
+      ORDER BY score DESC, t.name
+      LIMIT $5`,
+    [name, sportId, opts?.gender ?? null, opts?.ageCategory ?? null, limit],
+  );
+  return rows.map((r) => ({ teamId: r.team_id, name: r.name, score: Number(r.score) }));
+}
+
 export interface EnqueueResolutionInput {
   rawText: string;
   normalized: string;

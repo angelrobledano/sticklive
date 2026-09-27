@@ -19,7 +19,12 @@
  *     --idc=3568 --name="OK LIGA MASCULINA" --short="OK Liga" \
  *     --gender=male --season=2026/27 --temp=40 --write
  */
-import { db, closeDb, findTeamBySourceRef, findTeamBySlug, addTeamAltRef, upsertCompetitionSource } from '@sports/db';
+import {
+  db, closeDb,
+  findTeamBySourceRef, findTeamBySlug, addTeamAltRef, upsertCompetitionSource,
+  findTeamByNormalizedAlias, findSimilarTeamNames, enqueueResolution, upsertSourceEntityMapTeam,
+} from '@sports/db';
+import { normalizeTeamName } from './transformers/normalize.js';
 import { createLogger } from '@sports/logger';
 import { sidgadPost, SIDGAD_LANG } from '../../scraper/src/scrapers/fep/sidgad-client.js';
 import * as cheerio from 'cheerio';
@@ -130,6 +135,38 @@ async function main() {
   teams.forEach((t) => console.log(`  ${t.ref.padEnd(6)} ${t.abbr.padEnd(5)} ${t.name}`));
   if (teams.length === 0) console.log('  ⚠️  Ninguno (plantilla no publicada aún): se crea competición+temporada+source igual.');
 
+  // ── Clasificación de identidad (SOLO LECTURA) ──────────────────────────────
+  // Antes de crear nada: ¿este equipo ya existe? Mismo embudo que el ETL —
+  // ref de fuente → slug → alias normalizado → similitud de nombre contra los
+  // equipos REALES. Un club renombrado por patrocinio cae en "dudoso" y NO se
+  // crea: va a la cola HITL para un clic humano (regla de oro del ER).
+  type Accion = 'reusar-ref' | 'reusar-slug' | 'reusar-alias' | 'dudoso' | 'nuevo';
+  interface Fila { t: DiscTeam; accion: Accion; teamId?: string; candidatos?: { teamId: string; name: string; score: number }[]; }
+  const plan: Fila[] = [];
+  for (const t of teams) {
+    const byRef = await findTeamBySourceRef(t.ref);
+    if (byRef) { plan.push({ t, accion: 'reusar-ref', teamId: byRef.id }); continue; }
+    const bySlug = await findTeamBySlug(sportId, slugify(t.name));
+    if (bySlug) { plan.push({ t, accion: 'reusar-slug', teamId: bySlug.id }); continue; }
+    const byAlias = await findTeamByNormalizedAlias(normalizeTeamName(t.name), sourceId);
+    if (byAlias) { plan.push({ t, accion: 'reusar-alias', teamId: byAlias }); continue; }
+    const candidatos = await findSimilarTeamNames(t.name, sportId, { gender: GENDER, ageCategory: AGE }, 3);
+    if (candidatos.length > 0) { plan.push({ t, accion: 'dudoso', candidatos }); continue; }
+    plan.push({ t, accion: 'nuevo' });
+  }
+  const cuenta = (a: Accion) => plan.filter((f) => f.accion === a).length;
+  console.log(
+    `\nIdentidad: reusar(ref ${cuenta('reusar-ref')}, slug ${cuenta('reusar-slug')}, alias ${cuenta('reusar-alias')}) · ` +
+      `dudosos→cola ${cuenta('dudoso')} · nuevos ${cuenta('nuevo')}`
+  );
+  for (const f of plan.filter((x) => x.accion === 'dudoso')) {
+    console.log(`  ?  ${f.t.ref.padEnd(6)} ${f.t.name}`);
+    console.log(`       candidatos: ${f.candidatos!.map((c) => `${c.name} (${c.score.toFixed(2)})`).join(' · ')}`);
+  }
+  for (const f of plan.filter((x) => x.accion === 'nuevo')) {
+    console.log(`  +  ${f.t.ref.padEnd(6)} ${f.t.name} → se creará`);
+  }
+
   if (!WRITE) {
     console.log('\n(dry-run) No se ha escrito nada. Repite con --write para confirmar.\n');
     return;
@@ -160,29 +197,45 @@ async function main() {
   )).rows[0]!;
 
   // ── Equipos (identidad por temporada) ──
-  let created = 0, reused = 0, aliased = 0;
-  for (const t of teams) {
-    let team: { id: string } | null = await findTeamBySourceRef(t.ref);
-    if (team) {
+  let created = 0, reused = 0, aliased = 0, pending = 0;
+  for (const f of plan) {
+    const t = f.t;
+    let teamId: string | null = f.teamId ?? null;
+
+    if (f.accion === 'reusar-ref') {
       reused++;
+    } else if (f.accion === 'reusar-slug' || f.accion === 'reusar-alias') {
+      // La ref de esta temporada es nueva: se AÑADE (no se pisa source_ref) y se
+      // alimenta el mapa de fuente para que la próxima entre por el escalón 1.
+      await addTeamAltRef(teamId!, t.ref);
+      await upsertSourceEntityMapTeam(sourceId, t.ref, teamId!).catch(() => {});
+      aliased++;
+    } else if (f.accion === 'dudoso') {
+      // No se crea nada: queda en la cola HITL con sus candidatos. Al resolverlo
+      // en /admin/resolucion se aprende el alias y re-ejecutar el seed lo reusa.
+      await enqueueResolution({
+        rawText: t.name,
+        normalized: normalizeTeamName(t.name),
+        sourceId,
+        sourceRef: t.ref,
+        context: { sportId, from: 'seed-fep-competition' },
+        candidates: f.candidatos,
+      }).catch(() => {});
+      pending++;
+      continue;
     } else {
-      const slug = slugify(t.name);
-      const bySlug = await findTeamBySlug(sportId, slug);
-      if (bySlug) {
-        await addTeamAltRef(bySlug.id, t.ref); // nuevo ref de temporada, no pisar source_ref
-        team = bySlug; aliased++;
-      } else {
-        team = (await db.query<{ id: string }>(
-          `INSERT INTO teams (sport_id, name, short_name, slug, country, source_id, source_ref, scraped_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,NOW()) RETURNING id`,
-          [sportId, t.name, t.abbr || null, slug, COUNTRY, sourceId, t.ref],
-        )).rows[0]!;
-        created++;
-      }
+      teamId = (await db.query<{ id: string }>(
+        `INSERT INTO teams (sport_id, name, short_name, slug, country, source_id, source_ref, scraped_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,NOW()) RETURNING id`,
+        [sportId, t.name, t.abbr || null, slugify(t.name), COUNTRY, sourceId, t.ref],
+      )).rows[0]!.id;
+      await upsertSourceEntityMapTeam(sourceId, t.ref, teamId).catch(() => {});
+      created++;
     }
+
     await db.query(
       `INSERT INTO season_teams (season_id, team_id) VALUES ($1,$2) ON CONFLICT (season_id, team_id) DO NOTHING`,
-      [season.id, team!.id],
+      [season.id, teamId],
     );
   }
 
@@ -198,7 +251,7 @@ async function main() {
   console.log(`COMPETITION_ID=${comp.id}`);
   console.log(`SEASON_ID=${season.id}`);
   console.log(`SOURCE_ID=${sourceId}`);
-  console.log(`Equipos: nuevos=${created} reusados=${reused} alias=${aliased}`);
+  console.log(`Equipos: nuevos=${created} reusados=${reused} alias=${aliased} a-la-cola=${pending}`);
   console.log('═════════════════════════════════════════════');
   console.log('\nCarga inicial (mismo contenedor):');
   console.log(`  node dist/apps/etl/src/run-pipeline.js --entity=calendar  --idc=${IDC} --season-id=${season.id}`);
