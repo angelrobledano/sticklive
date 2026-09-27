@@ -2,7 +2,8 @@
  * Importancia de las competiciones (decisión de producto), compartida por el
  * listado de competiciones y la vista de partidos del día.
  *
- *  · `hasSeason2026`: solo se muestra lo que tiene temporada 2026/27.
+ *  · `currentSeasonYear` + `hasSeasonYear`: solo se muestra lo que tiene la
+ *    temporada vigente, cuyo año se deriva de los datos (antes hardcodeado).
  *  · `orderByImportance`: orden de mayor a menor importancia, indexado por
  *    `slug` (estable; el nombre es traducible). Genérico: ordena tanto la lista
  *    de competiciones como los bloques de la vista del día.
@@ -11,13 +12,29 @@
  */
 import type { CompetitionSummary } from '@/lib/api/client';
 
-const SEASON_LABEL = '2026/27';
-const SEASON_YEAR = 2026;
+/**
+ * Año de la temporada vigente según los datos: el mayor año de 4 dígitos que
+ * aparece en los nombres de temporada (p. ej. 2026 en «2026/27»). Derivarlo evita
+ * el `2026` hardcodeado, que en verano de 2027 dejaría la portada vacía (#172).
+ * Ignora «Histórico» (no es una temporada real).
+ */
+export function currentSeasonYear(comps: CompetitionSummary[]): number | null {
+  let max: number | null = null;
+  for (const c of comps) {
+    const name = c.season?.name;
+    if (!name || /hist[oó]rico/i.test(name)) continue;
+    const m = name.match(/\d{4}/);
+    if (!m) continue;
+    const y = Number(m[0]);
+    if (Number.isFinite(y) && (max == null || y > max)) max = y;
+  }
+  return max;
+}
 
-/** ¿Esta competición tiene temporada 2026/27? (regla estricta: por nombre) */
-export function hasSeason2026(c: CompetitionSummary): boolean {
+/** ¿Esta competición incluye la temporada `year`? (regla estricta: por nombre) */
+export function hasSeasonYear(c: CompetitionSummary, year: number): boolean {
   const name = c.season?.name ?? '';
-  return name.includes(SEASON_LABEL) || name.includes(String(SEASON_YEAR));
+  return name.includes(String(year));
 }
 
 /**

@@ -7,7 +7,7 @@ import { useT } from '@/lib/i18n';
 import { clubName, competitionName } from '@/lib/names';
 import { CountryFlag } from '@/components/shared/CountryFlag';
 import { useFavorites } from '@/hooks/useFavorites';
-import { hasSeason2026, orderByImportance } from '@/lib/competition-importance';
+import { currentSeasonYear, hasSeasonYear, orderByImportance } from '@/lib/competition-importance';
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -374,10 +374,12 @@ export function CompetitionsList({
   const favorites = useMemo(() => new Set(leagues), [leagues]);
   const toggleFav = toggleLeague;
 
-  // 1) Solo competiciones con temporada 2026/27 (las demás no tienen nada que enseñar)
+  // 1) Solo competiciones con la temporada vigente. El año se DERIVA del listado
+  //    (no hardcodeado): en 2027 la portada no queda vacía (#172).
+  const seasonYear = useMemo(() => currentSeasonYear(competitions), [competitions]);
   const relevant = useMemo(
-    () => competitions.filter(hasSeason2026),
-    [competitions],
+    () => competitions.filter((c) => seasonYear != null && hasSeasonYear(c, seasonYear)),
+    [competitions, seasonYear],
   );
 
   // 2) Aplicar búsqueda

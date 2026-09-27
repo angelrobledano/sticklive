@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hasSeason2026, importanceRank, orderByImportance } from './competition-importance';
+import { currentSeasonYear, hasSeasonYear, importanceRank, orderByImportance } from './competition-importance';
 import type { CompetitionSummary } from '@/lib/api/client';
 
 function comp(slug: string, over: Partial<CompetitionSummary> = {}): CompetitionSummary {
@@ -20,27 +20,48 @@ function comp(slug: string, over: Partial<CompetitionSummary> = {}): Competition
   };
 }
 
-describe('hasSeason2026', () => {
-  it('muestra solo las que tienen la temporada 2026/27', () => {
-    expect(hasSeason2026(comp('ok-liga-masculina'))).toBe(true);
+describe('currentSeasonYear', () => {
+  it('deriva el año de la temporada más reciente del listado', () => {
+    expect(currentSeasonYear([
+      comp('a'), // 2026/27
+      comp('b', { season: { id: 's', name: '2025/26', isCurrent: true, teamCount: 0, matchCount: 0 } }),
+    ])).toBe(2026);
   });
 
-  it('oculta las que no la tienen, aunque su temporada sea la actual', () => {
+  it('ignora «Histórico», los sin temporada y toma el máximo', () => {
+    expect(currentSeasonYear([
+      comp('a', { season: null }),
+      comp('b', { season: { id: 's', name: 'Histórico', isCurrent: false, teamCount: 0, matchCount: 0 } }),
+      comp('c', { season: { id: 's', name: '2027/28', isCurrent: true, teamCount: 0, matchCount: 0 } }),
+    ])).toBe(2027);
+  });
+
+  it('sin datos devuelve null', () => {
+    expect(currentSeasonYear([])).toBeNull();
+  });
+});
+
+describe('hasSeasonYear', () => {
+  it('muestra solo las que incluyen el año vigente', () => {
+    expect(hasSeasonYear(comp('ok-liga-masculina'), 2026)).toBe(true);
+  });
+
+  it('oculta las que no lo tienen, aunque su temporada sea la actual', () => {
     const c = comp('ok-liga-bronce-eliminatoria', {
       season: { id: 's-2', name: '2025/26', isCurrent: true, teamCount: 0, matchCount: 0 },
     });
-    expect(hasSeason2026(c)).toBe(false);
+    expect(hasSeasonYear(c, 2026)).toBe(false);
   });
 
   it('sin temporada no se muestra', () => {
-    expect(hasSeason2026(comp('x', { season: null }))).toBe(false);
+    expect(hasSeasonYear(comp('x', { season: null }), 2026)).toBe(false);
   });
 
   it('la temporada histórica colapsada no se muestra', () => {
     const c = comp('copa-del-rey', {
       season: { id: 's-3', name: 'Histórico', isCurrent: false, teamCount: 0, matchCount: 0 },
     });
-    expect(hasSeason2026(c)).toBe(false);
+    expect(hasSeasonYear(c, 2026)).toBe(false);
   });
 
   it('una temporada 2025/26 jugada en 2026 NO se muestra (regla estricta por nombre)', () => {
@@ -49,7 +70,14 @@ describe('hasSeason2026', () => {
     const c = comp('campeonato-de-europa-sub-17-masculino', {
       season: { id: 's-4', name: '2025/26', startDate: '2026-07-20', isCurrent: true, teamCount: 8, matchCount: 12 },
     });
-    expect(hasSeason2026(c)).toBe(false);
+    expect(hasSeasonYear(c, 2026)).toBe(false);
+  });
+
+  it('en 2027 la portada sigue funcionando porque el año se deriva del listado (#172)', () => {
+    const comps = [comp('a', { season: { id: 's', name: '2027/28', isCurrent: true, teamCount: 0, matchCount: 0 } })];
+    const year = currentSeasonYear(comps)!;
+    expect(year).toBe(2027);
+    expect(hasSeasonYear(comps[0]!, year)).toBe(true);
   });
 });
 
