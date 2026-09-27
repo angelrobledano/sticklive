@@ -10,8 +10,10 @@
 import { upsertMatch, insertScrapeLog, getSeasonSignals, upsertRound, db, learnSourceClub } from '@sports/db';
 import type { ScrapedMatch, ScrapeResult } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
+import * as Sentry from '@sentry/node';
 import { transformMatch } from '../transformers/match.transformer.js';
 import { RefResolver } from './ref-resolver.js';
+import { isStatusRegression } from '../status-regression.js';
 
 const log = createLogger({ module: 'loader:match' });
 const BATCH_SIZE = Number(process.env['ETL_BATCH_SIZE'] ?? 100);
@@ -274,6 +276,24 @@ export async function loadMatches(
             const at = raw.scrapedAt ?? new Date();
             if (input.status === 'live' && !input.startedAt) input.startedAt = at;
             if (input.status === 'finished' && !input.finishedAt) input.finishedAt = at;
+          }
+
+          // #188: observabilidad de regresiones de estado (finished/live →
+          // scheduled). No se bloquea la transición (una corrección de la fuente
+          // es legítima), solo se deja rastro en logs y Sentry.
+          const prevRow = await db.query<{ status: string }>(
+            `SELECT status FROM matches WHERE source_ref = $1 LIMIT 1`, [input.sourceRef]
+          );
+          const prevStatus = prevRow.rows[0]?.status ?? null;
+          if (isStatusRegression(prevStatus, input.status)) {
+            log.warn(
+              { item: itemLabel, sourceRef: input.sourceRef, from: prevStatus, to: input.status },
+              'Regresión de estado de partido (posible glitch o corrección de la fuente)'
+            );
+            Sentry.captureMessage('Regresión de estado de partido', {
+              level: 'warning',
+              extra: { sourceRef: input.sourceRef, from: prevStatus, to: input.status, seasonId: input.seasonId },
+            });
           }
 
           await upsertMatch({ ...input, homeTeamId, awayTeamId, importBatchId: options.importBatchId, enrich: options.enrich });

@@ -359,4 +359,23 @@ describe('match.loader (I2)', () => {
     expect(c.finished_at).not.toBeNull();
     expect(c.started_at!.toISOString()).toBe(a.started_at!.toISOString());
   });
+
+  // ── #188: una regresión de estado no se bloquea (se corrige), pero se detecta.
+  test('T-032 regresión finished → scheduled: se aplica el nuevo estado (no se bloquea)', async () => {
+    const home = await equipoConRef('t-home', 'Equipo Casa');
+    const away = await equipoConRef('t-away', 'Equipo Fuera');
+    await db.query(
+      `INSERT INTO matches (season_id, home_team_id, away_team_id, status, source_ref, scheduled_at)
+       VALUES ($1,$2,$3,'finished','m-reg-1', NOW())`,
+      [seasonId, home, away]);
+
+    const r = await loadMatches(resultOf([
+      scraped({ homeTeamRef: 't-home', awayTeamRef: 't-away', sourceRef: 'm-reg-1', status: 'scheduled' }),
+    ]), sportId);
+
+    expect(r.upserted).toBe(1);
+    const m = (await db.query<{ status: string }>(
+      `SELECT status FROM matches WHERE source_ref = 'm-reg-1'`)).rows[0]!;
+    expect(m.status).toBe('scheduled'); // el glitch se registra, no se congela el dato
+  });
 });
