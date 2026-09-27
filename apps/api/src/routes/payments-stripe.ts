@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import Stripe from 'stripe';
-import { db } from '@sports/db';
+import { db, withTransaction } from '@sports/db';
 import { rateLimit } from '../lib/rate-limit.js';
 import { isPremiumActive } from '../lib/premium.js';
 
@@ -98,43 +98,62 @@ stripeRouter.post('/webhook', async (c) => {
     return c.json({ error: 'invalid_signature' }, 400);
   }
 
-  // Idempotencia (auditoría S9): si el event.id ya se procesó, no repetir el
-  // efecto. INSERT ... ON CONFLICT DO NOTHING → si no inserta, es duplicado.
-  const seen = await db.query(
-    `INSERT INTO processed_stripe_events (event_id) VALUES ($1)
-     ON CONFLICT (event_id) DO NOTHING RETURNING event_id`,
-    [event.id]
-  );
-  if ((seen.rowCount ?? 0) === 0) {
-    return c.json({ received: true, duplicate: true });
-  }
+  // Idempotencia + efecto en UNA transacción (#154): si el efecto falla, la marca
+  // de idempotencia se revierte con él, así que el reintento de Stripe vuelve a
+  // procesar el evento. Antes quedaba marcado sin aplicar → pago sin premium
+  // irrecuperable.
+  let duplicate = false;
+  let premiumUserId: string | null = null;
+  let analyticsDeviceId: string | undefined;
+  let amountTotal = PRICE_CENTS;
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const userId = session.metadata?.['userId'];
-    const deviceId = session.metadata?.['deviceId'];
-
-    if (userId) {
-      await db.query(
-        `UPDATE users SET is_premium = TRUE,
-                          premium_until = NOW() + INTERVAL '1 year',
-                          updated_at = NOW()
-         WHERE id = $1`,
-        [userId]
-      );
-      console.log(`[stripe] ✅ Premium activado para user ${userId}`);
-
-      // Analítica de servidor: cierra el funnel premium_checkout_started → purchased
-      try {
-        const { analytics } = await import('@sports/analytics');
-        analytics.capture({
-          distinctId: deviceId ?? userId,
-          event: 'premium_purchased',
-          properties: { provider: 'stripe', amount_cents: session.amount_total ?? PRICE_CENTS },
-        });
-        await analytics.flush();
-      } catch { /* sin POSTHOG_API_KEY no bloqueamos el webhook */ }
+  await withTransaction(async (tx) => {
+    const seen = await tx.query(
+      `INSERT INTO processed_stripe_events (event_id) VALUES ($1)
+       ON CONFLICT (event_id) DO NOTHING RETURNING event_id`,
+      [event.id]
+    );
+    if ((seen.rowCount ?? 0) === 0) {
+      duplicate = true;
+      return;
     }
+
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      const userId = session.metadata?.['userId'];
+
+      if (userId) {
+        // Extiende desde la caducidad previa si aún está vigente (una renovación
+        // anticipada no debe perder los días que quedaban).
+        await tx.query(
+          `UPDATE users SET is_premium = TRUE,
+                            premium_until = GREATEST(COALESCE(premium_until, NOW()), NOW()) + INTERVAL '1 year',
+                            updated_at = NOW()
+           WHERE id = $1`,
+          [userId]
+        );
+        premiumUserId = userId;
+        analyticsDeviceId = session.metadata?.['deviceId'];
+        amountTotal = session.amount_total ?? PRICE_CENTS;
+        console.log(`[stripe] ✅ Premium activado para user ${userId}`);
+      }
+    }
+  });
+
+  if (duplicate) return c.json({ received: true, duplicate: true });
+
+  // Analítica de servidor FUERA de la transacción: no debe bloquear ni revertir
+  // el efecto del pago. Cierra el funnel premium_checkout_started → purchased.
+  if (premiumUserId) {
+    try {
+      const { analytics } = await import('@sports/analytics');
+      analytics.capture({
+        distinctId: analyticsDeviceId ?? premiumUserId,
+        event: 'premium_purchased',
+        properties: { provider: 'stripe', amount_cents: amountTotal },
+      });
+      await analytics.flush();
+    } catch { /* sin POSTHOG_API_KEY no bloqueamos el webhook */ }
   }
 
   return c.json({ received: true });
