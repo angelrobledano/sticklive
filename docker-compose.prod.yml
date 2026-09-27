@@ -91,6 +91,8 @@ services:
     build: *app-build
     logging: *default-logging
     restart: unless-stopped
+    labels:
+      autoheal: "true"   # lo reinicia el sidecar si queda unhealthy (#164)
     command: node dist/apps/api/src/index.js
     env_file: .env.prod
     environment:
@@ -121,6 +123,8 @@ services:
     build: *app-build
     logging: *default-logging
     restart: unless-stopped
+    labels:
+      autoheal: "true"   # lo reinicia el sidecar si queda unhealthy (#164)
     command: node_modules/.bin/next start apps/web -p 3001
     env_file: .env.prod
     volumes:
@@ -196,6 +200,34 @@ services:
       resources:
         limits:
           memory: 1g
+
+  # ── Autoheal (api/web) ───────────────────────────────────────────────────
+  # Reinicia contenedores que quedan `unhealthy` (proceso vivo pero sin
+  # responder). `restart: unless-stopped` solo actúa si el proceso MUERE, no si
+  # se cuelga (#164).
+  #
+  # NUNCA al ETL: su healthcheck es un latido que puede quedar "unhealthy"
+  # mientras trabaja (ver #146); reiniciarlo mataría el directo a media faena.
+  # Por eso el sidecar solo toca contenedores con el label `autoheal`, que hoy
+  # llevan api y web.
+  #
+  # SEGURIDAD: monta el socket de Docker (equivale a root en el host) porque no
+  # hay otra forma de leer/actuar sobre otros contenedores. Si se prefiere no
+  # aceptar ese riesgo, borrar este servicio y los labels `autoheal` de api/web.
+  autoheal:
+    image: willfarrell/autoheal:latest
+    logging: *default-logging
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_INTERVAL: 30          # segundos entre comprobaciones
+      AUTOHEAL_START_PERIOD: 120     # margen tras arrancar antes de vigilar
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      resources:
+        limits:
+          memory: 64m
 
 volumes:
   pgdata:
