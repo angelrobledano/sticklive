@@ -69,6 +69,12 @@ app.use('/players/:id', readLimit);
 // La home (la ruta más pesada) también: ver #153.
 app.use('/matches/current', readLimit);
 app.use('/matches/live', readLimit);
+// Resto de lecturas públicas (#159): mismo tope generoso por IP.
+app.use('/competitions', readLimit);
+app.use('/seasons/:id/matches', readLimit);
+app.use('/seasons/:id/standings', readLimit);
+app.use('/matches/:id', readLimit);
+app.use('/meta/sitemap', readLimit);
 
 // Health check
 app.get('/health', (c) => {

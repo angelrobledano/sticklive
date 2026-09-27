@@ -149,4 +149,5 @@ Si se rotan las VAPID, hay que **reconstruir la web** (la pública es build arg)
 - [ ] `$DC up -d --build` (o `--build web` si solo es front).
 - [ ] `NEXT_PUBLIC_*` pobladas antes de construir.
 - [ ] `$DC ps` todo `Up` + revisar `logs` de `api`/`web`/`etl`.
+- [ ] Smoke post-deploy: `curl -fsS https://sticklive.eu/api/health` y `curl -fsS -o /dev/null -w '%{http_code}' https://sticklive.eu/es` (deben dar 200). No des el deploy por bueno sin esto (#165).
 - [ ] Smoke test: `curl -fsS https://sticklive.eu/api/health` → `{"status":"ok"}`.

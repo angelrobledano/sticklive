@@ -1,4 +1,6 @@
 'use client';
+import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
 // app/error.tsx — Error Boundary global de Next.js 14
 // Se activa cuando un Server Component lanza una excepción no capturada.
 // reset() fuerza un re-render del segmento sin recargar la página.
@@ -74,6 +76,12 @@ function RefreshIcon() {
 
 export default function GlobalError({ error, reset }: ErrorPageProps) {
   const isDev = process.env.NODE_ENV === 'development';
+
+  // Este boundary no reportaba a Sentry (solo el global-error.tsx lo hacía):
+  // los errores del árbol principal quedaban como digest sin traza (#162).
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center gap-6">

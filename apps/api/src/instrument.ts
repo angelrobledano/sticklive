@@ -12,6 +12,6 @@ Sentry.init({
   serverName: 'api',
   // 100% en dev, 10% en prod (controla cuota)
   tracesSampleRate: process.env['NODE_ENV'] === 'production' ? 0.1 : 1.0,
-  sendDefaultPii: true,
+  sendDefaultPii: false,
   initialScope: { tags: { service: 'api' } },
 });
