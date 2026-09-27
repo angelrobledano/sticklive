@@ -19,6 +19,7 @@ import type { Element } from 'domhandler';
 import { BaseScraper } from '../../core/base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
+import { isByeTeamName } from './bye-team.js';
 import type { ScrapedMatch, MatchStatus } from '@sports/shared-types';
 import { zonedToUtc } from '../../core/eu-timezone.js';
 
@@ -143,6 +144,11 @@ export class FepCalendarScraper extends BaseScraper<ScrapedMatch> {
     // Nombres de equipo (para logging/debug, no los usamos como ref)
     const homeTeamName = $row.find('.nombre_junto_logo').eq(0).text().trim();
     const awayTeamName = $row.find('.nombre_junto_logo').eq(1).text().trim();
+
+    // La fila de descanso (bye) trae a "DESCANSO" como rival, con su propia ref
+    // (verificado en Bronce N/S 2026/27). No es un partido: se omite aquí para
+    // no emitirlo y acabar con un descarte ruidoso + cola HITL ensuciada.
+    if (isByeTeamName(homeTeamName) || isByeTeamName(awayTeamName)) return null;
 
     // Resultado: celda con clase web_link_td que contiene "1 - 4" o vacío
     const scoreText = $row.find('.web_link_td').first().text().trim();
