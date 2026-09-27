@@ -36,15 +36,11 @@ import type { Element } from 'domhandler';
 import { BaseScraper } from '../../core/base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost } from './sidgad-client.js';
-import { zonedToUtc } from '../../core/eu-timezone.js';
+import { parseShortDatetime } from './match-datetime.js';
 import type { ScrapedMatch, MatchStatus } from '@sports/shared-types';
 
 const BASE_URL = 'https://www.server2.sidgad.es/rfep';
 const SOURCE_ID = requireFepSourceId();
-// El feed rfep_mc_1 es global (todas las competiciones FEP) y la FEP publica
-// siempre en hora peninsular española; por eso aquí la zona es fija. Una fuente
-// futura en otra zona pasaría su TZ a zonedToUtc (como hace fep-calendar).
-const DEFAULT_TIMEZONE = 'Europe/Madrid';
 
 export interface MatchesScraperConfig {
   /**
@@ -244,31 +240,6 @@ function inferStatus(
   return 'scheduled';
 }
 
-/**
- * Parsea "23/05 12:30" → Date UTC.
- * FEP publica siempre en hora española (Europe/Madrid):
- *   - CEST (UTC+2): último domingo de marzo → último domingo de octubre
- *   - CET  (UTC+1): resto del año
- */
 function parseDatetime(text: string): Date | undefined {
-  if (!text) return undefined;
-  // Formato: "DD/MM HH:MM"
-  const m = text.match(/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/);
-  if (!m) return undefined;
-
-  const day   = parseInt(m[1]!, 10);
-  const month = parseInt(m[2]!, 10) - 1; // 0-based
-  const hour  = parseInt(m[3]!, 10);
-  const min   = parseInt(m[4]!, 10);
-
-  const now = new Date();
-  let year = now.getFullYear();
-
-  // Si el mes está en el futuro lejano, probablemente sea de la temporada anterior
-  const candidate = zonedToUtc(DEFAULT_TIMEZONE, year, month, day, hour, min);
-  if (candidate && candidate.getTime() - now.getTime() > 180 * 24 * 3_600_000) {
-    year -= 1;
-  }
-
-  return zonedToUtc(DEFAULT_TIMEZONE, year, month, day, hour, min);
+  return parseShortDatetime(text);
 }
