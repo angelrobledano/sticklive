@@ -62,7 +62,7 @@ const ACTIVE = argv['active'] !== 'false';
 const WRITE = argv['write'] === 'true' || argv['write'] === '1';
 
 function slugify(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
