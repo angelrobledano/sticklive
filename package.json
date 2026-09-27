@@ -15,7 +15,6 @@
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "db:migrate": "npm run migrate --workspace=packages/db",
-    "db:seed": "npm run seed --workspace=packages/db",
     "scraper:run": "npm run start --workspace=apps/scraper",
     "etl:run": "npm run start --workspace=apps/etl",
     "build:server": "node scripts/build-server.mjs",

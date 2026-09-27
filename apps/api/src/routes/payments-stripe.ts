@@ -5,9 +5,8 @@ import { rateLimit } from '../lib/rate-limit.js';
 import { isPremiumActive } from '../lib/premium.js';
 
 /**
- * Pagos con Stripe — proveedor de pago ACTIVO.
- * (Redsys queda implementado en payments.ts por si se vuelve a él:
- *  el frontend elige proveedor vía NEXT_PUBLIC_PAYMENT_PROVIDER.)
+ * Pagos con Stripe — proveedor de pago ACTIVO (Redsys fue eliminado de la API:
+ * no existe backend al que llamar; no volver a documentarlo sin reintroducirlo).
  *
  *   POST /payments/stripe/checkout  { deviceId } → { url } de Stripe Checkout
  *   POST /payments/stripe/webhook   → checkout.session.completed activa premium

@@ -5,8 +5,10 @@
  *   SMTP_HOST, SMTP_PORT (587), SMTP_USER, SMTP_PASS,
  *   SMTP_FROM ("Stick Live <no-reply@sticklive.eu>")
  *
- * Sin SMTP_HOST la API queda en modo dev (el link se devuelve en la
- * respuesta); con él, este módulo es el único camino.
+ * Sin SMTP_HOST, POST /auth/verify responde 503 y el enlace NUNCA se
+ * devuelve en la respuesta (el modo dev que lo muestra exige AUTH_DEV_LINKS=1
+ * y no-producción; ver routes/auth.ts). Con SMTP_HOST, este módulo es el
+ * único camino.
  *
  * ── Nota de versiones ──────────────────────────────────────────────────────
  * `nodemailer` va en la 10.x, que YA trae sus propios tipos (no hace falta
