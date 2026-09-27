@@ -54,6 +54,7 @@ const MAPPING: Caso[] = [
   { equipoRef: '3089', nombre: 'ACORDES',                competicionFilial: 'ok-liga-bronce-masculina-norte', refFilial: '3673', gender: 'male', ageCategory: 'senior' },
   { equipoRef: '3407', nombre: 'CDM HOCKEY PATINES',     competicionFilial: 'ok-liga-bronce-masculina-norte', refFilial: '3714', gender: 'male', ageCategory: 'senior' },
   { equipoRef: '3376', nombre: 'CLUB PATIN ALCOBENDAS',  competicionFilial: 'ok-liga-bronce-masculina-sur', refFilial: '3735', gender: 'male', ageCategory: 'senior' },
+  { equipoRef: '3373', nombre: 'HOCKEY CLUB LICEO',      competicionFilial: 'ok-liga-bronce-masculina-norte', refFilial: '3744', gender: 'male', ageCategory: 'senior' },
 ];
 
 async function seasonOf(compSlug: string): Promise<{ competitionId: string; seasonId: string } | null> {
