@@ -24,6 +24,7 @@ import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
+import { maxTempIdByKey } from './current-temps.js';
 
 const log = createLogger({ service: 'import-history' });
 
@@ -128,6 +129,13 @@ async function main() {
   const comps = catalog.competitions.filter((c) => !onlyIdcs || onlyIdcs.has(String(c.idc)));
   log.info({ total: comps.length }, 'Competiciones del catálogo a importar');
 
+  // Temporada vigente por competición (#166): la de `tempId` máximo del catálogo,
+  // en vez del '39' (2025/26) hardcodeado. La clave es la misma que agrupa las
+  // temporadas de una competición (slug canónico).
+  const seasonKey = (name: string) =>
+    organizer === 'RFEP' ? canonical(name).slug : `${organizer.toLowerCase()}-${slugify(name)}`;
+  const currentTemp = maxTempIdByKey(comps.map((c) => ({ key: seasonKey(c.name), tempId: c.tempId })));
+
   // IDs base
   const sportRes = await db.query<{ id: string }>(`SELECT id FROM sports WHERE slug = $1`, [SPORT_SLUG]);
   const sportId = sportRes.rows[0]?.id;
@@ -177,9 +185,9 @@ async function main() {
     // 2. Temporada — el idc va en source_ref: es la clave de scraping.
     //    Si ya existe una temporada con ese slug Y otro source_ref (p. ej. la
     //    2025/26 actual ya cargada), NO la pisamos: actualizamos solo si es nueva.
-    // La temporada en curso (temp_39 = 2025/26) se marca como actual; el índice
-    // único es POR competición, así que cada una puede tener su temporada activa.
-    const isCurrent = comp.tempId === '39';
+    // La temporada vigente del catálogo se marca como actual (la de tempId
+    // máximo de esa competición); el índice único es POR competición.
+    const isCurrent = comp.tempId != null && currentTemp.get(canon.slug) === comp.tempId;
     const seasonRes = await db.query<{ id: string; source_ref: string | null }>(
       `INSERT INTO seasons
          (competition_id, name, slug, start_date, end_date, is_current, source_id, source_ref, scraped_at)
