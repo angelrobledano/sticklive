@@ -14,12 +14,10 @@ import type { CompetitionSummary } from '@/lib/api/client';
 const SEASON_LABEL = '2026/27';
 const SEASON_YEAR = 2026;
 
-/** ¿Esta competición tiene temporada 2026/27? */
+/** ¿Esta competición tiene temporada 2026/27? (regla estricta: por nombre) */
 export function hasSeason2026(c: CompetitionSummary): boolean {
   const name = c.season?.name ?? '';
-  if (name.includes(SEASON_LABEL) || name.includes(String(SEASON_YEAR))) return true;
-  const start = c.season?.startDate ? parseInt(c.season.startDate.slice(0, 4), 10) : NaN;
-  return Number.isFinite(start) && start >= SEASON_YEAR;
+  return name.includes(SEASON_LABEL) || name.includes(String(SEASON_YEAR));
 }
 
 /**

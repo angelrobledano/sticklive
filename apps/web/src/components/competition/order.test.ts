@@ -44,11 +44,13 @@ describe('hasSeason2026', () => {
     expect(hasSeason2026(c)).toBe(false);
   });
 
-  it('si el nombre no trae el año, se usa la fecha de inicio', () => {
-    const c = comp('ok-liga-plata-norte', {
-      season: { id: 's-4', name: null, startDate: '2026-09-01', isCurrent: false, teamCount: 0, matchCount: 0 },
+  it('una temporada 2025/26 jugada en 2026 NO se muestra (regla estricta por nombre)', () => {
+    // Caso real: el Europeo Sub-17 de World Skate tiene temporada "2025/26"
+    // pero se jugó en julio de 2026 → un respaldo por fecha lo colaba.
+    const c = comp('campeonato-de-europa-sub-17-masculino', {
+      season: { id: 's-4', name: '2025/26', startDate: '2026-07-20', isCurrent: true, teamCount: 8, matchCount: 12 },
     });
-    expect(hasSeason2026(c)).toBe(true);
+    expect(hasSeason2026(c)).toBe(false);
   });
 });
 
