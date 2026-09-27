@@ -156,6 +156,12 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
   // bloque SSE de arriba tome el relevo.
   useEffect(() => {
     if (isLive) return;
+    // Cubre un RSC cacheado justo antes del saque (#187): si esta ficha se sirvió
+    // en los ~20 s previos (revalidate:20) y se abre ya pasada la hora, el
+    // temporizador de abajo no se programa (delay <= 0) y para 'scheduled' no hay
+    // polling de respaldo. Un fetch inmediato (sin caché, contra la API) trae el
+    // estado efectivo real y pinta EN DIRECTO sin recargar.
+    void refreshData();
     const startIso = liveData.match.scheduledAt ?? liveData.match.startedAt;
     if (!startIso) return;
     const delay = new Date(startIso).getTime() - Date.now();
