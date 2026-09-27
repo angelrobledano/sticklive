@@ -21,9 +21,20 @@
 # datos no se reconstruyen volviendo a scrapear.
 # ============================================================
 
+# Rotación de logs de contenedor (#163). El driver por defecto (json-file)
+# crece sin límite: cron-live loguea cada ciclo de 45 s durante los directos y
+# el VPS tiene 4 GB de disco. Sin esto, una tabla purgada no protege el disco.
+# 10 MB × 3 ficheros por servicio acotan el uso en todos los servicios.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:16-alpine
+    logging: *default-logging
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-sports_user}
@@ -64,6 +75,7 @@ services:
         NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-https://eu.i.posthog.com}
         NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
         SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
+    logging: *default-logging
     # Sin restart: es una tarea, no un servicio. `on-failure` la reintentaría en
     # bucle y dejaría el despliegue colgado sin decir por qué.
     restart: "no"
@@ -77,6 +89,7 @@ services:
 
   api:
     build: *app-build
+    logging: *default-logging
     restart: unless-stopped
     command: node dist/apps/api/src/index.js
     env_file: .env.prod
@@ -106,6 +119,7 @@ services:
 
   web:
     build: *app-build
+    logging: *default-logging
     restart: unless-stopped
     command: node_modules/.bin/next start apps/web -p 3001
     env_file: .env.prod
@@ -129,6 +143,7 @@ services:
 
   caddy:
     image: caddy:2-alpine
+    logging: *default-logging
     restart: unless-stopped
     ports:
       - "80:80"
@@ -147,6 +162,7 @@ services:
 
   etl:
     build: *app-build
+    logging: *default-logging
     restart: unless-stopped
     command: sh deploy/etl-scheduler.sh
     env_file: .env.prod
