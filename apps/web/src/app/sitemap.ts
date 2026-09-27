@@ -1,42 +1,41 @@
 import type { MetadataRoute } from 'next';
 import { SUPPORTED_LOCALES } from '@/lib/locales';
 import { SITE_URL } from '@/lib/seo';
+import { sitemapEntries, sitemapSectionIds, type SitemapIds } from '@/lib/sitemap';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
-interface SitemapIds {
-  competitions: string[];
-  teams: string[];
-  players: string[];
-  matches: string[];
+async function fetchIds(): Promise<SitemapIds> {
+  try {
+    const res = await fetch(`${API_URL}/meta/sitemap`, { next: { revalidate: 3600 } });
+    if (res.ok) return (await res.json()) as SitemapIds;
+  } catch {
+    /* sitemap mínimo si la API no responde */
+  }
+  return { competitions: [], teams: [], players: [], matches: [] };
 }
 
 /**
- * Sitemap multiidioma: cada ruta se lista una vez por locale, con el bloque
- * de alternates (Google entiende así la relación hreflang entre ellas).
+ * Sitemap por secciones/trozos (#169): evita que un solo fichero supere el
+ * límite de 50.000 URLs de Google cuando crezcan jugadores/partidos. Next
+ * publica un índice y un fichero por id.
  */
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  let ids: SitemapIds = { competitions: [], teams: [], players: [], matches: [] };
-  try {
-    const res = await fetch(`${API_URL}/meta/sitemap`, { next: { revalidate: 3600 } });
-    if (res.ok) ids = await res.json() as SitemapIds;
-  } catch { /* sitemap mínimo si la API no responde */ }
+export async function generateSitemaps(): Promise<Array<{ id: string }>> {
+  return sitemapSectionIds(await fetchIds()).map((id) => ({ id }));
+}
 
-  const paths: Array<{ path: string; priority: number; freq: MetadataRoute.Sitemap[number]['changeFrequency'] }> = [
-    { path: '', priority: 1.0, freq: 'hourly' },
-    { path: '/competitions', priority: 0.9, freq: 'daily' },
-    ...ids.competitions.map((id) => ({ path: `/competitions/${id}`, priority: 0.8, freq: 'daily' as const })),
-    ...ids.teams.map((id) => ({ path: `/teams/${id}`, priority: 0.7, freq: 'daily' as const })),
-    ...ids.players.map((id) => ({ path: `/players/${id}`, priority: 0.6, freq: 'weekly' as const })),
-    ...ids.matches.map((id) => ({ path: `/matches/${id}`, priority: 0.6, freq: 'hourly' as const })),
-  ];
-
+/**
+ * Cada ruta se lista una vez por locale, con el bloque de alternates (Google
+ * entiende así la relación hreflang entre ellas).
+ */
+export default async function sitemap(props: { id: string }): Promise<MetadataRoute.Sitemap> {
+  const ids = await fetchIds();
   const now = new Date();
-  return paths.flatMap(({ path, priority, freq }) =>
+  return sitemapEntries(props.id, ids).flatMap(({ path, priority, changeFrequency }) =>
     SUPPORTED_LOCALES.map((locale) => ({
       url: `${SITE_URL}/${locale}${path}`,
       lastModified: now,
-      changeFrequency: freq,
+      changeFrequency,
       priority,
       alternates: {
         languages: Object.fromEntries(

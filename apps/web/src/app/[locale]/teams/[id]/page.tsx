@@ -7,6 +7,8 @@ import { JsonLd } from '@/components/shared/JsonLd';
 import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL } from '@/lib/seo';
 import { clubName } from '@/lib/names';
 
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
+
 interface Props {
   params: Promise<{ locale: string; id: string }>;
 }
@@ -50,7 +52,10 @@ export default async function TeamDetailPage(props: Props) {
     name: clubName(data.team.name),
     sport: 'Roller Hockey',
     url: `${SITE_URL}/${params.locale}/teams/${data.team.id}`,
-    logo: `${SITE_URL}/escudos/${data.team.id}.png`,
+    // El escudo real lo sirve `${API}/teams/:id/logo` (fichero del volumen o proxy
+    // del CDN con Referer); `/escudos/*.png` no existe y el JSON-LD declaraba un
+    // 404 (#169). No usamos `logoUrl` directo porque el CDN bloquea el hotlink.
+    logo: `${API_URL}/teams/${data.team.id}/logo`,
     location: data.team.city ? { '@type': 'Place', name: data.team.city } : undefined,
   };
 
