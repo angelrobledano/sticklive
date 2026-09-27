@@ -147,6 +147,21 @@ Notas: staging es **desechable** — se recrea en cada corrida y nunca deriva de
 
 ---
 
+## Particionado de `match_events` (automático, #101)
+
+No hay paso manual al dar de alta una temporada. El `partition-guard` del
+scheduler (diario, `deploy/etl-scheduler.sh`) hace dos cosas:
+
+1. **Asegura las particiones** de la temporada actual y las 2 siguientes
+   (`CREATE TABLE IF NOT EXISTS match_events_sAAAA PARTITION OF match_events …`),
+   así que la del año que viene existe antes de empezar. La migración 047 ya creó
+   hasta 2035/36; el guard mantiene el árbol al día sin depender de nadie.
+2. **Avisa a Sentry** si `match_events_undated` —la partición centinela de
+   partidos sin `scheduled_at`— recibe filas: en régimen normal debe estar vacía.
+
+Forzarlo a mano: `node dist/apps/etl/src/partition-guard.js`.
+Ajuste: `PARTITION_SEASONS_AHEAD` (defecto 2).
+
 ## Checklist rápido
 
 - [ ] `git checkout --` de los scripts del server antes de `git pull`.
