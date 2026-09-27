@@ -261,6 +261,11 @@ export async function replaceMatchEvents(
   events: UpsertMatchEventInput[],
   client: pg.PoolClient | typeof db = db
 ): Promise<void> {
+  // Guarda (#149): una ficha que llega VACÍA (parseo roto) no debe borrar la
+  // cronología ya cargada. "Los malos datos son peores que no tener datos": se
+  // conserva lo que hay y el caller registra el caso (scrape_log / aviso).
+  if (events.length === 0) return;
+
   // Fecha de partición del partido: la del calendario, con centinela 1900 para
   // partidos sin fecha (caen en match_events_undated). Igual que el COALESCE de
   // la migración 047.

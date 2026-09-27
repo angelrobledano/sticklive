@@ -271,4 +271,17 @@ describe('particionado de match_events (migración 047)', () => {
     // tabla suelta que el TRUNCATE del padre ya no cubre.
     await db.query(`DROP TABLE ${particion}`);
   });
+
+  it('#149 una ficha VACÍA (parseo roto) no borra la cronología ya cargada', async () => {
+    await replaceMatchEvents(escenario.matchId, [
+      evento('fep_event_a'),
+      evento('fep_event_b', { minute: 20 }),
+    ]);
+    expect(await eventosDe(escenario.matchId)).toHaveLength(2);
+
+    // La ficha llega sin eventos: se conserva lo que había (los malos datos son
+    // peores que no tener datos) en vez de vaciar el timeline.
+    await replaceMatchEvents(escenario.matchId, []);
+    expect(await eventosDe(escenario.matchId)).toHaveLength(2);
+  });
 });
