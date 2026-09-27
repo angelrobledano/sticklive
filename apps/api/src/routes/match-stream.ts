@@ -23,6 +23,8 @@ import { streamSSE } from 'hono/streaming';
 import { db, listenForNotifications } from '@sports/db';
 import { logger } from '@sports/logger';
 import { effectiveMatchStatus } from '../lib/effective-status.js';
+import { ConnectionLimiter } from '../lib/sse-connections.js';
+import { clientIp } from '../lib/rate-limit.js';
 import {
   applySnapshot,
   emptyHubState,
@@ -47,6 +49,9 @@ const KEEPALIVE_INTERVAL_MS   = 25_000;
 // tramo decisivo. El cliente además reconecta al recibir `event: timeout`.
 const MAX_STREAM_DURATION_MS = Number(process.env['SSE_MAX_DURATION_MS'] ?? 2 * 60 * 60 * 1_000);
 const MAX_CONNECTIONS = Number(process.env['SSE_MAX_CONNECTIONS'] ?? 1000);
+// Tope por IP para que un solo cliente no agote el cupo global y deje sin
+// directo a todos los demás (#160).
+const MAX_CONNECTIONS_PER_IP = Number(process.env['SSE_MAX_CONNECTIONS_PER_IP'] ?? 10);
 // Las alineaciones no cambian durante el partido salvo goles/asistencias (que
 // ya llegan por eventos). Recalcular ese JOIN con `players` cada 15 s por
 // partido en vivo es el grueso del coste del hub, así que se cachea.
@@ -306,12 +311,23 @@ listenForNotifications('match_update', (matchId) => {
 
 // ─── Endpoint SSE ──────────────────────────────────────────────────
 
-let activeConnections = 0;
+// Un id que no sea UUID haría fallar el cast de Postgres en cada poll: el hub
+// reintentaría indefinidamente y la conexión quedaría zombi consumiendo slot
+// (y el cliente nunca recibiría `event: error`). Se rechaza antes de crear el
+// hub (#160).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const connections = new ConnectionLimiter(MAX_CONNECTIONS, MAX_CONNECTIONS_PER_IP);
 
 matchStreamRouter.get('/:id/stream', async (c) => {
   const matchId = c.req.param('id');
 
-  if (activeConnections >= MAX_CONNECTIONS) {
+  if (!UUID_RE.test(matchId)) {
+    return c.json({ error: 'not_found' }, 404);
+  }
+
+  const ip = clientIp(c);
+  if (!connections.tryAcquire(ip).ok) {
     return c.json({ error: 'too_many_connections' }, 503);
   }
 
@@ -319,8 +335,6 @@ matchStreamRouter.get('/:id/stream', async (c) => {
   if (origin) c.header('Access-Control-Allow-Origin', origin); // sin fallback a '*'
   c.header('Cache-Control', 'no-cache');
   c.header('X-Accel-Buffering', 'no');
-
-  activeConnections++;
 
   return streamSSE(c, async (stream) => {
     const startedAt = Date.now();
@@ -367,7 +381,7 @@ matchStreamRouter.get('/:id/stream', async (c) => {
       logger.warn({ matchId, err }, 'SSE stream cerrado por el cliente');
     } finally {
       unsubscribe(matchId, onData);
-      activeConnections--;
+      connections.release(ip);
     }
   });
 });

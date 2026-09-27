@@ -20,7 +20,7 @@ setInterval(() => {
   for (const [k, b] of store) if (b.resetAt <= now) store.delete(k);
 }, CLEANUP_MS).unref?.();
 
-function clientIp(c: Context): string {
+export function clientIp(c: Context): string {
   // Caddy/Nginx ponen la IP real en X-Forwarded-For (primer valor).
   const xff = c.req.header('x-forwarded-for');
   if (xff) return xff.split(',')[0]!.trim();
