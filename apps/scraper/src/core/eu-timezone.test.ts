@@ -25,11 +25,15 @@ describe('zonedToUtc', () => {
   });
 
   it('bordes del cambio de hora (último domingo de marzo/octubre)', () => {
-    // El offset se decide con una aproximación en UTC (se trata la hora local
-    // como UTC para elegir CET/CEST). Fijamos el resultado observado en los
-    // instantes de transición, que caen ya en el lado de verano (+2).
-    expect(zonedToUtc('Europe/Madrid', 2026, 2, 29, 1, 30).toISOString()).toBe('2026-03-28T23:30:00.000Z');
-    expect(zonedToUtc('Europe/Madrid', 2026, 9, 25, 2, 30).toISOString()).toBe('2026-10-25T01:30:00.000Z');
+    // La frontera se decide en hora LOCAL: el cambio de primavera es a las 02:00
+    // locales, así que las 01:30 del día del cambio siguen siendo CET (#175).
+    expect(zonedToUtc('Europe/Madrid', 2026, 2, 29, 1, 30).toISOString()).toBe('2026-03-29T00:30:00.000Z');
+    // A las 02:30 ya es CEST.
+    expect(zonedToUtc('Europe/Madrid', 2026, 2, 29, 2, 30).toISOString()).toBe('2026-03-29T00:30:00.000Z');
+    // En otoño la hora 02:30 es ambigua: se elige la primera (todavía CEST)...
+    expect(zonedToUtc('Europe/Madrid', 2026, 9, 25, 2, 30).toISOString()).toBe('2026-10-25T00:30:00.000Z');
+    // ...y a las 03:30 ya es CET.
+    expect(zonedToUtc('Europe/Madrid', 2026, 9, 25, 3, 30).toISOString()).toBe('2026-10-25T02:30:00.000Z');
   });
 });
 

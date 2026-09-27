@@ -48,11 +48,18 @@ export function euZonedToUtc(
   const dstStart = Date.UTC(year, 2, lastSundayOf(year, 2), 1, 0, 0); // marzo → 01:00 UTC
   const dstEnd = Date.UTC(year, 9, lastSundayOf(year, 9), 1, 0, 0);   // octubre → 01:00 UTC
 
-  const approxUtc = Date.UTC(year, month, day, hour, min, 0);
-  const inDst = approxUtc >= dstStart && approxUtc < dstEnd;
+  // Las fronteras se comparan en hora LOCAL, no en UTC aproximada: el cambio de
+  // primavera ocurre a las 02:00 locales (01:00 UTC) y el de otoño a las 03:00
+  // locales de verano (= 02:00 locales de invierno). Comparando en UTC, un
+  // partido a las 01:30 local del día del cambio se iba a CEST (una hora menos).
+  // Issue #175.
+  const localApprox   = Date.UTC(year, month, day, hour, min, 0);
+  const dstStartLocal = dstStart + winterOffset * 3_600_000;
+  const dstEndLocal   = dstEnd + (winterOffset + 1) * 3_600_000;
+  const inDst = localApprox >= dstStartLocal && localApprox < dstEndLocal;
   const offset = winterOffset + (inDst ? 1 : 0);
 
-  const d = new Date(approxUtc - offset * 3_600_000);
+  const d = new Date(localApprox - offset * 3_600_000);
   return isNaN(d.getTime()) ? new Date(NaN) : d;
 }
 
