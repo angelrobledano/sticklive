@@ -190,7 +190,7 @@ describe('match.loader (I2)', () => {
     expect(await countMatches()).toBe(1); // no creó fila nueva
   });
 
-  test('T-028 self-heal: aprende alt_source_ref (club_id → equipo) desde el directo', async () => {
+  test('T-028 el directo actualiza el marcador por ref pero NO aprende la ref de club (evita cruzar A/B)', async () => {
     const home = await equipoConRef('t-home', 'Equipo Casa');
     const away = await equipoConRef('t-away', 'Equipo Fuera');
     await db.query(
@@ -199,15 +199,24 @@ describe('match.loader (I2)', () => {
       [seasonId, home, away]);
 
     // El feed de directo identifica por club_id (fep_club_*), que no resuelve.
-    await loadMatches(resultOf([
+    const r = await loadMatches(resultOf([
       scraped({ homeTeamRef: 'fep_club_777', awayTeamRef: 'fep_club_888', sourceRef: 'm-directo', status: 'live', homeScore: 1, awayScore: 0 }),
     ]), sportId);
 
+    // El marcador SÍ se actualiza (el partido ya existía con la ref del feed).
+    expect(r.upserted).toBe(1);
+    const m = (await db.query<{ home_score: number }>(`SELECT home_score FROM matches WHERE source_ref='m-directo'`)).rows[0]!;
+    expect(m.home_score).toBe(1);
+
+    // La ref de club NO se aprende como alias: identifica al CLUB (sirve al
+    // primer equipo y al filial); aprenderla como alias de un equipo cruzaría
+    // las dos secciones (bug A/B del NOIA). La adopción por competición+fecha
+    // cubre el caso sin ese riesgo.
     const alt = (await db.query<{ alt_source_refs: string[] }>(`SELECT alt_source_refs FROM teams WHERE id=$1`, [home])).rows[0]!;
-    expect(alt.alt_source_refs).toContain('fep_club_777');
+    expect(alt.alt_source_refs).not.toContain('fep_club_777');
     const mapa = (await db.query<{ c: string }>(
       `SELECT count(*)::int c FROM source_entity_map WHERE source_id=$1 AND source_ref='fep_club_777' AND team_id=$2`,
       [sourceId, home])).rows[0]!;
-    expect(Number(mapa.c)).toBe(1);
+    expect(Number(mapa.c)).toBe(0);
   });
 });
