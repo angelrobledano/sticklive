@@ -273,6 +273,9 @@ interface RawMatchDetail {
     id: string;
     seasonId: string;
     roundId: string | null;
+    competitionId?: string | null;
+    competitionName?: string | null;
+    competitionSlug?: string | null;
     status: MatchStatus;
     eventCoverage: 'full' | 'partial' | 'none';
     scheduledAt: string | null;
@@ -306,6 +309,9 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
       id:          raw.match.id,
       seasonId:    raw.match.seasonId,
       roundId:     raw.match.roundId,
+      competitionId:   raw.match.competitionId ?? null,
+      competitionName: raw.match.competitionName ?? null,
+      competitionSlug: raw.match.competitionSlug ?? null,
       status:      raw.match.status,
       eventCoverage: raw.match.eventCoverage,
       scheduledAt: raw.match.scheduledAt,

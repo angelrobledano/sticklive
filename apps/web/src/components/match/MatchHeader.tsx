@@ -175,6 +175,17 @@ export function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?
         title={`${ht.shortName ?? ht.name} ${match.score.home ?? ''}-${match.score.away ?? ''} ${at.shortName ?? at.name}`}
         className="absolute top-3 right-3"
       />
+      {/* Competición a la que pertenece el partido (#182) */}
+      {match.competitionId && match.competitionName && (
+        <div className="text-center -mt-1">
+          <Link
+            href={`/competitions/${match.competitionId}`}
+            className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-rink-passion transition-colors"
+          >
+            {match.competitionName}
+          </Link>
+        </div>
+      )}
       {/* Estado */}
       <div className="text-center min-h-5">
         {isLive && (

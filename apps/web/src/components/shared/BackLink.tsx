@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
+import { shouldReturnToHistory } from '@/lib/back-link';
 
 /**
  * Botón Volver — táctil (44px), flecha en acento, etiqueta i18n.
@@ -15,8 +16,11 @@ export function BackLink({ href = '/' }: { href?: string }) {
   const router = useRouter();
 
   const onBack = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) router.back();
-    else router.push(href);
+    if (typeof window !== 'undefined' && shouldReturnToHistory(document.referrer, window.location.origin)) {
+      router.back();
+    } else {
+      router.push(href);
+    }
   };
 
   return (

@@ -37,6 +37,9 @@ interface MatchDetailRow {
   away_team_name: string;
   away_team_short_name: string | null;
   away_team_logo_url: string | null;
+  competition_id: string | null;
+  competition_name: string | null;
+  competition_slug: string | null;
   competition_timezone: string | null;
   live_period: number | null;
   live_clock_seconds: number | null;
@@ -81,6 +84,9 @@ matchDetailRouter.get('/:id', async (c) => {
         at.name         AS away_team_name,
         at.short_name   AS away_team_short_name,
         at.logo_url     AS away_team_logo_url,
+        comp.id         AS competition_id,
+        comp.name       AS competition_name,
+        comp.slug       AS competition_slug,
         comp.timezone   AS competition_timezone
       FROM matches m
       LEFT JOIN teams ht ON ht.id = m.home_team_id
@@ -233,6 +239,9 @@ matchDetailRouter.get('/:id', async (c) => {
       id:          row.id,
       seasonId:    row.season_id,
       roundId:     row.round_id,
+      competitionId:   row.competition_id,
+      competitionName: row.competition_name,
+      competitionSlug: row.competition_slug,
       competitionTimezone: row.competition_timezone,
       status:      effectiveStatus,
       eventCoverage: row.event_coverage,

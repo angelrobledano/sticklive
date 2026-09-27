@@ -81,7 +81,7 @@ function DesktopAside({ matches, hasFavorites }: { matches: Match[]; hasFavorite
             <ul className="space-y-2">
               {upcoming.map((m) => (
                 <li key={m.id}>
-                  <CompetitionCaption name={m.competitionName} />
+                  <CompetitionCaption name={m.competitionName} id={m.competitionId} />
                   <MatchCard match={m} />
                 </li>
               ))}
@@ -131,12 +131,15 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
 }
 
 /** Etiqueta de competición sobre un partido (en listas con competiciones mezcladas). */
-function CompetitionCaption({ name }: { name?: string | null }) {
+function CompetitionCaption({ name, id }: { name?: string | null; id?: string | null }) {
   if (!name) return null;
-  return (
-    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1 pb-0.5">
+  const className = 'text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1 pb-0.5';
+  return id ? (
+    <Link href={`/competitions/${id}`} className={`${className} inline-block hover:text-rink-passion transition-colors`}>
       {name}
-    </p>
+    </Link>
+  ) : (
+    <p className={className}>{name}</p>
   );
 }
 
@@ -231,7 +234,7 @@ function UpcomingMatches({ matches, selectedDate, todayKey }: {
             <ul className="px-4 space-y-2 pb-2">
               {ms.map((m) => (
                 <li key={m.id}>
-                  <CompetitionCaption name={m.competitionName} />
+                  <CompetitionCaption name={m.competitionName} id={m.competitionId} />
                   <MatchCard match={m} />
                 </li>
               ))}
@@ -387,7 +390,7 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
                 <ul className="px-4 space-y-2">
                   {(showAllFavs ? favMatches : favMatches.slice(0, FAV_PREVIEW)).map((m) => (
                     <li key={m.id}>
-                      <CompetitionCaption name={m.competitionName} />
+                      <CompetitionCaption name={m.competitionName} id={m.competitionId} />
                       <MatchCard match={m} isFavoriteTeam />
                     </li>
                   ))}

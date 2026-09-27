@@ -82,8 +82,8 @@ export default async function MatchDetailPage(props: Props) {
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
       <JsonLd data={jsonLd} />
 
-      {/* Navegacion de vuelta */}
-      <BackLink href="/" />
+      {/* Navegacion de vuelta: el fallback es la competición del partido (#182) */}
+      <BackLink href={m.competitionId ? `/competitions/${m.competitionId}` : '/'} />
 
       {/* Match Center */}
       <MatchCenterClient data={data} />
