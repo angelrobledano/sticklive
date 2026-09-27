@@ -57,14 +57,14 @@ describe('findTeamInSeasonByName', () => {
       `INSERT INTO seasons (competition_id, name, slug) VALUES ($1, '2025/26', '2025-26') RETURNING id`,
       [comp.id]
     )).rows[0]!;
-    const a = (await db.query<{ id: string }>(
+    const aId = (await db.query<{ id: string }>(
       `INSERT INTO teams (sport_id, name, slug) VALUES ($1, 'CE NOIA FREIXENET', 'ce-noia-freixenet-ok') RETURNING id`,
       [sport.id]
-    )).rows[0]!;
-    await db.query(`INSERT INTO season_teams (season_id, team_id) VALUES ($1, $2)`, [season2.id, a.id]);
+    )).rows[0]!.id;
+    await db.query(`INSERT INTO season_teams (season_id, team_id) VALUES ($1, $2)`, [season2.id, aId]);
 
     // El primer equipo existe, pero en OTRA temporada: en esta no hay match.
-    expect(await findTeamInSeasonByName(season2.id, 'CE NOIA FREIXENET')).toBe(a);
+    expect(await findTeamInSeasonByName(season2.id, 'CE NOIA FREIXENET')).toBe(aId);
     const otraSeason = (await db.query<{ id: string }>(
       `INSERT INTO seasons (competition_id, name, slug) VALUES ($1, '2024/25', '2024-25') RETURNING id`,
       [comp.id]
