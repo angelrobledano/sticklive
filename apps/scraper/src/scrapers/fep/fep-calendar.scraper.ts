@@ -21,6 +21,7 @@ import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
 import { isByeTeamName } from './bye-team.js';
 import type { ScrapedMatch, MatchStatus } from '@sports/shared-types';
+import { STALE_LIVE_HOURS } from '@sports/shared-types';
 import { zonedToUtc } from '../../core/eu-timezone.js';
 
 /** Zona por defecto si la competición no trae una (competitions.timezone). */
@@ -258,6 +259,6 @@ function inferStatus(
   if (scheduledAt > now) return 'scheduled';
   // Si la fecha ya paso pero no hay resultado, puede ser live o pendiente
   const hoursSince = (now.getTime() - scheduledAt.getTime()) / 3_600_000;
-  if (hoursSince < 3) return 'live';
+  if (hoursSince < STALE_LIVE_HOURS) return 'live';
   return 'scheduled'; // datos aun no actualizados
 }

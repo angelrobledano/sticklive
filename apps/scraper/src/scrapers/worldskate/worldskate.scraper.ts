@@ -27,6 +27,7 @@ import type { Element } from 'domhandler';
 import type {
   ScrapedMatch, ScrapedStanding, ScrapeResult, MatchStatus, RoundType,
 } from '@sports/shared-types';
+import { STALE_LIVE_HOURS } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { SidgadClient } from '../fep/sidgad-client.js';
 import { zonedToUtc } from '../../core/eu-timezone.js';
@@ -336,7 +337,7 @@ function inferStatus(scoreText: string, scheduledAt: Date | undefined): MatchSta
   const now = new Date();
   if (scheduledAt > now) return 'scheduled';
   const hoursSince = (now.getTime() - scheduledAt.getTime()) / 3_600_000;
-  if (hoursSince < 3) return 'live';
+  if (hoursSince < STALE_LIVE_HOURS) return 'live';
   return 'scheduled';
 }
 

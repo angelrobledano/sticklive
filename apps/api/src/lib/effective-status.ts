@@ -1,3 +1,5 @@
+import { STALE_LIVE_HOURS as DEFAULT_STALE_LIVE_HOURS } from '@sports/shared-types';
+
 /**
  * Estado del partido que se EXPONE al cliente.
  *
@@ -7,9 +9,10 @@
  * para degradar a `scheduled` los zombis: sin tope, un partido fantasma se
  * pintaba EN VIVO indefinidamente y anulaba al watchdog (issue #150).
  *
- * Antes esta lógica estaba duplicada en match-detail y match-stream.
+ * Antes esta lógica estaba duplicada en match-detail y match-stream. El valor por
+ * defecto es único (#191, `@sports/shared-types`); el env lo puede ajustar.
  */
-const STALE_LIVE_HOURS = Number(process.env['STALE_LIVE_HOURS'] ?? 5);
+const STALE_LIVE_HOURS = Number(process.env['STALE_LIVE_HOURS'] ?? DEFAULT_STALE_LIVE_HOURS);
 const TERMINALES = new Set(['finished', 'postponed', 'cancelled']);
 
 export function effectiveMatchStatus(

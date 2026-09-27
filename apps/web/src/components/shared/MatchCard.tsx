@@ -8,6 +8,7 @@ import { TeamName } from '@/components/shared/TeamName';
 import { useT } from '@/lib/i18n';
 import { finalLabelKey, penaltyText } from '@/lib/match-result';
 import { APP_TZ } from '@/lib/match-time';
+import { STALE_LIVE_HOURS } from '@sports/shared-types';
 
 
 interface MatchCardProps {
@@ -83,10 +84,10 @@ function useIsMatchOverdue(match: Match): boolean {
   const startIso = match.scheduledAt ?? match.startedAt;
   if (!startIso) return false;
   const start = new Date(startIso).getTime();
-  // Solo forzar "en juego" dentro de una ventana realista de partido (3 h).
-  // Más allá, el dato está desactualizado o el partido no se jugó: mostrar hora.
-  const MATCH_WINDOW_MS = 3 * 3_600_000;
-  return now > start && now - start < MATCH_WINDOW_MS;
+  // Solo forzar "en juego" dentro de la ventana realista de partido
+  // (STALE_LIVE_HOURS, fuente única #191). Más allá, el dato está desactualizado
+  // o el partido no se jugó: mostrar hora.
+  return now > start && now - start < STALE_LIVE_HOURS * 3_600_000;
 }
 
 function ScoreBlock({ match }: { match: Match }) {

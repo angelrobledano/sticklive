@@ -2,6 +2,17 @@
 // Tipos compartidos entre scraper, ETL y API
 // ============================================================
 
+/**
+ * Umbral de la ventana "en juego por reloj": horas tras el saque durante las
+ * que un partido sin estado final se pinta EN DIRECTO. Fuente ÚNICA (#191) para
+ * la API (`effective-status`), los scrapers (`inferStatus`) y la web
+ * (`MatchCard`), que antes discreparon entre 3 h y 5 h. Alineada con el
+ * `stale-live-watchdog` del ETL. La API puede sobreescribirla con el env
+ * `STALE_LIVE_HOURS` (aquí se deja un valor plano para no exponer `process.env`
+ * al bundle del navegador).
+ */
+export const STALE_LIVE_HOURS = 5;
+
 export type SportSlug = 'hockey-patines' | string;
 
 export type MatchStatus =

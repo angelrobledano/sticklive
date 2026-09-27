@@ -1,6 +1,9 @@
 import { withSentryConfig } from '@sentry/nextjs';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // `@sports/shared-types` exporta TS fuente (`main: ./src/index.ts`); Next debe
+  // transpilarlo al importarlo desde la web (#191, STALE_LIVE_HOURS).
+  transpilePackages: ['@sports/shared-types'],
   env: {
     NEXT_PUBLIC_API_URL:   process.env.NEXT_PUBLIC_API_URL   ?? 'http://localhost:3000',
     NEXT_PUBLIC_SEASON_ID: process.env.NEXT_PUBLIC_SEASON_ID ?? 'e6ab9d19-cc4b-4095-a9ce-4407a4000737',
