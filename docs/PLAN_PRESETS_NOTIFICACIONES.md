@@ -1,5 +1,7 @@
 # Plan técnico — Presets de notificaciones
 
+> **ESTADO: IMPLEMENTADO.** Los presets por entidad (`complete | key_events | results | silent`) viven en `apps/web/src/lib/notif-prefs.ts` y el emisor segmenta por ellos. El comportamiento as-built está en [NOTIFICACIONES.md](./NOTIFICACIONES.md). Este documento se conserva como registro de las decisiones.
+
 *Borrador de implementación. Mapea el spec de presets al código actual de Stick Live, fija las decisiones abiertas y lo trocea en fases.*
 
 ---

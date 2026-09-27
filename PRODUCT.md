@@ -37,7 +37,7 @@ Funcionalidad confirmada en producción:
 - OK Liga en directo; fichas de partido con goles y actas; clasificaciones; favoritos; notificaciones push; analítica; auditoría técnica aplicada.
 - Cobertura de 50+ equipos y competiciones seguidos.
 
-Arquitectura (monorepo): scraper (Playwright + Cheerio) → ETL de normalización y crons (live + emisor push) → API en Hono (REST + SSE) → web en Next.js 14 (App Router). PostgreSQL como BD; despliegue en un único VPS pequeño de Hetzner con Docker tras servidor web. Objetivo explícito: arquitectura sólida, escalable y mantenible orientada a producción, no prototipo visual rápido.
+Arquitectura (monorepo): scraper (Playwright + Cheerio) → ETL de normalización y crons (live + emisor push) → API en Hono (REST + SSE) → web en Next.js 16 (App Router). PostgreSQL como BD; despliegue en un único VPS pequeño de Hetzner con Docker tras servidor web. Objetivo explícito: arquitectura sólida, escalable y mantenible orientada a producción, no prototipo visual rápido.
 
 Restricciones / terminología clave:
 - El directo se sirve por SSE (conexión abierta que empuja cada cambio), con poll de respaldo.
@@ -46,7 +46,7 @@ Restricciones / terminología clave:
 - Coste de infraestructura deliberadamente bajo (orden de decenas de € al mes).
 
 Roadmap (Now/Next/Later) como decisiones de producto, no compromisos firmes:
-- Next: mejores notificaciones del directo (palanca de retención), OK Liga femenina, ligas autonómicas, app Android, re-importar histórico.
+- Next: mejores notificaciones del directo (palanca de retención), ligas autonómicas (piloto FMP), app Android. *(OK Liga femenina: en producción desde junio 2026; histórico núcleo: volcado v1 hecho, enriquecimiento en curso.)*
 - Later: Portugal, Italia, Francia, estadísticas avanzadas, app iOS, modelo de negocio.
 
 Plataforma registrada como **adaptive**: web hoy; apps nativas (Android primero, iOS después) planificadas. El lenguaje de diseño nativo se define cuando arranque cada app.

@@ -4,6 +4,16 @@ Historial de hitos de producto y plataforma. El estado vivo está en [ESTADO_PRO
 
 ---
 
+## Hito septiembre 2026 — Temporada 2026/27 y endurecimiento post-auditoría
+
+- **Alta de la 2026/27 con seed genérico.** Nuevo `apps/etl/src/seed-fep-competition.ts`: descubre los equipos en la fuente, crea competición + temporada (is_current) + equipos + `competition_sources`, con embudo de identidad (no crea equipos a ciegas; lo dudoso a la cola HITL) y `--force-new` para altas confirmadas a mano. 11 competiciones operando (OK Liga M/F, Plata N/S/F, Bronce N/S, Supercopas). Runbook: [runbook-alta-ligas-2026-27.md](./runbook-alta-ligas-2026-27.md).
+- **Listado de competiciones por temporada** con filtro estricto por nombre de temporada (los Europeos Sub-17 de World Skate de julio 2026, con temporada 2025/26, ya no cuelan en la portada).
+- **Parser de calendario y standings:** filas de bye (DESCANSO) omitidas.
+- **Incidente del 26/09 (crash-loop de la API):** el salto de `nodemailer` 9→10 dejó el paquete anidado fuera de la ruta de resolución del bundle → la API no arrancaba y la web se quedó sin datos. El CI ahora **reproduce la resolución real de Node dentro de la imagen** (`scripts/verify-image-deps.mjs`, job `docker` bloqueante).
+- **Auditoría Go/No-Go (27/09):** verificación completa de producto, datos, seguridad e infraestructura contra producción. Hallazgos clasificados y abiertos como issues #147–#183.
+
+---
+
 ## Hito agosto 2026 — Entity Resolution (identidad de clubes)
 
 Bloque completo (Fases 0→3) para separar la **identidad estable del club** de sus **secciones** (equipo = club × género × categoría × filial) y de sus **nombres de patrocinio**, y para resolver de forma robusta los equipos entrantes del scraping. As-built y operativa en [RUNBOOK_ENTITY_RESOLUTION.md](./RUNBOOK_ENTITY_RESOLUTION.md); diseño en [ARQUITECTURA_ENTITY_RESOLUTION.md](./ARQUITECTURA_ENTITY_RESOLUTION.md).

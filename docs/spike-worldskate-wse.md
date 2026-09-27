@@ -1,5 +1,7 @@
 # Spike: integración World Skate Europe (wse.sidgad.com) — Europeo Sub-17
 
+> **ESTADO: IMPLEMENTADO.** El scraper `worldskate` (portal `worldskate` en `sidgad-client.ts`) está en producción desde julio 2026 y el directo de WSE corre dentro de `cron-live`. Se conserva como registro de la investigación.
+
 **Fecha:** 17/07/2026 · **Alcance:** solo investigación, sin tocar código de producción.
 **Fuente:** https://wse.sidgad.com/league/320 (U17 WSE European Championship Men, 20–25 jul 2026).
 

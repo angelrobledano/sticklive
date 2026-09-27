@@ -141,11 +141,12 @@ Si se rotan las VAPID, hay que **reconstruir la web** (la pública es build arg)
 
 ## Checklist de despliegue
 
-- [ ] ¿La release trae migraciones **y** toca `etl`/`scraper`/`db`? → usar la
-      secuencia con `stop etl` de arriba, no la estándar.
-- [ ] `./deploy/backup-db.sh` si alguna migración reescribe datos existentes.
+- [ ] ¿La release trae migraciones? → nada especial: el servicio `migrate`
+      las aplica al levantar y api/etl no arrancan hasta que termine. Si
+      alguna reescribe datos existentes, `./deploy/backup-db.sh` antes.
 - [ ] `git checkout --` de `deploy/backup-db.sh` y `deploy/restore-sports-dump.sh`.
-- [ ] `git pull`.
+- [ ] `git pull` (sin desplegar si el job `docker` de CI no está en verde).
 - [ ] `$DC up -d --build` (o `--build web` si solo es front).
 - [ ] `NEXT_PUBLIC_*` pobladas antes de construir.
 - [ ] `$DC ps` todo `Up` + revisar `logs` de `api`/`web`/`etl`.
+- [ ] Smoke test: `curl -fsS https://sticklive.eu/api/health` → `{"status":"ok"}`.

@@ -1,6 +1,7 @@
 # Runbook — alta y gestión de competiciones
 
 *Actualizado: 17 de junio de 2026*
+*Nota (27/09/2026): para altas de la **temporada en curso** usa el seed genérico `apps/etl/src/seed-fep-competition.ts` (embudo de identidad + cola HITL) — paso a paso en [runbook-alta-ligas-2026-27.md](./runbook-alta-ligas-2026-27.md). Este runbook sigue siendo la referencia del modelo de datos y de las importaciones históricas por `idc`.*
 
 Cómo añadir una competición nueva, fusionar liga + playoff, y los errores que cuestan una tarde si no los conoces. Pensado para ejecutarse contra producción (Hetzner + Docker Compose en `/opt/sticklive`).
 

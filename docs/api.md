@@ -1,0 +1,76 @@
+# API (apps/api)
+
+*Hono sobre Node, puerto 3000 (env `PORT`). En producción se sirve en `https://sticklive.eu/api` (Caddy elimina el prefijo `/api`). Endpoints verificados en el código actual — no existe OpenAPI/Swagger; este documento es la referencia.*
+
+## Convenciones
+
+- Errores JSON `{ "error": "..." }`; handler global que **no** filtra `err.message` al cliente (lo loguea en servidor y Sentry).
+- `Cache-Control` por recurso en lecturas (`read-cache.ts`) + rate limit en memoria por ruta+IP (`rate-limit.ts`).
+- Body limit global 64 KB. CORS con allowlist (`WEB_BASE_URL` + localhost dev).
+- Health check: `GET /health` → `{ status: "ok" }`.
+
+## Lecturas públicas
+
+| Método | Ruta | Propósito |
+|---|---|---|
+| GET | `/competitions` | Listado de competiciones con su temporada actual (nombre i18n, género, categoría, organizador, counts) |
+| GET | `/competitions/:id/seasons` | Temporadas históricas de una competición (selector de la ficha) |
+| GET | `/seasons/:id/overview` | Clasificación + jornadas/fechas + partidos de una temporada (la página de competición) |
+| GET | `/seasons/:id/standings` | Solo clasificación (soporta grupos) |
+| GET | `/seasons/:id/matches` | Partidos de la temporada (filtros por jornada/estado/equipo) |
+| GET | `/seasons/:id/stats` | Líderes de temporada (goleadores, asistentes, tarjetas, eficiencias) |
+| GET | `/matches/live` | Partidos en juego ahora |
+| GET | `/matches/current` | Ventana de la home (por defecto ±días; `?from=&to=` / `?days=`) |
+| GET | `/matches/:id` | Detalle de partido: eventos, estadísticas, alineaciones |
+| GET | `/matches/:id/stream` | **SSE** del directo (snapshot inicial + eventos; timeout a 2 h con `event: timeout`) |
+| GET | `/teams/:id` | Ficha de equipo: club canónico, standing, partidos, plantilla, cuerpo técnico, estadísticas |
+| GET | `/teams/:id/logo` | Escudo (volumen local o proxy del CDN de la fuente) |
+| GET | `/players/:id` | Ficha de jugador |
+| GET | `/players/:id/photo` | Foto (proxy del CDN) |
+| GET | `/meta/sitemap` | IDs para el sitemap dinámico de la web |
+
+Rate limit de lectura activo en: `/seasons/:id/overview`, `/seasons/:id/stats`, `/teams/:id`, `/players/:id`.
+
+## Cuenta y favoritos (`/auth`)
+
+| Método | Ruta | Propósito / notas |
+|---|---|---|
+| POST | `/auth/magic-link` | Envía magic link por email (Brevo). Rate limit 5/h. Sin SMTP configurado devuelve 503 (nunca filtra el enlace salvo modo dev explícito `AUTH_DEV_LINKS=1` fuera de producción) |
+| POST | `/auth/verify` | Canjea el token del magic link (single-use atómico) y devuelve sesión. Rate limit 20/10 min. Fusiona los favoritos del dispositivo anónimo |
+| GET | `/auth/me` | Usuario de la sesión actual (Bearer token) |
+| GET | `/auth/google` + `/auth/google/callback` | OAuth Google (state firmado HMAC, validado en callback) |
+| POST | `/auth/favorites/merge` | Fusión de favoritos anónimos → cuenta (cap 200/kind) |
+| DELETE | `/auth/favorites` | Baja de favoritos (tombstones para sync) |
+
+Sesión: Bearer token opaco, hasheado en BD (`user_sessions`), caducidad 90 días con renovación deslizante.
+
+## Web Push (`/push`)
+
+| Método | Ruta | Propósito |
+|---|---|---|
+| POST | `/push/subscribe` | Registra/actualiza suscripción (con `fav_teams`/`fav_leagues`/`fav_players` y `config` de presets) |
+| DELETE | `/push/subscribe` | Da de baja por endpoint |
+| POST | `/push/opened` | Beacon de apertura de notificación (rate limit 120/min) |
+| POST | `/push/test` | Envío de prueba por deviceId (rate limit 10/10 min) |
+
+## Pagos (Stripe — proveedor activo)
+
+| Método | Ruta | Propósito |
+|---|---|---|
+| POST | `/payments/stripe/checkout` | Crea sesión de checkout (rate limit 10/min; bloquea si premium activo) |
+| POST | `/payments/stripe/webhook` | Webhook firmado, idempotente por `event.id` (`processed_stripe_events`) |
+| GET | `/payments/stripe/status` | Estado premium del usuario (fuente de verdad: `premium_until > NOW()`) |
+
+## Admin (header `X-Admin-Token`; 503 si `ADMIN_TOKEN` no está configurado)
+
+| Método | Ruta | Propósito |
+|---|---|---|
+| GET | `/admin/users` | Listado de usuarios (email, device, premium, estado) |
+| PATCH | `/admin/users/:id/status` | Habilitar/deshabilitar (cierra sus sesiones) |
+| DELETE | `/admin/users/:id` | Eliminar usuario |
+| GET | `/admin/resolution-queue` (+ `/stats`) | Cola de resolución de entidades y métricas de salud |
+| POST | `/admin/resolution-queue/:id/resolve` · `/:id/reject` | Resolver/descartar de la cola (aprende alias) |
+| GET | `/admin/competitions/archived` · `/duplicates` | Competiciones archivadas / candidatas a duplicado |
+| POST | `/admin/competitions/:id/archive` · `/:id/restore` · `/competitions/merge` | Archivar, restaurar y fusionar competiciones |
+
+El panel web de administración vive en `/admin/resolucion` (web).

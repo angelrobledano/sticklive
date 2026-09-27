@@ -1,5 +1,7 @@
 # Spec técnico — Fase 0: modelo de clubes (Entity Resolution)
 
+> **ESTADO: IMPLEMENTADO** (migraciones 044–046, desplegado). El as-built y la operativa están en [RUNBOOK_ENTITY_RESOLUTION.md](./RUNBOOK_ENTITY_RESOLUTION.md). Se conserva como registro del diseño.
+
 *Fundación del modelo `clubs` / `club_names` / `sponsors` / `source_entity_map` sobre el esquema actual de Stick Live, sin romper producción.*
 
 Ref.: `docs/ARQUITECTURA_ENTITY_RESOLUTION.md` (Opción B, embudo). Esta Fase 0 crea el andamiaje; NO resuelve entidades todavía (eso son las fases 2‑3).

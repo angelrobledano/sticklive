@@ -1,96 +1,101 @@
-# Arquitectura: Plataforma de Resultados Deportivos
+# Arquitectura — Stick Live
 
-## Visión general
+*Contrastada con el código y la configuración actual (septiembre 2026). Los detalles de ingesta están en [pipeline-datos.md](./pipeline-datos.md), los de datos en [database.md](./database.md) y la operación en [operations.md](./operations.md).*
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        FUENTES EXTERNAS                         │
-│   hockeypatines.fep.es   ·   otros sitios federaciones         │
-└───────────────────┬─────────────────────────────────────────────┘
-                    │ Playwright / Cheerio / API oculta
-┌───────────────────▼─────────────────────────────────────────────┐
-│                    apps/scraper  (Node.js + TS)                 │
-│  • BaseScraper → scrapers específicos por fuente                │
-│  • Interceptor XHR para cazar APIs JSON                         │
-│  • Retries, logging, trazabilidad                               │
-│  • Crons por tipo de dato (live: 5min, standings: 1h, etc.)    │
-└───────────────────┬─────────────────────────────────────────────┘
-                    │ ScrapedXxx (datos crudos con trace)
-┌───────────────────▼─────────────────────────────────────────────┐
-│                    apps/etl  (Node.js + TS)                     │
-│  • Normalización y deduplicación                                │
-│  • Resolución de referencias (teamRef → team_id en DB)         │
-│  • Upserts idempotentes en PostgreSQL                           │
-│  • Registro en scrape_logs                                      │
-└───────────────────┬─────────────────────────────────────────────┘
-                    │
-┌───────────────────▼─────────────────────────────────────────────┐
-│                  PostgreSQL (packages/db)                        │
-│  sports · competitions · seasons · rounds · matches             │
-│  teams · players · standings · match_events · scrape_logs       │
-└───────────────────┬─────────────────────────────────────────────┘
-                    │
-┌───────────────────▼─────────────────────────────────────────────┐
-│                    apps/api  (Next.js + TS)                     │
-│  • API Routes para frontend                                     │
-│  • SSG/ISR para clasificaciones y jornadas                     │
-│  • SSR para datos en tiempo real                                │
-│  • Caché HTTP (Cache-Control, revalidación)                    │
-└─────────────────────────────────────────────────────────────────┘
+## Servicios
+
+| Servicio | Tecnología | Puerto | Papel |
+|---|---|---|---|
+| `apps/scraper` | Node + Playwright/Cheerio | — | Extracción de fuentes (FEP y World Skate, ambas sobre sidgad) |
+| `apps/etl` | Node + TS | — | Carga a BD, crons de directo/calendario/actas, emisor de push, seeds de competiciones |
+| `apps/api` | Hono (Node) | 3000 | REST + SSE, auth (magic link + Google OAuth), favoritos, Web Push, admin, Stripe |
+| `apps/web` | Next.js 16 (App Router) | 3001 | Frontend mobile-first, PWA, i18n propio ×5 idiomas |
+| `postgres` | PostgreSQL 16 | 5432 (solo localhost en prod) | Datos |
+| `caddy` | Caddy | 80/443 | HTTPS automático, proxy `/api/*` → api:3000, resto → web:3001 |
+| `migrate` | Node (one-shot) | — | Aplica migraciones antes de que arranquen api/etl |
+
+Paquetes compartidos: `packages/db` (cliente pg, migraciones, queries), `packages/shared-types`, `packages/analytics` (posthog-node), `packages/logger` (pino).
+
+```text
+sidgad/FEP + wse.sidgad.com
+        │ Playwright (APIs JSON internas de sidgad) + Cheerio
+        ▼
+   apps/scraper ──── apps/etl (crons: directo 5 min, calendario+standings 1 h,
+        │            actas diarias; scheduler deploy/etl-scheduler.sh con flock)
+        ▼
+   PostgreSQL ──(LISTEN/NOTIFY)──▶ apps/api (hub SSE por partido) ──▶ web
+        │                          apps/etl (push-dispatcher) ────▶ Web Push
+        ▼
+   apps/api (REST, Hono) ──▶ apps/web (Next.js) ──▶ usuario
 ```
 
-## Decisiones de arquitectura
+## Flujo de datos (de la fuente al usuario)
 
-### 1. Monorepo con Turborepo
-**Decisión**: Turborepo + npm workspaces.
-**Por qué**: Los tres servicios (scraper, etl, api) comparten tipos y utilidades. Sin monorepo acabarías publicando paquetes npm internos o copiando código. Turborepo gestiona el build incremental sin complejidad.
-**Tradeoff**: Curva de aprendizaje inicial, pero vale la pena desde el primer mes.
+1. **Alta de competición** — `seed-fep-competition.ts` descubre equipos en la fuente y crea `competitions` + `seasons` (is_current) + `teams` + fila en `competition_sources`. El cron itera esa tabla; dar de alta una liga no requiere tocar código.
+2. **Calendario** (`--entity=calendar`, cada hora) — parsea el calendario de la fuente y hace upsert de partidos (identidad por `source_ref`).
+3. **Marcadores en directo** (`cron-live`, cada 5 min; bucle activo de 45 s mientras haya partidos en juego) — feed global de marcadores + feed propio de World Skate. Solo actualiza score/estado de partidos existentes.
+4. **Actas** (`fichas-pendientes`, diaria; y en cada ciclo de directo para los partidos en juego) — parsea alineaciones, eventos con instante de juego, cuerpo técnico y faltas. `replaceMatchEvents` sincroniza los eventos por `source_ref` derivada del contenido.
+5. **Resolución de entidades** — cada referencia de equipo se resuelve a UUID por el embudo: `source_entity_map` (ID de fuente) → `team_aliases` (nombre normalizado) → slug → fuzzy con bloqueo → cola HITL (`resolution_queue`, panel `/admin/resolucion`). Ver [RUNBOOK_ENTITY_RESOLUTION.md](./RUNBOOK_ENTITY_RESOLUTION.md).
+6. **Notificación de cambios** — triggers de la migración 043 emiten `pg_notify('match_update')` solo si cambia algo visible; el hub SSE de la API (un poller por partido con fan-out) refresca y emite a los clientes. El push-dispatcher del ETL compara el estado antes/después del ciclo y envía las Web Push que tocan.
+7. **La web** renderiza server-side con revalidate por recurso (home 60 s, partido 20 s, standings 300 s), se suscribe al SSE del partido en vista directo y hace polling de respaldo si la conexión cae.
 
-### 2. Scraper → ETL separados (no scraping directo a DB)
-**Decisión**: El scraper produce `ScrapedXxx` (datos crudos), el ETL normaliza y persiste.
-**Por qué**: Si la fuente cambia su HTML o API, solo tocas el scraper. La lógica de normalización y deduplicación queda aislada. También facilita re-procesar datos históricos sin volver a scrapear.
-**Riesgo mitigado**: Cambio en selectores CSS → solo afecta al scraper, no a la DB.
+## Entidades (las que existen de verdad)
 
-### 3. Playwright como scraper base (no solo Cheerio)
-**Decisión**: Playwright para todas las fuentes inicialmente.
-**Por qué**: hockeypatines.fep.es está construido sobre sidgad.com, que es 100% JavaScript. Cheerio solo sirve para HTML estático. Playwright además permite interceptar XHR para cazar APIs JSON ocultas.
-**Tradeoff**: Más recursos en producción (~200MB RAM por contexto). Mitigado con un pool de contextos y bloqueo de recursos innecesarios (imágenes, CSS, fonts).
+Núcleo deportivo:
 
-### 4. PostgreSQL (no MongoDB)
-**Decisión**: PostgreSQL relacional.
-**Por qué**: Los datos deportivos son relacionales por naturaleza (partido → equipo → jugador → evento). Las queries de clasificación y calendario son SQL puro. JSON sería más flexible pero pagarías ese coste en cada query de negocio.
-**Tradeoff**: Schema más rígido, pero las migraciones son predecibles.
+```text
+sports ── competitions ── competition_sources (config por fuente: idc, portal)
+              │
+            seasons (is_current por competición) ── rounds (regular/playoff/cup)
+              │                                      │
+            teams ── season_teams                 matches ── match_events
+              │         │                            │         (particionada por match_date)
+            clubs      standings (por season)      match_lineups
+              │
+   club_names · sponsors · source_entity_map · team_aliases · resolution_queue
+   players ── team_players
+```
 
-### 5. Trazabilidad obligatoria en cada registro
-**Decisión**: `source_id`, `source_ref`, `source_url`, `scraped_at` en todas las tablas.
-**Por qué**: Cuando la fuente cambia su estructura (y cambiará), necesitas saber qué datos son de qué versión del scraper, cuándo se extrajeron y desde dónde. También permite auditoría y debugging sin consultar logs externos.
+Cuenta y producto: `users` (status admin, sesiones en `user_sessions`), `auth_tokens` (magic links, hasheados), `user_favorites` (equipos/ligas/jugadores), `push_subscriptions` (con `fav_teams`/`fav_leagues`/`fav_players`/`config`), `orders` + `processed_stripe_events` (premium).
 
-### 6. Scrapers independientes y ejecutables en aislamiento
-**Decisión**: Cada scraper es una clase que hereda `BaseScraper` y se puede ejecutar con `--run-once`.
-**Por qué**: Facilita debugging local (`npm run scraper -- --run-once fep_competitions`), testing unitario y despliegue incremental. No necesitas levantar todo el sistema para probar un scraper.
+Operación: `scrape_logs` (retención 30 días), `import_batches` (trazabilidad de importaciones), `_migrations`.
 
-## Estrategia para hockeypatines.fep.es (sidgad.com)
+Detalles de relaciones, constraints e índices: [database.md](./database.md).
 
-El sitio usa sidgad.com como plataforma deportiva blanca. Esta plataforma suele tener APIs REST internas que el JS del navegador llama. El primer paso es ejecutar `npm run probe` para capturar todas las llamadas de red y ver si hay endpoints JSON.
+## Realtime
 
-**Escenario A (óptimo)**: sidgad.com expone una API JSON → scrapers rápidos y fiables, sin parsing HTML.
+- **Emisión:** triggers en `matches`/`match_events` → `pg_notify` (debounce 250 ms en la API) → hub con un poller por partido → fan-out SSE. Poll de respaldo cada 60 s; keepalive 25 s; la conexión se corta a las 2 h con `event: timeout` para que el cliente reconecte. Límite global de conexiones (503 `too_many_connections`).
+- **Cliente:** el web reconecta y recibe snapshot completo al reconectar (sin duplicados: los eventos tienen identidad estable por contenido, no posición).
+- **Crono y estados:** el instante de juego (25:00 → minuto transcurrido), prórroga y penaltis se derivan del acta; el watchdog `stale-live-watchdog` degrada a `scheduled` los partidos zombi (>5 h en live).
 
-**Escenario B**: No hay API accesible → scraping HTML con Playwright. Más frágil, requiere selectores específicos por página. Añadir tests de estructura para detectar roturas.
+## Jobs (producción)
 
-## Frecuencias de scraping sugeridas
-
-| Tipo de dato | Frecuencia | Justificación |
+| Cadencia | Tarea | Entrada |
 |---|---|---|
-| Resultados en vivo | Cada 3-5 min | Solo durante jornadas activas |
-| Clasificaciones | Cada hora | Cambian poco |
-| Calendarios/Jornadas | Diario (6am) | Cambios ocasionales |
-| Equipos/Jugadores | Diario (6am) | Muy estable |
-| Competiciones/Temporadas | Diario (6am) | Raramente cambia |
+| 5 min | World Skate (reposo) + `cron-live` (directo) | scheduler, con `flock` |
+| Cada hora | calendario + clasificaciones | scheduler |
+| Diaria 06 UTC | actas pendientes, purga `scrape_logs`, `partition-guard`, `scrape-health-watch` | scheduler |
+| Diaria 04:15 | backup de BD (`/etc/cron.d/sticklive-backup` en el host) | cron del VPS |
 
-## Próximos pasos
+Detalles y comportamiento ante fallos: [operations.md](./operations.md).
 
-1. Ejecutar `npm run probe` para descubrir APIs de sidgad.com
-2. Implementar `FepMatchesScraper` y `FepStandingsScraper`
-3. Implementar el ETL con upserts idempotentes
-4. Montar el esqueleto de la API Next.js
-5. Añadir tests de integridad de scraping (detector de roturas de estructura)
+## Decisiones arquitectónicas relevantes
+
+1. **Monorepo Turborepo + npm workspaces** — scraper/etl/api/web comparten tipos y utilidades sin publicar paquetes.
+2. **Scraper y ETL separados** — el scraper produce datos crudos tipados; el ETL normaliza, resuelve y persiste. Un cambio de la fuente solo toca el scraper.
+3. **sidgad expone APIs JSON internas** — se capturan con Playwright (interceptando XHR) en lugar de parsear HTML en la mayoría de endpoints; Cheerio queda para HTML. La misma plataforma sirve wse.sidgad.com (segundo portal, mismo cliente parametrizado).
+4. **PostgreSQL relacional** — queries de negocio en SQL puro; `match_events` particionada por `match_date` con centinela `match_events_undated` vigilado diariamente.
+5. **Idempotencia por `source_ref`** — todos los upserts (partidos, eventos, standings) son re-ejecutables; los eventos tienen identidad derivada del contenido (periodo+crono+tipo+lado), no de su posición, para que las re-notificaciones de push no dupliquen.
+6. **Entity Resolution como embudo** — identidad de club separada de secciones y nombres de patrocinio; lo determinista gratis por ID de fuente, lo dudoso a cola humana. Diseño en [ARQUITECTURA_ENTITY_RESOLUTION.md](./ARQUITECTURA_ENTITY_RESOLUTION.md).
+7. **Directo: NOTIFY, no polling por cliente** — un poller por partido (no por cliente) con fan-out; la web mantiene polling de respaldo para redes adversas.
+8. **Producción corre JS compilado** — `scripts/build-server.mjs` empaqueta con esbuild; la imagen no lleva ni `tsx` ni TypeScript y corre como usuario `node`. El servicio `migrate` aplica migraciones antes de arrancar api/etl.
+9. **Auth progresiva** — anónimo por `deviceId` → magic link (Brevo) o Google OAuth al querer sincronizar; favoritos con fusión y tombstones. Tokens hasheados con caducidad.
+10. **i18n propio** — diccionarios JSON por idioma bajo `app/[locale]/`, sin dependencia externa; rutas y sitemap multiidioma con hreflang.
+
+## Limitaciones conocidas (decisiones honestas)
+
+- El lanzador de falta directa solo se conoce cuando marca → eficiencia FD solo a nivel de equipo.
+- No hay fotos del cuerpo técnico en la fuente → silueta.
+- El formato "al mejor de N" de las series de playoff no es inferible de la fuente → no se muestra (requeriría campo `best_of` curado).
+- El histórico importado (v1) trae solo marcadores de 8.828 partidos: sin eventos ni fechas para la mayoría (recuperación en curso vía enrich-promote, ver [A5_ENRICH_PROMOTE.md](./A5_ENRICH_PROMOTE.md)).
+- Conversión de zonas horarias propia sin dependencias: correcta salvo la ventana 01:00–01:59 local del domingo de cambio a horario de verano (edge documentado, testeado como comportamiento actual).

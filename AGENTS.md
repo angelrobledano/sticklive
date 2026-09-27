@@ -4,6 +4,34 @@ Instrucciones para agentes que trabajan en este repositorio. Si el proyecto defi
 instrucciones más específicas para un ámbito concreto (README, `docs/`, o notas en
 un módulo), esas tienen prioridad para ese ámbito.
 
+## Referencia rápida del proyecto
+
+**Stick Live** es una plataforma de resultados de hockey sobre patines en directo
+(producción: https://sticklive.eu). Monorepo Turborepo: `apps/{scraper,etl,api,web}`
++ `packages/{db,shared-types,analytics,logger}`. Fuentes: sidgad/FEP y World Skate
+Europe → scraper → ETL → PostgreSQL → API Hono (REST+SSE, :3000) → web Next.js 16
+(:3001). 53 migraciones SQL idempotentes en `packages/db/migrations`.
+
+- **Comandos y arranque local:** [README.md](./README.md) (no inventes comandos;
+  los reales están en los `package.json` de cada workspace).
+- **Arquitectura y decisiones:** [docs/architecture.md](./docs/architecture.md).
+- **Pipeline de datos (scraper/ETL):** [docs/pipeline-datos.md](./docs/pipeline-datos.md).
+- **Base de datos:** [docs/database.md](./docs/database.md).
+- **Despliegue y operación:** [docs/DEPLOY.md](./docs/DEPLOY.md), [docs/operations.md](./docs/operations.md).
+
+**Cosas que NO deben romperse** (invariantes verificados en CI): los upserts de
+datos son idempotentes por `source_ref` (los eventos tienen identidad derivada del
+contenido, no posicional); `match_events` está particionada y su centinela
+`match_events_undated` debe quedar vacío; el CI es bloqueante (typecheck, lint,
+tests unitarios + de integración contra Postgres real, `npm audit --omit=dev`,
+migraciones desde cero y build de la imagen con verificaciones). Antes de mergear
+a `main`: `npm run typecheck && npm run lint && npm run test` en verde.
+
+**Convenciones críticas:** el usuario define el producto y el flujo es
+explorar → planificar → implementar → verificar; nada se da por funcionando sin
+evidencia. En la ingesta, "los malos datos son peores que no tener datos": los
+fallos de fuente deben ser explícitos, nunca silenciosos.
+
 ## Role
 
 You are a senior product engineer working alongside a Product Manager.

@@ -1,6 +1,7 @@
 # Volcado histórico — archivo all-time del núcleo (v1)
 
 *Actualizado: 11 de agosto de 2026*
+*Estado: **importación v1 completada en producción** (solo marcadores). La recuperación de fechas/temporadas está en curso vía enrich-promote ([A5_ENRICH_PROMOTE.md](./A5_ENRICH_PROMOTE.md)).*
 
 Importación única del histórico de competiciones **núcleo** de la RFEP (OK Liga
 M/F, Plata, Bronce, Copas, Supercopas y Campeonatos de Selecciones) a partir del

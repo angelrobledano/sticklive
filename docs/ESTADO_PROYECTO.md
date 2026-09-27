@@ -1,6 +1,8 @@
 # Stick Live — Estado del proyecto
 
-*Actualizado: 4 de agosto de 2026 — EN PRODUCCIÓN: https://sticklive.eu*
+*Actualizado: 27 de septiembre de 2026 — EN PRODUCCIÓN: https://sticklive.eu*
+
+> **Septiembre 2026:** alta de la temporada **2026/27** con el seed genérico `seed-fep-competition` (embudo de identidad + cola HITL): 11 competiciones operando, incluidas OK Liga M/F, Plata N/S, Plata Femenina, Bronce N/S y Supercopas. Listado de la web filtrado a la temporada en curso. Endurecimiento post-auditoría Go/No-Go (27/09): hallazgos y plan en issues #147–#183 del repo.
 
 > **Agosto 2026:** completado el bloque **Entity Resolution** (Fases 0→3): modelo de clubes (identidad estable vs. secciones vs. nombres de patrocinio), embudo de resolución determinista → fuzzy con bloqueo → cola HITL, panel de moderación `/admin/resolucion` y auto-confirmación con señales. Migraciones 044–046, todo aditivo y desplegado. Detalle operativo en el [RUNBOOK_ENTITY_RESOLUTION.md](./RUNBOOK_ENTITY_RESOLUTION.md).
 
@@ -26,7 +28,7 @@
 - **i18n** en 5 idiomas con URLs por idioma y hreflang; **SEO**: sitemap multiidioma dinámico, robots, metadata por ficha, schema.org (SportsEvent/SportsTeam/Person) e **imágenes Open Graph dinámicas por partido** (escudos + marcador vía `next/og`) más una OG estática de marca. Dado de alta en Search Console.
 - **Analítica** (PostHog EU): pageviews normalizadas y eventos de funnel (favoritos, login, compartir, checkout, push).
 
-**Qué falta:** volcado del histórico local → servidor (en curso), reproceso de actas con crono exacto (refichas), importar federaciones autonómicas / PT-IT, APK/iOS con Capacitor, y monetización cuando toque.
+**Qué falta:** enrich-promote del histórico (fechas/temporadas reales, en curso), importar federaciones autonómicas / PT-IT, APK/iOS con Capacitor, y monetización cuando toque. Los hallazgos abiertos de la auditoría del 27/09 están en los issues #147–#183 del repo.
 
 ---
 
@@ -72,9 +74,9 @@ REST: competiciones (+temporadas históricas), overview de temporada (clasificac
 - **Diseño**: mobile-first, dark mode con superficies elevadas (no negro plano), toggles iOS-style, contrastes AA, targets táctiles 44px, branding "Stick Live" sin referencias a la fuente de datos.
 - **Analítica**: PostHog con autocapture apagado, pageviews manuales con rutas normalizadas (`/matches/:id`), 9 eventos de plan de tracking, `identified_only`, captura desactivada en desarrollo.
 
-### Base de datos (46 migraciones)
+### Base de datos (53 migraciones)
 
-Esquema: competitions/seasons/rounds/teams/season_teams/matches/events/standings/players/team_players/match_lineups + users/orders (premium), auth_tokens/user_favorites (auth progresiva), users.status (admin), push_subscriptions (+ `fav_leagues`/`fav_players` para segmentar avisos). Migrador idempotente con tabla `_migrations` y bootstrap de esquemas preexistentes. Migraciones recientes: **040** (competition_sources), **042** (timezone por competición), **043** (LISTEN/NOTIFY del directo), **044–046** (Entity Resolution: clubs/club_names/sponsors/source_entity_map, team_aliases, resolution_queue). El runner lo ejecuta el servicio `migrate` del compose en cada `up` (antes de api/etl); para lanzarlo suelto, `$DC run --rm migrate`. Tras reconstruir la BD hay que reaplicarlas todas.
+Esquema: competitions/seasons/rounds/teams/season_teams/matches/events/standings/players/team_players/match_lineups + users/orders (premium), auth_tokens/user_favorites (auth progresiva), users.status (admin), push_subscriptions (+ `fav_leagues`/`fav_players` y **presets por entidad** para segmentar avisos). Migrador idempotente con tabla `_migrations` y bootstrap de esquemas preexistentes. Migraciones recientes: **040** (competition_sources), **042** (timezone por competición), **043** (LISTEN/NOTIFY del directo), **044–046** (Entity Resolution: clubs/club_names/sponsors/source_entity_map, team_aliases, resolution_queue), **047** (particionado de `match_events`), **048** (import_batches). El runner lo ejecuta el servicio `migrate` del compose en cada `up` (antes de api/etl); para lanzarlo suelto, `$DC run --rm migrate`. Tras reconstruir la BD hay que reaplicarlas todas.
 
 **Identidad de equipos (Entity Resolution):** los equipos cuelgan de un `club` (identidad estable) y se resuelven por **ID de fuente** vía `source_entity_map` y, en su defecto, por **alias normalizado** (`team_aliases`); lo dudoso se aparca en `resolution_queue` para revisión humana en `/admin/resolucion`. `teams.source_ref`/`alt_source_refs` se conservan (coexisten con el mapa). Detalle en el [RUNBOOK_ENTITY_RESOLUTION.md](./RUNBOOK_ENTITY_RESOLUTION.md) y el alta de competiciones en el [runbook de competiciones](./RUNBOOK_COMPETICIONES.md).
 
@@ -87,11 +89,11 @@ Esquema: competitions/seasons/rounds/teams/season_teams/matches/events/standings
 
 ### Pendiente (prioridad)
 
-1. **Volcado del histórico** al servidor (pg_dump local → restore) en cuanto termine el scraping de actas, y después `refichas` para capturar el crono MM:SS exacto en el timeline.
-2. **Federaciones autonómicas / PT-IT**: ejecutar el piloto FMP (catálogo + siembra + scraping con `SIDGAD_PORTAL=fmp`); después andaluza/valenciana/catalana y Portugal/Italia por config. Es lo que activa de verdad el embudo de Entity Resolution (cruce inter-fuente).
+1. **Federaciones autonómicas / PT-IT**: ejecutar el piloto FMP (catálogo + siembra + scraping con `SIDGAD_PORTAL=fmp`); después andaluza/valenciana/catalana y Portugal/Italia por config. Es lo que activa de verdad el embudo de Entity Resolution (cruce inter-fuente). *Antes de añadir ligas fuera de España, corregir la pérdida de `competitionTimezone` en el cliente (issue #158) — si no, las horas se mostrarían en hora española.*
+2. **Enrich-promote del histórico** (A5): recuperar fechas y temporadas reales de los partidos importados como "solo marcador".
 3. **Entity Resolution — Fase 4 (LLM en lote):** pre-rankeo del backlog de la cola con un LLM; diferido hasta que PT/IT metan volumen inter-fuente real (hoy la cola está vacía porque OK Liga resuelve por ID).
 4. **APK Android (Capacitor)** sobre la PWA ya instalable; iOS más adelante (cuenta Apple 99 €/año, mitigar guideline 4.2 con push nativas).
-5. **Monetización** cuando haya tracción: activar flag `NEXT_PUBLIC_PREMIUM_ENABLED=1` + claves Stripe (todo implementado, incl. webhook con `premium_purchased`).
+5. **Monetización** cuando haya tracción: activar flag `NEXT_PUBLIC_PREMIUM_ENABLED=1` + claves Stripe (todo implementado; **antes** cerrar el issue #154 — idempotencia del webhook Stripe).
 6. **Admin nivel 2**: roles de usuario en vez de token compartido.
 7. **Producto B2B de scouting** (idea estratégica): el histórico de actas habilita series temporales por jugador (evolución goleadora, disciplina) que la web pública no enseña. Con el dato cargado, diseñar un endpoint de export / API de datos como producto de pago para equipos, separado de la app de resultados.
 
