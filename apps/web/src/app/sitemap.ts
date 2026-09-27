@@ -27,11 +27,15 @@ export async function generateSitemaps(): Promise<Array<{ id: string }>> {
 /**
  * Cada ruta se lista una vez por locale, con el bloque de alternates (Google
  * entiende así la relación hreflang entre ellas).
+ *
+ * OJO: en esta versión de Next, con `generateSitemaps` el `id` llega como
+ * **Promise** (params asíncronos). `await` también funciona si viniera resuelto.
  */
-export default async function sitemap(props: { id: string }): Promise<MetadataRoute.Sitemap> {
+export default async function sitemap(props: { id: string | Promise<string> }): Promise<MetadataRoute.Sitemap> {
+  const id = await props.id;
   const ids = await fetchIds();
   const now = new Date();
-  return sitemapEntries(props.id, ids).flatMap(({ path, priority, changeFrequency }) =>
+  return sitemapEntries(id, ids).flatMap(({ path, priority, changeFrequency }) =>
     SUPPORTED_LOCALES.map((locale) => ({
       url: `${SITE_URL}/${locale}${path}`,
       lastModified: now,
