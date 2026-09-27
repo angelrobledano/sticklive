@@ -7,7 +7,7 @@
  * 3. Procesar en batches para no sobrecargar la DB
  * 4. Usar transacciones por batch (no por partido individual — más eficiente)
  */
-import { upsertMatch, insertScrapeLog, getSeasonSignals, upsertRound, db } from '@sports/db';
+import { upsertMatch, insertScrapeLog, getSeasonSignals, upsertRound, db, learnSourceClub } from '@sports/db';
 import type { ScrapedMatch, ScrapeResult } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { transformMatch } from '../transformers/match.transformer.js';
@@ -31,6 +31,41 @@ export interface LoadMatchesOptions {
   /** Enrich (A5): activa el upsert que reasigna season_id + etiqueta en el
    *  ON CONFLICT (recuperación de histórico). Por defecto false. */
   enrich?: boolean;
+}
+
+/**
+ * Aprende refs de club del feed (`fep_club_XX`) → equipo, ACOTADAS por competición.
+ *
+ * La ref de club identifica al CLUB, no a la sección: un club puede tener primer
+ * equipo y filial con el mismo nombre en ligas distintas (bug A/B del NOIA), así
+ * que aprenderla como alias GLOBAL cruzaría las secciones. Acotada por competición
+ * es segura (un club alinea un solo equipo por competición) y es lo que permite
+ * desempatar los partidos simultáneos de la misma liga. Ver migración 054.
+ */
+async function aprenderRefsDeClub(
+  sourceId: string | undefined,
+  seasonId: string,
+  homeRef: string,
+  homeTeamId: string | null,
+  awayRef: string,
+  awayTeamId: string | null,
+): Promise<void> {
+  if (!sourceId) return;
+  const pares = [
+    { ref: homeRef, teamId: homeTeamId },
+    { ref: awayRef, teamId: awayTeamId },
+  ].filter((p): p is { ref: string; teamId: string } => !!p.teamId && p.ref.startsWith('fep_club_'));
+  if (pares.length === 0) return;
+
+  const season = await db.query<{ competition_id: string }>(
+    `SELECT competition_id FROM seasons WHERE id = $1`, [seasonId],
+  );
+  const competitionId = season.rows[0]?.competition_id;
+  if (!competitionId) return;
+
+  for (const p of pares) {
+    await learnSourceClub(sourceId, competitionId, p.ref, p.teamId).catch(() => {});
+  }
 }
 
 export async function loadMatches(
@@ -180,7 +215,9 @@ export async function loadMatches(
           // Equipo no encontrado — intentar UPDATE de score/status para partidos ya existentes
           // (el upsert completo falla si los equipos no estan en DB, pero el marcador si puede actualizarse)
           if (input.sourceRef) {
-            const scoreResult = await db.query<{ home_team_id: string | null; away_team_id: string | null }>(
+            const byRef = await db.query<{
+              id: string; season_id: string; home_team_id: string; away_team_id: string;
+            }>(
               `UPDATE matches
                SET home_score = COALESCE($2, home_score),
                    away_score = COALESCE($3, away_score),
@@ -188,7 +225,7 @@ export async function loadMatches(
                    scraped_at = $5,
                    updated_at = NOW()
                WHERE source_ref = $1
-               RETURNING home_team_id, away_team_id`,
+               RETURNING id, season_id, home_team_id, away_team_id`,
               [
                 input.sourceRef,
                 input.homeScore ?? null,
@@ -197,54 +234,68 @@ export async function loadMatches(
                 input.scrapedAt,
               ]
             );
-            if ((scoreResult.rowCount ?? 0) > 0) {
+            const hit = byRef.rows[0];
+            if (hit) {
               log.debug(
                 { sourceRef: input.sourceRef, score: { home: input.homeScore, away: input.awayScore }, status: input.status },
                 'Score/status actualizados por ref (equipo no resolvible)'
               );
               upserted++;
               resolved = true;
+              await aprenderRefsDeClub(raw.sourceId, hit.season_id, homeTeamRef, hit.home_team_id, awayTeamRef, hit.away_team_id);
             }
           }
           // Feed de directo con refs de CLUB (`fep_club_XX`), que no resuelven:
           // si el partido ya existe con la ref del feed, el UPDATE de arriba basta;
           // si no (nuestro partido es un placeholder `synthetic:` porque el
           // calendario aún no publica el idp), se ADOPTA por COMPETICIÓN + FECHA.
-          // Un único placeholder sintético de esa competición a esa hora recibe la
-          // ref del feed → se actualiza marcador/estado y el cron de fichas ya sabe
-          // qué idp pedir (directo con eventos).
           //
-          // NO se aprende `fep_club_XX` como alias de equipo: identifica al CLUB,
-          // no a la sección, y aprenderla cruzaría primer equipo y filial (bug A/B).
+          // Desempate: si esa competición tiene VARIOS partidos a esa misma hora, se
+          // usa el mapa `source_club_map` (ref de club → equipo, acotado por
+          // competición, migración 054) para elegir el candidato cuyos equipos son
+          // los del feed. Sin candidato inequívoco no se toca nada.
           if (
             !resolved &&
             input.sourceRef &&
             !input.sourceRef.startsWith('synthetic:') &&
             input.scheduledAt &&
-            raw.competitionName
+            raw.competitionName &&
+            raw.sourceId
           ) {
-            const adopted = await db.query<{ id: string }>(
-              `WITH candidato AS (
-                 SELECT m.id
+            const adopted = await db.query<{
+              id: string; season_id: string; home_team_id: string; away_team_id: string;
+            }>(
+              `WITH cand AS (
+                 SELECT m.id, m.home_team_id, m.away_team_id
                    FROM matches m
                    JOIN seasons s ON s.id = m.season_id AND s.is_current
                    JOIN competitions c ON c.id = s.competition_id
                   WHERE m.source_ref LIKE 'synthetic:%'
                     AND m.scheduled_at = $2
                     AND lower(c.name) = lower($3)
-                  ORDER BY m.id
-                  LIMIT 2
+               ), mapa AS (
+                 SELECT scm.club_ref, scm.team_id
+                   FROM source_club_map scm
+                   JOIN competitions c2 ON c2.id = scm.competition_id
+                  WHERE scm.source_id = $4 AND lower(c2.name) = lower($3)
+                    AND scm.club_ref IN ($5, $6)
+               ), elegido AS (
+                 SELECT cand.id
+                   FROM cand
+                  WHERE (SELECT count(*) FROM cand) = 1
+                     OR (cand.home_team_id = (SELECT team_id FROM mapa WHERE club_ref = $5)
+                         AND cand.away_team_id = (SELECT team_id FROM mapa WHERE club_ref = $6))
+                  LIMIT 1
                )
                UPDATE matches
                   SET source_ref = $1, updated_at = NOW()
-                WHERE id = (SELECT id FROM candidato LIMIT 1)
-                  AND (SELECT count(*) FROM candidato) = 1
+                WHERE id = (SELECT id FROM elegido)
                   AND NOT EXISTS (SELECT 1 FROM matches WHERE source_ref = $1)
-               RETURNING id`,
-              [input.sourceRef, input.scheduledAt, raw.competitionName],
+               RETURNING id, season_id, home_team_id, away_team_id`,
+              [input.sourceRef, input.scheduledAt, raw.competitionName, raw.sourceId, homeTeamRef, awayTeamRef],
             );
-            const adoptedId = adopted.rows[0]?.id;
-            if (adoptedId) {
+            const adoptedHit = adopted.rows[0];
+            if (adoptedHit) {
               await db.query(
                 `UPDATE matches
                     SET home_score = COALESCE($2, home_score),
@@ -253,7 +304,7 @@ export async function loadMatches(
                         scraped_at = $5,
                         updated_at = NOW()
                   WHERE id = $1`,
-                [adoptedId, input.homeScore ?? null, input.awayScore ?? null, input.status, input.scrapedAt],
+                [adoptedHit.id, input.homeScore ?? null, input.awayScore ?? null, input.status, input.scrapedAt],
               );
               log.info(
                 { sourceRef: input.sourceRef, competition: raw.competitionName, scheduledAt: input.scheduledAt },
@@ -261,6 +312,7 @@ export async function loadMatches(
               );
               resolved = true;
               upserted++;
+              await aprenderRefsDeClub(raw.sourceId, adoptedHit.season_id, homeTeamRef, adoptedHit.home_team_id, awayTeamRef, adoptedHit.away_team_id);
             }
           }
           if (!resolved) {

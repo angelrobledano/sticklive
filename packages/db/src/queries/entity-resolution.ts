@@ -413,3 +413,43 @@ export async function getResolutionStats(): Promise<ResolutionStats> {
     },
   };
 }
+
+// ── Mapeo ref de club → equipo, acotado por competición (migración 054) ──────
+//
+// El feed de directo identifica por ref de CLUB, que no es de equipo: un club
+// puede tener primer equipo y filial con el mismo nombre en ligas distintas. El
+// mapeo GLOBAL cruzaría las secciones; acotado por competición es seguro (un
+// club = un equipo por competición).
+
+/** Aprende (o corrige) la ref de club de una fuente para un equipo. */
+export async function learnSourceClub(
+  sourceId: string,
+  competitionId: string,
+  clubRef: string,
+  teamId: string,
+  client: pg.PoolClient | typeof db = db,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO source_club_map (source_id, competition_id, club_ref, team_id)
+     VALUES ($1,$2,$3,$4)
+     ON CONFLICT (source_id, competition_id, club_ref)
+     DO UPDATE SET team_id = EXCLUDED.team_id`,
+    [sourceId, competitionId, clubRef, teamId],
+  );
+}
+
+/** Equipos aprendidos para esas refs de club en esa competición. */
+export async function getSourceClubTeams(
+  sourceId: string,
+  competitionId: string,
+  clubRefs: string[],
+  client: pg.PoolClient | typeof db = db,
+): Promise<Map<string, string>> {
+  if (clubRefs.length === 0) return new Map();
+  const { rows } = await client.query<{ club_ref: string; team_id: string }>(
+    `SELECT club_ref, team_id FROM source_club_map
+      WHERE source_id = $1 AND competition_id = $2 AND club_ref = ANY($3)`,
+    [sourceId, competitionId, clubRefs],
+  );
+  return new Map(rows.map((r) => [r.club_ref, r.team_id]));
+}

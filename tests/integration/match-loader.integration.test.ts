@@ -13,7 +13,7 @@
  * Cubre T-023..T-028 de docs/AUDITORIA_TESTS.md.
  */
 import { describe, test, expect, beforeEach, afterAll } from 'vitest';
-import { db, closeDb } from '@sports/db';
+import { db, closeDb, learnSourceClub } from '@sports/db';
 import type { ScrapedMatch, ScrapeResult } from '@sports/shared-types';
 import { limpiar } from './support/db.js';
 import { crearDeporte, crearCompeticion, crearTemporada } from './support/factorias.js';
@@ -208,15 +208,63 @@ describe('match.loader (I2)', () => {
     const m = (await db.query<{ home_score: number }>(`SELECT home_score FROM matches WHERE source_ref='m-directo'`)).rows[0]!;
     expect(m.home_score).toBe(1);
 
-    // La ref de club NO se aprende como alias: identifica al CLUB (sirve al
-    // primer equipo y al filial); aprenderla como alias de un equipo cruzaría
-    // las dos secciones (bug A/B del NOIA). La adopción por competición+fecha
-    // cubre el caso sin ese riesgo.
+    // La ref de club NO se aprende como alias GLOBAL de equipo (identifica al
+    // CLUB y cruzaría A/B), pero SÍ se aprende ACOTADA por competición (un club
+    // = un equipo por competición): es la que desempata partidos simultáneos.
     const alt = (await db.query<{ alt_source_refs: string[] }>(`SELECT alt_source_refs FROM teams WHERE id=$1`, [home])).rows[0]!;
     expect(alt.alt_source_refs).not.toContain('fep_club_777');
-    const mapa = (await db.query<{ c: string }>(
-      `SELECT count(*)::int c FROM source_entity_map WHERE source_id=$1 AND source_ref='fep_club_777' AND team_id=$2`,
+    const mapaGlobal = (await db.query<{ c: string }>(
+      `SELECT count(*)::int c FROM source_entity_map WHERE source_id=$1 AND source_ref='fep_club_777'`,
+      [sourceId])).rows[0]!;
+    expect(Number(mapaGlobal.c)).toBe(0);
+
+    const mapaClub = (await db.query<{ c: string }>(
+      `SELECT count(*)::int c FROM source_club_map WHERE source_id=$1 AND club_ref='fep_club_777' AND team_id=$2`,
       [sourceId, home])).rows[0]!;
-    expect(Number(mapa.c)).toBe(0);
+    expect(Number(mapaClub.c)).toBe(1);
+  });
+
+  test('T-024c desempata partidos SIMULTÁNEOS de la misma liga con el mapa de club', async () => {
+    const compId = (await db.query<{ id: string }>(`SELECT id FROM competitions LIMIT 1`)).rows[0]!.id;
+    await db.query(`UPDATE competitions SET name = 'OK LIGA PLATA SUR' WHERE id = $1`, [compId]);
+    const noiaB = await equipoConRef('3685', 'CE NOIA FREIXENET B');
+    const vic = await equipoConRef('3727', 'AUTO VIGATANA PATI VIC');
+    const acordesB = await equipoConRef('3673', 'ACORDES B');
+    const cdmB = await equipoConRef('3714', 'CDM HOCKEY PATINES B');
+    const fecha = '2026-10-03T15:30:00.000Z';
+
+    const ins = await db.query<{ id: string }>(
+      `INSERT INTO matches (season_id, home_team_id, away_team_id, scheduled_at, status, source_ref)
+       VALUES ($1,$2,$3,$4,'scheduled',$5), ($1,$6,$7,$4,'scheduled',$8)
+       RETURNING id`,
+      [seasonId, noiaB, vic, fecha, `synthetic:${seasonId}:3685:3727:${fecha}`,
+       acordesB, cdmB, `synthetic:${seasonId}:3673:3714:${fecha}`]);
+    const idNoia = ins.rows[0]!.id;
+    const idAcordes = ins.rows[1]!.id;
+
+    // El mapa ya conoce los clubes del partido de ACORDES en esta competición.
+    await learnSourceClub(sourceId, compId, 'fep_club_10', acordesB);
+    await learnSourceClub(sourceId, compId, 'fep_club_20', cdmB);
+
+    const r = await loadMatches(resultOf([
+      scraped({
+        homeTeamRef: 'fep_club_10',
+        awayTeamRef: 'fep_club_20',
+        competitionName: 'OK LIGA PLATA SUR',
+        scheduledAt: fecha,
+        sourceRef: 'fep_match_99999',
+        status: 'live',
+        homeScore: 2,
+        awayScore: 1,
+      }),
+    ]), sportId);
+
+    expect(r.upserted).toBe(1);
+    const adoptado = (await db.query<{ source_ref: string; home_score: number }>(`SELECT source_ref, home_score FROM matches WHERE id=$1`, [idAcordes])).rows[0]!;
+    expect(adoptado.source_ref).toBe('fep_match_99999'); // el correcto, no el otro
+    expect(adoptado.home_score).toBe(2);
+    // El simultáneo del otro club NO se toca.
+    const intacto = (await db.query<{ source_ref: string }>(`SELECT source_ref FROM matches WHERE id=$1`, [idNoia])).rows[0]!;
+    expect(intacto.source_ref.startsWith('synthetic:')).toBe(true);
   });
 });
