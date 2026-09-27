@@ -56,4 +56,15 @@ describe('findSimilarTeamNames', () => {
     const cands = await findSimilarTeamNames('VICIO PHC SANT CUGAT', sportId, { gender: 'male', ageCategory: 'senior' });
     expect(cands).toEqual([]);
   });
+
+  it('diferencia las secciones M/F homónimas (el candidato lleva su género)', async () => {
+    const sportId = await sembrarDeporte();
+    const fem = await sembrarEquipo(sportId, 'CERDANYOLA CLUB D HOQUEI', 'cerdanyola-club-d-hoquei', 'female', 'senior');
+    const masc = await sembrarEquipo(sportId, 'CERDANYOLA CLUB D HOQUEI', 'cerdanyola-club-dhoquei', 'male', 'senior');
+
+    const cands = await findSimilarTeamNames('CERDANYOLA CLUB D HOQUEI', sportId, { gender: 'female', ageCategory: 'senior' });
+    const femCand = cands.find((c) => c.teamId === fem);
+    expect(femCand?.gender).toBe('female');       // se ve la diferenciación
+    expect(cands.map((c) => c.teamId)).not.toContain(masc); // y no se cuela la otra sección
+  });
 });

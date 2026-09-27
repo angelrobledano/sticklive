@@ -15,6 +15,14 @@ export interface DbTeam {
   source_ref: string | null;
   source_url: string | null;
   alt_source_refs: string[];
+  // Columnas añadidas por migraciones posteriores al tipo original (032:
+  // team_type/gender/age_category; 044: club_id/squad_level). Opcionales para no
+  // romper construcciones existentes; con `SELECT *` llegan siempre.
+  team_type?: string | null;
+  gender?: string | null;
+  age_category?: string | null;
+  club_id?: string | null;
+  squad_level?: number | null;
   scraped_at: Date | null;
   created_at: Date;
   updated_at: Date;

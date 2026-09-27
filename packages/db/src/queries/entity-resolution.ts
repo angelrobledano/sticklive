@@ -146,6 +146,7 @@ export async function generateFuzzyCandidates(
 export interface SimilarNameCandidate {
   teamId: string;
   name: string;
+  gender: string | null;
   score: number;
 }
 
@@ -168,8 +169,8 @@ export async function findSimilarTeamNames(
   opts?: { gender?: string | null; ageCategory?: string | null },
   limit = 3,
 ): Promise<SimilarNameCandidate[]> {
-  const { rows } = await db.query<{ team_id: string; name: string; score: number }>(
-    `SELECT t.id AS team_id, t.name, similarity(lower(t.name), lower($1))::float AS score
+  const { rows } = await db.query<{ team_id: string; name: string; gender: string | null; score: number }>(
+    `SELECT t.id AS team_id, t.name, t.gender, similarity(lower(t.name), lower($1))::float AS score
        FROM teams t
       WHERE t.sport_id = $2
         AND ($3::text IS NULL OR t.gender = $3 OR t.gender IS NULL)
@@ -179,7 +180,7 @@ export async function findSimilarTeamNames(
       LIMIT $5`,
     [name, sportId, opts?.gender ?? null, opts?.ageCategory ?? null, limit],
   );
-  return rows.map((r) => ({ teamId: r.team_id, name: r.name, score: Number(r.score) }));
+  return rows.map((r) => ({ teamId: r.team_id, name: r.name, gender: r.gender, score: Number(r.score) }));
 }
 
 export interface EnqueueResolutionInput {
