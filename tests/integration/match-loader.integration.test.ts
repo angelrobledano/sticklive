@@ -276,4 +276,54 @@ describe('match.loader (I2)', () => {
     const intacto = (await db.query<{ source_ref: string }>(`SELECT source_ref FROM matches WHERE id=$1`, [idNoia])).rows[0]!;
     expect(intacto.source_ref.startsWith('synthetic:')).toBe(true);
   });
+
+  // ── #151: el feed GLOBAL de directo no debe insertar en la temporada de fallback
+  //    un partido cuyos equipos no pertenecen a esa temporada.
+  test('T-029 requireTeamsInSeason: no inserta si los equipos no están en la temporada', async () => {
+    await equipoConRef('t-home', 'Equipo Casa');
+    await equipoConRef('t-away', 'Equipo Fuera');
+    // Sin season_teams: los equipos juegan en otra competición/temporada.
+    const r = await loadMatches(resultOf([
+      scraped({ homeTeamRef: 't-home', awayTeamRef: 't-away', sourceRef: 'm-otra-temporada', status: 'live', homeScore: 1, awayScore: 0, scheduledAt: new Date().toISOString() }),
+    ]), sportId, { requireTeamsInSeason: true });
+
+    expect(r.skipped).toBe(1);
+    expect(r.upserted).toBe(0);
+    expect(await countMatches(`WHERE source_ref = $1`, ['m-otra-temporada'])).toBe(0);
+  });
+
+  test('T-029b requireTeamsInSeason: inserta si ambos equipos pertenecen a la temporada', async () => {
+    const home = await equipoConRef('t-home', 'Equipo Casa');
+    const away = await equipoConRef('t-away', 'Equipo Fuera');
+    await db.query(
+      `INSERT INTO season_teams (season_id, team_id) VALUES ($1,$2), ($1,$3)`,
+      [seasonId, home, away]);
+
+    const r = await loadMatches(resultOf([
+      scraped({ homeTeamRef: 't-home', awayTeamRef: 't-away', sourceRef: 'm-misma-temporada', status: 'live', homeScore: 1, awayScore: 0, scheduledAt: new Date().toISOString() }),
+    ]), sportId, { requireTeamsInSeason: true });
+
+    expect(r.upserted).toBe(1);
+    expect(await countMatches(`WHERE source_ref = $1`, ['m-misma-temporada'])).toBe(1);
+  });
+
+  test('T-029c requireTeamsInSeason: si el partido ya existe, actualiza el marcador aunque falten season_teams', async () => {
+    const home = await equipoConRef('t-home', 'Equipo Casa');
+    const away = await equipoConRef('t-away', 'Equipo Fuera');
+    await db.query(
+      `INSERT INTO matches (season_id, home_team_id, away_team_id, status, source_ref, scheduled_at)
+       VALUES ($1,$2,$3,'scheduled','m-global-existente', NOW())`,
+      [seasonId, home, away]);
+
+    const r = await loadMatches(resultOf([
+      scraped({ homeTeamRef: 't-home', awayTeamRef: 't-away', sourceRef: 'm-global-existente', status: 'finished', homeScore: 4, awayScore: 2 }),
+    ]), sportId, { requireTeamsInSeason: true });
+
+    expect(r.upserted).toBe(1);
+    const m = (await db.query<{ home_score: number; status: string }>(
+      `SELECT home_score, status FROM matches WHERE source_ref = 'm-global-existente'`)).rows[0]!;
+    expect(m.home_score).toBe(4);
+    expect(m.status).toBe('finished');
+    expect(await countMatches()).toBe(1); // no crea fila nueva
+  });
 });

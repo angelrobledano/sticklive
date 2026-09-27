@@ -31,6 +31,13 @@ export interface LoadMatchesOptions {
   /** Enrich (A5): activa el upsert que reasigna season_id + etiqueta en el
    *  ON CONFLICT (recuperación de histórico). Por defecto false. */
   enrich?: boolean;
+  /** Exigir que ambos equipos estén en `season_teams` de su temporada antes de
+   *  INSERTAR un partido nuevo. Lo usa el feed GLOBAL de directo (#151): trae
+   *  partidos de todas las competiciones con la temporada de fallback estampada,
+   *  así que un alta sin esta guarda dejaría el partido para siempre en la
+   *  competición equivocada. Si el partido ya existe por `source_ref`, se permite
+   *  (solo se actualiza marcador/estado). */
+  requireTeamsInSeason?: boolean;
 }
 
 /**
@@ -226,6 +233,33 @@ export async function loadMatches(
               );
               skipped++;
               continue;
+            }
+          }
+
+          // Guarda del feed GLOBAL de directo (#151): `rfep_mc_1.php` trae
+          // partidos de TODAS las competiciones y el scraper les estampa la
+          // temporada de fallback. Si los equipos no pertenecen a ESA temporada,
+          // insertar el partido lo dejaría para siempre en la competición
+          // equivocada. Se omite el alta; si ya existe por `source_ref`, el
+          // upsert de abajo solo actualiza marcador/estado.
+          if (options.requireTeamsInSeason) {
+            const member = await db.query<{ ok: boolean }>(
+              `SELECT (EXISTS(SELECT 1 FROM season_teams WHERE season_id = $1 AND team_id = $2)
+                       AND EXISTS(SELECT 1 FROM season_teams WHERE season_id = $1 AND team_id = $3)) AS ok`,
+              [input.seasonId, homeTeamId, awayTeamId]
+            );
+            if (!member.rows[0]?.ok) {
+              const yaExiste = await db.query(
+                `SELECT 1 FROM matches WHERE source_ref = $1 LIMIT 1`, [input.sourceRef]
+              );
+              if ((yaExiste.rowCount ?? 0) === 0) {
+                log.warn(
+                  { item: itemLabel, seasonId: input.seasonId },
+                  'Partido omitido: sus equipos no pertenecen a la temporada del feed global (no se inserta en la competición equivocada)'
+                );
+                skipped++;
+                continue;
+              }
             }
           }
 

@@ -276,7 +276,7 @@ async function runFepScores(seasonIds: string[]): Promise<number> {
   // calendario aún no cargó; para los existentes, el upsert preserva su season_id.
   const seasonFallback = activeSeasons[0] ?? seasonIds[0]!;
   const scraper  = new FepMatchesScraper({ seasonId: seasonFallback });
-  const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: seasonFallback });
+  const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: seasonFallback, requireTeamsInSeason: true });
 
   const result = await scraper.run();
   if (result.data.length === 0) {

@@ -37,6 +37,9 @@ export interface PipelineContext {
   /** Enrich (A5). Se propaga al loader; activa el upsert que reasigna temporada
    *  y etiqueta en el ON CONFLICT (recuperación de fechas del histórico). */
   enrich?: boolean;
+  /** Guarda del feed global de directo (#151): exigir `season_teams` antes de
+   *  insertar un partido nuevo. Se activa en el orquestador del directo. */
+  requireTeamsInSeason?: boolean;
 }
 
 export interface PipelineResult {
@@ -98,6 +101,7 @@ export class EtlPipeline {
       createRounds: this.ctx.createRounds ?? false,
       importBatchId: this.ctx.importBatchId,
       enrich: this.ctx.enrich,
+      requireTeamsInSeason: this.ctx.requireTeamsInSeason,
     });
 
     return {
