@@ -167,6 +167,12 @@ export type ScrapedTeam = Omit<Team, 'id' | 'sportId'> & ScrapedTrace & {
 export type ScrapedMatch = Omit<Match, 'id' | 'homeTeamId' | 'awayTeamId'> & ScrapedTrace & {
   homeTeamRef: string;
   awayTeamRef: string;
+  /**
+   * Nombre de la competición que trae la fila (el feed de directo no incluye el
+   * id de competición). Se usa para casar la fila con el partido ya creado por
+   * el calendario cuando los equipos vienen por ref de club (no resolubles).
+   */
+  competitionName?: string | null;
   /** Nombre de ronda/fase de la fuente (Jornada 1, Cuartos, Final…) — para mostrar. */
   roundRef?: string;
   /** Número de ronda para la identidad en DB (UNIQUE season+number+type). Requerido si se crean rondas. */

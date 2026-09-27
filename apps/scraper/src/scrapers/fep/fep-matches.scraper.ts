@@ -180,6 +180,7 @@ export class FepMatchesScraper extends BaseScraper<ScrapedMatch> {
       seasonId: this.matchesConfig.seasonId,
       homeTeamRef,
       awayTeamRef,
+      competitionName,
       homeScore,
       awayScore,
       status,

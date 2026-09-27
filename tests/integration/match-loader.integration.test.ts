@@ -4,10 +4,11 @@
  * loadMatches() contra Postgres real (arnés compartido, aislamiento por
  * TRUNCATE), ejercitando:
  *   - adopción de placeholders sintéticos (sin duplicar)
+ *   - adopción por COMPETICIÓN+FECHA cuando el feed de directo no resuelve equipos
+ *     (refs de club `fep_club_XX`): el placeholder recibe el idp real y su marcador
  *   - guarda anti-duplicados del placeholder cuando ya existe el real
  *   - omisión del placeholder sintético con fecha pasada
  *   - fallback solo-marcador cuando el equipo no resuelve
- *   - self-heal de alt_source_refs desde el directo (club_id → equipo)
  *
  * Cubre T-023..T-028 de docs/AUDITORIA_TESTS.md.
  */
@@ -81,8 +82,7 @@ describe('match.loader (I2)', () => {
     expect(await countMatches(`WHERE source_ref = $1`, ['m-real-1'])).toBe(1);
   });
 
-  test('T-024 adopta el placeholder sintético cuando llega el partido real (sin duplicar)', async () => {
-    const home = await equipoConRef('t-home', 'Equipo Casa');
+  test('T-024 adopta el placeholder sintético cuando llega el partido real (sin duplicar)', async () => {    const home = await equipoConRef('t-home', 'Equipo Casa');
     const away = await equipoConRef('t-away', 'Equipo Fuera');
     const fecha = '2026-03-01T18:00:00.000Z';
     const synthRef = `synthetic:${seasonId}:t-home:t-away:${fecha}`;
@@ -101,6 +101,43 @@ describe('match.loader (I2)', () => {
     const row = (await db.query<{ id: string; source_ref: string }>(`SELECT id, source_ref FROM matches WHERE season_id=$1`, [seasonId])).rows[0]!;
     expect(row.id).toBe(idOriginal);          // conserva id, historial, favoritos
     expect(row.source_ref).toBe('idp-real-1'); // ref reescrita a la real
+  });
+
+  test('T-024b adopta por COMPETICIÓN+FECHA cuando el feed trae refs de club (sin cruzar equipos)', async () => {
+    const home = await equipoConRef('3685', 'CE NOIA FREIXENET B');
+    const away = await equipoConRef('3727', 'AUTO VIGATANA PATI VIC');
+    const fecha = '2026-09-27T16:30:00.000Z';
+    await db.query(`UPDATE competitions SET name = 'OK LIGA PLATA SUR'`);
+    const synthRef = `synthetic:${seasonId}:3685:3727:${fecha}`;
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO matches (season_id, home_team_id, away_team_id, scheduled_at, status, source_ref)
+       VALUES ($1,$2,$3,$4,'live',$5) RETURNING id`,
+      [seasonId, home, away, fecha, synthRef]);
+    const idOriginal = rows[0]!.id;
+
+    // Fila del feed de directo: equipos por ref de CLUB (no resolubles), con idp
+    // real, competición y fecha. El placeholder debe ADOPTAR su ref y su marcador.
+    const r = await loadMatches(resultOf([
+      scraped({
+        homeTeamRef: 'fep_club_71',
+        awayTeamRef: 'fep_club_738',
+        competitionName: 'OK LIGA PLATA SUR',
+        scheduledAt: fecha,
+        sourceRef: 'fep_match_35533',
+        status: 'live',
+        homeScore: 1,
+        awayScore: 1,
+      }),
+    ]), sportId);
+
+    expect(r.upserted).toBe(1);
+    expect(r.skipped).toBe(0);
+    const row = (await db.query<{ id: string; source_ref: string; home_score: number; away_score: number }>(
+      `SELECT id, source_ref, home_score, away_score FROM matches WHERE season_id=$1`, [seasonId])).rows[0]!;
+    expect(row.id).toBe(idOriginal);                 // adoptado, no duplicado
+    expect(row.source_ref).toBe('fep_match_35533');  // ya tiene el idp real (el cron podrá pedir el acta)
+    expect(row.home_score).toBe(1);
+    expect(row.away_score).toBe(1);
   });
 
   test('T-025 no inserta el placeholder sintético si ya existe el partido real', async () => {

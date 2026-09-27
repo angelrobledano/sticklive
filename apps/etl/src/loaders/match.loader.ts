@@ -7,7 +7,7 @@
  * 3. Procesar en batches para no sobrecargar la DB
  * 4. Usar transacciones por batch (no por partido individual — más eficiente)
  */
-import { upsertMatch, insertScrapeLog, addTeamAltRef, upsertSourceEntityMapTeam, getSeasonSignals, upsertRound, db } from '@sports/db';
+import { upsertMatch, insertScrapeLog, getSeasonSignals, upsertRound, db } from '@sports/db';
 import type { ScrapedMatch, ScrapeResult } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { transformMatch } from '../transformers/match.transformer.js';
@@ -204,37 +204,63 @@ export async function loadMatches(
               );
               upserted++;
               resolved = true;
-
-              // Self-heal: el feed de directo (rfep_mc_1.php) identifica equipos por
-              // id de CLUB (fep_club_XX) mientras el calendario usa el id de EQUIPO.
-              // Si el partido ya existía (creado por el calendario, con team_ids), y
-              // el ref del directo no resolvió, aprendemos ese id de club como
-              // alt_source_ref para que la PRÓXIMA vez resuelva directo y se haga el
-              // upsert completo. Idempotente y sin hardcodear ids. Solo para refs
-              // opacos del directo (fep_club_*), no para nombres/abreviaturas.
-              const row = scoreResult.rows[0];
-              const learn: Array<Promise<unknown>> = [];
-              if (row?.home_team_id && homeTeamRef.startsWith('fep_club_')) {
-                learn.push(addTeamAltRef(row.home_team_id, homeTeamRef).catch(() => {}));
-                // Escalón 1: además del array, alimenta source_entity_map para
-                // que la próxima resolución entre por el mapa determinista.
-                if (raw.sourceId) {
-                  learn.push(upsertSourceEntityMapTeam(raw.sourceId, homeTeamRef, row.home_team_id).catch(() => {}));
-                }
-              }
-              if (row?.away_team_id && awayTeamRef.startsWith('fep_club_')) {
-                learn.push(addTeamAltRef(row.away_team_id, awayTeamRef).catch(() => {}));
-                if (raw.sourceId) {
-                  learn.push(upsertSourceEntityMapTeam(raw.sourceId, awayTeamRef, row.away_team_id).catch(() => {}));
-                }
-              }
-              if (learn.length > 0) {
-                await Promise.all(learn);
-                log.info(
-                  { sourceRef: input.sourceRef, homeTeamRef, awayTeamRef },
-                  'alt_source_refs aprendidos desde el directo (club_id → equipo)'
-                );
-              }
+            }
+          }
+          // Feed de directo con refs de CLUB (`fep_club_XX`), que no resuelven:
+          // si el partido ya existe con la ref del feed, el UPDATE de arriba basta;
+          // si no (nuestro partido es un placeholder `synthetic:` porque el
+          // calendario aún no publica el idp), se ADOPTA por COMPETICIÓN + FECHA.
+          // Un único placeholder sintético de esa competición a esa hora recibe la
+          // ref del feed → se actualiza marcador/estado y el cron de fichas ya sabe
+          // qué idp pedir (directo con eventos).
+          //
+          // NO se aprende `fep_club_XX` como alias de equipo: identifica al CLUB,
+          // no a la sección, y aprenderla cruzaría primer equipo y filial (bug A/B).
+          if (
+            !resolved &&
+            input.sourceRef &&
+            !input.sourceRef.startsWith('synthetic:') &&
+            input.scheduledAt &&
+            raw.competitionName
+          ) {
+            const adopted = await db.query<{ id: string }>(
+              `WITH candidato AS (
+                 SELECT m.id
+                   FROM matches m
+                   JOIN seasons s ON s.id = m.season_id AND s.is_current
+                   JOIN competitions c ON c.id = s.competition_id
+                  WHERE m.source_ref LIKE 'synthetic:%'
+                    AND m.scheduled_at = $2
+                    AND lower(c.name) = lower($3)
+                  ORDER BY m.id
+                  LIMIT 2
+               )
+               UPDATE matches
+                  SET source_ref = $1, updated_at = NOW()
+                WHERE id = (SELECT id FROM candidato LIMIT 1)
+                  AND (SELECT count(*) FROM candidato) = 1
+                  AND NOT EXISTS (SELECT 1 FROM matches WHERE source_ref = $1)
+               RETURNING id`,
+              [input.sourceRef, input.scheduledAt, raw.competitionName],
+            );
+            const adoptedId = adopted.rows[0]?.id;
+            if (adoptedId) {
+              await db.query(
+                `UPDATE matches
+                    SET home_score = COALESCE($2, home_score),
+                        away_score = COALESCE($3, away_score),
+                        status     = $4,
+                        scraped_at = $5,
+                        updated_at = NOW()
+                  WHERE id = $1`,
+                [adoptedId, input.homeScore ?? null, input.awayScore ?? null, input.status, input.scrapedAt],
+              );
+              log.info(
+                { sourceRef: input.sourceRef, competition: raw.competitionName, scheduledAt: input.scheduledAt },
+                'Placeholder sintético adoptado por competición+fecha (feed de directo)'
+              );
+              resolved = true;
+              upserted++;
             }
           }
           if (!resolved) {
