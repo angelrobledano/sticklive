@@ -2,10 +2,12 @@
 # Caddy — HTTPS automático (Let's Encrypt) para sticklive.eu
 #   /api/* → API Hono (se quita el prefijo /api)
 #   resto  → Next.js
+# www redirige al apex, que es el canónico (#178).
 # ============================================================
 
-sticklive.eu, www.sticklive.eu {
-	encode gzip
+sticklive.eu {
+	# zstd además de gzip (Caddy lo soporta sin coste, #178).
+	encode zstd gzip
 
 	# Cabeceras de seguridad (auditoría M1). Endurecimiento del borde: aplican a
 	# TODA respuesta (API JSON + PWA). HSTS sin `preload` a propósito (preload es
@@ -15,6 +17,12 @@ sticklive.eu, www.sticklive.eu {
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "SAMEORIGIN"
 		Referrer-Policy "strict-origin-when-cross-origin"
+		# CSP en modo OBSERVACIÓN (#178): no bloquea nada; sirve para revisar en la
+		# consola del navegador qué haría falta al pasarla a enforcing. Aún NO hay
+		# endpoint de reporte (Sentry/collector pendiente), así que los reportes
+		# solo se ven en devtools hasta que se añada `report-uri`.
+		Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://eu.i.posthog.com https://*.posthog.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://sidgad.cloud https://www.server2.sidgad.es https://www.hockeypatines.fep.es https://hockeypatines.fep.es; connect-src 'self' https://eu.i.posthog.com https://*.posthog.com https://*.sentry.io; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()"
 		# No revelar el servidor.
 		-Server
 	}
@@ -30,4 +38,10 @@ sticklive.eu, www.sticklive.eu {
 	handle {
 		reverse_proxy web:3001
 	}
+}
+
+# Canónico: www → apex (#178). Next ya emite `canonical`, esto lo refuerza en el
+# borde con un 301.
+www.sticklive.eu {
+	redir https://sticklive.eu{uri} permanent
 }
