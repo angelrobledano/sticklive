@@ -7,6 +7,7 @@ import { useT } from '@/lib/i18n';
 import { clubName, competitionName } from '@/lib/names';
 import { CountryFlag } from '@/components/shared/CountryFlag';
 import { useFavorites } from '@/hooks/useFavorites';
+import { hasSeason2026, orderByImportance } from './order';
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -23,19 +24,6 @@ function countryDisplayName(code: string | null, locale: string): string {
   try {
     return new Intl.DisplayNames([locale], { type: 'region' }).of(code) ?? code;
   } catch { return code; }
-}
-
-/** Solo mostrar competiciones con temporada 2024/25 o 2025/26 */
-function isRelevantSeason(c: CompetitionSummary): boolean {
-  if (!c.season) return false;
-  if (c.season.isCurrent) return true;
-  const name = c.season.name ?? '';
-  if (/202[45]/.test(name)) return true;
-  if (c.season.startDate) {
-    const year = parseInt(c.season.startDate.slice(0, 4), 10);
-    return year >= 2024;
-  }
-  return false;
 }
 
 function genderLabel(gender: string | null, t: (k: string) => string): string {
@@ -386,9 +374,9 @@ export function CompetitionsList({
   const favorites = useMemo(() => new Set(leagues), [leagues]);
   const toggleFav = toggleLeague;
 
-  // 1) Filtrar solo temporadas relevantes (2024/25 o 2025/26)
+  // 1) Solo competiciones con temporada 2026/27 (las demás no tienen nada que enseñar)
   const relevant = useMemo(
-    () => competitions.filter(isRelevantSeason),
+    () => competitions.filter(hasSeason2026),
     [competitions],
   );
 
@@ -407,29 +395,26 @@ export function CompetitionsList({
 
   // 3) Datos por tab
   const principales = useMemo(
-    () => searched
-      .filter((c) => c.scope === 'national')
-      .sort((a, b) => {
-        const ks = countrySortKey(a.country) - countrySortKey(b.country);
-        return ks !== 0 ? ks : a.name.localeCompare(b.name, locale);
-      }),
+    () => orderByImportance(searched.filter((c) => c.scope === 'national'), locale),
     [searched, locale],
   );
 
   const misLigas = useMemo(
-    () => searched.filter((c) => favorites.has(c.id)),
-    [searched, favorites],
+    () => orderByImportance(searched.filter((c) => favorites.has(c.id)), locale),
+    [searched, favorites, locale],
   );
 
-  // 4) Estructura para "Todas": internacional + por país
+  // 4) Estructura para "Todas": internacional + por país (orden por importancia dentro de cada grupo)
   const { international, byCountry } = useMemo(() => {
-    const intl = searched.filter((c) => c.scope === 'international');
+    const intl = orderByImportance(searched.filter((c) => c.scope === 'international'), locale);
     const map = new Map<string, CompetitionSummary[]>();
     for (const c of searched.filter((c) => c.scope !== 'international')) {
       const key = c.country ?? 'ZZ';
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(c);
     }
+    // Dentro de cada país, por importancia (no alfabético).
+    for (const [k, arr] of map) map.set(k, orderByImportance(arr, locale));
     const sorted = [...map.entries()].sort(([a], [b]) => {
       const ks = countrySortKey(a) - countrySortKey(b);
       return ks !== 0 ? ks : countryDisplayName(a, locale).localeCompare(countryDisplayName(b, locale), locale);
