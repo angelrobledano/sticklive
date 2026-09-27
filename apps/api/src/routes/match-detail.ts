@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '@sports/db';
+import { effectiveMatchStatus } from '../lib/effective-status.js';
 
 export const matchDetailRouter = new Hono();
 
@@ -95,17 +96,9 @@ matchDetailRouter.get('/:id', async (c) => {
 
     const row = matchResult.rows[0]!;  // guarda rows.length === 0 lo asegura
 
-    // Forzar status live si scheduled_at ya paso y el partido no ha terminado/aplazado.
-    // Cubre el gap entre cuando el partido empieza en el mundo real y cuando
-    // el scraper de marcadores actualiza la fila en DB (hasta ~1 minuto de lag).
-    const nowMs = Date.now();
-    const startMs = row.scheduled_at ? (row.scheduled_at as Date).getTime() : null;
-    const terminalStatuses = new Set(['finished', 'postponed', 'cancelled']);
-    const effectiveStatus: string = terminalStatuses.has(row.status)
-      ? row.status
-      : (row.status === 'live' || (startMs !== null && nowMs >= startMs))
-        ? 'live'
-        : row.status;
+    // Estado expuesto: adelanta a `live` con el lag de la fuente, pero acotado
+    // por STALE_LIVE_HOURS para no pintar fantasmas EN VIVO (#150).
+    const effectiveStatus = effectiveMatchStatus(row.status, row.scheduled_at as Date | null);
 
     // 2) Eventos del partido ordenados cronológicamente
     const eventsResult = await db.query<EventRow>(`

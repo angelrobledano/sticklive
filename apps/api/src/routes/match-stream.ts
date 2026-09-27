@@ -22,6 +22,7 @@ import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { db, listenForNotifications } from '@sports/db';
 import { logger } from '@sports/logger';
+import { effectiveMatchStatus } from '../lib/effective-status.js';
 
 export const matchStreamRouter = new Hono();
 
@@ -82,14 +83,8 @@ async function fetchMatchSnapshot(matchId: string) {
   const row = matchResult.rows[0];
   if (!row) return null;
 
-  const nowMs = Date.now();
-  const startMs = row.scheduled_at ? new Date(row.scheduled_at).getTime() : null;
-  const terminalStatuses = new Set(['finished', 'postponed', 'cancelled']);
-  const effectiveStatus = terminalStatuses.has(row.status)
-    ? row.status
-    : (row.status === 'live' || (startMs !== null && nowMs >= startMs))
-      ? 'live'
-      : row.status;
+  // Estado expuesto: mismo tope que el watchdog del ETL (#150).
+  const effectiveStatus = effectiveMatchStatus(row.status, row.scheduled_at);
 
   const eventsResult = await db.query<EventRow>(`
     SELECT
