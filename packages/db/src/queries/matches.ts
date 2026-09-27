@@ -277,14 +277,6 @@ export async function replaceMatchEvents(
   const matchDate = mrows[0]?.match_date;
   if (!matchDate) throw new Error(`replaceMatchEvents: el partido ${matchId} no existe`);
 
-  if (events.length === 0) {
-    await client.query(
-      'DELETE FROM match_events WHERE match_id = $1 AND match_date = $2',
-      [matchId, matchDate]
-    );
-    return;
-  }
-
   // Postgres no permite que un ON CONFLICT DO UPDATE toque la misma fila dos
   // veces en la misma sentencia. Los sourceRef de la ficha son únicos por
   // construcción (fep_event_{idp}_{fila}), pero deduplicamos por si acaso:

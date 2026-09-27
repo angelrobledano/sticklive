@@ -135,10 +135,14 @@ describe('replaceMatchEvents', () => {
     expect(eventos[0]!.sourceRef).toBe('fep_event_1_p1_1500_goal_H');
   });
 
-  it('con un acta vacía borra todo', async () => {
+  it('#149 un acta vacía NO borra: un parser roto no debe vaciar el timeline', async () => {
     await replaceMatchEvents(escenario.matchId, [evento('fep_event_1_p1_1500_goal_H')]);
+    // Antes este caso borraba todo. #149 lo cambió: 0 eventos suele significar
+    // parser roto, no acta vacía, y "los malos datos son peores que no tener
+    // datos". El borrado legítimo (acta no vacía que omite un evento) se cubre
+    // en el test "borra los eventos que el acta ya no lista".
     await replaceMatchEvents(escenario.matchId, []);
-    expect(await eventosDe(escenario.matchId)).toHaveLength(0);
+    expect(await eventosDe(escenario.matchId)).toHaveLength(1);
   });
 
   it('deduplica refs repetidas dentro de la misma llamada', async () => {
