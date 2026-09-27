@@ -109,17 +109,18 @@ authRouter.post('/magic-link', rateLimit(5, 60 * 60_000), async (c) => {
     );
     const link = `${WEB_BASE}/login?token=${token}`;
 
-    if (!process.env['SMTP_HOST']) {
-      if (DEV_LINKS) {
-        console.log(`[auth] 🔗 (DEV) Magic link para ${clean}: ${link}`);
-        return c.json({ sent: true, devLink: link });
-      }
+    const { magicLinkDelivery, sendMagicLink } = await import('../lib/mailer.js');
+    const delivery = magicLinkDelivery(process.env['SMTP_HOST'], DEV_LINKS);
+    if (delivery === 'dev-link') {
+      console.log(`[auth] 🔗 (DEV) Magic link para ${clean}: ${link}`);
+      return c.json({ sent: true, devLink: link });
+    }
+    if (delivery === 'unconfigured') {
       // Producción sin SMTP: NO filtrar el enlace jamás.
       console.error('[auth] SMTP_HOST no configurado: no se puede enviar el magic link');
       return c.json({ error: 'email_not_configured' }, 503);
     }
 
-    const { sendMagicLink } = await import('../lib/mailer.js');
     await sendMagicLink(clean, link);
     return c.json({ sent: true });
   } catch (err) {

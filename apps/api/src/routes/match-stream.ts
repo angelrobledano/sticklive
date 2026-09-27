@@ -23,6 +23,13 @@ import { streamSSE } from 'hono/streaming';
 import { db, listenForNotifications } from '@sports/db';
 import { logger } from '@sports/logger';
 import { effectiveMatchStatus } from '../lib/effective-status.js';
+import {
+  applySnapshot,
+  emptyHubState,
+  eventForKind,
+  type HubState,
+  type SseKind,
+} from '../lib/sse-hub.js';
 
 export const matchStreamRouter = new Hono();
 
@@ -197,19 +204,15 @@ async function fetchLineups(matchId: string): Promise<LineupsPayload> {
 
 // ─── Hub: un poller por partido, fan-out a N suscriptores ──────────────────────
 
-type Kind = 'data' | 'finished' | 'error';
-type Subscriber = (json: string, kind: Kind) => void;
+type Subscriber = (json: string, kind: SseKind) => void;
 
 interface Hub {
   subscribers: Set<Subscriber>;
   timer: ReturnType<typeof setInterval> | null;
   /** Debounce de los avisos NOTIFY: colapsa una ráfaga en un solo refresh. */
   refreshTimer: ReturnType<typeof setTimeout> | null;
-  lastEventCount: number;
-  lastHome: number | null;
-  lastAway: number | null;
-  lastPhase: string | null;
-  lastSnapshotJson: string | null;
+  /** Último snapshot enviado y métricas para decidir el siguiente fan-out. */
+  state: HubState;
 }
 
 const hubs = new Map<string, Hub>();
@@ -228,7 +231,7 @@ function scheduleRefresh(matchId: string) {
   hub.refreshTimer.unref?.();
 }
 
-function fanout(hub: Hub, json: string, kind: Kind) {
+function fanout(hub: Hub, json: string, kind: SseKind) {
   for (const cb of hub.subscribers) {
     try { cb(json, kind); } catch { /* el wrapper de cada conexión se limpia solo */ }
   }
@@ -259,22 +262,10 @@ async function pollHub(matchId: string) {
     return;
   }
 
-  const evChanged = snapshot.events.length !== hub.lastEventCount;
-  const scoreChanged = snapshot.match.score.home !== hub.lastHome || snapshot.match.score.away !== hub.lastAway;
-  // Cambio de fase (periodo / descanso / final) — para reflejar el descanso en
-  // tiempo real aunque no cambie el marcador.
-  const lv = snapshot.match.live;
-  const phaseKey = `${snapshot.match.status}|${lv?.isHalftime ?? ''}|${lv?.period ?? ''}`;
-  const phaseChanged = phaseKey !== hub.lastPhase;
-  const first = hub.lastSnapshotJson === null;
-  hub.lastEventCount = snapshot.events.length;
-  hub.lastHome = snapshot.match.score.home;
-  hub.lastAway = snapshot.match.score.away;
-  hub.lastPhase = phaseKey;
-  const json = JSON.stringify(snapshot);
-  hub.lastSnapshotJson = json;
+  const diff = applySnapshot(hub.state, snapshot);
+  hub.state = diff.state;
 
-  if (first || evChanged || scoreChanged || phaseChanged) fanout(hub, json, 'data');
+  if (diff.changed) fanout(hub, diff.json, 'data');
 
   if (snapshot.match.status === 'finished') {
     fanout(hub, JSON.stringify({ matchId, finishedAt: snapshot.match.finishedAt }), 'finished');
@@ -285,14 +276,14 @@ async function pollHub(matchId: string) {
 function subscribe(matchId: string, cb: Subscriber) {
   let hub = hubs.get(matchId);
   if (!hub) {
-    hub = { subscribers: new Set(), timer: null, refreshTimer: null, lastEventCount: -1, lastHome: -1, lastAway: -1, lastPhase: null, lastSnapshotJson: null };
+    hub = { subscribers: new Set(), timer: null, refreshTimer: null, state: emptyHubState() };
     hubs.set(matchId, hub);
     hub.timer = setInterval(() => { void pollHub(matchId); }, BACKUP_POLL_MS);
     void pollHub(matchId); // primer poll inmediato
   }
   hub.subscribers.add(cb);
   // Si ya hay snapshot en caché, lo entregamos al recién llegado al instante.
-  if (hub.lastSnapshotJson) cb(hub.lastSnapshotJson, 'data');
+  if (hub.state.lastSnapshotJson) cb(hub.state.lastSnapshotJson, 'data');
 }
 
 function unsubscribe(matchId: string, cb: Subscriber) {
@@ -339,11 +330,9 @@ matchStreamRouter.get('/:id/stream', async (c) => {
     let done = false;
 
     const onData: Subscriber = (json, kind) => {
-      let ev: string;
-      if (kind === 'error') ev = 'error';
-      else if (kind === 'finished') ev = 'finished';
-      else { ev = firstSent ? 'update' : 'snapshot'; firstSent = true; }
-      queue.push({ json, ev });
+      const named = eventForKind(kind, firstSent);
+      firstSent = named.firstSent;
+      queue.push({ json, ev: named.event });
       wake?.();
     };
 

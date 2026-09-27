@@ -24,6 +24,24 @@ import { createTransport, type Transporter } from 'nodemailer';
 
 const FROM = process.env['SMTP_FROM'] ?? 'Stick Live <no-reply@sticklive.eu>';
 
+export type MagicLinkDelivery = 'send' | 'dev-link' | 'unconfigured';
+
+/**
+ * Decide cómo entregar el magic link según el entorno, sin tocar red.
+ *
+ *   - 'send'         → hay SMTP_HOST: se envía por email.
+ *   - 'dev-link'     → sin SMTP pero modo dev explícito (`AUTH_DEV_LINKS=1` fuera
+ *                      de producción): se devuelve en la respuesta (INSEGURO).
+ *   - 'unconfigured' → sin SMTP en producción: 503, el enlace NUNCA se filtra.
+ */
+export function magicLinkDelivery(
+  smtpHost: string | undefined,
+  devLinks: boolean,
+): MagicLinkDelivery {
+  if (smtpHost) return 'send';
+  return devLinks ? 'dev-link' : 'unconfigured';
+}
+
 let _transporter: Transporter | null = null;
 
 function transporter(): Transporter {
