@@ -19,7 +19,7 @@
 | GET | `/seasons/:id/standings` | Solo clasificación (soporta grupos) |
 | GET | `/seasons/:id/matches` | Partidos de la temporada (filtros por jornada/estado/equipo) |
 | GET | `/seasons/:id/stats` | Líderes de temporada (goleadores, asistentes, tarjetas, eficiencias) |
-| GET | `/matches/live` | Partidos en juego ahora |
+| GET | `/matches/live` | Partidos en juego ahora (API pública; **sin consumidor interno**, ver nota) |
 | GET | `/matches/current` | Ventana de la home (por defecto ±días; `?from=&to=` / `?days=`) |
 | GET | `/matches/:id` | Detalle de partido: eventos, estadísticas, alineaciones |
 | GET | `/matches/:id/stream` | **SSE** del directo (snapshot inicial + eventos; timeout a 2 h con `event: timeout`) |
@@ -30,6 +30,23 @@
 | GET | `/meta/sitemap` | IDs para el sitemap dinámico de la web |
 
 Rate limit de lectura activo en: `/seasons/:id/overview`, `/seasons/:id/stats`, `/teams/:id`, `/players/:id`.
+
+### `/matches/live` — estado real (#190)
+
+Endpoint público razonable (PWA / cliente de API), pero **hoy no lo llama nadie
+dentro del proyecto**:
+
+- La web usa `GET /matches/current` (hook `useLiveScores`, con badge live por
+  reloj en `MatchCard`) para la home.
+- La ficha de partido usa `GET /matches/:id` + `GET /matches/:id/stream` (SSE).
+- `getLiveMatches()` en `apps/web/src/lib/api/client.ts` está definido pero sin
+  llamadas.
+
+Decisión: **se mantiene como API pública** (no se depreca). Diferencia con
+`/matches/current`: `/matches/live` es estrictamente "en juego ahora" por estado
+de BD; `/matches/current` devuelve la ventana configurable de la home (pasados y
+próximos). Un futuro consumidor interno debería preferir `/matches/current` o el
+SSE, no este endpoint.
 
 ## Cuenta y favoritos (`/auth`)
 
