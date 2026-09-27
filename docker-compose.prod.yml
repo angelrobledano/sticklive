@@ -158,14 +158,15 @@ services:
       - escudos:/app/apps/web/public/escudos
     healthcheck:
       # El ETL no expone HTTP, así que el latido es un fichero que el
-      # planificador toca en cada vuelta del bucle. Si lleva más de 20 minutos
+      # planificador toca en cada vuelta del bucle. Si lleva más de 45 minutos
       # sin tocarse, el proceso está colgado —no muerto, que eso ya lo ve
-      # Docker— y conviene reiniciarlo. El margen cubre de sobra los ciclos
-      # largos de directo, que tocan el fichero al entrar y al salir.
+      # Docker— y conviene reiniciarlo. El margen (antes 20 min) cubre los ciclos
+      # largos con las 9 ligas activas: un ciclo normal no debe marcar unhealthy
+      # (#146). Sigue detectando un cuelgue real (>2x el ciclo más largo).
       # Los `$$` son escapes de Compose, que interpola `$` antes de pasar la
       # cadena al contenedor. Con un solo `$` la expresión aritmética se
       # evaluaría (mal) en el host y el healthcheck no comprobaría nada.
-      test: ["CMD-SHELL", "test -f /tmp/etl-alive && [ $$(( $$(date +%s) - $$(stat -c %Y /tmp/etl-alive) )) -lt 1200 ]"]
+      test: ["CMD-SHELL", "test -f /tmp/etl-alive && [ $$(( $$(date +%s) - $$(stat -c %Y /tmp/etl-alive) )) -lt 2700 ]"]
       interval: 60s
       timeout: 5s
       retries: 3
