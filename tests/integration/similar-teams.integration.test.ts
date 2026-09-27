@@ -67,4 +67,14 @@ describe('findSimilarTeamNames', () => {
     expect(femCand?.gender).toBe('female');       // se ve la diferenciación
     expect(cands.map((c) => c.teamId)).not.toContain(masc); // y no se cuela la otra sección
   });
+
+  it('diferencia categorías: la cantera no se confunde con el senior del mismo club', async () => {
+    const sportId = await sembrarDeporte();
+    const senior = await sembrarEquipo(sportId, 'BARÇA', 'barca', 'male', 'senior');
+
+    // Buscando al juvenil del mismo nombre y género: el senior NO es candidato
+    // (son equipos distintos: la categoría es identidad, no adorno).
+    const cands = await findSimilarTeamNames('BARÇA', sportId, { gender: 'male', ageCategory: 'juvenil' });
+    expect(cands.map((c) => c.teamId)).not.toContain(senior);
+  });
 });

@@ -54,6 +54,9 @@ const SHORT = argv['short'] ?? NAME;
 const GENDER = (argv['gender'] ?? 'male') as 'male' | 'female';
 const CATEGORY = argv['category'] ?? 'senior';
 const AGE = argv['age'] ?? 'senior';
+// Filial: 1 = primer equipo, 2 = "B", 3 = "C" (diseño ER: club × género ×
+// categoría × filial son la identidad del equipo, no el nombre).
+const SQUAD_LEVEL = Number(argv['squad-level'] ?? '1');
 const SCOPE = argv['scope'] ?? 'national';
 const ORGANIZER = argv['organizer'] ?? 'RFEP';
 const REGION = argv['region'] ?? null;
@@ -147,22 +150,25 @@ async function main() {
   type Accion = 'reusar-ref' | 'reusar-slug' | 'reusar-alias' | 'dudoso' | 'nuevo';
   interface Fila { t: DiscTeam; accion: Accion; teamId?: string; candidatos?: { teamId: string; name: string; gender: string | null; score: number }[]; }
   const mismoGenero = (g?: string | null) => !g || g === GENDER;
+  const mismaCategoria = (a?: string | null) => !a || a === AGE;
   const gTag = (g?: string | null) => (g === 'female' ? 'F' : g === 'male' ? 'M' : '·');
+  const etiqueta = `[${gTag(GENDER)}/${AGE}${SQUAD_LEVEL > 1 ? `/B${SQUAD_LEVEL}` : ''}]`;
   const plan: Fila[] = [];
   for (const t of teams) {
     const byRef = await findTeamBySourceRef(t.ref);
     if (byRef) {
-      if (mismoGenero(byRef.gender)) { plan.push({ t, accion: 'reusar-ref', teamId: byRef.id }); continue; }
-      // La ref apunta a un equipo de otro género: dato inconsistente → a la cola.
+      if (mismoGenero(byRef.gender) && mismaCategoria(byRef.age_category)) { plan.push({ t, accion: 'reusar-ref', teamId: byRef.id }); continue; }
+      // La ref apunta a un equipo de otra sección (género/categoría): dato
+      // inconsistente → a la cola.
       plan.push({ t, accion: 'dudoso', candidatos: [{ teamId: byRef.id, name: byRef.name, gender: byRef.gender ?? null, score: 1 }] });
       continue;
     }
     const bySlug = await findTeamBySlug(sportId, slugify(t.name));
-    if (bySlug && mismoGenero(bySlug.gender)) { plan.push({ t, accion: 'reusar-slug', teamId: bySlug.id }); continue; }
+    if (bySlug && mismoGenero(bySlug.gender) && mismaCategoria(bySlug.age_category)) { plan.push({ t, accion: 'reusar-slug', teamId: bySlug.id }); continue; }
     const aliasId = await findTeamByNormalizedAlias(normalizeTeamName(t.name), sourceId);
     if (aliasId) {
-      const g = (await db.query<{ gender: string | null }>(`SELECT gender FROM teams WHERE id=$1`, [aliasId])).rows[0]?.gender ?? null;
-      if (mismoGenero(g)) { plan.push({ t, accion: 'reusar-alias', teamId: aliasId }); continue; }
+      const g = (await db.query<{ gender: string | null; age_category: string | null }>(`SELECT gender, age_category FROM teams WHERE id=$1`, [aliasId])).rows[0];
+      if (mismoGenero(g?.gender) && mismaCategoria(g?.age_category)) { plan.push({ t, accion: 'reusar-alias', teamId: aliasId }); continue; }
     }
     const candidatos = await findSimilarTeamNames(t.name, sportId, { gender: GENDER, ageCategory: AGE }, 3);
     if (candidatos.length > 0) { plan.push({ t, accion: 'dudoso', candidatos }); continue; }
@@ -170,7 +176,7 @@ async function main() {
   }
   const cuenta = (a: Accion) => plan.filter((f) => f.accion === a).length;
   console.log(
-    `\nGénero de la liga: [${gTag(GENDER)}] · identidad: reusar(ref ${cuenta('reusar-ref')}, slug ${cuenta('reusar-slug')}, ` +
+    `\nSección de la liga: ${etiqueta} · identidad: reusar(ref ${cuenta('reusar-ref')}, slug ${cuenta('reusar-slug')}, ` +
       `alias ${cuenta('reusar-alias')}) · dudosos→cola ${cuenta('dudoso')} · nuevos ${cuenta('nuevo')}`
   );
   for (const f of plan.filter((x) => x.accion === 'dudoso')) {
@@ -178,7 +184,7 @@ async function main() {
     console.log(`       candidatos: ${f.candidatos!.map((c) => `${c.name} [${gTag(c.gender)}] (${c.score.toFixed(2)})`).join(' · ')}`);
   }
   for (const f of plan.filter((x) => x.accion === 'nuevo')) {
-    console.log(`  +  ${f.t.ref.padEnd(6)} ${f.t.name} → se creará [${gTag(GENDER)}]`);
+    console.log(`  +  ${f.t.ref.padEnd(6)} ${f.t.name} → se creará ${etiqueta}`);
   }
 
   if (!WRITE) {
@@ -247,15 +253,19 @@ async function main() {
       pending++;
       continue;
     } else {
-      // Slug único: si el nombre choca con la otra sección del club, sufijo de
-      // género (convención existente …-m/…-f); si aún choca, la ref de fuente.
+      // Slug único: el nombre solo no basta (mismo club en senior y cantera, o en
+      // secciones M/F, o un filial). Sufijos en orden: categoría (si no es
+      // senior) → género → filial → ref, hasta que no choque.
       let slug = slugify(t.name);
-      if (await findTeamBySlug(sportId, slug)) slug = `${slug}-${GENDER === 'female' ? 'f' : 'm'}`;
-      if (await findTeamBySlug(sportId, slug)) slug = `${slug}-${t.ref}`;
+      const libre = async (s: string) => !(await findTeamBySlug(sportId, s));
+      if (!(await libre(slug)) && AGE !== 'senior') slug = `${slug}-${AGE}`;
+      if (!(await libre(slug))) slug = `${slug}-${GENDER === 'female' ? 'f' : 'm'}`;
+      if (!(await libre(slug)) && SQUAD_LEVEL > 1) slug = `${slug}-b${SQUAD_LEVEL}`;
+      if (!(await libre(slug))) slug = `${slug}-${t.ref}`;
       teamId = (await db.query<{ id: string }>(
-        `INSERT INTO teams (sport_id, name, short_name, slug, gender, age_category, country, source_id, source_ref, scraped_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()) RETURNING id`,
-        [sportId, t.name, t.abbr || null, slug, GENDER, AGE, COUNTRY, sourceId, t.ref],
+        `INSERT INTO teams (sport_id, name, short_name, slug, gender, age_category, squad_level, country, source_id, source_ref, scraped_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW()) RETURNING id`,
+        [sportId, t.name, t.abbr || null, slug, GENDER, AGE, SQUAD_LEVEL, COUNTRY, sourceId, t.ref],
       )).rows[0]!.id;
       await upsertSourceEntityMapTeam(sourceId, t.ref, teamId).catch(() => {});
       created++;
