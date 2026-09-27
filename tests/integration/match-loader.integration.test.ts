@@ -199,8 +199,9 @@ describe('match.loader (I2)', () => {
       [seasonId, home, away]);
 
     // El feed de directo identifica por club_id (fep_club_*), que no resuelve.
+    await db.query(`UPDATE teams SET short_name = 'YA' WHERE id = $1`, [away]); // ya tiene abreviatura
     const r = await loadMatches(resultOf([
-      scraped({ homeTeamRef: 'fep_club_777', awayTeamRef: 'fep_club_888', sourceRef: 'm-directo', status: 'live', homeScore: 1, awayScore: 0 }),
+      scraped({ homeTeamRef: 'fep_club_777', awayTeamRef: 'fep_club_888', sourceRef: 'm-directo', status: 'live', homeScore: 1, awayScore: 0, homeTeamAbbr: 'CAS', awayTeamAbbr: 'FUE' }),
     ]), sportId);
 
     // El marcador SÍ se actualiza (el partido ya existía con la ref del feed).
@@ -222,6 +223,14 @@ describe('match.loader (I2)', () => {
       `SELECT count(*)::int c FROM source_club_map WHERE source_id=$1 AND club_ref='fep_club_777' AND team_id=$2`,
       [sourceId, home])).rows[0]!;
     expect(Number(mapaClub.c)).toBe(1);
+
+    // La abreviatura del feed rellena short_name SOLO si falta.
+    const tn = (await db.query<{ short_name: string | null }>(
+      `SELECT short_name FROM teams WHERE id=$1`, [home])).rows[0]!;
+    expect(tn.short_name).toBe('CAS');
+    const tnAway = (await db.query<{ short_name: string | null }>(
+      `SELECT short_name FROM teams WHERE id=$1`, [away])).rows[0]!;
+    expect(tnAway.short_name).toBe('YA'); // no se pisa la que ya tenía
   });
 
   test('T-024c desempata partidos SIMULTÁNEOS de la misma liga con el mapa de club', async () => {

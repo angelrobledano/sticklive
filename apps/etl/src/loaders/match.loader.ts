@@ -34,28 +34,49 @@ export interface LoadMatchesOptions {
 }
 
 /**
- * Aprende refs de club del feed (`fep_club_XX`) → equipo, ACOTADAS por competición.
+ * Registra datos del partido del feed: refs de club (`fep_club_XX`) → equipo
+ * ACOTADAS por competición (migración 054) y **abreviatura** del equipo
+ * (`short_name`) cuando está vacía.
  *
  * La ref de club identifica al CLUB, no a la sección: un club puede tener primer
  * equipo y filial con el mismo nombre en ligas distintas (bug A/B del NOIA), así
- * que aprenderla como alias GLOBAL cruzaría las secciones. Acotada por competición
- * es segura (un club alinea un solo equipo por competición) y es lo que permite
- * desempatar los partidos simultáneos de la misma liga. Ver migración 054.
+ * que el mapa va acotado por competición (un club alinea un solo equipo por
+ * competición). La abreviatura es la que da el propio feed (3 letras) y solo se
+ * escribe si el equipo no tiene ya una.
  */
-async function aprenderRefsDeClub(
+async function registrarDatosDeFeed(
   sourceId: string | undefined,
   seasonId: string,
   homeRef: string,
   homeTeamId: string | null,
+  homeAbbr: string | null | undefined,
   awayRef: string,
   awayTeamId: string | null,
+  awayAbbr: string | null | undefined,
 ): Promise<void> {
+  const lados = [
+    { ref: homeRef, teamId: homeTeamId, abbr: homeAbbr },
+    { ref: awayRef, teamId: awayTeamId, abbr: awayAbbr },
+  ].filter((l): l is { ref: string; teamId: string; abbr: string | null | undefined } => !!l.teamId);
+  if (lados.length === 0) return;
+
+  // Abreviatura: solo si falta (no pisa una ya puesta).
+  for (const l of lados) {
+    const abbr = (l.abbr ?? '').trim();
+    if (!abbr) continue;
+    await db
+      .query(
+        `UPDATE teams SET short_name = $2, updated_at = NOW()
+          WHERE id = $1 AND (short_name IS NULL OR short_name = '')`,
+        [l.teamId, abbr],
+      )
+      .catch(() => {});
+  }
+
+  // Mapa ref de club → equipo, acotado por competición.
   if (!sourceId) return;
-  const pares = [
-    { ref: homeRef, teamId: homeTeamId },
-    { ref: awayRef, teamId: awayTeamId },
-  ].filter((p): p is { ref: string; teamId: string } => !!p.teamId && p.ref.startsWith('fep_club_'));
-  if (pares.length === 0) return;
+  const clubs = lados.filter((l) => l.ref.startsWith('fep_club_'));
+  if (clubs.length === 0) return;
 
   const season = await db.query<{ competition_id: string }>(
     `SELECT competition_id FROM seasons WHERE id = $1`, [seasonId],
@@ -63,8 +84,8 @@ async function aprenderRefsDeClub(
   const competitionId = season.rows[0]?.competition_id;
   if (!competitionId) return;
 
-  for (const p of pares) {
-    await learnSourceClub(sourceId, competitionId, p.ref, p.teamId).catch(() => {});
+  for (const c of clubs) {
+    await learnSourceClub(sourceId, competitionId, c.ref, c.teamId).catch(() => {});
   }
 }
 
@@ -242,7 +263,7 @@ export async function loadMatches(
               );
               upserted++;
               resolved = true;
-              await aprenderRefsDeClub(raw.sourceId, hit.season_id, homeTeamRef, hit.home_team_id, awayTeamRef, hit.away_team_id);
+              await registrarDatosDeFeed(raw.sourceId, hit.season_id, homeTeamRef, hit.home_team_id, raw.homeTeamAbbr, awayTeamRef, hit.away_team_id, raw.awayTeamAbbr);
             }
           }
           // Feed de directo con refs de CLUB (`fep_club_XX`), que no resuelven:
@@ -312,7 +333,7 @@ export async function loadMatches(
               );
               resolved = true;
               upserted++;
-              await aprenderRefsDeClub(raw.sourceId, adoptedHit.season_id, homeTeamRef, adoptedHit.home_team_id, awayTeamRef, adoptedHit.away_team_id);
+              await registrarDatosDeFeed(raw.sourceId, adoptedHit.season_id, homeTeamRef, adoptedHit.home_team_id, raw.homeTeamAbbr, awayTeamRef, adoptedHit.away_team_id, raw.awayTeamAbbr);
             }
           }
           if (!resolved) {

@@ -181,6 +181,8 @@ export class FepMatchesScraper extends BaseScraper<ScrapedMatch> {
       homeTeamRef,
       awayTeamRef,
       competitionName,
+      homeTeamAbbr: homeAbbr || undefined,
+      awayTeamAbbr: awayAbbr || undefined,
       homeScore,
       awayScore,
       status,

@@ -52,6 +52,19 @@ export async function loadStandings(
           const teamId = (await findTeamInSeasonByName(seasonId, raw.teamRef, client))
             ?? await resolver.resolveTeam(raw.teamRef);
 
+          // La tabla trae la abreviatura del equipo (`.mobile`): rellena
+          // `short_name` si está vacío (es lo que ve el usuario en listas).
+          const abbr = (raw.abbreviation ?? '').trim();
+          if (abbr) {
+            await client
+              .query(
+                `UPDATE teams SET short_name = $2, updated_at = NOW()
+                  WHERE id = $1 AND (short_name IS NULL OR short_name = '')`,
+                [teamId, abbr],
+              )
+              .catch(() => {});
+          }
+
           await upsertStanding({
             seasonId,
             teamId,

@@ -154,6 +154,7 @@ export class FepStandingsScraper extends BaseScraper<ScrapedStanding> {
       goalsFor,
       goalsAgainst,
       points,
+      abbreviation: abbreviation || undefined,
       logoUrl: logoUrl ?? undefined,
       sourceId: SOURCE_ID,
       sourceRef: abbreviation ? `fep_team_abbr_${abbreviation}` : undefined,
