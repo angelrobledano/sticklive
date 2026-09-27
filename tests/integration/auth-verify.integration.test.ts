@@ -79,6 +79,39 @@ describe('POST /auth/verify', () => {
     expect(u.rows[0]!.email).toBe('adopt@x.com');
   });
 
+  it('T-019b: NO adopta un dispositivo con premium ACTIVO (corta el robo de entitlement, #161)', async () => {
+    await db.query(
+      `INSERT INTO users (device_id, email, premium_until)
+       VALUES ('dev-prem', NULL, NOW() + INTERVAL '30 days')`);
+    await sembrarToken('tok-prem', 'prem@x.com');
+
+    const res = await verify({ token: 'tok-prem', deviceId: 'dev-prem' });
+    expect(res.status).toBe(200);
+
+    // El anónimo premium NO se adopta: sigue sin email (no se transfiere premium).
+    const anon = await db.query<{ email: string | null }>(
+      `SELECT email FROM users WHERE device_id = 'dev-prem'`);
+    expect(anon.rows[0]!.email).toBeNull();
+    // Se crea una cuenta nueva para el email (device derivado, por la colisión).
+    const nuevo = await db.query<{ device_id: string }>(
+      `SELECT device_id FROM users WHERE email = 'prem@x.com'`);
+    expect(nuevo.rows[0]!.device_id).toBe('email:prem@x.com');
+  });
+
+  it('T-019c: un premium CADUCADO sí se adopta (ya no hay entitlement que proteger)', async () => {
+    await db.query(
+      `INSERT INTO users (device_id, email, premium_until)
+       VALUES ('dev-prem-viejo', NULL, NOW() - INTERVAL '1 day')`);
+    await sembrarToken('tok-prem-viejo', 'viejoprem@x.com');
+
+    const res = await verify({ token: 'tok-prem-viejo', deviceId: 'dev-prem-viejo' });
+    expect(res.status).toBe(200);
+
+    const u = await db.query<{ email: string | null }>(
+      `SELECT email FROM users WHERE device_id = 'dev-prem-viejo'`);
+    expect(u.rows[0]!.email).toBe('viejoprem@x.com'); // adoptado
+  });
+
   it('T-020: colisión de device_id → usuario nuevo con device derivado del email', async () => {
     await db.query(`INSERT INTO users (device_id, email) VALUES ('dev-ocupado', 'otro@x.com')`);
     await sembrarToken('tok-col', 'nuevo@x.com');

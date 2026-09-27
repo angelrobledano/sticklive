@@ -175,9 +175,15 @@ async function resolveUserByEmail(email: string, deviceId?: string): Promise<str
   let userId = found.rows[0]?.id;
 
   if (!userId && deviceId) {
+    // #161: NO adoptar la identidad anónima si tiene premium ACTIVO. El deviceId
+    // vive en el localStorage del navegador (y es el distinctId de PostHog), así
+    // que quien lo conozca podría reclamar un premium comprado por ese device.
+    // Un premium ya caducado no tiene entitlement que proteger y sí se adopta.
     const adopted = await db.query<{ id: string }>(
       `UPDATE users SET email = $2, updated_at = NOW()
-       WHERE device_id = $1 AND email IS NULL RETURNING id`,
+       WHERE device_id = $1 AND email IS NULL
+         AND (premium_until IS NULL OR premium_until <= NOW())
+       RETURNING id`,
       [deviceId, email]
     );
     userId = adopted.rows[0]?.id;
