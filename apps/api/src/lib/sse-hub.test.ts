@@ -39,6 +39,17 @@ describe('applySnapshot', () => {
     expect(second.changed).toBe(false);
   });
 
+  it('una corrección de acta (mismo conteo y marcador, distinto contenido) se emite', () => {
+    const first = applySnapshot(emptyHubState(), snap({ events: 2, home: 1 }));
+    // La fuente sustituye un evento por otro en el mismo ciclo: el nº de eventos
+    // y el marcador no cambian, pero el listado sí.
+    const corrected: HubSnapshotInput = {
+      match: { status: 'live', score: { home: 1, away: 0 }, live: null },
+      events: [{ id: 0 }, { id: 99 }],
+    };
+    expect(applySnapshot(first.state, corrected).changed).toBe(true);
+  });
+
   it('un gol nuevo (eventos + marcador) se emite', () => {
     const first = applySnapshot(emptyHubState(), snap({ events: 2, home: 1, away: 0 }));
     const second = applySnapshot(first.state, snap({ events: 3, home: 2, away: 0 }));

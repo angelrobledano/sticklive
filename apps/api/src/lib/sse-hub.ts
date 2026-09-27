@@ -12,6 +12,14 @@ export type SseKind = 'data' | 'finished' | 'error';
 /** Estado acumulado de un hub entre polls. */
 export interface HubState {
   lastEventCount: number;
+  /**
+   * Huella EXACTA del listado de eventos (no sólo su número). Una corrección de
+   * acta puede sustituir un evento por otro en el mismo ciclo: el conteo y el
+   * marcador no cambian, pero el listado sí, y el fan-out debe dispararse sin
+   * esperar al poll de respaldo de 60 s (#177). Se usa el JSON serializado en vez
+   * de un hash para no introducir colisiones.
+   */
+  lastEventsKey: string | null;
   lastHome: number | null;
   lastAway: number | null;
   lastPhase: string | null;
@@ -41,6 +49,7 @@ export interface SnapshotDiff {
 export function emptyHubState(): HubState {
   return {
     lastEventCount: -1,
+    lastEventsKey: null,
     lastHome: -1,
     lastAway: -1,
     lastPhase: null,
@@ -56,7 +65,10 @@ export function emptyHubState(): HubState {
  * permite reflejar el descanso en tiempo real aunque no cambie el marcador.
  */
 export function applySnapshot(state: HubState, snapshot: HubSnapshotInput): SnapshotDiff {
-  const evChanged = snapshot.events.length !== state.lastEventCount;
+  const eventsKey = JSON.stringify(snapshot.events);
+  // Cubre tanto un evento nuevo/eliminado (cuenta distinta) como una corrección
+  // que sustituye un evento sin alterar el nº (#177).
+  const evChanged = eventsKey !== state.lastEventsKey;
   const scoreChanged =
     snapshot.match.score.home !== state.lastHome ||
     snapshot.match.score.away !== state.lastAway;
@@ -68,6 +80,7 @@ export function applySnapshot(state: HubState, snapshot: HubSnapshotInput): Snap
   const json = JSON.stringify(snapshot);
   const next: HubState = {
     lastEventCount: snapshot.events.length,
+    lastEventsKey: eventsKey,
     lastHome: snapshot.match.score.home,
     lastAway: snapshot.match.score.away,
     lastPhase: phaseKey,
