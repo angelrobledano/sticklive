@@ -90,6 +90,7 @@ const OPERATIVOS = [
   'apps/etl/src/seed-worldskate-u17-women.ts',
   'apps/etl/src/seed-competition-sources.ts',
   'apps/etl/src/seed-fep-competition.ts',      // seed genérico por idc (2026/27)
+  'apps/etl/src/split-filial-teams.ts',        // reparación filiales conflados (one-off)
   'apps/etl/src/link-lineup-players.ts',
   'apps/etl/src/merge-canonical-competitions.ts',
   'apps/etl/src/cleanup-synthetic-dupes.ts',

@@ -72,6 +72,9 @@ const WRITE = argv['write'] === 'true' || argv['write'] === '1';
 // asigna o descarta): estas refs se fuerzan a "nuevo" aunque la similitud
 // encuentre candidatos. Formato: --force-new=3729,3737,3695
 const FORCE_NEW = (argv['force-new'] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+// Competiciones que COMPARTEN equipos legítimamente (copas, supercopas): sin
+// esta bandera, un equipo que ya juega en otra liga actual se manda a la cola.
+const ALLOW_SHARED = argv['allow-shared'] === 'true' || argv['allow-shared'] === '1';
 
 function slugify(s: string): string {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -155,6 +158,27 @@ async function main() {
   interface Fila { t: DiscTeam; accion: Accion; teamId?: string; candidatos?: { teamId: string; name: string; gender: string | null; score: number }[]; }
   const mismoGenero = (g?: string | null) => !g || g === GENDER;
   const mismaCategoria = (a?: string | null) => !a || a === AGE;
+  /**
+   * ¿Ese equipo ya juega en OTRA competición con temporada actual?
+   *
+   * Señal de FILIAL nombrado igual: el club tiene su primer equipo en una liga y
+   * el filial en otra, la fuente los llama igual y sus refs son distintas. La
+   * regla del proyecto es resolver por REFERENCIA, nunca por slug, así que un
+   * match por slug con un equipo ya en liza se aparca para un humano en vez de
+   * unirse (fue el bug del NOIA A/B). Las copas comparten equipos de verdad:
+   * se siembran con --allow-shared.
+   */
+  const enOtraLigaActual = async (teamId: string): Promise<boolean> => {
+    const r = await db.query(
+      `SELECT 1 FROM season_teams st
+         JOIN seasons s ON s.id = st.season_id AND s.is_current
+         JOIN competitions c ON c.id = s.competition_id
+        WHERE st.team_id = $1 AND c.slug <> $2
+        LIMIT 1`,
+      [teamId, compSlug],
+    );
+    return (r.rowCount ?? 0) > 0;
+  };
   const gTag = (g?: string | null) => (g === 'female' ? 'F' : g === 'male' ? 'M' : '·');
   const etiqueta = `[${gTag(GENDER)}/${AGE}${SQUAD_LEVEL > 1 ? `/B${SQUAD_LEVEL}` : ''}]`;
   const plan: Fila[] = [];
@@ -168,11 +192,26 @@ async function main() {
       continue;
     }
     const bySlug = await findTeamBySlug(sportId, slugify(t.name));
-    if (bySlug && mismoGenero(bySlug.gender) && mismaCategoria(bySlug.age_category)) { plan.push({ t, accion: 'reusar-slug', teamId: bySlug.id }); continue; }
+    if (bySlug && mismoGenero(bySlug.gender) && mismaCategoria(bySlug.age_category)) {
+      // Ya juega en otra liga actual → es un filial nombrado igual: a la cola.
+      if (!ALLOW_SHARED && await enOtraLigaActual(bySlug.id)) {
+        plan.push({ t, accion: 'dudoso', candidatos: [{ teamId: bySlug.id, name: bySlug.name, gender: bySlug.gender ?? null, score: 1 }] });
+        continue;
+      }
+      plan.push({ t, accion: 'reusar-slug', teamId: bySlug.id });
+      continue;
+    }
     const aliasId = await findTeamByNormalizedAlias(normalizeTeamName(t.name), sourceId);
     if (aliasId) {
-      const g = (await db.query<{ gender: string | null; age_category: string | null }>(`SELECT gender, age_category FROM teams WHERE id=$1`, [aliasId])).rows[0];
-      if (mismoGenero(g?.gender) && mismaCategoria(g?.age_category)) { plan.push({ t, accion: 'reusar-alias', teamId: aliasId }); continue; }
+      const g = (await db.query<{ name: string; gender: string | null; age_category: string | null }>(`SELECT name, gender, age_category FROM teams WHERE id=$1`, [aliasId])).rows[0];
+      if (mismoGenero(g?.gender) && mismaCategoria(g?.age_category)) {
+        if (!ALLOW_SHARED && await enOtraLigaActual(aliasId)) {
+          plan.push({ t, accion: 'dudoso', candidatos: [{ teamId: aliasId, name: g!.name, gender: g?.gender ?? null, score: 1 }] });
+          continue;
+        }
+        plan.push({ t, accion: 'reusar-alias', teamId: aliasId });
+        continue;
+      }
     }
     // Alta confirmada a mano: se crea aunque haya candidatos por similitud.
     if (FORCE_NEW.includes(t.ref)) { plan.push({ t, accion: 'nuevo' }); continue; }
