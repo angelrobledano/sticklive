@@ -97,8 +97,10 @@ export async function upsertMatch(
        away_score   = COALESCE(EXCLUDED.away_score,  matches.away_score),
        status       = EXCLUDED.status,
        scheduled_at = COALESCE(EXCLUDED.scheduled_at, matches.scheduled_at),
-       started_at   = COALESCE(EXCLUDED.started_at,   matches.started_at),
-       finished_at  = COALESCE(EXCLUDED.finished_at,  matches.finished_at),
+       -- started_at/finished_at se fijan UNA vez (#189): no se pisan en los
+       -- re-scrapes (el loader los sella en la transición a live/finished).
+       started_at   = COALESCE(matches.started_at,   EXCLUDED.started_at),
+       finished_at  = COALESCE(matches.finished_at,  EXCLUDED.finished_at),
        venue_name   = COALESCE(EXCLUDED.venue_name,   matches.venue_name),
        video_url    = COALESCE(EXCLUDED.video_url,    matches.video_url),
        round_id     = COALESCE(EXCLUDED.round_id,     matches.round_id),

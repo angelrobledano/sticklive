@@ -38,6 +38,10 @@ export interface LoadMatchesOptions {
    *  competición equivocada. Si el partido ya existe por `source_ref`, se permite
    *  (solo se actualiza marcador/estado). */
   requireTeamsInSeason?: boolean;
+  /** Sellar `started_at`/`finished_at` la primera vez que el partido se ve en
+   *  estado `live`/`finished` (#189). Solo el flujo de directo: en el histórico
+   *  la hora de scrape no es el instante real del partido. */
+  stampLiveTimes?: boolean;
 }
 
 /**
@@ -261,6 +265,15 @@ export async function loadMatches(
                 continue;
               }
             }
+          }
+
+          // #189: sella el instante de inicio/fin la PRIMERA vez que el partido
+          // se ve en ese estado. El upsert usa COALESCE(matches.x, EXCLUDED.x)
+          // para que los re-scrapes no lo pisen.
+          if (options.stampLiveTimes) {
+            const at = raw.scrapedAt ?? new Date();
+            if (input.status === 'live' && !input.startedAt) input.startedAt = at;
+            if (input.status === 'finished' && !input.finishedAt) input.finishedAt = at;
           }
 
           await upsertMatch({ ...input, homeTeamId, awayTeamId, importBatchId: options.importBatchId, enrich: options.enrich });

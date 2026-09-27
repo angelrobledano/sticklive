@@ -326,4 +326,37 @@ describe('match.loader (I2)', () => {
     expect(m.status).toBe('finished');
     expect(await countMatches()).toBe(1); // no crea fila nueva
   });
+
+  // ── #189: el flujo live debe poblar started_at/finished_at (hoy quedan NULL).
+  test('T-030 stampLiveTimes: fija started_at al verlo live, finished_at al finalizar, idempotente', async () => {
+    await equipoConRef('t-home', 'Equipo Casa');
+    await equipoConRef('t-away', 'Equipo Fuera');
+    const kickoff = new Date('2026-09-27T18:00:00.000Z');
+
+    const r1 = await loadMatches(resultOf([
+      scraped({ homeTeamRef: 't-home', awayTeamRef: 't-away', sourceRef: 'm-live-1', status: 'live', homeScore: 1, awayScore: 0, scheduledAt: kickoff.toISOString(), scrapedAt: kickoff }),
+    ]), sportId, { stampLiveTimes: true });
+    expect(r1.upserted).toBe(1);
+    const a = (await db.query<{ started_at: Date | null; finished_at: Date | null }>(
+      `SELECT started_at, finished_at FROM matches WHERE source_ref = 'm-live-1'`)).rows[0]!;
+    expect(a.started_at).not.toBeNull();
+    expect(a.finished_at).toBeNull();
+
+    // Re-scrape en vivo más tarde: NO se pisa started_at (idempotente).
+    await loadMatches(resultOf([
+      scraped({ homeTeamRef: 't-home', awayTeamRef: 't-away', sourceRef: 'm-live-1', status: 'live', homeScore: 2, awayScore: 0, scheduledAt: kickoff.toISOString(), scrapedAt: new Date(kickoff.getTime() + 60_000) }),
+    ]), sportId, { stampLiveTimes: true });
+    const b = (await db.query<{ started_at: Date | null }>(
+      `SELECT started_at FROM matches WHERE source_ref = 'm-live-1'`)).rows[0]!;
+    expect(b.started_at!.toISOString()).toBe(a.started_at!.toISOString());
+
+    // Finaliza: finished_at poblado y started_at intacto.
+    await loadMatches(resultOf([
+      scraped({ homeTeamRef: 't-home', awayTeamRef: 't-away', sourceRef: 'm-live-1', status: 'finished', homeScore: 2, awayScore: 1, scheduledAt: kickoff.toISOString(), scrapedAt: new Date(kickoff.getTime() + 3_600_000) }),
+    ]), sportId, { stampLiveTimes: true });
+    const c = (await db.query<{ started_at: Date | null; finished_at: Date | null }>(
+      `SELECT started_at, finished_at FROM matches WHERE source_ref = 'm-live-1'`)).rows[0]!;
+    expect(c.finished_at).not.toBeNull();
+    expect(c.started_at!.toISOString()).toBe(a.started_at!.toISOString());
+  });
 });

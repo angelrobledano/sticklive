@@ -40,6 +40,8 @@ export interface PipelineContext {
   /** Guarda del feed global de directo (#151): exigir `season_teams` antes de
    *  insertar un partido nuevo. Se activa en el orquestador del directo. */
   requireTeamsInSeason?: boolean;
+  /** Sellar started_at/finished_at en el flujo de directo (#189). */
+  stampLiveTimes?: boolean;
 }
 
 export interface PipelineResult {
@@ -102,6 +104,7 @@ export class EtlPipeline {
       importBatchId: this.ctx.importBatchId,
       enrich: this.ctx.enrich,
       requireTeamsInSeason: this.ctx.requireTeamsInSeason,
+      stampLiveTimes: this.ctx.stampLiveTimes,
     });
 
     return {
