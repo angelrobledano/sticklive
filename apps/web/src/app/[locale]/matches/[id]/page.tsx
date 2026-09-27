@@ -66,7 +66,9 @@ export default async function MatchDetailPage(props: Props) {
       ? 'https://schema.org/EventScheduled'
       : m.status === 'postponed'
         ? 'https://schema.org/EventPostponed'
-        : 'https://schema.org/EventScheduled',
+        : m.status === 'cancelled'
+          ? 'https://schema.org/EventCancelled'
+          : 'https://schema.org/EventScheduled',
     location: m.venue?.name
       ? { '@type': 'Place', name: m.venue.name, address: m.venue.city ?? undefined }
       : undefined,

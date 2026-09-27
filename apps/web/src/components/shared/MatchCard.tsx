@@ -153,6 +153,16 @@ function ScoreBlock({ match }: { match: Match }) {
     );
   }
 
+  if (status === 'cancelled') {
+    return (
+      <div className="flex flex-col items-center gap-1 px-3 shrink-0">
+        <span className="text-xs font-semibold text-rose-500 uppercase tracking-wide">
+          Cancelado
+        </span>
+      </div>
+    );
+  }
+
   // scheduled — mostrar hora
   return (
     <div className="flex flex-col items-center gap-0.5 px-3 shrink-0">

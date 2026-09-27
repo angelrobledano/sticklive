@@ -229,6 +229,9 @@ export function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?
           {match.status === 'postponed' && (
             <span className="text-xs font-bold text-amber-500 uppercase tracking-wide">Aplazado</span>
           )}
+          {match.status === 'cancelled' && (
+            <span className="text-xs font-bold text-rose-500 uppercase tracking-wide">Cancelado</span>
+          )}
         </div>
 
         <div className="flex-1 flex justify-center">
