@@ -87,3 +87,40 @@ export function morningMatchesFor<T extends MorningNightMatch>(
   }
   return out;
 }
+
+// ── Resumen matinal: selección de destinatarios (ledger persistente, #383) ───
+/** Subconjunto de SubRow que necesita la selección del resumen matinal. */
+export interface MorningSub extends SubPrefs {
+  id: string;
+  /** NotifConfig del cliente (JSONB). `master`/`quietNight` a `false` excluyen. */
+  config?: Record<string, unknown> | null;
+}
+
+/**
+ * Suscripciones a las que TOCA enviar el resumen matinal de `dateKey`, y los
+ * partidos que deben incluir. PURA: recibe el conjunto de suscripciones ya
+ * servidas ese día (`alreadySent`, del ledger persistente) para no reenviar.
+ *
+ * Reglas (idénticas a las que aplicaba el dispatcher en memoria, ahora testeables):
+ *   · `master === false` → no molestar a quien apagó todo.
+ *   · `quietNight === false` → ya recibió el final en directo; no duplicar.
+ *   · ya en el ledger del día → no reenviar.
+ *   · sin partidos que siga esa suscripción → nada que resumir.
+ */
+export function morningPendingSubs<S extends MorningSub, M extends MorningNightMatch>(
+  subs: readonly S[],
+  finals: readonly M[],
+  alreadySent: ReadonlySet<string>,
+): Array<{ sub: S; matches: M[] }> {
+  const out: Array<{ sub: S; matches: M[] }> = [];
+  for (const sub of subs) {
+    const cfg = sub.config ?? {};
+    if (cfg['master'] === false) continue;
+    if (cfg['quietNight'] === false) continue;
+    if (alreadySent.has(sub.id)) continue;
+    const matches = morningMatchesFor(sub, finals);
+    if (matches.length === 0) continue;
+    out.push({ sub, matches });
+  }
+  return out;
+}

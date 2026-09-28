@@ -80,7 +80,7 @@ El marcador en vivo (`rfep_mc_1.php`) da el resultado pero **no el goleador**; e
 | Jornadas (`globalJornadaStart`/`End`) | start on | Inicio/fin de jornada (global) |
 | Competición seguida (`fav_leagues`) | — | Gol/roja/fase de una liga favorita |
 | Jugador seguido (`fav_players`) | — | Gol/roja de un jugador favorito |
-| Silenciar por la noche (`quietNight`) | off | Sin alertas 23:00–08:00 |
+| Silenciar por la noche (`quietNight`) | off | Sin alertas 23:00–08:00; a la mañana siguiente (08:00–12:00) llega **un único resumen agrupado** con los finales de la noche (#272, ledger #383) |
 | Tiempos muertos | — | Guardado; **emisión pendiente** |
 
 > El **descanso y la 2ª parte** van bajo `favMatchStart` (si quieres el inicio, quieres las transiciones de fase). El on/off **por entidad concreta** (un equipo/liga/jugador) es independiente de estos toggles — ver "On/off por entidad".

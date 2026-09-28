@@ -107,7 +107,7 @@ const PRESET_EVENTS: Record<NotificationPreset, EventType[]> = {
 - **Criterios:** azul+FD contiguas = 1 push; nunca dos push idénticas para el mismo evento.
 
 ### Fase 4 · Analítica — *S/M*
-- `follow_created` (entity_type, entity_id, preset_selected), `notification_preset_changed` (… previous/new). Ya tienes `track()` en `useFavorites`.
+- ~~`follow_created`~~ (entity_type, entity_id, preset_selected) — **unificado en `favorite_added` con `preset_selected` (#243)**, `notification_preset_changed` (… previous/new). Ya tienes `track()` en `useFavorites`. _(Actualización 2026-09: el resumen matinal de `quietNight` ya se emite; ver `docs/NOTIFICACIONES.md`.)_
 - `notification_opened` (notification_type, entity_type, entity_id): handler `notificationclick` en `sw.js` → beacon a un endpoint nuevo `/push/opened` que emite el evento server-side a PostHog (en el SW no hay PostHog).
 - **Criterios:** los 3 eventos llegan a PostHog; dashboard con adopción (% follows con preset), distribución de presets y open rate.
 
