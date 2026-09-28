@@ -20,6 +20,13 @@ export interface HubState {
    * de un hash para no introducir colisiones.
    */
   lastEventsKey: string | null;
+  /**
+   * Huella del listado de alineaciones. Un gol puede actualizar los goles y
+   * asistencias por jugador sin que cambien el marcador ni el listado de
+   * eventos; sin esta huella el fan-out no se disparaba y el goleador tardaba
+   * hasta el TTL de alineaciones en reflejarse (#376).
+   */
+  lastLineupsKey: string | null;
   lastHome: number | null;
   lastAway: number | null;
   lastPhase: string | null;
@@ -34,11 +41,15 @@ export interface HubSnapshotInput {
     live: { isHalftime?: boolean | null; period?: number | null } | null;
   };
   events: readonly unknown[];
+  /** Alineaciones del snapshot; opcional para no romper consumidores/tests. */
+  lineups?: unknown;
 }
 
 export interface SnapshotDiff {
   /** true si procede emitir el snapshot (primer envío o algún cambio). */
   changed: boolean;
+  /** true si el listado de eventos cambió (nuevo gol, corrección de acta…). */
+  eventsChanged: boolean;
   /** Snapshot serializado, para enviar y guardar. */
   json: string;
   /** Estado actualizado. */
@@ -50,6 +61,7 @@ export function emptyHubState(): HubState {
   return {
     lastEventCount: -1,
     lastEventsKey: null,
+    lastLineupsKey: null,
     lastHome: -1,
     lastAway: -1,
     lastPhase: null,
@@ -60,15 +72,20 @@ export function emptyHubState(): HubState {
 /**
  * Aplica un snapshot al estado del hub y decide si hay que emitirlo.
  *
- * Cambios que cuentan como "nuevo": primer snapshot, nº de eventos, marcador
- * (local/visitante) o fase (`status | descanso | periodo`). El cambio de fase
- * permite reflejar el descanso en tiempo real aunque no cambie el marcador.
+ * Cambios que cuentan como "nuevo": primer snapshot, nº de eventos, contenido
+ * de eventos, alineaciones (goles/asistencias), marcador (local/visitante) o
+ * fase (`status | descanso | periodo`). El cambio de fase permite reflejar el
+ * descanso en tiempo real aunque no cambie el marcador.
  */
 export function applySnapshot(state: HubState, snapshot: HubSnapshotInput): SnapshotDiff {
   const eventsKey = JSON.stringify(snapshot.events);
+  const lineupsKey = JSON.stringify(snapshot.lineups ?? null);
   // Cubre tanto un evento nuevo/eliminado (cuenta distinta) como una corrección
   // que sustituye un evento sin alterar el nº (#177).
   const evChanged = eventsKey !== state.lastEventsKey;
+  // #376: una asistencia nueva cambia las alineaciones sin tocar eventos ni
+  // marcador; sin compararlas, el fan-out no se disparaba.
+  const lineupsChanged = lineupsKey !== state.lastLineupsKey;
   const scoreChanged =
     snapshot.match.score.home !== state.lastHome ||
     snapshot.match.score.away !== state.lastAway;
@@ -81,13 +98,19 @@ export function applySnapshot(state: HubState, snapshot: HubSnapshotInput): Snap
   const next: HubState = {
     lastEventCount: snapshot.events.length,
     lastEventsKey: eventsKey,
+    lastLineupsKey: lineupsKey,
     lastHome: snapshot.match.score.home,
     lastAway: snapshot.match.score.away,
     lastPhase: phaseKey,
     lastSnapshotJson: json,
   };
 
-  return { changed: first || evChanged || scoreChanged || phaseChanged, json, state: next };
+  return {
+    changed: first || evChanged || lineupsChanged || scoreChanged || phaseChanged,
+    eventsChanged: evChanged,
+    json,
+    state: next,
+  };
 }
 
 /**

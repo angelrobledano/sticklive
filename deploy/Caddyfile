@@ -29,6 +29,17 @@ sticklive.eu {
 
 	# API — el prefijo /api se elimina antes de llegar a Hono.
 	# flush_interval -1: imprescindible para el SSE del directo.
+	#
+	# X-Forwarded-For (#372): la API toma la ÚLTIMA entrada del XFF como IP del
+	# cliente. Caddy (v2.4+) por defecto NO confía en el XFF entrante: lo
+	# sobrescribe con la IP del par directo, que es justo lo que asume la API.
+	# NO añadas `trusted_proxies` salvo que haya un proxy/CDN de confianza
+	# delante de Caddy; si lo hay, declara ALLÍ todos sus rangos (idealmente en
+	# el bloque global `servers { trusted_proxies ... }`) y asegúrate de que el
+	# número de saltos coincide con lo que espera la API. Un `trusted_proxies`
+	# mal configurado reabriría el bypass del límite por IP.
+	# Requisito de red: el puerto de la API (api:3000) nunca debe exponerse
+	# directamente a Internet; solo Caddy debe poder alcanzarlo.
 	handle_path /api/* {
 		reverse_proxy api:3000 {
 			flush_interval -1

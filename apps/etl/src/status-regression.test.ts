@@ -7,11 +7,16 @@ describe('isStatusRegression', () => {
     expect(isStatusRegression('live', 'scheduled')).toBe(true);
   });
 
+  it('#377(P3-9): detecta la reapertura finished → live', () => {
+    expect(isStatusRegression('finished', 'live')).toBe(true);
+  });
+
   it('no marca transiciones normales', () => {
     expect(isStatusRegression('scheduled', 'live')).toBe(false);
     expect(isStatusRegression('live', 'finished')).toBe(false);
     expect(isStatusRegression('scheduled', 'scheduled')).toBe(false);
     expect(isStatusRegression('finished', 'finished')).toBe(false);
+    expect(isStatusRegression('live', 'live')).toBe(false);
   });
 
   it('no marca cuando no había estado previo (alta nueva)', () => {

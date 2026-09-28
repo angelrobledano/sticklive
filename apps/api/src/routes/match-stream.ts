@@ -51,6 +51,10 @@ export const matchStreamRouter = new Hono();
 // un aviso (reconexión del listener, etc.), de ahí que sea lento.
 const BACKUP_POLL_MS         = Number(process.env['SSE_BACKUP_POLL_MS'] ?? 60_000);
 const KEEPALIVE_INTERVAL_MS   = 25_000;
+// #371: intervalo de reconexión base que se anuncia al navegador con `retry:`.
+// Sin esto, tras un reinicio del servidor todo el parque reconecta a la vez
+// (herd) con el intervalo por defecto. El cliente añade backoff+jitter encima.
+const SSE_RETRY_MS = Number(process.env['SSE_RETRY_MS'] ?? 5_000);
 // Duración máxima de UNA conexión SSE. Es una válvula de seguridad contra
 // conexiones zombi, no un límite de producto: un partido de hockey patines
 // dura ~70-90 min reales (2×25 + descanso + posible prórroga y penaltis).
@@ -61,10 +65,13 @@ const MAX_CONNECTIONS = Number(process.env['SSE_MAX_CONNECTIONS'] ?? 1000);
 // Tope por IP para que un solo cliente no agote el cupo global y deje sin
 // directo a todos los demás (#160).
 const MAX_CONNECTIONS_PER_IP = Number(process.env['SSE_MAX_CONNECTIONS_PER_IP'] ?? 10);
-// Las alineaciones no cambian durante el partido salvo goles/asistencias (que
-// ya llegan por eventos). Recalcular ese JOIN con `players` cada 15 s por
-// partido en vivo es el grueso del coste del hub, así que se cachea.
-const LINEUPS_TTL_MS = Number(process.env['SSE_LINEUPS_TTL_MS'] ?? 5 * 60 * 1_000);
+// Las alineaciones cambian cuando el acta publica goles/asistencias. Recalcular
+// ese JOIN con `players` en cada poll por partido en vivo era el grueso del
+// coste del hub, por eso se cachea. Pero un TTL de 5 min dejaba al goleador
+// desfasado hasta 5 min (#376): se baja a 1 min y, además, un cambio de eventos
+// invalida la caché al instante (ver pollHub), de modo que la frescura no
+// depende sólo del reloj.
+const LINEUPS_TTL_MS = Number(process.env['SSE_LINEUPS_TTL_MS'] ?? 60_000);
 // Tope de eventos en cola por conexión (#333). `writeSSE` es backpressure real:
 // un cliente que no consume hacía crecer `queue` sin límite. Al tope se descarta
 // lo más antiguo (ver enqueueBounded).
@@ -248,9 +255,20 @@ async function pollHub(matchId: string) {
     }
 
     const diff = applySnapshot(hub.state, snapshot);
+    const firstSnapshot = hub.state.lastSnapshotJson === null;
     hub.state = diff.state;
 
     if (diff.changed) fanout(hub, diff.json, 'data');
+
+    // #376: un gol (o una corrección de acta) puede traer asistencias/goles
+    // nuevos en `match_lineups` sin cambiar el marcador ni el listado de
+    // eventos. Invalidamos la caché y forzamos un refresco inmediato para que
+    // el goleador se refleje en segundos, no al vencer el TTL. El guard
+    // `!firstSnapshot` evita un segundo poll inútil en el arranque del hub.
+    if (!firstSnapshot && diff.eventsChanged && snapshot.match.status !== 'finished') {
+      lineupsCache.delete(matchId);
+      scheduleRefresh(matchId);
+    }
 
     if (snapshot.match.status === 'finished') {
       fanout(hub, JSON.stringify({ matchId, finishedAt: snapshot.match.finishedAt }), 'finished');
@@ -344,6 +362,11 @@ matchStreamRouter.get('/:id/stream', async (c) => {
     subscribe(matchId, onData);
 
     try {
+      // #371: anuncia el intervalo de reconexión base. El cliente aplica backoff
+      // y jitter por encima; esto evita que todos reconecten con el default del
+      // navegador (herd) tras un reinicio del servidor.
+      await stream.write(`retry: ${SSE_RETRY_MS}\n\n`);
+
       while (!done) {
         if (Date.now() - startedAt > MAX_STREAM_DURATION_MS) {
           await stream.writeSSE({ event: 'timeout', data: '{"reason":"max_duration"}' });

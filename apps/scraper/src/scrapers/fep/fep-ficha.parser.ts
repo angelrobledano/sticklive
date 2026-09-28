@@ -61,10 +61,14 @@ const DEFAULT_EVENT_PREFIX = 'fep_event_';
  * puede recomputar desde las columnas de match_events, que es lo que hace la
  * migración 035 para reescribir las refs históricas sin perder ids.
  *
- * El CRONO es lo único imprescindible: sin él no hay nada que identifique al
- * evento salvo su posición, y ahí se cae al `fallbackIdx` asumiendo la
- * inestabilidad. El periodo, en cambio, puede faltar y no pasa nada: se marca
- * como `px` y la clave sigue siendo de contenido.
+ * El CRONO es lo que da una ref de contenido plena. Sin él (#375 P3-3) la
+ * posición en el acta es inestable —el acta crece por arriba y desplaza las
+ * filas—, así que se intenta derivar del resto de contenido observable
+ * (periodo, minuto, lado). La posición (`fallbackIdx`) queda como ÚLTIMO
+ * recurso, sólo si no hay nada de eso.
+ *
+ * El periodo, en cambio, puede faltar y no pasa nada: se marca como `px` y la
+ * clave sigue siendo de contenido.
  *
  * Esa distinción viene de un caso real: en producción había un evento con
  * crono `00:15` y sin periodo. Exigir ambos lo mandaba a una ref posicional
@@ -77,14 +81,75 @@ export function eventSourceRef(input: {
   eventType: FepEventType;
   isHome: boolean | null | undefined;
   fallbackIdx: number;
+  /** Minuto transcurrido; sólo se usa para la ref de contenido sin crono. */
+  minute?: number | null;
   /** Prefijo de la fuente; por defecto el histórico de la FEP. */
   prefix?: string;
 }): string {
-  const { idp, period, clock, eventType, isHome, fallbackIdx } = input;
+  const { idp, period, clock, eventType, isHome, fallbackIdx, minute } = input;
   const prefix = input.prefix ?? DEFAULT_EVENT_PREFIX;
-  if (!clock) return `${prefix}${idp}_row${fallbackIdx}`;
   const side = isHome === true ? 'H' : isHome === false ? 'A' : 'x';
-  return `${prefix}${idp}_p${period ?? 'x'}_${clock.replace(':', '')}_${eventType}_${side}`;
+  if (clock) {
+    return `${prefix}${idp}_p${period ?? 'x'}_${clock.replace(':', '')}_${eventType}_${side}`;
+  }
+  // Sin crono: deriva del contenido si queda algo estable (`nc` = no clock).
+  const hasContent = period !== undefined || minute != null || isHome === true || isHome === false;
+  if (!hasContent) return `${prefix}${idp}_row${fallbackIdx}`;
+  return `${prefix}${idp}_nc_p${period ?? 'x'}_m${minute ?? 'x'}_${eventType}_${side}`;
+}
+
+/**
+ * Sufijo de contenido que desambigua eventos con la misma ref base (#375 P3-2).
+ * La ref base (periodo, crono, tipo, lado) puede repetirse —p. ej. dos faltas
+ * del mismo equipo en el mismo segundo—; sin desambiguar, el Map de dedup del
+ * upsert conservaba uno y perdía el otro en silencio. Se usa el jugador, su
+ * dorsal y el detalle, que son estables entre capturas; si no hay nada (dos
+ * eventos indistinguibles) se recurre a un ordinal.
+ */
+function collisionSuffix(e: ScrapedMatchEvent): string {
+  const parts: string[] = [];
+  if (e.playerName) parts.push(slugifyPlayerName(e.playerName));
+  if (e.jerseyNumber != null) parts.push(`j${e.jerseyNumber}`);
+  if (e.detail) parts.push(slugifyPlayerName(e.detail));
+  return parts.filter(Boolean).join('-');
+}
+
+/**
+ * Reescribe, in-place, las refs de los eventos que colisionan para que sigan
+ * siendo únicas. Los grupos de un solo evento —la inmensa mayoría— quedan
+ * intactos: así no se rompe la compatibilidad con los refs que las migraciones
+ * 035/036 recomputan desde las columnas (y sus ids estables). El orden se fija
+ * por contenido, no por la posición en el acta, para que el sufijo no cambie
+ * entre capturas.
+ */
+export function disambiguateEventRefs(events: ScrapedMatchEvent[]): void {
+  const byRef = new Map<string, ScrapedMatchEvent[]>();
+  for (const e of events) {
+    const group = byRef.get(e.sourceRef);
+    if (group) group.push(e);
+    else byRef.set(e.sourceRef, [e]);
+  }
+  for (const [ref, group] of byRef) {
+    if (group.length < 2) continue;
+    const keyed = group
+      .map((e) => ({ e, key: collisionSuffix(e) }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+    const used = new Set<string>();
+    for (const { e, key } of keyed) {
+      let suffix = key;
+      if (!suffix) {
+        let n = 1;
+        while (used.has(`ev-${n}`)) n++;
+        suffix = `ev-${n}`;
+      } else if (used.has(suffix)) {
+        let n = 2;
+        while (used.has(`${key}-${n}`)) n++;
+        suffix = `${key}-${n}`;
+      }
+      used.add(suffix);
+      e.sourceRef = `${ref}_${suffix}`;
+    }
+  }
 }
 
 export type FepEventType = 'goal' | 'penalty' | 'blue_card' | 'red_card' | 'timeout' | 'period_end' | 'foul' | 'direct_foul';
@@ -106,7 +171,7 @@ export interface ScrapedMatchEvent {
   jerseyNumber: number | null;
   /** Texto libre con detalle adicional (p.ej. "1-0", "GOL PENALTI") */
   detail: string | null;
-  /** Ref unico para idempotencia: fep_event_{idp}_{rowIdx} */
+  /** Ref única para idempotencia, derivada del contenido (ver eventSourceRef). */
   sourceRef: string;
   /** Ref del jugador en sidgad: fep_player_{id_player} (si id_player > 0) */
   playerSourceRef?: string;
@@ -143,8 +208,10 @@ export function parseFicha(
     // Nombre del equipo local desde la cabecera (.nombre1) para asignar lado
     const homeHeader = normalizeName($('.nombre1').first().text());
     let rowIdx = 0;
-    // Instante exacto (crono fuente) por evento — solo para cruzar FD↔gol
-    const rawInstant = new Map<string, string>();
+    // Instante exacto (crono fuente) por evento — solo para cruzar FD↔gol.
+    // Se indexa por el propio objeto y no por `sourceRef` porque el post-proceso
+    // de colisiones (#375 P3-2) puede cambiar la ref después de crearlo.
+    const rawInstant = new Map<ScrapedMatchEvent, string>();
 
     incidRows.each((_, tr) => {
       const $tr = $(tr);
@@ -201,12 +268,11 @@ export function parseFicha(
       // Ref derivada del CONTENIDO, no de la posición en la tabla (ver
       // eventSourceRef). `idx` sólo se usa como último recurso.
       const sourceRef = eventSourceRef({
-        idp, period, clock, eventType, isHome, fallbackIdx: idx,
+        idp, period, clock, eventType, isHome, fallbackIdx: idx, minute,
         ...(opts.eventPrefix ? { prefix: opts.eventPrefix } : {}),
       });
-      rawInstant.set(sourceRef, `${isHome}|${periodText} ${timeText}`);
 
-      events.push({
+      const ev = {
         eventType,
         minute: Number.isNaN(minute) ? undefined : minute,
         period,
@@ -218,7 +284,9 @@ export function parseFicha(
         sourceRef,
         playerSourceRef,
         playerTeamRef,
-      } as ScrapedMatchEvent);
+      } as ScrapedMatchEvent;
+      events.push(ev);
+      rawInstant.set(ev, `${isHome}|${periodText} ${timeText}`);
     });
 
     // Post-proceso: resultado de las faltas directas. La ficha no lo dice
@@ -227,12 +295,12 @@ export function parseFicha(
     const goalsByInstant = new Map<string, ScrapedMatchEvent>();
     for (const e of events) {
       if (e.eventType === 'goal') {
-        goalsByInstant.set(rawInstant.get(e.sourceRef ?? '') ?? '', e);
+        goalsByInstant.set(rawInstant.get(e) ?? '', e);
       }
     }
     for (const ev of events) {
       if (ev.eventType !== 'direct_foul' && ev.eventType !== 'penalty') continue;
-      const goal = goalsByInstant.get(rawInstant.get(ev.sourceRef ?? '') ?? '');
+      const goal = goalsByInstant.get(rawInstant.get(ev) ?? '');
       // FD: marcada/fallada · Penalti: marcado/fallado (la API y las stats
       // detectan el acierto buscando 'marc' en detail)
       ev.detail = ev.eventType === 'penalty'
@@ -246,6 +314,12 @@ export function parseFicha(
         ev.playerTeamRef = goal.playerTeamRef;
       }
     }
+
+    // Dos incidencias distintas pueden compartir (periodo, crono, tipo, lado):
+    // sin este paso el upsert conservaría una y perdería la otra en silencio.
+    // Va después del post-proceso para que el desempate pueda usar el detalle
+    // (marcado/fallado) y el lanzador resuelto de penaltis y faltas directas.
+    disambiguateEventRefs(events);
 
     log.info(
       { idp, eventsFound: events.length, types: [...new Set(events.map(e => e.eventType))] },

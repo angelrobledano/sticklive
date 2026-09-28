@@ -1,6 +1,9 @@
 import pg from 'pg';
 import { db } from '../client.js';
+import { createLogger } from '@sports/logger';
 import type { MatchStatus } from '@sports/shared-types';
+
+const log = createLogger({ module: 'db.matches' });
 
 export interface DbMatch {
   id: string;
@@ -232,6 +235,38 @@ export interface UpsertMatchEventInput {
 }
 
 /**
+ * Deduplica eventos por `source_ref` de cara al `ON CONFLICT` (#375 P3-2).
+ *
+ * El parser ya evita colisiones añadiendo contenido a la clave, pero otras
+ * fuentes podrían repetirla. Antes ganaba siempre la última aparición, lo que
+ * podía descartar el evento que traía jugador/equipo/detalle. Preferimos el más
+ * completo y, en empate de información, mantenemos el último (comportamiento
+ * previo, para no alterar lo que ya funcionaba).
+ */
+export function dedupeMatchEventsBySourceRef(
+  events: UpsertMatchEventInput[]
+): UpsertMatchEventInput[] {
+  const bySourceRef = new Map<string, UpsertMatchEventInput>();
+  for (const ev of events) {
+    const prev = bySourceRef.get(ev.sourceRef);
+    if (!prev || eventRichness(ev) >= eventRichness(prev)) {
+      bySourceRef.set(ev.sourceRef, ev);
+    }
+  }
+  return [...bySourceRef.values()];
+}
+
+/** Cuánta información observable trae un evento (para desempatar colisiones). */
+function eventRichness(ev: UpsertMatchEventInput): number {
+  return (
+    (ev.playerId != null ? 1 : 0) +
+    (ev.teamId != null ? 1 : 0) +
+    (ev.detail != null ? 1 : 0) +
+    (ev.minute != null ? 1 : 0)
+  );
+}
+
+/**
  * Sincroniza los eventos de un partido con el listado completo que devuelve la
  * ficha, MANTENIENDO ESTABLE el `id` de cada evento entre ciclos de scraping.
  *
@@ -280,12 +315,17 @@ export async function replaceMatchEvents(
   if (!matchDate) throw new Error(`replaceMatchEvents: el partido ${matchId} no existe`);
 
   // Postgres no permite que un ON CONFLICT DO UPDATE toque la misma fila dos
-  // veces en la misma sentencia. Los sourceRef de la ficha son únicos por
-  // construcción (fep_event_{idp}_{fila}), pero deduplicamos por si acaso:
-  // preferimos quedarnos con la última aparición.
-  const bySourceRef = new Map<string, UpsertMatchEventInput>();
-  for (const ev of events) bySourceRef.set(ev.sourceRef, ev);
-  const rows = [...bySourceRef.values()];
+  // veces en la misma sentencia. El parser ya desambigua las colisiones por
+  // contenido (#375 P3-2), pero otras fuentes podrían repetir la clave.
+  const rows = dedupeMatchEventsBySourceRef(events);
+  if (rows.length < events.length) {
+    // De una clave repetida sólo puede guardarse un evento. No perdemos el otro
+    // en silencio: queda el aviso (y se conserva el más completo).
+    log.warn(
+      { matchId, recibidos: events.length, unicos: rows.length },
+      'replaceMatchEvents: colisión de source_ref; se conserva el evento más completo'
+    );
+  }
 
   const values: unknown[] = [];
   const placeholders: string[] = [];

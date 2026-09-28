@@ -31,8 +31,10 @@ import { EtlPipeline } from './pipeline.js';
 import { forEachLimited } from './concurrency.js';
 import { deriveMatchResults } from './derive-results.js';
 import { sweepStaleLive } from './stale-live-watchdog.js';
+import { MissingLiveTracker } from './missing-live.js';
 import { checkWindow } from './live-window.js';
 import { touchAlive } from './heartbeat-file.js';
+import type { ScrapedMatch } from '@sports/shared-types';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import { resolveWorldskate, runWorldskate } from '../../scraper/src/scrapers/worldskate/run-worldskate.js';
@@ -53,6 +55,13 @@ const log = createLogger({ service: 'cron-live' });
 // varios seguidos (un blip de red aislado se recupera al ciclo siguiente).
 const MC_FAIL_ALERT_THRESHOLD = 3;
 let consecutiveMcFailures = 0;
+
+// #374: ciclos consecutivos que un `live` con marcador puede desaparecer del
+// feed mc antes de darlo por finalizado. El feed es global y lista todos los
+// activos, así que 3 ciclos (~2 min) con el feed respondiendo es señal fiable;
+// conservador a propósito (cualquier fallo de la fuente desactiva este camino).
+const MISSING_LIVE_CYCLES = Number(process.env['MISSING_LIVE_CYCLES'] ?? 3);
+const missingLiveTracker = new MissingLiveTracker(MISSING_LIVE_CYCLES);
 
 const POLL_INTERVAL  = Number(process.env['POLL_INTERVAL_S']  ?? 45) * 1000;
 const WINDOW_HOURS   = Number(process.env['WINDOW_HOURS']     ?? 2);
@@ -212,6 +221,50 @@ async function activeFepSeasons(seasonIds: string[]): Promise<string[]> {
 }
 
 /**
+ * #374: finaliza los `live` FEP con marcador que el feed mc lleva N ciclos sin
+ * listar. Conserva el último marcador (no lo inventa) y rellena `started_at` si
+ * faltaba. Solo se llama con el feed sano y con datos: una caída de la fuente
+ * NO es un final.
+ */
+async function finalizeMissingFepLive(seasonIds: string[], feed: ScrapedMatch[]): Promise<void> {
+  const seen = new Set(feed.map((m) => m.sourceRef).filter((r): r is string => !!r));
+
+  const liveRes = await db.query<{ source_ref: string }>(
+    `SELECT source_ref FROM matches
+      WHERE season_id = ANY($1)
+        AND status = 'live'
+        AND source_ref LIKE 'fep_match_%'
+        AND home_score IS NOT NULL
+        AND away_score IS NOT NULL`,
+    [seasonIds]
+  );
+
+  const refs = missingLiveTracker.observe(liveRes.rows.map((r) => r.source_ref), seen);
+  if (refs.length === 0) return;
+
+  const upd = await db.query(
+    `UPDATE matches
+        SET status      = 'finished',
+            finished_at = COALESCE(finished_at, NOW()),
+            started_at  = COALESCE(started_at, scheduled_at),
+            updated_at  = NOW()
+      WHERE source_ref = ANY($1) AND status = 'live'`,
+    [refs]
+  );
+  const count = upd.rowCount ?? 0;
+  if (count === 0) return;
+
+  log.warn(
+    { count, refs, cycles: MISSING_LIVE_CYCLES },
+    'Partidos live ausentes del feed mc N ciclos → finalizados con el último marcador'
+  );
+  Sentry.captureMessage(
+    `${count} partido(s) FEP finalizados por desaparición del feed mc (${MISSING_LIVE_CYCLES} ciclos)`,
+    { level: 'warning', extra: { refs } }
+  );
+}
+
+/**
  * Marcadores de la FEP. `rfep_mc_1.php` es un feed GLOBAL: un solo POST trae los
  * partidos en juego de TODAS las competiciones. Antes se scrapeaba por la
  * temporada "primaria" y se RE-SCRAPEABA el mismo feed una vez por cada
@@ -275,6 +328,11 @@ async function runFepScores(seasonIds: string[]): Promise<number> {
   consecutiveMcFailures = 0;
 
   const etl = await pipeline.runMatches(result);
+
+  // #374: antes del push, para que la transición live→finished dispare el aviso
+  // de final (prev snapshot era live, el actual ya finished).
+  try { await finalizeMissingFepLive(seasonIds, result.data); }
+  catch (err) { log.warn({ err }, 'finalizado por feed ausente falló — el ciclo sigue'); }
 
   // Push (inicio/gol/final + jornada + competición) para TODAS las FEP activas,
   // desde el snapshot tomado antes del único scrape.

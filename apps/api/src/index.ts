@@ -6,7 +6,7 @@ import { logger as honoLogger } from 'hono/logger';
 import { cors } from 'hono/cors';
 import { bodyLimit } from 'hono/body-limit';
 import { logger } from '@sports/logger';
-import { assertSchemaCurrent, SchemaOutdatedError } from '@sports/db';
+import { assertSchemaCurrent, SchemaOutdatedError, db } from '@sports/db';
 import { assertEnv } from './lib/env.js';
 import { rateLimit } from './lib/rate-limit.js';
 import { READ_LIMIT_MAX, READ_LIMIT_PATHS, READ_LIMIT_WINDOW_MS } from './lib/read-limits.js';
@@ -72,9 +72,19 @@ app.use('*', async (c, next) => {
 const readLimit = rateLimit(READ_LIMIT_MAX, READ_LIMIT_WINDOW_MS);
 for (const path of READ_LIMIT_PATHS) app.use(path, readLimit);
 
-// Health check
-app.get('/health', (c) => {
-  return c.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check. #377(P3-12): además del proceso, comprueba que Postgres
+// responde. Antes /health devolvía ok aunque la BD estuviera caída, así que el
+// healthcheck del contenedor (y el sidecar autoheal) no era señal de salud de la
+// BD. Un `SELECT 1` barato la valida; si falla, 503 → unhealthy.
+app.get('/health', async (c) => {
+  const timestamp = new Date().toISOString();
+  try {
+    await db.query('SELECT 1');
+    return c.json({ status: 'ok', db: 'ok', timestamp });
+  } catch (err) {
+    logger.error({ err }, 'health: Postgres no responde');
+    return c.json({ status: 'degraded', db: 'down', timestamp }, 503);
+  }
 });
 
 // Raíz

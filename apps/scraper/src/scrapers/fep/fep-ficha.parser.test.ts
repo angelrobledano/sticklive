@@ -4,6 +4,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   parseFicha, parseLiveHeader, parseTeamFouls, parseLineups, eventSourceRef,
+  disambiguateEventRefs,
   remainingToElapsedMinute, mapIncidenciaType, normalizeName,
   type ScrapedMatchEvent,
 } from './fep-ficha.parser.js';
@@ -132,11 +133,12 @@ describe('source_ref estable entre capturas', () => {
   });
 
   it('ningún evento de un acta real cae al fallback posicional', () => {
-    // `eventSourceRef` vuelve a la posición si falta el crono. En las actas
-    // reales eso no pasa nunca (105 eventos, 0 fallbacks), pero si la fuente
-    // dejara de publicarlo degradaríamos a refs inestables EN SILENCIO:
-    // volverían las notificaciones duplicadas sin que nada fallara. Este test
-    // convierte esa degradación en un fallo visible.
+    // `eventSourceRef` sólo cae a la posición si no hay crono NI ningún otro
+    // contenido (periodo/minuto/lado). En las actas reales eso no pasa nunca
+    // (105 eventos, 0 fallbacks), pero si la fuente dejara de publicar el crono
+    // podríamos degradar a refs inestables EN SILENCIO: volverían las
+    // notificaciones duplicadas sin que nada fallara. Este test convierte esa
+    // degradación en un fallo visible.
     for (const [name, idp] of [['acta-live-p1', '34259'], ['acta-live-p2', '34259'],
                                ['acta-finalizada', '34259'], ['acta-playoff', '34277']] as const) {
       const events = parseFicha(load(name), idp);
@@ -169,8 +171,20 @@ describe('eventSourceRef', () => {
     expect(new Set(refs).size).toBe(3);
   });
 
-  it('cae a la posición sólo si falta el crono', () => {
+  it('sin crono deriva del contenido (periodo/momento) en vez de la posición', () => {
+    // La posición en el acta es inestable (el acta crece por arriba); si hay
+    // algo de contenido —periodo o lado— la ref se deriva de ahí.
     expect(eventSourceRef({ ...base, period: 1, clock: undefined, isHome: true }))
+      .toBe('fep_event_999_nc_p1_mx_goal_H');
+  });
+
+  it('sin crono usa el minuto cuando está disponible', () => {
+    expect(eventSourceRef({ ...base, period: 2, clock: undefined, minute: 5, isHome: true }))
+      .toBe('fep_event_999_nc_p2_m5_goal_H');
+  });
+
+  it('sin crono ni contenido cae a la posición como último recurso', () => {
+    expect(eventSourceRef({ ...base, period: undefined, clock: undefined, isHome: null }))
       .toBe('fep_event_999_row7');
   });
 
@@ -185,6 +199,78 @@ describe('eventSourceRef', () => {
     const conocido = eventSourceRef({ ...base, period: 1, clock: '00:15', isHome: true });
     const desconocido = eventSourceRef({ ...base, period: undefined, clock: '00:15', isHome: true });
     expect(conocido).not.toBe(desconocido);
+  });
+});
+
+/**
+ * #375 P3-2: dos incidencias distintas pueden compartir (periodo, crono, tipo,
+ * lado) —clave de la ref de contenido— y entonces el Map de dedup del upsert
+ * conservaba una y perdía la otra en silencio. El parser añade un sufijo de
+ * contenido (jugador, dorsal, detalle) SÓLO a los grupos que colisionan, para
+ * que la ref siga siendo única y estable entre capturas.
+ */
+describe('desambiguación de colisiones de identidad (#375 P3-2)', () => {
+  const filaFalta = (nombre: string, dorsal: number) => `
+    <tr>
+      <td><div class="game_view_indcidencias_period">P1</div><div class="game_view_incidencias_time">10:00</div></td>
+      <td class="stats_table"><div class="texto_gris_11">IHC</div></td>
+      <td>
+        <div class="evento_negativo"><span class="lang_es">FALTA</span> IGUALADA RIGAT HC</div>
+        <a class="nombre_ficha_jugador_plus" team_id="3408">${nombre}</a>
+        <div class="game_view_incidencias_dorsal">${dorsal}</div>
+      </td>
+    </tr>`;
+
+  const dosFaltas = (primera: string, segunda: string) => `
+    <div class="nombre1">IGUALADA RIGAT HC</div>
+    <table>${primera}${segunda}</table>`;
+
+  it('dos eventos con la misma ref base reciben refs distintas', () => {
+    const events = parseFicha(
+      dosFaltas(filaFalta('JUGADOR UNO', 7), filaFalta('JUGADOR DOS', 9)),
+      'TEST',
+    ).filter((e) => e.eventType === 'foul');
+
+    expect(events).toHaveLength(2);
+    expect(new Set(events.map((e) => e.sourceRef)).size).toBe(2);
+    // La ref sigue siendo reconocible como la de contenido.
+    for (const e of events) {
+      expect(e.sourceRef).toMatch(/^fep_event_TEST_p1_1000_foul_H_/);
+    }
+  });
+
+  it('la ref de cada jugador no depende del orden del acta', () => {
+    const refPorJugador = (html: string) =>
+      new Map(
+        parseFicha(html, 'TEST')
+          .filter((e) => e.eventType === 'foul')
+          .map((e) => [e.playerName, e.sourceRef]),
+      );
+
+    const unoDos = refPorJugador(dosFaltas(filaFalta('JUGADOR UNO', 7), filaFalta('JUGADOR DOS', 9)));
+    const dosUno = refPorJugador(dosFaltas(filaFalta('JUGADOR DOS', 9), filaFalta('JUGADOR UNO', 7)));
+    expect(unoDos).toEqual(dosUno);
+  });
+
+  it('no toca las refs de eventos sin colisión (compatibilidad con la 035)', () => {
+    for (const [name, idp] of [['acta-live-p1', '34259'], ['acta-live-p2', '34259'],
+                               ['acta-finalizada', '34259'], ['acta-playoff', '34277']] as const) {
+      const events = parseFicha(load(name), idp);
+      const antes = events.map((e) => e.sourceRef);
+      disambiguateEventRefs(events);
+      expect(events.map((e) => e.sourceRef), name).toEqual(antes);
+    }
+  });
+
+  it('con contenido idéntico desempata con un ordinal determinista', () => {
+    const ev = (): ScrapedMatchEvent => ({
+      eventType: 'foul', minute: 5, period: 1, isHome: true,
+      playerName: null, jerseyNumber: null, detail: null,
+      sourceRef: 'fep_event_X_p1_1000_foul_H',
+    });
+    const a = [ev(), ev()];
+    disambiguateEventRefs(a);
+    expect(new Set(a.map((e) => e.sourceRef)).size).toBe(2);
   });
 });
 
@@ -278,8 +364,13 @@ describe('eventSourceRef por fuente', () => {
       .toBe('wse_event_3095_p2_0159_goal_H');
   });
 
-  it('el fallback posicional también respeta el prefijo', () => {
+  it('el fallback sin crono también respeta el prefijo', () => {
     expect(eventSourceRef({ ...base, clock: undefined, prefix: 'wse_event_' }))
+      .toBe('wse_event_3095_nc_p2_mx_goal_H');
+  });
+
+  it('el fallback posicional (sin contenido) también respeta el prefijo', () => {
+    expect(eventSourceRef({ ...base, period: undefined, clock: undefined, isHome: null, prefix: 'wse_event_' }))
       .toBe('wse_event_3095_row2');
   });
 

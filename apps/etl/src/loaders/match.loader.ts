@@ -14,6 +14,7 @@ import * as Sentry from '@sentry/node';
 import { transformMatch } from '../transformers/match.transformer.js';
 import { RefResolver } from './ref-resolver.js';
 import { isStatusRegression } from '../status-regression.js';
+import { resolveLiveTimeStamps } from '../live-times.js';
 
 const log = createLogger({ module: 'loader:match' });
 const BATCH_SIZE = Number(process.env['ETL_BATCH_SIZE'] ?? 100);
@@ -274,8 +275,11 @@ export async function loadMatches(
           // para que los re-scrapes no lo pisen.
           if (options.stampLiveTimes) {
             const at = raw.scrapedAt ?? new Date();
-            if (input.status === 'live' && !input.startedAt) input.startedAt = at;
-            if (input.status === 'finished' && !input.finishedAt) input.finishedAt = at;
+            // #189 + #377(P3-11): sella inicio/fin la primera vez. En `finished`
+            // sin inicio conocido se usa `scheduled_at` para no dejar NULL.
+            const stamps = resolveLiveTimeStamps(input.status, input.scheduledAt, at);
+            if (stamps.startedAt && !input.startedAt) input.startedAt = stamps.startedAt;
+            if (stamps.finishedAt && !input.finishedAt) input.finishedAt = stamps.finishedAt;
           }
 
           // #188: observabilidad de regresiones de estado (finished/live →

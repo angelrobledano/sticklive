@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { ScrapedMatch } from '@sports/shared-types';
-import { normalizeStatus, transformMatch } from './match.transformer.js';
+import { normalizeStatus, isKnownStatus, transformMatch } from './match.transformer.js';
 
 /** Factoría de ScrapedMatch válido (la validación real la hace zod en runtime). */
 function raw(over: Record<string, unknown> = {}): ScrapedMatch {
@@ -25,6 +25,20 @@ describe('normalizeStatus', () => {
   });
   it('estado desconocido → scheduled (no rompe)', () => {
     expect(normalizeStatus('xyz-desconocido')).toBe('scheduled');
+  });
+});
+
+describe('isKnownStatus (#377/P3-13)', () => {
+  it('reconoce etiquetas mapeadas (case-insensitive)', () => {
+    expect(isKnownStatus('FINALIZADO')).toBe(true);
+    expect(isKnownStatus('  en juego ')).toBe(true);
+    expect(isKnownStatus('live')).toBe(true);
+  });
+
+  it('no reconoce vacío ni etiquetas desconocidas', () => {
+    expect(isKnownStatus(undefined)).toBe(false);
+    expect(isKnownStatus('')).toBe(false);
+    expect(isKnownStatus('nueva-etiqueta-de-la-fuente')).toBe(false);
   });
 });
 
@@ -54,5 +68,11 @@ describe('transformMatch', () => {
     const r = transformMatch(raw());
     expect(r.homeTeamRef).toBe('3408');
     expect(r.awayTeamRef).toBe('3358');
+  });
+
+  it('#377(P3-13): una etiqueta desconocida se mapea a scheduled pero avisa', () => {
+    const r = transformMatch(raw({ sourceRef: 'fep_match_1', status: 'etiqueta-nueva' }));
+    expect(r.input.status).toBe('scheduled');
+    expect(r.warnings.some((w) => w.includes('Estado desconocido'))).toBe(true);
   });
 });

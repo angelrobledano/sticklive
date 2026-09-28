@@ -79,6 +79,25 @@ describe('applySnapshot', () => {
     const second = applySnapshot(first.state, snap({ status: 'live', events: 0 }));
     expect(second.changed).toBe(true);
   });
+
+  it('marca eventsChanged sólo cuando cambia el listado de eventos (#376)', () => {
+    const first = applySnapshot(emptyHubState(), snap({ events: 1 }));
+    const second = applySnapshot(first.state, snap({ events: 2 }));
+    expect(second.eventsChanged).toBe(true);
+    const third = applySnapshot(second.state, snap({ events: 2 }));
+    expect(third.eventsChanged).toBe(false);
+  });
+
+  it('una corrección de alineaciones (asistencia nueva) se emite (#376)', () => {
+    const withLineups = (assists: number): HubSnapshotInput => ({
+      match: { status: 'live', score: { home: 1, away: 0 }, live: null },
+      events: [{ id: 0 }],
+      lineups: { home: [{ player: 'A', assists }], away: [] },
+    });
+    const first = applySnapshot(emptyHubState(), withLineups(0));
+    const second = applySnapshot(first.state, withLineups(1));
+    expect(second.changed).toBe(true);
+  });
 });
 
 describe('eventForKind', () => {

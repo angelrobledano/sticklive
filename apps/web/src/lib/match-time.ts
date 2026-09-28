@@ -1,3 +1,5 @@
+import { STALE_LIVE_HOURS } from '@sports/shared-types';
+
 /**
  * match-time.ts — autoridad horaria ÚNICA de la app.
  *
@@ -72,8 +74,14 @@ interface ClassifiableMatch {
   finishedAt?: string | null;
 }
 
-/** Ventana realista de un partido de hockey patines (prórroga incluida). */
-const MATCH_WINDOW_MS = 3 * 3_600_000;
+/**
+ * Ventana "en juego por reloj" (#377/P3-8): MISMO umbral que la API
+ * (`effective-status`) y el `stale-live-watchdog` del ETL — `STALE_LIVE_HOURS`
+ * de `@sports/shared-types` (fuente única #191). Antes aquí vivía un 3 h propio
+ * que divergía del 5 h de la API: entre 3 y 5 h la API decía "live" y la web
+ * "pasado".
+ */
+const MATCH_WINDOW_MS = STALE_LIVE_HOURS * 3_600_000;
 
 /**
  * Clasifica un partido en pasado / en juego / futuro.
@@ -81,8 +89,8 @@ const MATCH_WINDOW_MS = 3 * 3_600_000;
  * Prioridad: estado real de la BD por encima de la heurística por hora. La
  * heurística solo actúa sobre 'scheduled' como parche mientras el scraper
  * estabiliza el paso a 'live'/'finished':
- *   - empezó hace < 3 h  → en juego
- *   - empezó hace ≥ 3 h y sigue 'scheduled' → dato muerto, se trata como pasado
+ *   - empezó hace < 5 h (STALE_LIVE_HOURS)  → en juego
+ *   - empezó hace ≥ 5 h y sigue 'scheduled' → dato muerto, se trata como pasado
  *   - aún no ha empezado  → futuro
  */
 export function classifyMatch(

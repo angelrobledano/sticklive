@@ -34,6 +34,16 @@ export function normalizeStatus(raw: string | undefined): MatchStatus {
   return STATUS_MAP[raw.toLowerCase().trim()] ?? 'scheduled';
 }
 
+/**
+ * ¿La etiqueta de la fuente es una de las que sabemos mapear? #377(P3-13): un
+ * cambio de etiquetas aguas arriba caía en `scheduled` en silencio. No podemos
+ * adivinar el estado correcto de una etiqueta desconocida, pero sí hacer ruido.
+ */
+export function isKnownStatus(raw: string | undefined): boolean {
+  if (!raw) return false;
+  return raw.toLowerCase().trim() in STATUS_MAP;
+}
+
 const ScrapedMatchSchema = z.object({
   seasonId: z.string(),
   roundId: z.string().optional(),
@@ -102,6 +112,14 @@ export function transformMatch(raw: ScrapedMatch): MatchTransformResult {
     }
   }
 
+  const status = normalizeStatus(data.status);
+  if (data.status && !isKnownStatus(data.status)) {
+    warnings.push(
+      `Estado desconocido de la fuente: "${data.status}" — interpretado como 'scheduled'. ` +
+      `Revisar el mapeo de STATUS_MAP (posible cambio de etiquetas de la fuente).`
+    );
+  }
+
   return {
     homeTeamRef: data.homeTeamRef,
     awayTeamRef: data.awayTeamRef,
@@ -110,7 +128,7 @@ export function transformMatch(raw: ScrapedMatch): MatchTransformResult {
       roundId: data.roundId,
       homeScore: data.homeScore,
       awayScore: data.awayScore,
-      status: normalizeStatus(data.status),
+      status,
       scheduledAt,
       venueName: data.venueName,
       venueCity: data.venueCity,

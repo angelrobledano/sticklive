@@ -71,7 +71,11 @@ describe('classifyMatch', () => {
     expect(classifyMatch({ status: 'scheduled', scheduledAt: '2026-06-16T20:30:00Z', startedAt: null }, now)).toBe('future');
   });
 
-  it('scheduled empezado hace >3h y nunca cerró → pasado (dato muerto)', () => {
+  it('#377(P3-8): a las 4 h sigue en juego (mismo umbral que la API, 5 h)', () => {
+    expect(classifyMatch({ status: 'scheduled', scheduledAt: '2026-06-16T14:30:00Z', startedAt: null }, now)).toBe('live');
+  });
+
+  it('scheduled empezado hace >5h y nunca cerró → pasado (dato muerto)', () => {
     expect(classifyMatch({ status: 'scheduled', scheduledAt: '2026-06-16T13:00:00Z', startedAt: null }, now)).toBe('past');
   });
 

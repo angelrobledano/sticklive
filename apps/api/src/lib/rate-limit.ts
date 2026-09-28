@@ -5,6 +5,7 @@
  * la misma firma. Limita por (ruta + IP) en ventanas fijas.
  */
 import type { Context, Next } from 'hono';
+import { getConnInfo } from '@hono/node-server/conninfo';
 
 interface Bucket {
   count: number;
@@ -21,10 +22,25 @@ setInterval(() => {
 }, CLEANUP_MS).unref?.();
 
 export function clientIp(c: Context): string {
-  // Caddy/Nginx ponen la IP real en X-Forwarded-For (primer valor).
+  // Los proxies de confianza (Caddy) fijan o AÑADEN la IP real al FINAL del
+  // X-Forwarded-For: las entradas previas las controla el cliente y son
+  // falsificables. Tomamos la ÚLTIMA, no la primera, para que el límite por IP
+  // del SSE y el rate-limit REST no se puedan evadir (#372).
   const xff = c.req.header('x-forwarded-for');
-  if (xff) return xff.split(',')[0]!.trim();
-  return c.req.header('x-real-ip') ?? 'unknown';
+  if (xff) {
+    const parts = xff.split(',').map((p) => p.trim()).filter(Boolean);
+    const last = parts[parts.length - 1];
+    if (last) return last;
+  }
+  // Sin XFF fiable, la IP de la conexión TCP es el dato menos falsificable.
+  try {
+    const remote = getConnInfo(c).remote.address;
+    if (remote) return remote;
+  } catch {
+    // Contexto sin información de conexión (p. ej. tests o runtime no-Node).
+  }
+  // Último recurso: solo lo fía un proxy que fije la cabecera.
+  return c.req.header('x-real-ip')?.trim() || 'unknown';
 }
 
 /**

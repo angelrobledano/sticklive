@@ -10,6 +10,15 @@ import { TimelineTab } from './TimelineTab';
 import { LineupsTab } from './LineupsTab';
 import { StatsTab } from './StatsTab';
 import { recordRecentMatch } from '@/lib/recents';
+import {
+  freshnessState,
+  isNewerSnapshot,
+  reconnectDelayMs,
+  shouldPollFallback,
+  shouldRecreateEventSource,
+  FALLBACK_POLL_MS,
+  FRESHNESS_CHECK_MS,
+} from './timeline-model';
 
 // ─── Componente principal ───
 
@@ -54,6 +63,11 @@ export const REFETCH_LEAD_MS = 5 * 60_000;
 export const REFETCH_HORIZON_MS = 6 * 3_600_000;
 /** Margen tras el inicio en el que reintentamos (el scraper puede tardar). */
 export const REFETCH_GRACE_MS = 60_000;
+/**
+ * Margen tras el final en el que reconsultamos una vez para recoger posibles
+ * correcciones oficiales del acta, que el hub ya no streamea (#376).
+ */
+export const FINISHED_REFETCH_MS = 60_000;
 
 export interface ScheduledRefetchPlan {
   /** Fetch inmediato al montar: inicio inminente o ya pasado. */
@@ -94,6 +108,10 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
   // del hub. Alimentan el indicador de frescura de la cabecera.
   const [lastUpdateAt, setLastUpdateAt] = useState<number | null>(null);
   const [serverStale,  setServerStale]  = useState(false);
+  // #369/#376: instante del último snapshot SSE aplicado (anti-stale) y estado
+  // del polling REST de respaldo cuando el SSE no cubre el directo.
+  const sseUpdatedAtRef = useRef<{ matchId: string; at: number } | null>(null);
+  const [fallbackActive, setFallbackActive] = useState(false);
 
   const isLive = liveData.match.status === 'live';
 
@@ -225,16 +243,28 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
     const url = `${API_URL}/matches/${matchId}/stream`;
     const es = new EventSource(url);
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+    // #371: errores consecutivos desde la última vez que el stream dio datos.
+    let consecutiveErrors = 0;
 
     const handleData = (raw: string) => {
       try {
         const parsed = JSON.parse(raw) as MatchDetail & { updatedAt?: string };
-        setLiveData(parsed);
-        // El servidor manda `updatedAt` (instante del cambio); si falta, usamos
-        // la hora de recepción. Así un snapshot cacheado antiguo no se pinta
-        // como recién actualizado (#284).
+        // El servidor manda `updatedAt` (instante de captura del snapshot). Si
+        // falta, caemos a la hora de recepción (#284).
         const serverAt = parsed.updatedAt ? new Date(parsed.updatedAt).getTime() : NaN;
-        setLastUpdateAt(Number.isFinite(serverAt) ? serverAt : Date.now());
+        const hasServerAt = Number.isFinite(serverAt);
+        const incomingMs = hasServerAt ? serverAt : Date.now();
+        // #369/#376: anti-stale. Si llega un snapshot MÁS ANTIGUO que el último
+        // aplicado (polls concurrentes fuera de orden), se descarta en vez de
+        // pintar datos viejos como actuales.
+        const prev = sseUpdatedAtRef.current;
+        if (hasServerAt && prev && prev.matchId === matchId && !isNewerSnapshot(prev.at, incomingMs)) {
+          return;
+        }
+        if (hasServerAt) sseUpdatedAtRef.current = { matchId, at: incomingMs };
+        consecutiveErrors = 0; // el stream está entregando: resetea el backoff
+        setLiveData(parsed);
+        setLastUpdateAt(incomingMs);
         setServerStale(false);
       } catch {
         // JSON malformado del stream (#244): breadcrumb para no inundar Sentry.
@@ -286,6 +316,7 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
     });
 
     es.onerror = () => {
+      consecutiveErrors += 1;
       setSseStatus('error');
       reportStream('error');
       // #244: EventSource reintenta solo; breadcrumb (no exception) para no
@@ -294,7 +325,14 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
         category: 'live-sse', level: 'warning',
         message: 'Error de conexión SSE', data: { matchId },
       });
-      // EventSource auto-reintenta — no cerramos aquí
+      // #371: el auto-reintento del navegador NO cubre un HTTP ≠ 200 (el 503 del
+      // limitador deja el ES `CLOSED` y muerto). Recreamos el EventSource cuando
+      // está cerrado o tras N errores consecutivos, con backoff+jitter para no
+      // reconectar todo el parque a la vez.
+      if (shouldRecreateEventSource(es.readyState, consecutiveErrors) && !reconnectTimer) {
+        es.close();
+        reconnectTimer = setTimeout(() => setSseEpoch((n) => n + 1), reconnectDelayMs(consecutiveErrors));
+      }
     };
 
     return () => {
@@ -304,11 +342,14 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
     };
   }, [liveData.match.id, isLive, sseEpoch, reportStream]);
 
-  // ── Polling de fallback cada 30s para partidos live sin SSE ────────────────
-  // (cubre browsers que no soportan EventSource o cuando SSE falla)
+  // ── Polling REST de respaldo ────────────────────────────────────────────────
+  // (cubre browsers sin SSE, cuando SSE falla y, desde #369, cuando el hub está
+  // ciego aunque el transporte siga "live")
   const refreshData = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/matches/${liveData.match.id}`);
+      // #376: sin `no-store`, el respaldo podía servirse de la caché HTTP del
+      // navegador (hasta 30 s de antigüedad) justo cuando más frescura hace falta.
+      const res = await fetch(`${API_URL}/matches/${liveData.match.id}`, { cache: 'no-store' });
       if (!res.ok) return;
       const parsed = (await res.json()) as MatchDetail;
       setLiveData(parsed);
@@ -323,11 +364,27 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
     }
   }, [liveData.match.id]);
 
+  // #369: ¿el respaldo debe estar activo? Aunque el SSE siga "live", si el hub
+  // avisó de un poll caído o los datos envejecen, activamos el polling para no
+  // quedarnos congelados. Se reevalúa periódicamente contra el reloj real.
   useEffect(() => {
-    if (!isLive || sseStatus === 'live') return; // SSE ya cubre — no duplicar
-    const interval = setInterval(refreshData, 30_000);
+    if (!isLive) { setFallbackActive(false); return; }
+    const evaluate = () => {
+      const fresh = lastUpdateAt == null
+        ? null
+        : freshnessState(lastUpdateAt, Date.now(), serverStale);
+      setFallbackActive(shouldPollFallback(sseStatus, serverStale, fresh));
+    };
+    evaluate();
+    const id = setInterval(evaluate, FRESHNESS_CHECK_MS);
+    return () => clearInterval(id);
+  }, [isLive, sseStatus, serverStale, lastUpdateAt]);
+
+  useEffect(() => {
+    if (!isLive || !fallbackActive) return;
+    const interval = setInterval(refreshData, FALLBACK_POLL_MS);
     return () => clearInterval(interval);
-  }, [isLive, sseStatus, refreshData]);
+  }, [isLive, fallbackActive, refreshData]);
 
   // ── Refresco al volver a la pestaña (#284) ─────────────────────────────────
   // Los navegadores estrangulan timers y SSE en segundo plano. Al volver,
@@ -343,6 +400,23 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [isLive, refreshData]);
+
+  // ── Correcciones post-finished (#376) ──────────────────────────────────────
+  // El hub deja de emitir tras `finished`; una corrección oficial del acta
+  // posterior sólo se veía al recargar. Reconsultamos una vez pasado un margen
+  // y al recuperar el foco de la pestaña.
+  useEffect(() => {
+    if (liveData.match.status !== 'finished') return;
+    const refetchOnVisible = () => {
+      if (document.visibilityState === 'visible') void refreshData();
+    };
+    const timer = setTimeout(() => void refreshData(), FINISHED_REFETCH_MS);
+    document.addEventListener('visibilitychange', refetchOnVisible);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', refetchOnVisible);
+    };
+  }, [liveData.match.status, refreshData]);
 
   // ── Refresco al pasar la hora de inicio de un partido 'scheduled' ──────────
   // Cubre el hueco hasta que el scraper marque el partido como live y el

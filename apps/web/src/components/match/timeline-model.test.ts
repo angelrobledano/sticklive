@@ -7,6 +7,13 @@ import {
   compareTimelineEvents,
   connectionState,
   latestAnnounceableEvent,
+  isNewerSnapshot,
+  reconnectDelayMs,
+  shouldRecreateEventSource,
+  shouldPollFallback,
+  SSE_RECONNECT_BASE_MS,
+  SSE_RECONNECT_MAX_MS,
+  SSE_RECONNECT_MAX_ERRORS,
 } from './timeline-model';
 
 /**
@@ -196,5 +203,104 @@ describe('latestAnnounceableEvent', () => {
   it('un gol posterior a una falta sí se anuncia', () => {
     const events = [e('1', 'goal'), e('2', 'foul'), e('3', 'goal')];
     expect(latestAnnounceableEvent(events)?.id).toBe('3');
+  });
+});
+
+/**
+ * #369/#376: protección anti-stale en cliente. El servidor firma cada snapshot
+ * con `updatedAt`; un poll concurrente o un respaldo con caché podría entregar
+ * uno MÁS ANTIGUO después de uno nuevo. Esta función pura decide si aplicarlo.
+ */
+describe('isNewerSnapshot', () => {
+  it('acepta el primero cuando no hay referencia previa', () => {
+    expect(isNewerSnapshot(null, 1_000)).toBe(true);
+  });
+
+  it('acepta uno igual o más nuevo (idempotente)', () => {
+    expect(isNewerSnapshot(1_000, 1_000)).toBe(true);
+    expect(isNewerSnapshot(1_000, 1_001)).toBe(true);
+  });
+
+  it('descarta uno más viejo (fuera de orden)', () => {
+    expect(isNewerSnapshot(1_000, 999)).toBe(false);
+  });
+
+  it('acepta si el updatedAt entrante no es parseable (cae a hora de recepción)', () => {
+    expect(isNewerSnapshot(1_000, Number.NaN)).toBe(true);
+  });
+});
+
+/**
+ * #371: reconexión del directo. Sin `retry:` ni backoff, tras un reinicio todo
+ * el parque reconecta a la vez (herd). `reconnectDelayMs` aplica backoff
+ * exponencial con jitter; el `random` se inyecta para testear sin azar.
+ */
+describe('reconnectDelayMs', () => {
+  it('crece exponencialmente desde la base', () => {
+    expect(reconnectDelayMs(0, () => 1)).toBe(SSE_RECONNECT_BASE_MS);
+    expect(reconnectDelayMs(1, () => 1)).toBe(SSE_RECONNECT_BASE_MS * 2);
+    expect(reconnectDelayMs(2, () => 1)).toBe(SSE_RECONNECT_BASE_MS * 4);
+  });
+
+  it('respeta el tope máximo', () => {
+    expect(reconnectDelayMs(99, () => 1)).toBe(SSE_RECONNECT_MAX_MS);
+  });
+
+  it('aplica jitter entre el 50% y el 100% del retardo (desincroniza el herd)', () => {
+    expect(reconnectDelayMs(3, () => 0)).toBe(SSE_RECONNECT_BASE_MS * 4); // 50%
+    expect(reconnectDelayMs(3, () => 1)).toBe(SSE_RECONNECT_BASE_MS * 8); // 100%
+  });
+
+  it('tolera intentos negativos sin producir retardos negativos', () => {
+    expect(reconnectDelayMs(-5, () => 0)).toBe(SSE_RECONNECT_BASE_MS / 2);
+  });
+});
+
+/**
+ * #371: un HTTP ≠ 200 (p. ej. el 503 del limitador de conexiones) deja el
+ * EventSource CLOSED y el navegador NO reintenta. Esta función decide cuándo
+ * hay que recrearlo en vez de confiar en su auto-reintento.
+ */
+describe('shouldRecreateEventSource', () => {
+  it('recrea cuando el EventSource está CLOSED (no auto-reintenta)', () => {
+    expect(shouldRecreateEventSource(2, 1)).toBe(true);
+  });
+
+  it('deja que EventSource reintente mientras está CONNECTING y hay pocos errores', () => {
+    expect(shouldRecreateEventSource(0, 1)).toBe(false);
+    expect(shouldRecreateEventSource(0, SSE_RECONNECT_MAX_ERRORS - 1)).toBe(false);
+  });
+
+  it('recrea tras N errores consecutivos (aunque siga CONNECTING)', () => {
+    expect(shouldRecreateEventSource(0, SSE_RECONNECT_MAX_ERRORS)).toBe(true);
+  });
+});
+
+/**
+ * #369: si el hub está ciego pero el transporte SSE sigue "live", el cliente
+ * debe reactivar el polling REST de respaldo en vez de quedarse congelado.
+ */
+describe('shouldPollFallback', () => {
+  const fresh = { state: 'fresh', ageSeconds: 2, labelKey: 'match_detail.freshness_fresh' } as const;
+  const stale = { state: 'stale', ageSeconds: 60, labelKey: 'match_detail.freshness_stale' } as const;
+  const down  = { state: 'down', ageSeconds: 200, labelKey: 'match_detail.freshness_down' } as const;
+
+  it('SSE live y datos frescos → no sondea (no duplica carga)', () => {
+    expect(shouldPollFallback('live', false, fresh)).toBe(false);
+  });
+
+  it('SSE live pero el hub avisó de poll caído → sondea', () => {
+    expect(shouldPollFallback('live', true, fresh)).toBe(true);
+  });
+
+  it('SSE live pero datos envejecidos → sondea', () => {
+    expect(shouldPollFallback('live', false, stale)).toBe(true);
+    expect(shouldPollFallback('live', false, down)).toBe(true);
+  });
+
+  it('sin SSE (conectando/error/idle) → sondea siempre', () => {
+    expect(shouldPollFallback('connecting', false, fresh)).toBe(true);
+    expect(shouldPollFallback('error', false, null)).toBe(true);
+    expect(shouldPollFallback(undefined, false, null)).toBe(true);
   });
 });

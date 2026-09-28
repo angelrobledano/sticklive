@@ -143,6 +143,82 @@ export function connectionState(
   return 'live';
 }
 
+// ─── Realtime: anti-stale, polling de respaldo y reconexión (#369/#371/#376) ──
+/**
+ * Intervalo base que el servidor anuncia con `retry:` en el stream SSE. El
+ * navegador lo usa para el auto-reintento; el cliente añade backoff encima.
+ */
+export const SSE_RETRY_MS = 5_000;
+/** Base del backoff exponencial al recrear el EventSource. */
+export const SSE_RECONNECT_BASE_MS = 2_000;
+/** Tope del backoff. */
+export const SSE_RECONNECT_MAX_MS = 60_000;
+/** Errores consecutivos antes de recrear el EventSource por nuestra cuenta. */
+export const SSE_RECONNECT_MAX_ERRORS = 3;
+/** Cada cuánto se sondea REST si el SSE no cubre el directo. */
+export const FALLBACK_POLL_MS = 30_000;
+/** Cada cuánto se reevalúa la frescura para decidir el polling de respaldo. */
+export const FRESHNESS_CHECK_MS = 10_000;
+
+/**
+ * Protección anti-stale (#369/#376): ¿merece aplicarse un snapshot firmado con
+ * `updatedAt`? Un poll concurrente o una respuesta cacheada podría entregar uno
+ * MÁS ANTIGUO después de uno nuevo. Se descarta. Si el instante entrante no es
+ * parseable, se acepta (se cae a la hora de recepción como fallback).
+ */
+export function isNewerSnapshot(
+  prevUpdatedAtMs: number | null,
+  incomingUpdatedAtMs: number,
+): boolean {
+  if (prevUpdatedAtMs == null) return true;
+  if (!Number.isFinite(incomingUpdatedAtMs)) return true;
+  return incomingUpdatedAtMs >= prevUpdatedAtMs;
+}
+
+/**
+ * Retardo de reconexión del EventSource (#371): backoff exponencial acotado con
+ * jitter completo entre el 50% y el 100% del valor. El jitter desincroniza a
+ * todos los clientes que reconectan tras un reinicio (evita el herd). `random`
+ * se inyecta para poder testear sin azar.
+ */
+export function reconnectDelayMs(attempt: number, random: () => number = Math.random): number {
+  const n = Number.isFinite(attempt) ? Math.max(0, Math.floor(attempt)) : 0;
+  const exp = Math.min(SSE_RECONNECT_MAX_MS, SSE_RECONNECT_BASE_MS * 2 ** n);
+  return Math.round(exp / 2 + random() * (exp / 2));
+}
+
+/**
+ * ¿Hay que recrear el EventSource en vez de confiar en su auto-reintento? (#371)
+ * Un HTTP ≠ 200 (p. ej. el 503 del limitador) deja el ES `CLOSED` y el navegador
+ * no vuelve a intentarlo: hay que recrearlo. Si sigue `CONNECTING`, se le da
+ * margen hasta superar N errores consecutivos y entonces se recrea con backoff.
+ */
+export function shouldRecreateEventSource(
+  readyState: number,
+  consecutiveErrors: number,
+  threshold: number = SSE_RECONNECT_MAX_ERRORS,
+): boolean {
+  if (readyState === 2 /* EventSource.CLOSED */) return true;
+  return consecutiveErrors >= threshold;
+}
+
+/**
+ * ¿Debe activarse el polling REST de respaldo? (#369) El SSE sólo cubre el
+ * directo de verdad cuando está `live` Y los datos llegan frescos. Si el hub
+ * avisó de un poll caído (`serverStale`) o los datos envejecen, aunque el
+ * transporte siga `live`, se reactiva el respaldo para no quedarse congelado.
+ */
+export function shouldPollFallback(
+  sseStatus: string | undefined,
+  serverStale: boolean,
+  freshness: Freshness | null,
+): boolean {
+  if (sseStatus !== 'live') return true;
+  if (serverStale) return true;
+  if (freshness != null && freshness.state !== 'fresh') return true;
+  return false;
+}
+
 export function injectAccumulatedFouls(events: MatchEvent[], homeTeamId: string): TimelineEvent[] {
   const result: TimelineEvent[] = [];
   let homeFouls = 0;

@@ -211,6 +211,11 @@ services:
   # Por eso el sidecar solo toca contenedores con el label `autoheal`, que hoy
   # llevan api y web.
   #
+  # El ETL colgado-vivo (#373) lo cubre una salvaguarda CONSERVADORA del host
+  # (deploy/etl-healthcheck.sh, cron cada 5 min) que solo reinicia el etl si el
+  # cuelgue persiste varias pasadas, con alerta y enfriamiento. Aquí no se
+  # cambia la política de autoheal.
+  #
   # SEGURIDAD: monta el socket de Docker (equivale a root en el host) porque no
   # hay otra forma de leer/actuar sobre otros contenedores. Si se prefiere no
   # aceptar ese riesgo, borrar este servicio y los labels `autoheal` de api/web.
