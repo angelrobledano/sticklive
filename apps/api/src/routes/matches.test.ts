@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 // testear la lógica pura de la ruta sin levantar Postgres.
 process.env['DATABASE_URL'] ??= 'postgres://localhost:5432/test';
 
-const { parseGameweek } = await import('./matches.js');
+const { parseGameweek, parseTeamId } = await import('./matches.js');
 
 /**
  * #333: `?gameweek=3abc` devolvía 200 con jornada 3 (parseInt parcial). Ahora
@@ -34,5 +34,26 @@ describe('parseGameweek', () => {
     expect(parseGameweek('-1')).toBeNull();
     expect(parseGameweek('')).toBeNull();
     expect(parseGameweek('abc')).toBeNull();
+  });
+});
+
+/**
+ * #321: `?teamId=xyz` llegaba al cast a uuid de Postgres y devolvía 500. Un
+ * teamId malformado debe rechazarse con 400 sin tocar la BD.
+ */
+describe('parseTeamId', () => {
+  it('sin parámetro → undefined (no filtra)', () => {
+    expect(parseTeamId(undefined)).toBeUndefined();
+  });
+
+  it('acepta un UUID válido', () => {
+    const id = '3f2504e0-4f89-41d3-9a0c-0305e82c3301';
+    expect(parseTeamId(id)).toBe(id);
+  });
+
+  it('rechaza ids que no son UUID (null → 400)', () => {
+    for (const bad of ['xyz', '123', '', 'not-a-uuid', '3f2504e0-4f89-41d3-9a0c-0305e82c330']) {
+      expect(parseTeamId(bad), bad).toBeNull();
+    }
   });
 });

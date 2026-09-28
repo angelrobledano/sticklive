@@ -26,6 +26,7 @@ import { db, listenForNotifications } from '@sports/db';
 import { logger } from '@sports/logger';
 import { ConnectionLimiter } from '../lib/sse-connections.js';
 import { clientIp } from '../lib/rate-limit.js';
+import { isUuid } from '../lib/uuid.js';
 import {
   applySnapshot,
   emptyHubState,
@@ -317,15 +318,13 @@ listenForNotifications('match_update', (matchId) => {
 // Un id que no sea UUID haría fallar el cast de Postgres en cada poll: el hub
 // reintentaría indefinidamente y la conexión quedaría zombi consumiendo slot
 // (y el cliente nunca recibiría `event: error`). Se rechaza antes de crear el
-// hub (#160).
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
+// hub (#160). Validación compartida con el resto de rutas (#275/#321).
 const connections = new ConnectionLimiter(MAX_CONNECTIONS, MAX_CONNECTIONS_PER_IP);
 
 matchStreamRouter.get('/:id/stream', async (c) => {
   const matchId = c.req.param('id');
 
-  if (!UUID_RE.test(matchId)) {
+  if (!isUuid(matchId)) {
     return c.json({ error: 'not_found' }, 404);
   }
 

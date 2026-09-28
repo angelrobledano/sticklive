@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { setBounded } from '../lib/bounded-cache.js';
+import { isUuid } from '../lib/uuid.js';
 import { imageResponse, renderResizedImage, resolveImageWidth } from '../lib/image.js';
 
 /**
@@ -17,15 +18,14 @@ import { imageResponse, renderResizedImage, resolveImageWidth } from '../lib/ima
  */
 export const playerPhotoRouter = new Hono();
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 // Micro-caché en proceso de las imágenes YA transformadas (clave `id:w`).
 const photoCache = new Map<string, Buffer>();
 const PHOTO_CACHE_MAX = 512;
 
 playerPhotoRouter.get('/:id/photo', async (c) => {
   const id = c.req.param('id');
-  if (!UUID.test(id)) return c.notFound();
+  // Un id no-UUID haría fallar el cast a uuid de Postgres → 500 (#275/#321).
+  if (!isUuid(id)) return c.notFound();
 
   const width = resolveImageWidth(c.req.query('w'));
   const key = `${id}:${width}`;

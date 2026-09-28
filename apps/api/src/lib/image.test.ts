@@ -3,11 +3,25 @@ import sharp from 'sharp';
 import {
   DEFAULT_IMAGE_WIDTH,
   IMAGE_WIDTH_PRESETS,
+  LOGO_BACKGROUND,
   resolveImageWidth,
+  renderNormalizedLogo,
   renderResizedImage,
 } from './image.js';
 
 const MAX_PRESET = IMAGE_WIDTH_PRESETS[IMAGE_WIDTH_PRESETS.length - 1];
+
+/** Lee un píxel RGB(A) del buffer crudo devuelto por sharp. */
+function pixelAt(
+  data: Buffer,
+  width: number,
+  x: number,
+  y: number,
+  channels: number
+): { r: number; g: number; b: number } {
+  const i = (y * width + x) * channels;
+  return { r: data[i]!, g: data[i + 1]!, b: data[i + 2]! };
+}
 
 describe('resolveImageWidth (#335)', () => {
   it('cae al ancho por defecto si no hay w o no es válido', () => {
@@ -68,5 +82,86 @@ describe('renderResizedImage (#335)', () => {
 
     expect(meta.width).toBe(100);
     expect(meta.height).toBe(50);
+  });
+});
+
+describe('renderNormalizedLogo (#385)', () => {
+  it('devuelve un WebP cuadrado y opaco del ancho pedido', async () => {
+    const src = await sharp({
+      create: { width: 240, height: 180, channels: 4, background: { r: 200, g: 30, b: 30, alpha: 1 } },
+    }).png().toBuffer();
+
+    const meta = await sharp(await renderNormalizedLogo(src, 96)).metadata();
+
+    expect(meta.format).toBe('webp');
+    expect(meta.width).toBe(96);
+    expect(meta.height).toBe(96);
+    expect(meta.hasAlpha).toBe(false);
+  });
+
+  it('aplana la transparencia sobre blanco (fondo opaco)', async () => {
+    // Bloque rojo opaco desplazado sobre un lienzo transparente con margen.
+    const inner = await sharp({
+      create: { width: 60, height: 60, channels: 4, background: { r: 220, g: 20, b: 20, alpha: 1 } },
+    }).png().toBuffer();
+    const src = await sharp({
+      create: { width: 200, height: 200, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+    })
+      .composite([{ input: inner, top: 70, left: 0 }])
+      .png()
+      .toBuffer();
+
+    const { data, info } = await sharp(await renderNormalizedLogo(src, 128))
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    expect(info.channels).toBeGreaterThanOrEqual(3);
+    const corner = pixelAt(data, info.width, 0, 0, info.channels);
+    // LOGO_BACKGROUND es blanco: la esquina (antes transparente) debe serlo.
+    expect(corner.r).toBeGreaterThan(240);
+    expect(corner.g).toBeGreaterThan(240);
+    expect(corner.b).toBeGreaterThan(240);
+    expect(LOGO_BACKGROUND).toBe('#ffffff');
+  });
+
+  it('recorta el margen sobrante y centra el contenido', async () => {
+    const inner = await sharp({
+      create: { width: 80, height: 80, channels: 4, background: { r: 0, g: 80, b: 220, alpha: 1 } },
+    }).png().toBuffer();
+    // Contenido descentrado con margen transparente por los cuatro lados: así
+    // `trim()` puede usar la esquina transparente como fondo y recortar.
+    const src = await sharp({
+      create: { width: 300, height: 300, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+    })
+      .composite([{ input: inner, top: 30, left: 150 }])
+      .png()
+      .toBuffer();
+
+    const { data, info } = await sharp(await renderNormalizedLogo(src, 120))
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const half = info.width >> 1;
+    const center = pixelAt(data, info.width, half, half, info.channels);
+    expect(center.b).toBeGreaterThan(150);
+    expect(center.b).toBeGreaterThan(center.r);
+
+    // El margen uniforme deja la esquina blanca.
+    const corner = pixelAt(data, info.width, 0, 0, info.channels);
+    expect(corner.r).toBeGreaterThan(240);
+    expect(corner.g).toBeGreaterThan(240);
+    expect(corner.b).toBeGreaterThan(240);
+  });
+
+  it('reescala un escudo ya opaco y cuadrado al ancho pedido', async () => {
+    const src = await sharp({
+      create: { width: 512, height: 512, channels: 3, background: { r: 10, g: 120, b: 200 } },
+    }).png().toBuffer();
+
+    const meta = await sharp(await renderNormalizedLogo(src, 64)).metadata();
+
+    expect(meta.width).toBe(64);
+    expect(meta.height).toBe(64);
+    expect(meta.hasAlpha).toBe(false);
   });
 });

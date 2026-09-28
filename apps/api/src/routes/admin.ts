@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
 import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats } from '@sports/db';
 import { logger } from '@sports/logger';
+import { isUuid } from '../lib/uuid.js';
 
 /**
  * Panel de administracion nivel 1 (token compartido).
@@ -79,6 +80,8 @@ adminRouter.get('/users', async (c) => {
 
 adminRouter.patch('/users/:id/status', async (c) => {
   const id = c.req.param('id');
+  // Un id no-UUID haría fallar el cast a uuid de Postgres → 500 (#321).
+  if (!isUuid(id)) return c.json({ error: 'User not found' }, 404);
   const body = await c.req.json().catch(() => ({})) as { status?: string };
   if (body.status !== 'active' && body.status !== 'disabled') {
     return c.json({ error: "status must be 'active' or 'disabled'" }, 400);
@@ -109,6 +112,8 @@ adminRouter.patch('/users/:id/status', async (c) => {
 
 adminRouter.delete('/users/:id', async (c) => {
   const id = c.req.param('id');
+  // Un id no-UUID haría fallar el cast a uuid de Postgres → 409 engañoso (#321).
+  if (!isUuid(id)) return c.json({ error: 'User not found' }, 404);
   try {
     const res = await db.query(`DELETE FROM users WHERE id = $1 RETURNING id`, [id]);
     if (res.rowCount === 0) return c.json({ error: 'User not found' }, 404);
@@ -166,6 +171,8 @@ adminRouter.get('/competitions/duplicates', async (c) => {
  */
 adminRouter.post('/competitions/:id/archive', async (c) => {
   const id = c.req.param('id');
+  // Un id no-UUID haría fallar el cast a uuid de Postgres → 500 (#321).
+  if (!isUuid(id)) return c.json({ error: 'Competition not found' }, 404);
   try {
     const comp = await archiveCompetition(id);
     if (!comp) return c.json({ error: 'Competition not found' }, 404);
@@ -182,6 +189,8 @@ adminRouter.post('/competitions/:id/archive', async (c) => {
  */
 adminRouter.post('/competitions/:id/restore', async (c) => {
   const id = c.req.param('id');
+  // Un id no-UUID haría fallar el cast a uuid de Postgres → 500 (#321).
+  if (!isUuid(id)) return c.json({ error: 'Competition not found' }, 404);
   try {
     const comp = await restoreCompetition(id);
     if (!comp) return c.json({ error: 'Competition not found' }, 404);
@@ -206,6 +215,10 @@ adminRouter.post('/competitions/merge', async (c) => {
   const body = await c.req.json().catch(() => ({})) as { keepId?: string; mergeId?: string };
   if (!body.keepId || !body.mergeId) {
     return c.json({ error: 'Body must contain keepId and mergeId (UUIDs)' }, 400);
+  }
+  // Un id no-UUID haría fallar el cast a uuid de Postgres → 500 (#321).
+  if (!isUuid(body.keepId) || !isUuid(body.mergeId)) {
+    return c.json({ error: 'keepId and mergeId must be UUIDs' }, 400);
   }
   if (body.keepId === body.mergeId) {
     return c.json({ error: 'keepId and mergeId must be different' }, 400);
@@ -257,8 +270,11 @@ adminRouter.get('/resolution-queue/stats', async (c) => {
  */
 adminRouter.post('/resolution-queue/:id/resolve', async (c) => {
   const id = c.req.param('id');
+  // Un id no-UUID haría fallar el cast a uuid de Postgres → 500 (#321).
+  if (!isUuid(id)) return c.json({ error: 'Item not found or not pending' }, 404);
   const body = await c.req.json().catch(() => ({})) as { teamId?: string };
   if (!body.teamId) return c.json({ error: 'Body must contain teamId' }, 400);
+  if (!isUuid(body.teamId)) return c.json({ error: 'teamId must be a UUID' }, 400);
   try {
     const result = await resolveQueueItem(id, body.teamId, 'human:admin');
     if (!result) return c.json({ error: 'Item not found or not pending' }, 404);
@@ -275,6 +291,8 @@ adminRouter.post('/resolution-queue/:id/resolve', async (c) => {
  */
 adminRouter.post('/resolution-queue/:id/reject', async (c) => {
   const id = c.req.param('id');
+  // Un id no-UUID haría fallar el cast a uuid de Postgres → 500 (#321).
+  if (!isUuid(id)) return c.json({ error: 'Item not found or not pending' }, 404);
   try {
     const ok = await rejectQueueItem(id);
     if (!ok) return c.json({ error: 'Item not found or not pending' }, 404);

@@ -3,7 +3,7 @@
  */
 import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
-import { BaseScraper } from '../../core/base-scraper.js';
+import { FepBaseScraper } from './fep-base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
 import { isByeTeamName } from './bye-team.js';
@@ -20,7 +20,7 @@ export interface StandingsScraperConfig {
   competitionName?: string;
 }
 
-export class FepStandingsScraper extends BaseScraper<ScrapedStanding> {
+export class FepStandingsScraper extends FepBaseScraper<ScrapedStanding> {
   private standingsConfig: StandingsScraperConfig;
 
   constructor(config: StandingsScraperConfig) {
@@ -161,10 +161,6 @@ export class FepStandingsScraper extends BaseScraper<ScrapedStanding> {
       sourceUrl: ctx.sourceUrl,
       scrapedAt: ctx.scrapedAt,
     } as ScrapedStanding;
-  }
-
-  private get parseErrors(): Array<{ message: string; entityRef?: string }> {
-    return [];
   }
 }
 

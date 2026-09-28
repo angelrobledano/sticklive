@@ -33,7 +33,7 @@
  */
 import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
-import { BaseScraper } from '../../core/base-scraper.js';
+import { FepBaseScraper } from './fep-base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost } from './sidgad-client.js';
 import { parseShortDatetime } from './match-datetime.js';
@@ -52,7 +52,7 @@ export interface MatchesScraperConfig {
   seasonId: string;
 }
 
-export class FepMatchesScraper extends BaseScraper<ScrapedMatch> {
+export class FepMatchesScraper extends FepBaseScraper<ScrapedMatch> {
   private matchesConfig: MatchesScraperConfig;
 
   constructor(config: MatchesScraperConfig) {
@@ -188,10 +188,6 @@ export class FepMatchesScraper extends BaseScraper<ScrapedMatch> {
       sourceUrl: `${BASE_URL}/acta_1_${idp}.php`,
       scrapedAt,
     } as ScrapedMatch;
-  }
-
-  private get parseErrors(): Array<{ message: string; entityRef?: string }> {
-    return [];
   }
 }
 

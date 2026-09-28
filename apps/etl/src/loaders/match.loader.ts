@@ -13,6 +13,7 @@ import { createLogger } from '@sports/logger';
 import * as Sentry from '@sentry/node';
 import { transformMatch } from '../transformers/match.transformer.js';
 import { RefResolver } from './ref-resolver.js';
+import { buildMatchErrorMessage, type MatchLoadError } from './match-error-message.js';
 import { isStatusRegression } from '../status-regression.js';
 import { resolveLiveTimeStamps } from '../live-times.js';
 
@@ -22,7 +23,7 @@ const BATCH_SIZE = Number(process.env['ETL_BATCH_SIZE'] ?? 100);
 export interface LoadMatchesResult {
   upserted: number;
   skipped: number;
-  errors: Array<{ item: string; error: string }>;
+  errors: MatchLoadError[];
 }
 
 export interface LoadMatchesOptions {
@@ -109,7 +110,7 @@ export async function loadMatches(
   options: LoadMatchesOptions = {}
 ): Promise<LoadMatchesResult> {
   const start = Date.now();
-  const errors: Array<{ item: string; error: string }> = [];
+  const errors: MatchLoadError[] = [];
   let upserted = 0;
   let skipped = 0;
 
@@ -423,7 +424,7 @@ export async function loadMatches(
                 { item: itemLabel, sourceRef: input.sourceRef, err: teamErr },
                 'Partido omitido por error REAL al cargar (no es falta de equipo) — revisar'
               );
-              errors.push({ item: itemLabel, error: msg });
+              errors.push({ item: itemLabel, sourceRef: input.sourceRef, error: msg });
             }
             skipped++;
             continue;
@@ -432,7 +433,7 @@ export async function loadMatches(
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         log.error({ item: itemLabel, err }, 'Error al cargar partido');
-        errors.push({ item: itemLabel, error: message });
+        errors.push({ item: itemLabel, sourceRef: raw.sourceRef, error: message });
         skipped++;
       }
     }
@@ -446,7 +447,7 @@ export async function loadMatches(
     status: errors.length === 0 ? 'success' : skipped === items.length ? 'error' : 'partial',
     recordsFound: items.length,
     recordsUpserted: upserted,
-    errorMessage: errors.length > 0 ? `${errors.length} partidos fallaron` : undefined,
+    errorMessage: buildMatchErrorMessage(errors),
     durationMs,
   });
 

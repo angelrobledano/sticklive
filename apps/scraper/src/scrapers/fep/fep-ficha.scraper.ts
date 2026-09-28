@@ -15,7 +15,7 @@
  */
 // cheerio y domhandler ya no hacen falta aquí: el HTML lo interpreta
 // fep-ficha.parser.ts. Este módulo sólo hace E/S (red y base de datos).
-import { BaseScraper } from '../../core/base-scraper.js';
+import { FepBaseScraper } from './fep-base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { SidgadClient, SIDGAD_LANG } from './sidgad-client.js';
 import { sourceByKey, eventPrefix, type SourceDef } from '../../core/sources.js';
@@ -58,7 +58,7 @@ export interface FichaScraperConfig {
   source?: SourceDef;
 }
 
-export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
+export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
   // Config propia de la ficha. ANTES se llamaba `config` y SOBREESCRIBÍA el
   // `config` de BaseScraper (que lleva scraperKey/entityType/sourceId) → de ahí
   // el "[undefined/undefined]" en los logs. Se renombra a `cfg` (auditoría Q2/B-).
@@ -385,10 +385,6 @@ export class FepFichaScraper extends BaseScraper<ScrapedMatchEvent> {
       { matchId, inserted: input.length, types: [...new Set(events.map(e => e.eventType))] },
       'Eventos inyectados directamente en match_events'
     );
-  }
-
-  private get parseErrors(): Array<{ message: string; entityRef?: string }> {
-    return [];
   }
 }
 

@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { db } from '@sports/db';
 import { setBounded } from '../lib/bounded-cache.js';
-import { imageResponse, renderResizedImage, resolveImageWidth } from '../lib/image.js';
+import { isUuid } from '../lib/uuid.js';
+import { imageResponse, renderNormalizedLogo, resolveImageWidth } from '../lib/image.js';
 
 /**
  * GET /teams/:id/logo — escudo del equipo (auditoría A3: una sola fuente).
@@ -22,11 +23,15 @@ import { imageResponse, renderResizedImage, resolveImageWidth } from '../lib/ima
  * #335 (perf P0): el original pesa hasta 2,4 MB y la web lo pinta a 20–80 px.
  * Ahora se redimensiona y reencoda a WebP (ancho elegido con `?w=`, acotado a
  * presets) y se sirve con `Cache-Control` inmutable.
+ *
+ * #385: el proxy del CDN servía escudos crudos (con transparencia y márgenes
+ * irregulares). Ahora TODAS las ramas pasan por `renderNormalizedLogo`, que
+ * reproduce la normalización del ETL (recorte + fondo blanco + margen uniforme),
+ * para que un escudo local y uno de CDN se vean igual sobre fondo oscuro.
  */
 export const teamLogoRouter = new Hono();
 
 const ESCUDOS_DIR = process.env['ESCUDOS_DIR'] ?? '/app/apps/web/public/escudos';
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Micro-caché en proceso de las imágenes YA transformadas (clave `id:w`). Los
 // anchos posibles son un conjunto finito, así que la cardinalidad queda acotada.
@@ -35,7 +40,8 @@ const LOGO_CACHE_MAX = 512;
 
 teamLogoRouter.get('/:id/logo', async (c) => {
   const id = c.req.param('id');
-  if (!UUID.test(id)) return c.notFound();
+  // Un id no-UUID haría fallar el cast a uuid de Postgres en el proxy → 500 (#275/#321).
+  if (!isUuid(id)) return c.notFound();
 
   const width = resolveImageWidth(c.req.query('w'));
   const key = `${id}:${width}`;
@@ -72,7 +78,7 @@ teamLogoRouter.get('/:id/logo', async (c) => {
   }
 
   try {
-    const out = await renderResizedImage(source, width);
+    const out = await renderNormalizedLogo(source, width);
     setBounded(logoCache, key, out, LOGO_CACHE_MAX);
     return imageResponse(out);
   } catch {

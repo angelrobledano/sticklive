@@ -21,6 +21,21 @@ export function parseGameweek(raw: string | undefined): number | null | undefine
 }
 
 /**
+ * Valida el filtro `?teamId=`:
+ *  - `undefined` si no viene el parámetro,
+ *  - el UUID si es válido,
+ *  - `null` si es inválido (debe responder 400).
+ *
+ * Un teamId no-UUID hacía fallar el cast a uuid de Postgres y devolvía 500
+ * (#321). Para un parámetro de query, un valor malformado es un error de
+ * petición (400), no un recurso inexistente.
+ */
+export function parseTeamId(raw: string | undefined): string | null | undefined {
+  if (raw === undefined) return undefined;
+  return isUuid(raw) ? raw : null;
+}
+
+/**
  * GET /seasons/:id/matches
  *
  * Query params opcionales:
@@ -37,12 +52,18 @@ matchesRouter.get('/:id/matches', async (c) => {
 
   const gameweekRaw = c.req.query('gameweek');
   const status     = c.req.query('status');
-  const teamId     = c.req.query('teamId');
+  const teamIdRaw  = c.req.query('teamId');
 
   // Validar gameweek si viene
   const gameweek = parseGameweek(gameweekRaw);
   if (gameweek === null) {
     return c.json({ error: 'gameweek must be a positive integer' }, 400);
+  }
+
+  // Validar teamId si viene (#321): un id no-UUID daba 500 en la BD.
+  const teamId = parseTeamId(teamIdRaw);
+  if (teamId === null) {
+    return c.json({ error: 'teamId must be a UUID' }, 400);
   }
 
   // Validar status si viene

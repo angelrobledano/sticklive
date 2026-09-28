@@ -59,6 +59,63 @@ export async function renderResizedImage(input: Buffer, width: number): Promise<
     .toBuffer();
 }
 
+/**
+ * Color de relleno de la transparencia de los escudos. Debe coincidir con el
+ * fondo de `TeamShield` y con `apps/etl/src/logo-normalize.ts`.
+ */
+export const LOGO_BACKGROUND = '#ffffff';
+
+/** Margen por lado del escudo, como fracción del lado final (6 %). */
+export const LOGO_MARGIN = 0.06;
+
+/**
+ * Normaliza un escudo al servir (#385): mismo resultado que la pasada del ETL
+ * (`apps/etl/src/logo-normalize.ts`) pero en memoria y al ancho pedido.
+ *
+ * El proxy del CDN servía los escudos crudos: con transparencia y márgenes
+ * irregulares, en fondos oscuros (modo oscuro, tarjeta OG) perdían contraste o
+ * desaparecían. Aquí se reproduce la cadena del ETL —recorte del borde
+ * sobrante, relleno blanco, fondo opaco y margen uniforme— y se reduce al
+ * cuadrado `width×width` pedido.
+ *
+ * Idempotente y barato para lo ya normalizado: un escudo opaco y cuadrado sólo
+ * se reescala, sin `trim()` (que en bordes anti-aliased podría "crecerlo").
+ * La micro-caché de la ruta evita repetirlo por request.
+ */
+export async function renderNormalizedLogo(input: Buffer, width: number): Promise<Buffer> {
+  const meta = await sharp(input).metadata();
+
+  // Ya opaco y cuadrado: basta reescalar al ancho pedido.
+  if (!meta.hasAlpha && meta.width === meta.height) {
+    return sharp(input).resize(width, width).webp({ quality: 80 }).toBuffer();
+  }
+
+  const margin = Math.round(width * LOGO_MARGIN);
+  const inner = Math.max(1, width - 2 * margin);
+
+  const { data, info } = await sharp(input)
+    // `trim()` va ANTES de `flatten()`: necesita el alfa para conocer el fondo.
+    .trim()
+    .flatten({ background: LOGO_BACKGROUND })
+    .removeAlpha()
+    .resize(inner, inner, { fit: 'inside' })
+    .toBuffer({ resolveWithObject: true });
+
+  const left = Math.floor((width - info.width) / 2);
+  const top = Math.floor((width - info.height) / 2);
+
+  return sharp(data)
+    .extend({
+      top,
+      bottom: width - info.height - top,
+      left,
+      right: width - info.width - left,
+      background: LOGO_BACKGROUND,
+    })
+    .webp({ quality: 80 })
+    .toBuffer();
+}
+
 /** Respuesta de imagen con caché inmutable. */
 export function imageResponse(buf: Buffer, contentType = 'image/webp'): Response {
   return new Response(buf, {

@@ -16,7 +16,7 @@
  */
 import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
-import { BaseScraper } from '../../core/base-scraper.js';
+import { FepBaseScraper } from './fep-base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
 import { isByeTeamName } from './bye-team.js';
@@ -49,7 +49,7 @@ export interface CalendarScraperConfig {
   timezone?: string;
 }
 
-export class FepCalendarScraper extends BaseScraper<ScrapedMatch> {
+export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
   private calendarConfig: CalendarScraperConfig;
 
   constructor(config: CalendarScraperConfig) {
@@ -96,7 +96,7 @@ export class FepCalendarScraper extends BaseScraper<ScrapedMatch> {
 
       $(table).find('tbody tr.team_class').each((_, row) => {
         const $row = $(row);
-        const errors = this.scrapeErrors;
+        const errors = this.parseErrors;
 
         try {
           const match = this.parseMatchRow($, $row, {
@@ -195,11 +195,6 @@ export class FepCalendarScraper extends BaseScraper<ScrapedMatch> {
       sourceUrl,
       scrapedAt: ctx.scrapedAt,
     } as ScrapedMatch;
-  }
-
-  /** Acumular errores no fatales (expuesto para parseCalendar) */
-  private get scrapeErrors(): Array<{ message: string; entityRef?: string }> {
-    return [];
   }
 }
 
