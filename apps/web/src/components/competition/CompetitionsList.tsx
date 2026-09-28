@@ -6,6 +6,8 @@ import type { CompetitionSummary } from '@/lib/api/client';
 import { useT } from '@/lib/i18n';
 import { clubName, competitionName } from '@/lib/names';
 import { CountryFlag } from '@/components/shared/CountryFlag';
+import { filterCompetitions, normalizeSearchText } from '@/components/search/competition-filter';
+import { tt } from '@/components/search/translate';
 import { useFavorites } from '@/hooks/useFavorites';
 import { currentSeasonYear, hasSeasonYear, orderByImportance } from '@/lib/competition-importance';
 
@@ -14,10 +16,6 @@ import { currentSeasonYear, hasSeasonYear, orderByImportance } from '@/lib/compe
 type Tab = 'mis-ligas' | 'principales' | 'todas';
 
 // ── Helpers generales ────────────────────────────────────────────────────────
-
-function norm(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-}
 
 function countryDisplayName(code: string | null, locale: string): string {
   if (!code) return '';
@@ -382,18 +380,15 @@ export function CompetitionsList({
     [competitions, seasonYear],
   );
 
-  // 2) Aplicar búsqueda
-  const q = norm(query.trim());
+  // 2) Aplicar búsqueda. IMPORTANTE: se busca sobre TODAS las competiciones,
+  //    no solo las de la temporada vigente (#256): una competición cuya última
+  //    temporada no contiene el año actual (Copa del Rey, Europeo Sub-17…)
+  //    debe poder encontrarse igualmente. Su temporada se muestra en la fila.
+  const q = normalizeSearchText(query.trim());
   const searched = useMemo(() => {
     if (!q) return relevant;
-    return relevant.filter((c) =>
-      norm(c.name).includes(q) ||
-      norm(c.shortName ?? '').includes(q) ||
-      norm(countryDisplayName(c.country, locale)).includes(q) ||
-      norm(c.region ?? '').includes(q) ||
-      norm(c.organizer).includes(q),
-    );
-  }, [relevant, q, locale]);
+    return filterCompetitions(competitions, query, (code) => countryDisplayName(code, locale));
+  }, [competitions, relevant, q, query, locale]);
 
   // 3) Datos por tab
   const principales = useMemo(
@@ -516,15 +511,48 @@ export function CompetitionsList({
       {/* ── Contenido ──────────────────────────────────────────────────────── */}
       <div className="flex-1 px-4 py-3">
 
-        {/* Modo búsqueda: lista plana */}
+        {/* Modo búsqueda: lista plana (busca en todas las temporadas, #256) */}
         {isSearching && (
-          <FlatList
-            comps={searched}
-            favorites={favorites}
-            onToggleFav={toggleFav}
-            locale={locale}
-            emptyKey="common.no_search_results"
-          />
+          <>
+            <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 px-1 pb-2 tabular-nums">
+              {tt(t, 'search.results_count', '{n} resultados', { n: searched.length })}
+            </p>
+            {searched.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-14 gap-3 text-center px-4">
+                <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
+                       className="w-6 h-6 text-slate-400">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                  {tt(t, 'search.no_results_for', 'Sin resultados para «{q}»', { q: query.trim() })}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {tt(t, 'search.searched_all_seasons', 'Se busca en todas las temporadas.')}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {tt(t, 'search.competitions_total', 'Hay {n} competiciones en total.', { n: competitions.length })}
+                </p>
+                <button
+                  onClick={() => setQuery('')}
+                  className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-semibold
+                             bg-rink-passion text-white hover:bg-rink-passion/90 transition-colors"
+                >
+                  {tt(t, 'search.view_all', 'Ver todas las competiciones')}
+                </button>
+              </div>
+            ) : (
+              <FlatList
+                comps={searched}
+                favorites={favorites}
+                onToggleFav={toggleFav}
+                locale={locale}
+                emptyKey="common.no_search_results"
+              />
+            )}
+          </>
         )}
 
         {/* Tab: Mis Ligas */}

@@ -37,7 +37,19 @@ export function StatsTab({ data }: { data: MatchDetail }) {
   const { stats, match } = data;
   const totalPen = stats.homePenalties.total + stats.awayPenalties.total;
 
-  if (stats.homeFouls === 0 && stats.awayFouls === 0) {
+  // ¿Hay algo que mostrar? Antes el corte miraba SOLO las faltas: un partido en
+  // directo con goles pero sin faltas caía aquí y ocultaba el marcador de stats
+  // (#283). Ahora cualquier métrica con valor mantiene la tabla visible.
+  const hasAnyStats =
+    stats.homeFouls > 0 || stats.awayFouls > 0 ||
+    (stats.homeGoals ?? 0) > 0 || (stats.awayGoals ?? 0) > 0 ||
+    (stats.homeBlueCards ?? 0) > 0 || (stats.awayBlueCards ?? 0) > 0 ||
+    (stats.homeRedCards ?? 0) > 0 || (stats.awayRedCards ?? 0) > 0 ||
+    (stats.homeTimeouts ?? 0) > 0 || (stats.awayTimeouts ?? 0) > 0 ||
+    ((stats.homeDirectFouls?.total ?? 0) + (stats.awayDirectFouls?.total ?? 0)) > 0 ||
+    totalPen > 0;
+
+  if (!hasAnyStats) {
     if (match.status === 'scheduled') {
       return (
         <div className="card p-8 text-center opacity-60">

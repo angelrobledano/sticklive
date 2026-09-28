@@ -10,6 +10,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { SkipToContent } from '@/components/layout/SkipToContent';
 import { PremiumProvider } from '@/context/PremiumContext';
 import { AnalyticsPageview } from '@/lib/analytics';
+import { ConsentBanner } from '@/components/shared/ConsentBanner';
 import { SUPPORTED_LOCALES, isSupportedLocale, type Locale } from '@/lib/locales';
 import { localeAlternates, socialMeta, SITE_URL } from '@/lib/seo';
 
@@ -128,8 +129,11 @@ export default async function RootLayout({ children, params }: Props) {
           {/* Registro del Service Worker + captura del prompt de instalación PWA */}
           <PwaSetup />
 
-          {/* Pageviews de PostHog (no-op en desarrollo) */}
+          {/* Pageviews de PostHog (no-op en desarrollo y sin consentimiento) */}
           <AnalyticsPageview />
+
+          {/* Consentimiento de analítica — PostHog no se carga hasta aceptar */}
+          <ConsentBanner />
           </I18nProvider>
         </PremiumProvider>
       </body>

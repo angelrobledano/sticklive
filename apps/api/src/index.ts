@@ -21,6 +21,7 @@ import { playerDetailRouter } from './routes/player-detail.js';
 import { playerPhotoRouter } from './routes/player-photo.js';
 import { matchStreamRouter } from './routes/match-stream.js';
 import { competitionsRouter } from './routes/competitions.js';
+import { searchRouter } from './routes/search.js';
 import { seasonStatsRouter } from './routes/season-stats.js';
 import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
@@ -71,6 +72,7 @@ app.use('/matches/current', readLimit);
 app.use('/matches/live', readLimit);
 // Resto de lecturas públicas (#159): mismo tope generoso por IP.
 app.use('/competitions', readLimit);
+app.use('/search', readLimit);
 app.use('/seasons/:id/matches', readLimit);
 app.use('/seasons/:id/standings', readLimit);
 app.use('/matches/:id', readLimit);
@@ -98,6 +100,7 @@ app.get('/', (c) => {
 
 // Rutas
 app.route('/competitions', competitionsRouter); // GET /competitions — listado
+app.route('/search', searchRouter);            // GET /search?q= — búsqueda global (#255)
 app.route('/seasons', standingsRouter);
 app.route('/seasons', matchesRouter);
 app.route('/matches', liveRouter);       // /matches/live — debe ir ANTES de /:id

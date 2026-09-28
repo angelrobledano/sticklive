@@ -55,6 +55,10 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
   // ejecutar y abre un EventSource nuevo. Lo usa el corte por duración máxima
   // del servidor (`event: timeout`), que NO es un final de partido.
   const [sseEpoch,   setSseEpoch]   = useState(0);
+  // #284: instante de la última actualización de datos y aviso de poll caído
+  // del hub. Alimentan el indicador de frescura de la cabecera.
+  const [lastUpdateAt, setLastUpdateAt] = useState<number | null>(null);
+  const [serverStale,  setServerStale]  = useState(false);
 
   const isLive = liveData.match.status === 'live';
 
@@ -91,8 +95,14 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
 
     const handleData = (raw: string) => {
       try {
-        const parsed = JSON.parse(raw) as MatchDetail;
+        const parsed = JSON.parse(raw) as MatchDetail & { updatedAt?: string };
         setLiveData(parsed);
+        // El servidor manda `updatedAt` (instante del cambio); si falta, usamos
+        // la hora de recepción. Así un snapshot cacheado antiguo no se pinta
+        // como recién actualizado (#284).
+        const serverAt = parsed.updatedAt ? new Date(parsed.updatedAt).getTime() : NaN;
+        setLastUpdateAt(Number.isFinite(serverAt) ? serverAt : Date.now());
+        setServerStale(false);
       } catch { /* JSON malformado — ignorar */ }
     };
 
@@ -122,6 +132,17 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
 
     es.addEventListener('keepalive', () => { /* noop — mantiene la conexión */ });
 
+    // #284: el hub avisa cuando su poll falla (o se recupera). No es un cambio
+    // de datos, así que no reemplaza `liveData`; sólo marca el estado.
+    es.addEventListener('stale', (e) => {
+      try {
+        const parsed = JSON.parse((e as MessageEvent<string>).data) as { stale?: boolean };
+        setServerStale(parsed.stale !== false);
+      } catch {
+        setServerStale(true);
+      }
+    });
+
     es.onerror = () => {
       setSseStatus('error');
       // EventSource auto-reintenta — no cerramos aquí
@@ -142,6 +163,7 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
       if (!res.ok) return;
       const parsed = (await res.json()) as MatchDetail;
       setLiveData(parsed);
+      setLastUpdateAt(Date.now());
     } catch { /* sin red — siguiente intento */ }
   }, [liveData.match.id]);
 
@@ -150,6 +172,21 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
     const interval = setInterval(refreshData, 30_000);
     return () => clearInterval(interval);
   }, [isLive, sseStatus, refreshData]);
+
+  // ── Refresco al volver a la pestaña (#284) ─────────────────────────────────
+  // Los navegadores estrangulan timers y SSE en segundo plano. Al volver,
+  // pedimos el detalle sin caché y reconectamos el SSE para no quedarnos con un
+  // marcador viejo pintado como actual.
+  useEffect(() => {
+    if (!isLive) return;
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      void refreshData();
+      setSseEpoch((n) => n + 1);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [isLive, refreshData]);
 
   // ── Refresco al pasar la hora de inicio de un partido 'scheduled' ──────────
   // Cubre el hueco hasta que el scraper marque el partido como live y el
@@ -180,7 +217,7 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
   return (
     <div className="space-y-4">
       {/* Cabecera del partido */}
-      <MatchHeader data={data} sseStatus={sseStatus} />
+      <MatchHeader data={data} sseStatus={sseStatus} lastUpdateAt={lastUpdateAt} serverStale={serverStale} />
 
       {/* Pestañas — solo las que tienen datos */}
       <div className="flex gap-0 border-b border-slate-200 dark:border-slate-800">

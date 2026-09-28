@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { getMatchesBySeason } from '@sports/db';
+import { isUuid } from '../lib/uuid.js';
 
 export const matchesRouter = new Hono();
 
@@ -13,6 +14,10 @@ export const matchesRouter = new Hono();
  */
 matchesRouter.get('/:id/matches', async (c) => {
   const seasonId = c.req.param('id');
+
+  // Un id no-UUID haría fallar el cast a uuid de Postgres y devolvería 500
+  // (enlace corrupto/bot) en vez de 404 (#275).
+  if (!isUuid(seasonId)) return c.json({ error: 'Not found' }, 404);
 
   const gameweekRaw = c.req.query('gameweek');
   const status     = c.req.query('status');

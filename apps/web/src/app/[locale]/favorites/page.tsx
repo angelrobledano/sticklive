@@ -9,6 +9,7 @@ import { clubName } from '@/lib/names';
 import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';
 import { BackLink } from '@/components/shared/BackLink';
+import { selectSeasonCandidates, mergeStandingTeams, type RawStandingRow } from '@/lib/favorites-catalog';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 const SEASON_ID = process.env['NEXT_PUBLIC_SEASON_ID'] ?? '';
@@ -18,19 +19,6 @@ interface LeagueItem { id: string; name: string; shortName: string | null }
 interface CompItem {
   id: string; name: string; shortName: string | null;
   season?: { id: string; isCurrent?: boolean; teamCount?: number } | null;
-}
-
-/**
- * Temporada para listar equipos. Usa NEXT_PUBLIC_SEASON_ID si está; si no,
- * la deriva de /competitions (la "actual" con más equipos). Así no depende de
- * un id horneado en el build, que puede quedar vacío/obsoleto tras un reseed.
- */
-function pickSeasonId(comps: CompItem[]): string | null {
-  const withSeason = comps.filter((c) => c.season?.id);
-  const current = withSeason.filter((c) => c.season?.isCurrent);
-  const pool = current.length ? current : withSeason;
-  pool.sort((a, b) => (b.season?.teamCount ?? 0) - (a.season?.teamCount ?? 0));
-  return pool[0]?.season?.id ?? null;
 }
 
 /**
@@ -69,20 +57,19 @@ function FavoritesInner() {
         const compList = (comps?.competitions ?? []) as CompItem[];
         setLeagues(compList.map((c) => ({ id: c.id, name: c.name, shortName: c.shortName })));
 
-        // Preferimos la temporada ACTUAL real de /competitions; el env solo como
-        // último recurso (puede estar vacío u obsoleto, que era justo el problema).
-        const seasonId = pickSeasonId(compList) || SEASON_ID;
-        if (!seasonId) return;
-        const st = await fetch(`${API_URL}/seasons/${seasonId}/standings`)
-          .then((r) => r.json()).catch(() => null);
-        const list: TeamItem[] = ((st?.standings ?? []) as Array<Record<string, string | null>>)
-          .map((s) => ({
-            id: (s['team_id'] ?? s['teamId']) as string,
-            name: (s['team_name'] ?? s['teamName'] ?? '') as string,
-            shortName: (s['team_short_name'] ?? s['teamShortName'] ?? null) as string | null,
-          }))
-          .filter((tm) => tm.id);
-        setTeams(list.sort((a, b) => a.name.localeCompare(b.name)));
+        // Cargamos los equipos de VARIAS temporadas actuales (las de más equipos)
+        // y los agregamos deduplicando. Así una temporada con standings 404 no
+        // deja el buscador vacío. El env solo es respaldo si no hay competiciones.
+        const seasonIds = selectSeasonCandidates(compList, { envSeasonId: SEASON_ID });
+        if (seasonIds.length === 0) return;
+        const lists = await Promise.all(
+          seasonIds.map(async (sid) => {
+            const st = await fetch(`${API_URL}/seasons/${sid}/standings`)
+              .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+            return ((st?.standings ?? []) as RawStandingRow[]);
+          })
+        );
+        setTeams(mergeStandingTeams(lists));
       })
       .finally(() => setLoading(false));
   }, []);

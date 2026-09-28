@@ -8,6 +8,7 @@ import { TeamShield } from '@/components/shared/TeamShield';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { finalLabelKey, penaltyText } from '@/lib/match-result';
 import { formatTime, formatDate, eventSurname, fmtEventClock } from './format';
+import { freshnessState } from './timeline-model';
 import { BallIcon } from './icons';
 
 function TeamCrest({ team }: {
@@ -159,7 +160,12 @@ function LivePhase({ live }: { live: NonNullable<MatchDetail['match']['live']> }
   );
 }
 
-export function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?: string }) {
+export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale = false }: {
+  data: MatchDetail;
+  sseStatus?: string;
+  lastUpdateAt?: number | null;
+  serverStale?: boolean;
+}) {
   const { t } = useT();
   const { match, stats } = data;
   const ht = match.homeTeam!;
@@ -167,6 +173,23 @@ export function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?
   const isLive = match.status === 'live';
   const isFinished = match.status === 'finished';
   const showScore = isLive || isFinished;
+
+  // #284: reloj de 1 s para el indicador de frescura. `now` arranca en null para
+  // que el HTML del servidor y la primera hidratación coincidan (sin el texto).
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isLive) { setNow(null); return; }
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(id);
+  }, [isLive]);
+
+  // Frescura: si hace demasiado que no llega un snapshot/update (o el hub avisó
+  // de un poll caído), atenuamos el marcador para no mostrarlo como actual.
+  const freshness = isLive && now != null && lastUpdateAt != null
+    ? freshnessState(lastUpdateAt, now, serverStale)
+    : null;
+  const faded = isLive && showScore && freshness?.state === 'down';
 
   return (
     <div className="card relative px-4 pt-4 pb-5 space-y-4">
@@ -205,6 +228,20 @@ export function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?
                 · {t('match_detail.reconnecting')}
               </span>
             )}
+            {/* #284: cuándo se actualizó por última vez / posible desfase. */}
+            {freshness && (
+              <span
+                className={`text-[9px] font-normal normal-case tracking-normal ${
+                  freshness.state === 'down'
+                    ? 'text-rose-500'
+                    : freshness.state === 'stale'
+                      ? 'text-amber-500'
+                      : 'text-slate-400 dark:text-slate-500'
+                }`}
+              >
+                · {t(freshness.labelKey, { s: freshness.ageSeconds })}
+              </span>
+            )}
           </span>
         )}
         {isFinished && (
@@ -227,7 +264,7 @@ export function MatchHeader({ data, sseStatus }: { data: MatchDetail; sseStatus?
           {showScore ? (
             <div role="status" aria-live="polite" aria-atomic="true"
                  aria-label={`${ht.shortName ?? ht.name} ${match.score.home ?? 0} - ${match.score.away ?? 0} ${at.shortName ?? at.name}`}
-                 className="font-score text-5xl font-bold tracking-tighter text-slate-900 dark:text-slate-50 tabular-nums leading-none">
+                 className={`font-score text-5xl font-bold tracking-tighter text-slate-900 dark:text-slate-50 tabular-nums leading-none transition-opacity ${faded ? 'opacity-40' : ''}`}>
               {match.score.home ?? 0}
               <span className="text-slate-300 dark:text-slate-600 mx-2 font-light">:</span>
               {match.score.away ?? 0}

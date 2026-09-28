@@ -24,7 +24,9 @@ export interface SubPrefs {
 // poder ampliar el catálogo sin rediseñar la segmentación.
 export const PRESET_EVENTS: Record<NotificationPreset, PushEventType[]> = {
   complete:   ['start', 'goal', 'blue_card', 'direct_foul', 'red_card', 'overtime', 'penalties', 'final'],
-  key_events: ['goal', 'blue_card', 'direct_foul', 'red_card', 'overtime', 'penalties', 'final'],
+  // 'start' incluido: es el preset por defecto al seguir y el inicio del partido
+  // es el aviso más motivador (#265).
+  key_events: ['start', 'goal', 'blue_card', 'direct_foul', 'red_card', 'overtime', 'penalties', 'final'],
   results:    ['start', 'overtime', 'penalties', 'final'],
   silent:     [],
 };
