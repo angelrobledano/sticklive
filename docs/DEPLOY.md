@@ -59,7 +59,30 @@ es un fallo esperando su turno. De ahí el servicio `migrate`.
 
 ---
 
-## Despliegue estándar
+## Despliegue en un comando (recomendado)
+
+`deploy/deploy.sh` encapsula el despliegue estándar y añade lo que faltaba:
+comprueba el espacio libre **antes** de construir (el VPS de 4 GB se llena con la
+caché de build), libera caché de build si hace falta y verifica la **versión
+viva** con un smoke test — no solo que los contenedores estén `up`. Nació del
+incidente en que producción sirvió durante días un build anterior a `main` (#248).
+
+```bash
+cd /opt/sticklive
+./deploy/deploy.sh
+```
+
+Opciones: `--dry-run` (preflight + smoke sin tocar git ni reconstruir),
+`--skip-pull`, `--skip-smoke`, `--help`. Variables de entorno: `BRANCH` (main),
+`REMOTE` (origin), `SMOKE_BASE` (https://sticklive.eu), `MIN_FREE_GB` (15).
+
+Usa `git pull --ff-only`: si tienes cambios locales en ficheros que también
+cambian upstream (p. ej. `deploy/verify-backup.sh`), **aborta** en vez de
+descartarlos; resuélvelo a mano y relánzalo.
+
+---
+
+## Despliegue estándar (paso a paso)
 
 ```bash
 cd /opt/sticklive
