@@ -30,6 +30,17 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href: '/search',
+    labelKey: 'navigation.search',
+    icon: (active: boolean) => (
+      <svg viewBox="0 0 24 24" fill="none" strokeWidth={active ? 2.5 : 1.8}
+           stroke="currentColor" className="w-6 h-6">
+        <circle cx="11" cy="11" r="7" />
+        <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     href: '/settings',
     labelKey: 'navigation.settings',
     icon: (active: boolean) => (
