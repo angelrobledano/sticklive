@@ -5,13 +5,15 @@
     "nav_sections": "Sections",
     "email_label": "Email",
     "search_competitions": "Search league, country or federation",
-    "home_heading": "Live matches"
+    "home_heading": "Live matches",
+    "search_global": "Search teams, players or competitions"
   },
   "navigation": {
     "matches": "Matches",
     "competitions": "Competitions",
     "settings": "Settings",
-    "back": "Back"
+    "back": "Back",
+    "search": "Search"
   },
   "notif_presets": {
     "title": "What do you want to get?",
@@ -21,7 +23,7 @@
     },
     "key_events": {
       "label": "Key events",
-      "desc": "Goals, blue cards, direct fouls and final result."
+      "desc": "Match start, goals, blue cards, direct fouls and final result."
     },
     "results": {
       "label": "Results",
@@ -30,7 +32,10 @@
     "silent": {
       "label": "Silent",
       "desc": "Follow it from the app, no push."
-    }
+    },
+    "push_offer_title": "Turn on notifications",
+    "push_offer_desc": "Allow notifications on this device to receive alerts for your teams.",
+    "push_offer_cta": "Enable alerts"
   },
   "match_tabs": {
     "standing": "Standings",
@@ -190,7 +195,10 @@
     "p2_short": "H2",
     "ot_short": "OT",
     "penalties_efficiency": "Penalty efficiency",
-    "direct_fouls_efficiency": "Direct free hit efficiency"
+    "direct_fouls_efficiency": "Direct free hit efficiency",
+    "freshness_fresh": "Updated {s}s ago",
+    "freshness_stale": "No updates for {s}s · possible delay",
+    "freshness_down": "No signal · last update {s}s ago"
   },
   "playoffs": {
     "quarters": "Quarters",
@@ -366,5 +374,29 @@
   },
   "fixtures": {
     "matchday": "Matchday {n}"
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search team, player or competition…",
+    "clear": "Clear search",
+    "hint": "Type at least {n} characters to search.",
+    "press_enter": "Press Enter to search.",
+    "error": "The search could not be completed. Try again.",
+    "empty": "No results for “{q}”.",
+    "results_count": "{n} results",
+    "section_teams": "Teams",
+    "section_players": "Players",
+    "section_competitions": "Competitions",
+    "view_all": "View all competitions",
+    "no_results_for": "No results for “{q}”",
+    "searched_all_seasons": "Searching all seasons.",
+    "competitions_total": "There are {n} competitions in total."
+  },
+  "consent": {
+    "title": "Analytics and privacy",
+    "body": "We use PostHog (EU servers) to measure app usage and improve it. It is not enabled until you accept. More information in the",
+    "accept": "Accept",
+    "reject": "Reject",
+    "privacy": "Privacy policy"
   }
 }

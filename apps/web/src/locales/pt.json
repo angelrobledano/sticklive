@@ -5,13 +5,15 @@
     "nav_sections": "Secções",
     "email_label": "E-mail",
     "search_competitions": "Pesquisar liga, país ou federação",
-    "home_heading": "Jogos ao vivo"
+    "home_heading": "Jogos ao vivo",
+    "search_global": "Pesquisar equipas, jogadores ou competições"
   },
   "navigation": {
     "matches": "Jogos",
     "competitions": "Competições",
     "settings": "Definições",
-    "back": "Voltar"
+    "back": "Voltar",
+    "search": "Pesquisar"
   },
   "match_tabs": {
     "standing": "Classificação",
@@ -165,7 +167,10 @@
     "p2_short": "2ª",
     "ot_short": "PR",
     "penalties_efficiency": "Eficácia de penáltis",
-    "direct_fouls_efficiency": "Eficácia de livres diretos"
+    "direct_fouls_efficiency": "Eficácia de livres diretos",
+    "freshness_fresh": "Atualizado há {s} s",
+    "freshness_stale": "Sem atualizações há {s} s · possível atraso",
+    "freshness_down": "Sem sinal · última atualização há {s} s"
   },
   "playoffs": {
     "round_of_16": "Oitavos",
@@ -342,5 +347,37 @@
   },
   "fixtures": {
     "matchday": "Jornada {n}"
+  },
+  "search": {
+    "title": "Pesquisar",
+    "placeholder": "Pesquisar equipa, jogador ou competição…",
+    "clear": "Limpar pesquisa",
+    "hint": "Escreve pelo menos {n} letras para pesquisar.",
+    "press_enter": "Prime Enter para pesquisar.",
+    "error": "Não foi possível concluir a pesquisa. Tenta novamente.",
+    "empty": "Sem resultados para «{q}».",
+    "results_count": "{n} resultados",
+    "section_teams": "Equipas",
+    "section_players": "Jogadores",
+    "section_competitions": "Competições",
+    "view_all": "Ver todas as competições",
+    "no_results_for": "Sem resultados para «{q}»",
+    "searched_all_seasons": "Pesquisa em todas as temporadas.",
+    "competitions_total": "Há {n} competições no total."
+  },
+  "consent": {
+    "title": "Analítica e privacidade",
+    "body": "Usamos o PostHog (servidores na UE) para medir o uso da app e melhorá-la. Não é ativado até que aceites. Mais informação na",
+    "accept": "Aceitar",
+    "reject": "Rejeitar",
+    "privacy": "Política de privacidade"
+  },
+  "notif_presets": {
+    "push_offer_title": "Ativa os avisos",
+    "push_offer_desc": "Permite as notificações neste dispositivo para receberes os alertas das tuas equipas.",
+    "push_offer_cta": "Ativar avisos",
+    "key_events": {
+      "desc": "Início do jogo, golos, cartões azuis, faltas diretas e resultado final."
+    }
   }
 }

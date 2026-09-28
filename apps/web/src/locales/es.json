@@ -5,13 +5,15 @@
     "nav_sections": "Secciones",
     "email_label": "Correo electrónico",
     "search_competitions": "Buscar liga, país o federación",
-    "home_heading": "Partidos en directo"
+    "home_heading": "Partidos en directo",
+    "search_global": "Buscar equipos, jugadores o competiciones"
   },
   "navigation": {
     "matches": "Partidos",
     "competitions": "Competiciones",
     "settings": "Ajustes",
-    "back": "Volver"
+    "back": "Volver",
+    "search": "Buscar"
   },
   "notif_presets": {
     "title": "¿Qué quieres recibir?",
@@ -21,7 +23,7 @@
     },
     "key_events": {
       "label": "Eventos clave",
-      "desc": "Goles, tarjetas azules, faltas directas y resultado final."
+      "desc": "Inicio del partido, goles, tarjetas azules, faltas directas y resultado final."
     },
     "results": {
       "label": "Resultados",
@@ -30,7 +32,10 @@
     "silent": {
       "label": "Silencioso",
       "desc": "Podrás seguirlo desde la aplicación."
-    }
+    },
+    "push_offer_title": "Activa los avisos",
+    "push_offer_desc": "Permite las notificaciones en este dispositivo para recibir las alertas de tus equipos.",
+    "push_offer_cta": "Activar avisos"
   },
   "match_tabs": {
     "standing": "Clasificación",
@@ -206,7 +211,10 @@
     "p2_short": "2ª",
     "ot_short": "PR",
     "penalties_efficiency": "Efectividad penaltis",
-    "direct_fouls_efficiency": "Efectividad faltas directas"
+    "direct_fouls_efficiency": "Efectividad faltas directas",
+    "freshness_fresh": "Actualizado hace {s} s",
+    "freshness_stale": "Sin actualizaciones hace {s} s · posible desfase",
+    "freshness_down": "Sin señal · última actualización hace {s} s"
   },
   "playoffs": {
     "round_of_16": "Octavos",
@@ -403,5 +411,29 @@
     "pos_df": "Defensa",
     "pos_fw": "Delantero",
     "pos_pl": "Jugador"
+  },
+  "search": {
+    "title": "Buscar",
+    "placeholder": "Buscar equipo, jugador o competición…",
+    "clear": "Limpiar búsqueda",
+    "hint": "Escribe al menos {n} letras para buscar.",
+    "press_enter": "Pulsa Enter para buscar.",
+    "error": "No se pudo completar la búsqueda. Inténtalo de nuevo.",
+    "empty": "No hay resultados para «{q}».",
+    "results_count": "{n} resultados",
+    "section_teams": "Equipos",
+    "section_players": "Jugadores",
+    "section_competitions": "Competiciones",
+    "view_all": "Ver todas las competiciones",
+    "no_results_for": "Sin resultados para «{q}»",
+    "searched_all_seasons": "Se busca en todas las temporadas.",
+    "competitions_total": "Hay {n} competiciones en total."
+  },
+  "consent": {
+    "title": "Analítica y privacidad",
+    "body": "Usamos PostHog (servidores en la UE) para medir el uso de la app y mejorarla. No se activa hasta que lo aceptes. Más información en la",
+    "accept": "Aceptar",
+    "reject": "Rechazar",
+    "privacy": "Política de privacidad"
   }
 }
