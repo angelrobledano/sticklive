@@ -12,7 +12,10 @@
     "competitions_tabs": "Competition list sections",
     "live_goal": "Goal: {home} {h}-{a} {away}",
     "live_start": "Kick-off {home} - {away}",
-    "live_end": "Full time: {home} {h}-{a} {away}"
+    "live_end": "Full time: {home} {h}-{a} {away}",
+    "competitions_index": "All competitions",
+    "navigating": "Loading…",
+    "view_match": "View match: {home} - {away}"
   },
   "navigation": {
     "matches": "Matches",
@@ -379,7 +382,10 @@
     "no_date": "No date",
     "form_w": "W",
     "form_d": "D",
-    "form_l": "L"
+    "form_l": "L",
+    "other_teams": "Other club teams",
+    "search_teams": "Search teams",
+    "filial": "Reserve team"
   },
   "player": {
     "current_team": "Current team",
@@ -402,7 +408,10 @@
     "pos_gk": "Goalkeeper",
     "pos_df": "Defender",
     "pos_fw": "Forward",
-    "pos_pl": "Player"
+    "pos_pl": "Player",
+    "career": "Career",
+    "career_current": "Current",
+    "career_totals": "Career totals"
   },
   "fixtures": {
     "matchday": "Matchday {n}"
@@ -451,5 +460,16 @@
   "offline": {
     "banner": "Offline — showing saved data",
     "retry": "Retry"
+  },
+  "competition": {
+    "index_title": "Teams and matches",
+    "index_teams": "Teams",
+    "index_rounds": "Matchdays",
+    "index_matches": "Matches"
+  },
+  "competitions": {
+    "all_index": "All competitions ({n})",
+    "international": "International",
+    "unclassified": "Unclassified"
   }
 }

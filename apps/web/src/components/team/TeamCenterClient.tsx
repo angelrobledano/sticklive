@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import type { TeamDetail, TeamMatchSummary, SquadPlayer } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
+import { TeamName } from '@/components/shared/TeamName';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { playerDisplayName, toTitleCase, clubName } from '@/lib/names';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
@@ -12,8 +13,75 @@ import { ShareButton } from '@/components/shared/ShareButton';
 import { useT } from '@/lib/i18n';
 import { APP_TZ } from '@/lib/match-time';
 
+// ─── Sección de club (#196/#197) ───────────────────────────────────────
+// La API `team-detail` ya devuelve los campos de sección (club × género ×
+// categoría × filial) y las otras secciones del club. El DTO base
+// (`@/lib/api/types`) aún no los declara; se amplían aquí en vez de tocar un
+// fichero compartido fuera de este lote. Todos los campos son opcionales, así
+// que un `TeamDetail` "antiguo" sigue siendo asignable.
+export interface TeamSectionFields {
+  gender?: string | null;
+  ageCategory?: string | null;
+  squadLevel?: number | null;
+  teamType?: string | null;
+  sectionSuffix?: string;
+}
+
+export interface ClubTeamSummary extends TeamSectionFields {
+  id: string;
+  name: string;
+  shortName: string | null;
+  logoUrl: string | null;
+}
+
+export type TeamDetailView = TeamDetail & {
+  team: TeamDetail['team'] & TeamSectionFields;
+  clubTeams?: ClubTeamSummary[];
+};
 
 // ─── Helpers ───────────────────────────────────────────────────────────
+
+/** Categorías con etiqueta propia en `age_categories.*` (migración 017). */
+const KNOWN_AGE_CATEGORIES = new Set([
+  'senior', 'juvenil', 'junior', 'infantil', 'alevin', 'benjamin', 'prebenjamin', 'veteranos', 'base',
+]);
+
+/**
+ * #196: letra de filial ('B','C'…) para el badge; '' para el primer equipo.
+ * Espeja `squadLevelLetter` de `apps/api/src/lib/team-section.ts` (la web no
+ * puede importar del workspace de la API).
+ */
+function squadLevelLetter(level: number | null | undefined): string {
+  const n = typeof level === 'number' && Number.isFinite(level) ? Math.trunc(level) : 1;
+  if (n < 2) return '';
+  return String.fromCharCode(64 + Math.min(n, 26));
+}
+
+/**
+ * #196: etiqueta legible de la sección (género · categoría · filial) para
+ * desambiguar dos fichas del mismo club. Pura: recibe `t` para poder testearla
+ * sin proveedor i18n. Devuelve '' si no hay nada que mostrar.
+ */
+export function sectionBadgeText(
+  team: { gender?: string | null; ageCategory?: string | null; squadLevel?: number | null },
+  t: (key: string) => string,
+): string {
+  const parts: string[] = [];
+  if (team.gender === 'female') parts.push(t('common.female'));
+  else if (team.gender === 'male') parts.push(t('common.male'));
+  if (team.ageCategory && KNOWN_AGE_CATEGORIES.has(team.ageCategory)) {
+    parts.push(t(`age_categories.${team.ageCategory}`));
+  }
+  const letter = squadLevelLetter(team.squadLevel);
+  if (letter) parts.push(`${t('team.filial')} ${letter}`);
+  return parts.join(' · ');
+}
+
+/** URL de la búsqueda global pre-filtrada por el club (no duplica el buscador). */
+export function teamSearchHref(team: TeamDetailView['team']): string {
+  const q = clubName(team.club?.canonicalName ?? team.name);
+  return `/search?q=${encodeURIComponent(q)}`;
+}
 
 // La zona de la competición del partido (columna 042); cae a Europe/Madrid. Un
 // equipo puede jugar en varias competiciones, así que la TZ es por partido.
@@ -48,10 +116,13 @@ function FormBadge({ result }: { result: string }) {
   );
 }
 
-function TeamHeader({ data }: { data: TeamDetail }) {
+function TeamHeader({ data }: { data: TeamDetailView }) {
   const { team, standing } = data;
   const { t } = useT();
   const form = standing?.form?.slice(-5) ?? [];
+  // #196: dos secciones del mismo club comparten nombre canónico; el badge las
+  // distingue (p. ej. "Femenino · Senior", "Masculino · Senior · Filial B").
+  const section = sectionBadgeText(team, t);
 
   return (
     <div className="card px-5 py-5 space-y-4">
@@ -65,6 +136,11 @@ function TeamHeader({ data }: { data: TeamDetail }) {
                 team. Pasa por clubName() igual, así no hay regresión visual. */}
             {clubName(team.club?.canonicalName ?? team.name)}
           </h1>
+          {section && (
+            <span className="inline-block mt-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              {section}
+            </span>
+          )}
           {team.city && (
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{team.city}</p>
           )}
@@ -102,6 +178,68 @@ function TeamHeader({ data }: { data: TeamDetail }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Club: otras secciones + búsqueda de equipos (#197) ───────────────
+
+function ClubSection({ data }: { data: TeamDetailView }) {
+  const { t } = useT();
+  const { team, clubTeams = [] } = data;
+
+  return (
+    <div className="card overflow-hidden">
+      {/* Otras secciones del mismo club (club × género × categoría × filial).
+          Con el backfill 1:1 actual estará vacío en casi todos los casos. */}
+      {clubTeams.length > 0 && (
+        <>
+          <div className="px-4 pt-3 pb-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+              {t('team.other_teams')}
+            </p>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+            {clubTeams.map((ct) => (
+              <Link
+                key={ct.id}
+                href={`/teams/${ct.id}`}
+                className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group"
+              >
+                <TeamShield teamId={ct.id} teamName={ct.name} size={28} />
+                <TeamName
+                  name={ct.name}
+                  shortName={ct.shortName}
+                  suffix={ct.sectionSuffix}
+                  className="flex-1 min-w-0 text-sm font-medium text-slate-800 dark:text-slate-200 truncate group-hover:text-rink-passion transition-colors"
+                />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-slate-300 dark:text-slate-700 shrink-0">
+                  <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Búsqueda de equipos: enlaza al buscador global pre-filtrado por club
+          (no duplicamos `/search`). */}
+      <Link
+        href={teamSearchHref(team)}
+        className={`flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group ${
+          clubTeams.length > 0 ? 'border-t border-slate-100 dark:border-slate-800' : ''
+        }`}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-slate-400 dark:text-slate-600 shrink-0" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" strokeLinecap="round" />
+        </svg>
+        <span className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-rink-passion transition-colors">
+          {t('team.search_teams')}
+        </span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-slate-300 dark:text-slate-700 shrink-0">
+          <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </Link>
     </div>
   );
 }
@@ -588,7 +726,7 @@ export function teamTabFromParam(param: string | null, visible: readonly Tab[] =
   return tab && visible.includes(tab) ? tab : null;
 }
 
-export function TeamCenterClient({ data }: { data: TeamDetail }) {
+export function TeamCenterClient({ data }: { data: TeamDetailView }) {
   const [activeTab, setActiveTab] = useState<Tab>('Resumen');
   const { t } = useT();
 
@@ -618,6 +756,8 @@ export function TeamCenterClient({ data }: { data: TeamDetail }) {
   return (
     <div className="space-y-4">
       <TeamHeader data={data} />
+
+      <ClubSection data={data} />
 
       {/* Pestañas */}
       <div className="flex gap-0 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none">

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useT } from '@/lib/i18n';
+import { NavigationProgress } from '@/components/layout/NavigationProgress';
 
 const NAV_ITEMS = [
   {
@@ -82,35 +83,43 @@ export function BottomNav() {
   };
 
   return (
-    <nav aria-label={t('a11y.nav_primary')} className="fixed bottom-0 left-0 right-0 z-50 md:hidden
-                    bg-white dark:bg-slate-900
-                    border-t border-slate-200 dark:border-slate-800
-                    pb-[env(safe-area-inset-bottom)]">
-      <ul className="flex items-stretch h-16">
-        {NAV_ITEMS.map(({ href, labelKey, icon }) => {
-          const label = t(labelKey);
-          const active = isActive(href);
-          return (
-            <li key={href} className="flex-1">
-              <Link
-                href={href}
-                aria-current={active ? 'page' : undefined}
-                className={`flex flex-col items-center justify-center h-full gap-0.5 text-xs
-                            transition-colors duration-150
-                            ${active
-                              ? 'text-rink-passion dark:text-red-500'
-                              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 active:text-slate-800 dark:active:text-slate-200'
-                            }`}
-              >
-                {icon(active)}
-                <span className={`text-[11px] leading-none whitespace-nowrap ${active ? 'font-semibold' : 'font-normal'}`}>
-                  {label}
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+    <>
+      {/*
+        #345: barra global de navegación pendiente (client-only, sin Suspense de
+        ruta). Se monta aquí porque BottomNav es el único componente cliente que
+        layout.tsx renderiza en TODAS las páginas. Ver NavigationProgress.
+      */}
+      <NavigationProgress />
+      <nav aria-label={t('a11y.nav_primary')} className="fixed bottom-0 left-0 right-0 z-50 md:hidden
+                      bg-white dark:bg-slate-900
+                      border-t border-slate-200 dark:border-slate-800
+                      pb-[env(safe-area-inset-bottom)]">
+        <ul className="flex items-stretch h-16">
+          {NAV_ITEMS.map(({ href, labelKey, icon }) => {
+            const label = t(labelKey);
+            const active = isActive(href);
+            return (
+              <li key={href} className="flex-1">
+                <Link
+                  href={href}
+                  aria-current={active ? 'page' : undefined}
+                  className={`flex flex-col items-center justify-center h-full gap-0.5 text-xs
+                              transition-colors duration-150
+                              ${active
+                                ? 'text-rink-passion dark:text-red-500'
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 active:text-slate-800 dark:active:text-slate-200'
+                              }`}
+                >
+                  {icon(active)}
+                  <span className={`text-[11px] leading-none whitespace-nowrap ${active ? 'font-semibold' : 'font-normal'}`}>
+                    {label}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    </>
   );
 }

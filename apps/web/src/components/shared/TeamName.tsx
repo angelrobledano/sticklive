@@ -9,10 +9,12 @@ import { clubName } from '@/lib/names';
  * `mobile="abbr"` lo recorta a 3-4 caracteres (densidad crítica: brackets,
  * marcadores, modales).
  */
-export function TeamName({ name, shortName, mobile = 'short', className = '' }: {
+export function TeamName({ name, shortName, mobile = 'short', suffix, className = '' }: {
   name: string;
   shortName: string | null;
   mobile?: 'short' | 'abbr';
+  /** #196: sufijo de sección ('F', 'B', 'F · B') para desambiguar equipos del mismo club. */
+  suffix?: string | null;
   className?: string;
 }) {
   const compact = shortName ?? clubName(name);
@@ -22,6 +24,9 @@ export function TeamName({ name, shortName, mobile = 'short', className = '' }: 
     <span className={className}>
       <span className="hidden md:inline">{clubName(name)}</span>
       <span className="md:hidden">{mobileText}</span>
+      {suffix ? (
+        <span className="ml-1 text-[11px] font-normal text-slate-400 dark:text-slate-500">{suffix}</span>
+      ) : null}
     </span>
   );
 }

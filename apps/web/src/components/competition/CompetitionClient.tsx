@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useCallback, Suspense, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import type { SeasonOverview, CompetitionSeason, SeasonStats } from '@/lib/api/client';
@@ -10,6 +11,8 @@ import { GameweeksTab } from './GameweeksTab';
 import { PlayoffsTab } from './PlayoffsTab';
 import { StatsLeadersTab } from './StatsLeadersTab';
 import { tt } from '@/components/search/translate';
+import { roundLabel } from './format';
+import { clubName } from '@/lib/names';
 
 // ─── Componente principal ───
 
@@ -36,6 +39,31 @@ export function competitionTabFromParam(param: string | null, visible: readonly 
   if (!param) return null;
   const tab = (Object.keys(TAB_SLUG) as MainTab[]).find((k) => TAB_SLUG[k] === param);
   return tab && visible.includes(tab) ? tab : null;
+}
+
+export interface CompetitionIndexTeam {
+  id: string;
+  name: string;
+}
+
+/**
+ * #339: equipos únicos de la competición (clasificación + partidos) para
+ * enlazarlos en el HTML server-side. Antes los equipos solo eran enlazables via
+ * la pestaña Clasificación (que no existe sin clasificación publicada). Función
+ * pura, testeable sin navegador.
+ */
+export function competitionTeamsForIndex(
+  data: Pick<SeasonOverview, 'standings' | 'matches'>,
+): CompetitionIndexTeam[] {
+  const map = new Map<string, string>();
+  for (const s of data.standings) map.set(s.teamId, s.teamShortName ?? s.teamName);
+  for (const m of data.matches) {
+    if (m.homeTeam?.id) map.set(m.homeTeam.id, m.homeTeam.shortName ?? m.homeTeam.name);
+    if (m.awayTeam?.id) map.set(m.awayTeam.id, m.awayTeam.shortName ?? m.awayTeam.name);
+  }
+  return [...map.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -91,6 +119,18 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
     params.set('tab', TAB_SLUG[tab]);
     router.replace(`${pathname}?${params}`, { scroll: false });
   }, [sp, pathname, router]);
+
+  // #339: índice enlazado server-side. Los equipos/partidos solo existían en
+  // pestañas cliente; este índice viaja en el HTML inicial para el crawler.
+  const teamsIndex = useMemo(
+    () => competitionTeamsForIndex(data),
+    [data],
+  );
+  const compId = competitionId ?? data.season.competitionId;
+  const seasonParam = sp.get('season');
+  const fixturesHref = (journey: number) =>
+    `/competitions/${compId}?tab=fixtures&journey=${journey}` +
+    (seasonParam ? `&season=${encodeURIComponent(seasonParam)}` : '');
 
   // #358: patrón ARIA tabs con roving tabindex y navegación por flechas.
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -152,6 +192,77 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
       )}
       {currentTab === 'Estadísticas'  && stats && <StatsLeadersTab stats={stats} />}
       </div>
+
+      {/* #339: grafo de enlaces HTML. Jornadas, partidos y equipos solo eran
+          descubribles dentro de pestañas cliente; este índice (plegado, no
+          oculto) los enlaza server-side para que el crawler los encuentre. */}
+      {(teamsIndex.length > 0 || data.matches.length > 0) && (
+        <details className="card px-4 py-3">
+          <summary className="cursor-pointer select-none text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            {tt(t, 'competition.index_title', 'Equipos y partidos')}
+          </summary>
+
+          {teamsIndex.length > 0 && (
+            <section className="pt-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-1">
+                {tt(t, 'competition.index_teams', 'Equipos')}
+              </p>
+              <ul className="flex flex-wrap gap-x-3 gap-y-0.5">
+                {teamsIndex.map((tm) => (
+                  <li key={tm.id}>
+                    <Link
+                      href={`/teams/${tm.id}`}
+                      className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-red-400 hover:underline"
+                    >
+                      {clubName(tm.name)}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {data.rounds.length > 0 && (
+            <section className="pt-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-1">
+                {tt(t, 'competition.index_rounds', 'Jornadas')}
+              </p>
+              <ul className="flex flex-wrap gap-x-3 gap-y-0.5">
+                {data.rounds.map((r) => (
+                  <li key={r.id}>
+                    <Link
+                      href={fixturesHref(r.number)}
+                      className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-red-400 hover:underline"
+                    >
+                      {roundLabel(r, t)}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {data.matches.length > 0 && (
+            <section className="pt-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-1">
+                {tt(t, 'competition.index_matches', 'Partidos')}
+              </p>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
+                {data.matches.map((m) => (
+                  <li key={m.id}>
+                    <Link
+                      href={`/matches/${m.id}`}
+                      className="block truncate text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-red-400 hover:underline"
+                    >
+                      {m.homeTeam.shortName ?? m.homeTeam.name} – {m.awayTeam.shortName ?? m.awayTeam.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </details>
+      )}
     </div>
   );
 }

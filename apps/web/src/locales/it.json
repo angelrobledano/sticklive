@@ -12,7 +12,10 @@
     "competitions_tabs": "Sezioni dell'elenco competizioni",
     "live_goal": "Gol: {home} {h}-{a} {away}",
     "live_start": "Inizia {home} - {away}",
-    "live_end": "Finale: {home} {h}-{a} {away}"
+    "live_end": "Finale: {home} {h}-{a} {away}",
+    "competitions_index": "Tutte le competizioni",
+    "navigating": "Caricamento…",
+    "view_match": "Vedi partita: {home} - {away}"
   },
   "navigation": {
     "matches": "Partite",
@@ -346,7 +349,10 @@
     "no_date": "Senza data",
     "form_w": "V",
     "form_d": "N",
-    "form_l": "P"
+    "form_l": "P",
+    "other_teams": "Altre squadre del club",
+    "search_teams": "Cerca squadre",
+    "filial": "Squadra B"
   },
   "player": {
     "current_team": "Squadra attuale",
@@ -369,7 +375,10 @@
     "pos_gk": "Portiere",
     "pos_df": "Difensore",
     "pos_fw": "Attaccante",
-    "pos_pl": "Giocatore"
+    "pos_pl": "Giocatore",
+    "career": "Carriera",
+    "career_current": "Attuale",
+    "career_totals": "Totali in carriera"
   },
   "fixtures": {
     "matchday": "Giornata {n}"
@@ -431,5 +440,16 @@
   "offline": {
     "banner": "Offline — dati salvati visualizzati",
     "retry": "Riprova"
+  },
+  "competition": {
+    "index_title": "Squadre e partite",
+    "index_teams": "Squadre",
+    "index_rounds": "Giornate",
+    "index_matches": "Partite"
+  },
+  "competitions": {
+    "all_index": "Tutte le competizioni ({n})",
+    "international": "Internazionale",
+    "unclassified": "Non classificate"
   }
 }

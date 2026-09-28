@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { isUuid } from '../lib/uuid.js';
+import { buildPlayerCareer, type CareerRow } from '../lib/player-career.js';
 
 export const playerDetailRouter = new Hono();
 
@@ -64,8 +65,11 @@ playerDetailRouter.get('/:id', async (c) => {
     if (playerRes.rows.length === 0) return c.json({ error: 'Player not found' }, 404);
     const p = playerRes.rows[0]!;
 
-    // 2) Equipo actual (temporada activa, registro más reciente)
-    const teamRes = await db.query<TeamRow>(`
+    // 2-4) Equipo actual, stats de la temporada activa y carrera (#217). Las
+    // tres consultas sólo dependen del id → en paralelo.
+    const [teamRes, statsRes, careerRes] = await Promise.all([
+      // 2) Equipo actual (temporada activa, registro más reciente)
+      db.query<TeamRow>(`
       SELECT
         t.id          AS team_id,
         t.name        AS team_name,
@@ -81,14 +85,12 @@ playerDetailRouter.get('/:id', async (c) => {
         AND tp.is_active  = TRUE
       ORDER BY s.start_date DESC NULLS LAST
       LIMIT 1
-    `, [id]);
+    `, [id]),
 
-    const teamRow = teamRes.rows[0] ?? null;
-
-    // 3) Stats por competición (temporada activa)
-    //    PJ = partidos en los que el jugador tiene al menos 1 evento (proxy)
-    //    Penaltis marcados: detail ILIKE cualquier variante positiva
-    const statsRes = await db.query<CompStatsRow>(`
+      // 3) Stats por competición (temporada activa)
+      //    PJ = partidos en los que el jugador tiene al menos 1 evento (proxy)
+      //    Penaltis marcados: detail ILIKE cualquier variante positiva
+      db.query<CompStatsRow>(`
       SELECT
         c.id                AS competition_id,
         c.name              AS competition_name,
@@ -115,9 +117,102 @@ playerDetailRouter.get('/:id', async (c) => {
         AND s.is_current = TRUE
       GROUP BY c.id, c.name, c.short_name
       ORDER BY goals DESC, pj DESC
-    `, [id]);
+    `, [id]),
 
-    // 4) Totales globales de la temporada (suma de todas las competiciones)
+      // 4) Carrera (#217): equipos por temporada desde DOS fuentes. La
+      // pertenencia (`team_players`) cubre 2025/26+; los eventos con `team_id`
+      // cubren el histórico sin plantilla. El NOT EXISTS evita contar dos veces
+      // un par (temporada, equipo) ya presente en `team_players`.
+      db.query<CareerRow>(`
+      SELECT
+        s.id            AS season_id,
+        s.name          AS season_name,
+        s.start_date    AS season_start,
+        s.is_current    AS is_current,
+        c.id            AS competition_id,
+        c.name          AS competition_name,
+        c.short_name    AS competition_short,
+        t.id            AS team_id,
+        t.name          AS team_name,
+        t.short_name    AS team_short_name,
+        t.logo_url      AS team_logo_url,
+        tp.jersey_number,
+        agg.pj, agg.goals, agg.blue_cards, agg.red_cards,
+        agg.penalties_total, agg.penalties_scored
+      FROM team_players tp
+      JOIN seasons s      ON s.id = tp.season_id
+      JOIN competitions c ON c.id = s.competition_id
+      JOIN teams t        ON t.id = tp.team_id
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(DISTINCT me.match_id)                          AS pj,
+          COUNT(*) FILTER (WHERE me.event_type = 'goal')       AS goals,
+          COUNT(*) FILTER (WHERE me.event_type = 'blue_card')  AS blue_cards,
+          COUNT(*) FILTER (WHERE me.event_type = 'red_card')   AS red_cards,
+          COUNT(*) FILTER (WHERE me.event_type = 'penalty')    AS penalties_total,
+          COUNT(*) FILTER (
+            WHERE me.event_type = 'penalty'
+              AND (
+                me.detail ILIKE '%gol%'
+                OR me.detail ILIKE '%marcado%'
+                OR me.detail ILIKE '%anotado%'
+                OR me.detail ILIKE '%dentro%'
+              )
+          )                                                     AS penalties_scored
+        FROM match_events me
+        JOIN matches m ON m.id = me.match_id
+        WHERE me.player_id = tp.player_id
+          AND me.team_id    = tp.team_id
+          AND m.season_id   = tp.season_id
+      ) agg ON TRUE
+      WHERE tp.player_id = $1
+
+      UNION ALL
+
+      SELECT
+        s.id, s.name, s.start_date, s.is_current,
+        c.id, c.name, c.short_name,
+        t.id, t.name, t.short_name, t.logo_url,
+        NULL::int AS jersey_number,
+        COUNT(DISTINCT me.match_id),
+        COUNT(*) FILTER (WHERE me.event_type = 'goal'),
+        COUNT(*) FILTER (WHERE me.event_type = 'blue_card'),
+        COUNT(*) FILTER (WHERE me.event_type = 'red_card'),
+        COUNT(*) FILTER (WHERE me.event_type = 'penalty'),
+        COUNT(*) FILTER (
+          WHERE me.event_type = 'penalty'
+            AND (
+              me.detail ILIKE '%gol%'
+              OR me.detail ILIKE '%marcado%'
+              OR me.detail ILIKE '%anotado%'
+              OR me.detail ILIKE '%dentro%'
+            )
+        )
+      FROM match_events me
+      JOIN matches m      ON m.id = me.match_id
+      JOIN seasons s      ON s.id = m.season_id
+      JOIN competitions c ON c.id = s.competition_id
+      JOIN teams t        ON t.id = me.team_id
+      WHERE me.player_id = $1
+        AND me.team_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM team_players tp
+          WHERE tp.player_id = me.player_id
+            AND tp.season_id = m.season_id
+            AND tp.team_id   = me.team_id
+        )
+      GROUP BY s.id, s.name, s.start_date, s.is_current,
+               c.id, c.name, c.short_name,
+               t.id, t.name, t.short_name, t.logo_url
+
+      ORDER BY season_start DESC NULLS LAST, season_name DESC,
+               team_name ASC, competition_name ASC
+    `, [id]),
+    ]);
+
+    const teamRow = teamRes.rows[0] ?? null;
+
+    // Totales globales de la temporada (suma de todas las competiciones)
     const totals = statsRes.rows.reduce(
       (acc, r) => ({
         pj:              acc.pj              + Number(r.pj),
@@ -150,6 +245,8 @@ playerDetailRouter.get('/:id', async (c) => {
         seasonId:     teamRow.season_id,
       } : null,
       seasonTotals: totals,
+      // #217: trayectoria completa (temporadas agrupadas + totales de carrera).
+      career: buildPlayerCareer(careerRes.rows),
       statsByCompetition: statsRes.rows.map((r) => ({
         competitionId:    r.competition_id,
         competitionName:  r.competition_name,

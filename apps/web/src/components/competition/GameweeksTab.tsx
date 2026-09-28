@@ -12,12 +12,56 @@ import { adsenseConfig, listAdInsertIndex } from '@/lib/ads';
 import { clubName } from '@/lib/names';
 import { tt } from '@/components/search/translate';
 import { fmtTime, madridDay, dayPillLabel, roundLabel } from './format';
+import { dayDiff, madridTodayKey } from '@/lib/match-time';
 
 /** Config AdSense (env inyectado en build). */
 const ADS = adsenseConfig();
 
 /** Sentinela interna para partidos sin fecha (no se traduce en el agrupado). */
 const NO_DATE = '__nodate__';
+
+/**
+ * #157: filtro inicial de la pestaña Jornadas. El defecto anterior era la
+ * última jornada jugada (o la primera ronda), pero una competición que aún no
+ * ha empezado y no trae `rounds`/`roundNumber` (OK Liga 26/27: 182 partidos, la
+ * primera jornada el 31/10) se quedaba con la lista vacía. Elegimos el DÍA MÁS
+ * CERCANO con partidos (mismo patrón que la home): si el partido elegido tiene
+ * jornada, activamos esa jornada; si no, esa fecha. A igual distancia gana el
+ * futuro (la próxima jornada con contenido). Función pura, testeable sin
+ * navegador.
+ */
+export type DefaultFilter =
+  | { journey: number; date: null }
+  | { journey: null; date: string };
+
+export function pickDefaultFilter(
+  rounds: SeasonRound[],
+  matches: SeasonMatch[],
+  todayKey: string,
+): DefaultFilter {
+  let bestDay: string | null = null;
+  let bestJourney: number | null = null;
+  let bestRank = Infinity;
+  for (const m of matches) {
+    const day = madridDay(m.scheduledAt, m.competitionTimezone);
+    if (!day) continue;
+    const diff = dayDiff(day, todayKey);
+    // Distancia absoluta; en empate, el futuro (diff ≥ 0) va antes (rank menor).
+    const rank = Math.abs(diff) * 2 + (diff < 0 ? 1 : 0);
+    if (rank < bestRank) {
+      bestRank = rank;
+      bestDay = day;
+      bestJourney = m.roundNumber;
+    }
+  }
+  if (bestDay != null) {
+    if (bestJourney != null) return { journey: bestJourney, date: null };
+    return { journey: null, date: bestDay };
+  }
+  // Sin fechas: primera jornada CON partidos; si no la hay, la primera ronda.
+  const withMatches = rounds.find((r) => matches.some((m) => m.roundNumber === r.number));
+  return { journey: withMatches?.number ?? rounds[0]?.number ?? 1, date: null };
+}
 
 function MatchCard({ match }: { match: SeasonMatch }) {
   const { t, locale } = useT();
@@ -154,23 +198,23 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
     return [...set].sort();
   }, [matches]);
 
-  // Jornada por defecto: la más reciente con partido jugado/en vivo.
-  const defaultJourney = useMemo(() => {
-    const active = matches
-      .filter((m) => m.status === 'finished' || m.status === 'live')
-      .map((m) => m.roundNumber ?? 0);
-    if (active.length > 0) return Math.max(...active);
-    return orderedRounds[0]?.number ?? 1;
-  }, [matches, orderedRounds]);
+  // #157: filtro inicial con contenido (día/jornada más cercano a hoy).
+  const fallback = useMemo(
+    () => pickDefaultFilter(orderedRounds, matches, madridTodayKey()),
+    [orderedRounds, matches],
+  );
 
   // #365: validar el parámetro de jornada — `?journey=basura` daba NaN y dejaba
-  // la lista vacía en silencio. Si no es un entero positivo, usamos la jornada
-  // por defecto.
+  // la lista vacía en silencio. Si no es un entero positivo, usamos el defecto.
   const parsedJourney = journeyParam != null && /^\d+$/.test(journeyParam)
     ? Number(journeyParam)
     : null;
-  const activeJourney = parsedJourney ?? defaultJourney;
   const selectedTeam = teamParam ? teams.find((tm) => tm.id === teamParam) ?? null : null;
+
+  // El filtro por defecto solo aplica si la URL no pide jornada/fecha/equipo.
+  const hasExplicitFilter = parsedJourney != null || !!dateParam || selectedTeam != null;
+  const activeDate = dateParam || (hasExplicitFilter ? null : fallback.date) || null;
+  const activeJourney = parsedJourney ?? (activeDate != null ? null : fallback.journey);
 
   // Exclusión mutua: equipo > fecha > jornada.
   const filtered = useMemo(() => {
@@ -179,13 +223,13 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
         .filter((m) => m.homeTeam?.id === selectedTeam.id || m.awayTeam?.id === selectedTeam.id)
         .sort((a, b) => (a.scheduledAt ?? '').localeCompare(b.scheduledAt ?? ''));
     }
-    if (dateParam) {
+    if (activeDate) {
       return matches
-        .filter((m) => madridDay(m.scheduledAt, m.competitionTimezone) === dateParam)
+        .filter((m) => madridDay(m.scheduledAt, m.competitionTimezone) === activeDate)
         .sort((a, b) => (a.scheduledAt ?? '').localeCompare(b.scheduledAt ?? ''));
     }
     return matches.filter((m) => (m.roundNumber ?? null) === activeJourney);
-  }, [matches, selectedTeam, dateParam, activeJourney]);
+  }, [matches, selectedTeam, activeDate, activeJourney]);
 
   // Sincroniza la URL aplicando exclusión mutua (preserva otros params, p. ej. season).
   const apply = useCallback((patch: { journey?: number; date?: string; team?: string }) => {
@@ -202,7 +246,7 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [sp, pathname, router]);
 
-  const journeyMode = !selectedTeam && !dateParam;
+  const journeyMode = !selectedTeam && !activeDate;
 
   // Banner "entre resultados" en la lista plana (jornada/fecha). -1 si no procede.
   const adIndex = useMemo(
@@ -216,25 +260,29 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
       <div className="space-y-2.5">
         {/* Jornada + chip de equipo activo */}
         <div className="flex items-center gap-2">
-          <div className="relative flex-1 min-w-0">
-            <select
-              value={journeyMode ? String(activeJourney) : ''}
-              onChange={(e) => { if (e.target.value) apply({ journey: Number(e.target.value) }); }}
-              className="w-full min-h-[40px] pl-3 pr-8 rounded-xl border border-slate-200 dark:border-slate-700
-                         bg-white dark:bg-slate-900 text-sm font-medium text-slate-700 dark:text-slate-200
-                         focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-red-400 cursor-pointer appearance-none"
-              aria-label={t('fixtures.by_round')}
-            >
-              {!journeyMode && <option value="">{t('fixtures.by_round')}</option>}
-              {orderedRounds.map((r) => (
-                <option key={r.id} value={r.number}>{roundLabel(r, t)}</option>
-              ))}
-            </select>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
-                 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none">
-              <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
+          {/* #157: si la fuente no trae jornadas (OK Liga), el selector salía
+              vacío; en ese caso se oculta y se navega por las pastillas de fecha. */}
+          {orderedRounds.length > 0 && (
+            <div className="relative flex-1 min-w-0">
+              <select
+                value={journeyMode && activeJourney != null ? String(activeJourney) : ''}
+                onChange={(e) => { if (e.target.value) apply({ journey: Number(e.target.value) }); }}
+                className="w-full min-h-[40px] pl-3 pr-8 rounded-xl border border-slate-200 dark:border-slate-700
+                           bg-white dark:bg-slate-900 text-sm font-medium text-slate-700 dark:text-slate-200
+                           focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-red-400 cursor-pointer appearance-none"
+                aria-label={t('fixtures.by_round')}
+              >
+                {!journeyMode && <option value="">{t('fixtures.by_round')}</option>}
+                {orderedRounds.map((r) => (
+                  <option key={r.id} value={r.number}>{roundLabel(r, t)}</option>
+                ))}
+              </select>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
+                   className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none">
+                <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          )}
           {selectedTeam && (
             <button
               onClick={() => apply({})}
@@ -258,7 +306,7 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
                 key={d}
                 onClick={() => apply({ date: d })}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
-                  !selectedTeam && dateParam === d
+                  !selectedTeam && activeDate === d
                     ? 'bg-rink-passion text-white'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}

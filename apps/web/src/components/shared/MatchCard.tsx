@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { Match } from '@/lib/api/client';
+import type { Match, TeamSummary } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName } from '@/components/shared/TeamName';
 import { useT } from '@/lib/i18n';
@@ -31,23 +31,40 @@ function formatTime(iso: string | null, tz?: string | null, locale = 'es'): stri
   });
 }
 
+export interface TeamLinkTarget {
+  id: string;
+  href: string;
+  label: string;
+}
+
+/**
+ * #339: extrae de un equipo (venga de un partido) el enlace a su ficha.
+ * Devuelve `null` si no hay equipo o no trae id — evita emitir en el HTML un
+ * enlace roto `/teams/undefined`. Función pura, testeable sin navegador.
+ */
+export function teamLinkTarget(team: TeamSummary | undefined | null): TeamLinkTarget | null {
+  if (!team?.id) return null;
+  return {
+    id: team.id,
+    href: `/teams/${team.id}`,
+    label: team.shortName ?? team.name,
+  };
+}
+
 function TeamBlock({
   team,
   align,
 }: {
-  team: { id: string; name: string; shortName: string | null; logoUrl: string | null } | undefined;
+  team: TeamSummary | undefined;
   align: 'left' | 'right';
 }) {
   const name = team?.shortName ?? team?.name ?? '???';
   const isRight = align === 'right';
+  const target = teamLinkTarget(team);
+  const row = `flex items-center gap-2 min-w-0 ${isRight ? 'flex-row-reverse' : ''}`;
 
-  // Sin enlace propio: en una lista de partidos, TODA la tarjeta lleva al
-  // detalle del partido (expectativa del usuario en esta vista). La ficha
-  // del equipo es accesible desde el detalle.
-  return (
-    <div
-      className={`flex items-center gap-2 min-w-0 flex-1 ${isRight ? 'flex-row-reverse' : ''}`}
-    >
+  const content = (
+    <>
       {/* Escudo / placeholder */}
       <TeamShield teamId={team?.id ?? ''} teamName={name} size={32} className="shrink-0" />
       {/* Nombre — adaptativo: oficial en escritorio, siglas en móvil (marcador = densidad crítica) */}
@@ -62,6 +79,24 @@ function TeamBlock({
         <span className={`text-sm font-medium text-slate-800 dark:text-slate-200 truncate ${isRight ? 'text-right' : 'text-left'}`}>
           {name}
         </span>
+      )}
+    </>
+  );
+
+  return (
+    <div className={`${row} flex-1`}>
+      {target ? (
+        // #339: escudo+nombre enlazan a la ficha del equipo. Solo esta zona
+        // captura el click; el resto del bloque deja pasar a la capa que lleva
+        // al partido, así la tarjeta conserva su comportamiento previo.
+        <Link
+          href={target.href}
+          className={`${row} pointer-events-auto rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion`}
+        >
+          {content}
+        </Link>
+      ) : (
+        content
       )}
     </div>
   );
@@ -176,18 +211,34 @@ function ScoreBlock({ match }: { match: Match }) {
 }
 
 export function MatchCard({ match, isFavoriteTeam = false }: MatchCardProps) {
+  const { t } = useT();
+  const homeName = match.homeTeam?.shortName ?? match.homeTeam?.name ?? match.homeTeamId;
+  const awayName = match.awayTeam?.shortName ?? match.awayTeam?.name ?? match.awayTeamId;
+
   return (
-    <Link
-      href={`/matches/${match.id}`}
-      className={`card flex items-center px-3 py-2.5 gap-2 transition-colors block
+    <div
+      className={`card relative flex items-center px-3 py-2.5 gap-2 transition-colors
                   hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600
                   ${isFavoriteTeam ? 'ring-1 ring-rink-passion/30 dark:ring-rink-passion/40' : ''}`}
     >
-      <TeamBlock team={match.homeTeam} align="left" />
-      <div className="shrink-0">
-        <ScoreBlock match={match} />
+      {/*
+        #339: toda la tarjeta sigue llevando al detalle del partido. Es una capa
+        (z-0) por DEBAJO de los enlaces de equipo (z-10) — no se anidan <a>: el
+        nombre/escudo de cada equipo va a su ficha y el resto de la tarjeta
+        (marcador, huecos) al partido.
+      */}
+      <Link
+        href={`/matches/${match.id}`}
+        aria-label={tt(t, 'a11y.view_match', 'Ver partido: {home} - {away}', { home: homeName, away: awayName })}
+        className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion"
+      />
+      <div className="pointer-events-none relative z-10 flex w-full items-center gap-2">
+        <TeamBlock team={match.homeTeam} align="left" />
+        <div className="shrink-0">
+          <ScoreBlock match={match} />
+        </div>
+        <TeamBlock team={match.awayTeam} align="right" />
       </div>
-      <TeamBlock team={match.awayTeam} align="right" />
-    </Link>
+    </div>
   );
 }

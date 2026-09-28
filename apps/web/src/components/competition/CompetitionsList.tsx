@@ -60,6 +60,42 @@ function countrySortKey(code: string | null): number {
   return i === -1 ? 100 : i;
 }
 
+/**
+ * #339: estructura del listado para el grafo de enlaces HTML. Los acordeones
+ * solo montan en el DOM las filas de los países abiertos (9/105 competiciones
+ * enlazadas); al renderizar también un índice completo y siempre presente, este
+ * orden pasa al HTML inicial, que es lo que descubren los crawlers.
+ *
+ * Internacional aparte; el resto por país (orden fijo del producto) y dentro de
+ * cada país por importancia. Función pura, testeable sin navegador.
+ */
+export interface CompetitionsIndex {
+  international: CompetitionSummary[];
+  byCountry: [string, CompetitionSummary[]][];
+}
+
+export function groupCompetitionsForIndex(
+  competitions: CompetitionSummary[],
+  locale: string,
+): CompetitionsIndex {
+  const international = orderByImportance(
+    competitions.filter((c) => c.scope === 'international'),
+    locale,
+  );
+  const map = new Map<string, CompetitionSummary[]>();
+  for (const c of competitions.filter((c) => c.scope !== 'international')) {
+    const key = c.country ?? 'ZZ';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(c);
+  }
+  for (const [k, arr] of map) map.set(k, orderByImportance(arr, locale));
+  const byCountry = [...map.entries()].sort(([a], [b]) => {
+    const ks = countrySortKey(a) - countrySortKey(b);
+    return ks !== 0 ? ks : countryDisplayName(a, locale).localeCompare(countryDisplayName(b, locale), locale);
+  });
+  return { international, byCountry };
+}
+
 // ── Iconos ───────────────────────────────────────────────────────────────────
 
 function StarIcon({ filled }: { filled: boolean }) {
@@ -454,23 +490,19 @@ export function CompetitionsList({
     [searched, favorites, locale],
   );
 
-  // 4) Estructura para "Todas": internacional + por país (orden por importancia dentro de cada grupo)
-  const { international, byCountry } = useMemo(() => {
-    const intl = orderByImportance(searched.filter((c) => c.scope === 'international'), locale);
-    const map = new Map<string, CompetitionSummary[]>();
-    for (const c of searched.filter((c) => c.scope !== 'international')) {
-      const key = c.country ?? 'ZZ';
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(c);
-    }
-    // Dentro de cada país, por importancia (no alfabético).
-    for (const [k, arr] of map) map.set(k, orderByImportance(arr, locale));
-    const sorted = [...map.entries()].sort(([a], [b]) => {
-      const ks = countrySortKey(a) - countrySortKey(b);
-      return ks !== 0 ? ks : countryDisplayName(a, locale).localeCompare(countryDisplayName(b, locale), locale);
-    });
-    return { international: intl, byCountry: sorted };
-  }, [searched, locale]);
+  // 4) Estructura para "Todas": internacional + por país (orden por importancia
+  //    dentro de cada grupo). Reutilizada por el índice enlazado (#339).
+  const { international, byCountry } = useMemo(
+    () => groupCompetitionsForIndex(searched, locale),
+    [searched, locale],
+  );
+
+  // #339: índice completo (todas las competiciones, no solo la temporada
+  // vigente) para el grafo de enlaces HTML.
+  const indexGroups = useMemo(
+    () => groupCompetitionsForIndex(competitions, locale),
+    [competitions, locale],
+  );
 
   const isSearching = q.length > 0;
 
@@ -759,6 +791,58 @@ export function CompetitionsList({
           </div>
         )}
       </div>
+
+      {/* #339: índice completo de competiciones para el grafo de enlaces HTML.
+          Los acordeones montan sus filas solo al abrirse (hoy 9/105 enlazadas);
+          este índice viaja SIEMPRE en el HTML inicial (plegado, no oculto) para
+          que el crawler descubra todo el listado. */}
+      {competitions.length > 0 && (
+        <details className="px-4 pb-8">
+          <summary className="cursor-pointer select-none py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            {tt(t, 'competitions.all_index', 'Todas las competiciones ({n})', { n: competitions.length })}
+          </summary>
+          <nav aria-label={tt(t, 'a11y.competitions_index', 'Todas las competiciones')} className="pt-1">
+            {indexGroups.international.length > 0 && (
+              <div className="mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  {tt(t, 'competitions.international', 'Internacional')}
+                </p>
+                <ul className="flex flex-wrap gap-x-3 gap-y-0.5">
+                  {indexGroups.international.map((c) => (
+                    <li key={c.id}>
+                      <Link
+                        href={`/competitions/${c.id}`}
+                        className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-red-400 hover:underline"
+                      >
+                        {clubName(competitionName(c.name, c.nameI18n, locale))}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {indexGroups.byCountry.map(([code, comps]) => (
+              <div key={code} className="mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  {code === 'ZZ' ? tt(t, 'competitions.unclassified', 'Sin clasificar') : countryDisplayName(code, locale)}
+                </p>
+                <ul className="flex flex-wrap gap-x-3 gap-y-0.5">
+                  {comps.map((c) => (
+                    <li key={c.id}>
+                      <Link
+                        href={`/competitions/${c.id}`}
+                        className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-red-400 hover:underline"
+                      >
+                        {clubName(competitionName(c.name, c.nameI18n, locale))}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </nav>
+        </details>
+      )}
     </div>
   );
 }

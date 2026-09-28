@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTeamDetail, isApiNotFound } from '@/lib/api/client';
 import { TeamCenterClient } from '@/components/team/TeamCenterClient';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL } from '@/lib/seo';
-import { clubName } from '@/lib/names';
+import { clubName, playerDisplayName } from '@/lib/names';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
@@ -65,6 +66,25 @@ export default async function TeamDetailPage(props: Props) {
       <BackLink href="/" />
 
       <TeamCenterClient data={data} />
+
+      {/* #339: la plantilla vive en un tab client-side, así que el HTML inicial
+          no enlazaba ninguna ficha de jugador (`grep /players/` = 0). Esta lista
+          server-side las hace descubribles por el crawler. Se oculta a la vista
+          y a lectores de pantalla porque duplica el tab Plantilla, no aporta
+          navegación nueva. */}
+      {data.squad.length > 0 && (
+        <nav className="sr-only" aria-hidden="true">
+          <ul>
+            {data.squad.map((p) => (
+              <li key={p.playerId}>
+                <Link href={`/players/${p.playerId}`} tabIndex={-1}>
+                  {playerDisplayName(p.firstName, p.lastName)}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
     </div>
   );
 }

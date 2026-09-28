@@ -12,7 +12,10 @@
     "competitions_tabs": "Sections de la liste des compétitions",
     "live_goal": "But : {home} {h}-{a} {away}",
     "live_start": "Début {home} - {away}",
-    "live_end": "Fin : {home} {h}-{a} {away}"
+    "live_end": "Fin : {home} {h}-{a} {away}",
+    "competitions_index": "Toutes les compétitions",
+    "navigating": "Chargement…",
+    "view_match": "Voir le match : {home} - {away}"
   },
   "navigation": {
     "matches": "Matchs",
@@ -346,7 +349,10 @@
     "no_date": "Sans date",
     "form_w": "G",
     "form_d": "N",
-    "form_l": "P"
+    "form_l": "P",
+    "other_teams": "Autres équipes du club",
+    "search_teams": "Rechercher des équipes",
+    "filial": "Équipe réserve"
   },
   "player": {
     "current_team": "Équipe actuelle",
@@ -369,7 +375,10 @@
     "pos_gk": "Gardien",
     "pos_df": "Défenseur",
     "pos_fw": "Attaquant",
-    "pos_pl": "Joueur"
+    "pos_pl": "Joueur",
+    "career": "Parcours",
+    "career_current": "Actuel",
+    "career_totals": "Totaux de carrière"
   },
   "fixtures": {
     "matchday": "Journée {n}"
@@ -431,5 +440,16 @@
   "offline": {
     "banner": "Hors ligne — données enregistrées affichées",
     "retry": "Réessayer"
+  },
+  "competition": {
+    "index_title": "Équipes et matchs",
+    "index_teams": "Équipes",
+    "index_rounds": "Journées",
+    "index_matches": "Matchs"
+  },
+  "competitions": {
+    "all_index": "Toutes les compétitions ({n})",
+    "international": "International",
+    "unclassified": "Non classées"
   }
 }

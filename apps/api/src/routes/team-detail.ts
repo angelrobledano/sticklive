@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
+import { orderClubTeams, sectionSuffix, type ClubTeamRow } from '../lib/team-section.js';
 
 export const teamDetailRouter = new Hono();
 
@@ -13,6 +14,11 @@ interface TeamRow {
   country: string;
   logo_url: string | null;
   website_url: string | null;
+  // #196: sección (club × género × categoría × filial), columnas 032/044.
+  gender: string | null;
+  age_category: string | null;
+  squad_level: number | null;
+  team_type: string;
   // Club canónico (Fase 0.3). NULL mientras no se haya corrido el backfill 0.2.
   club_id: string | null;
   club_canonical_name: string | null;
@@ -86,12 +92,13 @@ teamDetailRouter.get('/:id', async (c) => {
   if (!isUuid(id)) return c.json({ error: 'Not found' }, 404);
 
   try {
-    // #333: equipo, clasificación y temporadas activas sólo dependen de `id` y
-    // son independientes → en paralelo (antes eran tres round-trips en serie).
-    const [teamRes, standingRes, seasonsRes] = await Promise.all([
+    // #333: equipo, clasificación, temporadas activas y secciones del club sólo
+    // dependen de `id` y son independientes → en paralelo.
+    const [teamRes, standingRes, seasonsRes, clubTeamsRes] = await Promise.all([
       // 1) Info del equipo
       db.query<TeamRow>(
         `SELECT t.id, t.name, t.short_name, t.city, t.country, t.logo_url, t.website_url,
+                t.gender, t.age_category, t.squad_level, t.team_type,
                 t.club_id,
                 cl.canonical_name AS club_canonical_name,
                 cl.slug           AS club_slug,
@@ -134,11 +141,24 @@ teamDetailRouter.get('/:id', async (c) => {
         JOIN seasons se ON se.id = st.season_id
         WHERE st.team_id = $1 AND se.is_current = TRUE
       `, [id]),
+
+      // #197: otras secciones del mismo club (join sobre club_id; el self-join no
+      // casa si el club es NULL, así que devuelve vacío hasta el backfill 0.2).
+      // El orden definitivo lo fija `orderClubTeams` (función pura testeada).
+      db.query<ClubTeamRow>(`
+        SELECT t2.id, t2.name, t2.short_name, t2.logo_url,
+               t2.gender, t2.age_category, t2.squad_level, t2.team_type
+        FROM teams t
+        JOIN teams t2 ON t2.club_id = t.club_id AND t2.id <> t.id
+        WHERE t.id = $1
+        ORDER BY t2.name
+      `, [id]),
     ]);
 
     if (teamRes.rows.length === 0) return c.json({ error: 'Team not found' }, 404);
     const teamRow = teamRes.rows[0]!;
     const standingRow = standingRes.rows[0] ?? null;
+    const clubTeams = orderClubTeams(clubTeamsRes.rows);
     const currentSeasonIds = seasonsRes.rows.map((r) => r.season_id);
     if (standingRow && !currentSeasonIds.includes(standingRow.season_id)) {
       currentSeasonIds.push(standingRow.season_id);
@@ -348,6 +368,13 @@ teamDetailRouter.get('/:id', async (c) => {
       country:    teamRow.country,
       logoUrl:    teamRow.logo_url,
       websiteUrl: teamRow.website_url,
+      // #196: identidad de sección (género/categoría/filial) para desambiguar
+      // fichas del mismo club. `sectionSuffix` es la forma compacta para listas.
+      gender:        teamRow.gender,
+      ageCategory:   teamRow.age_category,
+      squadLevel:    teamRow.squad_level,
+      teamType:      teamRow.team_type,
+      sectionSuffix: sectionSuffix(teamRow),
       club,
     };
 
@@ -405,7 +432,21 @@ teamDetailRouter.get('/:id', async (c) => {
       penalties:    Number(p.penalties),
     }));
 
-    return c.json({ team, standing, matches, squad, staff, stats: teamStats });
+    // #197: otras secciones del club (club × género × categoría × filial) para
+    // poder navegar de una ficha a las demás. Vacío con el backfill 1:1 actual.
+    const clubTeamsPayload = clubTeams.map((r) => ({
+      id:            r.id,
+      name:          r.name,
+      shortName:     r.short_name,
+      logoUrl:       r.logo_url,
+      gender:        r.gender,
+      ageCategory:   r.age_category,
+      squadLevel:    r.squad_level,
+      teamType:      r.team_type,
+      sectionSuffix: sectionSuffix(r),
+    }));
+
+    return c.json({ team, clubTeams: clubTeamsPayload, standing, matches, squad, staff, stats: teamStats });
   } catch (err) {
     logger.error({ err }, '[team-detail] GET /:id error');
     return c.json({ error: 'Database error' }, 500);

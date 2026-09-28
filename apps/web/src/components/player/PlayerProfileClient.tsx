@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { PlayerDetail, PlayerCompStats } from '@/lib/api/client';
+import type { PlayerDetail, PlayerCompStats, PlayerSeasonTotals } from '@/lib/api/client';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { toTitleCase } from '@/lib/names';
 import { useT } from '@/lib/i18n';
@@ -9,6 +9,46 @@ import { ShareButton } from '@/components/shared/ShareButton';
 import { CountryFlag } from '@/components/shared/CountryFlag';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
+
+// ─── Trayectoria / carrera (#217) ─────────────────────────────────────────────
+//
+// `GET /players/:id` devuelve `career` con las temporadas agrupadas (equipos +
+// totales). El tipo vive aquí porque el DTO compartido (`lib/api/types.ts`) aún
+// no lo incluye; el campo es opcional para no romper respuestas antiguas.
+
+export interface PlayerCareerTeam {
+  competitionId: string;
+  competitionName: string;
+  competitionShort: string | null;
+  teamId: string;
+  teamName: string;
+  teamShortName: string | null;
+  teamLogoUrl: string | null;
+  jerseyNumber: number | null;
+  pj: number;
+  goals: number;
+  blueCards: number;
+  redCards: number;
+  penaltiesTotal: number;
+  penaltiesScored: number;
+}
+
+export interface PlayerCareerSeason {
+  seasonId: string;
+  seasonName: string;
+  isCurrent: boolean;
+  startDate: string | null;
+  competitionId: string;
+  competitionName: string;
+  competitionShort: string | null;
+  totals: PlayerSeasonTotals;
+  teams: PlayerCareerTeam[];
+}
+
+export interface PlayerCareer {
+  seasons: PlayerCareerSeason[];
+  totals: PlayerSeasonTotals;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -307,9 +347,95 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
   );
 }
 
+// ─── Trayectoria / carrera ────────────────────────────────────────────────────
+
+function TeamCrest({ logoUrl, name }: { logoUrl: string | null; name: string }) {
+  return (
+    <div className="w-6 h-6 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700">
+      {logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logoUrl} alt={name} className="w-full h-full object-contain" />
+      ) : (
+        <span className="text-[7px] font-bold text-slate-400 uppercase">{name.slice(0, 2)}</span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Trayectoria del jugador agrupada por temporada. Enlaza cada equipo y cada
+ * competición en HTML SSR (#339): son datos navegables que el crawler descubre
+ * sin depender del sitemap.
+ */
+function CareerSection({ career }: { career: PlayerCareer }) {
+  const { t } = useT();
+  if (career.seasons.length === 0) return null;
+
+  return (
+    <div>
+      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 px-1">
+        {t('player.career')}
+      </p>
+      <div className="card overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/60">
+        {career.seasons.map((season) => (
+          <div key={season.seasonId} className="px-3 py-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{season.seasonName}</span>
+              {season.isCurrent && (
+                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-rink-passion/10 text-rink-passion">
+                  {t('player.career_current')}
+                </span>
+              )}
+            </div>
+
+            <Link
+              href={`/competitions/${season.competitionId}?season=${season.seasonId}`}
+              className="inline-block max-w-full truncate text-[10px] font-semibold text-slate-400 dark:text-slate-500 hover:text-rink-passion dark:hover:text-rink-passion"
+            >
+              {season.competitionShort ?? season.competitionName}
+            </Link>
+
+            <div className="space-y-1">
+              {season.teams.map((team) => (
+                <Link
+                  key={team.teamId}
+                  href={`/teams/${team.teamId}`}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                >
+                  <TeamCrest logoUrl={team.teamLogoUrl} name={team.teamName} />
+                  <span className="flex-1 min-w-0 text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                    {team.teamName}
+                  </span>
+                  <span className="font-mono text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                    {team.pj} {t('player.col_pj')}
+                  </span>
+                  <span className={`font-mono text-xs tabular-nums font-bold ${
+                    team.goals > 0 ? 'text-rink-passion' : 'text-slate-300 dark:text-slate-700'
+                  }`}>
+                    {team.goals} {t('player.col_g')}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between">
+          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+            {t('player.career_totals')}
+          </span>
+          <span className="font-mono text-xs text-slate-700 dark:text-slate-300 tabular-nums">
+            {career.totals.pj} {t('player.col_pj')} · {career.totals.goals} {t('player.col_g')}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Vista completa ───────────────────────────────────────────────────────────
 
-export function PlayerProfileClient({ data }: { data: PlayerDetail }) {
+export function PlayerProfileClient({ data }: { data: PlayerDetail & { career?: PlayerCareer | null } }) {
   const { t } = useT();
 
   return (
@@ -340,6 +466,9 @@ export function PlayerProfileClient({ data }: { data: PlayerDetail }) {
           <CompStatsTable rows={data.statsByCompetition} />
         </div>
       )}
+
+      {/* Trayectoria (#217): equipos por temporada + totales de carrera */}
+      {data.career && <CareerSection career={data.career} />}
     </div>
   );
 }
