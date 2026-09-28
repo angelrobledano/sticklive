@@ -57,8 +57,16 @@ export default async function Image(props: { params: Promise<{ locale: string; i
   const side = (name: string, id: string) => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '380px', gap: '24px' }}>
       {id ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={logo(id)} width={170} height={170} style={{ objectFit: 'contain' }} alt="" />
+        // El escudo normalizado trae fondo blanco: lo recortamos en círculo para
+        // que se vea como un badge sobre el fondo oscuro de la tarjeta.
+        <div style={{
+          display: 'flex', width: '170px', height: '170px',
+          borderRadius: '9999px', overflow: 'hidden', background: '#ffffff',
+        }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logo(id)} width={170} height={170}
+               style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
+        </div>
       ) : null}
       <div style={{ fontSize: '44px', fontWeight: 700, textAlign: 'center', lineHeight: 1.1 }}>{name}</div>
     </div>
