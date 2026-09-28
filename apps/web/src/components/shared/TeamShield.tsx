@@ -48,9 +48,12 @@ export function TeamShield({
   const decorative = !alt;
 
   const initials = teamName.slice(0, 2).toUpperCase();
+  // Fondo blanco en AMBOS temas: el escudo normalizado ya trae relleno blanco
+  // horneado, así que el contenedor debe casar con él (si no, en modo oscuro
+  // aparecería un anillo oscuro alrededor del badge).
   const containerCls = [
     rounded,
-    'bg-slate-100 dark:bg-slate-800',
+    'bg-white',
     'shrink-0 flex items-center justify-center overflow-hidden',
     className,
   ].filter(Boolean).join(' ');
@@ -73,12 +76,9 @@ export function TeamShield({
     ? `${API_URL}/teams/${teamId}/logo`
     : '/escudos/default-team.png';
 
-  // Aire interior: el clip circular recorta las esquinas de los escudos
-  // cuadrados (FCB, etc.); un padding proporcional los deja respirar.
-  const pad = Math.max(2, Math.round(size * 0.12));
-
+  // Sin padding: el margen uniforme ya viene horneado en el escudo normalizado.
   return (
-    <div className={containerCls} style={{ width: size, height: size, padding: pad }}>
+    <div className={containerCls} style={{ width: size, height: size }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
