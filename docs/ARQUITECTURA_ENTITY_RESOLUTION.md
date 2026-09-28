@@ -155,8 +155,9 @@ CREATE TABLE team_aliases (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (normalized, source_id)
 );
--- Búsqueda difusa a escala sin O(n²): índice GIN de trigramas.
-CREATE INDEX idx_team_aliases_trgm ON team_aliases USING gin (normalized gin_trgm_ops);
+-- Búsqueda difusa a escala sin O(n²): el filtrado se hace con claves de bloqueo
+-- en la consulta (sport_id + género/categoría), no con GIN. El índice trigram de
+-- `normalized` se retiró en la migración 057: similarity() no usa GIN.
 
 -- ESCALÓN 4 (HITL). Cola de staging: lo que NO se resolvió con confianza.
 CREATE TABLE resolution_queue (
