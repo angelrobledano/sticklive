@@ -34,10 +34,13 @@ import { sweepStaleLive } from './stale-live-watchdog.js';
 import { MissingLiveTracker } from './missing-live.js';
 import { checkWindow } from './live-window.js';
 import { touchAlive } from './heartbeat-file.js';
+import { ScrapeFailureTracker } from './scrape-health.js';
 import type { ScrapedMatch } from '@sports/shared-types';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
-import { resolveWorldskate, runWorldskate } from '../../scraper/src/scrapers/worldskate/run-worldskate.js';
+import {
+  resolveWorldskate, runWorldskate, reportDormantWorldskate,
+} from '../../scraper/src/scrapers/worldskate/run-worldskate.js';
 import {
   sourceForMatchRef, idpFromMatchRef, idcFromCompetitionRef,
 } from '../../scraper/src/core/sources.js';
@@ -55,6 +58,28 @@ const log = createLogger({ service: 'cron-live' });
 // varios seguidos (un blip de red aislado se recupera al ciclo siguiente).
 const MC_FAIL_ALERT_THRESHOLD = 3;
 let consecutiveMcFailures = 0;
+
+// #293: fallos consecutivos por fuente. Mientras una fuente lleve N ciclos
+// fallando, el latido del Cron Monitor deja de decir "todo bien" (status
+// 'error') para que Sentry avise. El toque del fichero de latido del contenedor
+// sigue ocurriendo SIEMPRE: un fallo de una fuente externa NO debe marcar el ETL
+// como `unhealthy`.
+const SOURCE_FAIL_ALERT_THRESHOLD = Number(process.env['SOURCE_FAIL_ALERT_THRESHOLD'] ?? 3);
+const sourceFailures = new ScrapeFailureTracker(SOURCE_FAIL_ALERT_THRESHOLD);
+const SK_WORLDSKATE = 'worldskate_hockey';
+
+/**
+ * Alimenta el contador de fallos por fuente. Al cruzar el umbral (primera vez en
+ * la racha) manda un evento Sentry ERROR con la fuente en el mensaje, además de
+ * marcar el latido como 'error' (ver heartbeat).
+ */
+function noteWorldskateResult(name: string, idc: string, ok: boolean): void {
+  if (!sourceFailures.observe(SK_WORLDSKATE, ok)) return;
+  Sentry.captureMessage(
+    `World Skate falló ${SOURCE_FAIL_ALERT_THRESHOLD} ciclos seguidos (${name}, idc ${idc})`,
+    { level: 'error', tags: { source: 'worldskate', phase: 'cron-live' }, extra: { idc } },
+  );
+}
 
 // #374: ciclos consecutivos que un `live` con marcador puede desaparecer del
 // feed mc antes de darlo por finalizado. El feed es global y lista todos los
@@ -87,10 +112,18 @@ const CRON_MONITOR_CONFIG = {
 // healthcheck del contenedor (#146). El segundo es el que evita el falso
 // `unhealthy` durante un directo largo: el scheduler solo toca el fichero entre
 // vueltas, así que sin este toque interno un ETL OCUPADO parecía colgado.
+//
+// El fichero se toca SIEMPRE (no depende de las fuentes). El monitor de Sentry
+// sí refleja el estado (#293): si una fuente lleva varios ciclos fallando, el
+// check-in va como 'error' para que el latido no diga "todo bien" en falso.
 function heartbeat(): void {
   touchAlive();
-  try { Sentry.captureCheckIn({ monitorSlug: CRON_MONITOR_SLUG, status: 'ok' }, CRON_MONITOR_CONFIG); }
-  catch { /* nunca romper el cron por el monitor */ }
+  try {
+    Sentry.captureCheckIn(
+      { monitorSlug: CRON_MONITOR_SLUG, status: sourceFailures.hasFailing() ? 'error' : 'ok' },
+      CRON_MONITOR_CONFIG,
+    );
+  } catch { /* nunca romper el cron por el monitor */ }
 }
 
 
@@ -363,17 +396,24 @@ async function runFepScores(seasonIds: string[]): Promise<number> {
  * pasa de 5 minutos de resolución a 45 segundos.
  */
 async function runWorldskateScores(): Promise<void> {
-  const comps = await resolveWorldskate();
-  for (const ctx of comps) {
+  const { active, dormant } = await resolveWorldskate();
+  await reportDormantWorldskate(dormant);
+
+  for (const ctx of active) {
     const prev       = pushEnabled ? await snapshotMatches(ctx.seasonId) : new Map();
     const prevRounds = pushEnabled ? await snapshotRounds(ctx.seasonId)  : new Map();
+    let ok = false;
     try {
-      await runWorldskate(ctx, (seasonId) =>
+      const r = await runWorldskate(ctx, (seasonId) =>
         new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId, createRounds: true }));
+      ok = r.ok;
     } catch (err) {
       log.warn({ err, competition: ctx.name }, 'marcadores World Skate fallaron — sigue');
+      noteWorldskateResult(ctx.name, ctx.idc, false);
       continue;
     }
+    // #293: alimenta el latido y el contador por fuente. Un éxito resetea la racha.
+    noteWorldskateResult(ctx.name, ctx.idc, ok);
     try { await diffAndNotify(prev, prevRounds, ctx.seasonId); } catch (err) {
       log.warn({ err, competition: ctx.name }, 'push (World Skate) fallo — sigue');
     }

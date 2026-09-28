@@ -87,8 +87,11 @@ descartarlos; resuélvelo a mano y relánzalo.
 ```bash
 cd /opt/sticklive
 
-# 1. Proteger los scripts que están modificados EN el servidor (si no, git pull aborta).
+# 1. Descartar cambios locales en scripts del servidor (si no, git pull aborta).
+#    Los scripts de deploy están trackeados como EJECUTABLES (100755) en git desde
+#    #291, así que este checkout también restaura el bit +x. Cinturón y tirantes:
 git checkout -- deploy/backup-db.sh deploy/restore-sports-dump.sh
+chmod +x deploy/backup-db.sh deploy/verify-backup.sh deploy/restore-sports-dump.sh 2>/dev/null || true
 
 # 2. Traer el código nuevo.
 git pull
@@ -167,7 +170,7 @@ Si se rotan las VAPID, hay que **reconstruir la web** (la pública es build arg)
 - [ ] ¿La release trae migraciones? → nada especial: el servicio `migrate`
       las aplica al levantar y api/etl no arrancan hasta que termine. Si
       alguna reescribe datos existentes, `./deploy/backup-db.sh` antes.
-- [ ] `git checkout --` de `deploy/backup-db.sh` y `deploy/restore-sports-dump.sh`.
+- [ ] `git checkout --` de `deploy/backup-db.sh` y `deploy/restore-sports-dump.sh` (restaura el bit +x; son `100755` en git desde #291).
 - [ ] `git pull` (sin desplegar si el job `docker` de CI no está en verde).
 - [ ] `$DC up -d --build` (o `--build web` si solo es front).
 - [ ] `NEXT_PUBLIC_*` pobladas antes de construir.

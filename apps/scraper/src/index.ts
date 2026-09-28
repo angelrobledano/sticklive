@@ -16,6 +16,9 @@
  *   idc=3150 — OK Liga Masculina
  *   idc=3481 — OK Liga Masculina Playoff (activo desde abril 2025)
  */
+// Sentry PRIMERO: instrumenta interceptando la carga de módulos (ver instrument.ts).
+import './instrument.js';
+import * as Sentry from '@sentry/node';
 import { createLogger } from '@sports/logger';
 import { db, closeDb } from '@sports/db';
 // `analytics` sólo lo usaba el planificador eliminado; queda el cierre limpio.
@@ -177,4 +180,7 @@ ningún sitio y arrastraba vulnerabilidades. Se eliminó (ver issue #37).
   }
   const seasons = await resolveSeasonIds();
   await runOnce(KEY, seasons);
-})().catch(err => { log.error({ err }, 'Error fatal'); process.exit(1); });
+})()
+  .catch(err => { log.error({ err }, 'Error fatal'); Sentry.captureException(err); process.exitCode = 1; })
+  // flush ANTES de salir: proceso corto; sin esto se pierden los eventos.
+  .finally(async () => { await Sentry.flush(2000); });

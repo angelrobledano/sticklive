@@ -10,7 +10,7 @@
 | Contenedores | `$DC ps` | todos `Up`; `api`/`web`/`etl` `(healthy)` |
 | Directo vivo | Sentry → Cron Monitor del directo | latidos sin miss (avisa solo si falla) |
 | Scraping al día | tabla `scrape_logs` (`SELECT kind, status, max(created_at) … GROUP BY 1,2`) | últimas pasadas `success`, sin huecos de horas |
-| Backups | `ls -lt /opt/backups/` | fichero de ayer, ≥100 KB (el script valida gzip y tamaño) |
+| Backups | `ls -lt /opt/backups/` | fichero de ayer, ≥100 KB (el script valida gzip y tamaño; `verify-backup.sh` falla si el último tiene >`MAX_AGE_HOURS`, def. 30) |
 | Particiones BD | logs de `partition-guard` | sin alertas; `match_events_undated` vacía |
 
 ## Jobs y qué pasa si fallan
@@ -22,9 +22,17 @@
 | calendario + standings | cada hora | siguiente pasada a la hora | scrape-health diaria (>26 h parado) |
 | `fichas-pendientes` | diaria 06 UTC | actas se acumulan; se recuperan al día siguiente | scrape-health diaria |
 | purga `scrape_logs` / `partition-guard` / `scrape-health-watch` | diaria 06 UTC | sin efecto inmediato; vigilar disco/particiones | Sentry |
-| backup BD | diaria 04:15 (cron del host) | exit 2 si falla el off-site a Storage Box | revisar `/var/log/sticklive-backup.log` |
+| backup BD | diaria 04:15 (cron del host) | exit 2 si falla el off-site a Storage Box; el verify falla si el dump supera `MAX_AGE_HOURS` | ping a `BACKUP_PING_URL` (éxito/fallo) + `/var/log/sticklive-backup.log` |
 
 El scheduler (`deploy/etl-scheduler.sh`) corre **con `flock`**: si un scrape manual se solapa, el cron lo registra y no ejecuta (sin duplicados de escritura). Los logs de contenedores van a `docker logs` (rotación pendiente, issue #163).
+
+## Backups, off-site y secretos
+
+- **Diario (04:15, host):** `deploy/backup-db.sh` dumpea Postgres a `/opt/backups/sticklive-YYYYMMDD.sql.gz`, valida gzip y tamaño, y rota conservando 7. Si algo falla **no rota**: un dump malo nunca borra los buenos.
+- **Alerta de éxito/fallo (#292):** define `BACKUP_PING_URL` en `/opt/sticklive/.backup-offsite.env` para recibir un ping en cada ejecución. Convención: healthchecks.io/dead-man-snitch → GET a la URL en éxito y a `<url>/fail` en fallo; Sentry Cron Monitor (URL con `/cron/`) → `?status=ok|error`. `exit 1` = fallo de dump, `exit 2` = fallo del off-site. Sin la variable no hay aviso externo (solo el log). Probar el canal sin tocar la BD ni el off-site: `BACKUP_PING_URL=… ./deploy/backup-db.sh --test-alert`.
+- **Off-site por rsync (#289):** `backup-db.sh` empuja los `.sql.gz` a una Hetzner Storage Box si existe `/opt/sticklive/.backup-offsite.env` con `OFFSITE_TARGET` (plantilla: `deploy/.backup-offsite.env.example`, permisos `600`). Sin el fichero la sincronización se omite y `verify-backup.sh` lo avisa. El envío valida `host:ruta`, que exista `rsync` y que la clave SSH (`-i`) sea legible. **Pendiente de activar** (requiere credenciales de la Storage Box).
+- **Verify semanal (lunes 04:30):** `deploy/verify-backup.sh` restaura el dump más reciente en una BD temporal y comprueba conteos. **Falla** si el dump tiene más de `MAX_AGE_HOURS` horas (def. 30) — evita el "falso confort" si el backup lleva días fallando en silencio. Con off-site activo, además exige que ese mismo dump exista en el destino remoto.
+- **Copia cifrada de `.env.prod` (#290):** `deploy/backup-env.sh` cifra `/opt/sticklive/.env.prod` con `age` (preferido) o `gpg` usando solo la **clave pública** (`AGE_RECIPIENT`/`GPG_RECIPIENT` en `.backup-offsite.env`), conserva las últimas 30 copias y las empuja off-site si hay destino. La clave privada se guarda **fuera del VPS**; sin ella la copia es inservible. Restaurar: `age -d -i <clave> -o .env.prod …` (o `gpg -d -o .env.prod …`) y `chmod 600`.
 
 ## Logs
 
@@ -63,7 +71,8 @@ Antes de reiniciar escribe una **alerta** (log siempre; a Sentry si el entorno d
 
 ## Recuperación
 
-- **Base de datos:** `./deploy/backup-db.sh` (diario automatizado en `/etc/cron.d/sticklive-backup`, rotación 7, off-site opcional a Storage Box) y `./deploy/restore-sports-dump.sh` para restaurar — el restore **preserva los datos de usuario** (users, favorites, tokens, push, orders) y deja api/etl/web parados durante la operación. `./deploy/verify-backup.sh` restaura en una BD temporal y valida conteos (semanal, documentado en el propio script).
+- **Desastre total (VPS destruido):** runbook de reconstrucción desde cero en **[docs/dr.md](dr.md)** (provision, secretos, restauración de BD, DNS, smoke).
+- **Base de datos:** `./deploy/backup-db.sh` (diario automatizado en `/etc/cron.d/sticklive-backup`, rotación 7, off-site opcional a Storage Box) y `./deploy/restore-sports-dump.sh` para restaurar — el restore **preserva los datos de usuario** (users, favorites, tokens, push, orders) y deja api/etl/web parados durante la operación. `./deploy/verify-backup.sh` restaura en una BD temporal y valida conteos (semanal, documentado en el propio script). Secretos y off-site: ver [Backups, off-site y secretos](#backups-off-site-y-secretos).
 - **Migración fallida a mitad:** el runner aborta y el despliegue no continúa (api/etl no arrancan con esquema desactualizado — `assertSchemaCurrent`). Si la migración reescribía datos: restaurar backup; si solo DDL: corregir el SQL y volver a aplicar.
 - **Fuente caída / datos parados:** el sistema degrada sin corromper (upserts idempotentes). La web muestra lo último cargado; el backlog se recupera solo al volver la fuente (calendario horario + fichas diarias). Vigilar la alerta de "200 OK con 0 partidos" — suele ser un cambio de la fuente, no una caída.
 - **Partido fantasma "EN VIVO":** `stale-live-watchdog` lo degrada a `scheduled` a las 5 h si sigue `live`. Y si un `live` con marcador **desaparece del feed mc 3 ciclos seguidos** (feed sano), `cron-live` lo marca `finished` con el último marcador (#374) — así no se espera al watchdog ni al calendario horario. El umbral es `MISSING_LIVE_CYCLES` (por defecto 3). El estado `live` de reloj se pinta, en API y web, con el MISMO umbral `STALE_LIVE_HOURS` (5 h, `@sports/shared-types`); antes la web usaba 3 h y divergía (#377). Nota: la ficha individual aún podía pintar `live` por `effectiveStatus` (issue #150).

@@ -117,6 +117,7 @@ La referencia es **`.env.example`** (desarrollo) y **`.env.prod.example`** (prod
 | [docs/api.md](docs/api.md) | Endpoints REST/SSE reales |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Despliegue en el VPS |
 | [docs/operations.md](docs/operations.md) | Operación: crons, logs, alertas, recuperación |
+| [docs/dr.md](docs/dr.md) | Disaster recovery: reconstrucción completa del VPS |
 | [docs/RUNBOOK_COMPETICIONES.md](docs/RUNBOOK_COMPETICIONES.md) | Alta y gestión de competiciones |
 | [docs/RUNBOOK_ENTITY_RESOLUTION.md](docs/RUNBOOK_ENTITY_RESOLUTION.md) | Entity Resolution as-built |
 | [docs/NOTIFICACIONES.md](docs/NOTIFICACIONES.md) | Cuándo y cómo se envían los push |
