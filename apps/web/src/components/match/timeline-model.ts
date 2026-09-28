@@ -60,6 +60,56 @@ export function injectPeriodDividers(events: TimelineEvent[]): TimelineEvent[] {
   return result;
 }
 
+// ─── Frescura del directo (#284) ───────────────────────────────────────────
+/**
+ * Un marcador congelado no debe aparentar ser actual. La ficha guarda el
+ * instante de la última actualización recibida (snapshot/update) y esta función
+ * pura decide el estado a mostrar. Separar los umbrales del render permite
+ * testearlos sin navegador.
+ *
+ * - `fresh`: llegan actualizaciones (texto "Actualizado hace X s").
+ * - `stale`: hace rato que no llega nada → "posible desfase".
+ * - `down`: demasiado tiempo sin señal → "sin señal".
+ */
+/** Hasta aquí se considera fresco (los snapshots llegan por NOTIFY casi al instante). */
+export const FRESH_MAX_MS = 45_000;
+/** A partir de aquí se considera sin señal; en medio, posible desfase. */
+export const STALE_MAX_MS = 150_000;
+
+export type FreshnessState = 'fresh' | 'stale' | 'down';
+
+export interface Freshness {
+  state: FreshnessState;
+  /** Segundos desde la última actualización (nunca negativo). */
+  ageSeconds: number;
+  /** Clave i18n del texto a mostrar (con {s} = segundos). */
+  labelKey: string;
+}
+
+const FRESHNESS_LABEL: Record<FreshnessState, string> = {
+  fresh: 'match_detail.freshness_fresh',
+  stale: 'match_detail.freshness_stale',
+  down:  'match_detail.freshness_down',
+};
+
+export function freshnessState(
+  lastUpdateMs: number | null,
+  nowMs: number,
+  serverStale = false,
+): Freshness {
+  if (lastUpdateMs == null) {
+    return { state: 'down', ageSeconds: 0, labelKey: FRESHNESS_LABEL.down };
+  }
+  const ageMs = Math.max(0, nowMs - lastUpdateMs);
+  const ageSeconds = Math.floor(ageMs / 1000);
+  let state: FreshnessState =
+    ageMs < FRESH_MAX_MS ? 'fresh' : ageMs < STALE_MAX_MS ? 'stale' : 'down';
+  // El hub avisó de que su poll falló: degradamos a "posible desfase" como
+  // mínimo, pero nunca maquillamos un "sin señal" real.
+  if (serverStale && state === 'fresh') state = 'stale';
+  return { state, ageSeconds, labelKey: FRESHNESS_LABEL[state] };
+}
+
 export function injectAccumulatedFouls(events: MatchEvent[], homeTeamId: string): TimelineEvent[] {
   const result: TimelineEvent[] = [];
   let homeFouls = 0;

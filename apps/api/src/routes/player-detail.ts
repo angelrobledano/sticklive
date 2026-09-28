@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '@sports/db';
+import { isUuid } from '../lib/uuid.js';
 
 export const playerDetailRouter = new Hono();
 
@@ -42,6 +43,10 @@ interface CompStatsRow {
  */
 playerDetailRouter.get('/:id', async (c) => {
   const id = c.req.param('id');
+
+  // Un id no-UUID haría fallar el cast a uuid de Postgres y devolvería 500
+  // (enlace corrupto/bot) en vez de 404 (#275).
+  if (!isUuid(id)) return c.json({ error: 'Not found' }, 404);
 
   try {
     // 1) Datos del jugador

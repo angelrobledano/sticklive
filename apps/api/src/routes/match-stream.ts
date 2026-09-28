@@ -10,19 +10,20 @@
  * lo dispara la BD (migración 043) cuando el partido cambia. El poll queda como
  * respaldo lento.
  *
- * Protocolo SSE (sin cambios para el cliente):
+ * Protocolo SSE (compatible con el cliente):
  *   event: snapshot   → primer envío con el estado completo
  *   event: update     → cambios (score/eventos)
  *   event: finished   → el partido terminó; el cliente cierra
  *   event: keepalive  → mantener viva la conexión
  *   event: timeout    → corte por duración máxima
+ *   event: stale      → el poll del hub falló (o se recuperó): el cliente
+ *                       atenúa el marcador y muestra "posible desfase" (#284)
  */
 
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { db, listenForNotifications } from '@sports/db';
 import { logger } from '@sports/logger';
-import { effectiveMatchStatus } from '../lib/effective-status.js';
 import { ConnectionLimiter } from '../lib/sse-connections.js';
 import { clientIp } from '../lib/rate-limit.js';
 import {
@@ -32,6 +33,12 @@ import {
   type HubState,
   type SseKind,
 } from '../lib/sse-hub.js';
+import {
+  buildMatchDetail,
+  type MatchDtoRow,
+  type MatchDtoEventRow,
+  type MatchLineupRow,
+} from '../lib/match-dto.js';
 
 export const matchStreamRouter = new Hono();
 
@@ -57,50 +64,48 @@ const MAX_CONNECTIONS_PER_IP = Number(process.env['SSE_MAX_CONNECTIONS_PER_IP'] 
 // partido en vivo es el grueso del coste del hub, así que se cachea.
 const LINEUPS_TTL_MS = Number(process.env['SSE_LINEUPS_TTL_MS'] ?? 5 * 60 * 1_000);
 
-// ─── Tipos ─────────────────────────────────────────────────────────
-
-interface MatchRow {
-  id: string; season_id: string; round_id: string | null;
-  home_score: number | null; away_score: number | null; home_fouls: number | null; away_fouls: number | null; status: string;
-  scheduled_at: string | null; started_at: string | null; finished_at: string | null;
-  home_team_id: string; home_team_name: string; home_team_short_name: string | null; home_team_logo_url: string | null;
-  away_team_id: string; away_team_name: string; away_team_short_name: string | null; away_team_logo_url: string | null;
-  live_period: number | null; live_clock_seconds: number | null; live_clock_at: Date | null; live_is_halftime: boolean;
-}
-interface EventRow {
-  id: string; event_type: string; minute: number | null; period: number | null;
-  team_id: string | null; detail: string | null; player_id: string | null;
-  player_first_name: string | null; player_last_name: string | null;
-}
-
 // ─── Query helpers (sin cambios funcionales) ──────────────────────────────
 
+/**
+ * Snapshot del partido con el MISMO DTO que REST (`GET /matches/:id`) para que
+ * el directo no pierda competición, cronos ni stats (#283). Se añade
+ * `updatedAt` (instante de captura) para el indicador de frescura (#284).
+ */
 async function fetchMatchSnapshot(matchId: string) {
-  const matchResult = await db.query<MatchRow>(`
+  const matchResult = await db.query<MatchDtoRow>(`
     SELECT
       m.id, m.season_id, m.round_id,
-      m.home_score, m.away_score, m.home_fouls, m.away_fouls, m.status,
+      m.home_score, m.away_score, m.home_fouls, m.away_fouls, m.status, m.event_coverage,
+      m.home_goals_reg, m.away_goals_reg, m.home_pen, m.away_pen, m.win_type, m.winner_team_id, m.penalty_shootout,
       m.scheduled_at, m.started_at, m.finished_at,
+      m.venue_name, m.venue_city, m.referee, m.source_ref, m.video_url,
       m.live_period, m.live_clock_seconds, m.live_clock_at, m.live_is_halftime,
-      ht.id AS home_team_id, ht.name AS home_team_name,
-      ht.short_name AS home_team_short_name, ht.logo_url AS home_team_logo_url,
-      at.id AS away_team_id, at.name AS away_team_name,
-      at.short_name AS away_team_short_name, at.logo_url AS away_team_logo_url
+      ht.id           AS home_team_id,
+      ht.name         AS home_team_name,
+      ht.short_name   AS home_team_short_name,
+      ht.logo_url     AS home_team_logo_url,
+      at.id           AS away_team_id,
+      at.name         AS away_team_name,
+      at.short_name   AS away_team_short_name,
+      at.logo_url     AS away_team_logo_url,
+      comp.id         AS competition_id,
+      comp.name       AS competition_name,
+      comp.slug       AS competition_slug,
+      comp.timezone   AS competition_timezone
     FROM matches m
     LEFT JOIN teams ht ON ht.id = m.home_team_id
     LEFT JOIN teams at ON at.id = m.away_team_id
+    LEFT JOIN seasons s        ON s.id = m.season_id
+    LEFT JOIN competitions comp ON comp.id = s.competition_id
     WHERE m.id = $1
   `, [matchId]);
 
   const row = matchResult.rows[0];
   if (!row) return null;
 
-  // Estado expuesto: mismo tope que el watchdog del ETL (#150).
-  const effectiveStatus = effectiveMatchStatus(row.status, row.scheduled_at);
-
-  const eventsResult = await db.query<EventRow>(`
+  const eventsResult = await db.query<MatchDtoEventRow>(`
     SELECT
-      e.id, e.event_type, e.minute, e.period,
+      e.id, e.event_type, e.minute, e.period, e.clock,
       e.team_id, e.detail, e.player_id,
       p.first_name AS player_first_name, p.last_name AS player_last_name
     FROM match_events e
@@ -109,81 +114,31 @@ async function fetchMatchSnapshot(matchId: string) {
     ORDER BY COALESCE(e.period, 99) ASC, COALESCE(e.minute, 9999) ASC, e.created_at ASC
   `, [matchId]);
 
-  const homeTeamId = row.home_team_id;
-  const mappedEvents = eventsResult.rows.map((e) => ({
-    eventType: e.event_type, teamId: e.team_id, isHomeTeam: e.team_id === homeTeamId,
-  }));
-  const stats = {
-    // Faltas de equipo = nº de eventos 'foul' por equipo (cada FALTA del acta es
-    // una; coincide con el contador acumulado de la fuente). Fallback a la
-    // cabecera (home_fouls) solo para partidos antiguos sin eventos de falta.
-    homeFouls: mappedEvents.filter((e) => e.eventType === 'foul' && e.isHomeTeam).length || (row.home_fouls ?? 0),
-    awayFouls: mappedEvents.filter((e) => e.eventType === 'foul' && !e.isHomeTeam && e.teamId !== null).length || (row.away_fouls ?? 0),
-    homePenalties: { total: mappedEvents.filter((e) => e.eventType === 'penalty' && e.isHomeTeam).length, scored: 0 },
-    awayPenalties: { total: mappedEvents.filter((e) => e.eventType === 'penalty' && !e.isHomeTeam && e.teamId !== null).length, scored: 0 },
-  };
-
-  // Alineaciones — paridad con el REST (/matches/:id) para que el directo no
-  // las pierda al reemplazar el cliente sus datos con el snapshot del stream.
+  // Alineaciones — paridad con el REST para que el directo no las pierda.
   const lineups = await fetchLineups(matchId);
 
   return {
-    stats,
-    match: {
-      id: row.id, seasonId: row.season_id, roundId: row.round_id,
-      status: effectiveStatus, scheduledAt: row.scheduled_at,
-      startedAt: row.started_at, finishedAt: row.finished_at,
-      score: { home: row.home_score, away: row.away_score },
-      homeTeam: { id: row.home_team_id, name: row.home_team_name, shortName: row.home_team_short_name, logoUrl: row.home_team_logo_url },
-      awayTeam: { id: row.away_team_id, name: row.away_team_name, shortName: row.away_team_short_name, logoUrl: row.away_team_logo_url },
-      live: effectiveStatus === 'live'
-        ? { period: row.live_period, clockSeconds: row.live_clock_seconds, clockAt: row.live_clock_at?.toISOString() ?? null, isHalftime: row.live_is_halftime }
-        : null,
-    },
-    events: eventsResult.rows.map((e) => ({
-      id: e.id, eventType: e.event_type, minute: e.minute, period: e.period,
-      teamId: e.team_id, isHomeTeam: e.team_id === homeTeamId, detail: e.detail,
-      player: e.player_id ? { id: e.player_id, firstName: e.player_first_name ?? '', lastName: e.player_last_name ?? '' } : null,
-    })),
-    lineups,
+    ...buildMatchDetail(row, eventsResult.rows, lineups),
     updatedAt: new Date().toISOString(),
   };
 }
 
 /**
- * Alineaciones del partido, cacheadas por `LINEUPS_TTL_MS`.
+ * Alineaciones CRUDAS del partido, cacheadas por `LINEUPS_TTL_MS`.
  *
  * El hub sondea cada 15 s, pero las alineaciones sólo cambian cuando el acta
  * publica goles/asistencias — información que el cliente ya recibe por
  * `events`. Sin caché, este JOIN con `players` se repetía por partido en vivo
- * y por tick, dominando el coste del directo en BD.
+ * y por tick, dominando el coste del directo en BD. Se cachean las filas para
+ * que el mapper compartido (`buildMatchDetail`) derive también las asistencias.
  */
-interface LineupEntry {
-  jerseyNumber: number | null;
-  playerName: string;
-  isGoalkeeper: boolean;
-  isStarter: boolean;
-  isCaptain: boolean;
-  goals: number;
-  assists: number;
-  playerId: string | null;
-  photoUrl: string | null;
-}
-interface LineupsPayload {
-  home: LineupEntry[];
-  away: LineupEntry[];
-}
-const lineupsCache = new Map<string, { value: LineupsPayload; expiresAt: number }>();
+const lineupsCache = new Map<string, { rows: MatchLineupRow[]; expiresAt: number }>();
 
-async function fetchLineups(matchId: string): Promise<LineupsPayload> {
+async function fetchLineups(matchId: string): Promise<MatchLineupRow[]> {
   const cached = lineupsCache.get(matchId);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  if (cached && cached.expiresAt > Date.now()) return cached.rows;
 
-  const lineupsResult = await db.query<{
-    is_home: boolean; jersey_number: number | null; player_name: string;
-    is_goalkeeper: boolean; is_starter: boolean; is_captain: boolean;
-    goals: number; assists: number; player_id: string | null; photo_url: string | null;
-  }>(`
+  const lineupsResult = await db.query<MatchLineupRow>(`
     SELECT ml.is_home, ml.jersey_number, ml.player_name, ml.player_id,
            ml.is_goalkeeper, ml.is_starter, ml.is_captain, ml.goals, ml.assists,
            p.photo_url
@@ -193,23 +148,18 @@ async function fetchLineups(matchId: string): Promise<LineupsPayload> {
       AND ml.role IS NULL
     ORDER BY ml.is_home DESC, ml.is_starter DESC, ml.jersey_number ASC NULLS LAST
   `, [matchId]);
-  const toLineup = (r: typeof lineupsResult.rows[number]) => ({
-    jerseyNumber: r.jersey_number, playerName: r.player_name,
-    isGoalkeeper: r.is_goalkeeper, isStarter: r.is_starter, isCaptain: r.is_captain,
-    goals: r.goals, assists: r.assists, playerId: r.player_id, photoUrl: r.photo_url,
-  });
-  const lineups: LineupsPayload = {
-    home: lineupsResult.rows.filter((r) => r.is_home).map(toLineup),
-    away: lineupsResult.rows.filter((r) => !r.is_home).map(toLineup),
-  };
 
-  lineupsCache.set(matchId, { value: lineups, expiresAt: Date.now() + LINEUPS_TTL_MS });
-  return lineups;
+  lineupsCache.set(matchId, { rows: lineupsResult.rows, expiresAt: Date.now() + LINEUPS_TTL_MS });
+  return lineupsResult.rows;
 }
 
 // ─── Hub: un poller por partido, fan-out a N suscriptores ──────────────────────
 
-type Subscriber = (json: string, kind: SseKind) => void;
+/**
+ * Suscriptor del hub. `kind` decide el nombre del evento SSE, salvo que se pase
+ * un `override` explícito (p. ej. `stale`), que gana (#284).
+ */
+type Subscriber = (json: string, kind: SseKind, override?: string) => void;
 
 interface Hub {
   subscribers: Set<Subscriber>;
@@ -218,6 +168,8 @@ interface Hub {
   refreshTimer: ReturnType<typeof setTimeout> | null;
   /** Último snapshot enviado y métricas para decidir el siguiente fan-out. */
   state: HubState;
+  /** true si el último poll falló: el directo debe mostrarse "posible desfase" (#284). */
+  stale: boolean;
 }
 
 const hubs = new Map<string, Hub>();
@@ -236,9 +188,9 @@ function scheduleRefresh(matchId: string) {
   hub.refreshTimer.unref?.();
 }
 
-function fanout(hub: Hub, json: string, kind: SseKind) {
+function fanout(hub: Hub, json: string, kind: SseKind, override?: string) {
   for (const cb of hub.subscribers) {
-    try { cb(json, kind); } catch { /* el wrapper de cada conexión se limpia solo */ }
+    try { cb(json, kind, override); } catch { /* el wrapper de cada conexión se limpia solo */ }
   }
 }
 
@@ -259,12 +211,24 @@ async function pollHub(matchId: string) {
     snapshot = await fetchMatchSnapshot(matchId);
   } catch (err) {
     logger.warn({ matchId, err }, 'SSE poll error');
+    // #284: el fallo no puede ser silencioso. Avisamos UNA vez por transición
+    // para que la ficha deje de mostrar un marcador congelado como actual.
+    if (!hub.stale) {
+      hub.stale = true;
+      fanout(hub, JSON.stringify({ stale: true, updatedAt: new Date().toISOString() }), 'data', 'stale');
+    }
     return; // reintentamos en el siguiente tick
   }
   if (!snapshot) {
     fanout(hub, JSON.stringify({ message: 'Partido no encontrado' }), 'error');
     stopHub(matchId);
     return;
+  }
+
+  // El poll volvió a funcionar tras un fallo: retiramos el aviso de desfase.
+  if (hub.stale) {
+    hub.stale = false;
+    fanout(hub, JSON.stringify({ stale: false, updatedAt: new Date().toISOString() }), 'data', 'stale');
   }
 
   const diff = applySnapshot(hub.state, snapshot);
@@ -281,7 +245,7 @@ async function pollHub(matchId: string) {
 function subscribe(matchId: string, cb: Subscriber) {
   let hub = hubs.get(matchId);
   if (!hub) {
-    hub = { subscribers: new Set(), timer: null, refreshTimer: null, state: emptyHubState() };
+    hub = { subscribers: new Set(), timer: null, refreshTimer: null, state: emptyHubState(), stale: false };
     hubs.set(matchId, hub);
     hub.timer = setInterval(() => { void pollHub(matchId); }, BACKUP_POLL_MS);
     void pollHub(matchId); // primer poll inmediato
@@ -289,6 +253,8 @@ function subscribe(matchId: string, cb: Subscriber) {
   hub.subscribers.add(cb);
   // Si ya hay snapshot en caché, lo entregamos al recién llegado al instante.
   if (hub.state.lastSnapshotJson) cb(hub.state.lastSnapshotJson, 'data');
+  // Y si el hub ya está en fallo, avisamos sin esperar al reloj de frescura.
+  if (hub.stale) cb(JSON.stringify({ stale: true, updatedAt: new Date().toISOString() }), 'data', 'stale');
 }
 
 function unsubscribe(matchId: string, cb: Subscriber) {
@@ -343,10 +309,16 @@ matchStreamRouter.get('/:id/stream', async (c) => {
     let firstSent = false;
     let done = false;
 
-    const onData: Subscriber = (json, kind) => {
-      const named = eventForKind(kind, firstSent);
-      firstSent = named.firstSent;
-      queue.push({ json, ev: named.event });
+    const onData: Subscriber = (json, kind, override) => {
+      let event: string;
+      if (override) {
+        event = override; // p. ej. `stale`: no altera firstSent
+      } else {
+        const named = eventForKind(kind, firstSent);
+        firstSent = named.firstSent;
+        event = named.event;
+      }
+      queue.push({ json, ev: event });
       wake?.();
     };
 
