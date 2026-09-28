@@ -5,6 +5,10 @@ import { JsonLd } from '@/components/shared/JsonLd';
 import { localeAlternates, socialMeta, isSupportedLocale, competitionsListJsonLd, SITE_URL } from '@/lib/seo';
 import { competitionName } from '@/lib/names';
 
+// #351: listado público; los datos ya se revalidan cada 300 s en
+// `lib/api/client.ts`, por lo que el HTML hereda ese ISR.
+export const revalidate = 300;
+
 const TITLES: Record<string, string> = {
   es: 'Competiciones · Stick Live',
   en: 'Competitions · Stick Live',

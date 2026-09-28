@@ -13,6 +13,12 @@ import { CompetitionClient } from '@/components/competition/CompetitionClient';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
 
+// #351: esta ruta es dinámica (lee `?season=`), así que el HTML no entra en el
+// ISR de Next y Next le pone `private, no-cache, no-store`. Como la ficha es
+// pública (sin personalización por cookie), `next.config.mjs` fija
+// `Cache-Control: public, s-maxage=30` para cachearla en edge. Ver
+// `htmlCacheControlForPath`.
+
 interface Props {
   params: Promise<{ locale: string; id: string }>;
   searchParams: Promise<{ season?: string }>;

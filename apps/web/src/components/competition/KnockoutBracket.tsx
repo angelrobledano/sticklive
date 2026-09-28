@@ -29,6 +29,7 @@ function phaseRank(name: string | null, roundNumber: number | null): number {
 }
 
 function MatchCard({ m }: { m: SeasonMatch }) {
+  const { t, locale } = useT();
   const isFinished = m.status === 'finished';
   const isLive = m.status === 'live';
   const showScore = isFinished || isLive;
@@ -70,9 +71,9 @@ function MatchCard({ m }: { m: SeasonMatch }) {
       })}
       <div className="px-2.5 pb-1.5 pt-1">
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isLive ? 'text-emerald-500' : 'text-slate-500 dark:text-slate-400'}`}>
-          {isLive ? '🟢 Live'
-            : isFinished ? `Final · ${fmtDate(m.finishedAt ?? m.scheduledAt, m.competitionTimezone)}`
-            : `${fmtDate(m.scheduledAt, m.competitionTimezone)} · ${fmtTime(m.scheduledAt, m.competitionTimezone)}`}
+          {isLive ? `🟢 ${t('playoffs.live')}`
+            : isFinished ? `${t('match_states.final')} · ${fmtDate(m.finishedAt ?? m.scheduledAt, m.competitionTimezone, locale)}`
+            : `${fmtDate(m.scheduledAt, m.competitionTimezone, locale)} · ${fmtTime(m.scheduledAt, m.competitionTimezone, locale)}`}
         </span>
       </div>
     </Link>

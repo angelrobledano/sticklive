@@ -5,6 +5,7 @@ import type { Match } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName } from '@/components/shared/TeamName';
 import { useT } from '@/lib/i18n';
+import { tt } from '@/components/search/translate';
 import { useNow30s } from '@/lib/now-ticker';
 import { finalLabelKey, penaltyText } from '@/lib/match-result';
 import { APP_TZ } from '@/lib/match-time';
@@ -21,9 +22,9 @@ interface MatchCardProps {
  * Europe/Madrid cuando no viene, que es como la fuente publica hoy → cero
  * cambio para las ligas actuales.
  */
-function formatTime(iso: string | null, tz?: string | null): string {
+function formatTime(iso: string | null, tz?: string | null, locale = 'es'): string {
   if (!iso) return '--:--';
-  return new Date(iso).toLocaleTimeString('es-ES', {
+  return new Date(iso).toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
     timeZone: tz || APP_TZ,
@@ -91,7 +92,7 @@ function useIsMatchOverdue(match: Match): boolean {
 }
 
 function ScoreBlock({ match }: { match: Match }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const { status, score, scheduledAt, startedAt } = match;
 
   // Si scheduled pero ya paso la hora de inicio, forzar badge live en UI
@@ -148,7 +149,7 @@ function ScoreBlock({ match }: { match: Match }) {
     return (
       <div className="flex flex-col items-center gap-1 px-3 shrink-0">
         <span className="text-xs font-semibold text-amber-500 uppercase tracking-wide">
-          Aplazado
+          {tt(t, 'match_states.postponed', 'Aplazado')}
         </span>
       </div>
     );
@@ -158,7 +159,7 @@ function ScoreBlock({ match }: { match: Match }) {
     return (
       <div className="flex flex-col items-center gap-1 px-3 shrink-0">
         <span className="text-xs font-semibold text-rose-500 uppercase tracking-wide">
-          Cancelado
+          {tt(t, 'match_states.cancelled', 'Cancelado')}
         </span>
       </div>
     );
@@ -168,7 +169,7 @@ function ScoreBlock({ match }: { match: Match }) {
   return (
     <div className="flex flex-col items-center gap-0.5 px-3 shrink-0">
       <span className="font-score text-lg font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
-        {formatTime(startedAt ?? scheduledAt, match.competitionTimezone)}
+        {formatTime(startedAt ?? scheduledAt, match.competitionTimezone, locale)}
       </span>
     </div>
   );

@@ -11,16 +11,16 @@ import { APP_TZ } from '@/lib/match-time';
  * sigue anclada en Madrid (ver match-time.ts): esto solo afecta a la hora que
  * se pinta de un partido concreto.
  */
-export function formatTime(iso: string | null, tz?: string | null): string {
+export function formatTime(iso: string | null, tz?: string | null, locale = 'es'): string {
   if (!iso) return '--:--';
-  return new Date(iso).toLocaleTimeString('es-ES', {
+  return new Date(iso).toLocaleTimeString(locale, {
     hour: '2-digit', minute: '2-digit', timeZone: tz || APP_TZ,
   });
 }
 
-export function formatDate(iso: string | null, tz?: string | null): string {
+export function formatDate(iso: string | null, tz?: string | null, locale = 'es'): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleDateString('es-ES', {
+  return new Date(iso).toLocaleDateString(locale, {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
     timeZone: tz || APP_TZ,
   });

@@ -11,16 +11,16 @@ import { APP_TZ } from '@/lib/match-time';
  * única competición, así que agrupar y formatear en su TZ es coherente (para las
  * ligas ES no cambia nada; para una liga PT/IT en hora local, cuadra el día).
  */
-export function fmtTime(iso: string | null, tz?: string | null): string {
+export function fmtTime(iso: string | null, tz?: string | null, locale = 'es'): string {
   if (!iso) return '--:--';
-  return new Date(iso).toLocaleTimeString('es-ES', {
+  return new Date(iso).toLocaleTimeString(locale, {
     hour: '2-digit', minute: '2-digit', timeZone: tz || APP_TZ,
   });
 }
 
-export function fmtDate(iso: string | null, tz?: string | null): string {
+export function fmtDate(iso: string | null, tz?: string | null, locale = 'es'): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleDateString('es-ES', {
+  return new Date(iso).toLocaleDateString(locale, {
     weekday: 'short', day: 'numeric', month: 'short', timeZone: tz || APP_TZ,
   });
 }
@@ -44,8 +44,8 @@ export function madridDay(iso: string | null, tz?: string | null): string | null
 }
 
 /** "2026-06-20" → "Vie 20 jun" (mediodía UTC, no cruza fecha entre zonas). */
-export function dayPillLabel(d: string): string {
-  const s = new Date(`${d}T12:00:00Z`).toLocaleDateString('es-ES', {
+export function dayPillLabel(d: string, locale = 'es'): string {
+  const s = new Date(`${d}T12:00:00Z`).toLocaleDateString(locale, {
     weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC',
   });
   return s.charAt(0).toUpperCase() + s.slice(1);

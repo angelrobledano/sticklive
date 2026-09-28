@@ -1,4 +1,25 @@
 import { withSentryConfig } from '@sentry/nextjs';
+
+/**
+ * Política de caché de HTML por ruta (#351). Pura y testeable.
+ *
+ * La ficha de competición se renderiza dinámica (lee `?season=`), así que Next
+ * le pone `private, no-cache, no-store`. Su HTML, en cambio, es idéntico para
+ * todos los usuarios (no hay personalización por cookie en el árbol), y sus
+ * datos ya se revalidan cada 120-300 s vía `lib/api/client.ts`. Un `s-maxage`
+ * corto + `stale-while-revalidate` permite servirlo en edge sin volver a
+ * renderizar en origen. El listado, la home y el resto de rutas conservan su
+ * estrategia por defecto (ISR de fetch o no-store para datos personalizados/en
+ * vivo). Los partidos en directo del cliente siguen refrescándose por polling.
+ */
+export const COMPETITION_DETAIL_CACHE_CONTROL = 'public, s-maxage=30, stale-while-revalidate=300';
+
+export function htmlCacheControlForPath(pathname) {
+  return /^\/(?:es|en|pt|fr|it)\/competitions\/[^/]+$/.test(pathname)
+    ? COMPETITION_DETAIL_CACHE_CONTROL
+    : null;
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // No revelar el framework en las respuestas (#307): quita `X-Powered-By`.
@@ -32,6 +53,12 @@ const nextConfig = {
       {
         source: '/og-image.png',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
+        // #351: ficha de competición pública y cacheable en edge. El patrón debe
+        // seguir la misma regla que `htmlCacheControlForPath`.
+        source: '/:locale(es|en|pt|fr|it)/competitions/:id',
+        headers: [{ key: 'Cache-Control', value: COMPETITION_DETAIL_CACHE_CONTROL }],
       },
     ];
   },

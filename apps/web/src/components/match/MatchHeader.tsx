@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useT } from '@/lib/i18n';
+import { tt } from '@/components/search/translate';
 import type { MatchDetail } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
@@ -175,7 +176,7 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
   lastUpdateAt?: number | null;
   serverStale?: boolean;
 }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const { match, stats } = data;
   const ht = match.homeTeam!;
   const at = match.awayTeam!;
@@ -281,7 +282,7 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
         )}
         {!isLive && !isFinished && (
           <span className="text-[11px] text-slate-500 dark:text-slate-400">
-            {formatDate(match.scheduledAt, match.competitionTimezone)} · {formatTime(match.scheduledAt, match.competitionTimezone)}
+            {formatDate(match.scheduledAt, match.competitionTimezone, locale)} · {formatTime(match.scheduledAt, match.competitionTimezone, locale)}
           </span>
         )}
       </div>
@@ -303,14 +304,18 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
             </div>
           ) : (
             <div className="font-score text-3xl font-semibold text-slate-500 dark:text-slate-400 tabular-nums">
-              {formatTime(match.scheduledAt, match.competitionTimezone)}
+              {formatTime(match.scheduledAt, match.competitionTimezone, locale)}
             </div>
           )}
           {match.status === 'postponed' && (
-            <span className="text-xs font-bold text-amber-500 uppercase tracking-wide">Aplazado</span>
+            <span className="text-xs font-bold text-amber-500 uppercase tracking-wide">
+              {tt(t, 'match_states.postponed', 'Aplazado')}
+            </span>
           )}
           {match.status === 'cancelled' && (
-            <span className="text-xs font-bold text-rose-500 uppercase tracking-wide">Cancelado</span>
+            <span className="text-xs font-bold text-rose-500 uppercase tracking-wide">
+              {tt(t, 'match_states.cancelled', 'Cancelado')}
+            </span>
           )}
         </div>
 
@@ -370,7 +375,7 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
             </span>
           )}
           {match.referee && (
-            <span className="text-[11px] text-slate-500 dark:text-slate-400">Árb. {match.referee}</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">{tt(t, 'match_detail.referee_short', 'Árb.')} {match.referee}</span>
           )}
         </div>
       )}

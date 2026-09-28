@@ -10,12 +10,17 @@ import { TeamShield } from '@/components/shared/TeamShield';
 import { AdBanner } from '@/components/shared/AdBanner';
 import { adsenseConfig, listAdInsertIndex } from '@/lib/ads';
 import { clubName } from '@/lib/names';
+import { tt } from '@/components/search/translate';
 import { fmtTime, madridDay, dayPillLabel, roundLabel } from './format';
 
 /** Config AdSense (env inyectado en build). */
 const ADS = adsenseConfig();
 
+/** Sentinela interna para partidos sin fecha (no se traduce en el agrupado). */
+const NO_DATE = '__nodate__';
+
 function MatchCard({ match }: { match: SeasonMatch }) {
+  const { t, locale } = useT();
   const isLive     = match.status === 'live';
   const isFinished = match.status === 'finished';
   const showScore  = isLive || isFinished;
@@ -45,16 +50,16 @@ function MatchCard({ match }: { match: SeasonMatch }) {
             {isLive && (
               <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500 uppercase tracking-wide">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
-                Live
+                {t('match_states.live')}
               </span>
             )}
             {isFinished && (
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">Final</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('match_states.final')}</span>
             )}
           </>
         ) : (
           <span className="font-score text-sm font-semibold text-slate-500 dark:text-slate-400 tabular-nums">
-            {fmtTime(match.scheduledAt, match.competitionTimezone)}
+            {fmtTime(match.scheduledAt, match.competitionTimezone, locale)}
           </span>
         )}
       </div>
@@ -87,10 +92,11 @@ function EmptyFixtures() {
 
 /** Lista de partidos agrupada por día (calendario completo de un equipo). */
 function FixturesByDate({ matches }: { matches: SeasonMatch[] }) {
+  const { t, locale } = useT();
   const groups = useMemo(() => {
     const map = new Map<string, SeasonMatch[]>();
     for (const m of matches) {
-      const d = madridDay(m.scheduledAt, m.competitionTimezone) ?? 'Sin fecha';
+      const d = madridDay(m.scheduledAt, m.competitionTimezone) ?? NO_DATE;
       const arr = map.get(d);
       if (arr) arr.push(m); else map.set(d, [m]);
     }
@@ -103,7 +109,7 @@ function FixturesByDate({ matches }: { matches: SeasonMatch[] }) {
         <div key={d} className="card overflow-hidden">
           <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
             <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
-              {d === 'Sin fecha' ? d : dayPillLabel(d)}
+              {d === NO_DATE ? tt(t, 'team.no_date', 'Sin fecha') : dayPillLabel(d, locale)}
             </span>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -116,7 +122,7 @@ function FixturesByDate({ matches }: { matches: SeasonMatch[] }) {
 }
 
 export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; matches: SeasonMatch[] }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const sp = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -257,7 +263,7 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
-                {dayPillLabel(d)}
+                {dayPillLabel(d, locale)}
               </button>
             ))}
           </div>

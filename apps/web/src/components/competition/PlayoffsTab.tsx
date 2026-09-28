@@ -22,6 +22,7 @@ type PlayoffPhase = typeof PLAYOFF_PHASES[number];
  * victorias de serie, que ahí sobra y confunde). Resalta al ganador y enlaza.
  */
 function SingleMatchSeries({ serie, label }: { serie: PlayoffSeries; label: string }) {
+  const { t, locale } = useT();
   const g = serie.games[0]!;
   const isFinished = g.status === 'finished';
   const isLive = g.status === 'live';
@@ -35,7 +36,7 @@ function SingleMatchSeries({ serie, label }: { serie: PlayoffSeries; label: stri
     <div className={`card overflow-hidden border ${isLive ? 'border-emerald-400/40' : 'border-slate-200 dark:border-slate-800'}`}>
       <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
         <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</p>
-        {isLive && <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">● Live</span>}
+        {isLive && <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">● {t('playoffs.live')}</span>}
       </div>
       {sides.map(({ team, score }, idx) => {
         // Ganador explícito (penaltis/prórroga) manda; si no, se deriva del
@@ -59,9 +60,9 @@ function SingleMatchSeries({ serie, label }: { serie: PlayoffSeries; label: stri
       })}
       <div className="px-3 pb-2 pt-1">
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isLive ? 'text-emerald-500' : 'text-slate-500 dark:text-slate-400'}`}>
-          {isLive ? '🟢 En directo'
-            : isFinished ? `Final · ${fmtDate(g.finishedAt ?? g.scheduledAt)}`
-            : `${fmtDate(g.scheduledAt)} · ${fmtTime(g.scheduledAt)}`}
+          {isLive ? `🟢 ${t('playoffs.live')}`
+            : isFinished ? `${t('match_states.final')} · ${fmtDate(g.finishedAt ?? g.scheduledAt, undefined, locale)}`
+            : `${fmtDate(g.scheduledAt, undefined, locale)} · ${fmtTime(g.scheduledAt, undefined, locale)}`}
         </span>
       </div>
     </div>
@@ -71,7 +72,7 @@ function SingleMatchSeries({ serie, label }: { serie: PlayoffSeries; label: stri
 }
 
 function SeriesCard({ serie, label }: { serie: PlayoffSeries; label: string }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   // Partido único → tarjeta de partido (sin marcador de victorias de serie).
   if (serie.games.length === 1) return <SingleMatchSeries serie={serie} label={label} />;
   const hasLive = serie.games.some((g) => g.status === 'live');
@@ -127,7 +128,7 @@ function SeriesCard({ serie, label }: { serie: PlayoffSeries; label: string }) {
                 }`}>
             {g.status === 'finished' || g.status === 'live'
               ? `${(g.homeTeam.shortName ?? g.homeTeam.name).slice(0, 4)} ${g.score.home ?? '-'}-${g.score.away ?? '-'} ${(g.awayTeam.shortName ?? g.awayTeam.name).slice(0, 4)}`
-              : fmtDate(g.scheduledAt)}
+              : fmtDate(g.scheduledAt, undefined, locale)}
           </Link>
         ))}
       </div>

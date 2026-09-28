@@ -37,7 +37,9 @@
     "half_time": "Intervallo",
     "first_half": "1° Tempo",
     "second_half": "2° Tempo",
-    "scheduled": "In programma"
+    "scheduled": "In programma",
+    "postponed": "Rinviato",
+    "cancelled": "Annullato"
   },
   "hockey_stats": {
     "goals": "Gol",
@@ -194,7 +196,8 @@
     "connecting": "Connessione…",
     "reconnecting_short": "Riconnessione · segnale debole",
     "signal_weak": "Segnale debole",
-    "timeline_aria": "Eventi della partita"
+    "timeline_aria": "Eventi della partita",
+    "referee_short": "Arb."
   },
   "playoffs": {
     "quarters": "Quarti",
@@ -420,7 +423,10 @@
     "not_found_title": "Pagina non trovata",
     "not_found_body": "Non abbiamo trovato questa pagina. Il link potrebbe essere rotto o non esistere più.",
     "not_found_home": "Torna alla home",
-    "not_found_competitions": "Vedi competizioni"
+    "not_found_competitions": "Vedi competizioni",
+    "boundary_badge": "PARTITA INTERROTTA",
+    "boundary_title": "L'arbitro ha temporaneamente fermato la partita",
+    "boundary_body": "Si è verificato un problema di connessione con il tabellone. Il team tecnico ci sta già lavorando — riprova tra qualche secondo."
   },
   "offline": {
     "banner": "Offline — dati salvati visualizzati",

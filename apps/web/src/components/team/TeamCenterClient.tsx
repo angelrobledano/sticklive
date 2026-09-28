@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import type { TeamDetail, TeamMatchSummary, SquadPlayer } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
@@ -573,24 +573,62 @@ const TAB_KEYS: Record<Tab, string> = {
   'Estadísticas': 'match_tabs.stats',
 };
 
+/** #352: slugs estables del tab en la URL (?tab=). No dependen del idioma. */
+const TAB_SLUG: Record<Tab, string> = {
+  'Resumen': 'summary', 'Calendario': 'calendar', 'Plantilla': 'squad', 'Estadísticas': 'stats',
+};
+
+/**
+ * #352: tab que pide la URL, o `null` si el parámetro falta, no es un slug
+ * válido o apunta a una pestaña no visible. Función pura, testeable sin navegador.
+ */
+export function teamTabFromParam(param: string | null, visible: readonly Tab[] = TABS): Tab | null {
+  if (!param) return null;
+  const tab = (Object.keys(TAB_SLUG) as Tab[]).find((k) => TAB_SLUG[k] === param);
+  return tab && visible.includes(tab) ? tab : null;
+}
+
 export function TeamCenterClient({ data }: { data: TeamDetail }) {
   const [activeTab, setActiveTab] = useState<Tab>('Resumen');
   const { t } = useT();
+
+  // #352: el tab activo viaja en la URL (`?tab=`). Se lee al montar y al usar
+  // atrás/adelante; al cambiar se reescribe con `history.replaceState` (sin
+  // navegación de Next) para no re-renderizar el árbol servidor.
+  const selectTab = useCallback((tab: Tab) => {
+    setActiveTab(tab);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', TAB_SLUG[tab]);
+      window.history.replaceState(window.history.state, '', url.toString());
+    } catch { /* noop */ }
+  }, []);
+
+  useEffect(() => {
+    const applyFromUrl = () => {
+      const param = new URLSearchParams(window.location.search).get('tab');
+      const tab = teamTabFromParam(param);
+      if (tab) setActiveTab(tab);
+    };
+    applyFromUrl();
+    window.addEventListener('popstate', applyFromUrl);
+    return () => window.removeEventListener('popstate', applyFromUrl);
+  }, []);
 
   return (
     <div className="space-y-4">
       <TeamHeader data={data} />
 
       {/* Pestañas */}
-      <div className="flex gap-0 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex gap-0 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none">
         {TABS.map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+            onClick={() => selectTab(tab)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap shrink-0 ${
               activeTab === tab
-                ? 'border-rink-passion text-rink-passion'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                ? 'border-rink-passion text-rink-passion active:bg-rink-passion/5'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 active:bg-slate-50 dark:active:bg-slate-800/60 active:text-slate-900 dark:active:text-slate-100'
             }`}
           >
             {t(TAB_KEYS[tab])}

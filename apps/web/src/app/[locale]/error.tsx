@@ -1,6 +1,8 @@
 'use client';
 import { useEffect } from 'react';
 import * as Sentry from '@sentry/nextjs';
+import { useT } from '@/lib/i18n';
+import { tt } from '@/components/search/translate';
 // app/error.tsx — Error Boundary global de Next.js 14
 // Se activa cuando un Server Component lanza una excepción no capturada.
 // reset() fuerza un re-render del segmento sin recargar la página.
@@ -75,6 +77,7 @@ function RefreshIcon() {
 }
 
 export default function GlobalError({ error, reset }: ErrorPageProps) {
+  const { t } = useT();
   const isDev = process.env.NODE_ENV === 'development';
 
   // Este boundary no reportaba a Sentry (solo el global-error.tsx lo hacía):
@@ -96,16 +99,15 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
                         text-amber-700 dark:text-amber-400
                         text-xs font-semibold tracking-wide">
           <WhistleIcon />
-          <span>PARTIDO DETENIDO</span>
+          <span>{tt(t, 'errors.boundary_badge', 'PARTIDO DETENIDO')}</span>
         </div>
 
         <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-snug">
-          El árbitro ha detenido el partido temporalmente
+          {tt(t, 'errors.boundary_title', 'El árbitro ha detenido el partido temporalmente')}
         </h1>
 
         <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-          Se ha producido un problema de conexión con el marcador.
-          El equipo técnico ya está trabajando en ello — inténtalo de nuevo en unos segundos.
+          {tt(t, 'errors.boundary_body', 'Se ha producido un problema de conexión con el marcador. El equipo técnico ya está trabajando en ello — inténtalo de nuevo en unos segundos.')}
         </p>
 
         {/* Digest en desarrollo */}
@@ -134,7 +136,7 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
                    focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
       >
         <RefreshIcon />
-        Reintentar
+        {tt(t, 'errors.retry', 'Reintentar')}
       </button>
 
       {/* Enlace home secundario */}
@@ -143,7 +145,7 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
         className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300
                    underline underline-offset-2 transition-colors"
       >
-        Volver al inicio
+        {tt(t, 'errors.not_found_home', 'Volver al inicio')}
       </a>
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo, Suspense, useRef } from 'react';
+import { useMemo, useCallback, Suspense, useRef } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import type { SeasonOverview, CompetitionSeason, SeasonStats } from '@/lib/api/client';
 import { CompetitionHeader } from './CompetitionHeader';
@@ -20,6 +21,22 @@ const MAIN_TAB_KEYS: Record<MainTab, string> = {
   'Playoffs':      'match_tabs.playoffs',
   'Estadísticas':  'match_tabs.stats',
 };
+
+/** #352: slugs estables del tab principal en la URL (?tab=). */
+const TAB_SLUG: Record<MainTab, string> = {
+  'Clasificación': 'standing', 'Jornadas': 'fixtures', 'Playoffs': 'playoffs', 'Estadísticas': 'stats',
+};
+
+/**
+ * #352: tab principal que pide la URL, o `null` si el parámetro falta, no es un
+ * slug válido o apunta a una pestaña no visible en esta competición. Función
+ * pura, testeable sin navegador.
+ */
+export function competitionTabFromParam(param: string | null, visible: readonly MainTab[]): MainTab | null {
+  if (!param) return null;
+  const tab = (Object.keys(TAB_SLUG) as MainTab[]).find((k) => TAB_SLUG[k] === param);
+  return tab && visible.includes(tab) ? tab : null;
+}
 
 /**
  * #358: navegación del patrón ARIA tabs (roving tabindex). Devuelve el índice
@@ -57,9 +74,23 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
     return tabs.length > 0 ? tabs : ['Clasificación'];
   }, [data.standings, data.matches, stats]);
 
-  const [activeTab, setActiveTab] = useState<MainTab>(visibleTabs[0]!);
-  const currentTab = visibleTabs.includes(activeTab) ? activeTab : visibleTabs[0]!;
   const { t } = useT();
+  const sp = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // #352: el tab principal vive en la URL (`?tab=`) sin pisar los sub-filtros
+  // (?season/?journey/?date/?team_id/?phase): GameweeksTab y PlayoffsTab
+  // construyen sus params sobre `sp` y los preservan. Un slug inválido o de una
+  // pestaña no visible en esta competición cae a la primera con contenido.
+  const requestedTab = competitionTabFromParam(sp.get('tab'), visibleTabs);
+  const currentTab: MainTab = requestedTab ?? visibleTabs[0]!;
+
+  const selectTab = useCallback((tab: MainTab) => {
+    const params = new URLSearchParams(sp.toString());
+    params.set('tab', TAB_SLUG[tab]);
+    router.replace(`${pathname}?${params}`, { scroll: false });
+  }, [sp, pathname, router]);
 
   // #358: patrón ARIA tabs con roving tabindex y navegación por flechas.
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -68,7 +99,7 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
     const next = nextTabIndex(i, e.key, visibleTabs.length);
     if (next < 0 || next === i) return;
     e.preventDefault();
-    setActiveTab(visibleTabs[next]!);
+    selectTab(visibleTabs[next]!);
     tabRefs.current[next]?.focus();
   };
 
@@ -91,11 +122,11 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
             aria-selected={currentTab === tab}
             aria-controls={`competition-panel-${i}`}
             tabIndex={currentTab === tab ? 0 : -1}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm border-b -mb-px transition-colors whitespace-nowrap ${
+            onClick={() => selectTab(tab)}
+            className={`px-4 py-2.5 text-sm border-b -mb-px transition-colors whitespace-nowrap shrink-0 ${
               currentTab === tab
-                ? 'border-rink-passion text-rink-passion font-semibold'
-                : 'border-transparent font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                ? 'border-rink-passion text-rink-passion font-semibold active:bg-rink-passion/5'
+                : 'border-transparent font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 active:bg-slate-50 dark:active:bg-slate-800/60 active:text-slate-900 dark:active:text-slate-100'
             }`}
           >
             {t(MAIN_TAB_KEYS[tab])}

@@ -70,7 +70,9 @@
     "half_time": "HT",
     "first_half": "1st Half",
     "second_half": "2nd Half",
-    "scheduled": "Scheduled"
+    "scheduled": "Scheduled",
+    "postponed": "Postponed",
+    "cancelled": "Cancelled"
   },
   "hockey_stats": {
     "goals": "Goals",
@@ -227,7 +229,8 @@
     "connecting": "Connecting…",
     "reconnecting_short": "Reconnecting · weak signal",
     "signal_weak": "Weak signal",
-    "timeline_aria": "Match events"
+    "timeline_aria": "Match events",
+    "referee_short": "Ref."
   },
   "playoffs": {
     "quarters": "Quarters",
@@ -440,7 +443,10 @@
     "not_found_title": "Page not found",
     "not_found_body": "We couldn't find this page. The link may be broken or no longer exist.",
     "not_found_home": "Back to home",
-    "not_found_competitions": "View competitions"
+    "not_found_competitions": "View competitions",
+    "boundary_badge": "MATCH STOPPED",
+    "boundary_title": "The referee has temporarily stopped the match",
+    "boundary_body": "There's been a connection problem with the scoreboard. The technical team is already on it — try again in a few seconds."
   },
   "offline": {
     "banner": "Offline — showing saved data",

@@ -8,6 +8,10 @@
  *    persiste nada hasta que el usuario acepta (ver `lib/consent.ts`).
  *    Sin consentimiento, `track`/`identify`/... son no-op.
  *  · Autocapture APAGADO: solo eventos con nombre e intención (plan de tracking).
+ *    #340: además se apaga el grabador de sesión de PostHog (`session_recording`),
+ *    las encuestas y las "dead clicks": el único grabador que queda es el de
+ *    Sentry (y solo en error, ver `instrumentation-client.ts`). Se conserva el
+ *    `track()` de producto intacto.
  *  · No se captura en desarrollo salvo NEXT_PUBLIC_POSTHOG_DEBUG=1.
  *  · person_profiles: 'identified_only' → los anónimos no crean perfil
  *    (ahorra coste y ruido); el perfil nace al hacer login.
@@ -146,6 +150,11 @@ function ensureInit(): boolean {
       capture_pageview: false,   // pageviews manuales (App Router)
       capture_pageleave: true,   // duración de sesión/página
       autocapture: false,        // solo eventos del plan
+      // #340: sin grabador de sesión propio. Solo track()/pageviews; el único
+      // session replay es el de Sentry (solo en error) para no duplicar costo.
+      disable_session_recording: true,
+      disable_surveys: true,     // no cargar surveys.js
+      capture_dead_clicks: false, // no cargar dead-clicks-autocapture.js
       person_profiles: 'identified_only',
       // Identidad anónima = device_id, compartida con los eventos de servidor.
       ...(deviceId ? { bootstrap: { distinctID: deviceId } } : {}),

@@ -32,6 +32,22 @@ const TAB_KEYS: Record<Tab, string> = {
   'Estadísticas': 'match_tabs.stats',
 };
 
+/** #352: slugs estables del tab en la URL (?tab=). No dependen del idioma. */
+const TAB_SLUG: Record<Tab, string> = {
+  'Resumen': 'summary', 'Alineaciones': 'lineups', 'Estadísticas': 'stats',
+};
+
+/**
+ * #352: tab que pide la URL, o `null` si el parámetro falta, no es un slug
+ * válido o apunta a una pestaña que no está visible en este partido (nunca
+ * mostramos una pestaña vacía). Función pura, testeable sin navegador.
+ */
+export function matchTabFromParam(param: string | null, visible: readonly Tab[]): Tab | null {
+  if (!param) return null;
+  const tab = (Object.keys(TAB_SLUG) as Tab[]).find((k) => TAB_SLUG[k] === param);
+  return tab && visible.includes(tab) ? tab : null;
+}
+
 /**
  * #358: navegación del patrón ARIA tabs (roving tabindex). Devuelve el índice
  * destino para flechas/Home/End, o el mismo si la tecla no aplica. Función pura
@@ -463,6 +479,33 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
   // Si la tab activa quedó oculta (ej: alineaciones desaparecieron en live), volver a Resumen
   const safeActiveTab: Tab = visibleTabs.includes(activeTab) ? activeTab : 'Resumen';
 
+  // #352: el tab activo viaja en la URL (`?tab=`). Se lee al montar y al usar
+  // atrás/adelante; al cambiar de pestaña se reescribe con `history.replaceState`
+  // (sin navegación de Next) para no re-renderizar el árbol servidor ni perder
+  // el estado en vivo del partido. La navegación por teclado ARIA (#358) sigue igual.
+  const visibleTabsRef = useRef<Tab[]>(visibleTabs);
+  visibleTabsRef.current = visibleTabs;
+
+  const selectTab = useCallback((tab: Tab) => {
+    setActiveTab(tab);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', TAB_SLUG[tab]);
+      window.history.replaceState(window.history.state, '', url.toString());
+    } catch { /* noop */ }
+  }, []);
+
+  useEffect(() => {
+    const applyFromUrl = () => {
+      const param = new URLSearchParams(window.location.search).get('tab');
+      const tab = matchTabFromParam(param, visibleTabsRef.current);
+      if (tab) setActiveTab(tab);
+    };
+    applyFromUrl();
+    window.addEventListener('popstate', applyFromUrl);
+    return () => window.removeEventListener('popstate', applyFromUrl);
+  }, []);
+
   // #358: patrón ARIA tabs con foco móvil (roving tabindex) y navegación por flechas.
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const onTabKeyDown = (e: React.KeyboardEvent) => {
@@ -470,7 +513,7 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
     const next = nextTabIndex(i, e.key, visibleTabs.length);
     if (next < 0 || next === i) return;
     e.preventDefault();
-    setActiveTab(visibleTabs[next]!);
+    selectTab(visibleTabs[next]!);
     tabRefs.current[next]?.focus();
   };
 
@@ -484,7 +527,7 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
         role="tablist"
         aria-label={tt(t, 'a11y.match_tabs', 'Secciones del partido')}
         onKeyDown={onTabKeyDown}
-        className="flex gap-0 border-b border-slate-200 dark:border-slate-800"
+        className="flex gap-0 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none"
       >
         {visibleTabs.map((tab, i) => (
           <button
@@ -495,11 +538,11 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
             aria-selected={safeActiveTab === tab}
             aria-controls={`match-panel-${i}`}
             tabIndex={safeActiveTab === tab ? 0 : -1}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm border-b -mb-px transition-colors whitespace-nowrap ${
+            onClick={() => selectTab(tab)}
+            className={`px-4 py-2.5 text-sm border-b -mb-px transition-colors whitespace-nowrap shrink-0 ${
               safeActiveTab === tab
-                ? 'border-rink-passion text-rink-passion font-semibold'
-                : 'border-transparent font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                ? 'border-rink-passion text-rink-passion font-semibold active:bg-rink-passion/5'
+                : 'border-transparent font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 active:bg-slate-50 dark:active:bg-slate-800/60 active:text-slate-900 dark:active:text-slate-100'
             }`}
           >
             {t(TAB_KEYS[tab])}
