@@ -1,11 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { db, closeDb } from '@sports/db';
+import { normalizeLogoBuffer, normalizeLogoFile } from './logo-normalize.js';
 
 // Destino: apps/web/public/escudos/{teamId}.png
 // Ejecutar desde la raiz del monorepo:
 //   npx tsx --env-file .env apps/etl/src/download-logos.ts
-const OUT_DIR = path.join(process.cwd(), 'apps', 'web', 'public', 'escudos');
+// Misma resolución que run-pipeline.ts: ESCUDOS_DIR (volumen en producción) o,
+// si no, la ruta del repo relativa a ESTE módulo. Antes usaba process.cwd(), que
+// al lanzarlo desde apps/etl escribía fuera del volumen.
+const OUT_DIR =
+  process.env['ESCUDOS_DIR'] ??
+  path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web/public/escudos');
 
 async function downloadLogo(url: string, destPath: string): Promise<boolean> {
   try {
@@ -16,8 +23,9 @@ async function downloadLogo(url: string, destPath: string): Promise<boolean> {
       },
     });
     if (!res.ok) return false;
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length < 100) return false;
+    const raw = Buffer.from(await res.arrayBuffer());
+    if (raw.length < 100) return false;
+    const buf = await normalizeLogoBuffer(raw);
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
     fs.writeFileSync(destPath, buf);
     return true;
@@ -35,14 +43,22 @@ async function main() {
   console.log('Destino:', OUT_DIR);
   console.log('');
 
-  let ok = 0, skip = 0, fail = 0;
+  let ok = 0, norm = 0, skip = 0, fail = 0;
 
   for (const team of rows) {
     const dest = path.join(OUT_DIR, team.id + '.png');
 
     if (fs.existsSync(dest)) {
-      console.log('SKIP  ', team.name);
-      skip++;
+      // Ya existe: si aún tiene transparencia o tamaño irregular, lo normalizamos
+      // (idempotente: si ya está normalizado, se salta).
+      try {
+        const action = await normalizeLogoFile(dest);
+        if (action === 'normalized') { console.log('NORM  ', team.name); norm++; }
+        else { console.log('SKIP  ', team.name); skip++; }
+      } catch (e) {
+        console.log('FAIL  ', team.name, '(normalizando:', String(e), ')');
+        fail++;
+      }
       continue;
     }
 
@@ -66,7 +82,7 @@ async function main() {
   }
 
   console.log('');
-  console.log('Resumen:', ok, 'descargados,', skip, 'ya existian,', fail, 'fallidos');
+  console.log('Resumen:', ok, 'descargados,', norm, 'normalizados,', skip, 'ya normalizados,', fail, 'fallidos');
   await closeDb();
 }
 
