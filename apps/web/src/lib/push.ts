@@ -27,6 +27,29 @@ export function notificationPermission(): NotificationPermission | 'unsupported'
   return Notification.permission;
 }
 
+/** Contexto (puro) para decidir si conviene ofrecer "Activar avisos". */
+export interface PushActivationContext {
+  supported: boolean;
+  permission: NotificationPermission | 'unsupported';
+  vapidMissing: boolean;
+  ios: boolean;
+  standalone: boolean;
+}
+
+/**
+ * ¿Ofrecer al usuario el botón "Activar avisos"? Solo cuando el dispositivo puede
+ * y todavía no hay decisión (permiso 'default'): no volvemos a insistir si ya lo
+ * concedió o lo denegó, ni en iOS sin instalar (ahí Web Push no existe). Es puro
+ * para poder fijarlo con tests; la llamada real a enablePush() necesita el gesto
+ * del usuario y la dispara el botón.
+ */
+export function shouldOfferPushActivation(ctx: PushActivationContext): boolean {
+  if (!ctx.supported || ctx.vapidMissing) return false;
+  if (ctx.permission !== 'default') return false;
+  if (ctx.ios && !ctx.standalone) return false;
+  return true;
+}
+
 /** iPhone/iPad (incluye iPadOS que se hace pasar por Mac con pantalla táctil). */
 export function isIOS(): boolean {
   if (typeof navigator === 'undefined') return false;

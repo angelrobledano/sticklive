@@ -36,11 +36,17 @@ describe('effectivePreset y catálogo PRESET_EVENTS', () => {
     expect(wants(s, 'goal', ['T1'], 'C1', null)).toBe(false);
     expect(wants(s, 'final', ['T1'], 'C1', null)).toBe(false);
   });
-  it("'results' excluye 'goal' pero incluye 'final'; 'key_events' excluye 'start'", () => {
+  it("'results' excluye 'goal' pero incluye 'final'; 'key_events' incluye 'start' y 'goal'", () => {
     expect(PRESET_EVENTS.results).not.toContain('goal');
     expect(PRESET_EVENTS.results).toContain('final');
-    expect(PRESET_EVENTS.key_events).not.toContain('start');
+    // #265: el preset por defecto al seguir debe avisar del inicio del partido.
+    expect(PRESET_EVENTS.key_events).toContain('start');
     expect(PRESET_EVENTS.key_events).toContain('goal');
+  });
+
+  it("seguir con preset 'key_events' (por defecto) recibe el inicio del partido", () => {
+    const s = sub({ fav_teams: ['T1'], presets: { 'team:T1': 'key_events' } });
+    expect(wants(s, 'start', ['T1', 'T2'], 'C1', null)).toBe(true);
   });
   it("respeta el preset por entidad: 'results' no da gol aunque siga el equipo", () => {
     const s = sub({ fav_teams: ['T1'], presets: { 'team:T1': 'results' } });

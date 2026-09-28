@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react';
 import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';
 import { getPreset, setPreset, type NotificationPreset } from '@/lib/notif-prefs';
-import { syncPushConfig } from '@/lib/push';
+import {
+  enablePush, syncPushConfig, notificationPermission, pushSupported,
+  vapidMissing, isIOS, isStandalone, shouldOfferPushActivation,
+} from '@/lib/push';
 
 type Kind = 'team' | 'league' | 'player';
 
@@ -58,10 +61,34 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
 }) {
   const { t } = useT();
   const [selected, setSelected] = useState<NotificationPreset>('key_events');
+  const [offerPush, setOfferPush] = useState(false);
+  const [activating, setActivating] = useState(false);
 
   useEffect(() => {
     if (open) setSelected(getPreset(kind, id));
   }, [open, kind, id]);
+
+  // Al abrir (p. ej. tras el primer follow) decidimos si ofrecer "Activar avisos":
+  // sin decisión de permiso aún, para que el follow cumpla de verdad la promesa
+  // de alertas. El permiso se pide luego con el gesto del botón.
+  useEffect(() => {
+    if (!open) return;
+    setOfferPush(shouldOfferPushActivation({
+      supported: pushSupported(),
+      permission: notificationPermission(),
+      vapidMissing: vapidMissing(),
+      ios: isIOS(),
+      standalone: isStandalone(),
+    }));
+  }, [open]);
+
+  // Pide permiso y suscribe con el gesto del usuario; enablePush ya instrumenta.
+  const activatePush = async () => {
+    setActivating(true);
+    await enablePush();
+    setActivating(false);
+    setOfferPush(false);
+  };
 
   // Cierra con Escape
   useEffect(() => {
@@ -105,6 +132,32 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
         </h2>
         {name && (
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 mb-3 truncate">{name}</p>
+        )}
+
+        {/* Seguir no basta: sin permiso del navegador no llega ningún aviso. */}
+        {offerPush && (
+          <div className="mt-3 flex items-start gap-3 rounded-2xl border border-rink-passion/30 bg-rink-passion/5 p-3">
+            <span className="mt-0.5 text-rink-passion">
+              <PresetIcon preset="complete" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                {t('notif_presets.push_offer_title')}
+              </p>
+              <p className="text-xs mt-0.5 text-slate-500 dark:text-slate-400">
+                {t('notif_presets.push_offer_desc')}
+              </p>
+              <button
+                onClick={activatePush}
+                disabled={activating}
+                className="mt-2 inline-flex items-center gap-2 min-h-[40px] px-3.5 rounded-xl text-xs font-semibold
+                           bg-rink-passion text-white hover:opacity-90 disabled:opacity-50 transition-colors"
+              >
+                {activating && <span className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />}
+                {t('notif_presets.push_offer_cta')}
+              </button>
+            </div>
+          </div>
         )}
 
         <div className="space-y-2 mt-3">

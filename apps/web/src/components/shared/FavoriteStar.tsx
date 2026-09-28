@@ -52,8 +52,9 @@ export function FavoriteStar({ id, kind, name, className = '', variant = 'icon' 
     else togglePlayer(id, name);
     setToast(t(wasActive ? 'favorites.toast_unfollowed' : 'favorites.toast_following', { name: name ?? '—' }));
 
-    // Al EMPEZAR a seguir: preset por defecto 'key_events' (anti-ruido) y abrimos
-    // el selector para que el usuario ajuste cuánto quiere recibir.
+    // Al EMPEZAR a seguir: preset por defecto 'key_events' (inicio, goles,
+    // tarjetas y final; anti-ruido) y abrimos el selector para que el usuario
+    // ajuste cuánto quiere recibir y pueda activar los avisos si aún no lo hizo.
     if (!wasActive) {
       setPreset(kind, id, 'key_events');
       void syncPushConfig();
