@@ -5,17 +5,33 @@
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
+/**
+ * Error tipado de la capa API. `status` es el código HTTP real, para que las
+ * páginas no dependan de parsear el mensaje (frágil ante cambios de formato).
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly url: string;
+  constructor(status: number, url: string, body: string) {
+    super(`API ${status} - ${url}: ${body}`);
+    this.name = 'ApiError';
+    this.status = status;
+    this.url = url;
+  }
+}
+
 export async function apiFetch<T>(
   path: string,
   init?: RequestInit & { next?: { revalidate?: number; tags?: string[] } }
 ): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const url = `${API_URL}${path}`;
+  const res = await fetch(url, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`API ${res.status} - ${path}: ${body}`);
+    throw new ApiError(res.status, path, body);
   }
   return res.json() as Promise<T>;
 }
@@ -27,5 +43,7 @@ export async function apiFetch<T>(
  * cada reinicio de la API convertía páginas válidas en 404s intermitentes.
  */
 export function isApiNotFound(err: unknown): boolean {
+  if (err instanceof ApiError) return err.status === 404;
+  // Fallback para errores serializados/con truco de string (compatibilidad).
   return err instanceof Error && err.message.startsWith('API 404');
 }

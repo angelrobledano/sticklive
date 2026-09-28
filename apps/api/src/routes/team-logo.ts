@@ -40,7 +40,12 @@ teamLogoRouter.get('/:id/logo', async (c) => {
   const url = r.rows[0]?.logo_url;
   if (!url) return c.notFound();
   try {
-    const res = await fetch(url, { headers: { Referer: 'https://www.hockeypatines.fep.es/' } });
+    const res = await fetch(url, {
+      headers: { Referer: 'https://www.hockeypatines.fep.es/' },
+      // #333: sin timeout, un CDN lento bloquea el request de la API. 5 s basta
+      // para un escudo; si tarda más, preferimos el 404 (fallback del cliente).
+      signal: AbortSignal.timeout(5000),
+    });
     if (!res.ok) return c.notFound();
     const buf = Buffer.from(await res.arrayBuffer());
     return new Response(buf, {

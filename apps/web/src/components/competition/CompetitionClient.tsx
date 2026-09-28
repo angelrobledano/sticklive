@@ -67,12 +67,12 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
 
       {currentTab === 'Clasificación' && <StandingsTab standings={data.standings} />}
       {currentTab === 'Jornadas'      && (
-        <Suspense fallback={<div className="card h-40 animate-pulse" />}>
+        <Suspense fallback={<div className="card h-40 animate-pulse" aria-hidden="true" />}>
           <GameweeksTab rounds={data.rounds} matches={data.matches} />
         </Suspense>
       )}
       {currentTab === 'Playoffs'      && (
-        <Suspense fallback={<div className="card h-40 animate-pulse" />}>
+        <Suspense fallback={<div className="card h-40 animate-pulse" aria-hidden="true" />}>
           <PlayoffsTab matches={data.matches} />
         </Suspense>
       )}

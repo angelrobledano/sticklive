@@ -34,6 +34,19 @@
   .rink-empty-anim { animation: none !important; }
 }
 
+/* #364: reduce-motion global — desactiva pulsos, spinners y transiciones
+   decorativas para quien lo pide en su sistema. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Animaciones de toasts y bottom sheets */
 @keyframes fadeIn {
   from { opacity: 0; transform: translate(-50%, 6px); }
@@ -127,5 +140,18 @@
     @apply inline-flex items-center bg-slate-100 dark:bg-slate-800
            text-slate-500 dark:text-slate-400 text-xs
            px-2 py-0.5 rounded-full;
+  }
+}
+
+/* ── Utilidades propias ──────────────────────────────────────────── */
+/* Oculta la barra de scroll en carruseles horizontales (Firefox + WebKit).
+   Tailwind 3.4 no trae `scrollbar-none`; se usaba como clase no-op (#365). */
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;      /* Firefox */
+    -ms-overflow-style: none;   /* IE/Edge legacy */
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;              /* Chrome/Safari/Edge */
   }
 }

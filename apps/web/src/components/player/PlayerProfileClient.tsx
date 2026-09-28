@@ -52,7 +52,7 @@ function PlayerHeader({ data }: { data: PlayerDetail }) {
           />
           {currentTeam?.jerseyNumber != null && (
             <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-rink-passion flex items-center justify-center">
-              <span className="text-[9px] font-extrabold text-white font-mono">{currentTeam.jerseyNumber}</span>
+              <span className="text-[10px] font-extrabold text-white font-mono">{currentTeam.jerseyNumber}</span>
             </div>
           )}
         </div>
@@ -214,9 +214,9 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
     <div className="card overflow-hidden">
       {/* Cabecera */}
       <div className="grid grid-cols-[1fr_repeat(7,32px)] gap-x-1 px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
-        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('player.competition')}</span>
+        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('player.competition')}</span>
         {cols.map((h, i) => (
-          <span key={h} className={`text-[9px] font-bold text-center uppercase tracking-wider ${
+          <span key={h} className={`text-[10px] font-bold text-center uppercase tracking-wider ${
             i >= 5
               ? 'text-slate-300 dark:text-slate-600'
               : 'text-slate-500 dark:text-slate-400'

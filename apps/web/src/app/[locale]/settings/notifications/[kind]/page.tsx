@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useFavorites, getFavNames } from '@/hooks/useFavorites';
-import { isNotifEnabled, setNotifEnabled, type NotifKind } from '@/lib/notif-prefs';
+import { getPreset, setPreset, isPresetEnabled, presetFromToggle, type NotifKind } from '@/lib/notif-prefs';
 import { syncPushConfig } from '@/lib/push';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { clubName } from '@/lib/names';
@@ -57,12 +57,15 @@ interface Entry { id: string; name: string; short: string | null }
 
 export default function NotificationEntityPage() {
   const params = useParams<{ kind: string }>();
-  const kind = KIND_BY_SLUG[params.kind ?? ''] ?? null;
   const { t } = useT();
   const { favorites, leagues, players, mounted } = useFavorites();
   const [names, setNames] = useState<Record<string, { name: string; short: string | null }>>({});
   const [loading, setLoading] = useState(true);
   const [, force] = useState(0);
+
+  // kind inválido (p. ej. /settings/notifications/basura): 404 en vez de una
+  // página 200 con el h1 vacío (#365).
+  const kind = KIND_BY_SLUG[params.kind ?? ''] ?? null;
 
   const ids = useMemo(() => {
     if (kind === 'team')   return favorites;
@@ -105,6 +108,9 @@ export default function NotificationEntityPage() {
     return () => { alive = false; };
   }, [kind]);
 
+  // Todos los hooks ya se han llamado: ahora sí podemos cortar con un 404.
+  if (!kind) notFound();
+
   const title =
     kind === 'team'   ? t('settings.notif_nav_teams') :
     kind === 'league' ? t('settings.notif_nav_competitions') :
@@ -117,7 +123,12 @@ export default function NotificationEntityPage() {
   }));
 
   const toggle = (id: string) => {
-    setNotifEnabled(kind!, id, !isNotifEnabled(kind!, id));
+    // #266: escribimos el preset explícito (complete/silent), no solo la lista
+    // antigua. Si había un preset explícito, este gana sobre 'silent', así que
+    // setNotifEnabled(false) no llegaba a silenciar. setPreset mantiene ambos
+    // stores coherentes y el emisor segmenta por preset.
+    const next = presetFromToggle(!isPresetEnabled(getPreset(kind!, id)));
+    setPreset(kind!, id, next);
     void syncPushConfig(); // refleja en el servidor (fav_teams) al instante
     force((v) => v + 1);
   };
@@ -134,8 +145,8 @@ export default function NotificationEntityPage() {
       </div>
 
       {!mounted || loading ? (
-        <div className="py-10 flex justify-center">
-          <div className="w-5 h-5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" />
+        <div className="py-10 flex justify-center" aria-busy="true">
+          <div className="w-5 h-5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" aria-hidden="true" />
         </div>
       ) : entries.length === 0 ? (
         <div className="card p-6 text-center space-y-3">
@@ -158,7 +169,7 @@ export default function NotificationEntityPage() {
               <span className="flex-1 min-w-0 text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
                 {clubName(e.name)}
               </span>
-              <Toggle checked={isNotifEnabled(kind!, e.id)} onChange={() => toggle(e.id)} />
+              <Toggle checked={isPresetEnabled(getPreset(kind!, e.id))} onChange={() => toggle(e.id)} />
             </div>
           ))}
         </section>

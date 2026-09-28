@@ -29,7 +29,10 @@
 | GET | `/players/:id/photo` | Foto (proxy del CDN) |
 | GET | `/meta/sitemap` | IDs para el sitemap dinámico de la web |
 
-Rate limit de lectura activo en: `/seasons/:id/overview`, `/seasons/:id/stats`, `/teams/:id`, `/players/:id`.
+Rate limit de lectura: **120/min por IP** en `GET /competitions`, `/search`,
+`/seasons/:id/overview`, `/seasons/:id/stats`, `/seasons/:id/matches`,
+`/seasons/:id/standings`, `/matches/:id`, `/matches/live`, `/matches/current`,
+`/teams/:id`, `/players/:id` y `/meta/sitemap`.
 
 ### `/matches/live` — estado real (#190)
 
@@ -57,7 +60,7 @@ SSE, no este endpoint.
 | GET | `/auth/me` | Usuario de la sesión actual (Bearer token) |
 | GET | `/auth/google` + `/auth/google/callback` | OAuth Google (state firmado HMAC, validado en callback) |
 | POST | `/auth/favorites/merge` | Fusión de favoritos anónimos → cuenta (cap 200/kind) |
-| DELETE | `/auth/favorites` | Baja de favoritos (tombstones para sync) |
+| DELETE | `/auth/favorites` | Elimina un favorito de la nube (`{ kind, refId }`) |
 
 Sesión: Bearer token opaco, hasheado en BD (`user_sessions`), caducidad 90 días con renovación deslizante.
 

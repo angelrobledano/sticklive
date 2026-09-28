@@ -120,6 +120,9 @@
     "no_search_results": "Sem resultados para a tua pesquisa",
     "copied": "Copiado",
     "share": "Partilhar",
+    "copy_failed": "Não copiado",
+    "change_season": "Mudar de época",
+    "day_out_of_window": "Fora da janela de dados",
     "male": "Masculina",
     "female": "Feminina",
     "current": "atual",
@@ -144,6 +147,7 @@
     "auto_update": "atualização automática",
     "reconnecting": "À procura do sinal… a religar para trazer cada golo ao segundo",
     "no_events": "Sem eventos registados",
+    "show_all_events": "Ver todos os eventos ({n})",
     "waiting_start": "À espera do início do jogo",
     "waiting_start_body": "Os golos, faltas e cartões aparecerão aqui assim que a bola começar a rolar no rinque.",
     "historic_title": "Jogo histórico",
@@ -371,6 +375,11 @@
     "accept": "Aceitar",
     "reject": "Rejeitar",
     "privacy": "Política de privacidade"
+  },
+  "locale_hint": {
+    "body": "Parece que preferes {lang}",
+    "cta": "Ver em {lang}",
+    "dismiss": "Fechar"
   },
   "notif_presets": {
     "push_offer_title": "Ativa os avisos",

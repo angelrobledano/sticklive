@@ -27,17 +27,34 @@ const DESC: Record<string, (n: string) => string> = {
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params;
+  const searchParams = await props.searchParams;
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
+  const requested = searchParams.season;
   const alternates = localeAlternates(locale, `/competitions/${params.id}`);
   try {
     const seasons = await getCompetitionSeasons(params.id);
-    const current = seasons.find((s) => s.isCurrent) ?? seasons[0];
-    if (!current) return { alternates };
-    const overview = await getSeasonOverview(current.id);
-    const name = `${overview.season.competitionName} ${current.name ?? ''}`.trim();
+    // La temporada efectiva es la misma que sirve el cuerpo (#279): si el enlace
+    // trae ?season=, el preview debe anunciar ESA temporada, no la en curso.
+    const season =
+      (requested && seasons.find((s) => s.id === requested)) ||
+      seasons.find((s) => s.isCurrent) ||
+      seasons[0];
+    if (!season) return { alternates };
+    const overview = await getSeasonOverview(season.id);
+    const name = `${overview.season.competitionName} ${season.name ?? ''}`.trim();
     const title = `${name} | Stick Live`;
     const description = (DESC[locale] ?? DESC['en'])!(name);
-    return { title, description, alternates, ...socialMeta({ locale, path: `/competitions/${params.id}`, title: name, description }) };
+    return {
+      title,
+      description,
+      alternates,
+      ...socialMeta({
+        locale,
+        path: requested ? `/competitions/${params.id}?season=${requested}` : `/competitions/${params.id}`,
+        title: name,
+        description,
+      }),
+    };
   } catch {
     return { alternates };
   }

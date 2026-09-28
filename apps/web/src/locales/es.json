@@ -15,6 +15,11 @@
     "back": "Volver",
     "search": "Buscar"
   },
+  "locale_hint": {
+    "body": "Parece que prefieres {lang}",
+    "cta": "Ver en {lang}",
+    "dismiss": "Cerrar"
+  },
   "notif_presets": {
     "title": "¿Qué quieres recibir?",
     "complete": {
@@ -164,6 +169,9 @@
     "no_search_results": "Sin resultados para tu búsqueda",
     "copied": "Copiado",
     "share": "Compartir",
+    "copy_failed": "No copiado",
+    "change_season": "Cambiar temporada",
+    "day_out_of_window": "Fuera de la ventana de datos",
     "male": "Masculina",
     "female": "Femenina",
     "current": "actual",
@@ -188,6 +196,7 @@
     "auto_update": "actualización automática",
     "reconnecting": "Buscando la señal… reconectando para traerte los goles al segundo",
     "no_events": "Sin eventos registrados",
+    "show_all_events": "Ver todos los eventos ({n})",
     "waiting_start": "Esperando el inicio del encuentro",
     "waiting_start_body": "Los goles, faltas y tarjetas aparecerán aquí en cuanto comience a rodar la bola en la pista.",
     "historic_title": "Partido histórico",

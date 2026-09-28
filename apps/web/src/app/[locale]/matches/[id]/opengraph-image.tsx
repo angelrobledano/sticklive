@@ -11,6 +11,9 @@ export const contentType = 'image/png';
 // partido "VS" antes de empezar y nunca reflejaría el directo). Con revalidate
 // la tarjeta OG refresca marcador y "EN DIRECTO" cada 30 s.
 export const revalidate = 30;
+// La URL de esta imagen puede incluir un token `?v=<hash(estado)>` (#274) que
+// esta ruta ignora: solo sirve para que los scrapers pidan una URL nueva cuando
+// cambia el marcador/estado (socialMeta lo construye con socialImageUrl).
 
 const API = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 

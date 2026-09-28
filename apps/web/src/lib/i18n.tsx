@@ -4,7 +4,8 @@
  * Sistema i18n de Stick Live — ligero, sin dependencias.
  *
  * · El idioma activo lo fija la URL (/es/..., /en/...): el layout del
- *   segmento [locale] lo inyecta vía initialLocale.
+ *   segmento [locale] inyecta el locale y el diccionario vía props (solo el
+ *   diccionario activo + el de referencia viajan al cliente, #366).
  * · setLocale navega a la misma ruta con el nuevo prefijo y persiste la
  *   elección (cookie para el middleware + localStorage como respaldo).
  * · Interpolación: t('favorites.toast_following', { name: 'Barça' }).
@@ -14,11 +15,6 @@
 
 import { createContext, useCallback, useContext, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import es from '@/locales/es.json';
-import en from '@/locales/en.json';
-import pt from '@/locales/pt.json';
-import fr from '@/locales/fr.json';
-import it from '@/locales/it.json';
 import {
   SUPPORTED_LOCALES, LOCALE_NAMES, REFERENCE_LOCALE, LOCALE_COOKIE,
   isSupportedLocale, type Locale,
@@ -31,8 +27,7 @@ export type { Locale };
 const STORAGE_KEY = LOCALE_COOKIE;
 const REFERENCE: Locale = REFERENCE_LOCALE;
 
-type Dict = Record<string, unknown>;
-const DICTS: Record<Locale, Dict> = { es, en, pt, fr, it };
+export type Dict = Record<string, unknown>;
 
 function lookup(dict: Dict, path: string): string | undefined {
   let node: unknown = dict;
@@ -52,12 +47,16 @@ interface I18nContextValue {
 const I18nContext = createContext<I18nContextValue>({
   locale: REFERENCE,
   setLocale: () => undefined,
-  t: (key) => lookup(DICTS[REFERENCE], key) ?? key,
+  t: (key) => key,
 });
 
-export function I18nProvider({ children, initialLocale }: {
+export function I18nProvider({ children, initialLocale, dict, referenceDict }: {
   children: React.ReactNode;
   initialLocale: Locale;
+  /** Diccionario del locale activo — lo pasa el layout servidor (#366). */
+  dict: Dict;
+  /** Diccionario de referencia (es) para el fallback de claves. */
+  referenceDict: Dict;
 }) {
   const locale: Locale = isSupportedLocale(initialLocale) ? initialLocale : REFERENCE;
   const router = useRouter();
@@ -66,6 +65,15 @@ export function I18nProvider({ children, initialLocale }: {
   // SEO/a11y: sincronizar <html lang> con el idioma activo
   useEffect(() => {
     try { document.documentElement.lang = locale; } catch { /* noop */ }
+  }, [locale]);
+
+  // #363: persistir el locale activo en la cookie aunque el usuario no cambie
+  // de idioma a mano. Sin ella, el start_url "/" de la PWA vuelve a negociar
+  // por Accept-Language y puede abrir en un idioma distinto al que se estaba usando.
+  useEffect(() => {
+    try {
+      document.cookie = `${LOCALE_COOKIE}=${locale};path=/;max-age=31536000;samesite=lax`;
+    } catch { /* noop */ }
   }, [locale]);
 
   const setLocale = useCallback((l: Locale) => {
@@ -89,14 +97,14 @@ export function I18nProvider({ children, initialLocale }: {
   }, [locale, pathname, router]);
 
   const t = useCallback((key: string, vars?: Record<string, string | number>) => {
-    let text = lookup(DICTS[locale], key) ?? lookup(DICTS[REFERENCE], key) ?? key;
+    let text = lookup(dict, key) ?? lookup(referenceDict, key) ?? key;
     if (vars) {
       for (const [k, v] of Object.entries(vars)) {
         text = text.replaceAll(`{${k}}`, String(v));
       }
     }
     return text;
-  }, [locale]);
+  }, [dict, referenceDict]);
 
   return <I18nContext.Provider value={{ locale, setLocale, t }}>{children}</I18nContext.Provider>;
 }

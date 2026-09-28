@@ -120,6 +120,9 @@
     "no_search_results": "Nessun risultato per la tua ricerca",
     "copied": "Copiato",
     "share": "Condividi",
+    "copy_failed": "Non copiato",
+    "change_season": "Cambia stagione",
+    "day_out_of_window": "Fuori dall'intervallo dati",
     "male": "Maschile",
     "female": "Femminile",
     "current": "attuale",
@@ -144,6 +147,7 @@
     "auto_update": "aggiornamento automatico",
     "reconnecting": "Ricerca del segnale… riconnessione per portarti ogni gol al secondo",
     "no_events": "Nessun evento registrato",
+    "show_all_events": "Mostra tutti gli eventi ({n})",
     "waiting_start": "In attesa dell’inizio della partita",
     "waiting_start_body": "Gol, falli e cartellini appariranno qui non appena la palla inizierà a rotolare in pista.",
     "historic_title": "Partita d'archivio",
@@ -370,6 +374,11 @@
     "accept": "Accetta",
     "reject": "Rifiuta",
     "privacy": "Informativa sulla privacy"
+  },
+  "locale_hint": {
+    "body": "Sembra che preferisca {lang}",
+    "cta": "Vedi in {lang}",
+    "dismiss": "Chiudi"
   },
   "notif_presets": {
     "push_offer_title": "Attiva le notifiche",

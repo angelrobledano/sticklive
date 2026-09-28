@@ -120,6 +120,9 @@
     "no_search_results": "Aucun résultat pour votre recherche",
     "copied": "Copié",
     "share": "Partager",
+    "copy_failed": "Non copié",
+    "change_season": "Changer de saison",
+    "day_out_of_window": "Hors de la plage de données",
     "male": "Masculine",
     "female": "Féminine",
     "current": "actuelle",
@@ -144,6 +147,7 @@
     "auto_update": "mise à jour automatique",
     "reconnecting": "Recherche du signal… reconnexion pour vous apporter chaque but à la seconde",
     "no_events": "Aucun événement enregistré",
+    "show_all_events": "Voir tous les événements ({n})",
     "waiting_start": "En attente du début du match",
     "waiting_start_body": "Les buts, fautes et cartons apparaîtront ici dès que la balle roulera sur la piste.",
     "historic_title": "Match d'archive",
@@ -370,6 +374,11 @@
     "accept": "Accepter",
     "reject": "Refuser",
     "privacy": "Politique de confidentialité"
+  },
+  "locale_hint": {
+    "body": "Vous préférez {lang} ?",
+    "cta": "Voir en {lang}",
+    "dismiss": "Fermer"
   },
   "notif_presets": {
     "push_offer_title": "Activer les notifications",

@@ -149,7 +149,7 @@ function LivePhase({ live }: { live: NonNullable<MatchDetail['match']['live']> }
 
   return (
     <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
-      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
       {t('match_states.live')}
       {periodLabel && (
         <span className="ml-1.5 font-semibold normal-case tracking-normal tabular-nums text-emerald-600/90 dark:text-emerald-400/90">
@@ -217,21 +217,21 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
               <LivePhase live={match.live} />
             ) : (
               <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
                 {t('match_states.live')}
               </span>
             )}
             {/* En directo se sobreentiende que se actualiza en vivo; solo avisamos
                 si la conexión se cae. */}
             {sseStatus === 'error' && (
-              <span className="text-[9px] font-normal text-amber-500 normal-case tracking-normal">
+              <span className="text-[10px] font-normal text-amber-500 normal-case tracking-normal">
                 · {t('match_detail.reconnecting')}
               </span>
             )}
             {/* #284: cuándo se actualizó por última vez / posible desfase. */}
             {freshness && (
               <span
-                className={`text-[9px] font-normal normal-case tracking-normal ${
+                className={`text-[10px] font-normal normal-case tracking-normal ${
                   freshness.state === 'down'
                     ? 'text-rose-500'
                     : freshness.state === 'stale'

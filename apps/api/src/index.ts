@@ -58,6 +58,9 @@ app.use('*', async (c, next) => {
   const cc = cacheControlFor(c.req.method, c.req.path);
   if (cc) c.header('Cache-Control', cc);
   await next();
+  // #333: un error nunca debe servirse con caché pública. Los catch de ruta no
+  // pasan por onError y heredaban la cabecera de lectura (p. ej. max-age=120).
+  if (c.res.status >= 400) c.header('Cache-Control', 'no-store');
 });
 
 // Rate-limit de lectura (I1): tope generoso por IP en los GET más caros de BD.
@@ -90,10 +93,22 @@ app.get('/', (c) => {
     version: '0.1.0',
     endpoints: [
       'GET /health',
+      'GET /competitions',
+      'GET /competitions/:id/seasons',
+      'GET /seasons/:id/overview',
       'GET /seasons/:id/standings',
       'GET /seasons/:id/matches[?gameweek=&status=&teamId=]',
+      'GET /seasons/:id/stats',
       'GET /matches/live',
+      'GET /matches/current',
+      'GET /matches/:id',
       'GET /matches/:id/stream',
+      'GET /teams/:id',
+      'GET /teams/:id/logo',
+      'GET /players/:id',
+      'GET /players/:id/photo',
+      'GET /search?q=',
+      'GET /meta/sitemap',
     ],
   });
 });
@@ -129,6 +144,18 @@ app.onError((err, c) => {
   logger.error({ path: c.req.path, err }, 'Error no controlado en la API');
   Sentry.captureException(err, { tags: { path: c.req.path } });
   return c.json({ error: 'internal_error' }, 500);
+});
+
+// Red de seguridad (#333): sin handlers, un rechazo/excepción no capturados
+// tumban el proceso sin dejar rastro. Logueamos y reportamos a Sentry.
+process.on('unhandledRejection', (reason) => {
+  logger.error({ err: reason }, 'unhandledRejection');
+  Sentry.captureException(reason);
+});
+process.on('uncaughtException', (err) => {
+  logger.error({ err }, 'uncaughtException');
+  Sentry.captureException(err);
+  process.exit(1);
 });
 
 async function start(): Promise<void> {

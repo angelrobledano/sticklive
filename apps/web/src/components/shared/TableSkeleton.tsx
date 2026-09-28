@@ -9,7 +9,7 @@ interface TableSkeletonProps {
 
 export function TableSkeleton({ rows = 8, cols = 5, hasIndex = true }: TableSkeletonProps) {
   return (
-    <div className="w-full space-y-px">
+    <div className="w-full space-y-px" aria-hidden="true">
       {/* Cabecera */}
       <div className="flex items-center gap-2 px-3 py-2 mb-1">
         {hasIndex && <div className="w-6 h-2.5 rounded bg-slate-200 dark:bg-slate-700 shrink-0" />}

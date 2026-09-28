@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import type { SeasonOverview, CompetitionSeason } from '@/lib/api/client';
@@ -17,6 +18,13 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
   const { season } = data;
   const router = useRouter();
   const { t, locale } = useT();
+  const selectRef = useRef<HTMLSelectElement>(null);
+  // Al cambiar de temporada navegamos (contexto esperado en un filtro), pero
+  // devolvemos el foco al selector para no perderlo tras el re-render (#364).
+  const wasFocused = useRef(false);
+  useEffect(() => {
+    if (wasFocused.current) selectRef.current?.focus();
+  }, [season.id]);
   const hasHistory = !!competitionId && (seasons?.length ?? 0) > 1;
   const fedLabel = fedLabelFromSeason(season, locale);
   const compName = competitionName(season.competitionName, season.competitionNameI18n, locale);
@@ -29,7 +37,7 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
         </svg>
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+        <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
           {fedLabel}
         </p>
         <h1 className="text-base font-bold text-slate-900 dark:text-slate-50 leading-tight truncate">
@@ -40,13 +48,14 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
             selector no compite visualmente, parece un subtítulo con caret. */}
         {hasHistory ? (
           <select
+            ref={selectRef}
             value={season.id}
-            onChange={(e) => router.push(`/competitions/${competitionId}?season=${e.target.value}`)}
+            onChange={(e) => { wasFocused.current = true; router.push(`/competitions/${competitionId}?season=${e.target.value}`); }}
             className="mt-0.5 -ml-1 text-xs font-light text-slate-500 dark:text-slate-400 bg-transparent
                        border-0 rounded-md px-1 py-0 pr-6 cursor-pointer appearance-auto
                        hover:text-slate-600 dark:hover:text-slate-300
-                       focus:outline-none focus:ring-1 focus:ring-rink-passion/40"
-            aria-label="Cambiar temporada"
+                       focus:outline-none focus:ring-1 focus:ring-rink-passion"
+            aria-label={t('common.change_season')}
           >
             {seasons!.map((s) => (
               <option key={s.id} value={s.id}>

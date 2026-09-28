@@ -69,6 +69,29 @@ export type NotificationPreset = 'complete' | 'key_events' | 'results' | 'silent
 
 const PRESETS_KEY = 'rink-notif-presets';
 
+/**
+ * #266 — Decisión PURA del preset efectivo de una entidad. Un preset explícito
+ * manda SIEMPRE; si no lo hay, se aplica la compatibilidad con la lista antigua
+ * de "desactivados" (desactivado → 'silent', resto → 'complete').
+ */
+export function resolvePreset(
+  explicit: NotificationPreset | undefined,
+  legacyDisabled: boolean,
+): NotificationPreset {
+  if (explicit) return explicit;
+  return legacyDisabled ? 'silent' : 'complete';
+}
+
+/** #266 — ¿El aviso está encendido para este preset? Solo 'silent' lo apaga. */
+export function isPresetEnabled(preset: NotificationPreset): boolean {
+  return preset !== 'silent';
+}
+
+/** #266 — Preset que aplica el switch al alternarlo (on → complete, off → silent). */
+export function presetFromToggle(enabled: boolean): NotificationPreset {
+  return enabled ? 'complete' : 'silent';
+}
+
 function presetKey(kind: NotifKind, id: string): string {
   return `${kind === 'team' ? 'team' : kind === 'league' ? 'competition' : 'player'}:${id}`;
 }
@@ -82,9 +105,9 @@ function readPresetMap(): Record<string, NotificationPreset> {
 
 export function getPreset(kind: NotifKind, id: string): NotificationPreset {
   const explicit = readPresetMap()[presetKey(kind, id)];
-  if (explicit) return explicit;
-  // Back-compat: si estaba desactivado con el modelo viejo, equivale a 'silent'.
-  return isNotifEnabled(kind, id) ? 'complete' : 'silent';
+  // Back-compat: si estaba desactivado con el modelo viejo, equivale a 'silent';
+  // pero un preset explícito manda sobre esa lista.
+  return resolvePreset(explicit, !isNotifEnabled(kind, id));
 }
 
 export function setPreset(kind: NotifKind, id: string, preset: NotificationPreset): void {

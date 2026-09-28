@@ -111,7 +111,7 @@ async function fetchMatchSnapshot(matchId: string) {
     FROM match_events e
     LEFT JOIN players p ON p.id = e.player_id
     WHERE e.match_id = $1
-    ORDER BY COALESCE(e.period, 99) ASC, COALESCE(e.minute, 9999) ASC, e.created_at ASC
+    ORDER BY COALESCE(e.period, 99) ASC, COALESCE(e.minute, 9999) ASC, e.clock DESC NULLS LAST, e.created_at ASC
   `, [matchId]);
 
   // Alineaciones — paridad con el REST para que el directo no las pierda.

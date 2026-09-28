@@ -25,7 +25,11 @@ playerPhotoRouter.get('/:id/photo', async (c) => {
   if (!url) return c.notFound();
 
   try {
-    const res = await fetch(url, { headers: { Referer: 'https://www.hockeypatines.fep.es/' } });
+    const res = await fetch(url, {
+      headers: { Referer: 'https://www.hockeypatines.fep.es/' },
+      // #333: timeout para no colgar la petición si el CDN no responde.
+      signal: AbortSignal.timeout(5000),
+    });
     if (!res.ok) return c.notFound();
     const buf = Buffer.from(await res.arrayBuffer());
     return new Response(buf, {

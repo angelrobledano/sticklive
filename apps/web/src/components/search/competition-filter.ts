@@ -1,15 +1,8 @@
 import type { CompetitionSummary } from '@/lib/api/client';
+import { normalizeSearchText } from '@/lib/search-text';
 
-/**
- * Normaliza texto para comparar: minúsculas y sin acentos (NFD + diacríticos).
- * Mismo criterio que la búsqueda global de la API (`normalizeSearchTerm`).
- */
-export function normalizeSearchText(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-}
+// Se reexporta para no romper los imports existentes (`CompetitionsList`, tests).
+export { normalizeSearchText } from '@/lib/search-text';
 
 /** ¿La competición casa con el término (ya normalizado) en alguno de sus campos? */
 export function matchesCompetitionQuery(

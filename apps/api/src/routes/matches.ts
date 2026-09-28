@@ -5,6 +5,22 @@ import { isUuid } from '../lib/uuid.js';
 export const matchesRouter = new Hono();
 
 /**
+ * Valida `?gameweek=`:
+ *  - `undefined` si no viene el parámetro,
+ *  - el entero si es válido,
+ *  - `null` si es inválido (debe responder 400).
+ *
+ * Antes se usaba `parseInt`, que aceptaba parciales como `3abc` → 3 (#333).
+ * Exportada para poder testearla sin base de datos.
+ */
+export function parseGameweek(raw: string | undefined): number | null | undefined {
+  if (raw === undefined) return undefined;
+  if (!/^\d+$/.test(raw)) return null;
+  const n = Number(raw);
+  return n >= 1 ? n : null;
+}
+
+/**
  * GET /seasons/:id/matches
  *
  * Query params opcionales:
@@ -24,8 +40,8 @@ matchesRouter.get('/:id/matches', async (c) => {
   const teamId     = c.req.query('teamId');
 
   // Validar gameweek si viene
-  const gameweek = gameweekRaw !== undefined ? parseInt(gameweekRaw, 10) : undefined;
-  if (gameweekRaw !== undefined && (isNaN(gameweek!) || gameweek! < 1)) {
+  const gameweek = parseGameweek(gameweekRaw);
+  if (gameweek === null) {
     return c.json({ error: 'gameweek must be a positive integer' }, 400);
   }
 

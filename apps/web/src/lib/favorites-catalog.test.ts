@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   selectSeasonCandidates,
   mergeStandingTeams,
+  filterFavorites,
   MAX_SEASON_FETCHES,
 } from './favorites-catalog';
 import type { FavoriteComp } from './favorites-catalog';
@@ -132,5 +133,32 @@ describe('mergeStandingTeams', () => {
     ];
     // Simula [standingsTemporadaActual=404 vacío, standingsTemporadaFallback=ok]
     expect(mergeStandingTeams([vacia, buena]).map((t) => t.id)).toEqual(['t1', 't2']);
+  });
+});
+
+describe('filterFavorites (#258)', () => {
+  const teams = [
+    { id: 't1', name: 'CLUB PATÍN ALCORCÓN', shortName: 'CPA' },
+    { id: 't2', name: 'CH MATARÓ', shortName: 'CHM' },
+    { id: 't3', name: 'IRUÑA HP', shortName: null },
+  ];
+
+  it('encuentra nombres acentuados tecleando sin tilde ni ñ', () => {
+    expect(filterFavorites(teams, 'patin').map((t) => t.id)).toEqual(['t1']);
+    expect(filterFavorites(teams, 'mataro').map((t) => t.id)).toEqual(['t2']);
+    expect(filterFavorites(teams, 'iruna').map((t) => t.id)).toEqual(['t3']);
+  });
+
+  it('sigue casando con tilde y con mayúsculas', () => {
+    expect(filterFavorites(teams, 'PATÍN').map((t) => t.id)).toEqual(['t1']);
+  });
+
+  it('casa también por abreviatura', () => {
+    expect(filterFavorites(teams, 'chm').map((t) => t.id)).toEqual(['t2']);
+  });
+
+  it('sin término devuelve todo; sin coincidencias, vacío', () => {
+    expect(filterFavorites(teams, '   ')).toHaveLength(3);
+    expect(filterFavorites(teams, 'zzz')).toEqual([]);
   });
 });

@@ -2,14 +2,15 @@ import { Hono } from 'hono';
 import Stripe from 'stripe';
 import { db, withTransaction } from '@sports/db';
 import { rateLimit } from '../lib/rate-limit.js';
-import { isPremiumActive } from '../lib/premium.js';
+import { isPremiumActive, isCheckoutSessionId, isPaidCheckoutSession } from '../lib/premium.js';
 
 /**
  * Pagos con Stripe — proveedor de pago ACTIVO (Redsys fue eliminado de la API:
  * no existe backend al que llamar; no volver a documentarlo sin reintroducirlo).
  *
- *   POST /payments/stripe/checkout  { deviceId } → { url } de Stripe Checkout
- *   POST /payments/stripe/webhook   → checkout.session.completed activa premium
+ *   POST /payments/stripe/checkout        { deviceId } → { url } de Stripe Checkout
+ *   GET  /payments/stripe/session/:id     verifica una Checkout Session (retorno)
+ *   POST /payments/stripe/webhook         → checkout.session.completed activa premium
  */
 
 export const stripeRouter = new Hono();
@@ -40,6 +41,53 @@ stripeRouter.get('/status', async (c) => {
   return c.json({ premium, premiumUntil: premium ? until : null });
 });
 
+/**
+ * GET /payments/stripe/session/:id
+ * Verificación server-side del retorno de Checkout (#252): la página de éxito
+ * NO debe auto-otorgarse premium solo por llegar a la URL. Aquí se confirma
+ * contra Stripe que la sesión está pagada y se devuelve el entitlement.
+ * El webhook sigue siendo la fuente de verdad de la BD; esto solo evita el
+ * falso premium y la analítica de compra falsificada.
+ */
+stripeRouter.get('/session/:id', rateLimit(30, 60_000), async (c) => {
+  const id = c.req.param('id');
+  if (!isCheckoutSessionId(id)) return c.json({ error: 'invalid_session_id' }, 400);
+
+  try {
+    const session = await stripe().checkout.sessions.retrieve(id);
+    const paid = isPaidCheckoutSession(session);
+
+    // Si el pago está confirmado, concedemos el entitlement aunque el webhook
+    // llegue con retraso. Si no, mandamos el estado autoritativo de la BD.
+    let premium = paid;
+    let premiumUntil: string | null = null;
+    const deviceId = session.metadata?.['deviceId'];
+    if (deviceId) {
+      try {
+        const res = await db.query<{ premium_until: string | null }>(
+          `SELECT premium_until FROM users WHERE device_id = $1`, [deviceId]
+        );
+        const until = res.rows[0]?.premium_until ?? null;
+        if (isPremiumActive(until)) {
+          premium = true;
+          premiumUntil = until;
+        }
+      } catch (dbErr) {
+        // Un fallo de BD no debe tumbar el pago ya verificado con Stripe.
+        console.error('[stripe] session db lookup error:', dbErr);
+      }
+    }
+
+    return c.json({ paid, premium, premiumUntil });
+  } catch (err) {
+    // Sesión inexistente o error de Stripe: nunca conceder premium.
+    const status = (err as { statusCode?: number }).statusCode;
+    console.error('[stripe] session lookup error:', err);
+    if (status === 404) return c.json({ error: 'session_not_found' }, 404);
+    return c.json({ error: 'stripe_error' }, 502);
+  }
+});
+
 stripeRouter.post('/checkout', rateLimit(10, 60_000), async (c) => {
   try {
     const { deviceId } = await c.req.json<{ deviceId?: string }>();
@@ -67,12 +115,16 @@ stripeRouter.post('/checkout', rateLimit(10, 60_000), async (c) => {
           unit_amount: PRICE_CENTS,
           product_data: {
             name: 'Stick Live Premium — 1 año',
-            description: 'Sin publicidad, notificaciones ilimitadas y acceso anticipado.',
+            // #253: solo se anuncia el beneficio real. El resto del copy
+            // (i18n) se ajusta por separado; aquí no inventamos features.
+            description: 'Disfruta de Stick Live sin publicidad.',
           },
         },
       }],
       metadata: { deviceId, userId: userRes.rows[0]!.id },
-      success_url: `${WEB_BASE}/premium/success?provider=stripe`,
+      // Stripe sustituye {CHECKOUT_SESSION_ID} por el id real. La página de
+      // éxito lo usa para verificar el pago server-side antes de dar premium.
+      success_url: `${WEB_BASE}/premium/success?provider=stripe&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${WEB_BASE}/premium/error?provider=stripe`,
     });
 

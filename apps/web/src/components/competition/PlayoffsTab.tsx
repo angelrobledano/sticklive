@@ -34,8 +34,8 @@ function SingleMatchSeries({ serie, label }: { serie: PlayoffSeries; label: stri
   const card = (
     <div className={`card overflow-hidden border ${isLive ? 'border-emerald-400/40' : 'border-slate-200 dark:border-slate-800'}`}>
       <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
-        <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</p>
-        {isLive && <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider">● Live</span>}
+        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</p>
+        {isLive && <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">● Live</span>}
       </div>
       {sides.map(({ team, score }, idx) => {
         // Ganador explícito (penaltis/prórroga) manda; si no, se deriva del
@@ -58,7 +58,7 @@ function SingleMatchSeries({ serie, label }: { serie: PlayoffSeries; label: stri
         );
       })}
       <div className="px-3 pb-2 pt-1">
-        <span className={`text-[9px] font-bold uppercase tracking-wider ${isLive ? 'text-emerald-500' : 'text-slate-500 dark:text-slate-400'}`}>
+        <span className={`text-[10px] font-bold uppercase tracking-wider ${isLive ? 'text-emerald-500' : 'text-slate-500 dark:text-slate-400'}`}>
           {isLive ? '🟢 En directo'
             : isFinished ? `Final · ${fmtDate(g.finishedAt ?? g.scheduledAt)}`
             : `${fmtDate(g.scheduledAt)} · ${fmtTime(g.scheduledAt)}`}
@@ -84,12 +84,12 @@ function SeriesCard({ serie, label }: { serie: PlayoffSeries; label: string }) {
   return (
     <div className={`card overflow-hidden border ${hasLive ? 'border-emerald-400/40' : 'border-slate-200 dark:border-slate-800'}`}>
       <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
-        <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</p>
+        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</p>
         {/* No mostramos "al mejor de N": el formato varía por torneo y no es
             inferible de los partidos programados. Los badges de victorias ya
             cuentan la serie por sí solos. */}
         {hasLive && (
-          <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider">● {t('playoffs.live')}</span>
+          <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">● {t('playoffs.live')}</span>
         )}
       </div>
 

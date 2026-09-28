@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import type { Match } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName } from '@/components/shared/TeamName';
 import { useT } from '@/lib/i18n';
+import { useNow30s } from '@/lib/now-ticker';
 import { finalLabelKey, penaltyText } from '@/lib/match-result';
 import { APP_TZ } from '@/lib/match-time';
 import { STALE_LIVE_HOURS } from '@sports/shared-types';
@@ -69,17 +69,10 @@ function TeamBlock({
 /**
  * Parche reactivo: devuelve true si el partido esta como 'scheduled'
  * pero la hora actual ya ha superado su hora de inicio.
- * Re-evalua cada 30 s. Eliminar cuando el scraper estabilice la ficha resumen.
+ * Usa el reloj compartido de 30 s (una sola suscripción en toda la app, #366).
  */
 function useIsMatchOverdue(match: Match): boolean {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (match.status !== 'scheduled') return;
-    const interval = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(interval);
-  }, [match.status]);
-
+  const now = useNow30s();
   if (match.status !== 'scheduled') return false;
   const startIso = match.scheduledAt ?? match.startedAt;
   if (!startIso) return false;
@@ -114,7 +107,7 @@ function ScoreBlock({ match }: { match: Match }) {
           </span>
         ) : (
           <span className="inline-flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" aria-hidden="true" />
             {t('match_states.in_play')}
           </span>
         )}
@@ -132,11 +125,11 @@ function ScoreBlock({ match }: { match: Match }) {
           {score.away ?? '-'}
         </span>
         {pen && (
-          <span className="text-[9px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
+          <span className="text-[10px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
             {t('match_states.penalties_label')} {pen}
           </span>
         )}
-        <span className="text-[9px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full
+        <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full
                          bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
           {t(finalLabelKey(match.winType))}
         </span>

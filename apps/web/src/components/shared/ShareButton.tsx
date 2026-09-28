@@ -4,9 +4,12 @@
  * Botón de compartir universal (partido, equipo, liga, jugador).
  * Web Share API nativa en móvil; fallback: copiar enlace + feedback "Copiado".
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';
+import { buildShareUrl } from '@/lib/share';
+
+type ShareStatus = 'idle' | 'copied' | 'error';
 
 export function ShareButton({ title, kind, className = '' }: {
   title: string;
@@ -15,10 +18,23 @@ export function ShareButton({ title, kind, className = '' }: {
   className?: string;
 }) {
   const { t } = useT();
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState<ShareStatus>('idle');
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // No dejar timers vivos si el componente se desmonta antes del reset.
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
+
+  const flash = (next: Exclude<ShareStatus, 'idle'>) => {
+    setStatus(next);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setStatus('idle'), 2000);
+  };
 
   const share = async () => {
-    const url = window.location.href;
+    // #282: compartir el recurso, no la URL de tracking (?src=push, utm…).
+    const url = buildShareUrl(window.location.href);
     track('share', { kind, title });
     // Web Share API (móvil). En PC suele no existir o fallar; en ese caso NO
     // abortamos: caemos a copiar el enlace. Solo el cancelar del usuario corta.
@@ -33,21 +49,29 @@ export function ShareButton({ title, kind, className = '' }: {
     }
     try {
       await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { /* noop */ }
+      flash('copied');
+    } catch {
+      // #281: sin permiso/contexto seguro o WebView no hay copia; avisar en vez
+      // de dejar un no-op silencioso que simula un "compartido" inexistente.
+      flash('error');
+    }
   };
 
   return (
     <button
       onClick={share}
       aria-label={t('common.share')}
-      className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0
+      className={`h-11 rounded-full flex items-center justify-center shrink-0
+                  ${status === 'error' ? 'w-auto px-2' : 'w-11'}
                   text-slate-400 hover:text-rink-passion hover:bg-slate-100 dark:hover:bg-slate-800
                   transition-colors ${className}`}
     >
-      {copied ? (
-        <span className="text-[9px] font-bold text-emerald-500">{t('common.copied')}</span>
+      {status === 'copied' ? (
+        <span className="text-[10px] font-bold text-emerald-500">{t('common.copied')}</span>
+      ) : status === 'error' ? (
+        <span role="status" className="text-[10px] font-bold text-red-500 whitespace-nowrap">
+          {t('common.copy_failed')}
+        </span>
       ) : (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-[18px] h-[18px]">
           <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />

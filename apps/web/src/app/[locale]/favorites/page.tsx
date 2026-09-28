@@ -9,7 +9,7 @@ import { clubName } from '@/lib/names';
 import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';
 import { BackLink } from '@/components/shared/BackLink';
-import { selectSeasonCandidates, mergeStandingTeams, type RawStandingRow } from '@/lib/favorites-catalog';
+import { selectSeasonCandidates, mergeStandingTeams, filterFavorites, type RawStandingRow } from '@/lib/favorites-catalog';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 const SEASON_ID = process.env['NEXT_PUBLIC_SEASON_ID'] ?? '';
@@ -80,15 +80,8 @@ function FavoritesInner() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const q = query.trim().toLowerCase();
-  const filteredTeams = useMemo(
-    () => teams.filter((t) => !q || t.name.toLowerCase().includes(q) || (t.shortName ?? '').toLowerCase().includes(q)),
-    [teams, q]
-  );
-  const filteredLeagues = useMemo(
-    () => leagues.filter((l) => !q || l.name.toLowerCase().includes(q)),
-    [leagues, q]
-  );
+  const filteredTeams = useMemo(() => filterFavorites(teams, query), [teams, query]);
+  const filteredLeagues = useMemo(() => filterFavorites(leagues, query), [leagues, query]);
 
   const handleToggle = (kind: 'team' | 'league', id: string, name: string) => {
     const wasActive = kind === 'team' ? isFavorite(id) : isLeagueFavorite(id);
@@ -154,12 +147,12 @@ function FavoritesInner() {
         placeholder={t('favorites.search_placeholder')}
         className="w-full min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-slate-700
                    bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
-                   placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion/40"
+                   placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion"
       />
 
       {loading ? (
-        <div className="py-10 flex justify-center">
-          <div className="w-5 h-5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" />
+        <div className="py-10 flex justify-center" aria-busy="true">
+          <div className="w-5 h-5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" aria-hidden="true" />
         </div>
       ) : (
         <>

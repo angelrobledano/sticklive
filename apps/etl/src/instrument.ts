@@ -11,6 +11,8 @@ Sentry.init({
   environment: process.env['NODE_ENV'] ?? 'production',
   serverName: 'etl',
   tracesSampleRate: process.env['NODE_ENV'] === 'production' ? 0.1 : 1.0,
-  sendDefaultPii: true,
+  // #333: no enviar PII por defecto (el API ya lo tiene a false). Evita que los
+  // breadcrumbs HTTP hacia sidgad arrastren datos personales a Sentry.
+  sendDefaultPii: false,
   initialScope: { tags: { service: 'etl' } },
 });

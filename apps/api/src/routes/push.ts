@@ -54,7 +54,9 @@ function sanitizePresets(p?: Record<string, string>): Record<string, string> {
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 const onlyUuids = (xs?: string[]) => (xs ?? []).filter((x) => UUID_RE.test(x));
 
-pushRouter.post('/subscribe', async (c) => {
+// Rate limit anti-abuso (#333): el cliente re-suscribe al cambiar preferencias,
+// así que 30/min por IP deja margen de sobra sin permitir inundar la BD.
+pushRouter.post('/subscribe', rateLimit(30, 60_000), async (c) => {
   try {
     const body = await c.req.json<SubscribeBody>();
     const sub = body.subscription;
@@ -100,7 +102,7 @@ pushRouter.post('/subscribe', async (c) => {
   }
 });
 
-pushRouter.delete('/subscribe', async (c) => {
+pushRouter.delete('/subscribe', rateLimit(30, 60_000), async (c) => {
   try {
     const { endpoint } = await c.req.json<{ endpoint?: string }>();
     if (!endpoint) return c.json({ error: 'missing_endpoint' }, 400);

@@ -6,6 +6,7 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { useLiveScores } from '@/hooks/useLiveScores';
 import { DateSelector } from '@/components/shared/DateSelector';
 import { MatchCard } from '@/components/shared/MatchCard';
+import { MiGrada } from '@/components/home/MiGrada';
 import { AdBanner } from '@/components/shared/AdBanner';
 import Link from 'next/link';
 import { useT } from '@/lib/i18n';
@@ -182,10 +183,11 @@ function formatDateHeader(dateKey: string, locale: string): string {
  * los PRÓXIMOS partidos agrupados por fecha (ascendente), con el mismo diseño de
  * MatchCard. Evita pantallas vacías y resultados antiguos.
  */
-function UpcomingMatches({ matches, selectedDate, todayKey }: {
+function UpcomingMatches({ matches, selectedDate, todayKey, outOfWindow = false }: {
   matches: Match[];
   selectedDate: string;
   todayKey: string;
+  outOfWindow?: boolean;
 }) {
   const { t, locale } = useT();
   const isToday = selectedDate === todayKey;
@@ -216,9 +218,11 @@ function UpcomingMatches({ matches, selectedDate, todayKey }: {
       <div className={`flex flex-col items-center text-center pt-10 px-8 gap-1 ${isPast ? 'pb-12' : 'pb-4'}`}>
         <EmptyRinkScene />
         <p className="text-base font-bold text-slate-800 dark:text-slate-100">
-          {isToday ? t('common.no_matches_today') : t('common.no_matches_this_day')}
+          {outOfWindow
+            ? t('common.day_out_of_window')
+            : isToday ? t('common.no_matches_today') : t('common.no_matches_this_day')}
         </p>
-        {!isPast && groups.length > 0 && (
+        {!isPast && !outOfWindow && groups.length > 0 && (
           <p className="text-xs text-slate-500 dark:text-slate-400">{t('common.upcoming_intro')}</p>
         )}
       </div>
@@ -274,7 +278,7 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
     try { sessionStorage.setItem('rink-selected-date', key); } catch { /* noop */ }
   }, []);
   const [showAllFavs, setShowAllFavs] = useState(false);
-  const { favorites, isFavorite } = useFavorites();
+  const { favorites, leagues, isFavorite } = useFavorites();
   const { t, locale } = useT();
 
   // ── Swipe horizontal: día anterior / siguiente ─────────────────────────────
@@ -344,6 +348,22 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
 
   const hasBothSections = favMatches.length > 0 && restMatches.length > 0;
 
+  // Rango de días con datos cargados (#365): acota el DateSelector para no
+  // ofrecer días que la ventana del API no cubre y que saldrían vacíos.
+  const windowRange = useMemo(() => {
+    let from: string | null = null;
+    let to: string | null = null;
+    for (const m of matches) {
+      const k = madridDateKey(m.scheduledAt);
+      if (!k) continue;
+      if (from === null || k < from) from = k;
+      if (to === null || k > to) to = k;
+    }
+    return { from, to };
+  }, [matches]);
+  const outOfWindow = (!!windowRange.from && selectedDate < windowRange.from)
+    || (!!windowRange.to && selectedDate > windowRange.to);
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Encabezado principal de la home (oculto visualmente, para lectores y SEO) */}
@@ -351,7 +371,12 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
 
       {/* Selector de fecha — sticky bajo el header */}
       <div className="sticky top-0 z-30">
-        <DateSelector selected={selectedDate} onChange={setSelectedDate} />
+        <DateSelector
+          selected={selectedDate}
+          onChange={setSelectedDate}
+          availableFrom={windowRange.from}
+          availableTo={windowRange.to}
+        />
       </div>
 
       {/*
@@ -366,11 +391,16 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
           carril de contexto (próximos + favoritos) a la derecha. */}
       <div className="flex-1 lg:flex lg:justify-center lg:gap-6 lg:px-6">
         <div className="w-full lg:max-w-2xl" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        {/* #263 "Mi grada": feed agregado de equipos/ligas seguidos (próximos +
+            últimos), independiente del día seleccionado. Móvil y escritorio. */}
+        <MiGrada matches={matches} teamIds={favorites} leagueIds={leagues} todayKey={todayKey} />
+
         {dayMatches.length === 0 ? (
           <UpcomingMatches
             matches={matches}
             selectedDate={selectedDate}
             todayKey={todayKey}
+            outOfWindow={outOfWindow}
           />
         ) : (
           <>

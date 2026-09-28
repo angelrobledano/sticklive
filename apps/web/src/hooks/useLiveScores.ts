@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import type { Match } from '@/lib/api/client';
 import { getCurrentMatchesFresh } from '@/lib/api/client';
 
@@ -61,8 +62,10 @@ export function useLiveScores(initial: Match[]): Match[] {
       try {
         const fresh = await getCurrentMatchesFresh();
         if (!cancelled) setMatches(fresh);
-      } catch {
-        // Mantén el estado actual; reintentamos en el próximo tick.
+      } catch (err) {
+        // Mantén el estado actual; reintentamos en el próximo tick. #244: los
+        // fallos del polling en vivo ya no se descartan en silencio.
+        if (!cancelled) Sentry.captureException(err, { tags: { scope: 'live-scores-poll' } });
       }
     };
 

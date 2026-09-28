@@ -198,7 +198,7 @@ function LoginInner() {
             <path d="M7 3l7 12.5a3 3 0 0 1-2.6 4.5H8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400
-                           ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+                           ring-2 ring-white dark:ring-slate-900 animate-pulse" aria-hidden="true" />
         </div>
         <div className="space-y-2">
           <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-50">
@@ -275,7 +275,7 @@ function LoginInner() {
             placeholder="tu@email.com"
             className="w-full min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-slate-700
                        bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
-                       placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion/40"
+                       placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion"
           />
           <button
             type="submit"

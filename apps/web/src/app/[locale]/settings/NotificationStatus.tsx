@@ -86,7 +86,7 @@ export function NotificationStatus({ deviceId }: { deviceId: string }) {
           disabled={busy}
           className={`${btn} bg-rink-passion text-white hover:opacity-90`}
         >
-          {busy && <span className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />}
+          {busy && <span className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden="true" />}
           {t('settings.notif_activate_btn')}
         </button>
       )}
@@ -98,7 +98,7 @@ export function NotificationStatus({ deviceId }: { deviceId: string }) {
           disabled={busy}
           className={`${btn} border border-rink-passion/30 text-rink-passion hover:bg-rink-passion/5`}
         >
-          {busy && <span className="w-3.5 h-3.5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" />}
+          {busy && <span className="w-3.5 h-3.5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" aria-hidden="true" />}
           {busy ? t('settings.notif_test_sending') : t('settings.notif_test_btn')}
         </button>
       )}

@@ -11,8 +11,23 @@ import { SkipToContent } from '@/components/layout/SkipToContent';
 import { PremiumProvider } from '@/context/PremiumContext';
 import { AnalyticsPageview } from '@/lib/analytics';
 import { ConsentBanner } from '@/components/shared/ConsentBanner';
+import { LocaleHint } from '@/components/layout/LocaleHint';
 import { SUPPORTED_LOCALES, isSupportedLocale, type Locale } from '@/lib/locales';
 import { localeAlternates, socialMeta, SITE_URL } from '@/lib/seo';
+import esDict from '@/locales/es.json';
+import enDict from '@/locales/en.json';
+import ptDict from '@/locales/pt.json';
+import frDict from '@/locales/fr.json';
+import itDict from '@/locales/it.json';
+
+/**
+ * Diccionarios i18n. Viven en el SERVIDOR: solo el del locale activo (más el de
+ * referencia es) viaja al cliente como prop del provider, en vez de mandar los
+ * 5 en el bundle (#366).
+ */
+const DICTS: Record<Locale, Record<string, unknown>> = {
+  es: esDict, en: enDict, pt: ptDict, fr: frDict, it: itDict,
+};
 
 const inter = Inter({
   subsets: ['latin'],
@@ -97,21 +112,25 @@ export default async function RootLayout({ children, params }: Props) {
     <html lang={locale} className={inter.variable} suppressHydrationWarning>
       {/* Script inline: aplica .dark ANTES de hidratar para evitar flash */}
       <head>
+        {/* Las banderas se sirven desde flagcdn (#366): adelantar la conexión */}
+        <link rel="preconnect" href="https://flagcdn.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://flagcdn.com" />
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('rink-theme');if(t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}` }} />
       </head>
       <body>
         {/* PremiumProvider cubre todo el árbol — permite mutación instantánea
             de <AdBanner> en caliente al volver de /premium/success */}
         <PremiumProvider>
-          <I18nProvider initialLocale={locale}>
+          <I18nProvider initialLocale={locale} dict={DICTS[locale]} referenceDict={esDict}>
           {/* Enlace de salto al contenido — primer foco tabulable (WCAG 2.4.1) */}
           <SkipToContent />
           <div className="flex min-h-screen">
             {/* Sidebar — solo visible en md+ */}
             <Sidebar />
 
-            {/* Contenido principal */}
-            <main id="main" className="flex-1 min-w-0 pb-20 md:pb-0">
+            {/* Contenido principal. tabIndex=-1: el skip link mueve el foco aquí
+                de forma fiable (WCAG 2.4.1). */}
+            <main id="main" tabIndex={-1} className="flex-1 min-w-0 pb-20 md:pb-0">
               {/* Ancho máximo cómodo y centrado: en escritorio el contenido deja
                   de flotar pegado a la izquierda junto a la sidebar. */}
               <div className="mx-auto w-full max-w-5xl">
@@ -134,6 +153,9 @@ export default async function RootLayout({ children, params }: Props) {
 
           {/* Consentimiento de analítica — PostHog no se carga hasta aceptar */}
           <ConsentBanner />
+
+          {/* Aviso "ver en tu idioma" si el navegador no coincide (#277) */}
+          <LocaleHint />
           </I18nProvider>
         </PremiumProvider>
       </body>

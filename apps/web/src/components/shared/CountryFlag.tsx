@@ -19,8 +19,11 @@ export function CountryFlag({ code, className, alt }: CountryFlagProps) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`https://flagcdn.com/${cc}.svg`}
-      alt={alt ?? code.toUpperCase()}
+      // PNG `w80` (~2 KB) en vez del SVG completo (hasta 153 KB decodificados,
+      // #366); w80 cubre con holgura los 16-40 px a los que se pinta.
+      src={`https://flagcdn.com/w80/${cc}.png`}
+      // Decorativa por defecto: el nombre del país va visible al lado (#364).
+      alt={alt ?? ''}
       loading="lazy"
       decoding="async"
       className={className ?? 'w-5 h-auto rounded-[2px]'}

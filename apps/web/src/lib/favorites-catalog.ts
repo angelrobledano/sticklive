@@ -10,6 +10,8 @@
  * varias de ellas. El fetch vive en la página.
  */
 
+import { normalizeSearchText } from '@/lib/search-text';
+
 /** Temporada de referencia tal como la devuelve `GET /competitions`. */
 export interface FavoriteSeasonRef {
   id: string;
@@ -117,4 +119,32 @@ export function mergeStandingTeams(lists: RawStandingRow[][]): FavoriteTeam[] {
     }
   }
   return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * ¿El equipo/liga casa con el término buscado? Ignora acentos y ñ para que
+ * teclear sin tilde (lo habitual) encuentre nombres acentuados (#258).
+ */
+export function matchesFavoriteQuery(
+  name: string,
+  shortName: string | null | undefined,
+  query: string,
+): boolean {
+  const q = normalizeSearchText(query.trim());
+  if (!q) return true;
+  return (
+    normalizeSearchText(name).includes(q) ||
+    normalizeSearchText(shortName ?? '').includes(q)
+  );
+}
+
+/**
+ * Filtra un catálogo de equipos o ligas por nombre o abreviatura, sin acentos.
+ * Genérico para reutilizarlo con `FavoriteTeam` y con las ligas.
+ */
+export function filterFavorites<T extends { name: string; shortName?: string | null }>(
+  items: T[],
+  query: string,
+): T[] {
+  return items.filter((it) => matchesFavoriteQuery(it.name, it.shortName, query));
 }

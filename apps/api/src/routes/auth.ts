@@ -310,6 +310,31 @@ authRouter.get('/me', async (c) => {
 });
 
 /**
+ * GET /auth/favorites — favoritos de la cuenta.
+ *
+ * Fuente de verdad multi-dispositivo (#268): en las sincronizaciones posteriores
+ * al primer login el cliente lee aquí (sin fusionar) para no reinsertar lo que
+ * otro dispositivo dejó de seguir.
+ */
+authRouter.get('/favorites', async (c) => {
+  const user = await userFromBearer(c.req.header('Authorization'));
+  if (!user) return c.json({ error: 'unauthorized' }, 401);
+  try {
+    const all = await db.query<{ kind: string; ref_id: string }>(
+      `SELECT kind, ref_id FROM user_favorites WHERE user_id = $1`, [user.id]
+    );
+    return c.json({
+      teams:   all.rows.filter((r) => r.kind === 'team').map((r) => r.ref_id),
+      leagues: all.rows.filter((r) => r.kind === 'league').map((r) => r.ref_id),
+      players: all.rows.filter((r) => r.kind === 'player').map((r) => r.ref_id),
+    });
+  } catch (err) {
+    console.error('[auth] favorites read error:', err);
+    return c.json({ error: 'server_error' }, 500);
+  }
+});
+
+/**
  * POST /auth/favorites/merge  { teams: string[], leagues: string[], players: string[] }
  * Fusiona los favoritos locales (anónimos) con los de la cuenta. Idempotente.
  */

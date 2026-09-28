@@ -15,6 +15,12 @@ interface TeamShieldProps {
   rounded?: string;
   /** Clases extra para el contenedor (p.ej. 'shrink-0', 'p-1') */
   className?: string;
+  /**
+   * Texto alternativo. Por defecto vacío (decorativo): en la app el nombre del
+   * equipo/las siglas SIEMPRE van visibles al lado, así que repetirlo aquí haría
+   * que los lectores de pantalla lo leyeran dos veces (#364).
+   */
+  alt?: string;
 }
 
 type ImgState = 'team' | 'default' | 'initials';
@@ -35,9 +41,11 @@ export function TeamShield({
   size = 40,
   rounded = 'rounded-full',
   className = '',
+  alt,
 }: TeamShieldProps) {
   // Sin teamId no hay escudo posible → directo al genérico.
   const [imgState, setImgState] = useState<ImgState>(teamId ? 'team' : 'default');
+  const decorative = !alt;
 
   const initials = teamName.slice(0, 2).toUpperCase();
   const containerCls = [
@@ -52,7 +60,7 @@ export function TeamShield({
       <div
         className={`${containerCls} bg-slate-200 dark:bg-slate-700`}
         style={{ width: size, height: size, fontSize: Math.max(8, Math.floor(size * 0.3)) }}
-        aria-label={teamName}
+        {...(decorative ? { 'aria-hidden': true } : { 'aria-label': alt })}
       >
         <span className="font-mono font-bold text-slate-600 dark:text-slate-300 select-none leading-none">
           {initials}
@@ -74,7 +82,7 @@ export function TeamShield({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
-        alt={teamName}
+        alt={alt ?? ''}
         width={size}
         height={size}
         loading="lazy"

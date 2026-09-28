@@ -27,7 +27,7 @@ export function Sidebar() {
             <path d="M7 3l7 12.5a3 3 0 0 1-2.6 4.5H8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400
-                           ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+                           ring-2 ring-white dark:ring-slate-900 animate-pulse" aria-hidden="true" />
         </span>
         <span className="tracking-tight text-lg leading-none">
           <span className="font-bold text-rink-passion">Stick</span>

@@ -29,7 +29,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     const team = data.currentTeam ? clubName(data.currentTeam.name) : null;
     const title = `${name} | Stick Live`;
     const description = (DESC[locale] ?? DESC['en'])!(name, team);
-    return { title, description, alternates, ...socialMeta({ locale, path: `/players/${params.id}`, title: name, description, type: 'article' }) };
+    return { title, description, alternates, ...socialMeta({ locale, path: `/players/${params.id}`, title: name, description, type: 'profile' }) };
   } catch {
     return { alternates };
   }

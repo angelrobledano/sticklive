@@ -119,10 +119,11 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
   return (
     <div role="dialog" aria-modal="true" aria-label={t('notif_presets.title')}
          className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 animate-[fadeIn_.15s_ease-out]" onClick={onClose} />
+      <div aria-hidden="true" className="absolute inset-0 bg-black/40 animate-[fadeIn_.15s_ease-out]" onClick={onClose} />
 
       <div className="relative w-full sm:max-w-md bg-white dark:bg-slate-900 shadow-2xl
-                      rounded-t-3xl sm:rounded-3xl p-5 pb-7 sm:pb-5
+                      rounded-t-3xl sm:rounded-3xl p-5
+                      pb-[calc(1.75rem+env(safe-area-inset-bottom))] sm:pb-5
                       animate-[fadeIn_.18s_ease-out] max-h-[85vh] overflow-y-auto">
         {/* Asa de bottom sheet (solo móvil) */}
         <div className="sm:hidden mx-auto mb-4 h-1.5 w-10 rounded-full bg-slate-200 dark:bg-slate-700" />
@@ -153,7 +154,7 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
                 className="mt-2 inline-flex items-center gap-2 min-h-[40px] px-3.5 rounded-xl text-xs font-semibold
                            bg-rink-passion text-white hover:opacity-90 disabled:opacity-50 transition-colors"
               >
-                {activating && <span className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />}
+                {activating && <span className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden="true" />}
                 {t('notif_presets.push_offer_cta')}
               </button>
             </div>

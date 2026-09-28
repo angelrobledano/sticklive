@@ -38,13 +38,13 @@ function MatchCard({ match }: { match: SeasonMatch }) {
               {match.score.home ?? 0} – {match.score.away ?? 0}
             </span>
             {isLive && (
-              <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 uppercase tracking-wide">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500 uppercase tracking-wide">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
                 Live
               </span>
             )}
             {isFinished && (
-              <span className="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">Final</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">Final</span>
             )}
           </>
         ) : (
@@ -152,7 +152,13 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
     return orderedRounds[0]?.number ?? 1;
   }, [matches, orderedRounds]);
 
-  const activeJourney = journeyParam != null ? Number(journeyParam) : defaultJourney;
+  // #365: validar el parámetro de jornada — `?journey=basura` daba NaN y dejaba
+  // la lista vacía en silencio. Si no es un entero positivo, usamos la jornada
+  // por defecto.
+  const parsedJourney = journeyParam != null && /^\d+$/.test(journeyParam)
+    ? Number(journeyParam)
+    : null;
+  const activeJourney = parsedJourney ?? defaultJourney;
   const selectedTeam = teamParam ? teams.find((tm) => tm.id === teamParam) ?? null : null;
 
   // Exclusión mutua: equipo > fecha > jornada.
@@ -199,7 +205,7 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
               onChange={(e) => { if (e.target.value) apply({ journey: Number(e.target.value) }); }}
               className="w-full min-h-[40px] pl-3 pr-8 rounded-xl border border-slate-200 dark:border-slate-700
                          bg-white dark:bg-slate-900 text-sm font-medium text-slate-700 dark:text-slate-200
-                         focus:outline-none focus:ring-2 focus:ring-rink-passion/40 cursor-pointer appearance-none"
+                         focus:outline-none focus:ring-2 focus:ring-rink-passion cursor-pointer appearance-none"
               aria-label={t('fixtures.by_round')}
             >
               {!journeyMode && <option value="">{t('fixtures.by_round')}</option>}

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { localeAlternates, isSupportedLocale } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale } from '@/lib/seo';
 
 /**
  * Política de privacidad — honesta y en lenguaje llano.
@@ -11,12 +11,29 @@ interface Props {
   params: Promise<{ locale: string }>;
 }
 
+const OG_TITLES: Record<string, string> = {
+  es: 'Privacidad', en: 'Privacy', pt: 'Privacidade', fr: 'Confidentialité', it: 'Privacy',
+};
+const OG_DESCRIPTIONS: Record<string, string> = {
+  es: 'Cómo tratamos tus datos en Stick Live.',
+  en: 'How we handle your data on Stick Live.',
+  pt: 'Como tratamos os teus dados no Stick Live.',
+  fr: 'Comment nous traitons vos données sur Stick Live.',
+  it: 'Come trattiamo i tuoi dati su Stick Live.',
+};
+
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params;
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   return {
     title: locale === 'es' ? 'Privacidad | Stick Live' : 'Privacy | Stick Live',
     alternates: localeAlternates(locale, '/privacy'),
+    ...socialMeta({
+      locale,
+      path: '/privacy',
+      title: OG_TITLES[locale] ?? OG_TITLES['en']!,
+      description: OG_DESCRIPTIONS[locale] ?? OG_DESCRIPTIONS['en']!,
+    }),
   };
 }
 

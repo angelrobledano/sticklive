@@ -343,7 +343,7 @@ function PlayerRow({ player }: { player: SquadPlayer }) {
 
       {/* Badge portero */}
       {gk && (
-        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shrink-0">
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shrink-0">
           PO
         </span>
       )}
@@ -354,19 +354,19 @@ function PlayerRow({ player }: { player: SquadPlayer }) {
           {player.goals > 0 && (
             <div className="text-center">
               <p className="text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">{player.goals}</p>
-              <p className="text-[9px] text-slate-400 dark:text-slate-600">{t('player.col_g')}</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-600">{t('player.col_g')}</p>
             </div>
           )}
           {player.blueCards > 0 && (
             <div className="text-center">
               <p className="text-xs font-bold text-blue-600 dark:text-blue-400 tabular-nums">{player.blueCards}</p>
-              <p className="text-[9px] text-slate-400 dark:text-slate-600">{t('player.col_az')}</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-600">{t('player.col_az')}</p>
             </div>
           )}
           {player.redCards > 0 && (
             <div className="text-center">
               <p className="text-xs font-bold text-red-600 dark:text-red-400 tabular-nums">{player.redCards}</p>
-              <p className="text-[9px] text-slate-400 dark:text-slate-600">{t('player.col_rj')}</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-600">{t('player.col_rj')}</p>
             </div>
           )}
         </div>

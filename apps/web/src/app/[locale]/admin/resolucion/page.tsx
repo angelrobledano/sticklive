@@ -138,7 +138,7 @@ export default function ResolucionPage() {
             autoFocus
             className="w-full min-h-[44px] px-3 rounded-xl border border-slate-200 dark:border-slate-700
                        bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
-                       focus:outline-none focus:ring-2 focus:ring-rink-passion/40"
+                       focus:outline-none focus:ring-2 focus:ring-rink-passion"
           />
           {error && <p className="text-xs text-red-500">{error}</p>}
           <button type="submit" disabled={loading || !input.trim()} className="btn-primary w-full min-h-[44px] disabled:opacity-50">
@@ -226,7 +226,7 @@ export default function ResolucionPage() {
               placeholder="team_id (UUID) manual"
               className="flex-1 min-h-[36px] px-3 rounded-xl border border-slate-200 dark:border-slate-700
                          bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200
-                         focus:outline-none focus:ring-2 focus:ring-rink-passion/40"
+                         focus:outline-none focus:ring-2 focus:ring-rink-passion"
             />
             <button
               onClick={() => resolve(it.id, manual[it.id] ?? '')}

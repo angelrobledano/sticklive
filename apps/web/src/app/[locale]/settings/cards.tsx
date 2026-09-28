@@ -24,7 +24,7 @@ export function LanguageCard() {
         onChange={(e) => setLocale(e.target.value as Locale)}
         className="min-h-[44px] px-3 rounded-xl border border-slate-200 dark:border-slate-700
                    bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-200
-                   focus:outline-none focus:ring-2 focus:ring-rink-passion/40 cursor-pointer"
+                   focus:outline-none focus:ring-2 focus:ring-rink-passion cursor-pointer"
         aria-label={t('common.language')}
       >
         {SUPPORTED_LOCALES.map((l) => (
@@ -113,7 +113,7 @@ export function FavoriteRow({ href, name, fallback, logoSrc, onRemove }: {
             </span>
           </>
         ) : (
-          <span className="text-[9px] font-black text-rink-passion uppercase">{fallback}</span>
+          <span className="text-[10px] font-black text-rink-passion uppercase">{fallback}</span>
         )}
       </div>
       <Link

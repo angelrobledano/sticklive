@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useT } from '@/lib/i18n';
 import type { MatchDetail } from '@/lib/api/client';
@@ -204,6 +204,7 @@ function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
 
 export function TimelineTab({ data }: { data: MatchDetail }) {
   const { t } = useT();
+  const [showAll, setShowAll] = useState(false);
   const homeTeamId = data.match.homeTeam!.id;
   const homeName = data.match.homeTeam!.shortName ?? data.match.homeTeam!.name;
   const awayName = data.match.awayTeam!.shortName ?? data.match.awayTeam!.name;
@@ -290,15 +291,21 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
     );
   }
 
+  // Tope de render (#366): actas largas no necesitan pintar todas las filas de
+  // golpe; con "ver todos" el usuario las carga explícitamente.
+  const TIMELINE_PREVIEW = 60;
+  const visible = showAll ? timeline : timeline.slice(0, TIMELINE_PREVIEW);
+  const hiddenCount = timeline.length - visible.length;
+
   return (
     <div className="card relative px-3 py-2">
       {/* Eje central del timeline */}
       <div className="absolute left-1/2 top-3 bottom-3 w-px -translate-x-1/2
                       bg-slate-100 dark:bg-slate-800" aria-hidden="true" />
-      {timeline.map((ev, i) => {
+      {visible.map((ev, i) => {
         // Causa-efecto: mismo instante exacto (periodo + crono) que el evento
         // anterior → se agrupan visualmente y el eje no repite el tiempo.
-        const prev = timeline[i - 1];
+        const prev = visible[i - 1];
         const sameInstant = !!prev && !!(ev as { clock?: string | null }).clock
           && (prev as { clock?: string | null }).clock === (ev as { clock?: string | null }).clock
           && prev.period === ev.period
@@ -308,6 +315,16 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
                        sameInstantAsPrev={sameInstant} />
         );
       })}
+      {hiddenCount > 0 && (
+        <button
+          onClick={() => setShowAll(true)}
+          className="mt-2 w-full py-2.5 min-h-[44px] text-xs font-semibold text-rink-passion
+                     rounded-xl border border-slate-200 dark:border-slate-800
+                     hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+        >
+          {t('match_detail.show_all_events', { n: hiddenCount })}
+        </button>
+      )}
     </div>
   );
 }

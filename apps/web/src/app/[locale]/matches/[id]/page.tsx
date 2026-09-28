@@ -36,7 +36,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       title,
       description,
       alternates,
-      ...socialMeta({ locale, path: `/matches/${params.id}`, title: ogTitle, description, type: 'article', dynamicImage: true }),
+      ...socialMeta({ locale, path: `/matches/${params.id}`, title: ogTitle, description, dynamicImage: true }),
     };
   } catch {
     return { alternates };
@@ -62,8 +62,10 @@ export default async function MatchDetailPage(props: Props) {
     name: `${clubName(m.homeTeam?.name ?? '')} vs ${clubName(m.awayTeam?.name ?? '')}`,
     sport: 'Roller Hockey',
     startDate: m.scheduledAt ?? undefined,
+    // schema.org no tiene un estado "finalizado": para un partido terminado se
+    // omite eventStatus (omitirlo es correcto; EventScheduled sería erróneo).
     eventStatus: m.status === 'finished'
-      ? 'https://schema.org/EventScheduled'
+      ? undefined
       : m.status === 'postponed'
         ? 'https://schema.org/EventPostponed'
         : m.status === 'cancelled'

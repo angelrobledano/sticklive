@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import { useT } from '@/lib/i18n';
-import { track } from '@/lib/analytics';
+import { track, matchAnalyticsDecision, type LiveStreamStatus } from '@/lib/analytics';
 import type { MatchDetail } from '@/lib/api/client';
 import { MatchHeader } from './MatchHeader';
 import { TimelineTab } from './TimelineTab';
@@ -62,24 +63,97 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
 
   const isLive = liveData.match.status === 'live';
 
-  // ── Analítica: una vista por partido y montaje ─────────────────────────────
+  // ── Analítica: vista por partido y transición a vivo (#241) ─────────────────
+  // `match_view` se emite al montar y en CADA transición real de estado (no en
+  // cada poll), de modo que `status` refleja el directo y no el snapshot SSR.
+  // `live_match_followed` (NSM) se emite en la primera llegada a `live`, ya sea
+  // al montar en vivo o al pasar de scheduled → live (abrir antes del saque).
+  const lastStatusRef = useRef<string | null>(null);
+  const followedRef = useRef(false);
+  const analyticsMatchIdRef = useRef<string | null>(null);
+
   useEffect(() => {
+    const { id, status, seasonId } = liveData.match;
+    if (analyticsMatchIdRef.current !== id) {
+      analyticsMatchIdRef.current = id;
+      lastStatusRef.current = null;
+      followedRef.current = false;
+    }
+    const prev = lastStatusRef.current;
+    const decision = matchAnalyticsDecision(prev, status);
+    if (!decision.emitView) return;
+    lastStatusRef.current = status;
     track('match_view', {
-      match_id: initialData.match.id,
-      status: initialData.match.status,
+      match_id: id,
+      status,
+      ...(prev ? { previous_status: prev } : {}),
     });
-    // NSM: seguimiento de directo. Cuenta abrir/llegar (push) a una ficha en vivo.
-    if (initialData.match.status === 'live') {
+    if (decision.emitLiveFollowed && !followedRef.current) {
+      followedRef.current = true;
       let source = 'open';
       try { if (new URLSearchParams(window.location.search).get('src') === 'push') source = 'push'; } catch { /* noop */ }
       track('live_match_followed', {
-        match_id: initialData.match.id,
-        season_id: initialData.match.seasonId,
+        match_id: id,
+        season_id: seasonId,
         source,
       });
     }
+    // Dependemos de los campos concretos, no del objeto `match` completo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialData.match.id]);
+  }, [liveData.match.id, liveData.match.status, liveData.match.seasonId]);
+
+  // ── Dwell del directo (#241) ────────────────────────────────────────────────
+  // Segundos con la pestaña VISIBLE mientras el partido está en vivo. Se emite
+  // una sola vez al salir (unmount/pagehide) para no inflar la NSM ni duplicar.
+  useEffect(() => {
+    if (!isLive) return;
+    const matchId = liveData.match.id;
+    let visibleMs = 0;
+    let visibleSince: number | null = document.visibilityState === 'visible' ? Date.now() : null;
+    let sent = false;
+
+    const pause = () => {
+      if (visibleSince != null) { visibleMs += Date.now() - visibleSince; visibleSince = null; }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') pause();
+      else if (visibleSince == null) visibleSince = Date.now();
+    };
+    const flush = () => {
+      if (sent) return;
+      sent = true;
+      pause();
+      // Evita ruido de estancias por debajo de 1 s.
+      if (visibleMs >= 1_000) {
+        track('live_match_dwell', { match_id: matchId, seconds_watched: Math.round(visibleMs / 1000) });
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flush);
+      flush();
+    };
+  }, [isLive, liveData.match.id]);
+
+  // ── Analítica del stream de directo (#244) ──────────────────────────────────
+  // `live_stream_status_changed` registra connecting/live/error/timeout/finished,
+  // deduplicando estados consecutivos iguales (EventSource reintenta y onerror
+  // puede dispararse varias veces).
+  const lastStreamRef = useRef<LiveStreamStatus | null>(null);
+  const streamMatchIdRef = useRef<string | null>(null);
+  const reportStream = useCallback((status: LiveStreamStatus) => {
+    const id = liveData.match.id;
+    if (streamMatchIdRef.current !== id) {
+      streamMatchIdRef.current = id;
+      lastStreamRef.current = null;
+    }
+    if (lastStreamRef.current === status) return;
+    lastStreamRef.current = status;
+    track('live_stream_status_changed', { match_id: id, status });
+  }, [liveData.match.id]);
 
   // ── Conexión SSE ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -89,7 +163,9 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
     }
 
     setSseStatus('connecting');
-    const url = `${API_URL}/matches/${liveData.match.id}/stream`;
+    reportStream('connecting');
+    const matchId = liveData.match.id;
+    const url = `${API_URL}/matches/${matchId}/stream`;
     const es = new EventSource(url);
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -103,11 +179,18 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
         const serverAt = parsed.updatedAt ? new Date(parsed.updatedAt).getTime() : NaN;
         setLastUpdateAt(Number.isFinite(serverAt) ? serverAt : Date.now());
         setServerStale(false);
-      } catch { /* JSON malformado — ignorar */ }
+      } catch {
+        // JSON malformado del stream (#244): breadcrumb para no inundar Sentry.
+        Sentry.addBreadcrumb({
+          category: 'live-sse', level: 'warning',
+          message: 'Payload SSE no parseable', data: { matchId },
+        });
+      }
     };
 
     es.addEventListener('snapshot', (e) => {
       setSseStatus('live');
+      reportStream('live');
       handleData((e as MessageEvent<string>).data);
     });
 
@@ -117,6 +200,7 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
 
     es.addEventListener('finished', () => {
       setSseStatus('finished');
+      reportStream('finished');
       es.close();
     });
 
@@ -127,6 +211,7 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
     es.addEventListener('timeout', () => {
       es.close();
       setSseStatus('connecting');
+      reportStream('timeout');
       reconnectTimer = setTimeout(() => setSseEpoch((n) => n + 1), 1_000);
     });
 
@@ -145,6 +230,13 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
 
     es.onerror = () => {
       setSseStatus('error');
+      reportStream('error');
+      // #244: EventSource reintenta solo; breadcrumb (no exception) para no
+      // inundar Sentry con fallos de red transitorios.
+      Sentry.addBreadcrumb({
+        category: 'live-sse', level: 'warning',
+        message: 'Error de conexión SSE', data: { matchId },
+      });
       // EventSource auto-reintenta — no cerramos aquí
     };
 
@@ -153,7 +245,7 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
       es.close();
       setSseStatus('idle');
     };
-  }, [liveData.match.id, isLive, sseEpoch]);
+  }, [liveData.match.id, isLive, sseEpoch, reportStream]);
 
   // ── Polling de fallback cada 30s para partidos live sin SSE ────────────────
   // (cubre browsers que no soportan EventSource o cuando SSE falla)
@@ -164,7 +256,14 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
       const parsed = (await res.json()) as MatchDetail;
       setLiveData(parsed);
       setLastUpdateAt(Date.now());
-    } catch { /* sin red — siguiente intento */ }
+    } catch (err) {
+      // #244: fallo del fetch de respaldo; se reintenta, pero lo reportamos para
+      // medir la calidad del directo (antes se descartaba en silencio).
+      Sentry.captureException(err, {
+        tags: { scope: 'match-poll' },
+        extra: { matchId: liveData.match.id },
+      });
+    }
   }, [liveData.match.id]);
 
   useEffect(() => {
@@ -193,15 +292,14 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
   // bloque SSE de arriba tome el relevo.
   useEffect(() => {
     if (isLive) return;
-    // Cubre un RSC cacheado justo antes del saque (#187): si esta ficha se sirvió
-    // en los ~20 s previos (revalidate:20) y se abre ya pasada la hora, el
-    // temporizador de abajo no se programa (delay <= 0) y para 'scheduled' no hay
-    // polling de respaldo. Un fetch inmediato (sin caché, contra la API) trae el
-    // estado efectivo real y pinta EN DIRECTO sin recargar.
-    void refreshData();
     const startIso = liveData.match.scheduledAt ?? liveData.match.startedAt;
     if (!startIso) return;
-    const delay = new Date(startIso).getTime() - Date.now();
+    const start = new Date(startIso).getTime();
+    const delay = start - Date.now();
+    // Cubre un RSC cacheado justo antes del saque (#187) solo si el inicio es
+    // inminente o ya pasó; para partidos lejanos no hacemos un fetch
+    // incondicional al abrir la ficha (#366).
+    if (delay <= 5 * 60_000) void refreshData();
     if (delay <= 0 || delay > 6 * 3_600_000) return;
     const timer = setTimeout(refreshData, delay + 60_000);
     return () => clearTimeout(timer);

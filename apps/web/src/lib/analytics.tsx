@@ -17,12 +17,25 @@
  *    poder unir cliente↔servidor incluso tras hacer login.
  *  · Pageviews manuales con ruta NORMALIZADA (/matches/:id, no el uuid),
  *    con locale como propiedad — agregables sin limpieza posterior.
+ *  · #245: con person_profiles='identified_only' las person props de anónimos no
+ *    crean perfil fiable, así que TODOS los eventos llevan dimensiones de
+ *    segmentación baratas (theme, platform, pwa_installed, notifications_enabled;
+ *    `locale` lo aporta cada evento/pageview). Ver `segmentationProps`.
  *
  * Plan de eventos:
  *  $pageview                 route, locale, device_id
  *  competition_view          competition_id, locale, device_id
  *  team_view                 team_id, locale, device_id
- *  match_view                match_id, status (scheduled|live|finished)
+ *  player_view               player_id, locale, device_id        (#242)
+ *  match_view                match_id, status (scheduled|live|finished),
+ *                            previous_status (solo en transiciones)  (#241)
+ *  live_match_followed       match_id, season_id, source (open|push)  (#241)
+ *  live_match_dwell          match_id, seconds_watched            (#241)
+ *  live_stream_status_changed match_id, status
+ *                            (connecting|live|error|timeout|finished)  (#244)
+ *  search_performed          surface, query_length, query_terms,
+ *                            result_count, has_results            (#240)
+ *  search_result_clicked     surface, kind (team|player|competition), ref_id (#240)
  *  favorite_added/removed    kind (team|league), ref_id, total_favorites
  *  locale_changed            from, to (+person prop locale)
  *  theme_changed             dark (boolean)
@@ -35,7 +48,7 @@
 import posthog from 'posthog-js';
 import { useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { entityViewFromPath } from '@/lib/analytics-entity';
+import { entityViewFromPath, entityIdProp } from '@/lib/analytics-entity';
 import { CONSENT_EVENT, CONSENT_KEY, isAnalyticsAllowed, readConsent } from '@/lib/consent';
 
 const KEY  = process.env['NEXT_PUBLIC_POSTHOG_KEY'];
@@ -46,6 +59,9 @@ const ENABLED =
 
 /** Mismo identificador de dispositivo que usan API/ETL para los eventos de servidor. */
 const DEVICE_KEY = 'rink-device-id';
+
+/** Clave del tema (compartida con `app/[locale]/settings/config.ts`). */
+const THEME_KEY = 'rink-theme';
 
 let initialized = false;
 
@@ -58,10 +74,64 @@ function readDeviceId(): string | null {
   }
 }
 
-/** Añade `device_id` a las propiedades de cada evento cliente (#239). */
+/**
+ * Clasificación de plataforma para segmentar (#245). Misma heurística que
+ * `pwaPlatform()` en `lib/pwa`; se replica aquí para no crear un ciclo de
+ * imports (pwa ya importa analytics).
+ */
+function platformFromUA(): 'ios' | 'android' | 'desktop' {
+  if (typeof navigator === 'undefined') return 'desktop';
+  const ua = navigator.userAgent || '';
+  if (/iphone|ipad|ipod/i.test(ua)
+    || ((navigator as { platform?: string }).platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+    return 'ios';
+  }
+  if (/android/i.test(ua)) return 'android';
+  return 'desktop';
+}
+
+/**
+ * Dimensiones de segmentación baratas (#245). Con `person_profiles:
+ * 'identified_only'` los anónimos no crean perfil, así que adjuntamos estas
+ * props a CADA evento para no perder cohortes (tema, plataforma, PWA, avisos).
+ * Best-effort: cualquier acceso bloqueado se ignora.
+ */
+export function segmentationProps(): Record<string, unknown> {
+  if (typeof window === 'undefined') return {};
+  const props: Record<string, unknown> = {};
+  try {
+    const stored = window.localStorage.getItem(THEME_KEY);
+    props['theme'] = stored === 'dark' || stored === 'light'
+      ? stored
+      : (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+  } catch { /* noop */ }
+  try {
+    const locale = window.localStorage.getItem('sticklive_locale');
+    if (locale) props['locale'] = locale;
+  } catch { /* noop */ }
+  props['platform'] = platformFromUA();
+  try {
+    props['pwa_installed'] =
+      !!window.matchMedia?.('(display-mode: standalone)').matches
+      || (navigator as unknown as { standalone?: boolean }).standalone === true;
+  } catch { /* noop */ }
+  if (typeof Notification !== 'undefined') {
+    try { props['notifications_enabled'] = Notification.permission === 'granted'; } catch { /* noop */ }
+  }
+  return props;
+}
+
+/**
+ * Añade `device_id` (#239) y las dimensiones de segmentación (#245) a cada
+ * evento. Las props del llamante tienen prioridad (p. ej. el `locale` de la ruta).
+ */
 function withDevice(props?: Record<string, unknown>): Record<string, unknown> {
   const deviceId = readDeviceId();
-  return deviceId ? { ...(props ?? {}), device_id: deviceId } : { ...(props ?? {}) };
+  return {
+    ...segmentationProps(),
+    ...(props ?? {}),
+    ...(deviceId ? { device_id: deviceId } : {}),
+  };
 }
 
 function ensureInit(): boolean {
@@ -123,6 +193,52 @@ export function normalizeRoute(pathname: string): { route: string; locale: strin
   return { route, locale };
 }
 
+export interface SearchEventProps {
+  /** Longitud de la query normalizada (sin el texto: evita PII, ver #240). */
+  query_length: number;
+  query_terms: number;
+  result_count: number;
+  has_results: boolean;
+}
+
+/**
+ * Props de `search_performed` (#240) SIN la query en claro: una búsqueda puede
+ * contener datos personales (nombres), así que solo agregamos longitud y número
+ * de términos. `result_count`/`has_results` permiten medir los "cero resultados".
+ */
+export function searchEventProps(query: string, resultCount: number): SearchEventProps {
+  const normalized = query.trim().replace(/\s+/g, ' ');
+  return {
+    query_length: normalized.length,
+    query_terms: normalized ? normalized.split(' ').length : 0,
+    result_count: resultCount,
+    has_results: resultCount > 0,
+  };
+}
+
+export interface MatchAnalyticsDecision {
+  /** Emitir `match_view`: primera vez o cambio real de estado (no en cada poll). */
+  emitView: boolean;
+  /** Emitir `live_match_followed`: solo en la primera llegada a `live` (#241). */
+  emitLiveFollowed: boolean;
+}
+
+/**
+ * Decide la analítica al cambiar el estado de un partido (#241). Evita que
+ * `match_view.status` quede congelado en el snapshot SSR: se re-emite en la
+ * transición `scheduled → live`/`live → finished`, y `live_match_followed`
+ * (NSM) cuenta también cuando el usuario abre antes del saque y se queda.
+ */
+export function matchAnalyticsDecision(prevStatus: string | null, status: string): MatchAnalyticsDecision {
+  return {
+    emitView: prevStatus !== status,
+    emitLiveFollowed: status === 'live' && prevStatus !== 'live',
+  };
+}
+
+/** Estados del stream de directo que reportamos desde el cliente (#244). */
+export type LiveStreamStatus = 'connecting' | 'live' | 'error' | 'timeout' | 'finished';
+
 /** Pageviews manuales — montar una vez en el layout. */
 export function AnalyticsPageview() {
   const pathname = usePathname();
@@ -142,7 +258,7 @@ export function AnalyticsPageview() {
     // competición/equipo se consultó (#171).
     const view = entityViewFromPath(path);
     if (view) {
-      const idProp = view.event === 'competition_view' ? 'competition_id' : 'team_id';
+      const idProp = entityIdProp(view.event);
       posthog.capture(view.event, withDevice({ [idProp]: view.id, locale }));
     }
     return true;

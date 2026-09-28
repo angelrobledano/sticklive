@@ -15,6 +15,11 @@
     "back": "Back",
     "search": "Search"
   },
+  "locale_hint": {
+    "body": "Looks like you prefer {lang}",
+    "cta": "View in {lang}",
+    "dismiss": "Dismiss"
+  },
   "notif_presets": {
     "title": "What do you want to get?",
     "complete": {
@@ -148,6 +153,9 @@
     "no_search_results": "No results for your search",
     "copied": "Copied",
     "share": "Share",
+    "copy_failed": "Not copied",
+    "change_season": "Change season",
+    "day_out_of_window": "Outside the loaded data range",
     "male": "Men's",
     "female": "Women's",
     "current": "current",
@@ -172,6 +180,7 @@
     "auto_update": "auto-updating",
     "reconnecting": "Searching for the signal… reconnecting to bring you every goal instantly",
     "no_events": "No events recorded",
+    "show_all_events": "Show all events ({n})",
     "waiting_start": "Waiting for the match to start",
     "waiting_start_body": "Goals, fouls and cards will show up here as soon as the ball starts rolling on the rink.",
     "historic_title": "Historic match",

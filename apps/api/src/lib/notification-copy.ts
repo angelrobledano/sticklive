@@ -11,7 +11,9 @@
  *    en pantalla de bloqueo), nunca apila pushes: 3 goles seguidos = 1 push
  *    actualizado, no 3.
  * 2. SILENCIO NOCTURNO (pref quietNight): entre 23:00 y 08:00 no se emiten
- *    alertas de evento; el partido tardío genera un único resumen matinal.
+ *    alertas de evento. El resumen matinal (`morningSummary`) todavía NO se
+ *    emite: hoy el resultado de un partido nocturno se descarta. Implementarlo
+ *    en el push-dispatcher queda como trabajo pendiente (#272).
  * 3. SEGMENTACIÓN: solo se notifica lo que el usuario tiene activado en su
  *    NotifConfig (switch maestro > bloque favoritos > bloque global).
  */
@@ -140,7 +142,11 @@ export function secondHalfAlert(m: MatchRef): string {
   return `¡Comienza la 2ª parte! ${m.homeShort} ${m.homeScore} - ${m.awayScore} ${m.awayShort}`;
 }
 
-/** Resumen matinal para partidos silenciados por la noche */
+/**
+ * Resumen matinal para partidos silenciados por la noche.
+ * PENDIENTE DE INTEGRACIÓN: la función existe pero aún no se emite desde el
+ * push-dispatcher (#272); no prometer este aviso hasta que se conecte.
+ */
 export function morningSummary(winnerName: string, m: MatchRef, kickoffLocal: string): string {
   return `Buenos días. Ayer el ${winnerName} venció ${m.homeScore}-${m.awayScore} en el partido de las ${kickoffLocal}.`;
 }

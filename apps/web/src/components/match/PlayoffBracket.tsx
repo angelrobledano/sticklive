@@ -141,7 +141,7 @@ export function PlayoffBracket({ matches, currentMatchId, linkable = false }: {
         >
           {PLAYOFF_PHASES.filter((p) => phases[p].length > 0).map((phase) => (
             <div key={phase} className="shrink-0">
-              <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1.5">
                 {phase === 'Cuartos' ? t('playoffs.quarters') : phase === 'Semis' ? t('playoffs.semis') : t('playoffs.final')}
               </p>
               {/* Las series de la fase, apiladas y centradas verticalmente */}

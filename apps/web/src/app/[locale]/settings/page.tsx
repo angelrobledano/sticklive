@@ -199,8 +199,8 @@ export default function SettingsPage() {
         }
       >
         {loadingTeams ? (
-          <div className="py-6 flex justify-center">
-            <div className="w-5 h-5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" />
+          <div className="py-6 flex justify-center" aria-busy="true">
+            <div className="w-5 h-5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" aria-hidden="true" />
           </div>
         ) : myTeams.length === 0 ? (
           <div className="py-4">

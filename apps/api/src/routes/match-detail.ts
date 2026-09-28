@@ -74,6 +74,10 @@ matchDetailRouter.get('/:id', async (c) => {
       ORDER BY
         COALESCE(e.period, 99) ASC,
         COALESCE(e.minute, 9999) ASC,
+        -- #285: dentro del mismo minuto el crono es cuenta atrás (MM:SS); a mayor
+        -- crono, antes ocurrió. Sin esto, eventos del mismo minuto salían en el
+        -- orden de inserción y el relato se leía invertido.
+        e.clock DESC NULLS LAST,
         e.created_at ASC
     `, [id]);
 

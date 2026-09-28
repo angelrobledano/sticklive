@@ -44,6 +44,40 @@ const OG_LOCALE: Record<Locale, string> = {
 };
 
 /**
+ * Token de versión corto y determinista para la URL de una imagen social
+ * dinámica (#274). Hash FNV-1a de 32 bits en base 36 (JS puro, sin dependencias).
+ *
+ * Se deriva del estado/marcador del partido (que va en el título OG, p. ej.
+ * "CPC 2-2 LUB"): cambia en cada gol y al pasar de programado a en directo, de
+ * modo que los scrapers (WhatsApp/Meta/X) piden una URL nueva en vez de
+ * reutilizar su copia cacheada. Al ser determinista, la misma URL se comparte
+ * entre peticiones del mismo estado (no rompe la caché del CDN entre visitas).
+ */
+export function socialImageVersion(seed: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    // Math.imul mantiene la aritmética en 32 bits sin desbordar el Number.
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36);
+}
+
+/**
+ * URL absoluta de la imagen social dinámica de una ruta (opengraph-image /
+ * twitter-image) con el token de versión en `?v=`.
+ */
+export function socialImageUrl(
+  locale: Locale,
+  path: string,
+  file: 'opengraph-image' | 'twitter-image',
+  version: string,
+): string {
+  const clean = path === '/' ? '' : path;
+  return `${SITE_URL}/${locale}${clean}/${file}?v=${version}`;
+}
+
+/**
  * Construye los bloques openGraph + twitter (Metadata de Next) optimizados para
  * compartir en WhatsApp/Twitter/etc. Centralizado para que todas las páginas
  * usen el mismo formato (tarjeta grande 1.91:1, imagen segura, dimensiones).
@@ -55,7 +89,7 @@ export function socialMeta(opts: {
   path?: string;
   title: string;
   description: string;
-  type?: 'website' | 'article';
+  type?: 'website' | 'article' | 'profile';
   image?: { url: string; width: number; height: number; type?: string; alt?: string };
   /** La imagen la genera un fichero opengraph-image/twitter-image (OG dinámico). */
   dynamicImage?: boolean;
@@ -63,12 +97,38 @@ export function socialMeta(opts: {
   const { locale, path = '', title, description, type = 'website' } = opts;
   const url = `${SITE_URL}/${locale}${path === '/' ? '' : path}`;
 
-  // Con imagen dinámica (opengraph-image.tsx + twitter-image.tsx), NO fijamos
-  // imágenes aquí: si lo hiciéramos, Next ignoraría las del fichero. Twitter
-  // card e imagen los aporta twitter-image.tsx automáticamente.
+  // Con imagen dinámica (opengraph-image.tsx + twitter-image.tsx) fijamos las
+  // URLs a mano para incluir el token de versión (#274): la URL que Next genera
+  // por defecto lleva un hash de build constante, así que quien la cachea
+  // (WhatsApp/Meta/X) seguiría viendo el marcador del primer scrape. El token se
+  // deriva del estado/marcador incrustado en el título OG.
   if (opts.dynamicImage) {
+    const version = socialImageVersion(`${title}|${description}`);
     return {
-      openGraph: { type, url, siteName: 'Stick Live', locale: OG_LOCALE[locale], title, description },
+      openGraph: {
+        type,
+        url,
+        siteName: 'Stick Live',
+        locale: OG_LOCALE[locale],
+        title,
+        description,
+        images: [{
+          url: socialImageUrl(locale, path, 'opengraph-image', version),
+          width: OG_IMAGE.width,
+          height: OG_IMAGE.height,
+          type: OG_IMAGE.type,
+          alt: title,
+        }],
+      },
+      // #273: sin este bloque, X/Twitter heredaba el título/descripción
+      // genéricos del layout (la imagen sí era la del partido). La card debe
+      // llevar los datos del partido igual que openGraph.
+      twitter: {
+        card: 'summary_large_image',
+        title,
+        description,
+        images: [socialImageUrl(locale, path, 'twitter-image', version)],
+      },
     };
   }
   const img = opts.image

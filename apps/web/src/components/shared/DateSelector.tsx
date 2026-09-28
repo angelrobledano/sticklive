@@ -47,9 +47,13 @@ function monthAbbr(date: Date, locale: string): string {
 interface DateSelectorProps {
   selected: string;          // "YYYY-MM-DD"
   onChange: (key: string) => void;
+  /** Primer día con datos cargados (para no ofrecer días vacíos por ventana). */
+  availableFrom?: string | null;
+  /** Último día con datos cargados. */
+  availableTo?: string | null;
 }
 
-export function DateSelector({ selected, onChange }: DateSelectorProps) {
+export function DateSelector({ selected, onChange, availableFrom, availableTo }: DateSelectorProps) {
   const { t, locale } = useT();
   const todayKey = madridTodayKey();
   const dateKeys = buildDateKeys(7, 14);
@@ -86,17 +90,26 @@ export function DateSelector({ selected, onChange }: DateSelectorProps) {
         const isActive = key === selected;
         const relKey = getRelativeKey(key, todayKey);
         const relLabel = relKey ? t(relKey) : null;
+        // Fuera de la ventana de datos cargada: se muestra atenuado y deshabilitado
+        // en vez de abrir un día que siempre saldría vacío en falso (#365).
+        const outOfRange = (!!availableFrom && key < availableFrom)
+          || (!!availableTo && key > availableTo);
 
         return (
           <button
             key={key}
             data-active={isActive}
+            aria-current={isActive ? 'date' : undefined}
+            disabled={outOfRange}
+            title={outOfRange ? t('common.day_out_of_window') : undefined}
             onClick={() => handleClick(key)}
             className={`flex flex-col items-center shrink-0 rounded-xl px-3 py-1.5
                         min-w-[52px] transition-all duration-150 select-none
-                        ${isActive
-                          ? 'bg-rink-passion/10 text-rink-passion'
-                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        ${outOfRange
+                          ? 'opacity-30 cursor-not-allowed'
+                          : isActive
+                            ? 'bg-rink-passion/10 text-rink-passion'
+                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
           >
             {relLabel ? (
@@ -118,7 +131,7 @@ export function DateSelector({ selected, onChange }: DateSelectorProps) {
                                   ${isActive ? 'text-rink-passion' : 'text-slate-700 dark:text-slate-200'}`}>
                   {date.getDate()}
                 </span>
-                <span className="text-[9px] leading-none mt-0.5 opacity-70">
+                <span className="text-[10px] leading-none mt-0.5 opacity-70">
                   {monthAbbr(date, locale)}
                 </span>
               </>

@@ -63,9 +63,9 @@ function cloudRemove(kind: Kind, id: string) {
 }
 
 // ── Tombstones: bajas locales que NO deben reaparecer en la reconciliación ──────
-// La reconciliación es aditiva, así que quitar un favorito SIN conexión (el DELETE
-// en la nube falla) lo recuperaría al volver online. Guardamos las bajas y, en la
-// reconciliación, las restamos de la unión + reintentamos el DELETE en la nube.
+// Quitar un favorito SIN conexión (el DELETE en la nube falla) lo recuperaría al
+// volver online. Guardamos las bajas y, en la reconciliación, las restamos del
+// estado resultante + reintentamos el DELETE en la nube.
 const TOMBSTONE_KEY = 'rink-fav-removed';
 interface Tombstones { teams: string[]; leagues: string[]; players: string[] }
 
@@ -90,10 +90,89 @@ function clearTombstone(kind: Kind, id: string) {
   if (t[k].includes(id)) { t[k] = t[k].filter((x) => x !== id); writeTombstones(t); }
 }
 
+// ── Reconciliación pura local↔nube (#268) ──────────────────────────────────────
+//
+// En el PRIMER login subimos los favoritos locales y hacemos unión con la nube
+// (onboarding). En las sincronizaciones posteriores la NUBE es la fuente de
+// verdad: NO reinsertamos lo que solo está en local (podría ser un favorito que
+// otro dispositivo dejó de seguir), solo aplicamos los tombstones locales y
+// reintentamos su borrado. Antes la unión era siempre aditiva y el favorito
+// borrado "resucitaba" desde cualquier dispositivo que aún lo tuviera en local.
+
+export interface FavoritesSnapshot { teams: string[]; leagues: string[]; players: string[] }
+
+export interface FavoriteReconciliation {
+  /** Estado local resultante (lo que se escribe en localStorage). */
+  next: FavoritesSnapshot;
+  /** Tombstones que siguen en la nube y hay que reintentar borrar. */
+  removals: FavoritesSnapshot;
+}
+
+function dedupe(ids: string[]): string[] {
+  return Array.from(new Set(ids));
+}
+
+/** Unión de local+nube sin los tombstones, deduplicada (local primero). */
+function unionMinus(a: string[], b: string[], removed: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const id of [...a, ...b]) {
+    if (removed.includes(id) || seen.has(id)) continue;
+    seen.add(id); out.push(id);
+  }
+  return out;
+}
+
 /**
- * Reconcilia local↔nube una sola vez por carga de app. Empuja lo local a la
- * cuenta y baja lo que solo estuviera en la nube (unión aditiva, idempotente).
- * El guard de módulo evita N llamadas cuando el hook se usa en muchos componentes.
+ * Decide el estado local tras reconciliar. Pura para poder fijar con tests el
+ * caso multi-dispositivo (#268) sin tocar localStorage ni la red.
+ */
+export function reconcileFavorites(
+  local: FavoritesSnapshot,
+  cloud: FavoritesSnapshot,
+  tombstones: FavoritesSnapshot,
+  opts: { firstLogin: boolean },
+): FavoriteReconciliation {
+  const keys = ['teams', 'leagues', 'players'] as const;
+  const next: FavoritesSnapshot = { teams: [], leagues: [], players: [] };
+  const removals: FavoritesSnapshot = { teams: [], leagues: [], players: [] };
+  for (const k of keys) {
+    const removed = tombstones[k];
+    next[k] = opts.firstLogin
+      ? unionMinus(local[k], cloud[k], removed)
+      : dedupe(cloud[k]).filter((id) => !removed.includes(id));
+    const inCloud = new Set(cloud[k]);
+    removals[k] = dedupe(removed).filter((id) => inCloud.has(id));
+  }
+  return { next, removals };
+}
+
+/**
+ * Marca de "esta CUENTA ya se sincronizó al menos una vez en este dispositivo":
+ * a partir de ahí la nube manda en la reconciliación (#268). Se indexa por
+ * email (legible en `useAuth`) para que un cambio de usuario en el mismo
+ * dispositivo siga haciendo su propia fusión de primer login y no se mezclen
+ * favoritos entre cuentas.
+ */
+const SYNCED_KEY = 'rink-fav-synced';
+function syncedKey(): string {
+  try {
+    const email = localStorage.getItem('rink-session-email');
+    return email ? `${SYNCED_KEY}:${email.toLowerCase()}` : SYNCED_KEY;
+  } catch { return SYNCED_KEY; }
+}
+function hasSyncedBefore(): boolean {
+  try { return localStorage.getItem(syncedKey()) === '1'; } catch { return false; }
+}
+function markSynced(): void {
+  try { localStorage.setItem(syncedKey(), '1'); } catch { /* noop */ }
+}
+
+/**
+ * Reconcilia local↔nube una sola vez por carga de app. Primera vez: sube lo
+ * local y une con la cuenta (onboarding). Posteriores: la nube manda y solo se
+ * reintentan los borrados locales. El guard de módulo evita N llamadas cuando
+ * el hook se usa en muchos componentes.
  */
 let cloudReconciled = false;
 function reconcileCloud() {
@@ -101,29 +180,47 @@ function reconcileCloud() {
   const session = getSession();
   if (!session) return;
   cloudReconciled = true;
-  fetch(`${API_URL}/auth/favorites/merge`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
-    body: JSON.stringify({
-      teams:   readArr(STORAGE_KEY),
-      leagues: readArr(LEAGUES_KEY),
-      players: readArr(PLAYERS_KEY),
-    }),
-  })
+
+  const firstLogin = !hasSyncedBefore();
+  const local: FavoritesSnapshot = {
+    teams:   readArr(STORAGE_KEY),
+    leagues: readArr(LEAGUES_KEY),
+    players: readArr(PLAYERS_KEY),
+  };
+  const tombstones = readTombstones();
+  const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` };
+
+  // Primer login → POST: el servidor hace la unión y devuelve el estado total.
+  // Posteriores → GET: solo leemos la nube (fuente de verdad multi-dispositivo).
+  const request = firstLogin
+    ? fetch(`${API_URL}/auth/favorites/merge`, {
+        method: 'POST', headers, body: JSON.stringify(local),
+      })
+    : fetch(`${API_URL}/auth/favorites`, { method: 'GET', headers });
+
+  request
     .then((r) => (r.ok ? r.json() : null))
-    .then((cloud: { teams?: string[]; leagues?: string[]; players?: string[] } | null) => {
+    .then((cloud: Partial<FavoritesSnapshot> | null) => {
       if (!cloud) { cloudReconciled = false; return; } // permite reintento
-      const tomb = readTombstones();
+      const result = reconcileFavorites(
+        local,
+        {
+          teams:   cloud.teams   ?? [],
+          leagues: cloud.leagues ?? [],
+          players: cloud.players ?? [],
+        },
+        tombstones,
+        { firstLogin },
+      );
       // Reintenta borrar en la nube lo que sigue marcado como baja local.
-      for (const id of tomb.teams)   if ((cloud.teams   ?? []).includes(id)) cloudRemove('team', id);
-      for (const id of tomb.leagues) if ((cloud.leagues ?? []).includes(id)) cloudRemove('league', id);
-      for (const id of tomb.players) if ((cloud.players ?? []).includes(id)) cloudRemove('player', id);
-      // Escribe la unión MENOS las bajas (para que no reaparezcan).
-      const minus = (arr: string[] | undefined, removed: string[], fallback: string[]) =>
-        Array.from(new Set((arr ?? fallback).filter((id) => !removed.includes(id))));
-      writeArr(STORAGE_KEY, minus(cloud.teams,   tomb.teams,   readArr(STORAGE_KEY)));
-      writeArr(LEAGUES_KEY, minus(cloud.leagues, tomb.leagues, readArr(LEAGUES_KEY)));
-      writeArr(PLAYERS_KEY, minus(cloud.players, tomb.players, readArr(PLAYERS_KEY)));
+      for (const id of result.removals.teams)   cloudRemove('team', id);
+      for (const id of result.removals.leagues) cloudRemove('league', id);
+      for (const id of result.removals.players) cloudRemove('player', id);
+      // Escribe el estado reconciliado (nube − bajas, o unión − bajas).
+      writeArr(STORAGE_KEY, result.next.teams);
+      writeArr(LEAGUES_KEY, result.next.leagues);
+      writeArr(PLAYERS_KEY, result.next.players);
+      if (firstLogin) markSynced();
       broadcast();
     })
     .catch(() => { cloudReconciled = false; });

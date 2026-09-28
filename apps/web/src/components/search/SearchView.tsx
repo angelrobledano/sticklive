@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useT } from '@/lib/i18n';
+import { track, searchEventProps } from '@/lib/analytics';
 import { clubName, competitionName, playerDisplayName } from '@/lib/names';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
@@ -67,6 +68,17 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
   const canSearch = isSearchable(query);
   const total = results?.total ?? 0;
 
+  // #240: la búsqueda global se resuelve en el servidor; `results` corresponde a
+  // `initialQuery`, así que basta una emisión por resultado (incluido el caso de
+  // cero resultados). Sin la query en claro (ver `searchEventProps`).
+  useEffect(() => {
+    if (!results || !isSearchable(initialQuery)) return;
+    track('search_performed', {
+      surface: 'search',
+      ...searchEventProps(initialQuery, results.total),
+    });
+  }, [initialQuery, results]);
+
   return (
     <div className="flex flex-col min-h-screen max-w-2xl mx-auto">
       {/* ── Cabecera fija con el buscador ─────────────────────────────────── */}
@@ -94,7 +106,7 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
               className="w-full h-10 pl-9 pr-10 rounded-xl border border-slate-200 dark:border-slate-700
                          bg-slate-50 dark:bg-slate-900 text-[13px] text-slate-800 dark:text-slate-200
                          placeholder:text-slate-500 dark:placeholder:text-slate-400
-                         focus:outline-none focus:ring-2 focus:ring-rink-passion/40 focus:bg-white dark:focus:bg-slate-900
+                         focus:outline-none focus:ring-2 focus:ring-rink-passion focus:bg-white dark:focus:bg-slate-900
                          transition-colors"
             />
             {query && (
@@ -158,7 +170,12 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
                 {results.teams.map((team) => {
                   const country = countryLabel(team.country, locale);
                   return (
-                    <Link key={team.id} href={`/teams/${team.id}`} className={ROW}>
+                    <Link
+                      key={team.id}
+                      href={`/teams/${team.id}`}
+                      className={ROW}
+                      onClick={() => track('search_result_clicked', { surface: 'search', kind: 'team', ref_id: team.id })}
+                    >
                       <TeamShield teamId={team.id} teamName={team.name} size={36} />
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate leading-snug">
@@ -182,7 +199,12 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
                 {results.players.map((player) => {
                   const name = playerDisplayName(player.firstName, player.lastName);
                   return (
-                    <Link key={player.id} href={`/players/${player.id}`} className={ROW}>
+                    <Link
+                      key={player.id}
+                      href={`/players/${player.id}`}
+                      className={ROW}
+                      onClick={() => track('search_result_clicked', { surface: 'search', kind: 'player', ref_id: player.id })}
+                    >
                       <PlayerAvatar photoUrl={player.photoUrl} name={name} className="w-9 h-9 rounded-full" />
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate leading-snug">
@@ -208,7 +230,12 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
                   const hasFlag = !!comp.country && comp.country.length === 2;
                   const meta = [countryLabel(comp.country, locale), comp.seasonName].filter(Boolean).join(' · ');
                   return (
-                    <Link key={comp.id} href={`/competitions/${comp.id}`} className={ROW}>
+                    <Link
+                      key={comp.id}
+                      href={`/competitions/${comp.id}`}
+                      className={ROW}
+                      onClick={() => track('search_result_clicked', { surface: 'search', kind: 'competition', ref_id: comp.id })}
+                    >
                       <div className={`w-9 h-9 rounded-full shrink-0 flex items-center justify-center overflow-hidden
                                        ${hasFlag ? 'bg-slate-100 dark:bg-slate-800' : 'bg-rink-passion/10 border border-rink-passion/20'}`}>
                         {hasFlag ? (

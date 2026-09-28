@@ -127,12 +127,12 @@ function StandingsTable({
     <div className="card overflow-hidden">
       <div className={`${GRID} px-3 py-1.5 border-l-2 border-l-transparent
                       bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800`}>
-        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">#</span>
-        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('standings.team')}</span>
+        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">#</span>
+        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('standings.team')}</span>
         {STAT_COLS.map(({ key, mobile }) => (
           <span
             key={key}
-            className={`text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center ${mobile ? '' : 'hidden sm:block'}`}
+            className={`text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center ${mobile ? '' : 'hidden sm:block'}`}
           >
             {t(`standings.cols.${key}`)}
           </span>
@@ -174,23 +174,27 @@ function StandingsTable({
                 {pos}
               </span>
 
-              <Link
-                href={`/teams/${row.teamId}`}
-                className="flex items-center gap-2 min-w-0 hover:opacity-75 transition-opacity"
-              >
-                <TeamShield teamId={row.teamId} teamName={row.teamName} size={20} />
+              {/* Estrella FUERA del Link: un <button> dentro de un <a> es HTML
+                  inválido y confunde a los lectores de pantalla (#364). */}
+              <div className="flex items-center gap-2 min-w-0">
+                <Link
+                  href={`/teams/${row.teamId}`}
+                  className="flex items-center gap-2 min-w-0 hover:opacity-75 transition-opacity"
+                >
+                  <TeamShield teamId={row.teamId} teamName={row.teamName} size={20} />
+                  <AdaptiveTeamName
+                    name={row.teamName}
+                    shortName={row.teamShortName}
+                    className="flex-1 min-w-0 text-xs font-semibold text-slate-800 dark:text-slate-200 truncate"
+                  />
+                </Link>
                 <FavoriteStar
                   id={row.teamId}
                   kind="team"
                   name={row.teamShortName ?? row.teamName}
                   className="shrink-0 !w-10 !h-10 !-m-2.5 !hidden md:!inline-flex"
                 />
-                <AdaptiveTeamName
-                  name={row.teamName}
-                  shortName={row.teamShortName}
-                  className="flex-1 min-w-0 text-xs font-semibold text-slate-800 dark:text-slate-200 truncate"
-                />
-              </Link>
+              </div>
 
               {/* PT */}
               <div className="flex items-baseline justify-center gap-0.5">

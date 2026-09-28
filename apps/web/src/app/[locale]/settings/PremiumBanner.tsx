@@ -146,7 +146,7 @@ export function PremiumBanner({ deviceId }: { deviceId: string }) {
           >
             {loading ? (
               <>
-                <span className="w-4 h-4 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" />
+                <span className="w-4 h-4 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" aria-hidden="true" />
                 Conectando…
               </>
             ) : (

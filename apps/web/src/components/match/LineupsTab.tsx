@@ -65,7 +65,7 @@ function RinkChip({ p, accent }: { p: RinkPlayer; accent: boolean }) {
         />
         {/* Dorsal en mini-badge, color del equipo */}
         <span className={`absolute -bottom-1 -right-1 min-w-[16px] h-4 px-0.5 rounded-full
-                          flex items-center justify-center font-score text-[9px] font-bold ${
+                          flex items-center justify-center font-score text-[10px] font-bold ${
           accent ? 'bg-rink-passion text-white' : 'bg-white text-slate-800 border border-slate-300'
         }`}>
           {p.jerseyNumber ?? '–'}
@@ -221,7 +221,7 @@ function StartingFiveRink({ home, away, homeName, awayName, matchId }: {
                        transition-colors disabled:opacity-40"
           >
             {sharing ? (
-              <span className="w-3.5 h-3.5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" />
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" aria-hidden="true" />
             ) : (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-[16px] h-[16px]">
                 <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />

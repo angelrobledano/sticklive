@@ -19,6 +19,20 @@ const nextConfig = {
       { protocol: 'https', hostname: 'hockeypatines.fep.es', pathname: '/**' },
     ],
   },
+  // Cache explícita de recursos estáticos que venían con max-age=0 (#366):
+  // el manifest se revalida cada hora y la imagen OG es inmutable.
+  async headers() {
+    return [
+      {
+        source: '/manifest.webmanifest',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=3600, stale-while-revalidate=86400' }],
+      },
+      {
+        source: '/og-image.png',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {

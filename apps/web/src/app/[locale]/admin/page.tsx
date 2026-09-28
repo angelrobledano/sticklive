@@ -142,7 +142,7 @@ export default function AdminPage() {
             autoFocus
             className="w-full min-h-[44px] px-3 rounded-xl border border-slate-200 dark:border-slate-700
                        bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
-                       focus:outline-none focus:ring-2 focus:ring-rink-passion/40"
+                       focus:outline-none focus:ring-2 focus:ring-rink-passion"
           />
           {error && <p className="text-xs text-red-500">{error}</p>}
           <button type="submit" disabled={loading || !input.trim()} className="btn-primary w-full min-h-[44px] disabled:opacity-50">
