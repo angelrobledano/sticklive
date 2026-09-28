@@ -28,7 +28,7 @@ import {
   freshEvents, collapsePerScorer, decideMatchTransitions, decideRoundTransitions,
   type EventSnap,
 } from './push-diff.js';
-import { wants, morningMatchesFor, type PushEventType } from './push-segmentation.js';
+import { wants, morningPendingSubs, type PushEventType } from './push-segmentation.js';
 
 const log = createLogger({ service: 'push-dispatcher' });
 
@@ -341,49 +341,44 @@ async function snapshotNightFinals(): Promise<NightFinal[]> {
   }));
 }
 
-/** Suscripciones que ya recibieron el resumen de un día en ESTE proceso. */
-const morningSummarySent = new Set<string>();
-/** Día (Madrid) cuyo resumen ya se completó sin errores en ESTE proceso. */
-let morningSummaryDate: string | null = null;
-
 /**
- * Resumen matinal (#272): entrega UN único mensaje agrupado con los resultados
- * que el silencio nocturno descartó anoche, a cada suscripción con `quietNight`
- * activo que siga alguno de esos partidos.
+ * Resumen matinal (#272 · ledger persistente #383): entrega UN único mensaje
+ * agrupado con los resultados que el silencio nocturno descartó anoche, a cada
+ * suscripción con `quietNight` activo que siga alguno de esos partidos.
  *
- * Idempotencia: dentro de un proceso sólo se completa una vez por día natural de
- * Madrid, y las suscripciones ya servidas se recuerdan para reintentar sólo las
- * que fallaron. El `tag` diario hace que, si aún así se reenviara, el push
- * REEMPLACE en la pantalla de bloqueo en vez de apilarse.
+ * Idempotencia PERSISTENTE: cada (suscripción, día de Madrid) servida se registra
+ * en `push_summary_log` (migración 056). Así el resumen puede dispararse en CADA
+ * invocación del cron (ver `cron-live.ts`) sin duplicar, aunque el proceso se
+ * reinicie entre las 08:00 y las 12:00. El `tag` diario hace que, si aun así se
+ * reenviara, el push REEMPLACE en la pantalla de bloqueo en vez de apilarse.
+ *
+ * La selección de destinatarios es pura y testeada (`morningPendingSubs`).
  */
 export async function deliverMorningSummaries(now: Date = new Date()): Promise<void> {
   if (!pushEnabled) return;
   if (!isMorningHours(now)) return;          // fuera de 08:00–12:00 no es "matinal"
   const dateKey = madridDateKey(now);
-  if (morningSummaryDate === dateKey) return;
 
   const finals = await snapshotNightFinals();
-  if (finals.length === 0) { morningSummaryDate = dateKey; return; }
+  if (finals.length === 0) return;
 
   const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
-  if (subs.rows.length === 0) { morningSummaryDate = dateKey; return; }
+  if (subs.rows.length === 0) return;
+
+  // Ledger del día: suscripciones ya servidas (persistente, sobrevive reinicios).
+  const logged = await db.query<{ subscription_id: string }>(
+    `SELECT subscription_id FROM push_summary_log WHERE day = $1`,
+    [dateKey],
+  );
+  const alreadySent = new Set(logged.rows.map((r) => r.subscription_id));
+
+  const pending = morningPendingSubs(subs.rows, finals, alreadySent);
+  if (pending.length === 0) return;
 
   const tag = morningSummaryTag(dateKey);
   let sent = 0, sentPruned = 0, failed = 0;
 
-  for (const sub of subs.rows) {
-    const cfg = sub.config ?? {};
-    if (cfg['master'] === false) continue;
-    // Compensa sólo a quien tiene el silencio nocturno activo: quien no lo tiene
-    // ya recibió el final en directo y no debe recibir un duplicado.
-    if (cfg['quietNight'] === false) continue;
-
-    const dedupKey = `${sub.id}:${dateKey}`;
-    if (morningSummarySent.has(dedupKey)) continue;
-
-    const matches = morningMatchesFor(sub, finals);
-    if (matches.length === 0) continue;
-
+  for (const { sub, matches } of pending) {
     const results: MorningResult[] = matches.map((m) => ({
       homeShort: m.homeShort, awayShort: m.awayShort,
       homeScore: m.homeScore, awayScore: m.awayScore,
@@ -397,15 +392,20 @@ export async function deliverMorningSummaries(now: Date = new Date()): Promise<v
       type: 'morning_summary',
     };
     const res = await deliver(sub, payload);
-    if (res === 'sent') { sent++; morningSummarySent.add(dedupKey); }
-    else if (res === 'pruned') { sentPruned++; morningSummarySent.add(dedupKey); }
-    else failed++;
+    if (res === 'sent' || res === 'pruned') {
+      // Registrar ANTES de contarlo: si el INSERT falla, no se marca y se
+      // reintentará en la siguiente invocación, sin duplicar a los ya servidos.
+      await db.query(
+        `INSERT INTO push_summary_log (subscription_id, day) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [sub.id, dateKey],
+      );
+      if (res === 'sent') sent++; else sentPruned++;
+    } else {
+      failed++;
+    }
   }
 
-  // Sólo damos el día por cerrado si no hubo fallos transitorios: así el próximo
-  // ciclo reintenta los que quedaron pendientes sin repetir a los ya servidos.
-  if (failed === 0) morningSummaryDate = dateKey;
-  log.info({ matches: finals.length, sent, pruned: sentPruned, failed }, '🌅 Resumen matinal');
+  log.info({ matches: finals.length, pending: pending.length, sent, pruned: sentPruned, failed }, '🌅 Resumen matinal');
 }
 
 type MatchEv = { kind: 'start' | 'final'; matchTeams: string[]; payload: PushPayload };

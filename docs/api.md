@@ -80,6 +80,7 @@ Sesión: Bearer token opaco, hasheado en BD (`user_sessions`), caducidad 90 día
 | POST | `/payments/stripe/checkout` | Crea sesión de checkout (rate limit 10/min; bloquea si premium activo) |
 | POST | `/payments/stripe/webhook` | Webhook firmado, idempotente por `event.id` (`processed_stripe_events`) |
 | GET | `/payments/stripe/status` | Estado premium del usuario (fuente de verdad: `premium_until > NOW()`) |
+| GET | `/payments/stripe/session/:id` | Verifica una sesión de checkout con Stripe y devuelve el entitlement (`paid`, `premium`, `premiumUntil`). Lo usa `/premium/success` para no conceder premium sin pago confirmado (#252) |
 
 ## Admin (header `X-Admin-Token`; 503 si `ADMIN_TOKEN` no está configurado)
 

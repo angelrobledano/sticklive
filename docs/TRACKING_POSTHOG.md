@@ -57,10 +57,10 @@ Estado: **LIVE** = emitiéndose; los marcados **(F4)** se añadieron al instrume
 | `notification_toggle` | Al activar/desactivar un toggle | `key`, `enabled` | Configuración de push |
 | `notification_sent` **(F4)** | El emisor (ETL) entrega un push | `notification_type` | **Denominador del open rate** |
 | `notification_opened` **(F4)** | Se abre la notificación (Service Worker) | `notification_type`, `url` | **CTR de push** y re-engagement |
-| `follow_created` **(F4)** | Al empezar a seguir una entidad | `entity_type`, `entity_id`, `preset_selected` | Adopción de presets |
+| `favorite_added` **(F4, #243)** | Al empezar a seguir una entidad (evento ÚNICO; `follow_created` quedó deprecado) | `kind`, `ref_id`, `preset_selected` | Adopción de presets |
 | `notification_preset_changed` **(F4)** | Al cambiar el preset de una entidad | `entity_type`, `entity_id`, `previous_preset`, `new_preset` | Uso del control de presets |
 
-> Nota: el plan original hablaba de `push_notification_received/clicked`. En la práctica se implementaron como `notification_sent` (servidor) y `notification_opened` (Service Worker), que cumplen la misma función (denominador y CTR). Es la única divergencia de nombres respecto al plan.
+> Nota: el plan original hablaba de `push_notification_received/clicked`. En la práctica se implementaron como `notification_sent` (servidor) y `notification_opened` (Service Worker), que cumplen la misma función (denominador y CTR). Además, `follow_created` se unificó en `favorite_added` con `preset_selected` (#243) para no contar dos veces la misma activación.
 
 ### 3.3 Identidad, instalación y conversión
 

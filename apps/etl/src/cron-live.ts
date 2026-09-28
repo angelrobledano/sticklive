@@ -44,6 +44,7 @@ import {
   snapshotExtraPhases, snapshotResults,
   diffAndNotify, diffGoals, diffCardOrFoul, diffBlueAndFouls,
   diffOvertimePenalties, diffResolution, flushPushAnalytics, pushEnabled,
+  deliverMorningSummaries,
 } from './push-dispatcher.js';
 
 const log = createLogger({ service: 'cron-live' });
@@ -394,6 +395,15 @@ async function sleep(ms: number): Promise<void> {
 
 async function main() {
   heartbeat(); // latido al monitor: "el cron arrancó"
+
+  // ── Resumen matinal (#383) ────────────────────────────────────────────────
+  // Se intenta en CADA invocación, no solo cuando hay actividad: el cron sale
+  // antes de cualquier ciclo si no hay partidos (más abajo), así que engancharlo
+  // solo al dispatcher dejaba sin resumen los días tranquilos. La propia función
+  // decide si toca (solo 08:00–12:00) y el ledger persistente (`push_summary_log`)
+  // evita duplicados entre invocaciones/reinicios. Nunca debe romper el cron.
+  try { await deliverMorningSummaries(); }
+  catch (err) { log.warn({ err }, 'resumen matinal fallo — el cron sigue'); }
 
   // ── 0. Resolver temporadas activas ────────────────────────────────────────
   const seasonIds = await resolveSeasonIds();
