@@ -26,6 +26,7 @@ import { createLogger } from '@sports/logger';
 import { db, closeDb, getActiveScrapePlan } from '@sports/db';
 import { EtlPipeline } from './pipeline.js';
 import { forEachLimited } from './concurrency.js';
+import { normalizeLogoBuffer, normalizeLogoFile } from './logo-normalize.js';
 
 // Los scrapers viven en apps/scraper — importamos via ruta relativa (ts-node lo resuelve)
 import { FepCalendarScraper } from '../../scraper/src/scrapers/fep/fep-calendar.scraper.js';
@@ -525,11 +526,23 @@ async function main() {
       'SELECT id, name, source_ref FROM teams ORDER BY name'
     );
     log.info({ total: rows.length, outDir }, 'Descargando logos de equipos desde sidgad.cloud');
-    let ok = 0, skip = 0, fail = 0;
+    let ok = 0, norm = 0, skip = 0, fail = 0;
 
     for (const team of rows) {
       const dest = path.join(outDir, team.id + '.png');
-      if (fs.existsSync(dest)) { log.info({ name: team.name }, 'SKIP'); skip++; continue; }
+      if (fs.existsSync(dest)) {
+        // Normaliza el escudo existente (idempotente). Antes se saltaba siempre,
+        // así que los ficheros con transparencia nunca se corregían.
+        try {
+          const action = await normalizeLogoFile(dest);
+          if (action === 'normalized') { log.info({ name: team.name }, 'NORM'); norm++; }
+          else { log.info({ name: team.name }, 'SKIP'); skip++; }
+        } catch (e) {
+          log.error({ name: team.name, err: String(e) }, 'FAIL normalizando escudo existente');
+          fail++;
+        }
+        continue;
+      }
 
       const filename = team.source_ref ? LOGO_MAP[team.source_ref] : undefined;
       if (!filename) {
@@ -544,8 +557,9 @@ async function main() {
           headers: { 'Referer': 'https://www.hockeypatines.fep.es/', 'User-Agent': 'SportsBot/1.0' },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const buf = Buffer.from(await res.arrayBuffer());
-        if (buf.length < 500) throw new Error('respuesta demasiado pequenya');
+        const raw = Buffer.from(await res.arrayBuffer());
+        if (raw.length < 500) throw new Error('respuesta demasiado pequenya');
+        const buf = await normalizeLogoBuffer(raw);
         fs.writeFileSync(dest, buf);
         // Actualizar logo_url en DB con la URL correcta de sidgad.cloud
         await db.query('UPDATE teams SET logo_url = $2 WHERE id = $1', [team.id, logoUrl]);
@@ -557,13 +571,7 @@ async function main() {
       }
       await new Promise((r) => setTimeout(r, 120));
     }
-    log.info({ ok, skip, fail }, 'Logos completado');
-    if (ok > 0) {
-      log.warn(
-        '⚠️  Next fotografía public/ al arrancar: reinicia el contenedor web ' +
-          'para que sirva los escudos nuevos →  docker compose ... restart web'
-      );
-    }
+    log.info({ ok, norm, skip, fail }, 'Logos completado');
   }
 
   log.info('🏁 Pipeline completado');
