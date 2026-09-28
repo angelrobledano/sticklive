@@ -15,7 +15,10 @@
     "live_end": "Final: {home} {h}-{a} {away}",
     "competitions_index": "Todas as competições",
     "navigating": "A carregar…",
-    "view_match": "Ver jogo: {home} - {away}"
+    "view_match": "Ver jogo: {home} - {away}",
+    "add_favorite": "Adicionar aos favoritos",
+    "remove_favorite": "Remover dos favoritos",
+    "clear_search": "Limpar pesquisa"
   },
   "navigation": {
     "matches": "Jogos",
@@ -97,7 +100,8 @@
     "grada_upcoming": "Próximos jogos",
     "grada_results": "Últimos resultados",
     "load_error_title": "Não foi possível carregar os teus favoritos",
-    "load_error_body": "Houve um problema de ligação. Não perdeste os teus favoritos: tenta de novo."
+    "load_error_body": "Houve um problema de ligação. Não perdeste os teus favoritos: tenta de novo.",
+    "no_results": "Nada que corresponda a «{q}»"
   },
   "auth": {
     "login_title": "A tua conta, sem palavras-passe",
@@ -123,7 +127,9 @@
     "account_disabled": "Esta conta está desativada. Se achas que é um erro, contacta-nos.",
     "error_invalid_email": "Esse email não parece válido. Verifica e tenta de novo.",
     "error_email_unavailable": "Não podemos enviar o link agora. Tenta de novo dentro de alguns minutos.",
-    "error_generic": "Algo correu mal. Tenta de novo."
+    "error_generic": "Algo correu mal. Tenta de novo.",
+    "opening_account": "A abrir a tua conta…",
+    "dev_open_link": "[dev] Abrir link diretamente"
   },
   "common": {
     "today": "Hoje",
@@ -200,7 +206,10 @@
     "reconnecting_short": "A reconectar · sinal fraco",
     "signal_weak": "Sinal fraco",
     "timeline_aria": "Eventos do jogo",
-    "referee_short": "Árb."
+    "referee_short": "Árb.",
+    "badge_starter": "5i",
+    "badge_captain": "C",
+    "badge_goalkeeper": "G"
   },
   "playoffs": {
     "round_of_16": "Oitavos",
@@ -353,7 +362,8 @@
     "form_l": "D",
     "other_teams": "Outras equipas do clube",
     "search_teams": "Pesquisar equipas",
-    "filial": "Equipa B"
+    "filial": "Equipa B",
+    "gk_short": "GR"
   },
   "player": {
     "current_team": "Equipa atual",
@@ -451,6 +461,13 @@
   "competitions": {
     "all_index": "Todas as competições ({n})",
     "international": "Internacional",
-    "unclassified": "Não classificadas"
+    "unclassified": "Não classificadas",
+    "other_region": "Outras",
+    "search_placeholder": "Pesquisar liga, país ou federação...",
+    "tab_my_leagues": "As minhas ligas",
+    "tab_main": "Principais",
+    "tab_all": "Todas",
+    "no_fav_leagues_title": "Ainda não tens ligas favoritas",
+    "no_fav_leagues_hint": "Toca a estrela em qualquer competição para a guardar aqui."
   }
 }

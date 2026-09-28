@@ -15,7 +15,10 @@
     "live_end": "Full time: {home} {h}-{a} {away}",
     "competitions_index": "All competitions",
     "navigating": "Loading…",
-    "view_match": "View match: {home} - {away}"
+    "view_match": "View match: {home} - {away}",
+    "add_favorite": "Add to favorites",
+    "remove_favorite": "Remove from favorites",
+    "clear_search": "Clear search"
   },
   "navigation": {
     "matches": "Matches",
@@ -130,7 +133,8 @@
     "grada_upcoming": "Upcoming matches",
     "grada_results": "Latest results",
     "load_error_title": "We couldn't load your favorites",
-    "load_error_body": "There was a connection problem. You haven't lost your favorites: try again."
+    "load_error_body": "There was a connection problem. You haven't lost your favorites: try again.",
+    "no_results": "Nothing matching “{q}”"
   },
   "auth": {
     "login_title": "Your account, no passwords",
@@ -156,7 +160,9 @@
     "account_disabled": "This account is disabled. If you think this is a mistake, contact us.",
     "error_invalid_email": "That email doesn't look valid. Check it and try again.",
     "error_email_unavailable": "We can't send the link right now. Try again in a few minutes.",
-    "error_generic": "Something went wrong. Try again."
+    "error_generic": "Something went wrong. Try again.",
+    "opening_account": "Opening your account…",
+    "dev_open_link": "[dev] Open link directly"
   },
   "common": {
     "today": "Today",
@@ -233,7 +239,10 @@
     "reconnecting_short": "Reconnecting · weak signal",
     "signal_weak": "Weak signal",
     "timeline_aria": "Match events",
-    "referee_short": "Ref."
+    "referee_short": "Ref.",
+    "badge_starter": "5i",
+    "badge_captain": "C",
+    "badge_goalkeeper": "GK"
   },
   "playoffs": {
     "quarters": "Quarters",
@@ -385,7 +394,8 @@
     "form_l": "L",
     "other_teams": "Other club teams",
     "search_teams": "Search teams",
-    "filial": "Reserve team"
+    "filial": "Reserve team",
+    "gk_short": "GK"
   },
   "player": {
     "current_team": "Current team",
@@ -470,6 +480,13 @@
   "competitions": {
     "all_index": "All competitions ({n})",
     "international": "International",
-    "unclassified": "Unclassified"
+    "unclassified": "Unclassified",
+    "other_region": "Other",
+    "search_placeholder": "Search league, country or federation...",
+    "tab_my_leagues": "My leagues",
+    "tab_main": "Top",
+    "tab_all": "All",
+    "no_fav_leagues_title": "You don't have favourite leagues yet",
+    "no_fav_leagues_hint": "Tap the star on any competition to save it here."
   }
 }

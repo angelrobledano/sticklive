@@ -425,7 +425,7 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
   const restByCompetition = useMemo(() => {
     const map = new Map<string, Match[]>();
     for (const m of restMatches) {
-      const key = m.competitionName ?? 'Otras competiciones';
+      const key = m.competitionName ?? tt(t, 'common.other_competitions', 'Otras competiciones');
       const arr = map.get(key);
       if (arr) arr.push(m); else map.set(key, [m]);
     }
@@ -433,7 +433,7 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
       const d = importanceRank(aMs[0]?.competitionSlug) - importanceRank(bMs[0]?.competitionSlug);
       return d !== 0 ? d : aName.localeCompare(bName, locale);
     });
-  }, [restMatches, locale]);
+  }, [restMatches, locale, t]);
 
   const hasBothSections = favMatches.length > 0 && restMatches.length > 0;
 

@@ -15,7 +15,10 @@
     "live_end": "Final: {home} {h}-{a} {away}",
     "competitions_index": "Todas las competiciones",
     "navigating": "Cargando…",
-    "view_match": "Ver partido: {home} - {away}"
+    "view_match": "Ver partido: {home} - {away}",
+    "add_favorite": "Añadir a favoritos",
+    "remove_favorite": "Quitar de favoritos",
+    "clear_search": "Limpiar búsqueda"
   },
   "navigation": {
     "matches": "Partidos",
@@ -137,7 +140,8 @@
     "grada_upcoming": "Próximos partidos",
     "grada_results": "Últimos resultados",
     "load_error_title": "No hemos podido cargar tus favoritos",
-    "load_error_body": "Ha habido un problema de conexión. No has perdido tus favoritos: inténtalo de nuevo."
+    "load_error_body": "Ha habido un problema de conexión. No has perdido tus favoritos: inténtalo de nuevo.",
+    "no_results": "Nada que coincida con «{q}»"
   },
   "auth": {
     "login_title": "Tu cuenta, sin contraseñas",
@@ -168,7 +172,9 @@
     "link_hint": "Si ya te registraste con este email, no pasa nada: usamos el mismo email para identificarte, así que entrarás a tu cuenta de siempre.",
     "error_invalid_email": "Ese email no parece válido. Revísalo y vuelve a intentarlo.",
     "error_email_unavailable": "No podemos enviar el enlace ahora mismo. Inténtalo de nuevo en unos minutos.",
-    "error_generic": "Algo no fue bien. Inténtalo de nuevo."
+    "error_generic": "Algo no fue bien. Inténtalo de nuevo.",
+    "opening_account": "Abriendo tu cuenta…",
+    "dev_open_link": "[dev] Abrir enlace directamente"
   },
   "common": {
     "today": "Hoy",
@@ -249,7 +255,10 @@
     "reconnecting_short": "Reconectando · señal débil",
     "signal_weak": "Señal débil",
     "timeline_aria": "Eventos del partido",
-    "referee_short": "Árb."
+    "referee_short": "Árb.",
+    "badge_starter": "5i",
+    "badge_captain": "C",
+    "badge_goalkeeper": "P"
   },
   "playoffs": {
     "round_of_16": "Octavos",
@@ -425,7 +434,8 @@
     "form_l": "D",
     "other_teams": "Otros equipos del club",
     "search_teams": "Buscar equipos",
-    "filial": "Filial"
+    "filial": "Filial",
+    "gk_short": "PO"
   },
   "player": {
     "current_team": "Equipo actual",
@@ -507,6 +517,13 @@
   "competitions": {
     "all_index": "Todas las competiciones ({n})",
     "international": "Internacional",
-    "unclassified": "Sin clasificar"
+    "unclassified": "Sin clasificar",
+    "other_region": "Otras",
+    "search_placeholder": "Buscar liga, país o federación...",
+    "tab_my_leagues": "Mis Ligas",
+    "tab_main": "Principales",
+    "tab_all": "Todas",
+    "no_fav_leagues_title": "Todavía no tienes ligas favoritas",
+    "no_fav_leagues_hint": "Pulsa la estrella en cualquier competición para guardarla aquí."
   }
 }

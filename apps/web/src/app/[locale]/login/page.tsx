@@ -202,7 +202,7 @@ function LoginInner() {
   if (status === 'verifying') {
     return (
       <div className="card p-8 text-center">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Abriendo tu cuenta…</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{tt(t, 'auth.opening_account', 'Abriendo tu cuenta…')}</p>
       </div>
     );
   }
@@ -277,7 +277,7 @@ function LoginInner() {
           </p>
           {devLink && (
             <a href={devLink} className="block text-xs font-mono text-rink-passion underline break-all">
-              [dev] Abrir enlace directamente
+              {tt(t, 'auth.dev_open_link', '[dev] Abrir enlace directamente')}
             </a>
           )}
         </div>

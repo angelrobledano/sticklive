@@ -264,7 +264,7 @@ function FavoritesInner() {
 
           {noMatches && query.trim().length > 0 && (
             <p className="py-8 text-center text-sm text-slate-400 dark:text-slate-600">
-              Nada que coincida con &ldquo;{query}&rdquo;
+              {tt(t, 'favorites.no_results', 'Nada que coincida con «{q}»', { q: query })}
             </p>
           )}
         </>

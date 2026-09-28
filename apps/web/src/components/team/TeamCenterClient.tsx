@@ -12,6 +12,7 @@ import { ManageNotificationsButton } from '@/components/shared/ManageNotificatio
 import { ShareButton } from '@/components/shared/ShareButton';
 import { useT } from '@/lib/i18n';
 import { APP_TZ } from '@/lib/match-time';
+import { tt } from '@/components/search/translate';
 
 // ─── Sección de club (#196/#197) ───────────────────────────────────────
 // La API `team-detail` ya devuelve los campos de sección (club × género ×
@@ -482,7 +483,7 @@ function PlayerRow({ player }: { player: SquadPlayer }) {
       {/* Badge portero */}
       {gk && (
         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shrink-0">
-          PO
+          {tt(t, 'team.gk_short', 'PO')}
         </span>
       )}
 

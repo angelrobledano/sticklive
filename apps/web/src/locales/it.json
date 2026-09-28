@@ -15,7 +15,10 @@
     "live_end": "Finale: {home} {h}-{a} {away}",
     "competitions_index": "Tutte le competizioni",
     "navigating": "Caricamento…",
-    "view_match": "Vedi partita: {home} - {away}"
+    "view_match": "Vedi partita: {home} - {away}",
+    "add_favorite": "Aggiungi ai preferiti",
+    "remove_favorite": "Rimuovi dai preferiti",
+    "clear_search": "Cancella ricerca"
   },
   "navigation": {
     "matches": "Partite",
@@ -97,7 +100,8 @@
     "grada_upcoming": "Prossime partite",
     "grada_results": "Ultimi risultati",
     "load_error_title": "Non è stato possibile caricare i tuoi preferiti",
-    "load_error_body": "Si è verificato un problema di connessione. Non hai perso i tuoi preferiti: riprova."
+    "load_error_body": "Si è verificato un problema di connessione. Non hai perso i tuoi preferiti: riprova.",
+    "no_results": "Nessun risultato per «{q}»"
   },
   "auth": {
     "login_title": "Il tuo account, senza password",
@@ -123,7 +127,9 @@
     "account_disabled": "Questo account è disattivato. Se pensi sia un errore, contattaci.",
     "error_invalid_email": "Questa email non sembra valida. Controllala e riprova.",
     "error_email_unavailable": "Non possiamo inviare il link ora. Riprova tra qualche minuto.",
-    "error_generic": "Qualcosa è andato storto. Riprova."
+    "error_generic": "Qualcosa è andato storto. Riprova.",
+    "opening_account": "Apertura del tuo account…",
+    "dev_open_link": "[dev] Apri link direttamente"
   },
   "common": {
     "today": "Oggi",
@@ -200,7 +206,10 @@
     "reconnecting_short": "Riconnessione · segnale debole",
     "signal_weak": "Segnale debole",
     "timeline_aria": "Eventi della partita",
-    "referee_short": "Arb."
+    "referee_short": "Arb.",
+    "badge_starter": "5i",
+    "badge_captain": "C",
+    "badge_goalkeeper": "P"
   },
   "playoffs": {
     "quarters": "Quarti",
@@ -352,7 +361,8 @@
     "form_l": "P",
     "other_teams": "Altre squadre del club",
     "search_teams": "Cerca squadre",
-    "filial": "Squadra B"
+    "filial": "Squadra B",
+    "gk_short": "POR"
   },
   "player": {
     "current_team": "Squadra attuale",
@@ -450,6 +460,13 @@
   "competitions": {
     "all_index": "Tutte le competizioni ({n})",
     "international": "Internazionale",
-    "unclassified": "Non classificate"
+    "unclassified": "Non classificate",
+    "other_region": "Altre",
+    "search_placeholder": "Cerca campionato, paese o federazione...",
+    "tab_my_leagues": "Le mie leghe",
+    "tab_main": "Principali",
+    "tab_all": "Tutte",
+    "no_fav_leagues_title": "Non hai ancora leghe preferite",
+    "no_fav_leagues_hint": "Tocca la stella su una competizione per salvarla qui."
   }
 }

@@ -208,7 +208,11 @@ function CompetitionRow({
       {/* Botón favorito */}
       <button
         onClick={() => onToggleFav(comp.id)}
-        aria-label={isFav ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+        aria-label={tt(
+          t,
+          isFav ? 'a11y.remove_favorite' : 'a11y.add_favorite',
+          isFav ? 'Quitar de favoritos' : 'Añadir a favoritos',
+        )}
         className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl
                    hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors shrink-0"
       >
@@ -285,6 +289,7 @@ function CountryAccordion({
   onToggleFav: (id: string) => void;
   locale: string;
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(defaultOpen);
 
   // Reabrir si hay favoritos dentro
@@ -299,12 +304,12 @@ function CountryAccordion({
   const byRegion = useMemo(() => {
     const map = new Map<string, CompetitionSummary[]>();
     for (const c of regional) {
-      const key = c.region ?? 'Otras';
+      const key = c.region ?? tt(t, 'competitions.other_region', 'Otras');
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(c);
     }
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b, locale));
-  }, [regional, locale]);
+  }, [regional, locale, t]);
 
   return (
     <div className="border-t border-slate-100 dark:border-slate-800 first:border-t-0">
@@ -583,7 +588,7 @@ export function CompetitionsList({
             aria-label={t('a11y.search_competitions')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar liga, país o federación..."
+            placeholder={tt(t, 'competitions.search_placeholder', 'Buscar liga, país o federación...')}
             className="w-full min-h-[44px] pl-9 pr-12 rounded-xl border border-slate-200 dark:border-slate-700
                        bg-slate-50 dark:bg-slate-900 text-[13px] text-slate-800 dark:text-slate-200
                        placeholder:text-slate-500 dark:placeholder:text-slate-500 dark:placeholder:text-slate-400
@@ -596,7 +601,7 @@ export function CompetitionsList({
               className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center
                          w-11 h-11 rounded-full text-slate-400 hover:text-slate-600
                          dark:hover:text-slate-300 transition-colors"
-              aria-label="Limpiar búsqueda"
+              aria-label={tt(t, 'a11y.clear_search', 'Limpiar búsqueda')}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
                 <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
@@ -610,9 +615,9 @@ export function CompetitionsList({
           <div role="tablist" aria-label={tt(t, 'a11y.competitions_tabs', 'Secciones de la lista')} onKeyDown={onTabKeyDown} className="flex">
             {(
               [
-                ['mis-ligas', 'Mis Ligas', favorites.size > 0 ? String(favorites.size) : null],
-                ['principales', 'Principales', null],
-                ['todas', 'Todas', null],
+                ['mis-ligas', tt(t, 'competitions.tab_my_leagues', 'Mis Ligas'), favorites.size > 0 ? String(favorites.size) : null],
+                ['principales', tt(t, 'competitions.tab_main', 'Principales'), null],
+                ['todas', tt(t, 'competitions.tab_all', 'Todas'), null],
               ] as const
             ).map(([id, label, badge], i) => (
               <button
@@ -712,10 +717,10 @@ export function CompetitionsList({
                 </svg>
               </div>
               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                Todavía no tienes ligas favoritas
+                {tt(t, 'competitions.no_fav_leagues_title', 'Todavía no tienes ligas favoritas')}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Pulsa la estrella en cualquier competición para guardarla aquí.
+                {tt(t, 'competitions.no_fav_leagues_hint', 'Pulsa la estrella en cualquier competición para guardarla aquí.')}
               </p>
             </div>
           ) : (
@@ -749,7 +754,7 @@ export function CompetitionsList({
                 <div className="flex items-center gap-2 px-1 pt-1 pb-2">
                   <span className="text-base leading-none">🌍</span>
                   <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300 flex-1">
-                    Internacional
+                    {tt(t, 'competitions.international', 'Internacional')}
                   </span>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums font-medium">
                     {international.length}
@@ -773,7 +778,7 @@ export function CompetitionsList({
                 <CountryAccordion
                   key={code}
                   countryCode={code === 'ZZ' ? null : code}
-                  label={code === 'ZZ' ? 'Sin clasificar' : countryDisplayName(code, locale)}
+                  label={code === 'ZZ' ? tt(t, 'competitions.unclassified', 'Sin clasificar') : countryDisplayName(code, locale)}
                   comps={comps}
                   defaultOpen={idx === 0}
                   favorites={favorites}

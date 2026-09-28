@@ -10,6 +10,7 @@ import { TeamShield } from '@/components/shared/TeamShield';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { displayLineupName, toTitleCase } from './format';
 import { BallIcon } from './icons';
+import { tt } from '@/components/search/translate';
 
 // Badges normalizados: misma altura y padding, tipografía legible (11px)
 // y contraste accesible — 5i en acento sólido, C ámbar sólido, P gris neutro.
@@ -49,6 +50,7 @@ function halfPositions(fieldCount: number): Array<{ x: number; y: number }> {
 const RINK_API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
 function RinkChip({ p, accent }: { p: RinkPlayer; accent: boolean }) {
+  const { t } = useT();
   const surname = displayLineupName(p.playerName).split(' ').slice(-1)[0] ?? '';
   const chip = (
     <div className="relative flex flex-col items-center -translate-x-1/2 -translate-y-1/2">
@@ -72,7 +74,9 @@ function RinkChip({ p, accent }: { p: RinkPlayer; accent: boolean }) {
         </span>
         {p.isCaptain && (
           <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white
-                           text-[8px] font-bold flex items-center justify-center">C</span>
+                           text-[8px] font-bold flex items-center justify-center">
+            {tt(t, 'match_detail.badge_captain', 'C')}
+          </span>
         )}
       </span>
       <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 max-w-[80px] truncate
@@ -311,11 +315,11 @@ export function LineupsTab({ data }: { data: MatchDetail }) {
           {/* Leyenda de badges */}
           <div className="flex flex-wrap gap-x-3 gap-y-1.5 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
             {[
-              { badge: '5i', label: t('match_detail.starter'), color: BADGE_STYLES['5i'] },
-              { badge: 'C', label: t('match_detail.captain'), color: BADGE_STYLES['C'] },
-              { badge: 'P', label: t('match_detail.goalkeeper'), color: BADGE_STYLES['P'] },
-            ].map(({ badge, label: bl, color }) => (
-              <div key={badge} className="flex items-center gap-1">
+              { code: '5i', badge: tt(t, 'match_detail.badge_starter', '5i'),     label: t('match_detail.starter'),    color: BADGE_STYLES['5i'] },
+              { code: 'C',  badge: tt(t, 'match_detail.badge_captain', 'C'),      label: t('match_detail.captain'),    color: BADGE_STYLES['C'] },
+              { code: 'P',  badge: tt(t, 'match_detail.badge_goalkeeper', 'P'),   label: t('match_detail.goalkeeper'), color: BADGE_STYLES['P'] },
+            ].map(({ code, badge, label: bl, color }) => (
+              <div key={code} className="flex items-center gap-1">
                 <span className={`${BADGE_BASE} ${color}`}>{badge}</span>
                 <span className="text-[10px] text-slate-400 dark:text-slate-600">{bl}</span>
               </div>
@@ -361,9 +365,9 @@ export function LineupsTab({ data }: { data: MatchDetail }) {
                         🅰 {p.assists}
                       </span>
                     )}
-                    {p.isStarter && <span className={`${BADGE_BASE} ${BADGE_STYLES['5i']}`}>5i</span>}
-                    {p.isCaptain && <span className={`${BADGE_BASE} ${BADGE_STYLES['C']}`}>C</span>}
-                    {p.isGoalkeeper && <span className={`${BADGE_BASE} ${BADGE_STYLES['P']}`}>P</span>}
+                    {p.isStarter && <span className={`${BADGE_BASE} ${BADGE_STYLES['5i']}`}>{tt(t, 'match_detail.badge_starter', '5i')}</span>}
+                    {p.isCaptain && <span className={`${BADGE_BASE} ${BADGE_STYLES['C']}`}>{tt(t, 'match_detail.badge_captain', 'C')}</span>}
+                    {p.isGoalkeeper && <span className={`${BADGE_BASE} ${BADGE_STYLES['P']}`}>{tt(t, 'match_detail.badge_goalkeeper', 'P')}</span>}
                   </span>
                 </div>
               ))}
