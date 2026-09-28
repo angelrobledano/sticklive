@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { getMatchDetail } from '@/lib/api/client';
-import { clubName } from '@/lib/names';
+import { teamTitleName } from '@/lib/names';
 
 // Imagen OG dinámica por partido (escudos + marcador) para compartir en
 // WhatsApp/Twitter/etc. Next la sirve en /{locale}/matches/{id}/opengraph-image.
@@ -33,8 +33,8 @@ export default async function Image(props: { params: Promise<{ locale: string; i
 
   try {
     const data = await getMatchDetail(params.id);
-    home = clubName(data.match.homeTeam?.shortName ?? data.match.homeTeam?.name ?? 'Local');
-    away = clubName(data.match.awayTeam?.shortName ?? data.match.awayTeam?.name ?? 'Visitante');
+    home = teamTitleName(data.match.homeTeam?.name, data.match.homeTeam?.shortName) || 'Local';
+    away = teamTitleName(data.match.awayTeam?.name, data.match.awayTeam?.shortName) || 'Visitante';
     homeId = data.match.homeTeam?.id ?? '';
     awayId = data.match.awayTeam?.id ?? '';
     homeScore = data.match.score.home;

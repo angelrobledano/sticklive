@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { getMatchDetail, type LineupPlayer } from '@/lib/api/client';
-import { clubName } from '@/lib/names';
+import { teamTitleName } from '@/lib/names';
 import { localeLessUrl } from '@/lib/seo';
 
 // Imagen del 5 inicial sobre la pista, renderizada EN EL SERVIDOR (Satori/next/og).
@@ -80,8 +80,8 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
 
   try {
     const data = await getMatchDetail(params.id);
-    homeName = clubName(data.match.homeTeam?.shortName ?? data.match.homeTeam?.name ?? 'Local');
-    awayName = clubName(data.match.awayTeam?.shortName ?? data.match.awayTeam?.name ?? 'Visitante');
+    homeName = teamTitleName(data.match.homeTeam?.name, data.match.homeTeam?.shortName) || 'Local';
+    awayName = teamTitleName(data.match.awayTeam?.name, data.match.awayTeam?.shortName) || 'Visitante';
     const homeStart = (data.lineups?.home ?? []).filter((p) => p.isStarter);
     const awayStart = (data.lineups?.away ?? []).filter((p) => p.isStarter);
     positioned = [
