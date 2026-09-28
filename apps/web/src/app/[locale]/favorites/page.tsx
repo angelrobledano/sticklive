@@ -27,7 +27,7 @@ interface CompItem {
  * en masa sin entrar en cada perfil.
  */
 function FavoritesInner() {
-  const { isFavorite, toggle, isLeagueFavorite, toggleLeague, mounted } = useFavorites();
+  const { favorites, leagues: favLeagues, players, isFavorite, toggle, isLeagueFavorite, toggleLeague, mounted } = useFavorites();
   const { t } = useT();
   const searchParams = useSearchParams();
   const onboarding = searchParams.get('onboarding') === '1';
@@ -82,6 +82,13 @@ function FavoritesInner() {
 
   const filteredTeams = useMemo(() => filterFavorites(teams, query), [teams, query]);
   const filteredLeagues = useMemo(() => filterFavorites(leagues, query), [leagues, query]);
+
+  // #269: onboarding real para quien aún no sigue nada (antes la pantalla solo
+  // mostraba "Nada que coincida" con la query vacía). `mounted` evita el
+  // parpadeo de hidratación mientras el hook lee localStorage.
+  const hasAnyFavorites = favorites.length > 0 || favLeagues.length > 0 || players.length > 0;
+  const noMatches = filteredTeams.length === 0 && filteredLeagues.length === 0;
+  const showOnboarding = mounted && !hasAnyFavorites && query.trim() === '';
 
   const handleToggle = (kind: 'team' | 'league', id: string, name: string) => {
     const wasActive = kind === 'team' ? isFavorite(id) : isLeagueFavorite(id);
@@ -154,6 +161,30 @@ function FavoritesInner() {
         <div className="py-10 flex justify-center" aria-busy="true">
           <div className="w-5 h-5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" aria-hidden="true" />
         </div>
+      ) : showOnboarding ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-4">
+          <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
+                 className="w-6 h-6 text-slate-400" aria-hidden="true">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                    strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            {t('favorites.onboarding_title')}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs">
+            {t('favorites.onboarding_body')}
+          </p>
+          <Link
+            href="/competitions"
+            className="mt-1 inline-flex items-center justify-center gap-1.5 px-4 min-h-[44px] rounded-xl
+                       text-[13px] font-semibold bg-rink-passion text-white
+                       hover:bg-rink-passion/90 transition-colors"
+          >
+            {t('favorites.onboarding_cta')}
+          </Link>
+        </div>
       ) : (
         <>
           {filteredLeagues.length > 0 && (
@@ -178,7 +209,7 @@ function FavoritesInner() {
             </section>
           )}
 
-          {!loading && filteredTeams.length === 0 && filteredLeagues.length === 0 && (
+          {noMatches && query.trim().length > 0 && (
             <p className="py-8 text-center text-sm text-slate-400 dark:text-slate-600">
               Nada que coincida con &ldquo;{query}&rdquo;
             </p>
@@ -224,9 +255,32 @@ function FavoritesInner() {
   );
 }
 
+/**
+ * Fallback de `<Suspense>` mientras `useSearchParams` suspende en SSR/prerender.
+ * Antes era `null` y el HTML inicial de /favorites llegaba en blanco. Ahora
+ * renderiza la cabecera real y un spinner, para que la carga en frío no parezca
+ * rota (#269). El contenido con datos sigue siendo de cliente (fetch).
+ */
+function FavoritesFallback() {
+  const { t } = useT();
+  return (
+    <div className="px-4 py-4 max-w-2xl mx-auto space-y-4 pb-28" aria-busy="true">
+      <div>
+        <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t('favorites.manage_favs')}</h1>
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1">
+          {t('favorites.manage_help')}
+        </p>
+      </div>
+      <div className="py-10 flex justify-center">
+        <div className="w-5 h-5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" aria-hidden="true" />
+      </div>
+    </div>
+  );
+}
+
 export default function FavoritesPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<FavoritesFallback />}>
       <FavoritesInner />
     </Suspense>
   );

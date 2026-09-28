@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { usePremium } from '@/context/PremiumContext';
-import { track } from '@/lib/analytics';
+import { trackOnce } from '@/lib/analytics';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
@@ -41,7 +41,9 @@ function PremiumSuccessInner() {
           // Pago confirmado por el servidor → mutación en caliente: todos los
           // <AdBanner> montados reciben el cambio sin recargar.
           setPremium(true);
-          track('premium_purchase_completed', { plan: 'premium' });
+          // #247: la compra se cuenta UNA sola vez por session_id. Antes este
+          // evento se re-emitía en cada montaje/recarga de /premium/success.
+          trackOnce(`premium-completed:${sessionId}`, 'premium_purchase_completed', { plan: 'premium' });
           setState('granted');
         } else {
           setState('pending');

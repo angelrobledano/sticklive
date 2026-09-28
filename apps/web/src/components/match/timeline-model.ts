@@ -110,6 +110,39 @@ export function freshnessState(
   return { state, ageSeconds, labelKey: FRESHNESS_LABEL[state] };
 }
 
+// ─── Estado visible de la conexión del directo (#286) ──────────────────────
+/**
+ * Mientras el partido está en vivo, la cabecera sólo tenía un microtexto
+ * ("· reconectando") para avisar de problemas de conexión. Esta función pura
+ * combina el transporte SSE, el aviso de poll caído del hub (#284) y la
+ * frescura de los datos para decidir un estado visible y comprobable sin
+ * navegador.
+ *
+ * - `connecting`:  abriendo el stream (o reconectando tras un corte de duración).
+ * - `reconnecting`: el transporte dio error; EventSource reintenta solo.
+ * - `weak`:       el stream vive pero los datos llegan tarde o el hub falló.
+ * - `live`:       todo en orden (no se muestra nada).
+ */
+export type ConnectionState = 'live' | 'connecting' | 'reconnecting' | 'weak';
+
+/** Clave i18n del texto a mostrar para cada estado distinto de `live`. */
+export const CONNECTION_LABEL: Record<Exclude<ConnectionState, 'live'>, string> = {
+  connecting:   'match_detail.connecting',
+  reconnecting: 'match_detail.reconnecting_short',
+  weak:         'match_detail.signal_weak',
+};
+
+export function connectionState(
+  sseStatus: string | undefined,
+  serverStale: boolean,
+  freshness: Freshness | null,
+): ConnectionState {
+  if (sseStatus === 'error') return 'reconnecting';
+  if (sseStatus === 'connecting') return 'connecting';
+  if (serverStale || (freshness != null && freshness.state !== 'fresh')) return 'weak';
+  return 'live';
+}
+
 export function injectAccumulatedFouls(events: MatchEvent[], homeTeamId: string): TimelineEvent[] {
   const result: TimelineEvent[] = [];
   let homeFouls = 0;
@@ -161,4 +194,65 @@ export function injectAccumulatedFouls(events: MatchEvent[], homeTeamId: string)
     }
   }
   return result;
+}
+
+// ─── Orden del timeline (#285) ─────────────────────────────────────────────
+/**
+ * Crono del acta en SEGUNDOS RESTANTES. El scraper lo guarda ya como "MM:SS"
+ * (cuenta atrás, siempre con minutos a dos cifras), de modo que comparar en
+ * segundos evita depender del relleno al ordenar. Devuelve null si no hay un
+ * crono parseable, para poder caer al minuto como fallback.
+ */
+export function clockRemainingSeconds(clock: string | null | undefined): number | null {
+  if (!clock) return null;
+  const m = /^(\d{1,3}):(\d{2})$/.exec(clock.trim());
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+/**
+ * Orden del timeline (#285): periodo ascendente; después crono RESTANTE
+ * descendente (a mayor restante, antes ocurrió) y el minuto ascendente como
+ * fallback cuando no hay crono. Es la réplica en cliente del ORDER BY de la
+ * API, para que el relato no dependa de que el backend esté al día. `sort` es
+ * estable, así que los empates conservan el orden de llegada (p. ej. mismo
+ * crono: causa antes que efecto).
+ */
+export function compareTimelineEvents(
+  a: Pick<MatchEvent, 'period' | 'minute' | 'clock'>,
+  b: Pick<MatchEvent, 'period' | 'minute' | 'clock'>,
+): number {
+  const periodA = a.period ?? 99;
+  const periodB = b.period ?? 99;
+  if (periodA !== periodB) return periodA - periodB;
+
+  const clockA = clockRemainingSeconds(a.clock);
+  const clockB = clockRemainingSeconds(b.clock);
+  if (clockA != null && clockB != null) {
+    if (clockA !== clockB) return clockB - clockA; // más restante → antes
+  } else if (clockA != null) {
+    return -1; // con crono va antes que sin crono
+  } else if (clockB != null) {
+    return 1;
+  }
+
+  return (a.minute ?? 9999) - (b.minute ?? 9999);
+}
+
+// ─── Evento a anunciar a lectores de pantalla (#287) ───────────────────────
+/** Tipos con señal de producto suficiente para anunciar; el resto es ruido. */
+const ANNOUNCEABLE_EVENTS = new Set(['goal', 'penalty', 'blue_card', 'red_card', 'direct_foul', 'timeout']);
+
+/**
+ * El evento más reciente que merece anunciarse por la región `aria-live`
+ * (#287). Ignora los eventos virtuales del pintado (divisores de periodo y
+ * avisos de falta acumulada), que no aportan información nueva, y las faltas
+ * sueltas. Función pura, testeable sin navegador.
+ */
+export function latestAnnounceableEvent<T extends { eventType: string }>(events: readonly T[]): T | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const ev = events[i]!;
+    if (ANNOUNCEABLE_EVENTS.has(ev.eventType)) return ev;
+  }
+  return null;
 }

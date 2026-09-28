@@ -66,6 +66,11 @@ export function socialImageVersion(seed: string): string {
 /**
  * URL absoluta de la imagen social dinámica de una ruta (opengraph-image /
  * twitter-image) con el token de versión en `?v=`.
+ *
+ * El `path` puede llevar query (p. ej. `/competitions/x?season=y` en #279): la
+ * imagen es un fichero fijo y no admite query, así que la descartamos solo aquí
+ * (la URL de la página sigue conservando `?season=`). Sin esto se generarían
+ * URLs rotas tipo `/competitions/x?season=y/opengraph-image`.
  */
 export function socialImageUrl(
   locale: Locale,
@@ -73,8 +78,18 @@ export function socialImageUrl(
   file: 'opengraph-image' | 'twitter-image',
   version: string,
 ): string {
-  const clean = path === '/' ? '' : path;
+  const cleanPath = path.split(/[?#]/)[0] ?? '';
+  const clean = cleanPath === '/' ? '' : cleanPath;
   return `${SITE_URL}/${locale}${clean}/${file}?v=${version}`;
+}
+
+/**
+ * URL absoluta SIN prefijo de idioma (#280). Se incrusta como texto en la
+ * imagen de alineación: el receptor la abre sin locale y el middleware negocia
+ * su idioma (#277). El receptor no hereda el idioma de quien comparte.
+ */
+export function localeLessUrl(path: string): string {
+  return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
 /**

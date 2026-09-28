@@ -53,3 +53,37 @@ export function wants(
   if (keys.length === 0) return false;
   return keys.some((k) => PRESET_EVENTS[effectivePreset(sub, k)].includes(ev));
 }
+
+// ── Resumen matinal (#272) ──────────────────────────────────────────────────
+/** Lo mínimo de un partido nocturno para decidir si entra en el resumen de una
+ *  suscripción. El llamante puede añadir más campos (copy) que se conservan. */
+export interface MorningNightMatch {
+  matchId: string;
+  homeTeamId: string | null;
+  awayTeamId: string | null;
+  competitionId: string | null;
+}
+
+/**
+ * Partidos nocturnos que ESTA suscripción debe ver en su resumen matinal.
+ *
+ * Se apoya en la misma segmentación que el aviso de final (`wants(..., 'final')`):
+ * el resumen compensa justo el final que el silencio nocturno descartó. Deduplica
+ * por `matchId` (un partido = una línea aunque se siga por equipo y competición a
+ * la vez) para que una suscripción reciba UN único mensaje agrupado.
+ */
+export function morningMatchesFor<T extends MorningNightMatch>(
+  sub: SubPrefs,
+  matches: readonly T[],
+): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const m of matches) {
+    if (seen.has(m.matchId)) continue;
+    const teamIds = [m.homeTeamId, m.awayTeamId].filter(Boolean) as string[];
+    if (!wants(sub, 'final', teamIds, m.competitionId, null)) continue;
+    seen.add(m.matchId);
+    out.push(m);
+  }
+  return out;
+}

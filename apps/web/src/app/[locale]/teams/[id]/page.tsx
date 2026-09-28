@@ -30,7 +30,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     const name = clubName(data.team.name);
     const title = `${name} | Stick Live`;
     const description = (DESC[locale] ?? DESC['en'])!(name);
-    return { title, description, alternates, ...socialMeta({ locale, path: `/teams/${params.id}`, title: name, description }) };
+    return { title, description, alternates, ...socialMeta({ locale, path: `/teams/${params.id}`, title: name, description, dynamicImage: true }) };
   } catch {
     return { alternates };
   }

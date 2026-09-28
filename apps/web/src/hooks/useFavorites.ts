@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { track, setPersonProps } from '@/lib/analytics';
+import { track, setPersonProps, favoriteToggleEvent, type FavoriteKind } from '@/lib/analytics';
 import { syncPushConfig } from '@/lib/push';
 import { getSession } from '@/hooks/useAuth';
 
@@ -17,7 +17,13 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 /** Evento interno para mantener en sincronía todas las instancias del hook. */
 const FAVS_EVENT = 'rink-favs-changed';
 
-type Kind = 'team' | 'league' | 'player';
+type Kind = FavoriteKind;
+
+/** Opciones de analítica al marcar/desmarcar un favorito (#243). */
+export interface FavoriteToggleOptions {
+  /** Preset de notificaciones elegido al seguir; viaja como `preset_selected`. */
+  preset?: string;
+}
 
 // ── Helpers de localStorage ────────────────────────────────────────────────────
 
@@ -270,15 +276,14 @@ export function useFavorites() {
   }, []);
 
   // ── Equipos ─────────────────────────────────────────────────────────────────
-  const toggle = useCallback((teamId: string) => {
+  const toggle = useCallback((teamId: string, opts?: FavoriteToggleOptions) => {
     const cur = readArr(STORAGE_KEY);
     const adding = !cur.includes(teamId);
     const next = adding ? [...cur, teamId] : cur.filter((id) => id !== teamId);
     writeArr(STORAGE_KEY, next);
     broadcast();
-    track(adding ? 'favorite_added' : 'favorite_removed', {
-      kind: 'team', ref_id: teamId, total_favorites: next.length,
-    });
+    const ev = favoriteToggleEvent(adding, 'team', teamId, next.length, opts?.preset);
+    track(ev.event, { ...ev.props });
     setPersonProps({ favorite_teams: next.length });
     void syncPushConfig(); // el emisor de push segmenta por equipos favoritos
     if (adding) { clearTombstone('team', teamId); cloudAdd('team', teamId); }
@@ -291,15 +296,14 @@ export function useFavorites() {
   );
 
   // ── Ligas ─────────────────────────────────────────────────────────────────────
-  const toggleLeague = useCallback((competitionId: string) => {
+  const toggleLeague = useCallback((competitionId: string, opts?: FavoriteToggleOptions) => {
     const cur = readArr(LEAGUES_KEY);
     const adding = !cur.includes(competitionId);
     const next = adding ? [...cur, competitionId] : cur.filter((id) => id !== competitionId);
     writeArr(LEAGUES_KEY, next);
     broadcast();
-    track(adding ? 'favorite_added' : 'favorite_removed', {
-      kind: 'league', ref_id: competitionId, total_favorites: next.length,
-    });
+    const ev = favoriteToggleEvent(adding, 'league', competitionId, next.length, opts?.preset);
+    track(ev.event, { ...ev.props });
     setPersonProps({ favorite_leagues: next.length });
     void syncPushConfig(); // el emisor segmenta por ligas favoritas
     if (adding) { clearTombstone('league', competitionId); cloudAdd('league', competitionId); }
@@ -312,7 +316,7 @@ export function useFavorites() {
   );
 
   // ── Jugadores (+ mapa de nombres para listados) ────────────────────────────────
-  const togglePlayer = useCallback((playerId: string, name?: string) => {
+  const togglePlayer = useCallback((playerId: string, name?: string, opts?: FavoriteToggleOptions) => {
     const cur = readArr(PLAYERS_KEY);
     const adding = !cur.includes(playerId);
     const next = adding ? [...cur, playerId] : cur.filter((id) => id !== playerId);
@@ -324,9 +328,8 @@ export function useFavorites() {
       localStorage.setItem(FAV_NAMES_KEY, JSON.stringify(names));
     } catch { /* noop */ }
     broadcast();
-    track(adding ? 'favorite_added' : 'favorite_removed', {
-      kind: 'player', ref_id: playerId, total_favorites: next.length,
-    });
+    const ev = favoriteToggleEvent(adding, 'player', playerId, next.length, opts?.preset);
+    track(ev.event, { ...ev.props });
     setPersonProps({ favorite_players: next.length });
     void syncPushConfig(); // el emisor segmenta por jugadores favoritos
     if (adding) { clearTombstone('player', playerId); cloudAdd('player', playerId); }

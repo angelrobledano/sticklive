@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { socialMeta, socialImageVersion, socialImageUrl, SITE_URL } from './seo';
+import {
+  socialMeta, socialImageVersion, socialImageUrl, localeLessUrl, SITE_URL,
+} from './seo';
 
 /**
  * #273: al compartir una ficha de partido en X/Twitter, la tarjeta debe usar
@@ -85,5 +87,54 @@ describe('socialMeta (#273, #274)', () => {
     const ogImages = meta.openGraph?.images as Array<{ url: string }>;
     expect(ogImages[0]?.url).toBe(`${SITE_URL}/og-image.png`);
     expect(meta.twitter?.images).toEqual([`${SITE_URL}/og-image.png`]);
+  });
+
+  // #278/#279: la imagen de competición lleva su propia ruta, pero el path de la
+  // página puede incluir `?season=`. La imagen vive en un fichero fijo: la query
+  // debe descartarse solo para la imagen, no para la URL canónica/OG de la página.
+  it('con temporada mantiene ?season en la URL de la página y lo quita de la imagen', () => {
+    const title = 'Liga 2025/26';
+    const meta = socialMeta({
+      locale: 'es',
+      path: '/competitions/c1?season=s1',
+      title,
+      description: 'desc',
+      dynamicImage: true,
+    });
+    expect(meta.openGraph?.url).toBe(`${SITE_URL}/es/competitions/c1?season=s1`);
+    const version = socialImageVersion(`${title}|desc`);
+    const ogImages = meta.openGraph?.images as Array<{ url: string }>;
+    expect(ogImages[0]?.url).toBe(
+      socialImageUrl('es', '/competitions/c1?season=s1', 'opengraph-image', version),
+    );
+    expect(ogImages[0]?.url).toBe(
+      `${SITE_URL}/es/competitions/c1/opengraph-image?v=${version}`,
+    );
+    expect(meta.twitter?.images).toEqual([
+      `${SITE_URL}/es/competitions/c1/twitter-image?v=${version}`,
+    ]);
+  });
+});
+
+// #278: cada entidad debe tener su imagen social en su propia ruta.
+describe('socialImageUrl por entidad (#278)', () => {
+  it.each([
+    ['/teams/t1', `${SITE_URL}/es/teams/t1/opengraph-image?v=v1`],
+    ['/players/p1', `${SITE_URL}/es/players/p1/opengraph-image?v=v1`],
+    ['/competitions/c1', `${SITE_URL}/es/competitions/c1/opengraph-image?v=v1`],
+  ])('construye la imagen OG de %s', (path, expected) => {
+    expect(socialImageUrl('es', path, 'opengraph-image', 'v1')).toBe(expected);
+  });
+});
+
+// #280: URL sin prefijo de idioma para incrustar en la imagen de alineación. El
+// receptor la abre y el middleware negocia su idioma (#277).
+describe('localeLessUrl (#280)', () => {
+  it('construye la URL absoluta sin prefijo de idioma', () => {
+    expect(localeLessUrl('/matches/abc')).toBe(`${SITE_URL}/matches/abc`);
+  });
+
+  it('acepta rutas sin barra inicial', () => {
+    expect(localeLessUrl('matches/abc')).toBe(`${SITE_URL}/matches/abc`);
   });
 });

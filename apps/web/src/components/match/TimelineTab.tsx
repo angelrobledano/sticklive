@@ -7,6 +7,8 @@ import type { MatchDetail } from '@/lib/api/client';
 import {
   injectPeriodDividers,
   injectAccumulatedFouls,
+  compareTimelineEvents,
+  latestAnnounceableEvent,
   type TimelineEvent,
   type AccumulatedFoulEvent,
 } from './timeline-model';
@@ -31,6 +33,31 @@ function eventTitle(ev: TimelineEvent, t: (k: string, v?: Record<string, string 
     }
     default: return '';
   }
+}
+
+/**
+ * Frase que anuncia el evento por la región `aria-live` (#287): tipo, autor o
+ * equipo y periodo/crono. Reutiliza las claves de `timeline_events` para que un
+ * lector de pantalla reciba lo mismo que se ve.
+ */
+function eventAnnouncement(
+  ev: TimelineEvent,
+  t: (k: string, v?: Record<string, string | number>) => string,
+  homeName: string,
+  awayName: string,
+): string {
+  const title = eventTitle(ev, t);
+  const who = 'player' in ev && ev.player
+    ? playerFullName(ev.player)
+    : (ev.isHomeTeam ? homeName : awayName);
+  const period = ev.period === 1
+    ? t('match_detail.p1_short')
+    : ev.period === 2
+      ? t('match_detail.p2_short')
+      : ev.period && ev.period > 2 ? t('match_detail.ot_short') : '';
+  return [title, who, [period, fmtEventClock(ev)].filter(Boolean).join(' ')]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
@@ -209,10 +236,16 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
   const homeName = data.match.homeTeam!.shortName ?? data.match.homeTeam!.name;
   const awayName = data.match.awayTeam!.shortName ?? data.match.awayTeam!.name;
 
-  const timeline = useMemo(
-    () => injectPeriodDividers(injectAccumulatedFouls(data.events, homeTeamId)),
-    [data.events, homeTeamId]
-  );
+  const timeline = useMemo(() => {
+    // #285: reproducimos en cliente el orden de la API (crono restante DESC,
+    // minuto como fallback) antes de intercalar los eventos virtuales, para que
+    // el relato no se lea invertido aunque el backend todavía no esté al día.
+    const ordered = [...data.events].sort(compareTimelineEvents);
+    return injectPeriodDividers(injectAccumulatedFouls(ordered, homeTeamId));
+  }, [data.events, homeTeamId]);
+
+  // #287: el evento más reciente con señal de producto se anuncia por aria-live.
+  const latest = latestAnnounceableEvent(timeline);
 
   if (timeline.length === 0) {
     const isScheduled = data.match.status === 'scheduled';
@@ -299,6 +332,17 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
 
   return (
     <div className="card relative px-3 py-2">
+      {/* #287: región viva que anuncia sólo el evento más reciente. Vive fuera
+          del flujo visual (sr-only) para no duplicar la lectura de toda la lista. */}
+      <div
+        role="log"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label={t('match_detail.timeline_aria')}
+        className="sr-only"
+      >
+        {latest ? eventAnnouncement(latest, t, homeName, awayName) : ''}
+      </div>
       {/* Eje central del timeline */}
       <div className="absolute left-1/2 top-3 bottom-3 w-px -translate-x-1/2
                       bg-slate-100 dark:bg-slate-800" aria-hidden="true" />

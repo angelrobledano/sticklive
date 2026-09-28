@@ -26,6 +26,7 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
+import { setPersonProps } from '@/lib/analytics';
 
 const PREMIUM_KEY = 'rink-is-premium';
 
@@ -63,7 +64,11 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     setMounted(true);
     let deviceId = '';
     try {
-      if (localStorage.getItem(PREMIUM_KEY) === 'true') setIsPremium(true);
+      if (localStorage.getItem(PREMIUM_KEY) === 'true') {
+        setIsPremium(true);
+        // #247: person property cuando el premium ya se conoce por caché.
+        setPersonProps({ is_premium: true });
+      }
       deviceId = localStorage.getItem('rink-device-id') ?? '';
     } catch { /* SSR / iframe privado */ }
 
@@ -79,6 +84,8 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
           if (data.premium === false && verifiedGrantAt.current > startedAt) return;
           setIsPremium(data.premium);
           try { localStorage.setItem(PREMIUM_KEY, data.premium ? 'true' : 'false'); } catch { /* noop */ }
+          // #247: el servidor acaba de confirmar el entitlement → segmentamos por él.
+          setPersonProps({ is_premium: data.premium });
         }
       })
       .catch(() => { /* sin red: nos quedamos con la caché local */ });
@@ -88,6 +95,8 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     // true solo se invoca tras confirmar el pago server-side (#252).
     if (value) verifiedGrantAt.current = Date.now();
     setIsPremium(value);
+    // #247: al otorgar (o retirar) premium, actualizamos la person property.
+    setPersonProps({ is_premium: value });
     try {
       localStorage.setItem(PREMIUM_KEY, value ? 'true' : 'false');
     } catch { /* noop */ }

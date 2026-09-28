@@ -36,7 +36,8 @@
  *  search_performed          surface, query_length, query_terms,
  *                            result_count, has_results            (#240)
  *  search_result_clicked     surface, kind (team|player|competition), ref_id (#240)
- *  favorite_added/removed    kind (team|league), ref_id, total_favorites
+ *  favorite_added/removed    kind (team|league|player), ref_id,
+ *                            total_favorites, preset_selected (solo al añadir) (#243)
  *  locale_changed            from, to (+person prop locale)
  *  theme_changed             dark (boolean)
  *  notification_toggle       key, enabled
@@ -161,6 +162,44 @@ export function track(event: string, props?: Record<string, unknown>): void {
 }
 
 /**
+ * Guard de emisión única (#247). Devuelve `true` solo la primera vez que se ve
+ * `key` en el almacén; los siguientes montajes/recargas de la misma sesión
+ * devuelven `false`. Sin almacén disponible no deduplica (mejor contar que
+ * perder el evento) y nunca lanza. Puro para poder fijarlo con tests.
+ */
+export function claimOnce(
+  store: { getItem(key: string): string | null; setItem(key: string, value: string): void },
+  key: string,
+): boolean {
+  try {
+    if (store.getItem(key) !== null) return false;
+    store.setItem(key, '1');
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Emite un evento de página como máximo UNA vez por `key` dentro de la sesión
+ * de navegador (#247). Pensado para eventos de compra que hoy se re-emitían en
+ * cada montaje/recarga de `/premium/success` y `/premium/error`. La clave debe
+ * derivarse de un identificador de la operación (`session_id`/order) para que
+ * dos compras legítimas no se colapsen. Sin consentimiento es no-op y NO marca
+ * la clave (si el usuario acepta después, aún puede emitirse).
+ */
+export function trackOnce(key: string, event: string, props?: Record<string, unknown>): boolean {
+  if (!ensureInit()) return false;
+  let store: Storage | null = null;
+  try {
+    store = typeof window !== 'undefined' ? window.sessionStorage : null;
+  } catch { /* almacén no disponible (modo privado) */ }
+  if (store && !claimOnce(store, `sl-track:${key}`)) return false;
+  posthog.capture(event, withDevice(props));
+  return true;
+}
+
+/**
  * Vincula el dispositivo a una identidad (al hacer login). Mantiene el
  * distinct_id propio de PostHog (el email en el login actual) para no
  * colapsar usuarios distintos de un mismo dispositivo; el `device_id` viaja
@@ -233,6 +272,49 @@ export function matchAnalyticsDecision(prevStatus: string | null, status: string
   return {
     emitView: prevStatus !== status,
     emitLiveFollowed: status === 'live' && prevStatus !== 'live',
+  };
+}
+
+/** Entidad que se puede marcar como favorita (estrella). */
+export type FavoriteKind = 'team' | 'league' | 'player';
+
+export interface FavoriteToggleEvent {
+  event: 'favorite_added' | 'favorite_removed';
+  props: {
+    kind: FavoriteKind;
+    ref_id: string;
+    total_favorites: number;
+    preset_selected?: string;
+  };
+}
+
+/**
+ * Evento ÚNICO al marcar/desmarcar un favorito (#243).
+ *
+ * Antes la estrella emitía DOS eventos para una sola intención: el hook
+ * `useFavorites` ya emitía `favorite_added`/`favorite_removed` y, además,
+ * `FavoriteStar` emitía `follow_created` al empezar a seguir. Decisión: se
+ * mantiene `favorite_added` como evento canónico (NO se renombra la serie
+ * histórica, para no romper dashboards) y el preset elegido viaja como
+ * propiedad `preset_selected`. Se deja de emitir `follow_created` (deprecado
+ * por esta unificación).
+ */
+export function favoriteToggleEvent(
+  adding: boolean,
+  kind: FavoriteKind,
+  refId: string,
+  total: number,
+  preset?: string,
+): FavoriteToggleEvent {
+  return {
+    event: adding ? 'favorite_added' : 'favorite_removed',
+    props: {
+      kind,
+      ref_id: refId,
+      total_favorites: total,
+      // El preset solo tiene sentido al AÑADIR (al quitar no se eligió ninguno).
+      ...(adding && preset ? { preset_selected: preset } : {}),
+    },
   };
 }
 

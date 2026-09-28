@@ -11,9 +11,9 @@
  *    en pantalla de bloqueo), nunca apila pushes: 3 goles seguidos = 1 push
  *    actualizado, no 3.
  * 2. SILENCIO NOCTURNO (pref quietNight): entre 23:00 y 08:00 no se emiten
- *    alertas de evento. El resumen matinal (`morningSummary`) todavía NO se
- *    emite: hoy el resultado de un partido nocturno se descarta. Implementarlo
- *    en el push-dispatcher queda como trabajo pendiente (#272).
+ *    alertas de evento. Los finales que caen en esa ventana se compensan a la
+ *    mañana con UN único `morningSummary` agrupado (`push-dispatcher`), para no
+ *    perder el resultado ni despertar a nadie.
  * 3. SEGMENTACIÓN: solo se notifica lo que el usuario tiene activado en su
  *    NotifConfig (switch maestro > bloque favoritos > bloque global).
  */
@@ -142,13 +142,50 @@ export function secondHalfAlert(m: MatchRef): string {
   return `¡Comienza la 2ª parte! ${m.homeShort} ${m.homeScore} - ${m.awayScore} ${m.awayShort}`;
 }
 
+/** Un resultado nocturno que entra en el resumen matinal. */
+export interface MorningResult {
+  homeShort: string;
+  awayShort: string;
+  homeScore: number;
+  awayScore: number;
+  /** Hora local del saque (Europe/Madrid), formato `HH:MM`. */
+  kickoffLocal: string;
+}
+
 /**
- * Resumen matinal para partidos silenciados por la noche.
- * PENDIENTE DE INTEGRACIÓN: la función existe pero aún no se emite desde el
- * push-dispatcher (#272); no prometer este aviso hasta que se conecte.
+ * Resumen matinal para los finales silenciados por la noche (pref quietNight).
+ * Agrupa VARIOS partidos en UN único mensaje para no apilar notificaciones al
+ * despertar: `Buenos días. Anoche: BAR 3-1 IHC (22:30) · LIC 2-2 OLI (21:00).`
  */
-export function morningSummary(winnerName: string, m: MatchRef, kickoffLocal: string): string {
-  return `Buenos días. Ayer el ${winnerName} venció ${m.homeScore}-${m.awayScore} en el partido de las ${kickoffLocal}.`;
+export function morningSummary(results: readonly MorningResult[]): string {
+  if (results.length === 0) return 'Buenos días. Anoche no hubo partidos que resaltar.';
+  const parts = results.map(
+    (r) => `${r.homeShort} ${r.homeScore}-${r.awayScore} ${r.awayShort} (${r.kickoffLocal})`
+  );
+  return `Buenos días. Anoche: ${parts.join(' · ')}.`;
+}
+
+/** Tag de Web Push del resumen matinal: uno por día → reemplaza, nunca apila. */
+export function morningSummaryTag(localDate: string): string {
+  return `morning-${localDate}`;
+}
+
+/**
+ * Clave de fecha local de Madrid (`YYYY-MM-DD`). La usamos como identidad del
+ * resumen diario: una sola emisión por noche y dispositivo.
+ */
+export function madridDateKey(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: SPAIN_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(date);
+}
+
+/** ¿Estamos en la ventana de envío del resumen matinal (08:00–12:00 España)? */
+export function isMorningHours(date: Date = new Date()): boolean {
+  const hour = Number(
+    new Intl.DateTimeFormat('es-ES', { hour: 'numeric', hour12: false, timeZone: SPAIN_TZ }).format(date)
+  );
+  return hour >= 8 && hour < 12;
 }
 
 /** ¿Estamos en la ventana de silencio nocturno (23:00–08:00 España)? */

@@ -13,7 +13,8 @@
     "competitions": "Competições",
     "settings": "Definições",
     "back": "Voltar",
-    "search": "Pesquisar"
+    "search": "Pesquisar",
+    "favorites": "Favoritos"
   },
   "match_tabs": {
     "standing": "Classificação",
@@ -177,7 +178,11 @@
     "direct_fouls_efficiency": "Eficácia de livres diretos",
     "freshness_fresh": "Atualizado há {s} s",
     "freshness_stale": "Sem atualizações há {s} s · possível atraso",
-    "freshness_down": "Sem sinal · última atualização há {s} s"
+    "freshness_down": "Sem sinal · última atualização há {s} s",
+    "connecting": "A ligar…",
+    "reconnecting_short": "A reconectar · sinal fraco",
+    "signal_weak": "Sinal fraco",
+    "timeline_aria": "Eventos do jogo"
   },
   "playoffs": {
     "round_of_16": "Oitavos",

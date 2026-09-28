@@ -41,6 +41,8 @@ export function Sidebar() {
           icon={<path d="M3 12h18M12 3v18" />} />
         <SidebarLink href="/competitions" label={t('navigation.competitions')} active={isActive('/competitions')}
           icon={<><path d="M8 3h8v10a4 4 0 0 1-8 0V3Z" /><path d="M12 17v4M8 21h8" /></>} />
+        <SidebarLink href="/favorites" label={t('navigation.favorites')} active={isActive('/favorites')}
+          icon={<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" strokeLinejoin="round" />} />
         <SidebarLink href="/search" label={t('navigation.search')} active={isActive('/search')}
           icon={<><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" strokeLinecap="round" /></>} />
         <SidebarLink href="/settings" label={t('navigation.settings')} active={isActive('/settings')}

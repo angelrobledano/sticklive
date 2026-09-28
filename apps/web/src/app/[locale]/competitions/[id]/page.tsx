@@ -44,16 +44,17 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     const name = `${overview.season.competitionName} ${season.name ?? ''}`.trim();
     const title = `${name} | Stick Live`;
     const description = (DESC[locale] ?? DESC['en'])!(name);
+    // #279: solo añadimos `?season=` a la URL si la temporada pedida existe de
+    // verdad (la misma que sirve el cuerpo). Un `?season=` inválido cae a la
+    // temporada en curso y no debe quedar en la URL compartida.
+    const path = requested && season.id === requested
+      ? `/competitions/${params.id}?season=${requested}`
+      : `/competitions/${params.id}`;
     return {
       title,
       description,
       alternates,
-      ...socialMeta({
-        locale,
-        path: requested ? `/competitions/${params.id}?season=${requested}` : `/competitions/${params.id}`,
-        title: name,
-        description,
-      }),
+      ...socialMeta({ locale, path, title: name, description, dynamicImage: true }),
     };
   } catch {
     return { alternates };

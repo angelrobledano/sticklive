@@ -9,6 +9,7 @@ import { MatchHeader } from './MatchHeader';
 import { TimelineTab } from './TimelineTab';
 import { LineupsTab } from './LineupsTab';
 import { StatsTab } from './StatsTab';
+import { recordRecentMatch } from '@/lib/recents';
 
 // ─── Componente principal ───
 
@@ -101,6 +102,29 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
     // Dependemos de los campos concretos, no del objeto `match` completo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveData.match.id, liveData.match.status, liveData.match.seasonId]);
+
+  // ── "Vistos recientemente" (#270) ───────────────────────────────────────────
+  // Al abrir la ficha guardamos el partido en localStorage (una vez por id,
+  // aunque el SSE lo reemplace). Permite volver a él sin depender del
+  // historial del navegador.
+  useEffect(() => {
+    const m = liveData.match;
+    const home = m.homeTeam;
+    const away = m.awayTeam;
+    if (!home || !away) return;
+    recordRecentMatch({
+      id: m.id,
+      homeTeamId: home.id,
+      awayTeamId: away.id,
+      homeName: home.shortName ?? home.name,
+      awayName: away.shortName ?? away.name,
+      competitionId: m.competitionId ?? null,
+      competitionName: m.competitionName ?? null,
+      viewedAt: Date.now(),
+    });
+    // Solo al cambiar de partido: no queremos reescribir en cada update en vivo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveData.match.id]);
 
   // ── Dwell del directo (#241) ────────────────────────────────────────────────
   // Segundos con la pestaña VISIBLE mientras el partido está en vivo. Se emite

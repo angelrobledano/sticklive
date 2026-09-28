@@ -13,7 +13,8 @@
     "competitions": "Compétitions",
     "settings": "Paramètres",
     "back": "Retour",
-    "search": "Rechercher"
+    "search": "Rechercher",
+    "favorites": "Favoris"
   },
   "match_tabs": {
     "standing": "Classement",
@@ -177,7 +178,11 @@
     "direct_fouls_efficiency": "Efficacité coups francs directs",
     "freshness_fresh": "Mis à jour il y a {s} s",
     "freshness_stale": "Aucune mise à jour depuis {s} s · possible décalage",
-    "freshness_down": "Pas de signal · dernière mise à jour il y a {s} s"
+    "freshness_down": "Pas de signal · dernière mise à jour il y a {s} s",
+    "connecting": "Connexion…",
+    "reconnecting_short": "Reconnexion · signal faible",
+    "signal_weak": "Signal faible",
+    "timeline_aria": "Événements du match"
   },
   "playoffs": {
     "quarters": "Quarts",

@@ -13,7 +13,8 @@
     "competitions": "Competitions",
     "settings": "Settings",
     "back": "Back",
-    "search": "Search"
+    "search": "Search",
+    "favorites": "Favorites"
   },
   "locale_hint": {
     "body": "Looks like you prefer {lang}",
@@ -210,7 +211,11 @@
     "direct_fouls_efficiency": "Direct free hit efficiency",
     "freshness_fresh": "Updated {s}s ago",
     "freshness_stale": "No updates for {s}s · possible delay",
-    "freshness_down": "No signal · last update {s}s ago"
+    "freshness_down": "No signal · last update {s}s ago",
+    "connecting": "Connecting…",
+    "reconnecting_short": "Reconnecting · weak signal",
+    "signal_weak": "Weak signal",
+    "timeline_aria": "Match events"
   },
   "playoffs": {
     "quarters": "Quarters",

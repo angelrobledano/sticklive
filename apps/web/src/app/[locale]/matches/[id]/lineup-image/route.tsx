@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { getMatchDetail, type LineupPlayer } from '@/lib/api/client';
 import { clubName } from '@/lib/names';
+import { localeLessUrl } from '@/lib/seo';
 
 // Imagen del 5 inicial sobre la pista, renderizada EN EL SERVIDOR (Satori/next/og).
 // Sustituye a html2canvas, que en iOS Safari/WebKit se cuelga rasterizando el DOM.
@@ -69,6 +70,10 @@ function place(players: LineupPlayer[], isAway: boolean): Array<{ p: LineupPlaye
 
 export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
+  // #280: la imagen compartida debe llevar de vuelta al partido. Usamos la URL
+  // SIN prefijo de idioma para que el receptor abra en el suyo (el middleware
+  // negocia Accept-Language, #277) y la mostramos sin esquema.
+  const shareLink = localeLessUrl(`/matches/${params.id}`).replace(/^https?:\/\//, '');
   let homeName = 'Local';
   let awayName = 'Visitante';
   let positioned: Placed[] = [];
@@ -185,8 +190,9 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
         </div>
 
         {/* Pie */}
-        <div style={{ display: 'flex', alignItems: 'center', height: 64, padding: '0 48px', fontSize: 22, color: '#94a3b8' }}>
-          sticklive.eu · Cinco inicial
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, padding: '0 48px', fontSize: 22, color: '#94a3b8' }}>
+          <div style={{ display: 'flex' }}>{shareLink}</div>
+          <div style={{ display: 'flex', color: '#64748b' }}>Cinco inicial</div>
         </div>
       </div>
     ),

@@ -5,8 +5,10 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { useT } from '@/lib/i18n';
 import { setPreset } from '@/lib/notif-prefs';
 import { syncPushConfig } from '@/lib/push';
-import { track } from '@/lib/analytics';
 import { NotificationPresetSheet } from '@/components/shared/NotificationPresetSheet';
+
+/** Preset por defecto al empezar a seguir (inicio, goles, tarjetas y final). */
+const DEFAULT_PRESET = 'key_events';
 
 /**
  * Estrella de favorito (equipos y ligas) con micro-interacción y toast.
@@ -47,23 +49,23 @@ export function FavoriteStar({ id, kind, name, className = '', variant = 'icon' 
     e.preventDefault();
     e.stopPropagation();
     const wasActive = active;
-    if (kind === 'team') toggle(id);
-    else if (kind === 'league') toggleLeague(id);
-    else togglePlayer(id, name);
+    // #243: un ÚNICO evento canónico `favorite_added` (con `preset_selected`)
+    // emitido por el hook. Antes la estrella emitía además `follow_created`
+    // para la misma intención (doble conteo). El preset viaja en el propio
+    // evento de favorito; ya no se emite nada desde aquí.
+    const preset = wasActive ? undefined : DEFAULT_PRESET;
+    if (kind === 'team') toggle(id, { preset });
+    else if (kind === 'league') toggleLeague(id, { preset });
+    else togglePlayer(id, name, { preset });
     setToast(t(wasActive ? 'favorites.toast_unfollowed' : 'favorites.toast_following', { name: name ?? '—' }));
 
     // Al EMPEZAR a seguir: preset por defecto 'key_events' (inicio, goles,
     // tarjetas y final; anti-ruido) y abrimos el selector para que el usuario
     // ajuste cuánto quiere recibir y pueda activar los avisos si aún no lo hizo.
     if (!wasActive) {
-      setPreset(kind, id, 'key_events');
+      setPreset(kind, id, DEFAULT_PRESET);
       void syncPushConfig();
       setSheetOpen(true);
-      track('follow_created', {
-        entity_type: kind === 'league' ? 'competition' : kind,
-        entity_id: id,
-        preset_selected: 'key_events',
-      });
     }
 
     // Trigger de conversión: al marcar el TERCER favorito en anónimo,

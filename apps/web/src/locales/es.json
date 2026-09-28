@@ -13,7 +13,8 @@
     "competitions": "Competiciones",
     "settings": "Ajustes",
     "back": "Volver",
-    "search": "Buscar"
+    "search": "Buscar",
+    "favorites": "Favoritos"
   },
   "locale_hint": {
     "body": "Parece que prefieres {lang}",
@@ -226,7 +227,11 @@
     "direct_fouls_efficiency": "Efectividad faltas directas",
     "freshness_fresh": "Actualizado hace {s} s",
     "freshness_stale": "Sin actualizaciones hace {s} s · posible desfase",
-    "freshness_down": "Sin señal · última actualización hace {s} s"
+    "freshness_down": "Sin señal · última actualización hace {s} s",
+    "connecting": "Conectando…",
+    "reconnecting_short": "Reconectando · señal débil",
+    "signal_weak": "Señal débil",
+    "timeline_aria": "Eventos del partido"
   },
   "playoffs": {
     "round_of_16": "Octavos",

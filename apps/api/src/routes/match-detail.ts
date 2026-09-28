@@ -73,11 +73,12 @@ matchDetailRouter.get('/:id', async (c) => {
       WHERE e.match_id = $1
       ORDER BY
         COALESCE(e.period, 99) ASC,
-        COALESCE(e.minute, 9999) ASC,
-        -- #285: dentro del mismo minuto el crono es cuenta atrás (MM:SS); a mayor
-        -- crono, antes ocurrió. Sin esto, eventos del mismo minuto salían en el
-        -- orden de inserción y el relato se leía invertido.
+        -- #285: el crono del acta es cuenta atrás MM:SS; a mayor crono restante,
+        -- antes ocurrió. Es la clave principal cuando existe (así los eventos con
+        -- crono pero sin minuto no caen al final), y el minuto queda de fallback.
+        -- "MM:SS" con minutos a dos cifras hace que el orden textual == numérico.
         e.clock DESC NULLS LAST,
+        COALESCE(e.minute, 9999) ASC,
         e.created_at ASC
     `, [id]);
 

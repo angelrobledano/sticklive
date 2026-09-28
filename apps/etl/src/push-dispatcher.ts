@@ -9,23 +9,26 @@
  * Política (notification-copy.ts):
  *   · Smart bundling: tag por partido → una notificación viva que se actualiza.
  *   · Silencio nocturno: con quietNight activo, nada entre 23:00–08:00.
+ *   · Resumen matinal: los finales de esa ventana se compensan a las 08:00–12:00
+ *     con UN único mensaje agrupado por suscripción (#272).
  */
 import webpush from 'web-push';
 import * as Sentry from '@sentry/node';
 import { db } from '@sports/db';
 import { createLogger } from '@sports/logger';
 import {
-  branded, matchTag, finalAlert, liveBody, isQuietHours,
+  branded, matchTag, finalAlert, liveBody, isQuietHours, isMorningHours, madridDateKey,
+  morningSummary, morningSummaryTag,
   jornadaStartAlert, jornadaEndAlert, jornadaTag,
   playerGoalAlert, cardAlert, directFoulAlert, blueCardWithFoulAlert,
   overtimeStartAlert, penaltyStartAlert, finalOvertimeAlert, finalPenaltiesAlert,
-  type MatchRef,
+  type MatchRef, type MorningResult,
 } from '../../api/src/lib/notification-copy.js';
 import {
   freshEvents, collapsePerScorer, decideMatchTransitions, decideRoundTransitions,
   type EventSnap,
 } from './push-diff.js';
-import { wants, type PushEventType } from './push-segmentation.js';
+import { wants, morningMatchesFor, type PushEventType } from './push-segmentation.js';
 
 const log = createLogger({ service: 'push-dispatcher' });
 
@@ -283,6 +286,128 @@ async function deliver(sub: SubRow, payload: PushPayload): Promise<'sent' | 'pru
   }
 }
 
+// ── Resumen matinal (#272) ─────────────────────────────────────────────────
+
+interface NightFinal {
+  matchId: string;
+  homeTeamId: string | null;
+  awayTeamId: string | null;
+  competitionId: string | null;
+  homeShort: string;
+  awayShort: string;
+  homeScore: number;
+  awayScore: number;
+  kickoffLocal: string;
+}
+
+/**
+ * Partidos que terminaron DENTRO de la ventana de silencio nocturno de la última
+ * noche (23:00–08:00, hora española). Son justo los finales que `quietNight`
+ * descartó y que el resumen matinal debe compensar.
+ *
+ * Se apoya en `finished_at` (lo sella el flujo de directo); si faltara, usa
+ * `updated_at` como aproximación. La ventana es relativa a HOY, así que un
+ * resumen sólo se envía la mañana siguiente — nunca resucita noches antiguas.
+ */
+async function snapshotNightFinals(): Promise<NightFinal[]> {
+  const res = await db.query<{
+    match_id: string; home_team_id: string | null; away_team_id: string | null;
+    competition_id: string | null; home_short: string; away_short: string;
+    home_score: number; away_score: number; kickoff_local: string;
+  }>(`
+    SELECT m.id AS match_id, m.home_team_id, m.away_team_id, s.competition_id,
+           COALESCE(ht.short_name, 'Local')     AS home_short,
+           COALESCE(at.short_name, 'Visitante') AS away_short,
+           COALESCE(m.home_score, 0)            AS home_score,
+           COALESCE(m.away_score, 0)            AS away_score,
+           COALESCE(to_char(m.scheduled_at AT TIME ZONE 'Europe/Madrid', 'HH24:MI'), '--:--') AS kickoff_local
+    FROM matches m
+    JOIN seasons s ON s.id = m.season_id
+    LEFT JOIN teams ht ON ht.id = m.home_team_id
+    LEFT JOIN teams at ON at.id = m.away_team_id
+    WHERE m.status = 'finished'
+      AND COALESCE(m.finished_at, m.updated_at) AT TIME ZONE 'Europe/Madrid'
+            >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Madrid') - INTERVAL '1 hour')
+      AND COALESCE(m.finished_at, m.updated_at) AT TIME ZONE 'Europe/Madrid'
+            <  (date_trunc('day', NOW() AT TIME ZONE 'Europe/Madrid') + INTERVAL '8 hours')
+    ORDER BY COALESCE(m.finished_at, m.updated_at) ASC
+  `);
+  return res.rows.map((r) => ({
+    matchId: r.match_id, homeTeamId: r.home_team_id, awayTeamId: r.away_team_id,
+    competitionId: r.competition_id,
+    homeShort: r.home_short, awayShort: r.away_short,
+    homeScore: Number(r.home_score), awayScore: Number(r.away_score),
+    kickoffLocal: r.kickoff_local,
+  }));
+}
+
+/** Suscripciones que ya recibieron el resumen de un día en ESTE proceso. */
+const morningSummarySent = new Set<string>();
+/** Día (Madrid) cuyo resumen ya se completó sin errores en ESTE proceso. */
+let morningSummaryDate: string | null = null;
+
+/**
+ * Resumen matinal (#272): entrega UN único mensaje agrupado con los resultados
+ * que el silencio nocturno descartó anoche, a cada suscripción con `quietNight`
+ * activo que siga alguno de esos partidos.
+ *
+ * Idempotencia: dentro de un proceso sólo se completa una vez por día natural de
+ * Madrid, y las suscripciones ya servidas se recuerdan para reintentar sólo las
+ * que fallaron. El `tag` diario hace que, si aún así se reenviara, el push
+ * REEMPLACE en la pantalla de bloqueo en vez de apilarse.
+ */
+export async function deliverMorningSummaries(now: Date = new Date()): Promise<void> {
+  if (!pushEnabled) return;
+  if (!isMorningHours(now)) return;          // fuera de 08:00–12:00 no es "matinal"
+  const dateKey = madridDateKey(now);
+  if (morningSummaryDate === dateKey) return;
+
+  const finals = await snapshotNightFinals();
+  if (finals.length === 0) { morningSummaryDate = dateKey; return; }
+
+  const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
+  if (subs.rows.length === 0) { morningSummaryDate = dateKey; return; }
+
+  const tag = morningSummaryTag(dateKey);
+  let sent = 0, sentPruned = 0, failed = 0;
+
+  for (const sub of subs.rows) {
+    const cfg = sub.config ?? {};
+    if (cfg['master'] === false) continue;
+    // Compensa sólo a quien tiene el silencio nocturno activo: quien no lo tiene
+    // ya recibió el final en directo y no debe recibir un duplicado.
+    if (cfg['quietNight'] === false) continue;
+
+    const dedupKey = `${sub.id}:${dateKey}`;
+    if (morningSummarySent.has(dedupKey)) continue;
+
+    const matches = morningMatchesFor(sub, finals);
+    if (matches.length === 0) continue;
+
+    const results: MorningResult[] = matches.map((m) => ({
+      homeShort: m.homeShort, awayShort: m.awayShort,
+      homeScore: m.homeScore, awayScore: m.awayScore,
+      kickoffLocal: m.kickoffLocal,
+    }));
+    const payload: PushPayload = {
+      title: branded(morningSummary(results)),
+      body: '',
+      tag,
+      url: `${WEB_BASE}/matches/${matches[0]!.matchId}`,
+      type: 'morning_summary',
+    };
+    const res = await deliver(sub, payload);
+    if (res === 'sent') { sent++; morningSummarySent.add(dedupKey); }
+    else if (res === 'pruned') { sentPruned++; morningSummarySent.add(dedupKey); }
+    else failed++;
+  }
+
+  // Sólo damos el día por cerrado si no hubo fallos transitorios: así el próximo
+  // ciclo reintenta los que quedaron pendientes sin repetir a los ya servidos.
+  if (failed === 0) morningSummaryDate = dateKey;
+  log.info({ matches: finals.length, sent, pruned: sentPruned, failed }, '🌅 Resumen matinal');
+}
+
 type MatchEv = { kind: 'start' | 'final'; matchTeams: string[]; payload: PushPayload };
 type JornadaEv = { kind: 'jornada_start' | 'jornada_end'; payload: PushPayload };
 type Ev = MatchEv | JornadaEv;
@@ -298,6 +423,13 @@ export async function diffAndNotify(
   seasonId: string,
 ): Promise<void> {
   if (!pushEnabled) return;
+
+  // Resumen matinal (#272): compensa los finales que el silencio nocturno
+  // descartó anoche. Se engancha aquí porque es la entrada del dispatcher que
+  // corre en el ciclo del cron; la propia función decide si toca (sólo por la
+  // mañana) y no duplica. Nunca debe romper el diff normal.
+  try { await deliverMorningSummaries(); }
+  catch (err) { log.warn({ err }, 'resumen matinal fallo — el diff sigue'); }
 
   const current = await snapshotMatches(seasonId);
   const toSend: Ev[] = [];

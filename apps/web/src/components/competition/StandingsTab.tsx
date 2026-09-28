@@ -192,7 +192,7 @@ function StandingsTable({
                   id={row.teamId}
                   kind="team"
                   name={row.teamShortName ?? row.teamName}
-                  className="shrink-0 !w-10 !h-10 !-m-2.5 !hidden md:!inline-flex"
+                  className="shrink-0 !w-10 !h-10 !-m-2.5"
                 />
               </div>
 

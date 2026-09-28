@@ -5,22 +5,30 @@ import Link from 'next/link';
 import { useT } from '@/lib/i18n';
 import type { MatchDetail } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
+import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { finalLabelKey, penaltyText } from '@/lib/match-result';
 import { formatTime, formatDate, eventSurname, fmtEventClock } from './format';
-import { freshnessState } from './timeline-model';
+import { freshnessState, connectionState, CONNECTION_LABEL, type ConnectionState } from './timeline-model';
 import { BallIcon } from './icons';
 
 function TeamCrest({ team }: {
   team: { id: string; name: string; shortName: string | null; logoUrl: string | null };
 }) {
+  const label = team.shortName ?? team.name;
   return (
-    <Link href={`/teams/${team.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-w-0">
-      <TeamShield teamId={team.id} teamName={team.name} size={64} />
-      <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 text-center leading-tight line-clamp-2 max-w-[90px]">
-        {team.shortName ?? team.name}
-      </span>
-    </Link>
+    // La estrella va FUERA del <Link>: un <button> dentro de un <a> es HTML
+    // inválido y confunde a lectores de pantalla (#364). #267: seguir al equipo
+    // desde la propia cabecera del partido, sin entrar a su ficha.
+    <div className="flex flex-col items-center min-w-0">
+      <Link href={`/teams/${team.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-w-0">
+        <TeamShield teamId={team.id} teamName={team.name} size={64} />
+        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 text-center leading-tight line-clamp-2 max-w-[90px]">
+          {label}
+        </span>
+      </Link>
+      <FavoriteStar id={team.id} kind="team" name={label} className="-mt-1" />
+    </div>
   );
 }
 
@@ -191,6 +199,13 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
     : null;
   const faded = isLive && showScore && freshness?.state === 'down';
 
+  // #286: estado visible de la conexión. Sin esto, un SSE caído sólo se intuía
+  // por un microtexto; ahora la cabecera distingue conectar/reconectar/señal
+  // débil con color y un punto animado.
+  const connection: ConnectionState = isLive
+    ? connectionState(sseStatus, serverStale, freshness)
+    : 'live';
+
   return (
     <div className="card relative px-4 pt-4 pb-5 space-y-4">
       <ShareButton
@@ -221,11 +236,21 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
                 {t('match_states.live')}
               </span>
             )}
-            {/* En directo se sobreentiende que se actualiza en vivo; solo avisamos
-                si la conexión se cae. */}
-            {sseStatus === 'error' && (
-              <span className="text-[10px] font-normal text-amber-500 normal-case tracking-normal">
-                · {t('match_detail.reconnecting')}
+            {/* #286: aviso explícito de conexión (conectar/reconectar/señal
+                débil), legible y con color, no el antiguo microtexto. */}
+            {connection !== 'live' && (
+              <span
+                role="status"
+                aria-live="polite"
+                className={`inline-flex items-center gap-1 text-[11px] font-semibold normal-case tracking-normal ${
+                  connection === 'reconnecting' ? 'text-rose-500' : 'text-amber-500'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full bg-current ${connection === 'connecting' ? 'animate-pulse' : ''}`}
+                  aria-hidden="true"
+                />
+                {t(CONNECTION_LABEL[connection])}
               </span>
             )}
             {/* #284: cuándo se actualizó por última vez / posible desfase. */}

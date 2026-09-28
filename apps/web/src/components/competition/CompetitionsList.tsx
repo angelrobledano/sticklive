@@ -7,7 +7,7 @@ import { useT } from '@/lib/i18n';
 import { track, searchEventProps } from '@/lib/analytics';
 import { clubName, competitionName } from '@/lib/names';
 import { CountryFlag } from '@/components/shared/CountryFlag';
-import { filterCompetitions, normalizeSearchText } from '@/components/search/competition-filter';
+import { filterCompetitions, normalizeSearchText, orderSearchResults } from '@/components/search/competition-filter';
 import { tt } from '@/components/search/translate';
 import { useFavorites } from '@/hooks/useFavorites';
 import { currentSeasonYear, hasSeasonYear, orderByImportance } from '@/lib/competition-importance';
@@ -151,8 +151,8 @@ function CompetitionRow({
       <button
         onClick={() => onToggleFav(comp.id)}
         aria-label={isFav ? 'Quitar de favoritos' : 'Añadir a favoritos'}
-        className="px-2.5 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50
-                   transition-colors shrink-0"
+        className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl
+                   hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors shrink-0"
       >
         <StarIcon filled={isFav} />
       </button>
@@ -396,7 +396,10 @@ export function CompetitionsList({
   const q = normalizeSearchText(query.trim());
   const searched = useMemo(() => {
     if (!q) return relevant;
-    return filterCompetitions(competitions, query, (code) => countryDisplayName(code, locale));
+    const matches = filterCompetitions(competitions, query, (code) => countryDisplayName(code, locale));
+    // #260: los resultados se ordenan por relevancia (exacto/prefijo primero) y,
+    // en empate, por importancia. Antes se pintaban en el orden que daba la API.
+    return orderSearchResults(matches, q, locale);
   }, [competitions, relevant, q, query, locale]);
 
   // 3) Datos por tab
@@ -486,7 +489,7 @@ export function CompetitionsList({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar liga, país o federación..."
-            className="w-full h-10 pl-9 pr-4 rounded-xl border border-slate-200 dark:border-slate-700
+            className="w-full min-h-[44px] pl-9 pr-12 rounded-xl border border-slate-200 dark:border-slate-700
                        bg-slate-50 dark:bg-slate-900 text-[13px] text-slate-800 dark:text-slate-200
                        placeholder:text-slate-500 dark:placeholder:text-slate-500 dark:placeholder:text-slate-400
                        focus:outline-none focus:ring-2 focus:ring-rink-passion focus:bg-white dark:focus:bg-slate-900
@@ -495,7 +498,8 @@ export function CompetitionsList({
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600
+              className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center
+                         w-11 h-11 rounded-full text-slate-400 hover:text-slate-600
                          dark:hover:text-slate-300 transition-colors"
               aria-label="Limpiar búsqueda"
             >
