@@ -397,5 +397,9 @@
     "key_events": {
       "desc": "Início do jogo, golos, cartões azuis, faltas diretas e resultado final."
     }
+  },
+  "ads": {
+    "interstitial_title": "Publicidade",
+    "close": "Fechar"
   }
 }

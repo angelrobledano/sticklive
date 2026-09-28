@@ -1,14 +1,19 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, Fragment } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';
 import type { SeasonMatch, SeasonRound, TeamSummary } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
+import { AdBanner } from '@/components/shared/AdBanner';
+import { adsenseConfig, listAdInsertIndex } from '@/lib/ads';
 import { clubName } from '@/lib/names';
 import { fmtTime, madridDay, dayPillLabel, roundLabel } from './format';
+
+/** Config AdSense (env inyectado en build). */
+const ADS = adsenseConfig();
 
 function MatchCard({ match }: { match: SeasonMatch }) {
   const isLive     = match.status === 'live';
@@ -193,6 +198,12 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
 
   const journeyMode = !selectedTeam && !dateParam;
 
+  // Banner "entre resultados" en la lista plana (jornada/fecha). -1 si no procede.
+  const adIndex = useMemo(
+    () => listAdInsertIndex(filtered.length, ADS.listEvery),
+    [filtered.length],
+  );
+
   return (
     <div className="space-y-3">
       {/* ── Toolbar de filtros ────────────────────────────────── */}
@@ -280,7 +291,12 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
         <FixturesByDate matches={filtered} />
       ) : (
         <div className="card overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/60">
-          {filtered.map((m) => <MatchCard key={m.id} match={m} />)}
+          {filtered.map((m, i) => (
+            <Fragment key={m.id}>
+              {i === adIndex && <AdBanner zone="list-inline" className="my-2" />}
+              <MatchCard match={m} />
+            </Fragment>
+          ))}
         </div>
       )}
     </div>

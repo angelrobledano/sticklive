@@ -396,5 +396,9 @@
     "key_events": {
       "desc": "Début du match, buts, cartons bleus, fautes directes et résultat final."
     }
+  },
+  "ads": {
+    "interstitial_title": "Publicité",
+    "close": "Fermer"
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback, Fragment } from 'react';
 import type { Match } from '@/lib/api/client';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useLiveScores } from '@/hooks/useLiveScores';
@@ -8,6 +8,7 @@ import { DateSelector } from '@/components/shared/DateSelector';
 import { MatchCard } from '@/components/shared/MatchCard';
 import { MiGrada } from '@/components/home/MiGrada';
 import { AdBanner } from '@/components/shared/AdBanner';
+import { adsenseConfig, listAdInsertIndex } from '@/lib/ads';
 import Link from 'next/link';
 import { useT } from '@/lib/i18n';
 import { madridDateKey, madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
@@ -15,6 +16,9 @@ import { importanceRank } from '@/lib/competition-importance';
 
 /** Nº de partidos favoritos visibles antes de colapsar el resto */
 const FAV_PREVIEW = 3;
+
+/** Config AdSense (env inyectado en build). */
+const ADS = adsenseConfig();
 
 /**
  * Escena del estado vacío: la bola cruza la pista, gol y celebración.
@@ -348,6 +352,24 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
 
   const hasBothSections = favMatches.length > 0 && restMatches.length > 0;
 
+  // Banner in-list "entre resultados": posición sobre la lista del día (no
+  // favoritos) y sección tras la que cae. -1 si no procede (pocos partidos).
+  const adIndex = useMemo(
+    () => listAdInsertIndex(restMatches.length, ADS.listEvery),
+    [restMatches.length],
+  );
+  const adSectionIndex = useMemo(() => {
+    if (adIndex < 0) return -1;
+    let cumulative = 0;
+    for (let i = 0; i < restByCompetition.length; i++) {
+      const group = restByCompetition[i];
+      if (!group) continue;
+      cumulative += group[1].length;
+      if (cumulative >= adIndex) return i;
+    }
+    return -1;
+  }, [restByCompetition, adIndex]);
+
   // Rango de días con datos cargados (#365): acota el DateSelector para no
   // ofrecer días que la ventana del API no cubre y que saldrían vacíos.
   const windowRange = useMemo(() => {
@@ -451,17 +473,22 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
             )}
 
             {/* Bloque principal — una sección por competición */}
-            {restByCompetition.map(([comp, ms]) => (
-              <section key={comp}>
-                <SectionHeader label={comp} count={ms.length} />
-                <ul className="px-4 space-y-2 pb-4">
-                  {ms.map((m) => (
-                    <li key={m.id}>
-                      <MatchCard match={m} />
-                    </li>
-                  ))}
-                </ul>
-              </section>
+            {restByCompetition.map(([comp, ms], i) => (
+              <Fragment key={comp}>
+                <section>
+                  <SectionHeader label={comp} count={ms.length} />
+                  <ul className="px-4 space-y-2 pb-4">
+                    {ms.map((m) => (
+                      <li key={m.id}>
+                        <MatchCard match={m} />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+                {/* Banner entre resultados (solo si hay suficientes partidos).
+                    Si AdBanner no procede (Premium/sin config) no deja hueco. */}
+                {i === adSectionIndex && <AdBanner zone="list-inline" className="my-2" />}
+              </Fragment>
             ))}
           </>
         )}

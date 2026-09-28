@@ -3,31 +3,46 @@
  * <AdBanner zone="…" />
  *
  * Lógica central de monetización:
+ *   • Anuncios apagados por defecto: sin `NEXT_PUBLIC_ADSENSE_CLIENT` no se
+ *     renderiza nada (el placeholder solo aparece si `NEXT_PUBLIC_PREMIUM_ENABLED=1`).
  *   • Usuario Premium  → retorna null inmediatamente. Cero DOM, cero layout shift.
- *   • Usuario Free     → renderiza el contenedor del anuncio con la etiqueta
- *                        "PUBLICIDAD" normalizada (cumplimiento IAB/CNMC).
- *   • Durante hydratión (mounted=false) → retorna null para evitar mismatch.
+ *   • Usuario Free + AdSense configurado + consentimiento → `<ins>` real de
+ *     AdSense, con etiqueta "PUBLICIDAD" (cumplimiento IAB/CNMC) y altura
+ *     reservada para evitar CLS.
+ *   • Durante hydratación (mounted=false) → retorna null para evitar mismatch.
  *
- * Zonas disponibles:
- *   home-top      → Banner horizontal 320×50 bajo el DateSelector (sticky)
- *   home-inline   → Banner nativo 320×100 intercalado entre secciones de partidos
- *   match-stats   → Robapáginas 300×250 al final del tab de Estadísticas
+ * Zonas: home-top, home-inline, list-inline, match-summary, match-stats,
+ * interstitial (solo en <AdInterstitial>).
  */
 
+import { useEffect, useRef } from 'react';
 import { usePremium } from '@/context/PremiumContext';
+import { track } from '@/lib/analytics';
+import {
+  adsEnabled,
+  adsenseConfig,
+  loadAdsenseScript,
+  useAdConsent,
+  type AdZone,
+} from '@/lib/ads';
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-
-type AdZone = 'home-top' | 'home-inline' | 'match-stats';
+// ─── Configuración ────────────────────────────────────────────────────────────
 
 interface AdBannerProps {
   zone: AdZone;
   className?: string;
 }
 
+/** Monetización desactivada (placeholder) mientras la app sea gratis. */
+const MONETIZATION_ENABLED = process.env['NEXT_PUBLIC_PREMIUM_ENABLED'] === '1';
+
+/** Configuración AdSense leída una vez (env inyectado en build). */
+const ADS = adsenseConfig();
+
 // ─── Dimensiones por zona ─────────────────────────────────────────────────────
 
 const ZONE_CONFIG: Record<AdZone, {
+  /** Altura reservada — evita CLS al rellenarse el anuncio */
   height: string;
   label: string;
   /** Clases del contenedor interno del placeholder */
@@ -43,14 +58,29 @@ const ZONE_CONFIG: Record<AdZone, {
     label:  'PUBLICIDAD',
     inner:  'flex items-center justify-center gap-4',
   },
+  'list-inline': {
+    height: 'h-[100px]',
+    label:  'PUBLICIDAD',
+    inner:  'flex items-center justify-center gap-4',
+  },
+  'match-summary': {
+    height: 'h-[100px]',
+    label:  'PUBLICIDAD',
+    inner:  'flex items-center justify-center gap-4',
+  },
   'match-stats': {
     height: 'h-[100px]',
     label:  'PUBLICIDAD',
     inner:  'flex items-center justify-center gap-4',
   },
+  'interstitial': {
+    height: 'h-[250px]',
+    label:  'PUBLICIDAD',
+    inner:  'flex items-center justify-center gap-4',
+  },
 };
 
-// ─── Ilustración SVG inline (siempre estática, sin request externo) ───────────
+// ─── Ilustración SVG inline (placeholder; sin request externo) ────────────────
 
 function AdIllustration({ zone }: { zone: AdZone }) {
   const isSmall = zone === 'home-top';
@@ -93,22 +123,99 @@ function AdIllustration({ zone }: { zone: AdZone }) {
   );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+function AdLabel({ label }: { label: string }) {
+  return (
+    <span
+      className="absolute top-0.5 right-1.5 z-10
+                 text-[8px] font-semibold tracking-widest uppercase
+                 text-slate-300 dark:text-zinc-600
+                 select-none pointer-events-none"
+      aria-hidden="true"
+    >
+      {label}
+    </span>
+  );
+}
 
-/** Monetización apagada mientras la app sea gratis (mismo flag que Premium) */
-const MONETIZATION_ENABLED = process.env['NEXT_PUBLIC_PREMIUM_ENABLED'] === '1';
+// ─── Unidad AdSense real ──────────────────────────────────────────────────────
 
-export function AdBanner({ zone, className = '' }: AdBannerProps) {
-  const { isPremium, mounted } = usePremium();
+function AdsenseUnit({ zone, client, slot, className }: {
+  zone: AdZone;
+  client: string;
+  slot: string;
+  className?: string;
+}) {
+  const insRef = useRef<HTMLModElement>(null);
+  const pushed = useRef(false);
+  const impressed = useRef(false);
 
-  // App gratis: ni anuncios ni premium que vender — cero DOM
-  if (!MONETIZATION_ENABLED) return null;
+  // Un `push` por unidad, tras montar. El script puede no haber cargado aún:
+  // AdSense procesa el array cuando termina de cargar.
+  useEffect(() => {
+    loadAdsenseScript(client);
+    if (pushed.current) return;
+    pushed.current = true;
+    try {
+      const w = window as unknown as { adsbygoogle?: unknown[] };
+      (w.adsbygoogle = w.adsbygoogle || []).push({});
+    } catch { /* bloqueadores de anuncios o entorno sin window */ }
+  }, [client]);
 
-  // Durante SSR/hydratación y para usuarios Premium: sin DOM
-  if (!mounted || isPremium) return null;
+  // Impresión cuando la unidad se hace visible (una sola vez por montaje).
+  useEffect(() => {
+    const el = insRef.current;
+    if (!el || impressed.current) return;
+    const emit = () => {
+      if (impressed.current) return;
+      impressed.current = true;
+      track('ad_impression', { zone });
+    };
+    if (typeof IntersectionObserver === 'undefined') {
+      emit();
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        emit();
+        observer.disconnect();
+      }
+    }, { threshold: 0.5 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [zone]);
 
   const config = ZONE_CONFIG[zone];
 
+  return (
+    <div
+      role="complementary"
+      aria-label="Espacio publicitario"
+      // Best-effort: el iframe del anuncio no siempre propaga el click.
+      onClick={() => track('ad_click', { zone })}
+      className={`
+        relative w-full ${config.height}
+        overflow-hidden rounded-xl
+        ${className}
+      `}
+    >
+      <AdLabel label={config.label} />
+      <ins
+        ref={insRef}
+        className="adsbygoogle block w-full"
+        style={{ display: 'block' }}
+        data-ad-client={client}
+        data-ad-slot={slot}
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      />
+    </div>
+  );
+}
+
+// ─── Placeholder (sin red de anuncios configurada) ────────────────────────────
+
+function AdPlaceholder({ zone, className = '' }: AdBannerProps) {
+  const config = ZONE_CONFIG[zone];
   return (
     <div
       role="complementary"
@@ -120,23 +227,10 @@ export function AdBanner({ zone, className = '' }: AdBannerProps) {
         ${className}
       `}
     >
-      {/* Etiqueta de publicidad — cumplimiento normativo */}
-      <span
-        className="absolute top-0.5 right-1.5
-                   text-[8px] font-semibold tracking-widest uppercase
-                   text-slate-300 dark:text-zinc-600
-                   select-none pointer-events-none"
-        aria-hidden="true"
-      >
-        {config.label}
-      </span>
-
-      {/* Contenido del anuncio */}
+      <AdLabel label={config.label} />
       <div className={`w-full h-full ${config.inner}`}>
         <AdIllustration zone={zone} />
       </div>
-
-      {/* Shimmer sutil para que no parezca roto */}
       <div
         className="absolute inset-0 pointer-events-none
                    bg-gradient-to-r from-transparent via-white/5 to-transparent
@@ -145,4 +239,29 @@ export function AdBanner({ zone, className = '' }: AdBannerProps) {
       />
     </div>
   );
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+export function AdBanner({ zone, className = '' }: AdBannerProps) {
+  const { isPremium, mounted } = usePremium();
+  const consentGranted = useAdConsent();
+
+  const slot = ADS.slots[zone];
+
+  // Durante SSR/hidratación y para usuarios Premium: sin DOM.
+  if (!mounted || isPremium) return null;
+
+  // AdSense configurado: anuncio real solo con slot, consentimiento y sin premium.
+  if (ADS.client) {
+    if (slot && adsEnabled({ client: ADS.client, premium: isPremium, consentGranted })) {
+      return <AdsenseUnit zone={zone} client={ADS.client} slot={slot} className={className} />;
+    }
+    return null;
+  }
+
+  // Sin AdSense: mantener el placeholder actual mientras la app sea gratis.
+  if (MONETIZATION_ENABLED) return <AdPlaceholder zone={zone} className={className} />;
+
+  return null;
 }

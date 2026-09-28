@@ -9,6 +9,7 @@ import { MatchHeader } from './MatchHeader';
 import { TimelineTab } from './TimelineTab';
 import { LineupsTab } from './LineupsTab';
 import { StatsTab } from './StatsTab';
+import { AdBanner } from '@/components/shared/AdBanner';
 import { recordRecentMatch } from '@/lib/recents';
 import {
   freshnessState,
@@ -466,7 +467,13 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
       </div>
 
       {/* Contenido */}
-      {safeActiveTab === 'Resumen'      && <TimelineTab   data={data} />}
+      {safeActiveTab === 'Resumen' && (
+        <>
+          <TimelineTab data={data} />
+          {/* Anuncio al FINAL del resumen (no en medio del marcador/timeline) */}
+          <AdBanner zone="match-summary" className="mt-4" />
+        </>
+      )}
       {safeActiveTab === 'Alineaciones' && <LineupsTab    data={data} />}
       {safeActiveTab === 'Estadísticas' && <StatsTab      data={data} />}
     </div>

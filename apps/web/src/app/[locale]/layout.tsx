@@ -10,6 +10,8 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { SkipToContent } from '@/components/layout/SkipToContent';
 import { PremiumProvider } from '@/context/PremiumContext';
 import { AnalyticsPageview } from '@/lib/analytics';
+import { AdsenseScript } from '@/components/shared/AdsenseScript';
+import { AdInterstitial } from '@/components/shared/AdInterstitial';
 import { ConsentBanner } from '@/components/shared/ConsentBanner';
 import { LocaleHint } from '@/components/layout/LocaleHint';
 import { SUPPORTED_LOCALES, isSupportedLocale, type Locale } from '@/lib/locales';
@@ -150,6 +152,12 @@ export default async function RootLayout({ children, params }: Props) {
 
           {/* Pageviews de PostHog (no-op en desarrollo y sin consentimiento) */}
           <AnalyticsPageview />
+
+          {/* AdSense: script solo si está configurado, consentido y sin Premium */}
+          <AdsenseScript />
+
+          {/* Intersticial no agresivo (desactivado por defecto, 1/sesión) */}
+          <AdInterstitial />
 
           {/* Consentimiento de analítica — PostHog no se carga hasta aceptar */}
           <ConsentBanner />

@@ -416,5 +416,9 @@
     "accept": "Accept",
     "reject": "Reject",
     "privacy": "Privacy policy"
+  },
+  "ads": {
+    "interstitial_title": "Advertisement",
+    "close": "Close"
   }
 }

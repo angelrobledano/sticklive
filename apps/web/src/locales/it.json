@@ -396,5 +396,9 @@
     "key_events": {
       "desc": "Inizio partita, gol, cartellini blu, falli diretti e risultato finale."
     }
+  },
+  "ads": {
+    "interstitial_title": "Pubblicità",
+    "close": "Chiudi"
   }
 }
