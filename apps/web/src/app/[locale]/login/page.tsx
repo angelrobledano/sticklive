@@ -8,6 +8,7 @@ import { useT } from '@/lib/i18n';
 import { BackLink } from '@/components/shared/BackLink';
 import { track } from '@/lib/analytics';
 import { tt } from '@/components/search/translate';
+import { loginErrorKey, LoginRequestError } from './errors';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
@@ -17,29 +18,6 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 const attemptedTokens = new Set<string>();
 
 type Status = 'idle' | 'sending' | 'sent' | 'verifying' | 'welcome' | 'error';
-
-/**
- * #362: el API devuelve un `error` (código) y, a veces, un `message` en su
- * idioma. Nunca mostramos el texto crudo: mapeamos el código a una clave i18n
- * segura y estable. Un código ausente o desconocido cae en un genérico.
- */
-export function loginErrorKey(code: string | null | undefined): string {
-  switch (code) {
-    case 'invalid_email':        return 'auth.error_invalid_email';
-    case 'email_not_configured': return 'auth.error_email_unavailable';
-    case 'expired':              return 'auth.expired';
-    case 'account_disabled':     return 'auth.account_disabled';
-    default:                     return 'auth.error_generic';
-  }
-}
-
-/** Error de login ya normalizado a una clave i18n (nunca texto del API). */
-export class LoginRequestError extends Error {
-  constructor(readonly key: string) {
-    super(key);
-    this.name = 'LoginRequestError';
-  }
-}
 
 /**
  * Respaldo en español para las claves nuevas; el resto ya viven en los locales.

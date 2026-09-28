@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { loginErrorKey } from './page';
+import { loginErrorKey } from './errors';
 
 /**
  * #362: los mensajes del API de login NO se muestran crudos. `loginErrorKey`
