@@ -7,7 +7,10 @@
  * añade un margen uniforme y se reduce a un tamaño común.
  *
  * Es idempotente: un PNG ya normalizado (sin alfa y de LOGO_SIZE×LOGO_SIZE) no
- * se vuelve a tocar.
+ * se vuelve a tocar. En el buffer esto exige un guard explícito al principio,
+ * porque sobre escudos reales con bordes anti-aliased una segunda pasada de
+ * `trim()` puede encontrar un bounding box ligeramente mayor y "crecer" el
+ * contenido.
  */
 import sharp from 'sharp';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -25,11 +28,24 @@ const INNER_SIZE = LOGO_SIZE - 2 * PAD;
 /**
  * Normaliza un PNG en memoria y devuelve el PNG normalizado (512×512, opaco).
  *
+ * Si la entrada ya está normalizada (sin alfa y de LOGO_SIZE×LOGO_SIZE) se
+ * devuelve tal cual, lo que hace la operación idempotente a nivel de buffer.
+ *
  * Orden importante: `trim()` va ANTES de `flatten()` porque necesita el canal
  * alfa para saber qué es fondo; `removeAlpha()` va después para que la salida
- * sea realmente opaca (y la detección de idempotencia funcione).
+ * sea realmente opaca (y la detección de idempotencia funcione). `trim()`
+ * requiere imágenes de al menos 3×3 px (limitación de libvips); los escudos
+ * reales siempre lo cumplen.
  */
 export async function normalizeLogoBuffer(input: Buffer): Promise<Buffer> {
+  // Ya normalizado (512×512 sin alfa): devolverlo tal cual. Sin esto, una
+  // segunda pasada sobre un escudo real con bordes anti-aliased puede recortar
+  // un bounding box ligeramente mayor y "crecer" el contenido.
+  const meta = await sharp(input).metadata();
+  if (!meta.hasAlpha && meta.width === LOGO_SIZE && meta.height === LOGO_SIZE) {
+    return input;
+  }
+
   const { data, info } = await sharp(input)
     .trim()
     .flatten({ background: LOGO_BACKGROUND })
@@ -64,6 +80,9 @@ export async function normalizeLogoBuffer(input: Buffer): Promise<Buffer> {
  */
 export async function normalizeLogoFile(filePath: string): Promise<'normalized' | 'skipped'> {
   const meta = await sharp(filePath).metadata();
+  // Suposición: un PNG opaco que ya sea 512×512 se considera normalizado aunque
+  // quizá no haya recibido el margen uniforme (tradeoff aceptado; hoy no hay
+  // casos de escudos opacos ya a 512×512 en origen).
   if (!meta.hasAlpha && meta.width === LOGO_SIZE && meta.height === LOGO_SIZE) {
     return 'skipped';
   }

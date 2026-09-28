@@ -72,6 +72,13 @@ describe('normalizeLogoBuffer', () => {
     const twice = await normalizeLogoBuffer(once);
     expect(Buffer.compare(once, twice)).toBe(0);
   });
+
+  it('es idempotente también con bordes suavizados (anti-aliasing)', async () => {
+    const soft = await sharp(await fixture()).blur(2).png().toBuffer();
+    const once = await normalizeLogoBuffer(soft);
+    const twice = await normalizeLogoBuffer(once);
+    expect(Buffer.compare(once, twice)).toBe(0);
+  });
 });
 
 describe('normalizeLogoFile', () => {
@@ -93,5 +100,21 @@ describe('normalizeLogoFile', () => {
     expect(meta.hasAlpha).toBe(false);
 
     expect(await normalizeLogoFile(file)).toBe('skipped');
+  });
+
+  it('procesa un fichero opaco que no es 512×512', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'logo-'));
+    dirs.push(dir);
+    const file = join(dir, 'opaque.png');
+    const opaque = await sharp({
+      create: { width: 300, height: 100, channels: 3, background: '#3366cc' },
+    }).png().toBuffer();
+    writeFileSync(file, opaque);
+
+    expect(await normalizeLogoFile(file)).toBe('normalized');
+    const meta = await sharp(readFileSync(file)).metadata();
+    expect(meta.width).toBe(LOGO_SIZE);
+    expect(meta.height).toBe(LOGO_SIZE);
+    expect(meta.hasAlpha).toBe(false);
   });
 });
