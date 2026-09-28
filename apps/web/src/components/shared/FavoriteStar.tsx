@@ -113,7 +113,7 @@ export function FavoriteStar({ id, kind, name, className = '', variant = 'icon' 
     <>
       <button
         onClick={handleClick}
-        aria-label={active ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+        aria-label={active ? t('a11y.remove_favorite') : t('a11y.add_favorite')}
         aria-pressed={active}
         className={`inline-flex items-center justify-center w-11 h-11 -m-2 rounded-full
                     transition-transform active:scale-90 ${className}`}
