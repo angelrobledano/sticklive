@@ -49,14 +49,21 @@ export default async function Image(props: { params: Promise<{ locale: string; i
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '56px' }}>
           {loaded && hasLogo ? (
-            // eslint-disable-next-line @next/next/no-img-element -- next/og (satori) requiere <img>, no next/image
-            <img
-              src={`${API}/teams/${teamId}/logo`}
-              width={260}
-              height={260}
-              style={{ width: 260, height: 260, objectFit: 'contain' }}
-              alt=""
-            />
+            // El escudo normalizado trae fondo blanco: lo recortamos en círculo
+            // para que se vea como un badge sobre el fondo oscuro de la tarjeta.
+            <div style={{
+              display: 'flex', width: '260px', height: '260px',
+              borderRadius: '9999px', overflow: 'hidden', background: '#ffffff',
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- next/og (satori) requiere <img>, no next/image */}
+              <img
+                src={`${API}/teams/${teamId}/logo`}
+                width={260}
+                height={260}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                alt=""
+              />
+            </div>
           ) : null}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: '780px' }}>
             <div style={{ fontSize: '76px', fontWeight: 800, lineHeight: 1.05 }}>{name}</div>
