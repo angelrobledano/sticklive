@@ -123,7 +123,9 @@
     "show_less": "Show less",
     "grada_title": "My stand",
     "grada_upcoming": "Upcoming matches",
-    "grada_results": "Latest results"
+    "grada_results": "Latest results",
+    "load_error_title": "We couldn't load your favorites",
+    "load_error_body": "There was a connection problem. You haven't lost your favorites: try again."
   },
   "auth": {
     "login_title": "Your account, no passwords",
@@ -429,5 +431,19 @@
   "ads": {
     "interstitial_title": "Advertisement",
     "close": "Close"
+  },
+  "errors": {
+    "retry": "Retry",
+    "load_body": "There was a connection problem. Try again in a few seconds.",
+    "matches_load_title": "We couldn't load the matches",
+    "competitions_load_title": "We couldn't load the competitions",
+    "not_found_title": "Page not found",
+    "not_found_body": "We couldn't find this page. The link may be broken or no longer exist.",
+    "not_found_home": "Back to home",
+    "not_found_competitions": "View competitions"
+  },
+  "offline": {
+    "banner": "Offline — showing saved data",
+    "retry": "Retry"
   }
 }

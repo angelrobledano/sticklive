@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useFavorites, getFavNames } from '@/hooks/useFavorites';
 import { useT } from '@/lib/i18n';
+import { tt } from '@/components/search/translate';
 import { usePremium } from '@/context/PremiumContext';
 import { clubName } from '@/lib/names';
 import { InstallApp } from '@/components/shared/InstallApp';
@@ -38,6 +39,10 @@ function NavRow({ label, href, count }: { label: string; href: string; count?: n
   );
 }
 
+// ─── Estado de "Mis equipos" ──────────────────────────────────────────────────
+
+import { myTeamsState } from './state';
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -64,16 +69,68 @@ export default function SettingsPage() {
   // Lista de equipos de la OK Liga
   const [teams, setTeams]           = useState<TeamInfo[]>([]);
   const [loadingTeams, setLoadingTeams] = useState(true);
+  // #344: un fallo de API no es una lista vacía.
+  const [loadError, setLoadError]   = useState(false);
   // Competiciones (para resolver nombres de las ligas seguidas)
   const [comps, setComps] = useState<Array<{ id: string; name: string; shortName: string | null }>>([]);
 
-  useEffect(() => {
-    fetch(`${API_URL}/competitions`)
-      .then((r) => r.json())
-      .then((d: { competitions?: Array<{ id: string; name: string; shortName: string | null }> }) =>
-        setComps(d.competitions ?? []))
-      .catch(() => { /* sin ligas */ });
+  // #344: una sola carga de /competitions + standings de la temporada actual.
+  // Antes eran dos fetches de /competitions con `catch {}` que convertían
+  // cualquier fallo en listas vacías. Ahora el fallo es explícito (`loadError`)
+  // y reintentable.
+  const loadSettingsData = useCallback(async () => {
+    setLoadingTeams(true);
+    setLoadError(false);
+    try {
+      const compsRes = await fetch(`${API_URL}/competitions`);
+      if (!compsRes.ok) throw new Error(`API ${compsRes.status}`);
+      const compsData = await compsRes.json() as {
+        competitions?: Array<{
+          id: string; name: string; shortName: string | null;
+          season?: { id: string; isCurrent?: boolean; teamCount?: number } | null;
+        }>;
+      };
+      const list = compsData.competitions ?? [];
+      setComps(list.map((c) => ({ id: c.id, name: c.name, shortName: c.shortName })));
+
+      // Temporada ACTUAL real desde /competitions (fuente de verdad); el env solo
+      // como último recurso. Evita depender de un id horneado en build que puede
+      // estar vacío u obsoleto tras un reseed.
+      const withSeason = list.filter((c) => c.season?.id);
+      const current = withSeason.filter((c) => c.season?.isCurrent);
+      const pool = current.length ? current : withSeason;
+      pool.sort((a, b) => (b.season?.teamCount ?? 0) - (a.season?.teamCount ?? 0));
+      const seasonId = pool[0]?.season?.id || SEASON_ID;
+      if (!seasonId) return;
+
+      // Un 404 de standings (temporada sin clasificación) se trata como lista
+      // vacía; un fallo de red sí propaga al catch y se muestra como error.
+      const standingsRes = await fetch(`${API_URL}/seasons/${seasonId}/standings`);
+      const data = (standingsRes.ok ? await standingsRes.json() : null) as {
+        standings?: Array<{
+          team_id?: string; teamId?: string;
+          team_name?: string; teamName?: string;
+          team_short_name?: string; teamShortName?: string;
+          team_logo_url?: string; teamLogoUrl?: string;
+        }>;
+      } | null;
+      const listTeams: TeamInfo[] = (data?.standings ?? []).map((s) => ({
+        id:        s.team_id    ?? s.teamId    ?? '',
+        name:      s.team_name  ?? s.teamName  ?? '',
+        shortName: s.team_short_name ?? s.teamShortName ?? null,
+        logoUrl:   s.team_logo_url   ?? s.teamLogoUrl   ?? null,
+      }));
+      setTeams(listTeams);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoadingTeams(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadSettingsData();
+  }, [loadSettingsData]);
 
   const myTeams   = teams.filter((tm) => isFavorite(tm.id));
   const myLeagues = comps.filter((cp) => leagues.includes(cp.id));
@@ -81,40 +138,7 @@ export default function SettingsPage() {
   const favNames  = typeof window !== 'undefined' ? getFavNames() : {};
   const myPlayers = players.map((id) => ({ id, name: favNames[id] ?? '—' }));
 
-  useEffect(() => {
-    const loadTeams = async () => {
-      // Temporada ACTUAL real desde /competitions (fuente de verdad); el env solo
-      // como último recurso. Evita depender de un id horneado en build que puede
-      // estar vacío u obsoleto tras un reseed.
-      const compsData = await fetch(`${API_URL}/competitions`).then((r) => r.json()).catch(() => null);
-      const list = (compsData?.competitions ?? []) as Array<{ season?: { id: string; isCurrent?: boolean; teamCount?: number } | null }>;
-      const withSeason = list.filter((c) => c.season?.id);
-      const current = withSeason.filter((c) => c.season?.isCurrent);
-      const pool = current.length ? current : withSeason;
-      pool.sort((a, b) => (b.season?.teamCount ?? 0) - (a.season?.teamCount ?? 0));
-      const seasonId = pool[0]?.season?.id || SEASON_ID;
-      if (!seasonId) { setLoadingTeams(false); return; }
-      try {
-        const data = await fetch(`${API_URL}/seasons/${seasonId}/standings`).then((r) => r.json()) as {
-          standings: Array<{
-            team_id?: string; teamId?: string;
-            team_name?: string; teamName?: string;
-            team_short_name?: string; teamShortName?: string;
-            team_logo_url?: string; teamLogoUrl?: string;
-          }>;
-        };
-        const list: TeamInfo[] = (data.standings ?? []).map((s) => ({
-          id:        s.team_id    ?? s.teamId    ?? '',
-          name:      s.team_name  ?? s.teamName  ?? '',
-          shortName: s.team_short_name ?? s.teamShortName ?? null,
-          logoUrl:   s.team_logo_url   ?? s.teamLogoUrl   ?? null,
-        }));
-        setTeams(list);
-      } catch { /* sin equipos */ }
-      finally { setLoadingTeams(false); }
-    };
-    void loadTeams();
-  }, []);
+  const teamsState = myTeamsState({ loading: loadingTeams, hasError: loadError, count: myTeams.length });
 
   const allMounted = themeMounted && favMounted && notifMounted && premiumMounted;
 
@@ -198,9 +222,24 @@ export default function SettingsPage() {
           </svg>
         }
       >
-        {loadingTeams ? (
+        {teamsState === 'loading' ? (
           <div className="py-6 flex justify-center" aria-busy="true">
             <div className="w-5 h-5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" aria-hidden="true" />
+          </div>
+        ) : teamsState === 'error' ? (
+          <div className="py-4 flex flex-col gap-2">
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+              {tt(t, 'settings.teams_load_error', 'No se han podido cargar los equipos')}
+            </p>
+            <button
+              onClick={() => void loadSettingsData()}
+              className="self-start inline-flex items-center justify-center gap-1.5 px-4 min-h-[44px] rounded-xl
+                         text-[13px] font-semibold bg-rink-passion text-white
+                         hover:bg-rink-passion/90 transition-colors
+                         focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+            >
+              {tt(t, 'errors.retry', 'Reintentar')}
+            </button>
           </div>
         ) : myTeams.length === 0 ? (
           <div className="py-4">

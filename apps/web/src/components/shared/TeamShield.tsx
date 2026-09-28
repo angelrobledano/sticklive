@@ -4,6 +4,12 @@ import { useState } from 'react';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
+/**
+ * Anchos que sabe servir la API (`?w=`, #335). Deben ser presets soportados por
+ * `apps/api/src/lib/image.ts`; si no, la API redondea al preset mayor.
+ */
+const LOGO_WIDTHS = [32, 64, 96, 144, 192, 256] as const;
+
 interface TeamShieldProps {
   /** UUID del equipo — define el escudo vía la API (/teams/:id/logo) */
   teamId: string;
@@ -34,6 +40,10 @@ type ImgState = 'team' | 'default' | 'initials';
  *
  * Se usa <img> (no next/image) a propósito: la URL es dinámica y NO queremos que
  * el optimizador de Next cachee un 404 de un escudo que aún no existía.
+ *
+ * #335 (perf P0): el escudo original pesa hasta 2,4 MB y aquí se pinta a 20–80
+ * px. El `srcSet`+`sizes` hace que el navegador pida a la API sólo el ancho
+ * necesario (con 2× para pantallas retina), y la API lo sirve redimensionado.
  */
 export function TeamShield({
   teamId,
@@ -70,9 +80,14 @@ export function TeamShield({
     );
   }
 
-  const src = imgState === 'team'
-    ? `${API_URL}/teams/${teamId}/logo`
+  const isTeam = imgState === 'team';
+  const src = isTeam
+    ? `${API_URL}/teams/${teamId}/logo?w=96`
     : '/escudos/default-team.png';
+  // 2× para retina; la API redondea al preset soportado más cercano por arriba.
+  const srcSet = isTeam
+    ? LOGO_WIDTHS.map((w) => `${API_URL}/teams/${teamId}/logo?w=${w} ${w}w`).join(', ')
+    : undefined;
 
   // Sin padding: el margen uniforme ya viene horneado en el escudo normalizado.
   // Badge blanco en AMBOS temas (bg-white sin dark:): el escudo normalizado ya
@@ -83,6 +98,8 @@ export function TeamShield({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
+        srcSet={srcSet}
+        sizes={`${size}px`}
         alt={alt ?? ''}
         width={size}
         height={size}

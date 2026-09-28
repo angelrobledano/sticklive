@@ -2,6 +2,8 @@
 
 import { useMemo, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import * as Sentry from '@sentry/nextjs';
 import type { CompetitionSummary } from '@/lib/api/client';
 import { useT } from '@/lib/i18n';
 import { track, searchEventProps } from '@/lib/analytics';
@@ -391,6 +393,14 @@ export function CompetitionsList({
 }) {
   const { t, locale } = useT();
 
+  const router = useRouter();
+
+  // #347: el detalle técnico del fallo (p. ej. "API 500 - /competitions: ...")
+  // va a observabilidad, nunca al DOM.
+  useEffect(() => {
+    if (error) Sentry.captureMessage(error, 'error');
+  }, [error]);
+
   const [tab, setTab]     = useState<Tab>('todas');
   const [query, setQuery] = useState('');
 
@@ -492,8 +502,30 @@ export function CompetitionsList({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-8 text-center gap-3">
-        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('standings.no_data')}</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{error}</p>
+        <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20
+                        flex items-center justify-center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
+               className="w-6 h-6 text-rink-passion" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 8v4M12 16h.01" strokeLinecap="round" />
+          </svg>
+        </div>
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+          {tt(t, 'errors.competitions_load_title', 'No hemos podido cargar las competiciones')}
+        </p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          {tt(t, 'errors.load_body', 'Ha habido un problema de conexión. Inténtalo de nuevo en unos segundos.')}
+        </p>
+        <button
+          onClick={() => router.refresh()}
+          className="mt-1 inline-flex items-center gap-2
+                     bg-rink-passion hover:bg-red-700 active:bg-red-900
+                     text-white font-semibold text-sm
+                     px-5 py-2.5 rounded-xl transition-colors
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+        >
+          {tt(t, 'errors.retry', 'Reintentar')}
+        </button>
       </div>
     );
   }

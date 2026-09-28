@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { localeAlternates, socialMeta, isSupportedLocale } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale, competitionJsonLd, SITE_URL } from '@/lib/seo';
 import {
   getSeasonOverview,
   getCompetitionSeasons,
@@ -11,6 +11,7 @@ import {
 } from '@/lib/api/client';
 import { CompetitionClient } from '@/components/competition/CompetitionClient';
 import { BackLink } from '@/components/shared/BackLink';
+import { JsonLd } from '@/components/shared/JsonLd';
 
 interface Props {
   params: Promise<{ locale: string; id: string }>;
@@ -101,8 +102,21 @@ export default async function CompetitionPage(props: Props) {
     throw err; // error boundary con reintento
   }
 
+  // #349: structured data de la competición (liga) y su temporada.
+  const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
+  const competitionLd = competitionJsonLd({
+    leagueName: data.season.competitionName,
+    leagueUrl: `${SITE_URL}/${locale}/competitions/${params.id}`,
+    seasonName: data.season.name,
+    startDate: data.season.startDate,
+    endDate: data.season.endDate,
+    country: data.season.competitionCountry,
+  });
+
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
+      <JsonLd data={competitionLd} />
+
       <BackLink href="/competitions" />
 
       <CompetitionClient data={data} seasons={seasons} competitionId={params.id} stats={stats} />

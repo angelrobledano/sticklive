@@ -67,3 +67,70 @@ export async function promptInstall(): Promise<'accepted' | 'dismissed' | 'unava
   deferred = null;
   return outcome;
 }
+
+/**
+ * #343 — Política de caché del Service Worker (offline/PWA).
+ *
+ * `public/sw.js` es un script clásico que NO puede importar TS: replica estas
+ * reglas en vanilla JS. Esta es la fuente de verdad, con tests, para que la
+ * decisión "qué se cachea y qué no" no viva solo dentro del SW.
+ *
+ * Estrategias:
+ * - `navigation`: navegación HTML. network-first → caché de páginas → offline.
+ * - `immutable`:  `/_next/static/**` (nombres con hash de contenido). cache-first.
+ * - `static`:     resto de estáticos same-origin. network-first con fallback.
+ * - `no-store`:   no se intercepta ni cachea (API/SSE, observabilidad, RSC, no-GET,
+ *                 terceros como AdSense/PostHog/Sentry).
+ */
+export type PwaStrategy = 'no-store' | 'navigation' | 'immutable' | 'static';
+
+export interface PwaRequestInfo {
+  url: string;
+  method: string;
+  /** `Request.mode` (p. ej. 'navigate', 'cors', 'no-cors', 'same-origin'). */
+  mode: string;
+  /** ¿La petición es del mismo origen que la app? */
+  sameOrigin: boolean;
+  /** Cabecera `Accept` (para descartar streaming SSE). */
+  accept?: string;
+}
+
+/** Rutas same-origin que JAMÁS se cachean: datos volátiles, sensibles u observabilidad. */
+export function isVolatilePath(pathname: string): boolean {
+  return (
+    pathname === '/api' || pathname.startsWith('/api/') ||
+    pathname === '/monitoring' || pathname.startsWith('/monitoring/')
+  );
+}
+
+/** Navegaciones con datos de usuario que no guardamos en la caché de páginas. */
+const PRIVATE_PAGE_RE = /(?:^|\/)(settings|login|premium)(?:\/|$)/;
+
+/** ¿Es una navegación cacheable? (fuera de rutas privadas y volátiles). */
+export function isCacheablePagePath(pathname: string): boolean {
+  if (isVolatilePath(pathname)) return false;
+  return !PRIVATE_PAGE_RE.test(pathname);
+}
+
+/** Pathname de una URL absoluta o relativa, sin lanzar. */
+function pathnameOf(url: string): string {
+  try {
+    return new URL(url, 'https://sticklive.local').pathname;
+  } catch {
+    return url;
+  }
+}
+
+/** Estrategia de caché para una petición concreta. */
+export function pwaCacheStrategy(info: PwaRequestInfo): PwaStrategy {
+  if (info.method !== 'GET') return 'no-store';
+  if (!info.sameOrigin) return 'no-store';
+  if (isVolatilePath(pathnameOf(info.url))) return 'no-store';
+  // SSE (EventSource) debe llegar directo al servidor, nunca pasar por caché.
+  if ((info.accept ?? '').includes('text/event-stream')) return 'no-store';
+  // Payload RSC de Next (?_rsc=): datos de navegación, no un documento cacheable.
+  if (info.url.includes('_rsc=')) return 'no-store';
+  if (info.mode === 'navigate') return 'navigation';
+  if (pathnameOf(info.url).startsWith('/_next/static/')) return 'immutable';
+  return 'static';
+}

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f8fafc" />
+  <title>Sin conexión — Stick Live</title>
+  <!-- Página 100% autocontenida: sin CSS/JS/fuentes externas, se sirve desde
+       la caché del Service Worker cuando falla una navegación offline (#343). -->
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    .card {
+      width: 100%;
+      max-width: 380px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 28px 24px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+    .icon {
+      width: 56px; height: 56px; margin: 0 auto 16px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: #e2e8f0;
+    }
+    h1 { font-size: 18px; margin: 0 0 8px; }
+    p { font-size: 14px; line-height: 1.5; color: #475569; margin: 0 0 20px; }
+    .actions { display: flex; flex-direction: column; gap: 10px; }
+    button, a {
+      display: inline-block;
+      width: 100%;
+      padding: 11px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      text-align: center;
+      cursor: pointer;
+      border: 0;
+    }
+    .primary { background: #e11d48; color: #ffffff; }
+    .secondary { background: transparent; color: #475569; border: 1px solid #cbd5e1; }
+    button:focus-visible, a:focus-visible { outline: 2px solid #e11d48; outline-offset: 2px; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #020617; color: #f8fafc; }
+      .card { background: #0f172a; border-color: #1e293b; box-shadow: none; }
+      .icon { background: #1e293b; }
+      p { color: #94a3b8; }
+      .secondary { color: #cbd5e1; border-color: #334155; }
+    }
+  </style>
+</head>
+<body>
+  <main class="card" role="main">
+    <div class="icon" aria-hidden="true">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+        <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+        <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+        <line x1="12" y1="20" x2="12.01" y2="20" />
+      </svg>
+    </div>
+    <h1>Estás sin conexión</h1>
+    <p>
+      Stick Live no puede cargar datos nuevos ahora mismo. Comprueba tu conexión
+      e inténtalo de nuevo. Los resultados en directo volverán en cuanto haya red.
+    </p>
+    <div class="actions">
+      <button class="primary" onclick="window.location.reload()">Reintentar</button>
+      <a class="secondary" href="/">Ir al inicio</a>
+    </div>
+  </main>
+</body>
+</html>

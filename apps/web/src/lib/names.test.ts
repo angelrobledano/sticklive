@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { competitionName } from './names';
+import { competitionName, teamTitleName } from './names';
 
 describe('competitionName', () => {
   it('elige el idioma activo cuando existe', () => {
@@ -23,5 +23,29 @@ describe('competitionName', () => {
   it('un objeto sin es ni el locale pedido cae al name', () => {
     // Caso defensivo: jsonb con una clave inesperada.
     expect(competitionName('OK Liga', { pt: 'Liga OK' }, 'en')).toBe('OK Liga');
+  });
+});
+
+// #338: el title/meta de un partido debe usar el nombre COMPLETO normalizado,
+// no el shortName (que `clubName()` degrada: "CPAH" → "Cpah").
+describe('teamTitleName (#338)', () => {
+  it('prefiere el nombre completo normalizado sobre el shortName', () => {
+    expect(teamTitleName('CLUB PATIN ALCALA HOCKEY', 'CPAH')).toBe('Club Patin Alcala Hockey');
+    expect(teamTitleName('DP BERENGUELA AXILTEC', 'DPBA')).toBe('DP Berenguela Axiltec');
+  });
+
+  it('conserva siglas reales (≤3 letras) del nombre completo', () => {
+    expect(teamTitleName('IGUALADA RIGAT HC', null)).toBe('Igualada Rigat HC');
+  });
+
+  it('cae al shortName CRUDO (sin Title-Case) si no hay nombre completo', () => {
+    expect(teamTitleName(null, 'CPAH')).toBe('CPAH');
+    expect(teamTitleName('', 'GAT')).toBe('GAT');
+    expect(teamTitleName(undefined, 'LUB')).toBe('LUB');
+  });
+
+  it('devuelve cadena vacía si no hay nada', () => {
+    expect(teamTitleName(null, null)).toBe('');
+    expect(teamTitleName(undefined, undefined)).toBe('');
   });
 });

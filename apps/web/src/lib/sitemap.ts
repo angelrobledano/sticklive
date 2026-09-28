@@ -10,11 +10,29 @@
  * Lógica pura para poder testearla sin Next ni red.
  */
 
+/** Fecha de una entidad en el sitemap (ISO string o Date ya parseado). */
+export type SitemapDate = string | Date | null | undefined;
+
+/**
+ * Entidad del sitemap con sus fechas de DATOS (#337). La API puede devolver
+ * solo el `id` (compatibilidad) o el objeto con las fechas disponibles:
+ * `updatedAt` (última escritura), `finishedAt`/`scheduledAt` (partidos).
+ */
+export interface SitemapItem {
+  id: string;
+  updatedAt?: SitemapDate;
+  finishedAt?: SitemapDate;
+  scheduledAt?: SitemapDate;
+}
+
+/** Id suelto (forma antigua) o entidad con fechas. */
+export type SitemapId = string | SitemapItem;
+
 export interface SitemapIds {
-  competitions: string[];
-  teams: string[];
-  players: string[];
-  matches: string[];
+  competitions: SitemapId[];
+  teams: SitemapId[];
+  players: SitemapId[];
+  matches: SitemapId[];
 }
 
 /** Entradas por sección. ×5 locales = 40.000 < 50.000 (límite de Google). */
@@ -27,6 +45,33 @@ export interface SitemapEntry {
   path: string;
   priority: number;
   changeFrequency: SitemapChangeFrequency;
+  /**
+   * `lastmod` derivado de los datos (#337). `undefined` en `core` o cuando la
+   * entidad no trae fecha: mejor omitirlo que emitir una fecha de generación
+   * idéntica para todas las URLs.
+   */
+  lastModified?: Date;
+}
+
+/** Id de una entidad, sea string (forma antigua) u objeto con fechas. */
+export function sitemapItemId(item: SitemapId): string {
+  return typeof item === 'string' ? item : item.id;
+}
+
+/**
+ * `lastmod` de una entidad a partir de sus DATOS (#337), nunca de `new Date()`:
+ * se prefiere `updatedAt` (última modificación real del registro) y, si no
+ * llega, se cae a `finishedAt` → `scheduledAt` (partidos). Devuelve `null` si
+ * no hay ninguna fecha válida; el llamante debe omitir entonces el lastmod.
+ */
+export function sitemapLastModified(item: SitemapId): Date | null {
+  if (typeof item === 'string') return null;
+  for (const value of [item.updatedAt, item.finishedAt, item.scheduledAt]) {
+    if (!value) continue;
+    const date = value instanceof Date ? value : new Date(value);
+    if (!Number.isNaN(date.getTime())) return date;
+  }
+  return null;
 }
 
 const ENTITY_META: Record<string, { prefix: string; priority: number; changeFrequency: SitemapChangeFrequency }> = {
@@ -66,5 +111,14 @@ export function sitemapEntries(section: string, ids: SitemapIds): SitemapEntry[]
   const chunk = Number(section.slice(dash + 1)) || 0;
   const list = ids[name as keyof SitemapIds] ?? [];
   const slice = list.slice(chunk * SITEMAP_SECTION_SIZE, (chunk + 1) * SITEMAP_SECTION_SIZE);
-  return slice.map((id) => ({ path: `${meta.prefix}/${id}`, priority: meta.priority, changeFrequency: meta.changeFrequency }));
+  return slice.map((item) => {
+    const entry: SitemapEntry = {
+      path: `${meta.prefix}/${sitemapItemId(item)}`,
+      priority: meta.priority,
+      changeFrequency: meta.changeFrequency,
+    };
+    const lastModified = sitemapLastModified(item);
+    if (lastModified) entry.lastModified = lastModified;
+    return entry;
+  });
 }

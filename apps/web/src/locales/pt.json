@@ -90,7 +90,9 @@
     "show_less": "Mostrar menos",
     "grada_title": "A minha bancada",
     "grada_upcoming": "Próximos jogos",
-    "grada_results": "Últimos resultados"
+    "grada_results": "Últimos resultados",
+    "load_error_title": "Não foi possível carregar os teus favoritos",
+    "load_error_body": "Houve um problema de ligação. Não perdeste os teus favoritos: tenta de novo."
   },
   "auth": {
     "login_title": "A tua conta, sem palavras-passe",
@@ -410,5 +412,19 @@
   "ads": {
     "interstitial_title": "Publicidade",
     "close": "Fechar"
+  },
+  "errors": {
+    "retry": "Tentar novamente",
+    "load_body": "Houve um problema de ligação. Tenta de novo em alguns segundos.",
+    "matches_load_title": "Não foi possível carregar os jogos",
+    "competitions_load_title": "Não foi possível carregar as competições",
+    "not_found_title": "Página não encontrada",
+    "not_found_body": "Não encontrámos esta página. O link pode estar quebrado ou já não existir.",
+    "not_found_home": "Voltar ao início",
+    "not_found_competitions": "Ver competições"
+  },
+  "offline": {
+    "banner": "Sem ligação — a mostrar dados guardados",
+    "retry": "Tentar novamente"
   }
 }

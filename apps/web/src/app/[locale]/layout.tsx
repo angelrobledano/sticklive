@@ -14,8 +14,9 @@ import { AdsenseScript } from '@/components/shared/AdsenseScript';
 import { AdInterstitial } from '@/components/shared/AdInterstitial';
 import { ConsentBanner } from '@/components/shared/ConsentBanner';
 import { LocaleHint } from '@/components/layout/LocaleHint';
+import { JsonLd } from '@/components/shared/JsonLd';
 import { SUPPORTED_LOCALES, isSupportedLocale, type Locale } from '@/lib/locales';
-import { localeAlternates, socialMeta, SITE_URL } from '@/lib/seo';
+import { localeAlternates, socialMeta, siteJsonLd, SITE_URL } from '@/lib/seo';
 import esDict from '@/locales/es.json';
 import enDict from '@/locales/en.json';
 import ptDict from '@/locales/pt.json';
@@ -120,6 +121,8 @@ export default async function RootLayout({ children, params }: Props) {
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('rink-theme');if(t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}` }} />
       </head>
       <body>
+        {/* #349: WebSite + Organization en todas las páginas (marca en la SERP) */}
+        <JsonLd data={siteJsonLd(locale)} />
         {/* PremiumProvider cubre todo el árbol — permite mutación instantánea
             de <AdBanner> en caliente al volver de /premium/success */}
         <PremiumProvider>

@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { getCompetitions } from '@/lib/api/client';
 import { CompetitionsList } from '@/components/competition/CompetitionsList';
-import { localeAlternates, socialMeta, isSupportedLocale } from '@/lib/seo';
+import { JsonLd } from '@/components/shared/JsonLd';
+import { localeAlternates, socialMeta, isSupportedLocale, competitionsListJsonLd, SITE_URL } from '@/lib/seo';
+import { competitionName } from '@/lib/names';
 
 const TITLES: Record<string, string> = {
   es: 'Competiciones · Stick Live',
@@ -43,7 +45,9 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
   };
 }
 
-export default async function CompetitionsPage() {
+export default async function CompetitionsPage(props: { params: Promise<{ locale: string }> }) {
+  const params = await props.params;
+  const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   let competitions: Awaited<ReturnType<typeof getCompetitions>> = [];
   let fetchError: string | null = null;
 
@@ -53,5 +57,16 @@ export default async function CompetitionsPage() {
     fetchError = err instanceof Error ? err.message : 'API error';
   }
 
-  return <CompetitionsList competitions={competitions} error={fetchError} />;
+  return (
+    <>
+      {/* #349: ItemList del listado (la lista no tenía structured data) */}
+      {competitions.length > 0 && (
+        <JsonLd data={competitionsListJsonLd(competitions.map((c) => ({
+          name: competitionName(c.name, c.nameI18n, locale),
+          url: `${SITE_URL}/${locale}/competitions/${c.id}`,
+        })))} />
+      )}
+      <CompetitionsList competitions={competitions} error={fetchError} />
+    </>
+  );
 }

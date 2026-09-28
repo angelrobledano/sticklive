@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   sitemapSectionIds,
   sitemapEntries,
+  sitemapLastModified,
+  sitemapItemId,
   SITEMAP_SECTION_SIZE,
   type SitemapIds,
 } from './sitemap';
@@ -50,5 +52,75 @@ describe('sitemapEntries', () => {
 
   it('una sección desconocida no emite nada', () => {
     expect(sitemapEntries('nope-0', ids())).toEqual([]);
+  });
+});
+
+// #337: el lastmod debe derivar de los DATOS de cada entidad, nunca de
+// `new Date()` (que daba el mismo timestamp a las 11.845 URLs).
+describe('sitemapLastModified (#337)', () => {
+  it('usa updatedAt cuando existe (última modificación real)', () => {
+    const d = sitemapLastModified({ id: 'm1', updatedAt: '2026-09-20T10:00:00.000Z' });
+    expect(d?.toISOString()).toBe('2026-09-20T10:00:00.000Z');
+  });
+
+  it('prefiere updatedAt sobre finishedAt/scheduledAt si coexisten', () => {
+    const d = sitemapLastModified({
+      id: 'm1',
+      updatedAt: '2026-09-21T00:00:00.000Z',
+      finishedAt: '2026-09-20T20:00:00.000Z',
+      scheduledAt: '2026-09-20T18:00:00.000Z',
+    });
+    expect(d?.toISOString()).toBe('2026-09-21T00:00:00.000Z');
+  });
+
+  it('cae a finishedAt y, sin este, a scheduledAt', () => {
+    expect(sitemapLastModified({ id: 'm1', finishedAt: '2026-09-20T20:00:00.000Z' })?.toISOString())
+      .toBe('2026-09-20T20:00:00.000Z');
+    expect(sitemapLastModified({ id: 'm1', scheduledAt: '2026-09-20T18:00:00.000Z' })?.toISOString())
+      .toBe('2026-09-20T18:00:00.000Z');
+  });
+
+  it('acepta Date y salta fechas inválidas hasta la siguiente válida', () => {
+    expect(sitemapLastModified({ id: 'x', updatedAt: new Date('2026-01-01T00:00:00.000Z') })?.toISOString())
+      .toBe('2026-01-01T00:00:00.000Z');
+    expect(sitemapLastModified({ id: 'x', updatedAt: 'no-es-fecha', scheduledAt: '2026-01-02T00:00:00.000Z' })?.toISOString())
+      .toBe('2026-01-02T00:00:00.000Z');
+  });
+
+  it('devuelve null cuando no hay ninguna fecha válida (se omite lastmod)', () => {
+    expect(sitemapLastModified({ id: 'x' })).toBeNull();
+    expect(sitemapLastModified({ id: 'x', updatedAt: null })).toBeNull();
+    expect(sitemapLastModified('x')).toBeNull();
+  });
+});
+
+describe('sitemapItemId (#337)', () => {
+  it('acepta ids en forma de string o de objeto', () => {
+    expect(sitemapItemId('t1')).toBe('t1');
+    expect(sitemapItemId({ id: 't2', updatedAt: '2026-01-01T00:00:00.000Z' })).toBe('t2');
+  });
+});
+
+describe('sitemapEntries con lastmod (#337)', () => {
+  it('adjunta lastModified a las entradas con datos', () => {
+    const entries = sitemapEntries('matches-0', ids({
+      matches: [{ id: 'm1', finishedAt: '2026-09-20T20:00:00.000Z' }],
+    }));
+    expect(entries).toEqual([{
+      path: '/matches/m1',
+      priority: 0.6,
+      changeFrequency: 'hourly',
+      lastModified: new Date('2026-09-20T20:00:00.000Z'),
+    }]);
+  });
+
+  it('no emite lastModified en core (sin datos de entidad)', () => {
+    expect(sitemapEntries('core', ids()).every((e) => !('lastModified' in e))).toBe(true);
+  });
+
+  it('sigue aceptando ids en forma de string sin lastModified (retrocompatible)', () => {
+    expect(sitemapEntries('teams-0', ids({ teams: ['t1'] }))).toEqual([
+      { path: '/teams/t1', priority: 0.7, changeFrequency: 'daily' },
+    ]);
   });
 });

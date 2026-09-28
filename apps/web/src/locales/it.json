@@ -90,7 +90,9 @@
     "show_less": "Mostra meno",
     "grada_title": "La mia tribuna",
     "grada_upcoming": "Prossime partite",
-    "grada_results": "Ultimi risultati"
+    "grada_results": "Ultimi risultati",
+    "load_error_title": "Non è stato possibile caricare i tuoi preferiti",
+    "load_error_body": "Si è verificato un problema di connessione. Non hai perso i tuoi preferiti: riprova."
   },
   "auth": {
     "login_title": "Il tuo account, senza password",
@@ -409,5 +411,19 @@
   "ads": {
     "interstitial_title": "Pubblicità",
     "close": "Chiudi"
+  },
+  "errors": {
+    "retry": "Riprova",
+    "load_body": "Si è verificato un problema di connessione. Riprova tra qualche secondo.",
+    "matches_load_title": "Non è stato possibile caricare le partite",
+    "competitions_load_title": "Non è stato possibile caricare le competizioni",
+    "not_found_title": "Pagina non trovata",
+    "not_found_body": "Non abbiamo trovato questa pagina. Il link potrebbe essere rotto o non esistere più.",
+    "not_found_home": "Torna alla home",
+    "not_found_competitions": "Vedi competizioni"
+  },
+  "offline": {
+    "banner": "Offline — dati salvati visualizzati",
+    "retry": "Riprova"
   }
 }

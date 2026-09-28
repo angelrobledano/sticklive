@@ -34,11 +34,13 @@ export async function generateSitemaps(): Promise<Array<{ id: string }>> {
 export default async function sitemap(props: { id: string | Promise<string> }): Promise<MetadataRoute.Sitemap> {
   const id = await props.id;
   const ids = await fetchIds();
-  const now = new Date();
-  return sitemapEntries(id, ids).flatMap(({ path, priority, changeFrequency }) =>
+  // #337: el lastmod sale de los datos de cada entidad (updatedAt/finishedAt/
+  // scheduledAt), no de `new Date()`. Si una entrada no trae fecha, se omite el
+  // lastModified en vez de firmar todas las URLs con el mismo timestamp falso.
+  return sitemapEntries(id, ids).flatMap(({ path, priority, changeFrequency, lastModified }) =>
     SUPPORTED_LOCALES.map((locale) => ({
       url: `${SITE_URL}/${locale}${path}`,
-      lastModified: now,
+      ...(lastModified ? { lastModified } : {}),
       changeFrequency,
       priority,
       alternates: {

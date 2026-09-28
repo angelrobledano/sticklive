@@ -90,7 +90,9 @@
     "show_less": "Afficher moins",
     "grada_title": "Ma tribune",
     "grada_upcoming": "Prochains matchs",
-    "grada_results": "Derniers résultats"
+    "grada_results": "Derniers résultats",
+    "load_error_title": "Nous n'avons pas pu charger vos favoris",
+    "load_error_body": "Un problème de connexion est survenu. Vous n'avez pas perdu vos favoris : réessayez."
   },
   "auth": {
     "login_title": "Votre compte, sans mot de passe",
@@ -409,5 +411,19 @@
   "ads": {
     "interstitial_title": "Publicité",
     "close": "Fermer"
+  },
+  "errors": {
+    "retry": "Réessayer",
+    "load_body": "Un problème de connexion est survenu. Réessayez dans quelques secondes.",
+    "matches_load_title": "Nous n'avons pas pu charger les matchs",
+    "competitions_load_title": "Nous n'avons pas pu charger les compétitions",
+    "not_found_title": "Page introuvable",
+    "not_found_body": "Nous n'avons pas trouvé cette page. Le lien est peut-être rompu ou n'existe plus.",
+    "not_found_home": "Retour à l'accueil",
+    "not_found_competitions": "Voir les compétitions"
+  },
+  "offline": {
+    "banner": "Hors ligne — données enregistrées affichées",
+    "retry": "Réessayer"
   }
 }

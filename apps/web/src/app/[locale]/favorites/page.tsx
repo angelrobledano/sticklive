@@ -1,12 +1,13 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useFavorites } from '@/hooks/useFavorites';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { clubName } from '@/lib/names';
 import { useT } from '@/lib/i18n';
+import { tt } from '@/components/search/translate';
 import { track } from '@/lib/analytics';
 import { BackLink } from '@/components/shared/BackLink';
 import { selectSeasonCandidates, mergeStandingTeams, filterFavorites, type RawStandingRow } from '@/lib/favorites-catalog';
@@ -20,6 +21,8 @@ interface CompItem {
   id: string; name: string; shortName: string | null;
   season?: { id: string; isCurrent?: boolean; teamCount?: number } | null;
 }
+
+import { favoritesCatalogState } from './state';
 
 /**
  * Gestionar favoritos: edición en bloque de equipos y ligas seguidos.
@@ -35,6 +38,7 @@ function FavoritesInner() {
   const [teams, setTeams] = useState<TeamItem[]>([]);
   const [leagues, setLeagues] = useState<LeagueItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   // Nº de favoritos elegidos (para medir la activación guiada).
@@ -50,29 +54,44 @@ function FavoritesInner() {
     if (onboarding) track('onboarding_started', { entry: 'favorites' });
   }, [onboarding]);
 
-  useEffect(() => {
-    fetch(`${API_URL}/competitions`)
-      .then((r) => r.json()).catch(() => null)
-      .then(async (comps) => {
-        const compList = (comps?.competitions ?? []) as CompItem[];
-        setLeagues(compList.map((c) => ({ id: c.id, name: c.name, shortName: c.shortName })));
+  // #344: carga del catálogo reutilizable (reintento). Los fallos de API son
+  // explícitos: `loadError` distingue "no hay datos" de "no se pudieron cargar".
+  // Las standings 404 se toleran por temporada, pero un fallo de red o un 500
+  // de /competitions NO se disfraza de catálogo vacío.
+  const loadCatalog = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const res = await fetch(`${API_URL}/competitions`);
+      if (!res.ok) throw new Error(`API ${res.status}`);
+      const comps = await res.json();
+      const compList = (comps?.competitions ?? []) as CompItem[];
+      setLeagues(compList.map((c) => ({ id: c.id, name: c.name, shortName: c.shortName })));
 
-        // Cargamos los equipos de VARIAS temporadas actuales (las de más equipos)
-        // y los agregamos deduplicando. Así una temporada con standings 404 no
-        // deja el buscador vacío. El env solo es respaldo si no hay competiciones.
-        const seasonIds = selectSeasonCandidates(compList, { envSeasonId: SEASON_ID });
-        if (seasonIds.length === 0) return;
-        const lists = await Promise.all(
-          seasonIds.map(async (sid) => {
-            const st = await fetch(`${API_URL}/seasons/${sid}/standings`)
-              .then((r) => (r.ok ? r.json() : null)).catch(() => null);
-            return ((st?.standings ?? []) as RawStandingRow[]);
-          })
-        );
-        setTeams(mergeStandingTeams(lists));
-      })
-      .finally(() => setLoading(false));
+      // Cargamos los equipos de VARIAS temporadas actuales (las de más equipos)
+      // y los agregamos deduplicando. Así una temporada con standings 404 no
+      // deja el buscador vacío. El env solo es respaldo si no hay competiciones.
+      const seasonIds = selectSeasonCandidates(compList, { envSeasonId: SEASON_ID });
+      if (seasonIds.length === 0) return;
+      const lists = await Promise.all(
+        seasonIds.map(async (sid) => {
+          const st = await fetch(`${API_URL}/seasons/${sid}/standings`)
+            .then((r) => (r.ok ? r.json() : null));
+          return ((st?.standings ?? []) as RawStandingRow[]);
+        })
+      );
+      setTeams(mergeStandingTeams(lists));
+    } catch {
+      // Un fallo de red o de API no es un catálogo vacío (#344).
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadCatalog();
+  }, [loadCatalog]);
 
   useEffect(() => {
     if (!toast) return;
@@ -88,7 +107,16 @@ function FavoritesInner() {
   // parpadeo de hidratación mientras el hook lee localStorage.
   const hasAnyFavorites = favorites.length > 0 || favLeagues.length > 0 || players.length > 0;
   const noMatches = filteredTeams.length === 0 && filteredLeagues.length === 0;
-  const showOnboarding = mounted && !hasAnyFavorites && query.trim() === '';
+
+  // #344: precedencia de estados (error > vacío). Ver favoritosCatalogState.
+  const catalogState = favoritesCatalogState({
+    loading,
+    hasError: loadError,
+    mounted,
+    hasAnyFavorites,
+    query,
+    matchCount: filteredTeams.length + filteredLeagues.length,
+  });
 
   const handleToggle = (kind: 'team' | 'league', id: string, name: string) => {
     const wasActive = kind === 'team' ? isFavorite(id) : isLeagueFavorite(id);
@@ -157,11 +185,36 @@ function FavoritesInner() {
                    placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-red-400"
       />
 
-      {loading ? (
+      {catalogState === 'loading' ? (
         <div className="py-10 flex justify-center" aria-busy="true">
           <div className="w-5 h-5 rounded-full border-2 border-rink-passion/30 border-t-rink-passion animate-spin" aria-hidden="true" />
         </div>
-      ) : showOnboarding ? (
+      ) : catalogState === 'error' ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-4">
+          <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
+                 className="w-6 h-6 text-rink-passion" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 8v4M12 16h.01" strokeLinecap="round" />
+            </svg>
+          </div>
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            {tt(t, 'favorites.load_error_title', 'No hemos podido cargar tus favoritos')}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs">
+            {tt(t, 'favorites.load_error_body', 'Ha habido un problema de conexión. No has perdido tus favoritos: inténtalo de nuevo.')}
+          </p>
+          <button
+            onClick={() => void loadCatalog()}
+            className="mt-1 inline-flex items-center justify-center gap-1.5 px-5 min-h-[44px] rounded-xl
+                       text-[13px] font-semibold bg-rink-passion text-white
+                       hover:bg-rink-passion/90 transition-colors
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+          >
+            {tt(t, 'errors.retry', 'Reintentar')}
+          </button>
+        </div>
+      ) : catalogState === 'onboarding' ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-4">
           <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}

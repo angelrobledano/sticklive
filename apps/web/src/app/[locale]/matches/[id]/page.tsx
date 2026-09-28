@@ -5,7 +5,7 @@ import { MatchCenterClient } from '@/components/match/MatchCenterClient';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL } from '@/lib/seo';
-import { clubName } from '@/lib/names';
+import { teamTitleName } from '@/lib/names';
 
 interface Props {
   params: Promise<{ locale: string; id: string }>;
@@ -25,8 +25,10 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const alternates = localeAlternates(locale, `/matches/${params.id}`);
   try {
     const data = await getMatchDetail(params.id);
-    const home = clubName(data.match.homeTeam?.shortName ?? data.match.homeTeam?.name ?? '');
-    const away = clubName(data.match.awayTeam?.shortName ?? data.match.awayTeam?.name ?? '');
+    // #338: nombre completo (no el shortName, que clubName() convertiría en
+    // "Cpah"); sin nombre completo se conserva la sigla tal cual.
+    const home = teamTitleName(data.match.homeTeam?.name, data.match.homeTeam?.shortName);
+    const away = teamTitleName(data.match.awayTeam?.name, data.match.awayTeam?.shortName);
     const showScore = data.match.status === 'finished' || data.match.status === 'live';
     const score = showScore ? ` ${data.match.score.home ?? 0}-${data.match.score.away ?? 0} ` : ' - ';
     const ogTitle = `${home}${score}${away}`;
@@ -59,7 +61,7 @@ export default async function MatchDetailPage(props: Props) {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'SportsEvent',
-    name: `${clubName(m.homeTeam?.name ?? '')} vs ${clubName(m.awayTeam?.name ?? '')}`,
+    name: `${teamTitleName(m.homeTeam?.name, m.homeTeam?.shortName)} vs ${teamTitleName(m.awayTeam?.name, m.awayTeam?.shortName)}`,
     sport: 'Roller Hockey',
     startDate: m.scheduledAt ?? undefined,
     // schema.org no tiene un estado "finalizado": para un partido terminado se
@@ -75,8 +77,8 @@ export default async function MatchDetailPage(props: Props) {
       ? { '@type': 'Place', name: m.venue.name, address: m.venue.city ?? undefined }
       : undefined,
     competitor: [
-      { '@type': 'SportsTeam', name: clubName(m.homeTeam?.name ?? ''), url: `${SITE_URL}/${params.locale}/teams/${m.homeTeam?.id}` },
-      { '@type': 'SportsTeam', name: clubName(m.awayTeam?.name ?? ''), url: `${SITE_URL}/${params.locale}/teams/${m.awayTeam?.id}` },
+      { '@type': 'SportsTeam', name: teamTitleName(m.homeTeam?.name, m.homeTeam?.shortName), url: `${SITE_URL}/${params.locale}/teams/${m.homeTeam?.id}` },
+      { '@type': 'SportsTeam', name: teamTitleName(m.awayTeam?.name, m.awayTeam?.shortName), url: `${SITE_URL}/${params.locale}/teams/${m.awayTeam?.id}` },
     ],
   };
 

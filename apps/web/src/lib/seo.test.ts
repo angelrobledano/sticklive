@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   socialMeta, socialImageVersion, socialImageUrl, localeLessUrl, SITE_URL,
+  siteJsonLd, competitionJsonLd, competitionsListJsonLd,
 } from './seo';
 
 /**
@@ -151,5 +152,78 @@ describe('localeLessUrl (#280)', () => {
 
   it('acepta rutas sin barra inicial', () => {
     expect(localeLessUrl('matches/abc')).toBe(`${SITE_URL}/matches/abc`);
+  });
+});
+
+// #349: structured data ausente en home/lista/ficha de competición.
+describe('siteJsonLd (#349)', () => {
+  it('emite WebSite + Organization con la URL del sitio y el idioma', () => {
+    const ld = siteJsonLd('es');
+    const graph = ld['@graph'] as Array<Record<string, unknown>>;
+    expect(ld['@context']).toBe('https://schema.org');
+    expect(graph.map((n) => n['@type'])).toEqual(['WebSite', 'Organization']);
+    expect(graph[0]).toMatchObject({ name: 'Stick Live', url: SITE_URL, inLanguage: 'es' });
+    expect(graph[1]).toMatchObject({ name: 'Stick Live', url: SITE_URL });
+    expect(String(graph[1]?.['logo'])).toBe(`${SITE_URL}/icon-512.png`);
+  });
+});
+
+describe('competitionJsonLd (#349)', () => {
+  const opts = {
+    leagueName: 'OK Liga',
+    leagueUrl: `${SITE_URL}/es/competitions/c1`,
+    seasonName: '2025/26',
+    startDate: '2025-09-06T00:00:00.000Z',
+    endDate: '2026-05-30T00:00:00.000Z',
+  };
+
+  it('emite SportsLeague + SportsSeason en un @graph', () => {
+    const ld = competitionJsonLd(opts);
+    const graph = ld['@graph'] as Array<Record<string, unknown>>;
+    expect(ld['@context']).toBe('https://schema.org');
+    expect(graph.map((n) => n['@type'])).toEqual(['SportsLeague', 'SportsSeason']);
+  });
+
+  it('la liga lleva nombre, url y deporte', () => {
+    const league = (competitionJsonLd(opts)['@graph'] as Array<Record<string, unknown>>)[0]!;
+    expect(league).toMatchObject({
+      '@type': 'SportsLeague',
+      name: 'OK Liga',
+      url: opts.leagueUrl,
+      sport: 'Roller Hockey',
+    });
+  });
+
+  it('la temporada lleva nombre compuesto y fechas; omite las ausentes', () => {
+    const season = (competitionJsonLd(opts)['@graph'] as Array<Record<string, unknown>>)[1]!;
+    expect(season).toMatchObject({
+      '@type': 'SportsSeason',
+      name: 'OK Liga 2025/26',
+      startDate: opts.startDate,
+      endDate: opts.endDate,
+      sport: 'Roller Hockey',
+    });
+    const noDates = (competitionJsonLd({ leagueName: 'Copa', leagueUrl: opts.leagueUrl })['@graph'] as Array<Record<string, unknown>>)[1]!;
+    expect('startDate' in noDates).toBe(false);
+    expect('endDate' in noDates).toBe(false);
+    expect(noDates['name']).toBe('Copa');
+  });
+});
+
+describe('competitionsListJsonLd (#349)', () => {
+  it('construye un ItemList con posiciones 1-based y URLs absolutas', () => {
+    const ld = competitionsListJsonLd([
+      { name: 'OK Liga', url: `${SITE_URL}/es/competitions/c1` },
+      { name: 'Copa del Rey', url: `${SITE_URL}/es/competitions/c2` },
+    ]);
+    expect(ld).toMatchObject({ '@context': 'https://schema.org', '@type': 'ItemList' });
+    expect(ld['itemListElement']).toEqual([
+      { '@type': 'ListItem', position: 1, name: 'OK Liga', url: `${SITE_URL}/es/competitions/c1` },
+      { '@type': 'ListItem', position: 2, name: 'Copa del Rey', url: `${SITE_URL}/es/competitions/c2` },
+    ]);
+  });
+
+  it('con lista vacía devuelve un ItemList sin elementos', () => {
+    expect(competitionsListJsonLd([])['itemListElement']).toEqual([]);
   });
 });

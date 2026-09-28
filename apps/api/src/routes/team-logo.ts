@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { db } from '@sports/db';
+import { setBounded } from '../lib/bounded-cache.js';
+import { imageResponse, renderResizedImage, resolveImageWidth } from '../lib/image.js';
 
 /**
  * GET /teams/:id/logo — escudo del equipo (auditoría A3: una sola fuente).
@@ -16,42 +18,66 @@ import { db } from '@sports/db';
  *
  * `teams.logo_url` queda como la fuente de verdad; el fichero local es solo una
  * caché en disco.
+ *
+ * #335 (perf P0): el original pesa hasta 2,4 MB y la web lo pinta a 20–80 px.
+ * Ahora se redimensiona y reencoda a WebP (ancho elegido con `?w=`, acotado a
+ * presets) y se sirve con `Cache-Control` inmutable.
  */
 export const teamLogoRouter = new Hono();
 
 const ESCUDOS_DIR = process.env['ESCUDOS_DIR'] ?? '/app/apps/web/public/escudos';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const CACHE = 'public, max-age=86400';
+
+// Micro-caché en proceso de las imágenes YA transformadas (clave `id:w`). Los
+// anchos posibles son un conjunto finito, así que la cardinalidad queda acotada.
+const logoCache = new Map<string, Buffer>();
+const LOGO_CACHE_MAX = 512;
 
 teamLogoRouter.get('/:id/logo', async (c) => {
   const id = c.req.param('id');
   if (!UUID.test(id)) return c.notFound();
 
+  const width = resolveImageWidth(c.req.query('w'));
+  const key = `${id}:${width}`;
+  const cached = logoCache.get(key);
+  if (cached) return imageResponse(cached);
+
   // 1) Fichero local del volumen.
+  let source: Buffer | null = null;
+  let sourceType = 'image/png';
   try {
-    const buf = await readFile(path.join(ESCUDOS_DIR, `${id}.png`));
-    return new Response(buf, { headers: { 'Content-Type': 'image/png', 'Cache-Control': CACHE } });
+    source = await readFile(path.join(ESCUDOS_DIR, `${id}.png`));
   } catch { /* sin fichero → probamos el CDN */ }
 
   // 2) Proxy del CDN sidgad (con Referer).
-  const r = await db.query<{ logo_url: string | null }>(
-    `SELECT logo_url FROM teams WHERE id = $1`, [id]
-  );
-  const url = r.rows[0]?.logo_url;
-  if (!url) return c.notFound();
+  if (!source) {
+    const r = await db.query<{ logo_url: string | null }>(
+      `SELECT logo_url FROM teams WHERE id = $1`, [id]
+    );
+    const url = r.rows[0]?.logo_url;
+    if (!url) return c.notFound();
+    try {
+      const res = await fetch(url, {
+        headers: { Referer: 'https://www.hockeypatines.fep.es/' },
+        // #333: sin timeout, un CDN lento bloquea el request de la API. 5 s basta
+        // para un escudo; si tarda más, preferimos el 404 (fallback del cliente).
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) return c.notFound();
+      source = Buffer.from(await res.arrayBuffer());
+      sourceType = res.headers.get('content-type') ?? sourceType;
+    } catch {
+      return c.notFound();
+    }
+  }
+
   try {
-    const res = await fetch(url, {
-      headers: { Referer: 'https://www.hockeypatines.fep.es/' },
-      // #333: sin timeout, un CDN lento bloquea el request de la API. 5 s basta
-      // para un escudo; si tarda más, preferimos el 404 (fallback del cliente).
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) return c.notFound();
-    const buf = Buffer.from(await res.arrayBuffer());
-    return new Response(buf, {
-      headers: { 'Content-Type': res.headers.get('content-type') ?? 'image/png', 'Cache-Control': CACHE },
-    });
+    const out = await renderResizedImage(source, width);
+    setBounded(logoCache, key, out, LOGO_CACHE_MAX);
+    return imageResponse(out);
   } catch {
-    return c.notFound();
+    // sharp no pudo decodificar (formato exótico): mejor servir el original que
+    // romper el escudo. El cliente sintetiza su fallback si tampoco carga.
+    return imageResponse(source, sourceType);
   }
 });

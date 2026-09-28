@@ -176,3 +176,67 @@ export function socialMeta(opts: {
     },
   };
 }
+
+// ─── Structured data / JSON-LD (#349) ─────────────────────────────────────────
+
+const SITE_NAME = 'Stick Live';
+const SPORT = 'Roller Hockey';
+
+/**
+ * WebSite + Organization a nivel de layout (#349): da marca en la SERP
+ * (knowledge panel / sitelinks). Los builders son puros para poder testearlos y
+ * se renderizan con `<JsonLd>` (que escapa el JSON).
+ */
+export function siteJsonLd(locale: Locale): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      { '@type': 'WebSite', name: SITE_NAME, url: SITE_URL, inLanguage: locale },
+      { '@type': 'Organization', name: SITE_NAME, url: SITE_URL, logo: `${SITE_URL}/icon-512.png` },
+    ],
+  };
+}
+
+/** SportsLeague + SportsSeason de una ficha de competición (#349). */
+export function competitionJsonLd(opts: {
+  leagueName: string;
+  leagueUrl: string;
+  seasonName?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  country?: string | null;
+}): Record<string, unknown> {
+  const league: Record<string, unknown> = {
+    '@type': 'SportsLeague',
+    name: opts.leagueName,
+    url: opts.leagueUrl,
+    sport: SPORT,
+  };
+  if (opts.country) league['areaServed'] = opts.country;
+
+  const season: Record<string, unknown> = {
+    '@type': 'SportsSeason',
+    name: opts.seasonName ? `${opts.leagueName} ${opts.seasonName}` : opts.leagueName,
+    sport: SPORT,
+  };
+  if (opts.startDate) season['startDate'] = opts.startDate;
+  if (opts.endDate) season['endDate'] = opts.endDate;
+
+  return { '@context': 'https://schema.org', '@graph': [league, season] };
+}
+
+/** ItemList del listado de competiciones (#349). */
+export function competitionsListJsonLd(
+  items: Array<{ name: string; url: string }>,
+): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    itemListElement: items.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: item.name,
+      url: item.url,
+    })),
+  };
+}

@@ -8,6 +8,7 @@ import { TeamShield } from '@/components/shared/TeamShield';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { finalLabelKey, penaltyText } from '@/lib/match-result';
+import { teamTitleName } from '@/lib/names';
 import { formatTime, formatDate, eventSurname, fmtEventClock } from './format';
 import { freshnessState, connectionState, CONNECTION_LABEL, type ConnectionState } from './timeline-model';
 import { BallIcon } from './icons';
@@ -208,6 +209,12 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
 
   return (
     <div className="card relative px-4 pt-4 pb-5 space-y-4">
+      {/* #348: la ficha (la página más numerosa del sitio) no tenía headings.
+          h1 sr-only: estructura semántica sin alterar el diseño visual. */}
+      <h1 className="sr-only">
+        {`${teamTitleName(ht.name, ht.shortName)} ${showScore ? `${match.score.home ?? 0}-${match.score.away ?? 0}` : 'vs'} ${teamTitleName(at.name, at.shortName)}`}
+        {match.competitionName ? ` — ${match.competitionName}` : ''}
+      </h1>
       <ShareButton
         kind="match"
         title={`${ht.shortName ?? ht.name} ${match.score.home ?? ''}-${match.score.away ?? ''} ${at.shortName ?? at.name}`}

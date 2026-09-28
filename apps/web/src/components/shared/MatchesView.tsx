@@ -10,6 +10,7 @@ import { MiGrada } from '@/components/home/MiGrada';
 import { AdBanner } from '@/components/shared/AdBanner';
 import { adsenseConfig, listAdInsertIndex } from '@/lib/ads';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import { madridDateKey, madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
 import { importanceRank } from '@/lib/competition-importance';
@@ -294,6 +295,46 @@ function UpcomingMatches({ matches, selectedDate, todayKey, outOfWindow = false 
           </section>
         ))
       )}
+    </div>
+  );
+}
+
+/**
+ * #346: estado de error de carga de la home. Antes era un bloque inline sin
+ * botón de reintento y con copy fijo en español (para las 5 locales). Ahora el
+ * mensaje sale del i18n del locale activo y `router.refresh()` revalida el
+ * Server Component, que vuelve a llamar a la API (reintento real).
+ */
+export function HomeLoadError() {
+  const { t } = useT();
+  const router = useRouter();
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] px-8 text-center gap-3">
+      <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20
+                      flex items-center justify-center">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
+             className="w-6 h-6 text-rink-passion" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v4M12 16h.01" strokeLinecap="round" />
+        </svg>
+      </div>
+      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+        {tt(t, 'errors.matches_load_title', 'No hemos podido cargar los partidos')}
+      </p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        {tt(t, 'errors.load_body', 'Ha habido un problema de conexión. Inténtalo de nuevo en unos segundos.')}
+      </p>
+      <button
+        onClick={() => router.refresh()}
+        className="mt-1 inline-flex items-center gap-2
+                   bg-rink-passion hover:bg-red-700 active:bg-red-900
+                   text-white font-semibold text-sm
+                   px-5 py-2.5 rounded-xl transition-colors
+                   focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+      >
+        {tt(t, 'errors.retry', 'Reintentar')}
+      </button>
     </div>
   );
 }

@@ -54,6 +54,22 @@ export function clubName(name: string): string {
     .join(' ');
 }
 
+/**
+ * Nombre de equipo para títulos/meta (#338): el nombre COMPLETO normalizado.
+ *
+ * `clubName()` aplicado a un shortName de 4 letras lo degrada a Title-Case
+ * ("CPAH" → "Cpah"), así que los títulos/SEO no deben preferir las siglas. Solo
+ * se cae al shortName (crudo, sin mutar) si no hay nombre completo.
+ */
+export function teamTitleName(
+  name: string | null | undefined,
+  shortName: string | null | undefined,
+): string {
+  const full = name?.trim();
+  if (full) return clubName(full);
+  return (shortName ?? '').trim();
+}
+
 /** Desde first/last de la API: "FERRAN" + "FONT SÁNCHEZ" → "Ferran Font" */
 export function playerDisplayName(firstName: string, lastName: string): string {
   const surname = lastName.trim().split(/\s+/)[0] ?? '';
