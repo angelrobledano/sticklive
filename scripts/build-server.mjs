@@ -96,6 +96,7 @@ const OPERATIVOS = [
   'apps/etl/src/cleanup-synthetic-dupes.ts',
   'apps/etl/src/update-player-photos.ts',
   'apps/etl/src/download-logos.ts',
+  'apps/etl/src/normalize-logos.ts',
   'packages/db/scripts/verify-event-upsert.ts',
 ];
 
