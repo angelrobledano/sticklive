@@ -80,7 +80,10 @@
     "onboarding_body": "Marquez vos équipes et ligues avec l’étoile pour voir leurs matchs en haut et recevoir des alertes en direct.",
     "onboarding_cta": "Explorer les compétitions",
     "show_other_matches": "Voir {n} autres matchs favoris",
-    "show_less": "Afficher moins"
+    "show_less": "Afficher moins",
+    "grada_title": "Ma tribune",
+    "grada_upcoming": "Prochains matchs",
+    "grada_results": "Derniers résultats"
   },
   "auth": {
     "login_title": "Votre compte, sans mot de passe",
@@ -240,8 +243,8 @@
     "subtitle": "Personnalisez votre expérience sur la piste",
     "premium_title": "Stick Live Premium",
     "perk_no_ads": "Zéro pub, que du hockey",
-    "perk_rt_notifs": "Alertes illimitées pour vos équipes",
-    "perk_early": "Les nouveautés avant tout le monde",
+    "perk_rt_notifs": "Vous aidez à faire vivre Stick Live",
+    "perk_early": "Vous nous aidez à améliorer l'app",
     "per_year": "/ an",
     "premium_cta": "Passer Premium",
     "premium_sandbox": "Environnement de test Redsys · Aucun débit réel",

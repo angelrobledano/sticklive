@@ -113,7 +113,10 @@
     "onboarding_body": "Star your teams and leagues to see their matches at the top and get live alerts.",
     "onboarding_cta": "Explore competitions",
     "show_other_matches": "See {n} more favorite matches",
-    "show_less": "Show less"
+    "show_less": "Show less",
+    "grada_title": "My stand",
+    "grada_upcoming": "Upcoming matches",
+    "grada_results": "Latest results"
   },
   "auth": {
     "login_title": "Your account, no passwords",
@@ -273,8 +276,8 @@
     "subtitle": "Personalize your rink experience",
     "premium_title": "Stick Live Premium",
     "perk_no_ads": "No ads, just hockey",
-    "perk_rt_notifs": "Unlimited alerts for your teams",
-    "perk_early": "New features before anyone else",
+    "perk_rt_notifs": "You help keep Stick Live running",
+    "perk_early": "You help us improve the app",
     "per_year": "/ year",
     "premium_cta": "Go Premium",
     "premium_sandbox": "Redsys sandbox · No real charges will be made",

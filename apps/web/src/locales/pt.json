@@ -80,7 +80,10 @@
     "onboarding_body": "Marca as tuas equipas e ligas com a estrela para veres os seus jogos no topo e receberes alertas em direto.",
     "onboarding_cta": "Explorar competições",
     "show_other_matches": "Ver mais {n} jogos favoritos",
-    "show_less": "Mostrar menos"
+    "show_less": "Mostrar menos",
+    "grada_title": "A minha bancada",
+    "grada_upcoming": "Próximos jogos",
+    "grada_results": "Últimos resultados"
   },
   "auth": {
     "login_title": "A tua conta, sem palavras-passe",
@@ -241,8 +244,8 @@
     "subtitle": "Personaliza a tua experiência no rinque",
     "premium_title": "Stick Live Premium",
     "perk_no_ads": "Sem anúncios, só hóquei",
-    "perk_rt_notifs": "Alertas ilimitados das tuas equipas",
-    "perk_early": "As novidades, antes de todos",
+    "perk_rt_notifs": "Ajudas a manter o Stick Live",
+    "perk_early": "Ajudas-nos a melhorar a app",
     "per_year": "/ ano",
     "premium_cta": "Torna-te Premium",
     "premium_sandbox": "Ambiente de testes Redsys · Não serão feitas cobranças reais",
