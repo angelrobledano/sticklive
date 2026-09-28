@@ -22,7 +22,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
 const ES = {
   title: 'Política de privacidad',
-  updated: 'Última actualización: junio de 2026',
+  updated: 'Última actualización: septiembre de 2026',
   sections: [
     {
       h: 'Quiénes somos',
@@ -50,14 +50,14 @@ const ES = {
     },
     {
       h: 'Cookies y almacenamiento local',
-      p: 'No usamos cookies publicitarias. Guardamos en tu navegador tus preferencias (idioma, tema, favoritos, configuración de alertas) y una cookie técnica de idioma. La analítica no usa cookies de terceros.',
+      p: 'No usamos cookies publicitarias. Guardamos en tu navegador tus preferencias (idioma, tema, favoritos, configuración de alertas) y una cookie técnica de idioma. La analítica de producto (PostHog, servidores en la UE) solo se activa si aceptas el aviso de cookies: hasta entonces no se carga ni guarda nada. Si aceptas, PostHog usa almacenamiento propio (cookies y localStorage de primera parte) y, si inicias sesión, vincula tu email a esa analítica para medir el uso de forma agregada. Puedes rechazarla y la app sigue funcionando igual.',
     },
   ],
 };
 
 const EN = {
   title: 'Privacy policy',
-  updated: 'Last updated: June 2026',
+  updated: 'Last updated: September 2026',
   sections: [
     {
       h: 'Who we are',
@@ -85,7 +85,7 @@ const EN = {
     },
     {
       h: 'Cookies and local storage',
-      p: 'No advertising cookies. We store your preferences in your browser (language, theme, favorites, alert settings) plus a technical language cookie. Analytics uses no third-party cookies.',
+      p: 'No advertising cookies. We store your preferences in your browser (language, theme, favorites, alert settings) plus a technical language cookie. Product analytics (PostHog, EU servers) only starts if you accept the cookie notice: until then it loads and stores nothing. If you accept, PostHog uses its own first-party storage (cookies and localStorage) and, when you sign in, links your email to that analytics to measure usage in aggregate. You can decline and the app keeps working the same.',
     },
   ],
 };
