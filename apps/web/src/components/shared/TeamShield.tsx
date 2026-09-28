@@ -48,12 +48,10 @@ export function TeamShield({
   const decorative = !alt;
 
   const initials = teamName.slice(0, 2).toUpperCase();
-  // Fondo blanco en AMBOS temas: el escudo normalizado ya trae relleno blanco
-  // horneado, así que el contenedor debe casar con él (si no, en modo oscuro
-  // aparecería un anillo oscuro alrededor del badge).
+  // OJO: el fondo NO va aquí compartido; va solo en la rama de imagen. Si
+  // estuviera en containerCls, ganaría al bg-slate-200 del fallback de iniciales.
   const containerCls = [
     rounded,
-    'bg-white',
     'shrink-0 flex items-center justify-center overflow-hidden',
     className,
   ].filter(Boolean).join(' ');
@@ -77,8 +75,11 @@ export function TeamShield({
     : '/escudos/default-team.png';
 
   // Sin padding: el margen uniforme ya viene horneado en el escudo normalizado.
+  // Badge blanco en AMBOS temas (bg-white sin dark:): el escudo normalizado ya
+  // trae relleno blanco horneado, así que el contenedor debe casar con él (si no,
+  // en modo oscuro aparecería un anillo oscuro alrededor del badge).
   return (
-    <div className={containerCls} style={{ width: size, height: size }}>
+    <div className={`${containerCls} bg-white`} style={{ width: size, height: size }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
