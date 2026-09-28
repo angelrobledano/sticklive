@@ -69,10 +69,11 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_POSTHOG_KEY=$NEXT_PUBLIC_POSTHOG_KEY \
     NEXT_PUBLIC_POSTHOG_HOST=$NEXT_PUBLIC_POSTHOG_HOST \
     NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY \
-    SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN \
     NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build --workspace=apps/web
+# El token de Sentry se pasa SOLO a este comando (#300), nunca como ENV: así no
+# queda en el entorno de la imagen ni, por tanto, en runtime.
+RUN SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN npm run build --workspace=apps/web
 
 # Dependencias SOLO de producción, para copiarlas a la imagen final. Se hace
 # aquí y no en `runtime` para no arrastrar npm ni su caché a la imagen final.

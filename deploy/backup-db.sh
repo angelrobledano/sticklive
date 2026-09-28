@@ -1,9 +1,11 @@
 #!/bin/bash
 # ============================================================
 # Backup diario de Postgres (producción).
-#   · Dump comprimido a /opt/backups/sticklive-YYYYMMDD.sql.gz
+#   · Dump comprimido a /opt/backups/sticklive-YYYYMMDD-HHMM.sql.gz (con hora:
+#     un re-dump manual el mismo día ya NO sobrescribe el del cron, #309)
+#   · Permisos 600 (contiene users/auth_tokens/push: tokens de sesión, #309)
 #   · Verifica integridad (gzip -t) y tamaño antes de rotar
-#   · Rotación: conserva los últimos 7
+#   · Rotación escalonada: 7 diarios + 4 semanales + 3 mensuales (#309)
 #   · Copia off-site opcional (rsync a Storage Box)
 #   · Ping de éxito/fallo a un monitor (ver más abajo)
 #
@@ -14,13 +16,17 @@
 #   chmod +x /opt/sticklive/deploy/backup-db.sh
 #   echo '15 4 * * * root /opt/sticklive/deploy/backup-db.sh >> /var/log/sticklive-backup.log 2>&1' > /etc/cron.d/sticklive-backup
 # Restaurar un backup:
-#   gunzip -c /opt/backups/sticklive-YYYYMMDD.sql.gz | docker compose -f /opt/sticklive/docker-compose.prod.yml --env-file /opt/sticklive/.env.prod exec -T postgres psql -U sports_user -d sports_results
+#   gunzip -c /opt/backups/sticklive-YYYYMMDD-HHMM.sql.gz | docker compose -f /opt/sticklive/docker-compose.prod.yml --env-file /opt/sticklive/.env.prod exec -T postgres psql -U sports_user -d sports_results
 # ============================================================
 set -euo pipefail
 
+# Dumps con datos sensibles (users, auth_tokens, push_subscriptions, orders):
+# nunca legibles por otros usuarios (#309).
+umask 077
+
 BACKUP_DIR="${BACKUP_DIR:-/opt/backups}"
 COMPOSE="docker compose -f /opt/sticklive/docker-compose.prod.yml --env-file /opt/sticklive/.env.prod"
-STAMP=$(date +%Y%m%d)
+STAMP=$(date +%Y%m%d-%H%M)
 TMP="$BACKUP_DIR/.sticklive-$STAMP.sql.gz.tmp"
 OUT="$BACKUP_DIR/sticklive-$STAMP.sql.gz"
 MIN_BYTES=102400 # 100 KB: un dump real pesa mucho más; por debajo = sospechoso
@@ -109,9 +115,29 @@ if [ "$SIZE" -lt "$MIN_BYTES" ]; then
   exit 1
 fi
 
-# Solo tras verificar: publicar atómicamente y rotar.
+# Solo tras verificar: publicar atómicamente, asegurar permisos y rotar.
 mv "$TMP" "$OUT"
-ls -1t "$BACKUP_DIR"/sticklive-*.sql.gz 2>/dev/null | tail -n +8 | xargs -r rm -f
+chmod 600 "$OUT"
+
+# ── Retención escalonada (#309): 7 diarios + 4 semanales + 3 mensuales ────────
+# Los semanales/mensuales son HARDLINKS del dump del día: no duplican bytes y
+# sobreviven a la purga de diarios, que conserva solo los 7 más recientes. Se
+# crean en subdirectorios para no alterar el glob `sticklive-*.sql.gz` que usan
+# el off-site (rsync) y verify-backup.sh.
+WEEKLY_DIR="$BACKUP_DIR/weekly"
+MONTHLY_DIR="$BACKUP_DIR/monthly"
+mkdir -p "$WEEKLY_DIR" "$MONTHLY_DIR"
+if [ "$(date +%u)" = "7" ]; then cp -l "$OUT" "$WEEKLY_DIR/$(basename "$OUT")"; fi   # domingo
+if [ "$(date +%d)" = "01" ]; then cp -l "$OUT" "$MONTHLY_DIR/$(basename "$OUT")"; fi # día 1
+ls -1t "$BACKUP_DIR"/sticklive-*.sql.gz  2>/dev/null | tail -n +8 | xargs -r rm -f  # 7 diarios
+ls -1t "$WEEKLY_DIR"/sticklive-*.sql.gz  2>/dev/null | tail -n +5 | xargs -r rm -f  # 4 semanales
+ls -1t "$MONTHLY_DIR"/sticklive-*.sql.gz 2>/dev/null | tail -n +4 | xargs -r rm -f  # 3 mensuales
+
+# Permisos de TODOS los dumps, incluidos los creados antes de #309 (estaban en
+# 644). Barato y deja el directorio entero en 600.
+chmod 600 "$BACKUP_DIR"/sticklive-*.sql.gz  2>/dev/null || true
+chmod 600 "$WEEKLY_DIR"/sticklive-*.sql.gz  2>/dev/null || true
+chmod 600 "$MONTHLY_DIR"/sticklive-*.sql.gz 2>/dev/null || true
 
 echo "[backup] $(date -u +%FT%TZ) OK → $(basename "$OUT") ($(du -h "$OUT" | cut -f1))"
 

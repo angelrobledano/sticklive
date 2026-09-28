@@ -66,6 +66,8 @@ comprueba el espacio libre **antes** de construir (el VPS de 4 GB se llena con l
 caché de build), libera caché de build si hace falta y verifica la **versión
 viva** con un smoke test — no solo que los contenedores estén `up`. Nació del
 incidente en que producción sirvió durante días un build anterior a `main` (#248).
+Al terminar en verde llama a `deploy/tag-release.sh`, que crea el tag de git de la
+release y conserva la imagen anterior como `:previous` para el rollback (#297).
 
 ```bash
 cd /opt/sticklive
@@ -133,6 +135,92 @@ Las variables `NEXT_PUBLIC_*` (entre ellas `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_S
 
 ---
 
+## Rollback (#297)
+
+No hay botón mágico: hay que decidir entre **volver el código** y/o **volver la
+BD**. Código y esquema deben quedar alineados o la API se niega a arrancar
+(`assertSchemaCurrent` → `SchemaOutdatedError`).
+
+### Artefactos de release
+
+Cada deploy correcto (vía `deploy/deploy.sh`) llama a **`deploy/tag-release.sh`**,
+que crea el tag de git `vYYYYMMDD-<sha>` y conserva la imagen de cada servicio
+como `<proyecto>-<svc>:<release>`, moviendo la anterior a `:previous` y dejando
+la actual en `:current` (p. ej. `sticklive-api:previous`). Así `previous` es
+siempre la release **anterior** a la que corre.
+
+### Rollback de app (rápido, sin rebuild)
+
+Si el fallo es de código y el esquema **no** cambió, vuelve a la imagen anterior
+(segundos):
+
+```bash
+cd /opt/sticklive
+DC="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+docker images | grep -E 'sticklive-(api|web|etl)'   # confirma que hay :previous
+
+# Reapunta el tag que usa Compose a la imagen anterior y recrea.
+for svc in api web etl; do
+  repo="sticklive-$svc"        # = <nombre-proyecto-compose>-<svc>; aquí 'sticklive'
+  docker tag "$repo:previous" "$repo:latest"
+done
+$DC up -d --no-build --force-recreate api web etl
+$DC ps
+```
+
+### Rollback de app (rebuild desde git)
+
+Si prefieres volver el código (o no hay `:previous`):
+
+```bash
+cd /opt/sticklive
+git fetch --tags origin
+git checkout vYYYYMMDD-<sha-anterior>
+./deploy/deploy.sh --skip-pull        # o: $DC up -d --build
+# ...resuelto, vuelve a main:
+git checkout main && ./deploy/deploy.sh
+```
+
+Rebuild en 2 vCPU: ~10–15 min + 15–60 s de recreación.
+
+### Rollback de BD (el caso duro)
+
+Las migraciones son **forward-only**: no hay `down`. Para volver atrás hay que
+**restaurar el dump previo** y **volver el código de la época**:
+
+```bash
+# 1. Backup de seguridad del estado actual (nunca restaurar sin él).
+./deploy/backup-db.sh
+# 2. Restaurar el dump ANTERIOR al despliegue problemático (ver operations.md).
+gunzip -c /opt/backups/sticklive-<fecha-hora>.sql.gz \
+  | $DC exec -T postgres psql -U sports_user -d sports_results
+# 3. Volver el código a la release que casaba con ese esquema y arrancar.
+git checkout vYYYYMMDD-<sha-de-esa-release> && $DC up -d --build
+```
+
+`assertSchemaCurrent` compara el esquema con el que espera el código: si
+restauras una BD más vieja **sin** volver el código, la API no arranca
+(`SchemaOutdatedError`). El escape temporal `SKIP_SCHEMA_CHECK=1` en el entorno
+de `api` permite arrancar sobre esquema atrasado **solo para diagnosticar o
+adelantar la migración**, nunca como estado permanente: puede provocar errores
+de columna/tabla ausente.
+
+### Cuándo NO hay rollback limpio
+
+- **Migración que reescribe datos** (borra columnas, transforma filas, cambia
+  identidades): el dump anterior no incluye el trabajo posterior; volver atrás
+  pierde lo escrito desde entonces. Exige `./deploy/backup-db.sh` **antes** de
+  desplegar y asumir la ventana de pérdida.
+- Si el incidente corre **más de 24 h** desde el último dump (RPO), restaura el
+  más nuevo y asume la pérdida de lo posterior.
+- **Nunca** hagas rollback de esquema a mano con SQL: no hay `down` y dejarías
+  el esquema en un estado que el runner no reconoce.
+
+> Pendiente: ensayar el rollback de app una vez (deploy trivial → `:previous` →
+> `up -d --no-build`) y anotar el tiempo real (#297).
+
+---
+
 ## Acceso a la BD desde el PC (túnel SSH)
 
 Postgres no está expuesto; hay que abrir un túnel:
@@ -159,7 +247,15 @@ Viven solo en `/opt/sticklive/.env.prod`:
 
 - `DATABASE_URL` / password de Postgres.
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` y `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (Web Push).
-- `ADMIN_TOKEN`, credenciales de Brevo (email), Google OAuth, PostHog, Stripe/Redsys.
+- `ADMIN_TOKEN`, `AUTH_STATE_SECRET` (firma del `state` de OAuth), credenciales de
+  Brevo (email), Google OAuth y PostHog. **`STRIPE_*` y `PREMIUM_PRICE_EUR_CENTS`
+  solo si los pagos están activos** (hoy, apagados).
+
+> **Superficie de secretos (#300):** `docker-compose.prod.yml` ya **no** usa
+> `env_file` para `web`: cada servicio declara explícitamente lo que consume, así
+> que `web` no recibe `POSTGRES_PASSWORD` (no la usa) y `SENTRY_AUTH_TOKEN` es
+> **solo un build arg** (no llega al runtime de api/web/etl). Al añadir una
+> variable nueva al código hay que declararla en el servicio correspondiente.
 
 Si se rotan las VAPID, hay que **reconstruir la web** (la pública es build arg) y las suscripciones push existentes seguirán siendo válidas solo si la pareja de claves se mantiene; cambiarlas invalida las suscripciones.
 
@@ -177,3 +273,4 @@ Si se rotan las VAPID, hay que **reconstruir la web** (la pública es build arg)
 - [ ] `$DC ps` todo `Up` + revisar `logs` de `api`/`web`/`etl`.
 - [ ] Smoke post-deploy: `curl -fsS https://sticklive.eu/api/health` y `curl -fsS -o /dev/null -w '%{http_code}' https://sticklive.eu/es` (deben dar 200). No des el deploy por bueno sin esto (#165).
 - [ ] Smoke test: `curl -fsS https://sticklive.eu/api/health` → `{"status":"ok"}`.
+- [ ] Release etiquetada (`deploy/deploy.sh` la hace sola): `git tag -l 'v*'` y `docker images | grep -E 'sticklive-(api|web|etl).*previous'`. Si no, `./deploy/tag-release.sh` (#297).

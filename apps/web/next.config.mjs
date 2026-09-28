@@ -1,6 +1,8 @@
 import { withSentryConfig } from '@sentry/nextjs';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // No revelar el framework en las respuestas (#307): quita `X-Powered-By`.
+  poweredByHeader: false,
   // `@sports/shared-types` exporta TS fuente (`main: ./src/index.ts`); Next debe
   // transpilarlo al importarlo desde la web (#191, STALE_LIVE_HOURS).
   transpilePackages: ['@sports/shared-types'],

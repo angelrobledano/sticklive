@@ -90,7 +90,7 @@ depender de una sola persona.
 | **Hetzner Storage Box** | Copia off-site de los dumps (rsync a `OFFSITE_TARGET`) | [COMPLETAR] | `OFFSITE_SSH_OPTS`/clave en `.backup-offsite.env` + `/root/.ssh/storagebox` (§9.3) | Pago mensual |
 | **Registrador del dominio** (p. ej. Hostinger) | DNS de `sticklive.eu` (registros A/CNAME) | [COMPLETAR] | [COMPLETAR] | **Caducidad del dominio: [COMPLETAR fecha]** |
 | **GitHub** | Repositorio `angelrobledano/sticklive`, deploy keys, CI | [COMPLETAR] | [COMPLETAR] | Sin caducidad (revisar deploy keys) |
-| **Sentry** | Errores api/web/etl, alertas de pipeline, Cron Monitor del directo | [COMPLETAR] | `SENTRY_DSN`, `SENTRY_AUTH_TOKEN` (§9) | [COMPLETAR] |
+| **Sentry** | Errores api/web/etl, alertas de pipeline, Cron Monitor del directo | [COMPLETAR] | `SENTRY_DSN` (runtime) y `SENTRY_AUTH_TOKEN` (solo build, #300) (§9) | [COMPLETAR] |
 | **PostHog** | Analítica de producto | [COMPLETAR] | `POSTHOG_API_KEY`, `NEXT_PUBLIC_POSTHOG_KEY` | [COMPLETAR] |
 | **Brevo** | SMTP de magic links (`SMTP_USER`/`SMTP_PASS`) | [COMPLETAR] | `SMTP_USER`/`SMTP_PASS` | [COMPLETAR] |
 | **Google Cloud** | OAuth (login con Google); redirect URI `https://sticklive.eu/api/auth/google/callback` | [COMPLETAR] | `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` | [COMPLETAR] |
@@ -106,7 +106,7 @@ depender de una sola persona.
 ## 4. Antes de empezar (preflight de DR)
 
 - [ ] Tengo acceso a la **bóveda / copia cifrada de `.env.prod`** (#290). Sin esto, parar: el resto no sirve.
-- [ ] Confirmo que existe un **dump off-site reciente** (`/opt/backups/sticklive-YYYYMMDD.sql.gz` en la Storage Box).
+- [ ] Confirmo que existe un **dump off-site reciente** (`/opt/backups/sticklive-YYYYMMDD-HHMM.sql.gz` en la Storage Box).
 - [ ] Tengo acceso al **panel de DNS** del dominio.
 - [ ] Tengo acceso a **Hetzner Cloud** para crear el VPS y reasignar/crear la IP.
 - [ ] Tengo acceso al **repo GitHub** para añadir la deploy key (§8).
@@ -216,9 +216,29 @@ chmod 700 /opt/backups
   chmod 600 /opt/sticklive/.env.prod
   ```
 
-- Endurecer SSH: `PasswordAuthentication no` en `/etc/ssh/sshd_config` (solo
-  clave pública) y `systemctl reload ssh`. `[COMPLETAR: confirmar que no hay
-  usuarios con password que dependan del login por contraseña]`.
+- **Hardening SSH (#304):** en `/etc/ssh/sshd_config.d/99-sticklive.conf` (o el
+  `sshd_config` principal):
+
+  ```text
+  PasswordAuthentication no
+  KbdInteractiveAuthentication no
+  X11Forwarding no
+  PermitRootLogin prohibit-password
+  PubkeyAuthentication yes
+  ```
+
+  Recarga con `systemctl reload ssh`. **Antes de cerrar la sesión**, abre una
+  **segunda terminal** y confirma `ssh root@<IP>` por clave: si algo salió mal,
+  pierdes el acceso. `sshd -T | grep -E 'passwordauthentication|x11forwarding'`
+  debe mostrar `no`/`no`. Recomendado: **fail2ban** con jail `sshd`
+  (`apt install fail2ban` + `/etc/fail2ban/jail.d/sshd.local` con `enabled =
+  true`): hoy no hay usuarios con contraseña, pero frena la fuerza bruta y
+  protege si algún día se crea uno.
+- **Segunda clave SSH (#302):** una sola clave en un solo PC deja el VPS
+  inaccesible si ese PC se pierde. Genera una segunda clave en **otro**
+  dispositivo (o guárdala en la bóveda) y añade su pública a
+  `/root/.ssh/authorized_keys`; **verifica un login real** antes de darla por
+  buena y anótala en §3/§16.
 
 ---
 
@@ -305,7 +325,7 @@ Procedimiento:
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Login con Google (OAuth) | Regenerable en Google Cloud; el redirect URI (`.../api/auth/google/callback`) debe seguir existiendo. |
 | `AUTH_STATE_SECRET` | Firma del `state` de OAuth | Opcional (cae a `GOOGLE_CLIENT_SECRET`, `apps/api/src/lib/auth-state.ts`). Rotarlo solo invalida states en vuelo. |
 | `ADMIN_TOKEN` | Acceso admin | Regenerable (token aleatorio nuevo); invalida sesiones admin. |
-| `SENTRY_DSN`, `SENTRY_AUTH_TOKEN` | Alertas de errores/pipeline; sourcemaps | **Sin `SENTRY_DSN` toda la alertabilidad es un no-op silencioso** (`.env.prod.example`). Recuperar de Sentry. |
+| `SENTRY_DSN`, `SENTRY_AUTH_TOKEN` | Alertas de errores/pipeline; sourcemaps | **Sin `SENTRY_DSN` toda la alertabilidad es un no-op silencioso** (`.env.prod.example`). `SENTRY_AUTH_TOKEN` es **solo de build** (se pasa como build arg; no llega al runtime desde #300). Recuperar ambos de Sentry. |
 | `POSTHOG_API_KEY`, `NEXT_PUBLIC_POSTHOG_KEY` | Analítica | Recuperables del proyecto PostHog. |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Pagos premium | Recuperables/rotables en Stripe; hay que **re-verificar el endpoint** `.../api/payments/stripe/webhook`. |
 | `FEP_SOURCE_ID` | UUID de `data_sources` para el scraper | No es secreto; se toma de la BD restaurada (§10.1) o se consulta en la tabla. |
@@ -452,6 +472,8 @@ chmod +x /opt/sticklive/deploy/backup-db.sh \
          /opt/sticklive/deploy/verify-backup.sh \
          /opt/sticklive/deploy/restore-sports-dump.sh \
          /opt/sticklive/deploy/etl-healthcheck.sh \
+         /opt/sticklive/deploy/disk-hygiene.sh \
+         /opt/sticklive/deploy/tag-release.sh \
          /opt/sticklive/deploy/deploy.sh
 
 # Backup diario de BD (04:15 UTC) + copia off-site.
@@ -470,8 +492,17 @@ echo '30 4 * * 1 root /opt/sticklive/deploy/backup-env.sh >> /var/log/sticklive-
 echo '*/5 * * * * root /opt/sticklive/deploy/etl-healthcheck.sh >> /var/log/sticklive-health.log 2>&1' \
   > /etc/cron.d/sticklive-health
 
+# Higiene de disco (#301): alerta ≥80 %, prune de caché, cap de journald y
+# logrotate de los logs de cron (#309). Diaria a las 05:00 UTC.
+echo '0 5 * * * root /opt/sticklive/deploy/disk-hygiene.sh >> /var/log/sticklive-hygiene.log 2>&1' \
+  > /etc/cron.d/sticklive-hygiene
+
 chmod 644 /etc/cron.d/sticklive-*
 ```
+
+- `disk-hygiene.sh` instala solo el logrotate de `/var/log/sticklive-*.log`
+  (`deploy/logrotate-sticklive`); se puede lanzar una vez a mano tras la
+  reconstrucción para dejarlo instalado sin esperar al cron diario.
 
 - Horarios tomados de la cabecera de cada script (no inventar otros). `verify` y
   `env` coinciden a las 04:30 del lunes: son independientes y no se pisan.
@@ -500,6 +531,9 @@ En el panel del registrador del dominio `sticklive.eu`:
 | `A` | `www` | `<IP_NUEVA>` (o `CNAME` a `sticklive.eu`) |
 
 - El apex es el canónico; `www` redirige a apex vía Caddy (`deploy/Caddyfile`).
+- **TTL del registro A (#302):** bajarlo a **3600 s** (hoy ~77500 s, ~21,5 h)
+  acelera cualquier migración de IP en un desastre. Hacerlo con antelación: el
+  TTL antiguo sigue cacheado hasta que expire.
 - Comprobar propagación: `dig +short sticklive.eu` y `dig +short www.sticklive.eu`.
 - **[COMPLETAR: fecha de expiración del dominio]** — renovación a cargo del titular (ver §3).
 
@@ -613,6 +647,43 @@ de Next.
 
 ---
 
+## 16. Acceso de emergencia y cuentas (#302)
+
+Cierra el escenario «se perdió el PC / no puedo entrar por SSH». Los valores
+concretos (IPs, claves, recovery codes) van a la **bóveda**, no a este documento.
+
+### 16.1 Consola *rescue* de Hetzner (VPS inaccesible)
+
+1. **Hetzner Cloud Console** → proyecto → servidor `sticklive`.
+2. Pestaña **Rescues** → *Enable rescue* eligiendo una clave pública (o el
+   password temporal que muestra el panel) y *Reset* del servidor.
+   `[COMPLETAR: ruta exacta en la UI y si el rescue conserva la IP]`.
+3. Conecta por SSH como `root` con la clave/password del rescue: `ssh root@<IP>`.
+   Es un sistema en RAM; el disco real está sin montar.
+4. Monta el disco para reparar (SSH, `authorized_keys`, servicios…):
+
+   ```bash
+   lsblk                      # identifica la raíz, p. ej. /dev/sda1
+   mount /dev/sda1 /mnt
+   # …revisa /mnt/etc/ssh, /mnt/root/.ssh/authorized_keys, /mnt/opt/sticklive, etc.
+   ```
+
+5. Desactiva el rescue, reinicia y vuelve a probar el acceso normal.
+   `[COMPLETAR: pasos exactos de desactivación en el panel]`.
+
+### 16.2 Si se pierde el PC de administración
+
+- La **segunda clave SSH** (§7) debe existir en otro dispositivo o en la bóveda.
+- El **registrar del dominio** (`[COMPLETAR: proveedor]`) y su **fecha de
+  caducidad** (`[COMPLETAR]`) están en §3; baja el TTL del A en §12.
+- Las credenciales de **Hetzner, GitHub, Sentry, PostHog, Brevo y Google Cloud**
+  y sus **recovery codes de 2FA** viven en la bóveda (`[COMPLETAR]`).
+
+> Sin bóveda y sin segunda clave, la recuperación depende de la memoria de una
+> persona: eso es justo lo que este runbook elimina.
+
+---
+
 ## Referencias
 
 - [docs/DEPLOY.md](./DEPLOY.md) — deploy, alias `DC`, túnel SSH, secretos.
@@ -623,8 +694,11 @@ de Next.
 - `deploy/restore-sports-dump.sh` — restore completo preservando datos de usuario.
 - `deploy/verify-backup.sh` — verificación de restaurabilidad.
 - `deploy/etl-healthcheck.sh` — salvaguarda de salud del ETL (#373).
-- `deploy/deploy.sh` — build + smoke verificable.
+- `deploy/disk-hygiene.sh` + `deploy/logrotate-sticklive` — higiene de disco y rotación de logs de cron (#301, #309).
+- `deploy/tag-release.sh` — etiqueta git/docker de la release para rollback (#297).
+- `deploy/deploy.sh` — build + smoke verificable; llama a `tag-release.sh` al terminar.
 - `docker-compose.prod.yml`, `deploy/Dockerfile`, `deploy/Caddyfile` — la
   infraestructura como código que este runbook reconstruye.
 - Issues **#290** (copia cifrada de `.env.prod`), **#295** (este runbook),
-  **#373** (healthcheck del ETL).
+  **#297** (rollback), **#300** (superficie de secretos), **#301** (disco),
+  **#302** (acceso), **#304** (SSH), **#373** (healthcheck del ETL).

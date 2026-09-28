@@ -44,6 +44,7 @@ players ──< team_players
 ## Operación
 
 - `scrape_logs` (una fila por pasada de scraper, `success|partial|error`; purga diaria, retención 30 días) · `import_batches` (trazabilidad/reversibilidad de importaciones masivas) · `_migrations`.
+- `match_events` — **retención DIFERIDA (#301)**: sus particiones `match_events_s20xx` se crean por temporada pero **no se purgan**, así que el dump crece con los años. Borrar eventos históricos es una **decisión de producto** (¿purgar temporadas pasadas? ¿agregar?), no una tarea de limpieza: cambia qué muestra la hemeroteca. Diferida a propósito; mientras tanto el disco se vigila con `deploy/disk-hygiene.sh` (ver [operations.md](./operations.md#disco-y-retención-301)).
 
 ## Índices calientes (los que sostienen la API)
 

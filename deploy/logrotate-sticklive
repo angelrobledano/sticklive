@@ -1,0 +1,23 @@
+# ============================================================
+# Rotación de los logs de cron de Stick Live (#301, #309).
+#
+# Instalado en /etc/logrotate.d/sticklive por deploy/disk-hygiene.sh.
+# El cron redirige con `>>` y reabre el fichero en cada ejecución, así que
+# `copytruncate` es suficiente (no hay proceso al que mandar señal).
+#
+# Sin esto, /var/log/sticklive-backup.log crecía sin límite (#309).
+# ============================================================
+
+/var/log/sticklive-backup.log
+/var/log/sticklive-health.log
+/var/log/sticklive-hygiene.log
+{
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    create 640 root root
+}

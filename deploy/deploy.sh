@@ -192,4 +192,13 @@ if [ "$SKIP_SMOKE" -eq 0 ]; then
   log "smoke test OK ✅"
 fi
 
+# ── Etiquetado de la release (#297) ────────────────────────────────────
+# Retiene la imagen anterior como `<repo>:previous` y crea el tag git de release
+# para poder hacer rollback sin rebuild. Best-effort: un fallo aquí NO invalida
+# un despliegue ya verificado.
+if [ "$DRY_RUN" -eq 0 ] && [ -x "$SCRIPT_DIR/tag-release.sh" ]; then
+  log "etiquetando la release (deploy/tag-release.sh)"
+  "$SCRIPT_DIR/tag-release.sh" || warn "tag-release.sh falló (no bloqueante)"
+fi
+
 log "desplegado commit $(git -C "$REPO" rev-parse --short HEAD) en $BRANCH"

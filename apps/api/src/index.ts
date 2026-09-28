@@ -9,6 +9,7 @@ import { logger } from '@sports/logger';
 import { assertSchemaCurrent, SchemaOutdatedError, db } from '@sports/db';
 import { assertEnv } from './lib/env.js';
 import { rateLimit } from './lib/rate-limit.js';
+import { corsOrigins } from './lib/cors-origins.js';
 import { READ_LIMIT_MAX, READ_LIMIT_PATHS, READ_LIMIT_WINDOW_MS } from './lib/read-limits.js';
 import { cacheControlFor } from './lib/read-cache.js';
 import { standingsRouter } from './routes/standings.js';
@@ -37,9 +38,12 @@ app.use('*', honoLogger());
 
 // CORS — la web (puerto 3001 en dev, dominio propio en prod) consume la API
 // desde el navegador con cabeceras propias (Authorization, X-Admin-Token).
-const WEB_ORIGIN = process.env['WEB_BASE_URL'] ?? 'http://localhost:3001';
+// #307: localhost:3001 solo en no-producción (nunca en prod).
 app.use('*', cors({
-  origin: [WEB_ORIGIN, 'http://localhost:3001'],
+  origin: corsOrigins({
+    nodeEnv: process.env['NODE_ENV'],
+    webBaseUrl: process.env['WEB_BASE_URL'],
+  }),
   allowHeaders: ['Content-Type', 'Authorization', 'X-Admin-Token'],
   allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   maxAge: 86_400,

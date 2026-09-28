@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Context } from 'hono';
-import { rateLimit, clientIp } from './rate-limit.js';
+import { rateLimit, rateLimitBy, hitRateLimit, clientIp } from './rate-limit.js';
 
 // Contexto mínimo para probar clientIp sin levantar Hono.
 // `conn` simula la IP de la conexión TCP (c.env.incoming.socket.remoteAddress).
@@ -73,6 +73,51 @@ describe('rateLimit', () => {
     expect((await run(mw, a.ctx)).res?.status).toBe(429);
     expect((await run(mw, b.ctx)).nextCalled).toBe(true);
     expect((await run(mw, c.ctx)).nextCalled).toBe(true);
+  });
+});
+
+describe('hitRateLimit (clave arbitraria, p. ej. email o deviceId)', () => {
+  it('permite hasta max y bloquea indicando retryAfterSeconds', () => {
+    const key = `test:hit:${Math.random()}`;
+    expect(hitRateLimit(key, 2, 60_000).allowed).toBe(true);
+    expect(hitRateLimit(key, 2, 60_000).allowed).toBe(true);
+    const third = hitRateLimit(key, 2, 60_000);
+    expect(third.allowed).toBe(false);
+    expect(third.retryAfterSeconds).toBeGreaterThan(0);
+  });
+});
+
+describe('rateLimitBy (clave propia, no IP)', () => {
+  function keyedCtx(path: string, body: unknown) {
+    const headers: Record<string, string> = {};
+    const ctx = {
+      req: { path, header: () => undefined as string | undefined, json: async () => body },
+      header: (k: string, v: string) => { headers[k] = v; },
+      json: (b: unknown, s = 200) => ({ body: b, status: s }),
+    };
+    return { ctx, headers };
+  }
+
+  it('limita por la clave derivada (email) sumando entre peticiones', async () => {
+    const mw = rateLimitBy(1, 60_000, async (c) => {
+      const b = await c.req.json<{ email: string }>();
+      return b.email;
+    }) as unknown as Mw;
+    const a = keyedCtx('/auth/magic-link', { email: 'victima@x.com' });
+    const b = keyedCtx('/auth/magic-link', { email: 'victima@x.com' });
+    expect((await run(mw, a.ctx)).nextCalled).toBe(true);
+    const blocked = await run(mw, b.ctx);
+    expect(blocked.nextCalled).toBe(false);
+    expect(blocked.res?.status).toBe(429);
+  });
+
+  it('emails distintos tienen cubos independientes', async () => {
+    const mw = rateLimitBy(1, 60_000, async (c) => {
+      const b = await c.req.json<{ email: string }>();
+      return b.email;
+    }) as unknown as Mw;
+    expect((await run(mw, keyedCtx('/auth/magic-link', { email: 'a@x.com' }).ctx)).nextCalled).toBe(true);
+    expect((await run(mw, keyedCtx('/auth/magic-link', { email: 'b@x.com' }).ctx)).nextCalled).toBe(true);
   });
 });
 

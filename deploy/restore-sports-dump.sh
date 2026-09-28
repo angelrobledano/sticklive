@@ -2,7 +2,9 @@
 # ============================================================
 # Restaura un dump COMPLETO del PC en producción PRESERVANDO
 # los datos de usuarios del servidor (cuentas, favoritos en
-# nube, suscripciones push, pedidos).
+# nube, sesiones, suscripciones push, pedidos).
+#   · user_sessions se preserva desde #309: sin él, el restore
+#     cierra todas las sesiones y obliga a re-loguear.
 #
 # Uso (en el servidor, con el dump ya subido por scp):
 #   ./deploy/restore-sports-dump.sh /opt/sticklive/dump.sql.gz
@@ -17,7 +19,7 @@ echo "→ 1/7 Backup de seguridad del estado actual"
 
 echo "→ 2/7 Salvando datos de usuarios del servidor"
 $COMPOSE exec -T postgres pg_dump -U sports_user -d sports_results --data-only \
-  -t users -t user_favorites -t auth_tokens -t push_subscriptions -t orders > /tmp/userdata.sql
+  -t users -t user_favorites -t auth_tokens -t user_sessions -t push_subscriptions -t orders > /tmp/userdata.sql
 
 echo "→ 3/7 Parando servicios (etl, api, web)"
 $COMPOSE stop etl api web
@@ -31,7 +33,7 @@ gunzip -c "$DUMP" | $COMPOSE exec -T postgres psql -U sports_user -d sports_resu
 
 echo "→ 6/7 Reaplicando datos de usuarios del servidor"
 $COMPOSE exec -T postgres psql -U sports_user -d sports_results -c \
-  "TRUNCATE user_favorites, auth_tokens, push_subscriptions, orders, users RESTART IDENTITY CASCADE;"
+  "TRUNCATE user_favorites, auth_tokens, user_sessions, push_subscriptions, orders, users RESTART IDENTITY CASCADE;"
 $COMPOSE exec -T postgres psql -U sports_user -d sports_results -q < /tmp/userdata.sql
 
 echo "→ 7/7 Arrancando servicios"

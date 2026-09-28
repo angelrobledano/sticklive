@@ -2,9 +2,10 @@ import { Hono } from 'hono';
 import { randomBytes, createHash } from 'node:crypto';
 import { db, withTransaction } from '@sports/db';
 import { logger } from '@sports/logger';
-import { rateLimit } from '../lib/rate-limit.js';
+import { rateLimit, rateLimitBy } from '../lib/rate-limit.js';
 import { buildFavoritePairs } from '../lib/favorites.js';
 import { signState, verifyState } from '../lib/auth-state.js';
+import { postgresNonceStore } from '../lib/oauth-nonce-pg.js';
 
 export const authRouter = new Hono();
 
@@ -95,41 +96,51 @@ async function openSession(userId: string): Promise<string> {
  * POST /auth/magic-link  { email }
  * Genera un enlace de acceso de un solo uso (15 min). Rate limit estricto.
  */
-authRouter.post('/magic-link', rateLimit(5, 60 * 60_000), async (c) => {
-  try {
-    const { email } = await c.req.json<{ email?: string }>();
-    const clean = (email ?? '').trim().toLowerCase();
-    if (clean.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) {
-      return c.json({ error: 'invalid_email', message: 'Ese email no parece válido — revísalo y probamos de nuevo.' }, 400);
-    }
+authRouter.post(
+  '/magic-link',
+  rateLimit(5, 60 * 60_000),
+  // #307: además por email, para que rotar IPs no permita bombardear a una
+  // víctima con correos (harassment / reputación SMTP).
+  rateLimitBy(5, 60 * 60_000, async (c) => {
+    const body = await c.req.json<{ email?: string }>().catch((): { email?: string } => ({}));
+    return (body.email ?? '').trim().toLowerCase() || 'noemail';
+  }),
+  async (c) => {
+    try {
+      const { email } = await c.req.json<{ email?: string }>();
+      const clean = (email ?? '').trim().toLowerCase();
+      if (clean.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) {
+        return c.json({ error: 'invalid_email', message: 'Ese email no parece válido — revísalo y probamos de nuevo.' }, 400);
+      }
 
-    const token = newToken();
-    await db.query(
-      `INSERT INTO auth_tokens (token, email, expires_at)
-       VALUES ($1, $2, NOW() + make_interval(mins => $3::int))`,
-      [hashToken(token), clean, MAGIC_LINK_TTL_MIN]
-    );
-    const link = `${WEB_BASE}/login?token=${token}`;
+      const token = newToken();
+      await db.query(
+        `INSERT INTO auth_tokens (token, email, expires_at)
+         VALUES ($1, $2, NOW() + make_interval(mins => $3::int))`,
+        [hashToken(token), clean, MAGIC_LINK_TTL_MIN]
+      );
+      const link = `${WEB_BASE}/login?token=${token}`;
 
-    const { magicLinkDelivery, sendMagicLink } = await import('../lib/mailer.js');
-    const delivery = magicLinkDelivery(process.env['SMTP_HOST'], DEV_LINKS);
-    if (delivery === 'dev-link') {
-      logger.info({ email: clean }, '[auth] (DEV) magic link generado');
-      return c.json({ sent: true, devLink: link });
-    }
-    if (delivery === 'unconfigured') {
-      // Producción sin SMTP: NO filtrar el enlace jamás.
-      logger.error('[auth] SMTP_HOST no configurado: no se puede enviar el magic link');
-      return c.json({ error: 'email_not_configured' }, 503);
-    }
+      const { magicLinkDelivery, sendMagicLink } = await import('../lib/mailer.js');
+      const delivery = magicLinkDelivery(process.env['SMTP_HOST'], DEV_LINKS);
+      if (delivery === 'dev-link') {
+        logger.info({ email: clean }, '[auth] (DEV) magic link generado');
+        return c.json({ sent: true, devLink: link });
+      }
+      if (delivery === 'unconfigured') {
+        // Producción sin SMTP: NO filtrar el enlace jamás.
+        logger.error('[auth] SMTP_HOST no configurado: no se puede enviar el magic link');
+        return c.json({ error: 'email_not_configured' }, 503);
+      }
 
-    await sendMagicLink(clean, link);
-    return c.json({ sent: true });
-  } catch (err) {
-    logger.error({ err }, '[auth] magic-link error');
-    return c.json({ error: 'server_error' }, 500);
+      await sendMagicLink(clean, link);
+      return c.json({ sent: true });
+    } catch (err) {
+      logger.error({ err }, '[auth] magic-link error');
+      return c.json({ error: 'server_error' }, 500);
+    }
   }
-});
+);
 
 /**
  * POST /auth/verify  { token, deviceId? }
@@ -251,9 +262,13 @@ authRouter.get('/google/callback', async (c) => {
     const code = c.req.query('code');
     if (!code) return fail('google_denied');
 
-    // Verificar el state firmado (CSRF). Si no valida, abortar.
+    // Verificar el state firmado y su TTL (CSRF). Si no valida, abortar.
     const st = verifyState(c.req.query('state'));
-    if (!st) return fail('bad_state');
+    if (!st || !st.n) return fail('bad_state');
+    // Single-use (#306): el nonce se consume una sola vez. Reutilizar un state
+    // (aunque siga vigente) se rechaza. Fallo de BD → fail-closed.
+    const fresh = await postgresNonceStore.consume(st.n, new Date((st.exp ?? 0) * 1000));
+    if (!fresh) return fail('state_reused');
     const deviceId = typeof st.d === 'string' ? st.d : '';
 
     const redirectUri = `${API_PUBLIC}/auth/google/callback`;
