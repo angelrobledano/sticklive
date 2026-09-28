@@ -130,7 +130,8 @@
     "male": "Maschile",
     "female": "Femminile",
     "current": "attuale",
-    "upcoming": "Prossime"
+    "upcoming": "Prossime",
+    "change_season_hint": "Cambiando la stagione si carica la sua classifica."
   },
   "age_categories": {
     "senior": "Senior",

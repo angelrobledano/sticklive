@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
 import { randomBytes, createHash } from 'node:crypto';
 import { db, withTransaction } from '@sports/db';
+import { logger } from '@sports/logger';
 import { rateLimit } from '../lib/rate-limit.js';
+import { buildFavoritePairs } from '../lib/favorites.js';
 import { signState, verifyState } from '../lib/auth-state.js';
 
 export const authRouter = new Hono();
@@ -112,19 +114,19 @@ authRouter.post('/magic-link', rateLimit(5, 60 * 60_000), async (c) => {
     const { magicLinkDelivery, sendMagicLink } = await import('../lib/mailer.js');
     const delivery = magicLinkDelivery(process.env['SMTP_HOST'], DEV_LINKS);
     if (delivery === 'dev-link') {
-      console.log(`[auth] 🔗 (DEV) Magic link para ${clean}: ${link}`);
+      logger.info({ email: clean }, '[auth] (DEV) magic link generado');
       return c.json({ sent: true, devLink: link });
     }
     if (delivery === 'unconfigured') {
       // Producción sin SMTP: NO filtrar el enlace jamás.
-      console.error('[auth] SMTP_HOST no configurado: no se puede enviar el magic link');
+      logger.error('[auth] SMTP_HOST no configurado: no se puede enviar el magic link');
       return c.json({ error: 'email_not_configured' }, 503);
     }
 
     await sendMagicLink(clean, link);
     return c.json({ sent: true });
   } catch (err) {
-    console.error('[auth] magic-link error:', err);
+    logger.error({ err }, '[auth] magic-link error');
     return c.json({ error: 'server_error' }, 500);
   }
 });
@@ -158,7 +160,7 @@ authRouter.post('/verify', rateLimit(20, 10 * 60_000), async (c) => {
     const session = await openSession(userId);
     return c.json({ session, email });
   } catch (err) {
-    console.error('[auth] verify error:', err);
+    logger.error({ err }, '[auth] verify error');
     return c.json({ error: 'server_error' }, 500);
   }
 });
@@ -240,7 +242,7 @@ authRouter.get('/google/callback', async (c) => {
   const clientSecret = process.env['GOOGLE_CLIENT_SECRET'];
   // Log de cada motivo de fallo para diagnóstico (el cliente solo ve el motivo).
   const fail = (reason: string) => {
-    console.error('[auth] google login failed:', reason);
+    logger.error({ reason }, '[auth] google login failed');
     return c.redirect(`${WEB_BASE}/login#error=${reason}`);
   };
 
@@ -272,7 +274,7 @@ authRouter.get('/google/callback', async (c) => {
       // redirect_uri_mismatch, invalid_grant, etc. Logueamos el redirect_uri
       // que enviamos para detectar desajustes de configuración (API_BASE_URL).
       const detail = await tokenRes.text().catch(() => '');
-      console.error(`[auth] google token exchange ${tokenRes.status}; redirect_uri=${redirectUri}; resp=${detail}`);
+      logger.error({ status: tokenRes.status, redirectUri, detail }, '[auth] google token exchange');
       return fail('google_token');
     }
     const tokens = await tokenRes.json() as { id_token?: string };
@@ -297,7 +299,7 @@ authRouter.get('/google/callback', async (c) => {
       `${WEB_BASE}/login#session=${encodeURIComponent(session)}&email=${encodeURIComponent(email)}`
     );
   } catch (err) {
-    console.error('[auth] google callback error:', err);
+    logger.error({ err }, '[auth] google callback error');
     return fail('google_error');
   }
 });
@@ -329,7 +331,7 @@ authRouter.get('/favorites', async (c) => {
       players: all.rows.filter((r) => r.kind === 'player').map((r) => r.ref_id),
     });
   } catch (err) {
-    console.error('[auth] favorites read error:', err);
+    logger.error({ err }, '[auth] favorites read error');
     return c.json({ error: 'server_error' }, 500);
   }
 });
@@ -346,31 +348,33 @@ authRouter.post('/favorites/merge', async (c) => {
     const { teams = [], leagues = [], players = [] } =
       await c.req.json<{ teams?: string[]; leagues?: string[]; players?: string[] }>();
 
-    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const insert = async (kind: 'team' | 'league' | 'player', ids: string[]) => {
-      for (const id of ids.slice(0, 200)) { // tope defensivo de tamaño
-        if (!UUID.test(id)) continue;
-        await db.query(
+    // #333: un solo INSERT (unnest) por merge, dentro de una transacción, en vez
+    // de hasta 600 INSERT secuenciales sin atomicidad. La lógica de validación
+    // (UUID, tope por tipo) vive en lib/favorites.ts y está testeada.
+    const pairs = buildFavoritePairs({ teams, leagues, players });
+
+    const all = await withTransaction(async (tx) => {
+      if (pairs.length > 0) {
+        await tx.query(
           `INSERT INTO user_favorites (user_id, kind, ref_id)
-           VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
-          [user.id, kind, id]
+           SELECT $1::uuid, u.kind, u.ref_id::uuid
+           FROM unnest($2::text[], $3::text[]) AS u(kind, ref_id)
+           ON CONFLICT DO NOTHING`,
+          [user.id, pairs.map((p) => p.kind), pairs.map((p) => p.refId)]
         );
       }
-    };
-    await insert('team', teams);
-    await insert('league', leagues);
-    await insert('player', players);
+      return tx.query<{ kind: string; ref_id: string }>(
+        `SELECT kind, ref_id FROM user_favorites WHERE user_id = $1`, [user.id]
+      );
+    });
 
-    const all = await db.query<{ kind: string; ref_id: string }>(
-      `SELECT kind, ref_id FROM user_favorites WHERE user_id = $1`, [user.id]
-    );
     return c.json({
       teams:   all.rows.filter((r) => r.kind === 'team').map((r) => r.ref_id),
       leagues: all.rows.filter((r) => r.kind === 'league').map((r) => r.ref_id),
       players: all.rows.filter((r) => r.kind === 'player').map((r) => r.ref_id),
     });
   } catch (err) {
-    console.error('[auth] merge error:', err);
+    logger.error({ err }, '[auth] merge error');
     return c.json({ error: 'server_error' }, 500);
   }
 });

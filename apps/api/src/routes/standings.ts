@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
-import { getStandings } from '@sports/db';
+import { db, getStandings } from '@sports/db';
+import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 
 export const standingsRouter = new Hono();
@@ -23,6 +24,12 @@ standingsRouter.get('/:id/standings', async (c) => {
     const rows = await getStandings(seasonId, group);
 
     if (rows.length === 0) {
+      // #333: distinguir "temporada inexistente" de "temporada sin
+      // clasificación". Antes ambas devolvían el mismo 404 y el mismo mensaje.
+      const exists = await db.query('SELECT 1 FROM seasons WHERE id = $1', [seasonId]);
+      if (exists.rows.length === 0) {
+        return c.json({ error: 'Season not found' }, 404);
+      }
       return c.json(
         { error: 'No standings found for this season', seasonId },
         404
@@ -36,6 +43,7 @@ standingsRouter.get('/:id/standings', async (c) => {
       standings: rows,
     });
   } catch (err) {
+    logger.error({ err }, '[standings] GET /:id/standings error');
     return c.json({ error: 'Database error' }, 500);
   }
 });

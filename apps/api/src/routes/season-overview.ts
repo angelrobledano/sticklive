@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '@sports/db';
+import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 
 export const seasonOverviewRouter = new Hono();
@@ -85,90 +86,96 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
   if (!isUuid(seasonId)) return c.json({ error: 'Not found' }, 404);
 
   try {
-    // 1) Season + competition info
-    const seasonRes = await db.query<SeasonRow>(`
-      SELECT s.id, s.name, s.start_date, s.end_date,
-             c.id         AS competition_id,
-             c.name       AS competition_name,
-             c.name_i18n  AS competition_name_i18n,
-             c.short_name AS competition_short_name,
-             c.organizer  AS competition_organizer,
-             c.scope      AS competition_scope,
-             c.country    AS competition_country,
-             c.region     AS competition_region,
-             c.timezone   AS competition_timezone
-      FROM seasons s
-      JOIN competitions c ON c.id = s.competition_id
-      WHERE s.id = $1
-    `, [seasonId]);
+    // #333: las cuatro queries sólo dependen de seasonId y son independientes
+    // (metadata, clasificación, jornadas, partidos). En serie sumaban cuatro
+    // round-trips; en paralelo el payload tarda el máximo. Si la temporada no
+    // existe, las demás devuelven vacío y se responde 404 igualmente.
+    const [seasonRes, standingsRes, roundsRes, matchesRes] = await Promise.all([
+      // 1) Season + competition info
+      db.query<SeasonRow>(`
+        SELECT s.id, s.name, s.start_date, s.end_date,
+               c.id         AS competition_id,
+               c.name       AS competition_name,
+               c.name_i18n  AS competition_name_i18n,
+               c.short_name AS competition_short_name,
+               c.organizer  AS competition_organizer,
+               c.scope      AS competition_scope,
+               c.country    AS competition_country,
+               c.region     AS competition_region,
+               c.timezone   AS competition_timezone
+        FROM seasons s
+        JOIN competitions c ON c.id = s.competition_id
+        WHERE s.id = $1
+      `, [seasonId]),
+
+      // 2) Standings con info de equipo
+      db.query<StandingRow>(`
+        SELECT
+          st.id, st.team_id,
+          t.name         AS team_name,
+          t.short_name   AS team_short_name,
+          t.logo_url     AS team_logo_url,
+          st.group_name, st.position,
+          st.played, st.won, st.drawn, st.lost,
+          st.goals_for, st.goals_against, st.goal_diff,
+          st.points, st.form,
+          st.penalization_points
+        FROM (
+          -- Defensa contra duplicados históricos: una fila por equipo,
+          -- la más reciente (el unique con COALESCE(group_name,'') lo
+          -- impide a futuro, pero los datos viejos pueden traer restos).
+          -- Una fila por equipo, la más reciente. Si algún día hay grupos
+          -- reales (A/B), la UI necesitará tratamiento propio de grupos y
+          -- este DISTINCT deberá incluir group_name.
+          SELECT DISTINCT ON (team_id) *
+          FROM standings
+          WHERE season_id = $1
+          ORDER BY team_id, scraped_at DESC NULLS LAST, created_at DESC
+        ) st
+        JOIN teams t ON t.id = st.team_id
+        ORDER BY st.position NULLS LAST, st.points DESC, st.goal_diff DESC
+      `, [seasonId]),
+
+      // 3) Rounds (para selector de jornadas)
+      db.query<RoundRow>(`
+        SELECT id, number, name, round_type
+        FROM rounds
+        WHERE season_id = $1
+        ORDER BY
+          CASE round_type WHEN 'regular' THEN 0 WHEN 'playoff' THEN 1 ELSE 2 END,
+          number ASC
+      `, [seasonId]),
+
+      // 4) Todos los partidos con equipos
+      db.query<MatchRow>(`
+        SELECT
+          m.id, m.status, m.scheduled_at, m.started_at, m.finished_at,
+          m.home_score, m.away_score, m.winner_team_id, m.win_type, m.venue_name, m.round_id,
+          r.number       AS round_number,
+          r.name         AS round_name,
+          r.round_type,
+          ht.id          AS home_team_id,
+          ht.name        AS home_team_name,
+          ht.short_name  AS home_team_short_name,
+          ht.logo_url    AS home_team_logo_url,
+          at.id          AS away_team_id,
+          at.name        AS away_team_name,
+          at.short_name  AS away_team_short_name,
+          at.logo_url    AS away_team_logo_url
+        FROM matches m
+        LEFT JOIN rounds r ON r.id = m.round_id
+        LEFT JOIN teams ht ON ht.id = m.home_team_id
+        LEFT JOIN teams at ON at.id = m.away_team_id
+        WHERE m.season_id = $1
+        ORDER BY
+          CASE COALESCE(r.round_type,'regular') WHEN 'regular' THEN 0 WHEN 'playoff' THEN 1 ELSE 2 END,
+          COALESCE(r.number, 0),
+          m.scheduled_at ASC NULLS LAST
+      `, [seasonId]),
+    ]);
 
     if (seasonRes.rows.length === 0) return c.json({ error: 'Season not found' }, 404);
     const s = seasonRes.rows[0]!;
-
-    // 2) Standings con info de equipo
-    const standingsRes = await db.query<StandingRow>(`
-      SELECT
-        st.id, st.team_id,
-        t.name         AS team_name,
-        t.short_name   AS team_short_name,
-        t.logo_url     AS team_logo_url,
-        st.group_name, st.position,
-        st.played, st.won, st.drawn, st.lost,
-        st.goals_for, st.goals_against, st.goal_diff,
-        st.points, st.form,
-        st.penalization_points
-      FROM (
-        -- Defensa contra duplicados históricos: una fila por equipo,
-        -- la más reciente (el unique con COALESCE(group_name,'') lo
-        -- impide a futuro, pero los datos viejos pueden traer restos).
-        -- Una fila por equipo, la más reciente. Si algún día hay grupos
-        -- reales (A/B), la UI necesitará tratamiento propio de grupos y
-        -- este DISTINCT deberá incluir group_name.
-        SELECT DISTINCT ON (team_id) *
-        FROM standings
-        WHERE season_id = $1
-        ORDER BY team_id, scraped_at DESC NULLS LAST, created_at DESC
-      ) st
-      JOIN teams t ON t.id = st.team_id
-      ORDER BY st.position NULLS LAST, st.points DESC, st.goal_diff DESC
-    `, [seasonId]);
-
-    // 3) Rounds (para selector de jornadas)
-    const roundsRes = await db.query<RoundRow>(`
-      SELECT id, number, name, round_type
-      FROM rounds
-      WHERE season_id = $1
-      ORDER BY
-        CASE round_type WHEN 'regular' THEN 0 WHEN 'playoff' THEN 1 ELSE 2 END,
-        number ASC
-    `, [seasonId]);
-
-    // 4) Todos los partidos con equipos
-    const matchesRes = await db.query<MatchRow>(`
-      SELECT
-        m.id, m.status, m.scheduled_at, m.started_at, m.finished_at,
-        m.home_score, m.away_score, m.winner_team_id, m.win_type, m.venue_name, m.round_id,
-        r.number       AS round_number,
-        r.name         AS round_name,
-        r.round_type,
-        ht.id          AS home_team_id,
-        ht.name        AS home_team_name,
-        ht.short_name  AS home_team_short_name,
-        ht.logo_url    AS home_team_logo_url,
-        at.id          AS away_team_id,
-        at.name        AS away_team_name,
-        at.short_name  AS away_team_short_name,
-        at.logo_url    AS away_team_logo_url
-      FROM matches m
-      LEFT JOIN rounds r ON r.id = m.round_id
-      LEFT JOIN teams ht ON ht.id = m.home_team_id
-      LEFT JOIN teams at ON at.id = m.away_team_id
-      WHERE m.season_id = $1
-      ORDER BY
-        CASE COALESCE(r.round_type,'regular') WHEN 'regular' THEN 0 WHEN 'playoff' THEN 1 ELSE 2 END,
-        COALESCE(r.number, 0),
-        m.scheduled_at ASC NULLS LAST
-    `, [seasonId]);
 
     // ── Fases derivadas de la fase de playoff ──────────────────────
     // Modelo de fases: los partidos de playoff viven en la misma temporada
@@ -313,6 +320,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
       })),
     }, 200);
   } catch (err) {
+    logger.error({ err }, '[season-overview] GET /:id/overview error');
     return c.json({ error: 'Database error' }, 500);
   }
 });

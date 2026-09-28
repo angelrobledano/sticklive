@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import Stripe from 'stripe';
 import { db, withTransaction } from '@sports/db';
+import { logger } from '@sports/logger';
 import { rateLimit } from '../lib/rate-limit.js';
 import { isPremiumActive, isCheckoutSessionId, isPaidCheckoutSession } from '../lib/premium.js';
 
@@ -74,7 +75,7 @@ stripeRouter.get('/session/:id', rateLimit(30, 60_000), async (c) => {
         }
       } catch (dbErr) {
         // Un fallo de BD no debe tumbar el pago ya verificado con Stripe.
-        console.error('[stripe] session db lookup error:', dbErr);
+        logger.error({ err: dbErr }, '[stripe] session db lookup error');
       }
     }
 
@@ -82,7 +83,7 @@ stripeRouter.get('/session/:id', rateLimit(30, 60_000), async (c) => {
   } catch (err) {
     // Sesión inexistente o error de Stripe: nunca conceder premium.
     const status = (err as { statusCode?: number }).statusCode;
-    console.error('[stripe] session lookup error:', err);
+    logger.error({ err }, '[stripe] session lookup error');
     if (status === 404) return c.json({ error: 'session_not_found' }, 404);
     return c.json({ error: 'stripe_error' }, 502);
   }
@@ -130,7 +131,7 @@ stripeRouter.post('/checkout', rateLimit(10, 60_000), async (c) => {
 
     return c.json({ url: session.url });
   } catch (err) {
-    console.error('[stripe] checkout error:', err);
+    logger.error({ err }, '[stripe] checkout error');
     return c.json({ error: 'server_error' }, 500);
   }
 });
@@ -146,7 +147,7 @@ stripeRouter.post('/webhook', async (c) => {
     const signature = c.req.header('stripe-signature') ?? '';
     event = await stripe().webhooks.constructEventAsync(rawBody, signature, whSecret);
   } catch (err) {
-    console.error('[stripe] firma de webhook inválida:', err);
+    logger.error({ err }, '[stripe] firma de webhook inválida');
     return c.json({ error: 'invalid_signature' }, 400);
   }
 
@@ -187,7 +188,7 @@ stripeRouter.post('/webhook', async (c) => {
         premiumUserId = userId;
         analyticsDeviceId = session.metadata?.['deviceId'];
         amountTotal = session.amount_total ?? PRICE_CENTS;
-        console.log(`[stripe] ✅ Premium activado para user ${userId}`);
+        logger.info({ userId }, '[stripe] Premium activado');
       }
     }
   });

@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '@sports/db';
+import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 
 export const teamDetailRouter = new Hono();
@@ -85,215 +86,221 @@ teamDetailRouter.get('/:id', async (c) => {
   if (!isUuid(id)) return c.json({ error: 'Not found' }, 404);
 
   try {
-    // 1) Info del equipo
-    const teamRes = await db.query<TeamRow>(
-      `SELECT t.id, t.name, t.short_name, t.city, t.country, t.logo_url, t.website_url,
-              t.club_id,
-              cl.canonical_name AS club_canonical_name,
-              cl.slug           AS club_slug,
-              cl.crest_url      AS club_crest_url,
-              cl.city           AS club_city,
-              cl.country        AS club_country
-       FROM teams t
-       LEFT JOIN clubs cl ON cl.id = t.club_id
-       WHERE t.id = $1`,
-      [id]
-    );
+    // #333: equipo, clasificación y temporadas activas sólo dependen de `id` y
+    // son independientes → en paralelo (antes eran tres round-trips en serie).
+    const [teamRes, standingRes, seasonsRes] = await Promise.all([
+      // 1) Info del equipo
+      db.query<TeamRow>(
+        `SELECT t.id, t.name, t.short_name, t.city, t.country, t.logo_url, t.website_url,
+                t.club_id,
+                cl.canonical_name AS club_canonical_name,
+                cl.slug           AS club_slug,
+                cl.crest_url      AS club_crest_url,
+                cl.city           AS club_city,
+                cl.country        AS club_country
+         FROM teams t
+         LEFT JOIN clubs cl ON cl.id = t.club_id
+         WHERE t.id = $1`,
+        [id]
+      ),
+
+      // 2) Standing + nombre de competición (temporada activa)
+      db.query<StandingRow>(`
+        SELECT
+          s.season_id,
+          se.competition_id,
+          c.name          AS competition_name,
+          c.short_name    AS competition_short_name,
+          s.position,
+          s.played,   s.won,   s.drawn,   s.lost,
+          s.goals_for, s.goals_against, s.goal_diff,
+          s.points,   s.form,
+          s.penalization_points
+        FROM standings s
+        JOIN seasons se ON se.id = s.season_id
+        JOIN competitions c ON c.id = se.competition_id
+        WHERE s.team_id = $1
+          AND se.is_current = TRUE
+        ORDER BY s.points DESC
+        LIMIT 1
+      `, [id]),
+
+      // Temporadas activas del equipo — desde season_teams, NO desde standings.
+      // Las eliminatorias (playoff) no tienen clasificación y dejaban la ficha
+      // del equipo sin partidos ni plantilla.
+      db.query<{ season_id: string }>(`
+        SELECT st.season_id
+        FROM season_teams st
+        JOIN seasons se ON se.id = st.season_id
+        WHERE st.team_id = $1 AND se.is_current = TRUE
+      `, [id]),
+    ]);
+
     if (teamRes.rows.length === 0) return c.json({ error: 'Team not found' }, 404);
     const teamRow = teamRes.rows[0]!;
-
-    // 2) Standing + nombre de competición (temporada activa)
-    const standingRes = await db.query<StandingRow>(`
-      SELECT
-        s.season_id,
-        se.competition_id,
-        c.name          AS competition_name,
-        c.short_name    AS competition_short_name,
-        s.position,
-        s.played,   s.won,   s.drawn,   s.lost,
-        s.goals_for, s.goals_against, s.goal_diff,
-        s.points,   s.form,
-        s.penalization_points
-      FROM standings s
-      JOIN seasons se ON se.id = s.season_id
-      JOIN competitions c ON c.id = se.competition_id
-      WHERE s.team_id = $1
-        AND se.is_current = TRUE
-      ORDER BY s.points DESC
-      LIMIT 1
-    `, [id]);
-
     const standingRow = standingRes.rows[0] ?? null;
-
-    // Temporadas activas del equipo — desde season_teams, NO desde standings.
-    // Las eliminatorias (playoff) no tienen clasificación y dejaban la ficha
-    // del equipo sin partidos ni plantilla.
-    const seasonsRes = await db.query<{ season_id: string }>(`
-      SELECT st.season_id
-      FROM season_teams st
-      JOIN seasons se ON se.id = st.season_id
-      WHERE st.team_id = $1 AND se.is_current = TRUE
-    `, [id]);
     const currentSeasonIds = seasonsRes.rows.map((r) => r.season_id);
     if (standingRow && !currentSeasonIds.includes(standingRow.season_id)) {
       currentSeasonIds.push(standingRow.season_id);
     }
 
-    // 3) Partidos de las temporadas activas donde participa el equipo
+    // #333: partidos, plantilla, cuerpo técnico y stats sólo dependen del mismo
+    // `currentSeasonIds` → un único Promise.all para los cuatro grupos (antes
+    // eran cuatro round-trips en serie).
     let matchRows: MatchRow[] = [];
-    if (currentSeasonIds.length > 0) {
-      const matchRes = await db.query<MatchRow>(`
-        SELECT
-          m.id, m.status, m.scheduled_at, m.started_at, m.finished_at,
-          m.home_score, m.away_score,
-          m.venue_name, m.venue_city,
-          ht.id           AS home_team_id,
-          ht.name         AS home_team_name,
-          ht.short_name   AS home_team_short_name,
-          ht.logo_url     AS home_team_logo_url,
-          at.id           AS away_team_id,
-          at.name         AS away_team_name,
-          at.short_name   AS away_team_short_name,
-          at.logo_url     AS away_team_logo_url,
-          c.timezone      AS competition_timezone
-        FROM matches m
-        LEFT JOIN teams ht ON ht.id = m.home_team_id
-        LEFT JOIN teams at ON at.id = m.away_team_id
-        LEFT JOIN seasons se ON se.id = m.season_id
-        LEFT JOIN competitions c ON c.id = se.competition_id
-        WHERE m.season_id = ANY($1)
-          AND (m.home_team_id = $2 OR m.away_team_id = $2)
-        ORDER BY m.scheduled_at ASC NULLS LAST
-      `, [currentSeasonIds, id]);
-      matchRows = matchRes.rows;
-    }
-
-    // 4) Plantilla con stats agregadas de match_events (temporadas activas)
     let squadRows: SquadRow[] = [];
-    if (currentSeasonIds.length > 0) {
-      const squadRes = await db.query<SquadRow>(`
-        SELECT
-          p.id            AS player_id,
-          p.first_name,
-          p.last_name,
-          -- Portero: si el jugador aparece marcado como tal en CUALQUIER
-          -- alineación de la temporada (match_lineups.is_goalkeeper). La fuente
-          -- no da una posición de jugador; sólo marca al portero por partido.
-          EXISTS (
-            SELECT 1 FROM match_lineups ml
-            JOIN matches mx ON mx.id = ml.match_id
-            WHERE ml.player_id = p.id
-              AND ml.is_goalkeeper = TRUE
-              AND mx.season_id = ANY($1)
-          )               AS is_goalkeeper,
-          p.photo_url,
-          tp.jersey_number,
-          COUNT(DISTINCT me_g.id)  FILTER (WHERE me_g.event_type = 'goal')       AS goals,
-          COUNT(DISTINCT me_b.id)  FILTER (WHERE me_b.event_type = 'blue_card')  AS blue_cards,
-          COUNT(DISTINCT me_r.id)  FILTER (WHERE me_r.event_type = 'red_card')   AS red_cards,
-          COUNT(DISTINCT me_p.id)  FILTER (WHERE me_p.event_type = 'penalty')    AS penalties
-        FROM team_players tp
-        JOIN players p ON p.id = tp.player_id
-        -- Agregados desde match_events (LEFT JOIN para no excluir jugadores sin eventos)
-        LEFT JOIN match_events me_g ON me_g.player_id = p.id
-          AND me_g.event_type = 'goal'
-          AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_g.match_id AND mx.season_id = ANY($1))
-        LEFT JOIN match_events me_b ON me_b.player_id = p.id
-          AND me_b.event_type = 'blue_card'
-          AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_b.match_id AND mx.season_id = ANY($1))
-        LEFT JOIN match_events me_r ON me_r.player_id = p.id
-          AND me_r.event_type = 'red_card'
-          AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_r.match_id AND mx.season_id = ANY($1))
-        LEFT JOIN match_events me_p ON me_p.player_id = p.id
-          AND me_p.event_type = 'penalty'
-          AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_p.match_id AND mx.season_id = ANY($1))
-        WHERE tp.team_id = $2
-          AND tp.season_id = ANY($1)
-          AND tp.is_active = TRUE
-        GROUP BY p.id, p.first_name, p.last_name, p.photo_url, tp.jersey_number
-        ORDER BY
-          is_goalkeeper DESC,          -- porteros primero (ahora sí: dato real)
-          tp.jersey_number NULLS LAST,
-          p.last_name
-      `, [currentSeasonIds, id]);
-      squadRows = squadRes.rows;
-    }
-
-    // 4b) Cuerpo técnico — del partido más reciente con acta procesada
     let staff: Array<{ name: string; role: string }> = [];
-    if (currentSeasonIds.length > 0) {
-      const staffRes = await db.query<{ player_name: string; role: string }>(`
-        SELECT DISTINCT ON (ml.player_name) ml.player_name, ml.role
-        FROM match_lineups ml
-        JOIN matches m ON m.id = ml.match_id
-        WHERE m.season_id = ANY($1)
-          AND ((ml.is_home AND m.home_team_id = $2) OR (NOT ml.is_home AND m.away_team_id = $2))
-          AND ml.role IS NOT NULL
-        ORDER BY ml.player_name, m.scheduled_at DESC
-      `, [currentSeasonIds, id]);
-      const ROLE_ORDER: Record<string, number> = { E1: 0, E: 0, E2: 1, A: 2, D: 3 };
-      staff = staffRes.rows
-        .map((r) => ({ name: r.player_name, role: r.role }))
-        .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9));
-    }
-
-    // 5) Estadísticas propias del equipo (temporadas activas)
     let teamStats: Record<string, unknown> | null = null;
+
     if (currentSeasonIds.length > 0) {
-      const [resultsRes, eventsRes, lineupRes] = await Promise.all([
-        // Resultados y faltas de equipo desde matches
-        db.query<{
-          played: string; won: string; drawn: string; lost: string;
-          gf: string | null; ga: string | null; fouls: string | null;
-        }>(`
+      const [matchRes, squadRes, staffRes, [resultsRes, eventsRes, lineupRes]] = await Promise.all([
+        // 3) Partidos de las temporadas activas donde participa el equipo
+        db.query<MatchRow>(`
           SELECT
-            COUNT(*)::text AS played,
-            COUNT(*) FILTER (
-              WHERE (home_team_id = $2 AND home_score > away_score)
-                 OR (away_team_id = $2 AND away_score > home_score)
-            )::text AS won,
-            COUNT(*) FILTER (WHERE home_score = away_score)::text AS drawn,
-            COUNT(*) FILTER (
-              WHERE (home_team_id = $2 AND home_score < away_score)
-                 OR (away_team_id = $2 AND away_score < home_score)
-            )::text AS lost,
-            SUM(CASE WHEN home_team_id = $2 THEN home_score ELSE away_score END)::text AS gf,
-            SUM(CASE WHEN home_team_id = $2 THEN away_score ELSE home_score END)::text AS ga,
-            SUM(CASE WHEN home_team_id = $2 THEN home_fouls ELSE away_fouls END)::text AS fouls
-          FROM matches
-          WHERE season_id = ANY($1)
-            AND (home_team_id = $2 OR away_team_id = $2)
-            AND status = 'finished'
+            m.id, m.status, m.scheduled_at, m.started_at, m.finished_at,
+            m.home_score, m.away_score,
+            m.venue_name, m.venue_city,
+            ht.id           AS home_team_id,
+            ht.name         AS home_team_name,
+            ht.short_name   AS home_team_short_name,
+            ht.logo_url     AS home_team_logo_url,
+            at.id           AS away_team_id,
+            at.name         AS away_team_name,
+            at.short_name   AS away_team_short_name,
+            at.logo_url     AS away_team_logo_url,
+            c.timezone      AS competition_timezone
+          FROM matches m
+          LEFT JOIN teams ht ON ht.id = m.home_team_id
+          LEFT JOIN teams at ON at.id = m.away_team_id
+          LEFT JOIN seasons se ON se.id = m.season_id
+          LEFT JOIN competitions c ON c.id = se.competition_id
+          WHERE m.season_id = ANY($1)
+            AND (m.home_team_id = $2 OR m.away_team_id = $2)
+          ORDER BY m.scheduled_at ASC NULLS LAST
         `, [currentSeasonIds, id]),
-        // Disciplina y bola parada desde match_events
-        db.query<{
-          blue: string; red: string; timeouts: string;
-          fd_total: string; fd_scored: string;
-          pen_total: string; pen_scored: string;
-        }>(`
+
+        // 4) Plantilla con stats agregadas de match_events (temporadas activas)
+        db.query<SquadRow>(`
           SELECT
-            COUNT(*) FILTER (WHERE e.event_type = 'blue_card')::text AS blue,
-            COUNT(*) FILTER (WHERE e.event_type = 'red_card')::text  AS red,
-            COUNT(*) FILTER (WHERE e.event_type = 'timeout')::text   AS timeouts,
-            COUNT(*) FILTER (WHERE e.event_type = 'direct_foul')::text AS fd_total,
-            COUNT(*) FILTER (WHERE e.event_type = 'direct_foul' AND e.detail = 'marcada')::text AS fd_scored,
-            COUNT(*) FILTER (WHERE e.event_type = 'penalty')::text AS pen_total,
-            COUNT(*) FILTER (
-              WHERE e.event_type = 'penalty' AND (e.detail ILIKE '%gol%' OR e.detail ILIKE '%marc%')
-            )::text AS pen_scored
-          FROM match_events e
-          JOIN matches m ON m.id = e.match_id
-          WHERE m.season_id = ANY($1) AND e.team_id = $2
+            p.id            AS player_id,
+            p.first_name,
+            p.last_name,
+            -- Portero: si el jugador aparece marcado como tal en CUALQUIER
+            -- alineación de la temporada (match_lineups.is_goalkeeper). La fuente
+            -- no da una posición de jugador; sólo marca al portero por partido.
+            EXISTS (
+              SELECT 1 FROM match_lineups ml
+              JOIN matches mx ON mx.id = ml.match_id
+              WHERE ml.player_id = p.id
+                AND ml.is_goalkeeper = TRUE
+                AND mx.season_id = ANY($1)
+            )               AS is_goalkeeper,
+            p.photo_url,
+            tp.jersey_number,
+            COUNT(DISTINCT me_g.id)  FILTER (WHERE me_g.event_type = 'goal')       AS goals,
+            COUNT(DISTINCT me_b.id)  FILTER (WHERE me_b.event_type = 'blue_card')  AS blue_cards,
+            COUNT(DISTINCT me_r.id)  FILTER (WHERE me_r.event_type = 'red_card')   AS red_cards,
+            COUNT(DISTINCT me_p.id)  FILTER (WHERE me_p.event_type = 'penalty')    AS penalties
+          FROM team_players tp
+          JOIN players p ON p.id = tp.player_id
+          -- Agregados desde match_events (LEFT JOIN para no excluir jugadores sin eventos)
+          LEFT JOIN match_events me_g ON me_g.player_id = p.id
+            AND me_g.event_type = 'goal'
+            AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_g.match_id AND mx.season_id = ANY($1))
+          LEFT JOIN match_events me_b ON me_b.player_id = p.id
+            AND me_b.event_type = 'blue_card'
+            AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_b.match_id AND mx.season_id = ANY($1))
+          LEFT JOIN match_events me_r ON me_r.player_id = p.id
+            AND me_r.event_type = 'red_card'
+            AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_r.match_id AND mx.season_id = ANY($1))
+          LEFT JOIN match_events me_p ON me_p.player_id = p.id
+            AND me_p.event_type = 'penalty'
+            AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_p.match_id AND mx.season_id = ANY($1))
+          WHERE tp.team_id = $2
+            AND tp.season_id = ANY($1)
+            AND tp.is_active = TRUE
+          GROUP BY p.id, p.first_name, p.last_name, p.photo_url, tp.jersey_number
+          ORDER BY
+            is_goalkeeper DESC,          -- porteros primero (ahora sí: dato real)
+            tp.jersey_number NULLS LAST,
+            p.last_name
         `, [currentSeasonIds, id]),
-        // Asistencias desde las alineaciones
-        db.query<{ assists: string | null }>(`
-          SELECT SUM(ml.assists)::text AS assists
+
+        // 4b) Cuerpo técnico — del partido más reciente con acta procesada
+        db.query<{ player_name: string; role: string }>(`
+          SELECT DISTINCT ON (ml.player_name) ml.player_name, ml.role
           FROM match_lineups ml
           JOIN matches m ON m.id = ml.match_id
           WHERE m.season_id = ANY($1)
             AND ((ml.is_home AND m.home_team_id = $2) OR (NOT ml.is_home AND m.away_team_id = $2))
+            AND ml.role IS NOT NULL
+          ORDER BY ml.player_name, m.scheduled_at DESC
         `, [currentSeasonIds, id]),
+
+        // 5) Estadísticas propias del equipo (temporadas activas)
+        Promise.all([
+          // Resultados y faltas de equipo desde matches
+          db.query<{
+            played: string; won: string; drawn: string; lost: string;
+            gf: string | null; ga: string | null; fouls: string | null;
+          }>(`
+            SELECT
+              COUNT(*)::text AS played,
+              COUNT(*) FILTER (
+                WHERE (home_team_id = $2 AND home_score > away_score)
+                   OR (away_team_id = $2 AND away_score > home_score)
+              )::text AS won,
+              COUNT(*) FILTER (WHERE home_score = away_score)::text AS drawn,
+              COUNT(*) FILTER (
+                WHERE (home_team_id = $2 AND home_score < away_score)
+                   OR (away_team_id = $2 AND away_score < home_score)
+              )::text AS lost,
+              SUM(CASE WHEN home_team_id = $2 THEN home_score ELSE away_score END)::text AS gf,
+              SUM(CASE WHEN home_team_id = $2 THEN away_score ELSE home_score END)::text AS ga,
+              SUM(CASE WHEN home_team_id = $2 THEN home_fouls ELSE away_fouls END)::text AS fouls
+            FROM matches
+            WHERE season_id = ANY($1)
+              AND (home_team_id = $2 OR away_team_id = $2)
+              AND status = 'finished'
+          `, [currentSeasonIds, id]),
+          // Disciplina y bola parada desde match_events
+          db.query<{
+            blue: string; red: string; timeouts: string;
+            fd_total: string; fd_scored: string;
+            pen_total: string; pen_scored: string;
+          }>(`
+            SELECT
+              COUNT(*) FILTER (WHERE e.event_type = 'blue_card')::text AS blue,
+              COUNT(*) FILTER (WHERE e.event_type = 'red_card')::text  AS red,
+              COUNT(*) FILTER (WHERE e.event_type = 'timeout')::text   AS timeouts,
+              COUNT(*) FILTER (WHERE e.event_type = 'direct_foul')::text AS fd_total,
+              COUNT(*) FILTER (WHERE e.event_type = 'direct_foul' AND e.detail = 'marcada')::text AS fd_scored,
+              COUNT(*) FILTER (WHERE e.event_type = 'penalty')::text AS pen_total,
+              COUNT(*) FILTER (
+                WHERE e.event_type = 'penalty' AND (e.detail ILIKE '%gol%' OR e.detail ILIKE '%marc%')
+              )::text AS pen_scored
+            FROM match_events e
+            JOIN matches m ON m.id = e.match_id
+            WHERE m.season_id = ANY($1) AND e.team_id = $2
+          `, [currentSeasonIds, id]),
+          // Asistencias desde las alineaciones
+          db.query<{ assists: string | null }>(`
+            SELECT SUM(ml.assists)::text AS assists
+            FROM match_lineups ml
+            JOIN matches m ON m.id = ml.match_id
+            WHERE m.season_id = ANY($1)
+              AND ((ml.is_home AND m.home_team_id = $2) OR (NOT ml.is_home AND m.away_team_id = $2))
+          `, [currentSeasonIds, id]),
+        ]),
       ]);
+
+      matchRows = matchRes.rows;
+      squadRows = squadRes.rows;
+
+      const ROLE_ORDER: Record<string, number> = { E1: 0, E: 0, E2: 1, A: 2, D: 3 };
+      staff = staffRes.rows
+        .map((r) => ({ name: r.player_name, role: r.role }))
+        .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9));
 
       const r = resultsRes.rows[0]!;
       const e = eventsRes.rows[0]!;
@@ -400,6 +407,7 @@ teamDetailRouter.get('/:id', async (c) => {
 
     return c.json({ team, standing, matches, squad, staff, stats: teamStats });
   } catch (err) {
+    logger.error({ err }, '[team-detail] GET /:id error');
     return c.json({ error: 'Database error' }, 500);
   }
 });

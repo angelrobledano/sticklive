@@ -155,7 +155,8 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
   await forEachLimited(rows.rows, FICHA_CONCURRENCY, async (match) => {
     const source = sourceForMatchRef(match.source_ref);
     if (!source) {
-      log.debug(
+      // #333: una omisión no debe ser invisible con LOG_LEVEL=info por defecto.
+      log.warn(
         { matchId: match.id, sourceRef: match.source_ref },
         'Fuente no reconocida — omitiendo ficha (añádela en core/sources.ts)'
       );

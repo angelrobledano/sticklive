@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '@sports/db';
+import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 
 export const competitionsRouter = new Hono();
@@ -42,7 +43,35 @@ competitionsRouter.get('/', async (c) => {
   const archivedClause = includeArchived ? '' : 'AND comp.archived_at IS NULL';
 
   try {
+    // #333: en vez de dos COUNT correlacionados por cada competición (2 filas
+    // × N competiciones), se eligen primero las temporadas de referencia y se
+    // agregan los contadores UNA vez, sólo para esas temporadas. El resultado
+    // es idéntico (COALESCE 0 cuando una temporada no tiene filas).
     const result = await db.query<CompetitionRow>(`
+      WITH picked AS (
+        SELECT comp.id AS comp_id, s.id AS season_id
+        FROM competitions comp
+        JOIN LATERAL (
+          SELECT s2.id FROM seasons s2
+          WHERE s2.competition_id = comp.id
+            AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s2.id)
+          ORDER BY s2.is_current DESC, s2.start_date DESC NULLS LAST
+          LIMIT 1
+        ) s ON TRUE
+        WHERE TRUE ` + archivedClause + `
+      ),
+      team_counts AS (
+        SELECT st.season_id, COUNT(*)::text AS c
+        FROM season_teams st
+        WHERE st.season_id IN (SELECT season_id FROM picked)
+        GROUP BY st.season_id
+      ),
+      match_counts AS (
+        SELECT m.season_id, COUNT(*)::text AS c
+        FROM matches m
+        WHERE m.season_id IN (SELECT season_id FROM picked)
+        GROUP BY m.season_id
+      )
       SELECT
         comp.id, comp.name, comp.name_i18n, comp.short_name, comp.slug,
         comp.gender, comp.category, comp.country,
@@ -52,17 +81,13 @@ competitionsRouter.get('/', async (c) => {
         s.start_date AS season_start,
         s.end_date   AS season_end,
         s.is_current AS season_is_current,
-        (SELECT COUNT(*)::text FROM season_teams st WHERE st.season_id = s.id) AS team_count,
-        (SELECT COUNT(*)::text FROM matches m WHERE m.season_id = s.id)       AS match_count
-      FROM competitions comp
-      JOIN LATERAL (
-        SELECT id, name, start_date, end_date, is_current FROM seasons s2
-        WHERE s2.competition_id = comp.id
-          AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s2.id)
-        ORDER BY s2.is_current DESC, s2.start_date DESC NULLS LAST
-        LIMIT 1
-      ) s ON TRUE
-      WHERE TRUE ` + archivedClause + `
+        COALESCE(tc.c, '0') AS team_count,
+        COALESCE(mc.c, '0') AS match_count
+      FROM picked p
+      JOIN competitions comp ON comp.id = p.comp_id
+      JOIN seasons s ON s.id = p.season_id
+      LEFT JOIN team_counts tc ON tc.season_id = p.season_id
+      LEFT JOIN match_counts mc ON mc.season_id = p.season_id
       ORDER BY comp.name ASC
     `);
 
@@ -92,7 +117,7 @@ competitionsRouter.get('/', async (c) => {
 
     return c.json({ count: competitions.length, competitions });
   } catch (err) {
-    console.error('[competitions] GET / error:', err);
+    logger.error({ err }, '[competitions] GET / error');
     return c.json({ error: 'Database error' }, 500);
   }
 });
@@ -136,7 +161,7 @@ competitionsRouter.get('/:id/seasons', async (c) => {
       })),
     });
   } catch (err) {
-    console.error('[competitions] GET /:id/seasons error:', err);
+    logger.error({ err }, '[competitions] GET /:id/seasons error');
     return c.json({ error: 'Database error' }, 500);
   }
 });

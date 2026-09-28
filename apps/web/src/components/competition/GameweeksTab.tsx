@@ -205,7 +205,7 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
               onChange={(e) => { if (e.target.value) apply({ journey: Number(e.target.value) }); }}
               className="w-full min-h-[40px] pl-3 pr-8 rounded-xl border border-slate-200 dark:border-slate-700
                          bg-white dark:bg-slate-900 text-sm font-medium text-slate-700 dark:text-slate-200
-                         focus:outline-none focus:ring-2 focus:ring-rink-passion cursor-pointer appearance-none"
+                         focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-red-400 cursor-pointer appearance-none"
               aria-label={t('fixtures.by_round')}
             >
               {!journeyMode && <option value="">{t('fixtures.by_round')}</option>}

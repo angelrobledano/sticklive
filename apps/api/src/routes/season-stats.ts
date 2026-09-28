@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '@sports/db';
+import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 
 export const seasonStatsRouter = new Hono();
@@ -142,7 +143,7 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
       }),
     });
   } catch (err) {
-    console.error('[season-stats] GET /:id/stats error:', err);
+    logger.error({ err }, '[season-stats] GET /:id/stats error');
     return c.json({ error: 'Database error' }, 500);
   }
 });

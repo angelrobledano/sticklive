@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
 import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats } from '@sports/db';
+import { logger } from '@sports/logger';
 
 /**
  * Panel de administracion nivel 1 (token compartido).
@@ -71,7 +72,7 @@ adminRouter.get('/users', async (c) => {
       users,
     });
   } catch (err) {
-    console.error('[admin] error:', err);
+    logger.error({ err }, '[admin] error');
     return c.json({ error: 'Database error' }, 500);
   }
 });
@@ -101,7 +102,7 @@ adminRouter.patch('/users/:id/status', async (c) => {
     if (res.rowCount === 0) return c.json({ error: 'User not found' }, 404);
     return c.json({ ok: true, user: res.rows[0] });
   } catch (err) {
-    console.error('[admin] error:', err);
+    logger.error({ err }, '[admin] error');
     return c.json({ error: 'Database error' }, 500);
   }
 });
@@ -113,7 +114,7 @@ adminRouter.delete('/users/:id', async (c) => {
     if (res.rowCount === 0) return c.json({ error: 'User not found' }, 404);
     return c.json({ ok: true, deleted: id });
   } catch (err) {
-    console.error('[admin] delete user error:', err);
+    logger.error({ err }, '[admin] delete user error');
     return c.json({
       error: 'Cannot delete user (may have payment orders). Disable it instead.',
     }, 409);
@@ -131,7 +132,7 @@ adminRouter.get('/competitions/archived', async (c) => {
     const archived = await listArchivedCompetitions();
     return c.json({ count: archived.length, competitions: archived });
   } catch (err) {
-    console.error('[admin] error:', err);
+    logger.error({ err }, '[admin] error');
     return c.json({ error: 'Database error' }, 500);
   }
 });
@@ -154,7 +155,7 @@ adminRouter.get('/competitions/duplicates', async (c) => {
       duplicates: candidates,
     });
   } catch (err) {
-    console.error('[admin] error:', err);
+    logger.error({ err }, '[admin] error');
     return c.json({ error: 'Database error' }, 500);
   }
 });
@@ -170,7 +171,7 @@ adminRouter.post('/competitions/:id/archive', async (c) => {
     if (!comp) return c.json({ error: 'Competition not found' }, 404);
     return c.json({ ok: true, competition: { id: comp.id, name: comp.name, archived_at: comp.archived_at } });
   } catch (err) {
-    console.error('[admin] error:', err);
+    logger.error({ err }, '[admin] error');
     return c.json({ error: 'Database error' }, 500);
   }
 });
@@ -186,7 +187,7 @@ adminRouter.post('/competitions/:id/restore', async (c) => {
     if (!comp) return c.json({ error: 'Competition not found' }, 404);
     return c.json({ ok: true, competition: { id: comp.id, name: comp.name, archived_at: comp.archived_at } });
   } catch (err) {
-    console.error('[admin] error:', err);
+    logger.error({ err }, '[admin] error');
     return c.json({ error: 'Database error' }, 500);
   }
 });
@@ -231,7 +232,7 @@ adminRouter.get('/resolution-queue', async (c) => {
     const items = await listResolutionQueue(status, limit);
     return c.json({ status, count: items.length, items });
   } catch (err) {
-    console.error('[admin] resolution-queue error:', err);
+    logger.error({ err }, '[admin] resolution-queue error');
     return c.json({ error: 'Database error' }, 500);
   }
 });
@@ -244,7 +245,7 @@ adminRouter.get('/resolution-queue/stats', async (c) => {
   try {
     return c.json(await getResolutionStats());
   } catch (err) {
-    console.error('[admin] resolution-queue stats error:', err);
+    logger.error({ err }, '[admin] resolution-queue stats error');
     return c.json({ error: 'Database error' }, 500);
   }
 });
@@ -263,7 +264,7 @@ adminRouter.post('/resolution-queue/:id/resolve', async (c) => {
     if (!result) return c.json({ error: 'Item not found or not pending' }, 404);
     return c.json({ ok: true, ...result });
   } catch (err) {
-    console.error('[admin] resolve error:', err);
+    logger.error({ err }, '[admin] resolve error');
     return c.json({ error: 'Database error' }, 500);
   }
 });
@@ -279,7 +280,7 @@ adminRouter.post('/resolution-queue/:id/reject', async (c) => {
     if (!ok) return c.json({ error: 'Item not found or not pending' }, 404);
     return c.json({ ok: true, rejected: id });
   } catch (err) {
-    console.error('[admin] reject error:', err);
+    logger.error({ err }, '[admin] reject error');
     return c.json({ error: 'Database error' }, 500);
   }
 });

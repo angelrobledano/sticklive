@@ -67,20 +67,27 @@ function TeamBlock({
 }
 
 /**
+ * Decisión pura (testeable sin navegador): ¿un partido 'scheduled' debería
+ * pintarse ya como 'live' porque su hora de inicio pasó? El reloj llega como
+ * parámetro (`now` en ms). Solo se fuerza "en juego" dentro de la ventana
+ * realista de partido (STALE_LIVE_HOURS, fuente única #191); más allá el dato
+ * está desactualizado o el partido no se jugó: mostrar hora.
+ */
+export function isMatchOverdue(match: Match, now: number): boolean {
+  if (match.status !== 'scheduled') return false;
+  const startIso = match.scheduledAt ?? match.startedAt;
+  if (!startIso) return false;
+  const start = new Date(startIso).getTime();
+  return now > start && now - start < STALE_LIVE_HOURS * 3_600_000;
+}
+
+/**
  * Parche reactivo: devuelve true si el partido esta como 'scheduled'
  * pero la hora actual ya ha superado su hora de inicio.
  * Usa el reloj compartido de 30 s (una sola suscripción en toda la app, #366).
  */
 function useIsMatchOverdue(match: Match): boolean {
-  const now = useNow30s();
-  if (match.status !== 'scheduled') return false;
-  const startIso = match.scheduledAt ?? match.startedAt;
-  if (!startIso) return false;
-  const start = new Date(startIso).getTime();
-  // Solo forzar "en juego" dentro de la ventana realista de partido
-  // (STALE_LIVE_HOURS, fuente única #191). Más allá, el dato está desactualizado
-  // o el partido no se jugó: mostrar hora.
-  return now > start && now - start < STALE_LIVE_HOURS * 3_600_000;
+  return isMatchOverdue(match, useNow30s());
 }
 
 function ScoreBlock({ match }: { match: Match }) {

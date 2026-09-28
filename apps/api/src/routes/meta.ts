@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '@sports/db';
+import { logger } from '@sports/logger';
 
 /**
  * GET /meta/sitemap — ids para construir el sitemap de la web.
@@ -35,7 +36,7 @@ metaRouter.get('/sitemap', async (c) => {
       matches:      matches.rows.map((r) => r.id),
     });
   } catch (err) {
-    console.error('[meta] error:', err);
+    logger.error({ err }, '[meta] error');
     return c.json({ error: 'Database error' }, 500);
   }
 });

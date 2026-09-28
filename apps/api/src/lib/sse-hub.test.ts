@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applySnapshot, emptyHubState, eventForKind } from './sse-hub.js';
+import { applySnapshot, emptyHubState, eventForKind, enqueueBounded, SSE_NOT_FOUND_ERROR } from './sse-hub.js';
 import type { HubSnapshotInput } from './sse-hub.js';
 
 interface SnapOverrides {
@@ -91,5 +91,32 @@ describe('eventForKind', () => {
   it('finished y error pasan con su nombre sin tocar firstSent', () => {
     expect(eventForKind('finished', true)).toEqual({ event: 'finished', firstSent: true });
     expect(eventForKind('error', false)).toEqual({ event: 'error', firstSent: false });
+  });
+});
+
+describe('enqueueBounded (#333)', () => {
+  it('encola normalmente por debajo del tope', () => {
+    const q: number[] = [];
+    enqueueBounded(q, 1, 3);
+    enqueueBounded(q, 2, 3);
+    expect(q).toEqual([1, 2]);
+  });
+
+  it('al tope descarta el más antiguo y conserva el nuevo', () => {
+    const q: number[] = [1, 2, 3];
+    enqueueBounded(q, 4, 3);
+    expect(q).toEqual([2, 3, 4]);
+  });
+
+  it('tolera colas ya por encima del tope', () => {
+    const q: number[] = [1, 2, 3, 4, 5];
+    enqueueBounded(q, 6, 2);
+    expect(q).toEqual([5, 6]);
+  });
+});
+
+describe('SSE_NOT_FOUND_ERROR (#333)', () => {
+  it('unifica la forma de error con el resto de la API', () => {
+    expect(SSE_NOT_FOUND_ERROR).toEqual({ error: 'not_found', message: 'Partido no encontrado' });
   });
 });

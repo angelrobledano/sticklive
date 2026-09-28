@@ -47,6 +47,39 @@ function visibleTabsFor(data: MatchDetail): Tab[] {
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
+// ── Decisión de refresco de un partido 'scheduled' (#366) ────────────────────
+/** Margen antes del inicio en el que adelantamos un fetch inmediato. */
+export const REFETCH_LEAD_MS = 5 * 60_000;
+/** Solo programamos un refresco si el inicio cae dentro de esta ventana. */
+export const REFETCH_HORIZON_MS = 6 * 3_600_000;
+/** Margen tras el inicio en el que reintentamos (el scraper puede tardar). */
+export const REFETCH_GRACE_MS = 60_000;
+
+export interface ScheduledRefetchPlan {
+  /** Fetch inmediato al montar: inicio inminente o ya pasado. */
+  refetchNow: boolean;
+  /** Retardo del temporizador, o `null` si no procede programar ninguno. */
+  timeoutMs: number | null;
+}
+
+/**
+ * Función pura (testeable sin navegador) que decide cuándo refrescar la ficha
+ * de un partido programado. Evita el re-fetch incondicional al abrir partidos
+ * lejanos (#366): solo se consulta enseguida si el inicio es inminente o ya
+ * pasó, y solo se programa un temporizador si el inicio está dentro del horizonte.
+ */
+export function planScheduledRefetch(
+  startIso: string | null | undefined,
+  nowMs: number,
+): ScheduledRefetchPlan {
+  if (!startIso) return { refetchNow: false, timeoutMs: null };
+  const delay = new Date(startIso).getTime() - nowMs;
+  return {
+    refetchNow: delay <= REFETCH_LEAD_MS,
+    timeoutMs: delay <= 0 || delay > REFETCH_HORIZON_MS ? null : delay + REFETCH_GRACE_MS,
+  };
+}
+
 export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) {
   const { t } = useT();
   const [activeTab,  setActiveTab]  = useState<Tab>('Resumen');
@@ -316,16 +349,16 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
   // bloque SSE de arriba tome el relevo.
   useEffect(() => {
     if (isLive) return;
-    const startIso = liveData.match.scheduledAt ?? liveData.match.startedAt;
-    if (!startIso) return;
-    const start = new Date(startIso).getTime();
-    const delay = start - Date.now();
+    const plan = planScheduledRefetch(
+      liveData.match.scheduledAt ?? liveData.match.startedAt,
+      Date.now(),
+    );
     // Cubre un RSC cacheado justo antes del saque (#187) solo si el inicio es
     // inminente o ya pasó; para partidos lejanos no hacemos un fetch
     // incondicional al abrir la ficha (#366).
-    if (delay <= 5 * 60_000) void refreshData();
-    if (delay <= 0 || delay > 6 * 3_600_000) return;
-    const timer = setTimeout(refreshData, delay + 60_000);
+    if (plan.refetchNow) void refreshData();
+    if (plan.timeoutMs === null) return;
+    const timer = setTimeout(refreshData, plan.timeoutMs);
     return () => clearTimeout(timer);
   }, [isLive, liveData.match.scheduledAt, liveData.match.startedAt, refreshData]);
 

@@ -492,7 +492,7 @@ export function CompetitionsList({
             className="w-full min-h-[44px] pl-9 pr-12 rounded-xl border border-slate-200 dark:border-slate-700
                        bg-slate-50 dark:bg-slate-900 text-[13px] text-slate-800 dark:text-slate-200
                        placeholder:text-slate-500 dark:placeholder:text-slate-500 dark:placeholder:text-slate-400
-                       focus:outline-none focus:ring-2 focus:ring-rink-passion focus:bg-white dark:focus:bg-slate-900
+                       focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-red-400 focus:bg-white dark:focus:bg-slate-900
                        transition-colors"
           />
           {query && (

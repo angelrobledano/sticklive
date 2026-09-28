@@ -54,8 +54,9 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
             className="mt-0.5 -ml-1 text-xs font-light text-slate-500 dark:text-slate-400 bg-transparent
                        border-0 rounded-md px-1 py-0 pr-6 cursor-pointer appearance-auto
                        hover:text-slate-600 dark:hover:text-slate-300
-                       focus:outline-none focus:ring-1 focus:ring-rink-passion"
+                       focus:outline-none focus:ring-1 focus:ring-rink-passion dark:focus:ring-red-400"
             aria-label={t('common.change_season')}
+            aria-describedby="season-select-hint"
           >
             {seasons!.map((s) => (
               <option key={s.id} value={s.id}>
@@ -66,6 +67,9 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
         ) : (
           <p className="text-xs font-light text-slate-500 dark:text-slate-400">{season.name}</p>
         )}
+        {/* 3.2.2: elegir temporada navega; se avisa antes de usar el control
+            (descripción accesible enlazada con aria-describedby, #364). */}
+        <span id="season-select-hint" className="sr-only">{t('common.change_season_hint')}</span>
       </div>
 
       {/* Compartir + favorito de liga */}

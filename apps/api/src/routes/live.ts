@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '@sports/db';
+import { logger } from '@sports/logger';
+import { setBounded } from '../lib/bounded-cache.js';
 import { resolveCurrentWindow } from '../lib/match-window.js';
 
 export const liveRouter = new Hono();
@@ -18,13 +20,17 @@ export const liveRouter = new Hono();
  * escala a varias réplicas, sustituir por Redis manteniendo esta firma.
  */
 const CACHE_TTL_MS = Number(process.env['LIVE_CACHE_TTL_MS'] ?? 5_000);
+// #333: /matches/current usa las fechas de ?from/?to como clave. Aunque la
+// amplitud está acotada, las fechas son arbitrarias; sin tope el Map crecía sin
+// límite. Con cardinalidad acotada la memoria queda ligada a este número.
+const CACHE_MAX_ENTRIES = Number(process.env['LIVE_CACHE_MAX_ENTRIES'] ?? 200);
 const cache = new Map<string, { body: unknown; expiresAt: number }>();
 
 async function cached<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const hit = cache.get(key);
   if (hit && hit.expiresAt > Date.now()) return hit.body as T;
   const body = await fn();
-  cache.set(key, { body, expiresAt: Date.now() + CACHE_TTL_MS });
+  setBounded(cache, key, { body, expiresAt: Date.now() + CACHE_TTL_MS }, CACHE_MAX_ENTRIES);
   return body;
 }
 
@@ -161,7 +167,7 @@ liveRouter.get('/live', async (c) => {
     return c.json(payload);
   } catch (err) {
     // El detalle se queda en el log del servidor: nunca al cliente (S7; #152).
-    console.error('[live] error:', err);
+    logger.error({ err }, '[live] GET /live error');
     return c.json({ error: 'Database error' }, 500);
   }
 });
@@ -237,7 +243,7 @@ liveRouter.get('/current', async (c) => {
     return c.json(payload);
   } catch (err) {
     // El detalle se queda en el log del servidor: nunca al cliente (S7; #152).
-    console.error('[live] error:', err);
+    logger.error({ err }, '[live] GET /current error');
     return c.json({ error: 'Database error' }, 500);
   }
 });

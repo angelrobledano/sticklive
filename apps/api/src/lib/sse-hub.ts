@@ -103,3 +103,24 @@ export function eventForKind(
   if (kind === 'finished') return { event: 'finished', firstSent };
   return firstSent ? { event: 'update', firstSent: true } : { event: 'snapshot', firstSent: true };
 }
+
+/**
+ * Encoda una entrada en la cola SSE de una conexión con tope (#333).
+ *
+ * `writeSSE` es backpressure real: si un cliente lento no consume, la cola
+ * crecía sin límite y podía tumbar el proceso. Al tope, se descarta el evento
+ * MÁS ANTIGUO (el cliente ya no está al día; lo nuevo es lo relevante).
+ */
+export function enqueueBounded<T>(queue: T[], item: T, max: number): void {
+  const limit = Number.isFinite(max) && max >= 1 ? Math.floor(max) : 1;
+  while (queue.length >= limit) queue.shift();
+  queue.push(item);
+}
+
+/**
+ * Payload del evento `error` cuando el partido no existe. Unifica la forma con
+ * el resto de errores SSE/REST (`{ error: 'not_found' }`), en vez de un
+ * `{ message }` suelto (#333).
+ */
+export const SSE_NOT_FOUND_ERROR = { error: 'not_found', message: 'Partido no encontrado' } as const;
+

@@ -163,7 +163,8 @@
     "male": "Men's",
     "female": "Women's",
     "current": "current",
-    "upcoming": "Upcoming"
+    "upcoming": "Upcoming",
+    "change_season_hint": "Changing the season loads its standings."
   },
   "age_categories": {
     "senior": "Senior",

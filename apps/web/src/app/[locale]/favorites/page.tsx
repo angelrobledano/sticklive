@@ -154,7 +154,7 @@ function FavoritesInner() {
         placeholder={t('favorites.search_placeholder')}
         className="w-full min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-slate-700
                    bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
-                   placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion"
+                   placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-red-400"
       />
 
       {loading ? (

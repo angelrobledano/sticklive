@@ -9,6 +9,7 @@ import { logger } from '@sports/logger';
 import { assertSchemaCurrent, SchemaOutdatedError } from '@sports/db';
 import { assertEnv } from './lib/env.js';
 import { rateLimit } from './lib/rate-limit.js';
+import { READ_LIMIT_MAX, READ_LIMIT_PATHS, READ_LIMIT_WINDOW_MS } from './lib/read-limits.js';
 import { cacheControlFor } from './lib/read-cache.js';
 import { standingsRouter } from './routes/standings.js';
 import { matchesRouter } from './routes/matches.js';
@@ -65,21 +66,11 @@ app.use('*', async (c, next) => {
 
 // Rate-limit de lectura (I1): tope generoso por IP en los GET más caros de BD.
 // Defensivo anti-DoS; no toca /matches/:id/stream (SSE).
-const readLimit = rateLimit(120, 60_000);
-app.use('/seasons/:id/overview', readLimit);
-app.use('/seasons/:id/stats', readLimit);
-app.use('/teams/:id', readLimit);
-app.use('/players/:id', readLimit);
-// La home (la ruta más pesada) también: ver #153.
-app.use('/matches/current', readLimit);
-app.use('/matches/live', readLimit);
-// Resto de lecturas públicas (#159): mismo tope generoso por IP.
-app.use('/competitions', readLimit);
-app.use('/search', readLimit);
-app.use('/seasons/:id/matches', readLimit);
-app.use('/seasons/:id/standings', readLimit);
-app.use('/matches/:id', readLimit);
-app.use('/meta/sitemap', readLimit);
+// La lista vive en lib/read-limits.ts: `/matches/:id` cubre también /matches/live
+// y /matches/current, que NO deben registrarse aparte (duplicarían el contador y
+// dejarían el tope real en 60/min pese a documentarse 120 — #333).
+const readLimit = rateLimit(READ_LIMIT_MAX, READ_LIMIT_WINDOW_MS);
+for (const path of READ_LIMIT_PATHS) app.use(path, readLimit);
 
 // Health check
 app.get('/health', (c) => {

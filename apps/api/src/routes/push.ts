@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import webpush from 'web-push';
 import { db } from '@sports/db';
+import { logger } from '@sports/logger';
 import { rateLimit } from '../lib/rate-limit.js';
 
 /**
@@ -97,7 +98,7 @@ pushRouter.post('/subscribe', rateLimit(30, 60_000), async (c) => {
     );
     return c.json({ ok: true });
   } catch (err) {
-    console.error('[push] subscribe error:', err);
+    logger.error({ err }, '[push] subscribe error');
     return c.json({ error: 'server_error' }, 500);
   }
 });
@@ -109,7 +110,7 @@ pushRouter.delete('/subscribe', rateLimit(30, 60_000), async (c) => {
     await db.query(`DELETE FROM push_subscriptions WHERE endpoint = $1`, [endpoint]);
     return c.json({ ok: true });
   } catch (err) {
-    console.error('[push] unsubscribe error:', err);
+    logger.error({ err }, '[push] unsubscribe error');
     return c.json({ error: 'server_error' }, 500);
   }
 });
@@ -188,7 +189,7 @@ pushRouter.post('/test', rateLimit(10, 10 * 60_000), async (c) => {
     }
     return c.json({ ok: true, sent });
   } catch (err) {
-    console.error('[push] test error:', err);
+    logger.error({ err }, '[push] test error');
     return c.json({ error: 'server_error' }, 500);
   }
 });

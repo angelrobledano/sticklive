@@ -15,6 +15,23 @@ import {
 import { eventSurname, playerFullName, fmtEventClock } from './format';
 import { EventIcon, FoulDot, TimeoutDot } from './icons';
 
+/**
+ * Tope de render del timeline (#366): actas largas no necesitan pintar todas
+ * las filas de golpe; "ver todos" las carga explícitamente. Función pura para
+ * poder fijar el comportamiento sin navegador; NO altera el orden ni el
+ * subconjunto que anuncia `aria-live` (que se calcula sobre el timeline completo).
+ */
+export const TIMELINE_PREVIEW = 60;
+
+export function timelineWindow<T>(
+  events: readonly T[],
+  showAll: boolean,
+  limit: number = TIMELINE_PREVIEW,
+): { visible: T[]; hiddenCount: number } {
+  const visible = showAll ? events.slice() : events.slice(0, limit);
+  return { visible, hiddenCount: events.length - visible.length };
+}
+
 function eventTitle(ev: TimelineEvent, t: (k: string, v?: Record<string, string | number>) => string): string {
   // El equipo lo comunica la posición en el modelo espejo (local izquierda,
   // visitante derecha) — aquí solo el tipo de evento, sin redundancia.
@@ -326,9 +343,7 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
 
   // Tope de render (#366): actas largas no necesitan pintar todas las filas de
   // golpe; con "ver todos" el usuario las carga explícitamente.
-  const TIMELINE_PREVIEW = 60;
-  const visible = showAll ? timeline : timeline.slice(0, TIMELINE_PREVIEW);
-  const hiddenCount = timeline.length - visible.length;
+  const { visible, hiddenCount } = timelineWindow(timeline, showAll);
 
   return (
     <div className="card relative px-3 py-2">
