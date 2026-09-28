@@ -31,35 +31,6 @@ x-logging: &default-logging
     max-size: "10m"
     max-file: "3"
 
-# ── Entorno explícito por servicio (#300) ──────────────────────────────────
-# Antes cada servicio usaba `env_file: .env.prod`, lo que inyectaba TODAS las
-# variables del fichero en cada contenedor: `web` recibía POSTGRES_PASSWORD
-# (nunca la usa) y api/web/etl el SENTRY_AUTH_TOKEN de build (que solo debe
-# existir durante el build). `--env-file .env.prod` sigue siendo la FUENTE de
-# los valores (interpolación de ${VAR} en el compose), pero a partir de aquí
-# cada servicio declara SOLO lo que consume: lo que no se lista no llega al
-# contenedor. Si se añade una variable nueva al código, hay que añadirla aquí.
-x-env-log: &env-log
-  LOG_LEVEL: "${LOG_LEVEL:-info}"
-  LOG_FORMAT: "${LOG_FORMAT:-}"
-  SERVICE_NAME: "${SERVICE_NAME:-}"
-
-x-env-alerts: &env-alerts
-  # Sin SENTRY_DSN toda la alertabilidad del pipeline queda en no-op silencioso.
-  SENTRY_DSN: "${SENTRY_DSN:-}"
-
-x-env-db: &env-db
-  DATABASE_URL: "postgresql://${POSTGRES_USER:-sports_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}"
-  DATABASE_POOL_MIN: "${DATABASE_POOL_MIN:-2}"
-  DATABASE_POOL_MAX: "${DATABASE_POOL_MAX:-10}"
-  DATABASE_STATEMENT_TIMEOUT_MS: "${DATABASE_STATEMENT_TIMEOUT_MS:-15000}"
-  DATABASE_QUERY_TIMEOUT_MS: "${DATABASE_QUERY_TIMEOUT_MS:-15000}"
-
-# PostHog lo requieren @sports/analytics (api y el ETL/scraper lo importan).
-x-env-posthog: &env-posthog
-  POSTHOG_API_KEY: "${POSTHOG_API_KEY:-}"
-  POSTHOG_HOST: "${POSTHOG_HOST:-}"
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -109,9 +80,9 @@ services:
     # bucle y dejaría el despliegue colgado sin decir por qué.
     restart: "no"
     command: node dist/packages/db/src/migrate.js
-    # Solo necesita la BD y el logger (MIGRATIONS_DIR lo fija la imagen).
+    env_file: .env.prod
     environment:
-      <<: *env-db
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sports_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}
     depends_on:
       postgres:
         condition: service_healthy
@@ -123,40 +94,9 @@ services:
     labels:
       autoheal: "true"   # lo reinicia el sidecar si queda unhealthy (#164)
     command: node dist/apps/api/src/index.js
-    # Superficie mínima (#300): aquí NO entran POSTGRES_PASSWORD (va dentro de
-    # DATABASE_URL) ni SENTRY_AUTH_TOKEN (es de build; ver anchor &app-build).
+    env_file: .env.prod
     environment:
-      <<: [*env-db, *env-log, *env-alerts, *env-posthog]
-      ADMIN_TOKEN: "${ADMIN_TOKEN:-}"
-      API_BASE_URL: "${API_BASE_URL:-}"
-      WEB_BASE_URL: "${WEB_BASE_URL:-}"
-      AUTH_STATE_SECRET: "${AUTH_STATE_SECRET:-}"
-      AUTH_DEV_LINKS: "${AUTH_DEV_LINKS:-}"
-      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
-      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
-      SMTP_HOST: "${SMTP_HOST:-}"
-      SMTP_PORT: "${SMTP_PORT:-587}"
-      SMTP_USER: "${SMTP_USER:-}"
-      SMTP_PASS: "${SMTP_PASS:-}"
-      SMTP_FROM: "${SMTP_FROM:-}"
-      VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-}"
-      VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
-      VAPID_SUBJECT: "${VAPID_SUBJECT:-}"
-      STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY:-}"
-      STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET:-}"
-      PREMIUM_PRICE_EUR_CENTS: "${PREMIUM_PRICE_EUR_CENTS:-499}"
-      SKIP_SCHEMA_CHECK: "${SKIP_SCHEMA_CHECK:-}"
-      STALE_LIVE_HOURS: "${STALE_LIVE_HOURS:-}"
-      LIVE_CACHE_TTL_MS: "${LIVE_CACHE_TTL_MS:-}"
-      LIVE_CACHE_MAX_ENTRIES: "${LIVE_CACHE_MAX_ENTRIES:-}"
-      SSE_BACKUP_POLL_MS: "${SSE_BACKUP_POLL_MS:-}"
-      SSE_RETRY_MS: "${SSE_RETRY_MS:-}"
-      SSE_MAX_DURATION_MS: "${SSE_MAX_DURATION_MS:-}"
-      SSE_MAX_CONNECTIONS: "${SSE_MAX_CONNECTIONS:-}"
-      SSE_MAX_CONNECTIONS_PER_IP: "${SSE_MAX_CONNECTIONS_PER_IP:-}"
-      SSE_LINEUPS_TTL_MS: "${SSE_LINEUPS_TTL_MS:-}"
-      SSE_MAX_QUEUE: "${SSE_MAX_QUEUE:-}"
-      PORT: "${PORT:-3000}"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sports_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}
     volumes:
       # Mismo volumen de escudos que web/etl (solo lectura): la API sirve los
       # escudos en /teams/:id/logo desde aquí (auditoría A3).
@@ -186,16 +126,7 @@ services:
     labels:
       autoheal: "true"   # lo reinicia el sidecar si queda unhealthy (#164)
     command: node_modules/.bin/next start apps/web -p 3001
-    # `web` NO usa env_file: su runtime solo necesita las NEXT_PUBLIC_* (que ya
-    # se hornean en build) y el DSN de Sentry, que va fijado en el código. Antes
-    # recibía POSTGRES_PASSWORD y SENTRY_AUTH_TOKEN sin usarlos (#300).
-    environment:
-      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL}"
-      NEXT_PUBLIC_SEASON_ID: "${NEXT_PUBLIC_SEASON_ID:-}"
-      NEXT_PUBLIC_SITE_URL: "${NEXT_PUBLIC_SITE_URL}"
-      NEXT_PUBLIC_POSTHOG_KEY: "${NEXT_PUBLIC_POSTHOG_KEY:-}"
-      NEXT_PUBLIC_POSTHOG_HOST: "${NEXT_PUBLIC_POSTHOG_HOST:-https://eu.i.posthog.com}"
-      NEXT_PUBLIC_VAPID_PUBLIC_KEY: "${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}"
+    env_file: .env.prod
     volumes:
       # Escudos como DATOS (no horneados en la imagen): los rellena el etl con
       # `run-pipeline --entity=download-logos` y los sirve Next desde public/.
@@ -238,47 +169,9 @@ services:
     logging: *default-logging
     restart: unless-stopped
     command: sh deploy/etl-scheduler.sh
-    # Superficie mínima (#300). OJO: @sports/analytics lanza en import si faltan
-    # POSTHOG_API_KEY/POSTHOG_HOST, así que el ETL los necesita de verdad.
+    env_file: .env.prod
     environment:
-      <<: [*env-db, *env-log, *env-alerts, *env-posthog]
-      COMPETITION_SOURCES_DRIVEN: "${COMPETITION_SOURCES_DRIVEN:-}"
-      SEASON_ID: "${SEASON_ID:-}"
-      IDC: "${IDC:-}"
-      SEASON_IDS: "${SEASON_IDS:-}"
-      DEFAULT_SEASON_ID: "${DEFAULT_SEASON_ID:-}"
-      PLAYOFF_SEASON_ID: "${PLAYOFF_SEASON_ID:-}"
-      FEP_SOURCE_ID: "${FEP_SOURCE_ID:-}"
-      VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-}"
-      VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
-      VAPID_SUBJECT: "${VAPID_SUBJECT:-}"
-      WEB_BASE_URL: "${WEB_BASE_URL:-}"
-      STALE_LIVE_HOURS: "${STALE_LIVE_HOURS:-}"
-      PARTITION_SEASONS_AHEAD: "${PARTITION_SEASONS_AHEAD:-}"
-      POLL_INTERVAL_S: "${POLL_INTERVAL_S:-}"
-      WINDOW_HOURS: "${WINDOW_HOURS:-}"
-      WINDOW_LOOKBACK_MINUTES: "${WINDOW_LOOKBACK_MINUTES:-}"
-      MAX_RUNTIME_MIN: "${MAX_RUNTIME_MIN:-}"
-      SOURCE_FAIL_ALERT_THRESHOLD: "${SOURCE_FAIL_ALERT_THRESHOLD:-}"
-      MISSING_LIVE_CYCLES: "${MISSING_LIVE_CYCLES:-}"
-      FICHA_CONCURRENCY: "${FICHA_CONCURRENCY:-}"
-      SCRAPE_CONCURRENCY: "${SCRAPE_CONCURRENCY:-}"
-      ETL_BATCH_SIZE: "${ETL_BATCH_SIZE:-}"
-      ETL_DRY_RUN: "${ETL_DRY_RUN:-}"
-      SCRAPE_STALE_HOURS: "${SCRAPE_STALE_HOURS:-}"
-      SCRAPE_EXPECTED_KEYS: "${SCRAPE_EXPECTED_KEYS:-}"
-      WSE_SCRAPE_GRACE_DAYS: "${WSE_SCRAPE_GRACE_DAYS:-}"
-      WSE_DORMANT_REALERT_HOURS: "${WSE_DORMANT_REALERT_HOURS:-}"
-      SCRAPE_LOGS_RETENTION_DAYS: "${SCRAPE_LOGS_RETENTION_DAYS:-}"
-      SCRAPE_LOGS_PURGE_BATCH: "${SCRAPE_LOGS_PURGE_BATCH:-}"
-      SIDGAD_BASE_URL: "${SIDGAD_BASE_URL:-}"
-      SIDGAD_PORTAL: "${SIDGAD_PORTAL:-}"
-      SIDGAD_REFERER: "${SIDGAD_REFERER:-}"
-      SCRAPER_REQUEST_TIMEOUT_MS: "${SCRAPER_REQUEST_TIMEOUT_MS:-}"
-      SCRAPER_RETRY_DELAY_MS: "${SCRAPER_RETRY_DELAY_MS:-}"
-      SCRAPER_USER_AGENT: "${SCRAPER_USER_AGENT:-}"
-      STAGING_URL: "${STAGING_URL:-}"
-      PROD_URL: "${PROD_URL:-}"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sports_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}
     volumes:
       # Mismo volumen que web: el etl escribe los escudos, web los sirve.
       # La ruta la fija ESCUDOS_DIR en la imagen (deploy/Dockerfile).
