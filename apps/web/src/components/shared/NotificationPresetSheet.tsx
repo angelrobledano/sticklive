@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';
 import { getPreset, setPreset, type NotificationPreset } from '@/lib/notif-prefs';
@@ -12,6 +12,20 @@ import {
 type Kind = 'team' | 'league' | 'player';
 
 const ORDER: NotificationPreset[] = ['complete', 'key_events', 'results', 'silent'];
+
+/** Selector de elementos tabulables dentro de un diálogo modal. */
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * #359: índice destino al tabular dentro de un diálogo (trap de foco). Pura para
+ * poder fijarla sin navegador: envuelve el final→principio y viceversa.
+ */
+export function trapFocusIndex(current: number, count: number, backwards: boolean): number {
+  if (count <= 0) return -1;
+  if (current < 0) return backwards ? count - 1 : 0;
+  return backwards ? (current - 1 + count) % count : (current + 1) % count;
+}
 
 /** Icono por preset (trazo simple, hereda color del texto). */
 function PresetIcon({ preset }: { preset: NotificationPreset }) {
@@ -63,6 +77,12 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
   const [selected, setSelected] = useState<NotificationPreset>('key_events');
   const [offerPush, setOfferPush] = useState(false);
   const [activating, setActivating] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
+  // `onClose` llega como arrow inline desde los padres (nueva identidad en cada
+  // render); lo leemos por ref para que el efecto de foco no se re-ejecute.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (open) setSelected(getPreset(kind, id));
@@ -90,13 +110,39 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
     setOfferPush(false);
   };
 
-  // Cierra con Escape
+  // #359: foco inicial al primer control, trap de Tab y restauración al cerrar
+  // (además de Escape y bloqueo del scroll de fondo).
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    previouslyFocused.current = (document.activeElement as HTMLElement | null) ?? null;
+
+    const focusables = (): HTMLElement[] => {
+      const root = dialogRef.current;
+      return root ? Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)) : [];
+    };
+    (focusables()[0] ?? dialogRef.current)?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onCloseRef.current(); return; }
+      if (e.key !== 'Tab') return;
+      const list = focusables();
+      if (list.length === 0) return;
+      const active = document.activeElement as HTMLElement | null;
+      const current = active ? list.indexOf(active) : -1;
+      if (current === -1) { e.preventDefault(); list[0]!.focus(); return; }
+      const target = trapFocusIndex(current, list.length, e.shiftKey);
+      if (target !== current) { e.preventDefault(); list[target]!.focus(); }
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+      previouslyFocused.current?.focus?.();
+    };
+    // Solo al abrir/cerrar: `onClose` se lee por ref.
+  }, [open]);
 
   if (!open) return null;
 
@@ -117,7 +163,7 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
   };
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={t('notif_presets.title')}
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={t('notif_presets.title')} tabIndex={-1}
          className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
       <div aria-hidden="true" className="absolute inset-0 bg-black/40 animate-[fadeIn_.15s_ease-out]" onClick={onClose} />
 

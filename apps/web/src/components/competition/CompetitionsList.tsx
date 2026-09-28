@@ -16,6 +16,26 @@ import { currentSeasonYear, hasSeasonYear, orderByImportance } from '@/lib/compe
 
 type Tab = 'mis-ligas' | 'principales' | 'todas';
 
+/**
+ * #358: navegación del patrón ARIA tabs (roving tabindex). Devuelve el índice
+ * destino para flechas/Home/End, o el mismo si la tecla no aplica. Función pura.
+ */
+export function nextTabIndex(current: number, key: string, count: number): number {
+  if (count <= 0) return -1;
+  switch (key) {
+    case 'ArrowRight':
+    case 'ArrowDown': return (current + 1) % count;
+    case 'ArrowLeft':
+    case 'ArrowUp':   return (current - 1 + count) % count;
+    case 'Home':      return 0;
+    case 'End':       return count - 1;
+    default:          return current;
+  }
+}
+
+/** Orden estable de las tabs (índice → id) para el roving tabindex. */
+const TAB_ORDER = ['mis-ligas', 'principales', 'todas'] as const satisfies readonly Tab[];
+
 // ── Helpers generales ────────────────────────────────────────────────────────
 
 function countryDisplayName(code: string | null, locale: string): string {
@@ -188,7 +208,7 @@ function RegionAccordion({
         <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex-1 truncate">
           {region}
         </span>
-        <span className="text-[10px] text-slate-400 tabular-nums">{comps.length}</span>
+        <span className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums">{comps.length}</span>
         <ChevronDown open={open} />
       </button>
       {open && (
@@ -260,7 +280,7 @@ function CountryAccordion({
                          group-hover:text-slate-800 dark:group-hover:text-slate-100 transition-colors">
           {label}
         </span>
-        <span className="text-[10px] text-slate-400 dark:text-slate-600 tabular-nums font-medium mr-1">
+        <span className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums font-medium mr-1">
           {comps.length}
         </span>
         <ChevronDown open={open} />
@@ -373,6 +393,17 @@ export function CompetitionsList({
 
   const [tab, setTab]     = useState<Tab>('todas');
   const [query, setQuery] = useState('');
+
+  // #358: patrón ARIA tabs con roving tabindex y navegación por flechas.
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const onTabKeyDown = (e: React.KeyboardEvent) => {
+    const i = TAB_ORDER.indexOf(tab);
+    const next = nextTabIndex(i, e.key, TAB_ORDER.length);
+    if (next < 0 || next === i) return;
+    e.preventDefault();
+    setTab(TAB_ORDER[next]!);
+    tabRefs.current[next]?.focus();
+  };
 
   // Favoritos de ligas: store compartido (rink-fav-leagues) con Ajustes y
   // "Gestionar favoritos". Antes esta lista usaba su propia clave y quedaba
@@ -510,18 +541,24 @@ export function CompetitionsList({
           )}
         </div>
 
-        {/* Tabs */}
+        {/* Tabs (#358: patrón ARIA tabs) */}
         {!isSearching && (
-          <div className="flex">
+          <div role="tablist" aria-label={tt(t, 'a11y.competitions_tabs', 'Secciones de la lista')} onKeyDown={onTabKeyDown} className="flex">
             {(
               [
                 ['mis-ligas', 'Mis Ligas', favorites.size > 0 ? String(favorites.size) : null],
                 ['principales', 'Principales', null],
                 ['todas', 'Todas', null],
               ] as const
-            ).map(([id, label, badge]) => (
+            ).map(([id, label, badge], i) => (
               <button
                 key={id}
+                ref={(el) => { tabRefs.current[i] = el; }}
+                role="tab"
+                id={`cl-tab-${id}`}
+                aria-selected={tab === id}
+                aria-controls={`cl-panel-${id}`}
+                tabIndex={tab === id ? 0 : -1}
                 onClick={() => setTab(id as Tab)}
                 className={`relative flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-semibold
                             transition-colors whitespace-nowrap ${
@@ -532,7 +569,7 @@ export function CompetitionsList({
               >
                 {label}
                 {badge && (
-                  <span className="w-4 h-4 rounded-full bg-amber-400 text-white text-[10px] font-bold
+                  <span className="w-4 h-4 rounded-full bg-amber-600 text-slate-900 text-[10px] font-bold
                                    flex items-center justify-center leading-none">
                     {badge}
                   </span>
@@ -547,12 +584,17 @@ export function CompetitionsList({
       </div>
 
       {/* ── Contenido ──────────────────────────────────────────────────────── */}
-      <div className="flex-1 px-4 py-3">
+      <div
+        className="flex-1 px-4 py-3"
+        role={!isSearching ? 'tabpanel' : undefined}
+        id={!isSearching ? `cl-panel-${tab}` : undefined}
+        aria-labelledby={!isSearching ? `cl-tab-${tab}` : undefined}
+      >
 
         {/* Modo búsqueda: lista plana (busca en todas las temporadas, #256) */}
         {isSearching && (
           <>
-            <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 px-1 pb-2 tabular-nums">
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 px-1 pb-2 tabular-nums">
               {tt(t, 'search.results_count', '{n} resultados', { n: searched.length })}
             </p>
             {searched.length === 0 ? (
@@ -645,7 +687,7 @@ export function CompetitionsList({
                   <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300 flex-1">
                     Internacional
                   </span>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-600 tabular-nums font-medium">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums font-medium">
                     {international.length}
                   </span>
                 </div>

@@ -11,6 +11,7 @@ import { LineupsTab } from './LineupsTab';
 import { StatsTab } from './StatsTab';
 import { AdBanner } from '@/components/shared/AdBanner';
 import { recordRecentMatch } from '@/lib/recents';
+import { tt } from '@/components/search/translate';
 import {
   freshnessState,
   isNewerSnapshot,
@@ -30,6 +31,24 @@ const TAB_KEYS: Record<Tab, string> = {
   'Alineaciones': 'match_tabs.lineups',
   'Estadísticas': 'match_tabs.stats',
 };
+
+/**
+ * #358: navegación del patrón ARIA tabs (roving tabindex). Devuelve el índice
+ * destino para flechas/Home/End, o el mismo si la tecla no aplica. Función pura
+ * para fijar el comportamiento sin navegador.
+ */
+export function nextTabIndex(current: number, key: string, count: number): number {
+  if (count <= 0) return -1;
+  switch (key) {
+    case 'ArrowRight':
+    case 'ArrowDown': return (current + 1) % count;
+    case 'ArrowLeft':
+    case 'ArrowUp':   return (current - 1 + count) % count;
+    case 'Home':      return 0;
+    case 'End':       return count - 1;
+    default:          return current;
+  }
+}
 
 /**
  * Calcula qué tabs deben mostrarse en función de los datos disponibles.
@@ -444,16 +463,38 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
   // Si la tab activa quedó oculta (ej: alineaciones desaparecieron en live), volver a Resumen
   const safeActiveTab: Tab = visibleTabs.includes(activeTab) ? activeTab : 'Resumen';
 
+  // #358: patrón ARIA tabs con foco móvil (roving tabindex) y navegación por flechas.
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const onTabKeyDown = (e: React.KeyboardEvent) => {
+    const i = visibleTabs.indexOf(safeActiveTab);
+    const next = nextTabIndex(i, e.key, visibleTabs.length);
+    if (next < 0 || next === i) return;
+    e.preventDefault();
+    setActiveTab(visibleTabs[next]!);
+    tabRefs.current[next]?.focus();
+  };
+
   return (
     <div className="space-y-4">
       {/* Cabecera del partido */}
       <MatchHeader data={data} sseStatus={sseStatus} lastUpdateAt={lastUpdateAt} serverStale={serverStale} />
 
-      {/* Pestañas — solo las que tienen datos */}
-      <div className="flex gap-0 border-b border-slate-200 dark:border-slate-800">
-        {visibleTabs.map((tab) => (
+      {/* Pestañas — solo las que tienen datos (#358: patrón ARIA tabs) */}
+      <div
+        role="tablist"
+        aria-label={tt(t, 'a11y.match_tabs', 'Secciones del partido')}
+        onKeyDown={onTabKeyDown}
+        className="flex gap-0 border-b border-slate-200 dark:border-slate-800"
+      >
+        {visibleTabs.map((tab, i) => (
           <button
             key={tab}
+            ref={(el) => { tabRefs.current[i] = el; }}
+            role="tab"
+            id={`match-tab-${i}`}
+            aria-selected={safeActiveTab === tab}
+            aria-controls={`match-panel-${i}`}
+            tabIndex={safeActiveTab === tab ? 0 : -1}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2.5 text-sm border-b -mb-px transition-colors whitespace-nowrap ${
               safeActiveTab === tab
@@ -467,15 +508,21 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
       </div>
 
       {/* Contenido */}
-      {safeActiveTab === 'Resumen' && (
-        <>
-          <TimelineTab data={data} />
-          {/* Anuncio al FINAL del resumen (no en medio del marcador/timeline) */}
-          <AdBanner zone="match-summary" className="mt-4" />
-        </>
-      )}
-      {safeActiveTab === 'Alineaciones' && <LineupsTab    data={data} />}
-      {safeActiveTab === 'Estadísticas' && <StatsTab      data={data} />}
+      <div
+        role="tabpanel"
+        id={`match-panel-${visibleTabs.indexOf(safeActiveTab)}`}
+        aria-labelledby={`match-tab-${visibleTabs.indexOf(safeActiveTab)}`}
+      >
+        {safeActiveTab === 'Resumen' && (
+          <>
+            <TimelineTab data={data} />
+            {/* Anuncio al FINAL del resumen (no en medio del marcador/timeline) */}
+            <AdBanner zone="match-summary" className="mt-4" />
+          </>
+        )}
+        {safeActiveTab === 'Alineaciones' && <LineupsTab    data={data} />}
+        {safeActiveTab === 'Estadísticas' && <StatsTab      data={data} />}
+      </div>
     </div>
   );
 }

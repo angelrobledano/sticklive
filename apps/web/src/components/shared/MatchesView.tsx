@@ -13,12 +13,56 @@ import Link from 'next/link';
 import { useT } from '@/lib/i18n';
 import { madridDateKey, madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
 import { importanceRank } from '@/lib/competition-importance';
+import { tt } from '@/components/search/translate';
 
 /** Nº de partidos favoritos visibles antes de colapsar el resto */
 const FAV_PREVIEW = 3;
 
 /** Config AdSense (env inyectado en build). */
 const ADS = adsenseConfig();
+
+// ─── Anuncio del directo en la home (#361) ───────────────────────────────────
+
+export interface LiveScoreChange {
+  id: string;
+  homeName: string;
+  awayName: string;
+  home: number;
+  away: number;
+  kind: 'goal' | 'start' | 'end';
+}
+
+function teamLabel(team: Match['homeTeam']): string {
+  return team?.shortName ?? team?.name ?? '';
+}
+
+/**
+ * #361: compara la lista previa con la nueva y devuelve SOLO los cambios
+ * anunciables (gol, inicio o final) de partidos que YA estaban en la lista.
+ * Ignora altas/bajas (evita ruido) y correcciones de partidos finalizados.
+ */
+export function diffLiveScores(prev: Match[], next: Match[]): LiveScoreChange[] {
+  const byId = new Map(prev.map((m) => [m.id, m]));
+  const out: LiveScoreChange[] = [];
+  for (const m of next) {
+    const before = byId.get(m.id);
+    if (!before) continue;
+    const scoreChanged = before.score.home !== m.score.home || before.score.away !== m.score.away;
+    const endedNow = before.status !== 'finished' && m.status === 'finished';
+    const startedNow = before.status !== 'live' && m.status === 'live';
+    const base = {
+      id: m.id,
+      homeName: teamLabel(m.homeTeam) || m.homeTeamId,
+      awayName: teamLabel(m.awayTeam) || m.awayTeamId,
+      home: m.score.home ?? 0,
+      away: m.score.away ?? 0,
+    };
+    if (endedNow) out.push({ ...base, kind: 'end' });
+    else if (scoreChanged && m.status === 'live') out.push({ ...base, kind: 'goal' });
+    else if (startedNow) out.push({ ...base, kind: 'start' });
+  }
+  return out;
+}
 
 /**
  * Escena del estado vacío: la bola cruza la pista, gol y celebración.
@@ -79,7 +123,7 @@ function DesktopAside({ matches, hasFavorites }: { matches: Match[]; hasFavorite
               <span className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                 {t('common.upcoming')}
               </span>
-              <span className="text-[11px] font-light text-slate-400 dark:text-slate-600 tabular-nums">
+              <span className="text-[11px] font-light text-slate-500 dark:text-slate-400 tabular-nums">
                 {upcoming.length}
               </span>
             </div>
@@ -128,7 +172,7 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
       <span className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
         {label}
       </span>
-      <span className="text-[11px] font-light text-slate-400 dark:text-slate-600 tabular-nums">
+      <span className="text-[11px] font-light text-slate-500 dark:text-slate-400 tabular-nums">
         {count} {count === 1 ? t('common.match_lc') : t('common.matches_lc')}
       </span>
     </div>
@@ -386,10 +430,32 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
   const outOfWindow = (!!windowRange.from && selectedDate < windowRange.from)
     || (!!windowRange.to && selectedDate > windowRange.to);
 
+  // #361: región viva que anuncia goles/estado del directo, sin spamear.
+  const prevMatchesRef = useRef<Match[] | null>(null);
+  const [liveAnnouncement, setLiveAnnouncement] = useState('');
+  useEffect(() => {
+    const prev = prevMatchesRef.current;
+    prevMatchesRef.current = matches;
+    if (prev === null) return; // primer render: no anunciamos
+    const changes = diffLiveScores(prev, matches).slice(0, 3);
+    if (changes.length === 0) return;
+    setLiveAnnouncement(changes.map((c) => {
+      const vars = { home: c.homeName, away: c.awayName, h: c.home, a: c.away };
+      if (c.kind === 'goal')  return tt(t, 'a11y.live_goal', 'Gol: {home} {h}-{a} {away}', vars);
+      if (c.kind === 'start') return tt(t, 'a11y.live_start', 'Empieza {home} - {away}', vars);
+      return tt(t, 'a11y.live_end', 'Final: {home} {h}-{a} {away}', vars);
+    }).join(' · '));
+  }, [matches, t]);
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Encabezado principal de la home (oculto visualmente, para lectores y SEO) */}
       <h1 className="sr-only">{t('a11y.home_heading')}</h1>
+
+      {/* #361: anuncio de cambios del directo (polite, atómico). */}
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {liveAnnouncement}
+      </div>
 
       {/* Selector de fecha — sticky bajo el header */}
       <div className="sticky top-0 z-30">

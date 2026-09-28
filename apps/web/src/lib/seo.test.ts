@@ -116,6 +116,21 @@ describe('socialMeta (#273, #274)', () => {
   });
 });
 
+// #367: el og:type debe ser coherente con el tipo de entidad. Por defecto
+// 'website' (home, competiciones, equipos) y 'profile' para fichas de persona
+// (jugador); nunca el genérico 'article' que arrastraban las fichas.
+describe('socialMeta og:type (#367)', () => {
+  it('usa website por defecto', () => {
+    const meta = socialMeta({ locale: 'es', title: 't', description: 'd' });
+    expect((meta.openGraph as { type?: string } | undefined)?.type).toBe('website');
+  });
+
+  it('respeta el type explícito de perfil de jugador', () => {
+    const meta = socialMeta({ locale: 'es', title: 't', description: 'd', type: 'profile' });
+    expect((meta.openGraph as { type?: string } | undefined)?.type).toBe('profile');
+  });
+});
+
 // #278: cada entidad debe tener su imagen social en su propia ruta.
 describe('socialImageUrl por entidad (#278)', () => {
   it.each([

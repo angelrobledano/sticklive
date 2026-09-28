@@ -9,16 +9,20 @@ export function Toggle({
   checked,
   onChange,
   disabled = false,
+  label,
 }: {
   checked: boolean;
   onChange: () => void;
   disabled?: boolean;
+  /** Nombre accesible del interruptor (4.1.2). Sin él, un SR solo lee "interruptor". */
+  label?: string;
 }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       disabled={disabled}
       onClick={onChange}
       className={`relative w-12 h-7 rounded-full shrink-0 transition-all duration-200 ease-out
@@ -70,7 +74,7 @@ export function SettingRow({
           </p>
         )}
       </div>
-      <Toggle checked={checked} onChange={onChange} disabled={disabled} />
+      <Toggle checked={checked} onChange={onChange} disabled={disabled} label={label} />
     </div>
   );
 }
@@ -114,8 +118,8 @@ export function PremiumActiveBadge() {
         </svg>
       </div>
       <div>
-        <p className="text-sm font-bold text-white">{t('settings.premium_active')}</p>
-        <p className="text-xs text-white/80">{t('settings.premium_thanks')}</p>
+        <p className="text-sm font-bold text-slate-900">{t('settings.premium_active')}</p>
+        <p className="text-xs text-slate-900/80">{t('settings.premium_thanks')}</p>
       </div>
     </div>
   );

@@ -32,9 +32,20 @@ export function timelineWindow<T>(
   return { visible, hiddenCount: events.length - visible.length };
 }
 
+/**
+ * #357: el modelo espejo comunica el equipo por POSICIÓN (local izquierda,
+ * visitante derecha), que un lector de pantalla no percibe. Esta función da el
+ * nombre explícito del equipo del evento, para filas y anuncios `aria-live`.
+ */
+export function eventTeamName(
+  ev: Pick<TimelineEvent, 'isHomeTeam'>,
+  homeName: string,
+  awayName: string,
+): string {
+  return ev.isHomeTeam ? homeName : awayName;
+}
+
 function eventTitle(ev: TimelineEvent, t: (k: string, v?: Record<string, string | number>) => string): string {
-  // El equipo lo comunica la posición en el modelo espejo (local izquierda,
-  // visitante derecha) — aquí solo el tipo de evento, sin redundancia.
   switch (ev.eventType) {
     case 'goal':            return t('timeline_events.goal');
     case 'penalty':         return t('timeline_events.penalty');
@@ -53,26 +64,25 @@ function eventTitle(ev: TimelineEvent, t: (k: string, v?: Record<string, string 
 }
 
 /**
- * Frase que anuncia el evento por la región `aria-live` (#287): tipo, autor o
- * equipo y periodo/crono. Reutiliza las claves de `timeline_events` para que un
- * lector de pantalla reciba lo mismo que se ve.
+ * Frase que anuncia el evento por la región `aria-live` (#287): tipo, autor,
+ * equipo y periodo/crono. #357: el equipo se nombra SIEMPRE (aunque haya
+ * jugador), para que el anuncio no dependa de la posición visual.
  */
-function eventAnnouncement(
+export function eventAnnouncement(
   ev: TimelineEvent,
   t: (k: string, v?: Record<string, string | number>) => string,
   homeName: string,
   awayName: string,
 ): string {
   const title = eventTitle(ev, t);
-  const who = 'player' in ev && ev.player
-    ? playerFullName(ev.player)
-    : (ev.isHomeTeam ? homeName : awayName);
+  const player = 'player' in ev && ev.player ? playerFullName(ev.player) : '';
+  const team = eventTeamName(ev, homeName, awayName);
   const period = ev.period === 1
     ? t('match_detail.p1_short')
     : ev.period === 2
       ? t('match_detail.p2_short')
       : ev.period && ev.period > 2 ? t('match_detail.ot_short') : '';
-  return [title, who, [period, fmtEventClock(ev)].filter(Boolean).join(' ')]
+  return [title, player, team, [period, fmtEventClock(ev)].filter(Boolean).join(' ')]
     .filter(Boolean)
     .join(' · ');
 }
@@ -162,7 +172,7 @@ function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
     </span>
   ) : tier === 'low' ? (
     // Tiempo muerto / falta: una sola línea gris, mínima, con el autor si lo hay
-    <span className="text-[11px] text-slate-400 dark:text-slate-600">
+    <span className="text-[11px] text-slate-500 dark:text-slate-400">
       {eventTitle(ev, t)}
       {'player' in ev && ev.player ? <> · <span className="text-slate-500 dark:text-slate-400">{eventSurname(ev.player)}</span></> : null}
     </span>
@@ -211,6 +221,8 @@ function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
   // CRONO RESTANTE (MM:SS, cuenta atrás) como nodo central del eje.
   return (
     <div className={`grid grid-cols-[1fr_52px_1fr] items-center ${rowPad} ${linked}`}>
+      {/* #357: el equipo se comunica por posición; lo hacemos explícito para AT. */}
+      <span className="sr-only">{eventTeamName(ev, homeName, awayName)}</span>
       {/* Lado local: [texto] [icono] → centro */}
       <div className={`flex items-center justify-end gap-2 min-w-0 pr-1 ${isHome ? '' : 'invisible'}`}>
         {isHome && cell}
@@ -227,7 +239,7 @@ function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
         sameInstantAsPrev
           ? 'text-[10px] text-slate-300 dark:text-slate-700'
           : tier === 'low'
-            ? 'text-[10px] text-slate-400 dark:text-slate-600'
+            ? 'text-[10px] text-slate-500 dark:text-slate-400'
             : 'text-[11px] font-semibold text-slate-500 dark:text-slate-400'
       }`}>
         {sameInstantAsPrev ? '·' : fmtEventClock(ev)}

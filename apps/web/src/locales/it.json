@@ -6,7 +6,13 @@
     "email_label": "E-mail",
     "search_competitions": "Cerca campionato, paese o federazione",
     "home_heading": "Partite in diretta",
-    "search_global": "Cerca squadre, giocatori o competizioni"
+    "search_global": "Cerca squadre, giocatori o competizioni",
+    "match_tabs": "Sezioni della partita",
+    "competition_tabs": "Sezioni della competizione",
+    "competitions_tabs": "Sezioni dell'elenco competizioni",
+    "live_goal": "Gol: {home} {h}-{a} {away}",
+    "live_start": "Inizia {home} - {away}",
+    "live_end": "Finale: {home} {h}-{a} {away}"
   },
   "navigation": {
     "matches": "Partite",
@@ -107,7 +113,10 @@
     "upsell_email": "Registrati con email",
     "upsell_guest": "Continua come ospite",
     "google_failed": "Accesso con Google non riuscito. Riprova o usa il link via email.",
-    "account_disabled": "Questo account è disattivato. Se pensi sia un errore, contattaci."
+    "account_disabled": "Questo account è disattivato. Se pensi sia un errore, contattaci.",
+    "error_invalid_email": "Questa email non sembra valida. Controllala e riprova.",
+    "error_email_unavailable": "Non possiamo inviare il link ora. Riprova tra qualche minuto.",
+    "error_generic": "Qualcosa è andato storto. Riprova."
   },
   "common": {
     "today": "Oggi",

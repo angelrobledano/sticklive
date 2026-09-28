@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
+import { useState, useMemo, Suspense, useRef } from 'react';
 import { useT } from '@/lib/i18n';
 import type { SeasonOverview, CompetitionSeason, SeasonStats } from '@/lib/api/client';
 import { CompetitionHeader } from './CompetitionHeader';
@@ -8,6 +8,7 @@ import { StandingsTab } from './StandingsTab';
 import { GameweeksTab } from './GameweeksTab';
 import { PlayoffsTab } from './PlayoffsTab';
 import { StatsLeadersTab } from './StatsLeadersTab';
+import { tt } from '@/components/search/translate';
 
 // ─── Componente principal ───
 
@@ -19,6 +20,23 @@ const MAIN_TAB_KEYS: Record<MainTab, string> = {
   'Playoffs':      'match_tabs.playoffs',
   'Estadísticas':  'match_tabs.stats',
 };
+
+/**
+ * #358: navegación del patrón ARIA tabs (roving tabindex). Devuelve el índice
+ * destino para flechas/Home/End, o el mismo si la tecla no aplica. Función pura.
+ */
+export function nextTabIndex(current: number, key: string, count: number): number {
+  if (count <= 0) return -1;
+  switch (key) {
+    case 'ArrowRight':
+    case 'ArrowDown': return (current + 1) % count;
+    case 'ArrowLeft':
+    case 'ArrowUp':   return (current - 1 + count) % count;
+    case 'Home':      return 0;
+    case 'End':       return count - 1;
+    default:          return current;
+  }
+}
 
 export function CompetitionClient({ data, seasons, competitionId, stats }: {
   data: SeasonOverview;
@@ -43,16 +61,36 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
   const currentTab = visibleTabs.includes(activeTab) ? activeTab : visibleTabs[0]!;
   const { t } = useT();
 
+  // #358: patrón ARIA tabs con roving tabindex y navegación por flechas.
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const onTabKeyDown = (e: React.KeyboardEvent) => {
+    const i = visibleTabs.indexOf(currentTab);
+    const next = nextTabIndex(i, e.key, visibleTabs.length);
+    if (next < 0 || next === i) return;
+    e.preventDefault();
+    setActiveTab(visibleTabs[next]!);
+    tabRefs.current[next]?.focus();
+  };
+
   return (
     <div className="space-y-4">
       <CompetitionHeader data={data} seasons={seasons} competitionId={competitionId} />
 
-      {/* Pestañas principales */}
-      <div className="flex gap-0 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none"
+      {/* Pestañas principales (#358: patrón ARIA tabs) */}
+      <div role="tablist"
+           aria-label={tt(t, 'a11y.competition_tabs', 'Secciones de la competición')}
+           onKeyDown={onTabKeyDown}
+           className="flex gap-0 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none"
            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        {visibleTabs.map((tab) => (
+        {visibleTabs.map((tab, i) => (
           <button
             key={tab}
+            ref={(el) => { tabRefs.current[i] = el; }}
+            role="tab"
+            id={`competition-tab-${i}`}
+            aria-selected={currentTab === tab}
+            aria-controls={`competition-panel-${i}`}
+            tabIndex={currentTab === tab ? 0 : -1}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2.5 text-sm border-b -mb-px transition-colors whitespace-nowrap ${
               currentTab === tab
@@ -65,6 +103,11 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
         ))}
       </div>
 
+      <div
+        role="tabpanel"
+        id={`competition-panel-${visibleTabs.indexOf(currentTab)}`}
+        aria-labelledby={`competition-tab-${visibleTabs.indexOf(currentTab)}`}
+      >
       {currentTab === 'Clasificación' && <StandingsTab standings={data.standings} />}
       {currentTab === 'Jornadas'      && (
         <Suspense fallback={<div className="card h-40 animate-pulse" aria-hidden="true" />}>
@@ -77,6 +120,7 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
         </Suspense>
       )}
       {currentTab === 'Estadísticas'  && stats && <StatsLeadersTab stats={stats} />}
+      </div>
     </div>
   );
 }

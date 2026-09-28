@@ -6,7 +6,13 @@
     "email_label": "Email",
     "search_competitions": "Search league, country or federation",
     "home_heading": "Live matches",
-    "search_global": "Search teams, players or competitions"
+    "search_global": "Search teams, players or competitions",
+    "match_tabs": "Match sections",
+    "competition_tabs": "Competition sections",
+    "competitions_tabs": "Competition list sections",
+    "live_goal": "Goal: {home} {h}-{a} {away}",
+    "live_start": "Kick-off {home} - {away}",
+    "live_end": "Full time: {home} {h}-{a} {away}"
   },
   "navigation": {
     "matches": "Matches",
@@ -140,7 +146,10 @@
     "upsell_email": "Sign up with email",
     "upsell_guest": "Continue as guest",
     "google_failed": "Google sign-in could not be completed. Try again or use the email link.",
-    "account_disabled": "This account is disabled. If you think this is a mistake, contact us."
+    "account_disabled": "This account is disabled. If you think this is a mistake, contact us.",
+    "error_invalid_email": "That email doesn't look valid. Check it and try again.",
+    "error_email_unavailable": "We can't send the link right now. Try again in a few minutes.",
+    "error_generic": "Something went wrong. Try again."
   },
   "common": {
     "today": "Today",

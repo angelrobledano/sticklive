@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useT } from '@/lib/i18n';
 import { BackLink } from '@/components/shared/BackLink';
 import { track } from '@/lib/analytics';
+import { tt } from '@/components/search/translate';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
@@ -17,6 +18,40 @@ const attemptedTokens = new Set<string>();
 
 type Status = 'idle' | 'sending' | 'sent' | 'verifying' | 'welcome' | 'error';
 
+/**
+ * #362: el API devuelve un `error` (código) y, a veces, un `message` en su
+ * idioma. Nunca mostramos el texto crudo: mapeamos el código a una clave i18n
+ * segura y estable. Un código ausente o desconocido cae en un genérico.
+ */
+export function loginErrorKey(code: string | null | undefined): string {
+  switch (code) {
+    case 'invalid_email':        return 'auth.error_invalid_email';
+    case 'email_not_configured': return 'auth.error_email_unavailable';
+    case 'expired':              return 'auth.expired';
+    case 'account_disabled':     return 'auth.account_disabled';
+    default:                     return 'auth.error_generic';
+  }
+}
+
+/** Error de login ya normalizado a una clave i18n (nunca texto del API). */
+export class LoginRequestError extends Error {
+  constructor(readonly key: string) {
+    super(key);
+    this.name = 'LoginRequestError';
+  }
+}
+
+/**
+ * Respaldo en español para las claves nuevas; el resto ya viven en los locales.
+ * Evita que, antes de que el coordinador añada las claves, la UI muestre la
+ * clave cruda (misma estrategia que `tt`).
+ */
+const LOGIN_ERROR_FALLBACK: Record<string, string> = {
+  'auth.error_invalid_email':     'Ese email no parece válido. Revísalo y vuelve a intentarlo.',
+  'auth.error_email_unavailable': 'No podemos enviar el enlace ahora mismo. Inténtalo de nuevo en unos minutos.',
+  'auth.error_generic':           'Algo no fue bien. Inténtalo de nuevo.',
+};
+
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
@@ -25,7 +60,8 @@ function LoginInner() {
 
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<Status>('idle');
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Clave i18n del error (nunca texto crudo del API, #362).
+  const [errorKey, setErrorKey] = useState<string | null>(null);
   const [devLink, setDevLink] = useState<string | null>(null);
 
   // ── Canjear magic link (?token=) ─────────────────────────────────────────────
@@ -45,8 +81,8 @@ function LoginInner() {
       body: JSON.stringify({ token, deviceId }),
     })
       .then(async (r) => {
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.message ?? 'No se pudo verificar el enlace.');
+        const data = await r.json().catch(() => ({} as { error?: string; session?: string; email?: string }));
+        if (!r.ok) throw new LoginRequestError(loginErrorKey(data.error));
         return data as { session: string; email: string };
       })
       .then(async ({ session, email: userEmail }) => {
@@ -88,8 +124,11 @@ function LoginInner() {
       })
       .catch((err: Error) => {
         setStatus('error');
-        setErrorMsg(err.message);
-        track('login_failed', { method: 'magic_link', reason: (err.message ?? 'verify_error').slice(0, 80) });
+        setErrorKey(err instanceof LoginRequestError ? err.key : 'auth.error_generic');
+        track('login_failed', {
+          method: 'magic_link',
+          reason: (err instanceof LoginRequestError ? err.key : 'verify_error').slice(0, 80),
+        });
       });
     // Solo al montar: el token se lee una vez y se canjea una vez (guard arriba).
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -111,13 +150,13 @@ function LoginInner() {
       // Mensaje específico por motivo (antes todo caía en uno genérico, así no
       // se entendía qué fallaba). El acceso por email lleva a la MISMA cuenta.
       const byReason: Record<string, string> = {
-        account_disabled:     t('auth.account_disabled'),
-        google_not_configured: t('auth.google_unavailable'),
-        bad_state:            t('auth.google_state'),
-        google_email:         t('auth.google_email'),
-        google_denied:        t('auth.google_denied'),
+        account_disabled:     'auth.account_disabled',
+        google_not_configured: 'auth.google_unavailable',
+        bad_state:            'auth.google_state',
+        google_email:         'auth.google_email',
+        google_denied:        'auth.google_denied',
       };
-      setErrorMsg((oauthError && byReason[oauthError]) || t('auth.google_failed'));
+      setErrorKey((oauthError && byReason[oauthError]) || 'auth.google_failed');
       track('login_failed', { method: 'google', reason: oauthError ?? 'unknown' });
       return;
     }
@@ -165,20 +204,20 @@ function LoginInner() {
     track('login_started', { method: 'magic_link' });
     track('login_link_requested');
     setStatus('sending');
-    setErrorMsg(null);
+    setErrorKey(null);
     try {
       const r = await fetch(`${API_URL}/auth/magic-link`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.message ?? 'No se pudo enviar el enlace.');
+      const data = await r.json().catch(() => ({} as { error?: string; devLink?: string }));
+      if (!r.ok) throw new LoginRequestError(loginErrorKey(data.error));
       setDevLink(data.devLink ?? null);
       setStatus('sent');
     } catch (err) {
       setStatus('error');
-      setErrorMsg(err instanceof Error ? err.message : 'Algo no fue bien — inténtalo de nuevo.');
+      setErrorKey(err instanceof LoginRequestError ? err.key : 'auth.error_generic');
     }
   };
 
@@ -269,7 +308,11 @@ function LoginInner() {
           <input
             type="email"
             required
+            autoComplete="email"
+            inputMode="email"
             aria-label={t('a11y.email_label')}
+            aria-invalid={errorKey ? true : undefined}
+            aria-describedby={errorKey ? 'login-error' : undefined}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="tu@email.com"
@@ -288,8 +331,14 @@ function LoginInner() {
         </form>
       )}
 
-      {errorMsg && (
-        <p className="text-xs text-red-600 dark:text-red-400 leading-relaxed text-center">{errorMsg}</p>
+      {errorKey && (
+        <p
+          id="login-error"
+          role="alert"
+          className="text-xs text-red-600 dark:text-red-400 leading-relaxed text-center"
+        >
+          {tt(t, errorKey, LOGIN_ERROR_FALLBACK[errorKey] ?? 'Algo no fue bien. Inténtalo de nuevo.')}
+        </p>
       )}
 
       <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed text-center">

@@ -6,7 +6,13 @@
     "email_label": "E-mail",
     "search_competitions": "Rechercher une ligue, un pays ou une fédération",
     "home_heading": "Matchs en direct",
-    "search_global": "Rechercher des équipes, joueurs ou compétitions"
+    "search_global": "Rechercher des équipes, joueurs ou compétitions",
+    "match_tabs": "Sections du match",
+    "competition_tabs": "Sections de la compétition",
+    "competitions_tabs": "Sections de la liste des compétitions",
+    "live_goal": "But : {home} {h}-{a} {away}",
+    "live_start": "Début {home} - {away}",
+    "live_end": "Fin : {home} {h}-{a} {away}"
   },
   "navigation": {
     "matches": "Matchs",
@@ -107,7 +113,10 @@
     "upsell_email": "S'inscrire par email",
     "upsell_guest": "Continuer en invité",
     "google_failed": "La connexion avec Google n'a pas pu aboutir. Réessayez ou utilisez le lien par email.",
-    "account_disabled": "Ce compte est désactivé. Si vous pensez qu'il s'agit d'une erreur, contactez-nous."
+    "account_disabled": "Ce compte est désactivé. Si vous pensez qu'il s'agit d'une erreur, contactez-nous.",
+    "error_invalid_email": "Cet email ne semble pas valide. Vérifiez-le et réessayez.",
+    "error_email_unavailable": "Nous ne pouvons pas envoyer le lien maintenant. Réessayez dans quelques minutes.",
+    "error_generic": "Quelque chose s'est mal passé. Réessayez."
   },
   "common": {
     "today": "Aujourd'hui",

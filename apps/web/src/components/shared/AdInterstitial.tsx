@@ -34,6 +34,17 @@ const ADS = adsenseConfig();
 const SESSION_KEY = 'rink-ad-interstitial-session';
 const LAST_KEY = 'rink-ad-interstitial-last';
 
+/** Selector de elementos tabulables dentro del diálogo modal. */
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** #359: índice destino al tabular dentro del diálogo (trap de foco). */
+function trapFocusIndex(current: number, count: number, backwards: boolean): number {
+  if (count <= 0) return -1;
+  if (current < 0) return backwards ? count - 1 : 0;
+  return backwards ? (current - 1 + count) % count : (current + 1) % count;
+}
+
 export function AdInterstitial() {
   const { t } = useT();
   const { isPremium, mounted } = usePremium();
@@ -88,11 +99,24 @@ export function AdInterstitial() {
     track('ad_interstitial_closed', { zone: 'interstitial' });
   }, []);
 
-  // Escape para cerrar + foco al diálogo + bloquear scroll de fondo.
+  // Escape para cerrar + trap de Tab + foco al diálogo + bloquear scroll de fondo.
   useEffect(() => {
     if (!open) return;
     previouslyFocused.current = (document.activeElement as HTMLElement | null) ?? null;
-    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    const root = dialogRef.current;
+    const focusables = (): HTMLElement[] =>
+      root ? Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)) : [];
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key !== 'Tab') return;
+      const list = focusables();
+      if (list.length === 0) return;
+      const active = document.activeElement as HTMLElement | null;
+      const current = active ? list.indexOf(active) : -1;
+      if (current === -1) { e.preventDefault(); (list[0] ?? root)?.focus(); return; }
+      const target = trapFocusIndex(current, list.length, e.shiftKey);
+      if (target !== current) { e.preventDefault(); list[target]!.focus(); }
+    };
     document.addEventListener('keydown', onKeyDown);
     dialogRef.current?.focus();
     const prevOverflow = document.body.style.overflow;

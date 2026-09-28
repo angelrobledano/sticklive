@@ -1,11 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useT } from '@/lib/i18n';
 
 const DISMISS_KEY = 'rink-auth-upsell-dismissed';
 export const UPSELL_EVENT = 'rink-auth-upsell';
+
+/** Selector de elementos tabulables dentro de un diálogo modal. */
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * #359: índice destino al tabular dentro de un diálogo (trap de foco). Pura para
+ * poder fijarla sin navegador: envuelve el final→principio y viceversa.
+ */
+export function trapFocusIndex(current: number, count: number, backwards: boolean): number {
+  if (count <= 0) return -1;
+  if (current < 0) return backwards ? count - 1 : 0;
+  return backwards ? (current - 1 + count) % count : (current + 1) % count;
+}
 
 /**
  * Bottom sheet de conversión a cuenta: se dispara (una vez) al marcar el
@@ -15,6 +29,8 @@ export const UPSELL_EVENT = 'rink-auth-upsell';
 export function AuthUpsell() {
   const { t } = useT();
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const handler = () => {
@@ -33,12 +49,37 @@ export function AuthUpsell() {
     setOpen(false);
   };
 
-  // Cierra con Escape mientras está abierto (igual que NotificationPresetSheet)
+  // #359: foco inicial al primer control, trap de Tab y restauración al cerrar
+  // (además de Escape y bloqueo del scroll de fondo), como en NotificationPresetSheet.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') dismiss(); };
+    previouslyFocused.current = (document.activeElement as HTMLElement | null) ?? null;
+
+    const focusables = (): HTMLElement[] => {
+      const root = dialogRef.current;
+      return root ? Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)) : [];
+    };
+    (focusables()[0] ?? dialogRef.current)?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { dismiss(); return; }
+      if (e.key !== 'Tab') return;
+      const list = focusables();
+      if (list.length === 0) return;
+      const active = document.activeElement as HTMLElement | null;
+      const current = active ? list.indexOf(active) : -1;
+      if (current === -1) { e.preventDefault(); list[0]!.focus(); return; }
+      const target = trapFocusIndex(current, list.length, e.shiftKey);
+      if (target !== current) { e.preventDefault(); list[target]!.focus(); }
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+      previouslyFocused.current?.focus?.();
+    };
   }, [open]);
 
   if (!open) return null;
@@ -49,7 +90,7 @@ export function AuthUpsell() {
       <div aria-hidden="true" className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={dismiss} />
 
       {/* Sheet (móvil) / modal (escritorio) */}
-      <div role="dialog" aria-modal="true" aria-labelledby="auth-upsell-title"
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="auth-upsell-title" tabIndex={-1}
            className="relative w-full md:max-w-sm bg-white dark:bg-slate-900
                       rounded-t-3xl md:rounded-2xl p-6 pb-8 md:pb-6 space-y-4 shadow-2xl
                       animate-[slideUp_.25s_ease-out]">

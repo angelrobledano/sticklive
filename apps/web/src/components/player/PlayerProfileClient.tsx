@@ -193,6 +193,14 @@ function StatsGrid({ data }: { data: PlayerDetail }) {
 
 // ─── Tabla de rendimiento por competición ─────────────────────────────────────
 
+// #353: rejilla compartida por cabecera y filas. En móvil se ocultan las columnas
+// placeholder (As y FD, siempre "—" por actas pendientes) para que el nombre de
+// la competición siga siendo legible a 320 px; desde sm se muestran las 7.
+const COMP_TABLE_GRID =
+  'grid grid-cols-[minmax(0,1fr)_repeat(5,32px)] ' +
+  'sm:grid-cols-[minmax(0,1fr)_repeat(7,32px)] gap-x-1';
+const MOBILE_HIDDEN_COLS = new Set([2, 5]); // As, FD
+
 function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
   const { t } = useT();
 
@@ -213,14 +221,14 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
   return (
     <div className="card overflow-hidden">
       {/* Cabecera */}
-      <div className="grid grid-cols-[1fr_repeat(7,32px)] gap-x-1 px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
+      <div className={`${COMP_TABLE_GRID} px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800`}>
         <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('player.competition')}</span>
         {cols.map((h, i) => (
           <span key={h} className={`text-[10px] font-bold text-center uppercase tracking-wider ${
             i >= 5
               ? 'text-slate-300 dark:text-slate-600'
               : 'text-slate-500 dark:text-slate-400'
-          }`}>
+          } ${MOBILE_HIDDEN_COLS.has(i) ? 'hidden sm:block' : ''}`}>
             {h}
           </span>
         ))}
@@ -236,7 +244,7 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
           return (
             <div
               key={r.competitionId}
-              className="grid grid-cols-[1fr_repeat(7,32px)] gap-x-1 px-3 py-3 items-center"
+              className={`${COMP_TABLE_GRID} px-3 py-3 items-center`}
             >
               {/* Competición */}
               <div className="min-w-0">
@@ -258,8 +266,8 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
                 {r.goals > 0 ? r.goals : '—'}
               </span>
 
-              {/* As — pendiente de acta */}
-              <span className="font-mono text-xs text-center tabular-nums text-slate-300 dark:text-slate-700">—</span>
+              {/* As — pendiente de acta (oculta en móvil, #353) */}
+              <span className="hidden sm:block font-mono text-xs text-center tabular-nums text-slate-300 dark:text-slate-700">—</span>
 
               {/* Az */}
               <span className={`font-mono text-xs text-center tabular-nums font-semibold ${
@@ -275,8 +283,8 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
                 {r.redCards > 0 ? r.redCards : '—'}
               </span>
 
-              {/* FD — pendiente de actas */}
-              <span className="font-mono text-xs text-center tabular-nums text-slate-300 dark:text-slate-700">—</span>
+              {/* FD — pendiente de actas (oculta en móvil, #353) */}
+              <span className="hidden sm:block font-mono text-xs text-center tabular-nums text-slate-300 dark:text-slate-700">—</span>
 
               {/* PE */}
               <span className={`font-mono text-xs text-center tabular-nums ${

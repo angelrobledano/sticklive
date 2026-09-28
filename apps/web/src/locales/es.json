@@ -6,7 +6,13 @@
     "email_label": "Correo electrónico",
     "search_competitions": "Buscar liga, país o federación",
     "home_heading": "Partidos en directo",
-    "search_global": "Buscar equipos, jugadores o competiciones"
+    "search_global": "Buscar equipos, jugadores o competiciones",
+    "match_tabs": "Secciones del partido",
+    "competition_tabs": "Secciones de la competición",
+    "competitions_tabs": "Secciones de la lista de competiciones",
+    "live_goal": "Gol: {home} {h}-{a} {away}",
+    "live_start": "Empieza {home} - {away}",
+    "live_end": "Final: {home} {h}-{a} {away}"
   },
   "navigation": {
     "matches": "Partidos",
@@ -152,7 +158,10 @@
     "google_state": "La conexión con Google caducó por seguridad. Vuelve a intentarlo.",
     "google_email": "Tu cuenta de Google no expone un email verificado. Entra con ese mismo email y será la misma cuenta.",
     "google_denied": "Cancelaste el acceso con Google. Puedes intentarlo otra vez o entrar con tu email.",
-    "link_hint": "Si ya te registraste con este email, no pasa nada: usamos el mismo email para identificarte, así que entrarás a tu cuenta de siempre."
+    "link_hint": "Si ya te registraste con este email, no pasa nada: usamos el mismo email para identificarte, así que entrarás a tu cuenta de siempre.",
+    "error_invalid_email": "Ese email no parece válido. Revísalo y vuelve a intentarlo.",
+    "error_email_unavailable": "No podemos enviar el enlace ahora mismo. Inténtalo de nuevo en unos minutos.",
+    "error_generic": "Algo no fue bien. Inténtalo de nuevo."
   },
   "common": {
     "today": "Hoy",

@@ -125,21 +125,25 @@ function StandingsTable({
 
   return (
     <div className="card overflow-hidden">
-      <div className={`${GRID} px-3 py-1.5 border-l-2 border-l-transparent
+      {/* #356: semántica de tabla real (roles ARIA) para que un lector de
+          pantalla asocie cada valor con su cabecera; el grid visual no cambia. */}
+      <div role="table" aria-label={t('match_tabs.standing')}>
+      <div role="row" className={`${GRID} px-3 py-1.5 border-l-2 border-l-transparent
                       bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800`}>
-        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">#</span>
-        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('standings.team')}</span>
+        <span role="columnheader" className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider text-center">#</span>
+        <span role="columnheader" className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{t('standings.team')}</span>
         {STAT_COLS.map(({ key, mobile }) => (
           <span
             key={key}
-            className={`text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center ${mobile ? '' : 'hidden sm:block'}`}
+            role="columnheader"
+            className={`text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider text-center ${mobile ? '' : 'hidden sm:block'}`}
           >
             {t(`standings.cols.${key}`)}
           </span>
         ))}
       </div>
 
-      <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+      <div role="rowgroup" className="divide-y divide-slate-100 dark:divide-slate-800/60">
         {rows.map((row, idx) => {
           const pos = row.position ?? idx + 1;
           const total = rows.length;
@@ -162,6 +166,7 @@ function StandingsTable({
           return (
             <div
               key={row.id}
+              role="row"
               className={`${GRID} px-3 py-2 items-center border-l-2
                 ${showPlayoffBorder    ? 'border-b-2 border-dashed border-b-rink-passion/30 dark:border-b-red-400/40' : ''}
                 ${showRelegationBorder ? 'border-t-2 border-dashed border-t-orange-400/50 dark:border-t-orange-400/40' : ''}
@@ -170,13 +175,13 @@ function StandingsTable({
                                          'border-l-transparent'}
               `}
             >
-              <span className="text-xs font-semibold text-center tabular-nums text-slate-500 dark:text-slate-400">
+              <span role="cell" className="text-xs font-semibold text-center tabular-nums text-slate-500 dark:text-slate-400">
                 {pos}
               </span>
 
               {/* Estrella FUERA del Link: un <button> dentro de un <a> es HTML
                   inválido y confunde a los lectores de pantalla (#364). */}
-              <div className="flex items-center gap-2 min-w-0">
+              <div role="cell" className="flex items-center gap-2 min-w-0">
                 <Link
                   href={`/teams/${row.teamId}`}
                   className="flex items-center gap-2 min-w-0 hover:opacity-75 transition-opacity"
@@ -197,7 +202,7 @@ function StandingsTable({
               </div>
 
               {/* PT */}
-              <div className="flex items-baseline justify-center gap-0.5">
+              <div role="cell" className="flex items-baseline justify-center gap-0.5">
                 <span className="text-xs font-bold tabular-nums text-slate-900 dark:text-slate-50">
                   {row.points}
                 </span>
@@ -212,6 +217,7 @@ function StandingsTable({
               {midCells.map(({ key, value, mobile }) => (
                 <span
                   key={key}
+                  role="cell"
                   className={`text-[11px] text-slate-500 dark:text-slate-400 text-center tabular-nums ${mobile ? '' : 'hidden sm:block'}`}
                 >
                   {value}
@@ -219,7 +225,7 @@ function StandingsTable({
               ))}
 
               {/* DG */}
-              <span className={`text-xs font-semibold text-center tabular-nums ${
+              <span role="cell" className={`text-xs font-semibold text-center tabular-nums ${
                 row.goalDiff > 0 ? 'text-emerald-600 dark:text-emerald-400' :
                 row.goalDiff < 0 ? 'text-red-500' : 'text-slate-400'
               }`}>
@@ -228,6 +234,7 @@ function StandingsTable({
             </div>
           );
         })}
+      </div>
       </div>
 
       {showZones && (

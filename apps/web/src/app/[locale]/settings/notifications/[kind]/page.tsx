@@ -30,12 +30,13 @@ const KIND_BY_SLUG: Record<string, NotifKind> = {
   teams: 'team', competitions: 'league', players: 'player',
 };
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       onClick={onChange}
       className={`relative w-12 h-7 rounded-full shrink-0 transition-all duration-200 ease-out cursor-pointer
                   focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion/60 ${
@@ -169,7 +170,11 @@ export default function NotificationEntityPage() {
               <span className="flex-1 min-w-0 text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
                 {clubName(e.name)}
               </span>
-              <Toggle checked={isPresetEnabled(getPreset(kind!, e.id))} onChange={() => toggle(e.id)} />
+              <Toggle
+                checked={isPresetEnabled(getPreset(kind!, e.id))}
+                onChange={() => toggle(e.id)}
+                label={clubName(e.name)}
+              />
             </div>
           ))}
         </section>

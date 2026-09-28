@@ -86,19 +86,20 @@ export default async function CompetitionPage(props: Props) {
     seasons[0]?.id ||
     params.id; // retrocompatibilidad
 
+  // #350: overview y stats dependen solo de seasonId, así que se piden en
+  // paralelo (un round-trip menos). El 404 de overview sigue siendo notFound();
+  // el fallo de stats no bloquea la vista porque los líderes son opcionales.
   let data;
+  let stats: SeasonStats | null = null;
   try {
-    data = await getSeasonOverview(seasonId);
+    [data, stats] = await Promise.all([
+      getSeasonOverview(seasonId),
+      getSeasonStats(seasonId).catch(() => null),
+    ]);
   } catch (err) {
     if (isApiNotFound(err)) notFound();
     throw err; // error boundary con reintento
   }
-
-  // Líderes de la temporada (goleadores, asistentes, tarjetas) — no bloqueante
-  let stats: SeasonStats | null = null;
-  try {
-    stats = await getSeasonStats(seasonId);
-  } catch { /* la vista funciona sin líderes */ }
 
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
