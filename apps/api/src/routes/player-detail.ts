@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { isUuid } from '../lib/uuid.js';
 import { buildPlayerCareer, type CareerRow } from '../lib/player-career.js';
+import { captureRouteError } from '../lib/route-error.js';
 
 export const playerDetailRouter = new Hono();
 
@@ -260,6 +261,7 @@ playerDetailRouter.get('/:id', async (c) => {
       })),
     });
   } catch (err) {
+    captureRouteError(err, 'GET /players/:id');
     return c.json({ error: 'Database error' }, 500);
   }
 });

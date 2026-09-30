@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { logger } from '@sports/logger';
+import { captureRouteError } from '../lib/route-error.js';
 
 /**
  * GET /meta/sitemap — ids para construir el sitemap de la web.
@@ -41,6 +42,7 @@ metaRouter.get('/sitemap', async (c) => {
       })),
     });
   } catch (err) {
+    captureRouteError(err, 'meta] error');
     logger.error({ err }, '[meta] error');
     return c.json({ error: 'Database error' }, 500);
   }

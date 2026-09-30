@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
+import { captureRouteError } from '../lib/route-error.js';
 
 export const competitionsRouter = new Hono();
 
@@ -117,6 +118,7 @@ competitionsRouter.get('/', async (c) => {
 
     return c.json({ count: competitions.length, competitions });
   } catch (err) {
+    captureRouteError(err, 'competitions] GET / error');
     logger.error({ err }, '[competitions] GET / error');
     return c.json({ error: 'Database error' }, 500);
   }
@@ -161,6 +163,7 @@ competitionsRouter.get('/:id/seasons', async (c) => {
       })),
     });
   } catch (err) {
+    captureRouteError(err, 'competitions] GET /:id/seasons error');
     logger.error({ err }, '[competitions] GET /:id/seasons error');
     return c.json({ error: 'Database error' }, 500);
   }

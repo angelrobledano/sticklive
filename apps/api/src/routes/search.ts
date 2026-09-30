@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { logger } from '@sports/logger';
+import { captureRouteError } from '../lib/route-error.js';
 
 export const searchRouter = new Hono();
 
@@ -210,6 +211,7 @@ searchRouter.get('/', async (c) => {
 
     return c.json(buildSearchResults(q, teams.rows, players.rows, competitions.rows));
   } catch (err) {
+    captureRouteError(err, 'search] GET / error');
     logger.error({ err }, '[search] GET / error');
     return c.json({ error: 'Database error' }, 500);
   }

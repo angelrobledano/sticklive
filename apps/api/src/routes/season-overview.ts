@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
+import { captureRouteError } from '../lib/route-error.js';
 
 export const seasonOverviewRouter = new Hono();
 
@@ -320,6 +321,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
       })),
     }, 200);
   } catch (err) {
+    captureRouteError(err, 'season-overview] GET /:id/overview error');
     logger.error({ err }, '[season-overview] GET /:id/overview error');
     return c.json({ error: 'Database error' }, 500);
   }

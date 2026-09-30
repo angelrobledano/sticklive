@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
+import { captureRouteError } from '../lib/route-error.js';
 import {
   buildMatchDetail,
   type MatchDtoRow,
@@ -105,6 +106,7 @@ matchDetailRouter.get('/:id', async (c) => {
 
     return c.json({ match, events, stats, lineups });
   } catch (err) {
+    captureRouteError(err, 'match-detail] GET /:id error');
     logger.error({ err }, '[match-detail] GET /:id error');
     return c.json({ error: 'Database error' }, 500);
   }

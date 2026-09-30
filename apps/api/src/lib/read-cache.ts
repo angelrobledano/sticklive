@@ -12,6 +12,9 @@
 const READ_CACHE: Array<[RegExp, string]> = [
   [/^\/competitions(\/[^/]+)?$/,                     'public, max-age=300, stale-while-revalidate=3600'],
   [/^\/seasons\/[^/]+\/(standings|overview|stats)$/, 'public, max-age=60, stale-while-revalidate=300'],
+  // #323: el listado de partidos es la ruta más pesada (MB); el micro-cache de
+  // la ruta (30 s) absorbe las repeticiones y esto habilita navegador/CDN.
+  [/^\/seasons\/[^/]+\/matches$/,                     'public, max-age=30, stale-while-revalidate=120'],
   [/^\/teams\/[^/]+$/,                               'public, max-age=60, stale-while-revalidate=300'],
   [/^\/players\/[^/]+$/,                             'public, max-age=60, stale-while-revalidate=300'],
   [/^\/matches\/[^/]+$/,                             'public, max-age=30, stale-while-revalidate=120'],

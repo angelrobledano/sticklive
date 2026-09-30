@@ -4,6 +4,7 @@ import webpush from 'web-push';
 import { db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { rateLimit, rateLimitBy } from '../lib/rate-limit.js';
+import { captureRouteError } from '../lib/route-error.js';
 import {
   isAllowedPushEndpoint,
   canDeleteSubscription,
@@ -143,6 +144,7 @@ pushRouter.post(
       // el cliente; hoy el DELETE acepta también el deviceId) (#305).
       return c.json({ ok: true, unsubscribeToken: makeUnsubscribeToken(deviceId, sub.endpoint) });
     } catch (err) {
+      captureRouteError(err, 'push] subscribe error');
       logger.error({ err }, '[push] subscribe error');
       return c.json({ error: 'server_error' }, 500);
     }
@@ -177,6 +179,7 @@ pushRouter.delete('/subscribe', rateLimit(30, 60_000), async (c) => {
     }
     return c.json({ ok: true });
   } catch (err) {
+    captureRouteError(err, 'push] unsubscribe error');
     logger.error({ err }, '[push] unsubscribe error');
     return c.json({ error: 'server_error' }, 500);
   }
@@ -262,6 +265,7 @@ pushRouter.post(
       }
       return c.json({ ok: true, sent });
     } catch (err) {
+      captureRouteError(err, 'push] test error');
       logger.error({ err }, '[push] test error');
       return c.json({ error: 'server_error' }, 500);
     }

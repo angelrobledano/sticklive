@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
+import { captureRouteError } from '../lib/route-error.js';
 import { orderClubTeams, sectionSuffix, type ClubTeamRow } from '../lib/team-section.js';
 
 export const teamDetailRouter = new Hono();
@@ -223,18 +224,25 @@ teamDetailRouter.get('/:id', async (c) => {
             COUNT(DISTINCT me_p.id)  FILTER (WHERE me_p.event_type = 'penalty')    AS penalties
           FROM team_players tp
           JOIN players p ON p.id = tp.player_id
-          -- Agregados desde match_events (LEFT JOIN para no excluir jugadores sin eventos)
+          -- Agregados desde match_events (LEFT JOIN para no excluir jugadores sin eventos).
+          -- #214: acotar por team_id del propio tp — un jugador traspasado tiene
+          -- eventos marcados con su equipo anterior; sin este filtro la plantilla
+          -- atribuía al equipo actual goles/tarjetas marcados con OTRO equipo.
           LEFT JOIN match_events me_g ON me_g.player_id = p.id
             AND me_g.event_type = 'goal'
+            AND me_g.team_id = tp.team_id
             AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_g.match_id AND mx.season_id = ANY($1))
           LEFT JOIN match_events me_b ON me_b.player_id = p.id
             AND me_b.event_type = 'blue_card'
+            AND me_b.team_id = tp.team_id
             AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_b.match_id AND mx.season_id = ANY($1))
           LEFT JOIN match_events me_r ON me_r.player_id = p.id
             AND me_r.event_type = 'red_card'
+            AND me_r.team_id = tp.team_id
             AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_r.match_id AND mx.season_id = ANY($1))
           LEFT JOIN match_events me_p ON me_p.player_id = p.id
             AND me_p.event_type = 'penalty'
+            AND me_p.team_id = tp.team_id
             AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_p.match_id AND mx.season_id = ANY($1))
           WHERE tp.team_id = $2
             AND tp.season_id = ANY($1)
@@ -448,6 +456,7 @@ teamDetailRouter.get('/:id', async (c) => {
 
     return c.json({ team, clubTeams: clubTeamsPayload, standing, matches, squad, staff, stats: teamStats });
   } catch (err) {
+    captureRouteError(err, 'team-detail] GET /:id error');
     logger.error({ err }, '[team-detail] GET /:id error');
     return c.json({ error: 'Database error' }, 500);
   }

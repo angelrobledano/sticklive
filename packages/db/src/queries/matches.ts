@@ -164,6 +164,9 @@ export interface GetMatchesFilter {
   gameweek?: number;
   status?: string;
   teamId?: string;
+  /** Paginación (#323). undefined = sin límite (compatibilidad con la web). */
+  limit?: number;
+  offset?: number;
 }
 
 /** DbMatch enriquecido con nombres de equipos (via JOIN) */
@@ -209,6 +212,14 @@ export async function getMatchesBySeason(
     ? 'LEFT JOIN rounds r ON r.id = m.round_id'
     : '';
 
+  // Paginación (#323): la ruta más pesada de la API devolvía SIEMPRE la
+  // temporada completa (1,7 MB en históricas). limit/offset son opcionales:
+  // sin ellos, comportamiento previo (la web pide la lista completa).
+  const pagination = [
+    filter.limit !== undefined ? `LIMIT ${Math.floor(filter.limit)}` : '',
+    filter.offset !== undefined ? `OFFSET ${Math.floor(filter.offset)}` : '',
+  ].filter(Boolean).join(' ');
+
   const result = await db.query<DbMatchWithTeams>(
     `SELECT
        m.*,
@@ -223,7 +234,8 @@ export async function getMatchesBySeason(
      LEFT JOIN teams at ON at.id = m.away_team_id
      ${joinRounds}
      WHERE ${where}
-     ORDER BY m.scheduled_at ASC NULLS LAST`,
+     ORDER BY m.scheduled_at ASC NULLS LAST
+     ${pagination}`,
     params
   );
 

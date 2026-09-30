@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db, getStandings } from '@sports/db';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
+import { captureRouteError } from '../lib/route-error.js';
 
 export const standingsRouter = new Hono();
 
@@ -43,6 +44,7 @@ standingsRouter.get('/:id/standings', async (c) => {
       standings: rows,
     });
   } catch (err) {
+    captureRouteError(err, 'standings] GET /:id/standings error');
     logger.error({ err }, '[standings] GET /:id/standings error');
     return c.json({ error: 'Database error' }, 500);
   }

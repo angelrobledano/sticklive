@@ -3,6 +3,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import { db, withTransaction } from '@sports/db';
 import { logger } from '@sports/logger';
 import { rateLimit, rateLimitBy } from '../lib/rate-limit.js';
+import { captureRouteError } from '../lib/route-error.js';
 import { buildFavoritePairs } from '../lib/favorites.js';
 import { signState, verifyState } from '../lib/auth-state.js';
 import { postgresNonceStore } from '../lib/oauth-nonce-pg.js';
@@ -136,6 +137,7 @@ authRouter.post(
       await sendMagicLink(clean, link);
       return c.json({ sent: true });
     } catch (err) {
+      captureRouteError(err, 'auth] magic-link error');
       logger.error({ err }, '[auth] magic-link error');
       return c.json({ error: 'server_error' }, 500);
     }
@@ -171,6 +173,7 @@ authRouter.post('/verify', rateLimit(20, 10 * 60_000), async (c) => {
     const session = await openSession(userId);
     return c.json({ session, email });
   } catch (err) {
+    captureRouteError(err, 'auth] verify error');
     logger.error({ err }, '[auth] verify error');
     return c.json({ error: 'server_error' }, 500);
   }
@@ -346,6 +349,7 @@ authRouter.get('/favorites', async (c) => {
       players: all.rows.filter((r) => r.kind === 'player').map((r) => r.ref_id),
     });
   } catch (err) {
+    captureRouteError(err, 'auth] favorites read error');
     logger.error({ err }, '[auth] favorites read error');
     return c.json({ error: 'server_error' }, 500);
   }
@@ -389,6 +393,7 @@ authRouter.post('/favorites/merge', async (c) => {
       players: all.rows.filter((r) => r.kind === 'player').map((r) => r.ref_id),
     });
   } catch (err) {
+    captureRouteError(err, 'auth] merge error');
     logger.error({ err }, '[auth] merge error');
     return c.json({ error: 'server_error' }, 500);
   }

@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { db, withTransaction } from '@sports/db';
 import { logger } from '@sports/logger';
 import { rateLimit } from '../lib/rate-limit.js';
+import { captureRouteError } from '../lib/route-error.js';
 import { isPremiumActive, isCheckoutSessionId, isPaidCheckoutSession } from '../lib/premium.js';
 
 /**
@@ -131,6 +132,7 @@ stripeRouter.post('/checkout', rateLimit(10, 60_000), async (c) => {
 
     return c.json({ url: session.url });
   } catch (err) {
+    captureRouteError(err, 'stripe] checkout error');
     logger.error({ err }, '[stripe] checkout error');
     return c.json({ error: 'server_error' }, 500);
   }

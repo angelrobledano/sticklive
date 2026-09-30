@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { setBounded } from '../lib/bounded-cache.js';
+import { captureRouteError } from '../lib/route-error.js';
 import { resolveCurrentWindow } from '../lib/match-window.js';
 
 export const liveRouter = new Hono();
@@ -167,6 +168,7 @@ liveRouter.get('/live', async (c) => {
     return c.json(payload);
   } catch (err) {
     // El detalle se queda en el log del servidor: nunca al cliente (S7; #152).
+    captureRouteError(err, 'live] GET /live error');
     logger.error({ err }, '[live] GET /live error');
     return c.json({ error: 'Database error' }, 500);
   }
@@ -243,6 +245,7 @@ liveRouter.get('/current', async (c) => {
     return c.json(payload);
   } catch (err) {
     // El detalle se queda en el log del servidor: nunca al cliente (S7; #152).
+    captureRouteError(err, 'live] GET /current error');
     logger.error({ err }, '[live] GET /current error');
     return c.json({ error: 'Database error' }, 500);
   }
