@@ -23,11 +23,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createLogger } from '@sports/logger';
-import { db, closeDb, getActiveScrapePlan, insertScrapeLog } from '@sports/db';
+import { db, closeDb, getActiveScrapePlan, insertScrapeLog, startScrapeRun, finishScrapeRun } from '@sports/db';
 import { EtlPipeline } from './pipeline.js';
 import { forEachLimited } from './concurrency.js';
 import { normalizeLogoBuffer, normalizeLogoFile } from './logo-normalize.js';
 import { scrapeRunStatus } from './scrape-log-status.js';
+import { acquireEtlLock } from './etl-lock.js';
 
 // Los scrapers viven en apps/scraper — importamos via ruta relativa (ts-node lo resuelve)
 import { FepCalendarScraper } from '../../scraper/src/scrapers/fep/fep-calendar.scraper.js';
@@ -352,6 +353,26 @@ function parseArgs() {
 }
 
 async function main() {
+  // LOCK GLOBAL de ingesta (#317): el flock de /tmp solo excluye dentro de un
+  // contenedor. Este advisory lock de Postgres excluye TAMBIÉN otros
+  // contenedores y ejecuciones manuales — los 2-4 escritores concurrentes del
+  // mismo feed eran la causa raíz de los deadlocks de standings (#316). Sin
+  // lock disponible, se sale en limpio (el scheduler lo absorbe como "saltado").
+  const lock = await acquireEtlLock();
+  if (!lock) {
+    log.warn('Otro proceso de ingesta tiene el lock global (#317) — salgo sin ejecutar');
+    await closeDb();
+    return;
+  }
+
+  try {
+    await mainInner();
+  } finally {
+    await lock.release();
+  }
+}
+
+async function mainInner() {
   const args = parseArgs();
   const entity = args['entity'] ?? 'all';
   const seasonId = args['season-id'] ?? process.env['SEASON_ID'];
@@ -461,9 +482,36 @@ async function main() {
     );
 
     log.info({ pending: pending.length }, '→ Fichas pendientes encontradas');
-    let ok = 0, fail = 0;
 
-    for (const m of pending) {
+    // TOPE por run (#331): el barrido sin límite puede sostener el lock HORAS
+    // (1,5 s/ficha × cientos de pendientes) — mecanismo plausible del gap de
+    // 6 h del 13/09: durante el barrido, cron-live y calendar/standings no
+    // entraban. Con tope + ORDER BY scheduled_at, el resto continúa en el
+    // siguiente ciclo diario. Ajustable; 0 = sin tope.
+    const MAX_FICHAS = Number(process.env['ETL_MAX_FICHAS_PER_RUN'] ?? 300);
+    const procesar = MAX_FICHAS > 0 ? pending.slice(0, MAX_FICHAS) : pending;
+    if (procesar.length < pending.length) {
+      log.warn(
+        { tope: MAX_FICHAS, pendientes: pending.length, procesando: procesar.length },
+        'Barrido de fichas recortado al tope del run — el resto continúa mañana (#331)'
+      );
+    }
+
+    // RASTRO del run (#331): fila 'running' al inicio y UPDATE al final. Un run
+    // abortado deja la fila en 'running' — la señal que antes no existía.
+    const runId = await startScrapeRun({
+      scraperKey: FEP_SCRAPER_KEY,
+      entityType: 'match_event',
+      entityRef: `${entity}(${procesar.length}/${pending.length})`,
+    }).catch((err) => {
+      log.warn({ err }, 'No se pudo registrar el run del barrido de fichas');
+      return null;
+    });
+
+    let ok = 0, fail = 0;
+    const startedAt = Date.now();
+
+    for (const m of procesar) {
       const matchIdp = m.source_ref.replace(/^fep_match_/, '');
       const matchIdc = (m.comp_ref ?? idc).replace(/^fep_competition_/, '');
       try {
@@ -484,7 +532,17 @@ async function main() {
       await new Promise((r) => setTimeout(r, 1500));
     }
 
-    log.info({ ok, fail, total: pending.length }, '🏁 Fichas pendientes completadas');
+    if (runId) {
+      await finishScrapeRun(runId, {
+        status: fail === 0 ? 'success' : ok === 0 ? 'error' : 'partial',
+        recordsFound: procesar.length,
+        recordsUpserted: ok,
+        errorMessage: fail > 0 ? `${fail} fichas fallaron de ${procesar.length}` : undefined,
+        durationMs: Date.now() - startedAt,
+      }).catch((err) => log.warn({ err }, 'No se pudo cerrar el run del barrido de fichas'));
+    }
+
+    log.info({ ok, fail, total: procesar.length, pendientesRestantes: pending.length - procesar.length }, '🏁 Fichas pendientes completadas');
   }
 
   // ── Ficha resumen (eventos de partido) ─────────────────

@@ -27,6 +27,7 @@ import './instrument.js'; // Sentry.init — debe ir el PRIMERO de todo
 import * as Sentry from '@sentry/node';
 import { createLogger } from '@sports/logger';
 import { db, closeDb } from '@sports/db';
+import { acquireEtlLock } from './etl-lock.js';
 import { EtlPipeline } from './pipeline.js';
 import { forEachLimited } from './concurrency.js';
 import { deriveMatchResults } from './derive-results.js';
@@ -493,6 +494,25 @@ async function sleep(ms: number): Promise<void> {
 }
 
 async function main() {
+  // LOCK GLOBAL de ingesta (#317): mismo advisory lock que run-pipeline.
+  // El flock de /tmp no excluye entre contenedores: sin esto, un cron-live
+  // duplicado (o un run manual) escribía el mismo feed 2-4 veces a la vez.
+  // Si otro proceso lo sostiene, se sale en limpio (el scheduler lo absorbe).
+  const lock = await acquireEtlLock();
+  if (!lock) {
+    log.warn('Otro proceso de ingesta tiene el lock global (#317) — salgo sin ejecutar');
+    await closeDb();
+    return;
+  }
+
+  try {
+    await mainInner();
+  } finally {
+    await lock.release();
+  }
+}
+
+async function mainInner() {
   heartbeat(); // latido al monitor: "el cron arrancó"
 
   // ── Resumen matinal (#383) ────────────────────────────────────────────────
