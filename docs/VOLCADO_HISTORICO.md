@@ -78,3 +78,35 @@ staging: 0 duplicados de acta, 0 marcadores negativos, 0 auto-partidos).
   nombre retroactivo "OK Liga Plata Femenina"; su nombre histÃ³rico real estÃ¡ por
   confirmar en la RFEP antes de importarlo.
 - ReconstrucciÃ³n de fechas/temporadas por re-scraping de actas.
+
+---
+
+## DECISIÓN (30/09/2026) — estrategia del archivo pre-2017 (#235)
+
+**Decisión: opción B — el archivo pre-2017 NO se importa como partidos.** El
+`data/volcado-nucleo.json` queda como ARCHIVO fuera de la base (no como fuente
+del producto), y la única vía de entrada futura de ese contenido es la
+recuperación por re-scrape contra sidgad (opción c) con las herramientas del
+re-fichas (#232), bajo `import_batches kind='historic'`.
+
+Razones, con los números de la re-auditoría del 30/09 (#237):
+
+1. **El volcado es una proyección del dump, no dato nuevo**: 8.767/8.828 refs
+   (99,3%) YA existen en la base con fecha real (cubos 2017+). Importarlo
+   fabricaría duplicados o forzaría reconciliación contra el propio enrich.
+2. **Sin fecha fiable por diseño** (meta del propio volcado: "Fechas no
+   fiables ? no se importan"): 8.828 partidos sin `scheduled_at` romperían las
+   invariantes que hoy sostenemos (ventana de temporada #229, particionado 047,
+   check de integridad #231) y la guarda #229 los rechazaría en el loader.
+3. **La cobertura real del producto ya está**: la re-auditoría (#237) da 0
+   partidos fuera de ventana, 26/1.226 marcadores discrepantes (9
+   administrativos) y el bloque NO-GO del histórico nacional resuelto.
+4. Las temporadas pre-2017 sembradas con 0 partidos permanecen visibles como
+   están (sin inventar contenido).
+
+**Las 61 refs ausentes (0,7%)**: quedan investigadas como parte de la
+debida diligencia de CUALQUIER futuro re-scrape — hasta entonces el JSON no se
+usa como fuente, así que su origen (diferencia de snapshot vs borrado) no
+bloquea nada. Si algún día se retoma la opción c, la investigación es el paso 0
+del plan y el import será add-only bajo lote (`048`), reversible, sin pisar
+nativos.
