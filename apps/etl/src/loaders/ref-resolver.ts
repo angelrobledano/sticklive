@@ -27,7 +27,6 @@ import {
   findCompetitionBySlug,
   findSeasonBySourceRef,
   type DbTeam,
-  type EntitySignals,
 } from '@sports/db';
 import { createLogger } from '@sports/logger';
 import { slugify } from '../transformers/slugify.js';
