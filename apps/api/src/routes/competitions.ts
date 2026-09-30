@@ -19,6 +19,7 @@ interface CompetitionRow {
   scope: string;
   region: string | null;
   age_category: string;
+  data_quality: string;
   season_id: string | null;
   season_name: string | null;
   season_start: string | null;
@@ -75,7 +76,7 @@ competitionsRouter.get('/', async (c) => {
       )
       SELECT
         comp.id, comp.name, comp.name_i18n, comp.short_name, comp.slug,
-        comp.gender, comp.category, comp.country,
+        comp.gender, comp.category, comp.country, comp.data_quality,
         comp.organizer, comp.scope, comp.region, comp.age_category,
         s.id         AS season_id,
         s.name       AS season_name,
@@ -105,6 +106,7 @@ competitionsRouter.get('/', async (c) => {
       scope:      r.scope,
       region:     r.region,
       ageCategory: r.age_category,
+      dataQuality: r.data_quality,
       season: r.season_id ? {
         id:         r.season_id,
         name:       r.season_name,

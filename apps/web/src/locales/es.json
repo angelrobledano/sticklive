@@ -516,6 +516,7 @@
   },
   "competitions": {
     "all_index": "Todas las competiciones ({n})",
+    "en_revision": "Datos en revisión",
     "international": "Internacional",
     "unclassified": "Sin clasificar",
     "other_region": "Otras",

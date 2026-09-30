@@ -200,6 +200,14 @@ function CompetitionRow({
               {meta}
             </p>
           )}
+          {/* #230: etiqueta (no oculta) para competiciones cuyo histórico está
+              en revisión — el usuario sabe qué está mirando. */}
+          {comp.dataQuality === 'en_revision' && (
+            <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40
+                             text-[10px] font-bold text-amber-800 dark:text-amber-300 leading-none">
+              {tt(t, 'competitions.en_revision', 'Datos en revisión')}
+            </span>
+          )}
         </div>
 
         <ChevronRight />
