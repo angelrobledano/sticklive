@@ -136,7 +136,13 @@ services:
     labels:
       autoheal: "true"   # lo reinicia el sidecar si queda unhealthy (#164)
     command: node_modules/.bin/next start apps/web -p 3001
-    env_file: .env.prod
+    # SIN env_file (#300): la web es el servicio expuesto al navegador y no
+    # necesita NINGÚN secreto — los NEXT_PUBLIC_* van horneados en la imagen
+    # (deploy/Dockerfile) y la URL de la API es pública. Con el env_file global
+    # recibía POSTGRES_PASSWORD y SENTRY_AUTH_TOKEN sin necesidad: superficie de
+    # fuga gratis si algún día hay un RCE/SSRF en el SSR.
+    environment:
+      NODE_ENV: production
     volumes:
       # Escudos como DATOS (no horneados en la imagen): los rellena el etl con
       # `run-pipeline --entity=download-logos` y los sirve Next desde public/.
