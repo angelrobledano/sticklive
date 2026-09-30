@@ -53,7 +53,7 @@ const threshold = (suffix: string): number =>
 async function checkVentana(): Promise<CheckResult> {
   const { rows } = await db.query<{ n: string; muestra: string | null }>(
     `SELECT count(*)::text AS n,
-            (string_agg(m.source_ref, ', ' ORDER BY m.scheduled_at))[:200] AS muestra
+            left(string_agg(m.source_ref, ', ' ORDER BY m.scheduled_at), 200) AS muestra
        FROM matches m
        JOIN seasons s ON s.id = m.season_id
       WHERE s.start_date IS NOT NULL AND s.end_date IS NOT NULL
@@ -81,7 +81,7 @@ async function checkMarcador(): Promise<CheckResult> {
      SELECT count(*) FILTER (WHERE NOT (hg = home_score AND ag = away_score))::text AS n,
             count(*) FILTER (WHERE NOT (hg = home_score AND ag = away_score)
                              AND ((home_score = 10 AND away_score = 0) OR (home_score = 0 AND away_score = 10)))::text AS administrativos,
-            (string_agg(m2.source_ref, ', '))[:200] AS muestra
+            left(string_agg(m2.source_ref, ', '), 200) AS muestra
        FROM goles g JOIN matches m2 ON m2.id = g.id
       WHERE NOT (hg = home_score AND ag = away_score)`
   );
@@ -98,7 +98,7 @@ async function checkStandings(): Promise<CheckResult> {
         GROUP BY st.season_id, st.team_id
      )
      SELECT count(*)::text AS n,
-            (string_agg(s2.id::text || '/' || t.name, ', '))[:200] AS muestra
+            left(string_agg(s2.id::text || '/' || t.name, ', '), 200) AS muestra
        FROM pj_real r
        JOIN standings st ON st.season_id = r.season_id AND st.team_id = r.team_id
        JOIN seasons s2 ON s2.id = r.season_id
@@ -112,14 +112,14 @@ async function checkHomonimos(): Promise<CheckResult> {
   const { rows } = await db.query<{ n: string; muestra: string | null }>(
     `WITH nombre_normalizado AS (
        SELECT st.season_id, s2.name AS temporada, lower(regexp_replace(t.name, '\\s+', ' ', 'g')) AS nombre,
-              count(DISTINCT t.id) AS equipos, (string_agg(DISTINCT t.name, ' ⧸ '))[:200] AS nombres
+              count(DISTINCT t.id) AS equipos, left(string_agg(DISTINCT t.name, ' ⧸ '), 200) AS nombres
          FROM season_teams st
          JOIN teams t ON t.id = st.team_id
          JOIN seasons s2 ON s2.id = st.season_id
         GROUP BY st.season_id, s2.name, lower(regexp_replace(t.name, '\\s+', ' ', 'g'))
        HAVING count(DISTINCT t.id) > 1
      )
-     SELECT count(*)::text AS n, (string_agg(temporada || ': ' || nombres, ' | '))[:300] AS muestra
+     SELECT count(*)::text AS n, left(string_agg(temporada || ': ' || nombres, ' | '), 300) AS muestra
        FROM nombre_normalizado`
   );
   return { name: 'homonimos', violations: Number(rows[0]!.n), detail: rows[0]!.muestra ?? undefined, threshold: threshold('HOMONIMOS') };
@@ -137,7 +137,7 @@ async function checkRefsCompartidas(): Promise<CheckResult> {
         WHERE t.source_ref IS NOT NULL
      )
      SELECT count(*)::text AS n,
-            (string_agg('ref ' || source_ref || ': ' || string_agg(name, ' ⧸ '), ' | '))[:300] AS muestra
+            left(string_agg('ref ' || source_ref || ': ' || string_agg(name, ' ⧸ '), ' | '), 300) AS muestra
        FROM vivos
       GROUP BY source_ref
      HAVING count(*) > 1`
@@ -160,7 +160,7 @@ async function checkSeasonTeams(): Promise<CheckResult> {
        HAVING COUNT(m.id) FILTER (WHERE m.status = 'finished') > 0
      )
      SELECT count(*)::text AS n,
-            (string_agg(temporada || ': ' || equipo || ' (PJ ' || pj || ')', ' | '))[:300] AS muestra
+            left(string_agg(temporada || ': ' || equipo || ' (PJ ' || pj || ')', ' | '), 300) AS muestra
        FROM jugadores j
       WHERE NOT EXISTS (
         SELECT 1 FROM season_teams st
@@ -172,7 +172,7 @@ async function checkSeasonTeams(): Promise<CheckResult> {
 
 async function checkWinner(): Promise<CheckResult> {
   const { rows } = await db.query<{ n: string; muestra: string | null }>(
-    `SELECT count(*)::text AS n, (string_agg(source_ref, ', '))[:200] AS muestra
+    `SELECT count(*)::text AS n, left(string_agg(source_ref, ', '), 200) AS muestra
        FROM matches
       WHERE winner_team_id IS NOT NULL
         AND COALESCE(win_type, 'regular') <> 'penalties'

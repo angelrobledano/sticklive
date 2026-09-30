@@ -83,7 +83,7 @@ async function main(): Promise<void> {
         FROM teams t JOIN season_teams st ON st.team_id=t.id
         JOIN seasons s ON s.id=st.season_id JOIN competitions c ON c.id=s.competition_id
        WHERE c.gender IS NOT NULL GROUP BY t.id, t.name HAVING COUNT(DISTINCT c.gender) > 1)
-    SELECT count(*)::int AS n, (string_agg(name, ', '))[:200] AS nombres FROM mezcla`);
+    SELECT count(*)::int AS n, left(string_agg(name, ', '), 200) AS nombres FROM mezcla`);
   console.log(`5) Súper-equipos con géneros mezclados: ${superEquipos[0]!.n}${superEquipos[0]!.n > 0 ? ` — ${superEquipos[0]!.nombres}` : ''}`);
 
   // 6. Homónimos en temporada y refs compartidas — #193
