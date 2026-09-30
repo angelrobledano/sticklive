@@ -58,6 +58,8 @@ const SERVICIOS = [
   'packages/db/scripts/purge-scrape-logs.ts', // purga diaria
   'apps/etl/src/partition-guard.ts',          // guarda diaria del particionado (047)
   'apps/etl/src/scrape-health-watch.ts',      // vigilante diario de salud del scraping (I3)
+  'apps/etl/src/integrity-check.ts',          // check diario de integridad de datos (#231)
+  'apps/etl/src/audit-integrity-report.ts',   // informe histórico versionado, a mano (#237)
 ];
 
 /**
@@ -92,6 +94,8 @@ const OPERATIVOS = [
   'apps/etl/src/seed-fep-competition.ts',      // seed genérico por idc (2026/27)
   'apps/etl/src/split-filial-teams.ts',        // reparación filiales conflados (one-off)
   'apps/etl/src/link-lineup-players.ts',
+  'apps/etl/src/backfill-season-teams-from-lineups.ts', // season_teams desde alineaciones (#220)
+  'apps/etl/src/cleanup-intruder-team-events.ts',       // reparación eventos intrusos (#325)
   'apps/etl/src/merge-canonical-competitions.ts',
   'apps/etl/src/cleanup-synthetic-dupes.ts',
   'apps/etl/src/update-player-photos.ts',
