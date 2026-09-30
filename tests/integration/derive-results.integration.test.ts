@@ -8,7 +8,7 @@
  * match_date y la partición de match_events (migración 047).
  */
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
-import { db, closeDb, replaceMatchEvents, type UpsertMatchEventInput } from '@sports/db';
+import { db, closeDb, replaceMatchEvents, upsertMatch, type UpsertMatchEventInput } from '@sports/db';
 import { deriveMatchResults } from '../../apps/etl/src/derive-results.js';
 import { limpiar } from './support/db.js';
 import { crearDeporte, crearCompeticion, crearTemporada, crearEquipo } from './support/factorias.js';
@@ -90,7 +90,10 @@ describe('deriveMatchResults', () => {
 
   it('T-039: en penaltis CONSERVA el ganador que puso el acta (no lo pisa por marcador)', async () => {
     const e = await escenario();
-    const m = await partido(e, { hs: 2, as: 2, winner: e.away });
+    // El acta pone ganador y win_type JUNTOS (parseShootout): 2-2 + 'penalties'
+    // es la única representación legal de un empate con ganador desde la
+    // migración 059 (CHECK matches_winner_score_coherence, #326).
+    const m = await partido(e, { hs: 2, as: 2, winner: e.away, winType: 'penalties' });
     await replaceMatchEvents(m, [gol(e.home, 1), gol(e.home, 2), gol(e.away, 1), gol(e.away, 2), finPeriodo(3)]);
     await deriveMatchResults([e.seasonId]);
     const r = await leer(m);
@@ -114,5 +117,81 @@ describe('deriveMatchResults', () => {
     await replaceMatchEvents(m, [gol(e.home, 3)]);
     await deriveMatchResults([e.seasonId]);
     expect((await leer(m)).win_type).toBeNull();
+  });
+});
+
+describe('coherencia del ganador con el marcador (#326)', () => {
+  // El CHECK (migración 059) es la red definitiva: un finished 4-4 con winner
+  // y win_type='regular' fue posible hasta la auditoría — se creó por una
+  // corrección del acta (5-4 → 4-4) que no recalculó el ganador derivado.
+
+  it('el CHECK rechaza un empate con ganador y sin tanda de penaltis', async () => {
+    const e = await escenario();
+    await expect(
+      db.query(
+        `INSERT INTO matches (season_id, home_team_id, away_team_id, status, scheduled_at,
+                              home_score, away_score, winner_team_id, win_type, source_ref)
+         VALUES ($1,$2,$3,'finished', NOW(), 4, 4, $4, 'regular', $5)`,
+        [e.seasonId, e.home, e.away, e.home, ref()]
+      )
+    ).rejects.toThrow(/matches_winner_score_coherence/);
+  });
+
+  it('el CHECK admite empate con ganador vía tanda (penaltis)', async () => {
+    const e = await escenario();
+    await expect(
+      db.query(
+        `INSERT INTO matches (season_id, home_team_id, away_team_id, status, scheduled_at,
+                              home_score, away_score, winner_team_id, win_type, source_ref)
+         VALUES ($1,$2,$3,'finished', NOW(), 2, 2, $4, 'penalties', $5)`,
+        [e.seasonId, e.home, e.away, e.away, ref()]
+      )
+    ).resolves.not.toThrow();
+  });
+
+  it('T-043: la corrección del marcador a empate invalida win_type/winner (upsertMatch no puede violar el CHECK)', async () => {
+    // Secuencia real: el acta marcó 5-4 (winner derivado), luego se corrigió a
+    // 4-4. Sin la cláusula defensiva del upsert, el UPDATE del feed reventaría
+    // contra el CHECK y la ingesta de ese partido se quedaría colgada.
+    const e = await escenario();
+    const sourceRef = ref();
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO matches (season_id, home_team_id, away_team_id, status, scheduled_at,
+                            home_score, away_score, winner_team_id, win_type, source_ref)
+       VALUES ($1,$2,$3,'finished', NOW(), 5, 4, $4, 'regular', $5) RETURNING id`,
+      [e.seasonId, e.home, e.away, e.home, sourceRef]
+    );
+    const matchId = rows[0]!.id;
+
+    await upsertMatch({
+      seasonId: e.seasonId,
+      homeTeamId: e.home,
+      awayTeamId: e.away,
+      homeScore: 4,
+      awayScore: 4,
+      status: 'finished',
+      scheduledAt: new Date(),
+      sourceRef,
+    });
+
+    const { rows: after } = await db.query<{ win_type: string | null; winner_team_id: string | null }>(
+      `SELECT win_type, winner_team_id FROM matches WHERE id = $1`, [matchId]
+    );
+    expect(after[0]!.win_type).toBeNull();
+    expect(after[0]!.winner_team_id).toBeNull();
+    expect((await leer(matchId)).home_goals_reg).toBeNull(); // sin recalcular todavía
+  });
+
+  it('T-044: un empate regular (sin tanda) no conserva un winner del acta', async () => {
+    // El CASE de derive-results: empate + fase extra → conserva (penaltis);
+    // empate SIN fase extra → NULL aunque hubiera un winner previo legal
+    // (p. ej. puesto en una fase de tanda que la corrección del acta anuló).
+    const e = await escenario();
+    const m = await partido(e, { hs: 2, as: 2, winner: e.away, winType: 'penalties' });
+    await replaceMatchEvents(m, [gol(e.home, 1), gol(e.away, 2)]); // sin eventos ≥3
+    await deriveMatchResults([e.seasonId]);
+    const r = await leer(m);
+    expect(r.win_type).toBeNull();
+    expect(r.winner_team_id).toBeNull();
   });
 });

@@ -98,6 +98,25 @@ export async function upsertMatch(
      ON CONFLICT (source_ref) WHERE (source_ref IS NOT NULL) DO UPDATE SET
        ${enrichSet}home_score   = COALESCE(EXCLUDED.home_score,  matches.home_score),
        away_score   = COALESCE(EXCLUDED.away_score,  matches.away_score),
+       -- Coherencia del ganador (#326, CHECK matches_winner_score_coherence):
+       -- el marcador lo trae el feed y win_type/winner los deriva el ETL
+       -- después. Si el marcador RESULTANTE queda en empate y el tipo de
+       -- victoria no es 'penalties', el estado derivado anterior ya no es
+       -- válido (y el CHECK rechazaría el UPDATE): se invalida aquí para que
+       -- derive-results lo recalcule con el acta corregida. 'penalties' se
+       -- conserva: ahí el empate ES el resultado y el ganador lo puso el acta.
+       win_type = CASE
+         WHEN COALESCE(EXCLUDED.home_score, matches.home_score) IS NOT NULL
+          AND COALESCE(EXCLUDED.home_score, matches.home_score)
+            = COALESCE(EXCLUDED.away_score, matches.away_score)
+          AND matches.win_type IS DISTINCT FROM 'penalties'
+         THEN NULL ELSE matches.win_type END,
+       winner_team_id = CASE
+         WHEN COALESCE(EXCLUDED.home_score, matches.home_score) IS NOT NULL
+          AND COALESCE(EXCLUDED.home_score, matches.home_score)
+            = COALESCE(EXCLUDED.away_score, matches.away_score)
+          AND matches.win_type IS DISTINCT FROM 'penalties'
+         THEN NULL ELSE matches.winner_team_id END,
        status       = EXCLUDED.status,
        scheduled_at = COALESCE(EXCLUDED.scheduled_at, matches.scheduled_at),
        -- started_at/finished_at se fijan UNA vez (#189): no se pisan en los
@@ -288,31 +307,58 @@ function eventRichness(ev: UpsertMatchEventInput): number {
  * (el hub SSE) no vea un estado intermedio.
  *
  * PARTICIONADO (migración 047): match_events está particionada por `match_date`
- * (RANGE por temporada). match_date se deriva AQUÍ desde el partido (es inmutable
- * y funcionalmente dependiente de match_id), no lo pasa el caller. Va en el
+ * (RANGE por temporada). match_date se deriva AQUÍ desde el partido. Va en el
  * INSERT, en la clave del ON CONFLICT y en el DELETE, para que Postgres pode a la
  * partición del partido en vez de barrer todas.
+ *
+ * REPROGRAMACIONES (#320): la 047 asumía match_date inmutable (funcionalmente
+ * dependiente de match_id) y NO lo es: un aplazamiento cambia scheduled_at. Con
+ * la clave única (match_id, source_ref, match_date), los eventos quedados en la
+ * fecha/partición antigua ya no casan con el ON CONFLICT ni los alcanza el
+ * DELETE acotado, y el timeline duplicaría goles sin autocorrección. Antes de
+ * insertar se borran los eventos del partido cuya match_date difiera de la
+ * actual (cruza particiones: sin poda, pero cada partición resuelve por el
+ * índice (match_id, match_date), así que es una sonda barata). El caso normal
+ * (misma fecha) no se toca: los ids siguen estables ciclo a ciclo.
  */
 export async function replaceMatchEvents(
   matchId: string,
   events: UpsertMatchEventInput[],
   client: pg.PoolClient | typeof db = db
 ): Promise<void> {
-  // Guarda (#149): una ficha que llega VACÍA (parseo roto) no debe borrar la
-  // cronología ya cargada. "Los malos datos son peores que no tener datos": se
-  // conserva lo que hay y el caller registra el caso (scrape_log / aviso).
-  if (events.length === 0) return;
-
   // Fecha de partición del partido: la del calendario, con centinela 1900 para
   // partidos sin fecha (caen en match_events_undated). Igual que el COALESCE de
-  // la migración 047.
-  const { rows: mrows } = await client.query<{ match_date: string }>(
-    `SELECT COALESCE(scheduled_at::date, finished_at::date, DATE '1900-01-01')::text AS match_date
+  // la migración 047. Se aprovecha para leer el cruce real (home/away): ver la
+  // guarda de equipos intrusos más abajo.
+  const { rows: mrows } = await client.query<{
+    match_date: string;
+    home_team_id: string | null;
+    away_team_id: string | null;
+  }>(
+    `SELECT COALESCE(scheduled_at::date, finished_at::date, DATE '1900-01-01')::text AS match_date,
+            home_team_id, away_team_id
        FROM matches WHERE id = $1`,
     [matchId]
   );
-  const matchDate = mrows[0]?.match_date;
+  const match = mrows[0];
+  const matchDate = match?.match_date;
   if (!matchDate) throw new Error(`replaceMatchEvents: el partido ${matchId} no existe`);
+
+  // Guarda (#149): una ficha que llega VACÍA (parseo roto) no debe borrar la
+  // cronología ya cargada — ni ahora tampoco la de una fecha anterior (una
+  // reprogramación con parser roto no debe vaciar el timeline viejo).
+  // "Los malos datos son peores que no tener datos": se conserva lo que hay y
+  // el caller registra el caso (scrape_log / aviso).
+  if (events.length === 0) return;
+
+  // REPROGRAMACIÓN (#320): fuera los eventos del partido que quedaron en otra
+  // fecha (otra partición). Sin esto, un aplazamiento duplicaría el timeline:
+  // el upsert de abajo no los encuentra (otra match_date en la clave única) y
+  // el DELETE final está acotado a la partición actual. Idempotente por match.
+  await client.query(
+    `DELETE FROM match_events WHERE match_id = $1 AND match_date <> $2`,
+    [matchId, matchDate]
+  );
 
   // Postgres no permite que un ON CONFLICT DO UPDATE toque la misma fila dos
   // veces en la misma sentencia. El parser ya desambigua las colisiones por
@@ -324,6 +370,29 @@ export async function replaceMatchEvents(
     log.warn(
       { matchId, recibidos: events.length, unicos: rows.length },
       'replaceMatchEvents: colisión de source_ref; se conserva el evento más completo'
+    );
+  }
+
+  // EQUIPOS INTRUSOS (#325): un evento sólo puede pertenecer a uno de los dos
+  // equipos del cruce. Si la resolución de refs apunta a otro equipo (p. ej. el
+  // primer equipo del club en la ficha de un filial), el timeline mostraría
+  // goles falsos que además no cuadran con el marcador. "Sin equipo" es mejor
+  // dato que equipo equivocado: se guarda NULL y queda el aviso.
+  let intrusos = 0;
+  for (const ev of rows) {
+    if (
+      ev.teamId != null &&
+      ev.teamId !== match.home_team_id &&
+      ev.teamId !== match.away_team_id
+    ) {
+      ev.teamId = null;
+      intrusos++;
+    }
+  }
+  if (intrusos > 0) {
+    log.warn(
+      { matchId, eventos: rows.length, sinEquipo: intrusos },
+      'replaceMatchEvents: eventos con un team_id fuera del cruce (home/away) — guardados sin equipo (#325)'
     );
   }
 

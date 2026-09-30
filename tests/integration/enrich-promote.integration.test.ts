@@ -50,9 +50,12 @@ const LABEL = 'enrich-test-batch';
 let staging: pg.Pool;
 let prod: pg.Pool;
 
+// `execFileSync('npx')` necesita shell en Windows (npx es un .cmd, no un exe).
+const NPX_OPTS = { cwd: ROOT, shell: process.platform === 'win32' } as const;
+
 function migrate(url: string) {
   execFileSync('npx', ['tsx', 'packages/db/src/migrate.ts'], {
-    cwd: ROOT,
+    ...NPX_OPTS,
     env: { ...process.env, DATABASE_URL: url },
     stdio: 'pipe',
   });
@@ -61,7 +64,7 @@ function migrate(url: string) {
 function runScript(args: string[]): { code: number; out: string } {
   try {
     const out = execFileSync('npx', ['tsx', 'apps/etl/src/enrich-promote.ts', ...args], {
-      cwd: ROOT,
+      ...NPX_OPTS,
       env: { ...process.env, STAGING_URL, PROD_URL },
       stdio: 'pipe',
     }).toString();

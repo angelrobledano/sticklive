@@ -20,7 +20,7 @@
 import './instrument.js';
 import * as Sentry from '@sentry/node';
 import { createLogger } from '@sports/logger';
-import { db, closeDb } from '@sports/db';
+import { db, closeDb, insertScrapeLog } from '@sports/db';
 // `analytics` sólo lo usaba el planificador eliminado; queda el cierre limpio.
 import { shutdownAnalytics } from '@sports/analytics';
 import { EtlPipeline } from '@sports/etl';
@@ -76,9 +76,47 @@ async function resolveSeasonIds(): Promise<SeasonLookup> {
 
 // ─── Funciones scrape+ETL por tipo ───────────────────────────────────────────
 
+/**
+ * Rastro del run cuando el loader no llega a ejecutarse (#329): fallo del
+ * scrape (fila 'error' + Sentry) o éxito con 0 filas (fila 'success' con
+ * records_found=0, que el vigilante diario lee como "éxito silencioso").
+ * Mismo patrón que run-pipeline.registrarRunSinLoader y run-worldskate (#294).
+ */
+async function registrarRunSinLoader(
+  result: { success: boolean; data: unknown[]; errors: Array<{ message: string }>; durationMs: number; scraperKey: string },
+  entityType: 'match' | 'standing',
+  idc: string,
+): Promise<void> {
+  const status = result.success ? 'success' : 'error';
+  const errorMessage = !result.success
+    ? (result.errors.map((e) => e.message).filter(Boolean).join(' | ') || 'scrape sin detalle').slice(0, 500)
+    : undefined;
+  try {
+    await insertScrapeLog({
+      scraperKey: result.scraperKey,
+      entityType,
+      status,
+      recordsFound: result.data.length,
+      errorMessage,
+      durationMs: result.durationMs,
+    });
+  } catch (err) {
+    log.warn({ err }, 'No se pudo registrar el run en scrape_logs');
+  }
+  if (!result.success) {
+    Sentry.captureMessage(
+      `Scrape FEP falló (${entityType}, idc ${idc}): ${errorMessage}`,
+      { level: 'warning', tags: { source: 'fep' }, extra: { idc, entityType, errors: result.errors } },
+    );
+  }
+}
+
 async function runCalendar(idc: string, seasonId: string, name: string) {
   const scraper  = new FepCalendarScraper({ idc, seasonId, competitionName: name });
   const result   = await scraper.run();
+  if (!result.success || result.data.length === 0) {
+    await registrarRunSinLoader(result, 'match', idc);
+  }
   if (!result.success) { log.error({ idc }, 'Calendar scrape failed'); return; }
 
   const pipeline = new EtlPipeline({ sportSlug: 'hockey-patines', seasonId });
@@ -89,6 +127,9 @@ async function runCalendar(idc: string, seasonId: string, name: string) {
 async function runStandings(idc: string, seasonId: string, name: string) {
   const scraper  = new FepStandingsScraper({ idc, competitionName: name });
   const result   = await scraper.run();
+  if (!result.success || result.data.length === 0) {
+    await registrarRunSinLoader(result, 'standing', idc);
+  }
   if (!result.success) { log.error({ idc }, 'Standings scrape failed'); return; }
 
   const pipeline = new EtlPipeline({ sportSlug: 'hockey-patines', seasonId });
@@ -99,6 +140,9 @@ async function runStandings(idc: string, seasonId: string, name: string) {
 async function runLiveScores(seasonId: string) {
   const scraper  = new FepMatchesScraper({ seasonId });
   const result   = await scraper.run();
+  if (!result.success || result.data.length === 0) {
+    await registrarRunSinLoader(result, 'match', 'fep_matches_live');
+  }
   if (!result.success) { log.error('Live scores scrape failed'); return; }
 
   const pipeline = new EtlPipeline({ sportSlug: 'hockey-patines', seasonId });

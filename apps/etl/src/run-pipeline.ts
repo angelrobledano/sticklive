@@ -23,10 +23,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createLogger } from '@sports/logger';
-import { db, closeDb, getActiveScrapePlan } from '@sports/db';
+import { db, closeDb, getActiveScrapePlan, insertScrapeLog } from '@sports/db';
 import { EtlPipeline } from './pipeline.js';
 import { forEachLimited } from './concurrency.js';
 import { normalizeLogoBuffer, normalizeLogoFile } from './logo-normalize.js';
+import { scrapeRunStatus } from './scrape-log-status.js';
 
 // Los scrapers viven en apps/scraper — importamos via ruta relativa (ts-node lo resuelve)
 import { FepCalendarScraper } from '../../scraper/src/scrapers/fep/fep-calendar.scraper.js';
@@ -149,6 +150,7 @@ async function processCalendar(
   timezone?: string,
   playoffIdcs: ReadonlySet<string> = LEGACY_PLAYOFF_IDCS,
   cupIdcs: ReadonlySet<string> = CUP_IDCS,
+  dryRun = false,
 ): Promise<void> {
   for (const calIdc of idcs) {
     const calName = IDC_NAMES[calIdc] ?? `idc ${calIdc}`;
@@ -183,6 +185,14 @@ async function processCalendar(
     const result = await scraper.run();
     log.info({ idc: calIdc, found: result.data.length, errors: result.errors.length }, 'Calendario scrapeado');
 
+    // Rastro del run cuando el loader NO llega a escribir (#329). Un calendario
+    // vacío SIEMPRE es sospechoso (la fuente cambió o cayó), así que se
+    // registra success+0 y el vigilante diario dispara la alerta 'zero'.
+    const status = scrapeRunStatus(result.success, result.data.length, false);
+    if (!dryRun && (status !== 'success' || result.data.length === 0)) {
+      await registrarRunSinLoader(result, status, 'match', calIdc);
+    }
+
     // Copas: crear rondas por nombre (Octavos/Cuartos/Semis/Final) como
     // 'playoff' y asignarlas a cada partido → la web las pinta como bracket.
     if (cupIdcs.has(calIdc)) {
@@ -209,13 +219,16 @@ async function processCalendar(
 /**
  * Scrapea la clasificación de una competición. El playoff (3481) no tiene
  * clasificación (hide_clasif:1 en sidgad); las copas/eliminatorias devuelven
- * vacío y el `if length > 0` las absorbe sin cargar nada.
+ * vacío (esperado: `expectedEmptyIdcs`) y no se registran como éxito-vacío
+ * para que el vigilante no alerte en falso (#329).
  */
 async function processStandings(
   idc: string,
   competitionName: string,
   pipeline: EtlPipeline,
   playoffIdcs: ReadonlySet<string> = LEGACY_PLAYOFF_IDCS,
+  expectedEmptyIdcs: ReadonlySet<string> = new Set(),
+  dryRun = false,
 ): Promise<void> {
   if (playoffIdcs.has(idc)) {
     log.info('→ Playoff sin clasificación (eliminatorias) — skip standings');
@@ -225,9 +238,56 @@ async function processStandings(
   const scraper = new FepStandingsScraper({ idc, competitionName });
   const result = await scraper.run();
   log.info({ found: result.data.length, errors: result.errors.length }, 'Clasificación scrapeada');
+
+  // Rastro del run cuando el loader NO llega a escribir (#329): fallo del
+  // scrape o éxito con 0 filas (el "éxito silencioso" que el vigilante debe
+  // ver; las copas van como 'skipped' porque es su estado normal).
+  const status = scrapeRunStatus(result.success, result.data.length, expectedEmptyIdcs.has(idc));
+  if (!dryRun && (status !== 'success' || result.data.length === 0)) {
+    await registrarRunSinLoader(result, status, 'standing', idc);
+  }
+
   if (result.data.length > 0) {
     const etl = await pipeline.runStandings(result);
     log.info(etl, '✅ Clasificación cargada');
+  }
+}
+
+/**
+ * Registra en scrape_logs un run cuyo loader no llegó a ejecutarse (#329) y,
+ * si fue un fallo, lo manda a Sentry (mismo patrón que run-worldskate, #294).
+ * Best-effort: el registro nunca debe romper el pipeline.
+ */
+async function registrarRunSinLoader(
+  result: { scraperKey: string; durationMs: number; data: unknown[]; errors: Array<{ message: string }> },
+  status: 'error' | 'skipped' | 'success',
+  entityType: 'match' | 'standing',
+  idc: string,
+): Promise<void> {
+  const errorMessage = status === 'error'
+    ? (result.errors.map((e) => e.message).filter(Boolean).join(' | ') || 'scrape sin detalle').slice(0, 500)
+    : undefined;
+  try {
+    await insertScrapeLog({
+      scraperKey: result.scraperKey,
+      entityType,
+      status,
+      recordsFound: result.data.length,
+      errorMessage,
+      durationMs: result.durationMs,
+    });
+  } catch (err) {
+    log.warn({ err }, 'No se pudo registrar el run en scrape_logs');
+  }
+  if (status === 'error') {
+    log.error({ idc, entityType, errors: result.errors }, 'Scrape falló — registrado en scrape_logs y alertado');
+    // 'warning' y no 'error': un ciclo fallido aislado no debe abrir incidente;
+    // el fallo PERSISTENTE lo escala scrape-health-watch (status='error' del
+    // último run) y los trackers de ciclos consecutivos del directo.
+    Sentry.captureMessage(
+      `Scrape FEP falló (${entityType}, idc ${idc}): ${errorMessage}`,
+      { level: 'warning', tags: { source: 'fep' }, extra: { idc, entityType, errors: result.errors } },
+    );
   }
 }
 
@@ -262,9 +322,9 @@ async function runMultiCompetition(
       // lista CUP_IDCS hardcodeada.
       const cups = item.format === 'bracket' ? new Set([item.primaryIdc]) : new Set<string>();
       if (entity === 'calendar') {
-        await processCalendar(item.seasonId, [item.primaryIdc, ...item.playoffIdcs], pipeline, item.timezone, playoff, cups);
+        await processCalendar(item.seasonId, [item.primaryIdc, ...item.playoffIdcs], pipeline, item.timezone, playoff, cups, dryRun);
       } else {
-        await processStandings(item.primaryIdc, item.competitionName, pipeline, playoff);
+        await processStandings(item.primaryIdc, item.competitionName, pipeline, playoff, cups, dryRun);
       }
       done++;
     } catch (err) {
@@ -341,7 +401,7 @@ async function main() {
 
   // ── Calendario ─────────────────────────────────────
   if (entity === 'calendar' || entity === 'all') {
-    await processCalendar(seasonId!, idcs, pipeline);
+    await processCalendar(seasonId!, idcs, pipeline, undefined, undefined, undefined, dryRun);
     // Reconciliación automática: si un placeholder sintético ya tiene su
     // partido real (con idp), eliminarlo para no duplicar en la web.
     const reconciled = await reconcileSyntheticMatches();
@@ -350,7 +410,7 @@ async function main() {
 
   // ── Clasificación ─────────────────────────────────
   if (entity === 'standings' || entity === 'all') {
-    await processStandings(idc, competitionName, pipeline);
+    await processStandings(idc, competitionName, pipeline, undefined, CUP_IDCS, dryRun);
   }
 
   // ── Marcadores en vivo ──────────────────────────────

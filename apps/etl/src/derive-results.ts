@@ -46,12 +46,17 @@ export async function deriveMatchResults(seasonIds: string[]): Promise<void> {
         WHEN a.ot_goals > 0                                     THEN 'overtime'
         WHEN m.home_score <> m.away_score                       THEN 'regular'
         ELSE NULL END,
-      -- Ganador por marcador final (regular/prórroga). En empate (penaltis) se
-      -- CONSERVA el ganador que ya haya puesto el acta (parseShootout); no se pisa.
+      -- Ganador por marcador final (regular/prórroga). En empate con tanda
+      -- (penaltis) se CONSERVA el ganador que ya haya puesto el acta
+      -- (parseShootout); no se pisa. En empate SIN tanda no puede haber
+      -- ganador (#326): se limpia — antes se conservaba y un marcador
+      -- corregido a empate dejaba colgado el winner de un estado anterior
+      -- (finished 4-4 con winner y win_type='regular').
       winner_team_id = CASE
         WHEN m.home_score > m.away_score THEN m.home_team_id
         WHEN m.away_score > m.home_score THEN m.away_team_id
-        ELSE m.winner_team_id END,
+        WHEN m.home_score = m.away_score AND a.extra_events > 0 THEN m.winner_team_id
+        ELSE NULL END,
       updated_at = NOW()
     FROM agg a
     WHERE a.id = m.id

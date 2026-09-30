@@ -314,6 +314,19 @@ export async function loadMatches(
               `UPDATE matches
                SET home_score = COALESCE($2, home_score),
                    away_score = COALESCE($3, away_score),
+                   -- Coherencia del ganador (#326): mismo trato que en
+                   -- upsertMatch — un marcador que pasa a empate sin tanda
+                   -- invalida el win_type/winner derivado anterior.
+                   win_type = CASE
+                     WHEN COALESCE($2, home_score) IS NOT NULL
+                      AND COALESCE($2, home_score) = COALESCE($3, away_score)
+                      AND win_type IS DISTINCT FROM 'penalties'
+                     THEN NULL ELSE win_type END,
+                   winner_team_id = CASE
+                     WHEN COALESCE($2, home_score) IS NOT NULL
+                      AND COALESCE($2, home_score) = COALESCE($3, away_score)
+                      AND win_type IS DISTINCT FROM 'penalties'
+                     THEN NULL ELSE winner_team_id END,
                    status     = $4,
                    scraped_at = $5,
                    updated_at = NOW()
@@ -393,6 +406,17 @@ export async function loadMatches(
                 `UPDATE matches
                     SET home_score = COALESCE($2, home_score),
                         away_score = COALESCE($3, away_score),
+                        -- Coherencia del ganador (#326): ver upsertMatch.
+                        win_type = CASE
+                          WHEN COALESCE($2, home_score) IS NOT NULL
+                           AND COALESCE($2, home_score) = COALESCE($3, away_score)
+                           AND win_type IS DISTINCT FROM 'penalties'
+                          THEN NULL ELSE win_type END,
+                        winner_team_id = CASE
+                          WHEN COALESCE($2, home_score) IS NOT NULL
+                           AND COALESCE($2, home_score) = COALESCE($3, away_score)
+                           AND win_type IS DISTINCT FROM 'penalties'
+                          THEN NULL ELSE winner_team_id END,
                         status     = $4,
                         scraped_at = $5,
                         updated_at = NOW()

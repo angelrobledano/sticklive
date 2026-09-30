@@ -18,7 +18,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { db, closeDb, replaceMatchEvents } from '@sports/db';
 import { limpiar } from './support/db.js';
-import { crearPartido, crearFuente, eventosDe, type EscenarioPartido } from './support/factorias.js';
+import { crearEquipo, crearPartido, crearFuente, eventosDe, type EscenarioPartido } from './support/factorias.js';
 
 let escenario: EscenarioPartido;
 let sourceId: string;
@@ -145,6 +145,89 @@ describe('replaceMatchEvents', () => {
     expect(await eventosDe(escenario.matchId)).toHaveLength(1);
   });
 
+  it('#320 un partido REPROGRAMADO no duplica: el timeline se mueve a la fecha nueva', async () => {
+    // Sin el DELETE por match_id con match_date distinta, el aplazamiento
+    // duplicaría el timeline: el upsert no encuentra las filas viejas (otra
+    // match_date en la clave única, otra partición) y el DELETE final está
+    // acotado a la partición nueva. Los goles aparecerían dos veces y sin
+    // autocorrección en cada ciclo.
+    const acta = [
+      evento('fep_event_1_p1_1500_goal_H', { minute: 10 }),
+      evento('fep_event_1_p2_0730_goal_H', { minute: 33, period: 2 }),
+    ];
+    await replaceMatchEvents(escenario.matchId, acta);
+    const primera = await eventosDe(escenario.matchId);
+    expect(primera).toHaveLength(2);
+
+    // La fuente reprograma el partido: scheduled_at cambia de fecha.
+    await db.query(
+      `UPDATE matches SET scheduled_at = scheduled_at + INTERVAL '3 days' WHERE id = $1`,
+      [escenario.matchId]
+    );
+    await replaceMatchEvents(escenario.matchId, acta);
+
+    const segunda = await eventosDe(escenario.matchId);
+    // 2 eventos, no 4: las filas de la fecha vieja se fueron con el cambio.
+    expect(segunda).toHaveLength(2);
+    expect(segunda.map((e) => e.sourceRef)).toEqual(primera.map((e) => e.sourceRef));
+
+    // Y ninguna fila queda colgada de la match_date antigua.
+    const { rows: viejas } = await db.query<{ n: string }>(
+      `SELECT count(*) AS n FROM match_events
+        WHERE match_id = $1
+          AND match_date <> COALESCE((SELECT scheduled_at::date FROM matches WHERE id = $1), DATE '1900-01-01')`,
+      [escenario.matchId]
+    );
+    expect(Number(viejas[0]!.n)).toBe(0);
+  });
+
+  it('#320 un partido que GANA fecha saca sus eventos del centinela undated', async () => {
+    // Partidos sin fecha: sus eventos caen en match_events_undated (centinela
+    // que el partition-guard exige VACÍA). Si el partido recibe scheduled_at
+    // después, los eventos deben moverse a la partición de su temporada.
+    await db.query(`UPDATE matches SET scheduled_at = NULL WHERE id = $1`, [escenario.matchId]);
+    await replaceMatchEvents(escenario.matchId, [evento('fep_event_1_p1_1500_goal_H')]);
+
+    const { rows: enSentinela } = await db.query<{ n: string }>(
+      `SELECT count(*) AS n FROM match_events_undated WHERE match_id = $1`,
+      [escenario.matchId]
+    );
+    expect(Number(enSentinela[0]!.n)).toBe(1);
+
+    await db.query(
+      `UPDATE matches SET scheduled_at = NOW() - INTERVAL '1 hour' WHERE id = $1`,
+      [escenario.matchId]
+    );
+    await replaceMatchEvents(escenario.matchId, [evento('fep_event_1_p1_1500_goal_H')]);
+
+    const { rows: quedan } = await db.query<{ n: string }>(
+      `SELECT count(*) AS n FROM match_events_undated WHERE match_id = $1`,
+      [escenario.matchId]
+    );
+    expect(Number(quedan[0]!.n)).toBe(0);
+    expect(await eventosDe(escenario.matchId)).toHaveLength(1);
+  });
+
+  it('#325 los eventos con un team_id fuera del cruce (home/away) se guardan SIN equipo', async () => {
+    // El equipo intruso existe en DB (por eso la FK no lo caza): un evento
+    // apuntando a él fabricaría goles falsos en el timeline de un filial.
+    const intruso = await crearEquipo(escenario.sportId, 'PRIMER EQUIPO DEL CLUB');
+
+    await replaceMatchEvents(escenario.matchId, [
+      { ...evento('fep_event_1_p1_1500_goal_H'), teamId: intruso },
+      { ...evento('fep_event_1_p2_0730_goal_H'), teamId: escenario.homeTeamId },
+    ]);
+
+    const { rows } = await db.query<{ source_ref: string; team_id: string | null }>(
+      `SELECT source_ref, team_id FROM match_events WHERE match_id = $1 ORDER BY source_ref`,
+      [escenario.matchId]
+    );
+    expect(rows).toHaveLength(2);
+    const porRef = new Map(rows.map((r) => [r.source_ref, r.team_id]));
+    expect(porRef.get('fep_event_1_p1_1500_goal_H')).toBeNull();   // intruso → NULL
+    expect(porRef.get('fep_event_1_p2_0730_goal_H')).toBe(escenario.homeTeamId); // legítimo intacto
+  });
+
   it('deduplica refs repetidas dentro de la misma llamada', async () => {
     // Postgres rechaza que un ON CONFLICT DO UPDATE toque la misma fila dos
     // veces en una sentencia ("cannot affect row a second time"). Sin la
@@ -243,6 +326,16 @@ describe('particionado de match_events (migración 047)', () => {
   });
 
   it('DETACH saca una temporada del árbol sin borrar el resto', async () => {
+    // Estado inicial idempotente: la partición de la temporada de prueba debe
+    // existir y estar vacía. Un run anterior interrumpido pudo dejarla detached
+    // (tabla suelta) o dropeada, y la BD persiste entre ejecuciones de la
+    // suite si el contenedor no baja (docker up sin down).
+    await db.query(`DROP TABLE IF EXISTS match_events_s2005`);
+    await db.query(
+      `CREATE TABLE match_events_s2005 PARTITION OF match_events
+         FOR VALUES FROM ('2005-08-01') TO ('2006-08-01')`
+    );
+
     // Fechamos el partido en una temporada PASADA sin uso (2005/06): así el
     // DROP de su partición no afecta a la temporada actual, que es la que usan
     // el resto de tests (comparten la misma BD). Si aquí se dropease la
@@ -272,8 +365,15 @@ describe('particionado de match_events (migración 047)', () => {
     expect(Number(cnt[0]!.n)).toBe(1);
 
     // Se elimina la partición desacoplada (temporada sin uso) para no dejar una
-    // tabla suelta que el TRUNCATE del padre ya no cubre.
+    // tabla suelta que el TRUNCATE del padre ya no cubre, y se RECREA vacía con
+    // el mismo DDL de la migración 047: si la BD persiste entre ejecuciones de
+    // la suite (docker up sin down), el próximo run necesita la partición para
+    // insertar — que sea idempotente también aquí.
     await db.query(`DROP TABLE ${particion}`);
+    await db.query(
+      `CREATE TABLE IF NOT EXISTS ${particion} PARTITION OF match_events
+         FOR VALUES FROM ('2005-08-01') TO ('2006-08-01')`
+    );
   });
 
   it('#149 una ficha VACÍA (parseo roto) no borra la cronología ya cargada', async () => {
