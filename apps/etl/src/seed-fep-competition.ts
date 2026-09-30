@@ -287,6 +287,27 @@ async function main() {
   )).rows[0]!;
 
   // ── Temporada (is_current) ──
+  // GUARDA nombre↔fechas (#327): la season OK Liga 2025/26 llegó a prod con el
+  // rango de 2024/25 (copiapé de la season anterior) y 209 partidos quedaron
+  // fuera de ventana. Antes de escribir se valida que el rango cuadre con el
+  // NOMBRE: "2025/26" ⇒ el año de start ∈ {2025, 2026} y el de end ∈ {2025, 2026},
+  // y end > start. Un fallo aquí aborta el seed (los datos del CLI están mal).
+  {
+    const m = /^(20\d{2})\/(20\d{2})$/.exec(SEASON_NAME);
+    if (m) {
+      const y0 = Number(m[1]), y1 = Number(m[2]);
+      const sy = new Date(START).getUTCFullYear();
+      const ey = new Date(END).getUTCFullYear();
+      const okInicio = sy === y0 || sy === y1;
+      const okFin = ey === y0 || ey === y1;
+      if (!okInicio || !okFin || new Date(END) <= new Date(START)) {
+        throw new Error(
+          `#327: fechas incoherentes con el nombre de la temporada: ${SEASON_NAME} con ${START} → ${END}. ` +
+          `Revisa --start/--end (los partidos caerían fuera de ventana y la guarda #229 los rechazaría).`
+        );
+      }
+    }
+  }
   await db.query(`UPDATE seasons SET is_current=FALSE WHERE competition_id=$1`, [comp.id]);
   const season = (await db.query<{ id: string }>(
     `INSERT INTO seasons (competition_id, name, slug, start_date, end_date, is_current, source_id, source_ref, scraped_at)

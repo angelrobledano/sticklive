@@ -117,6 +117,14 @@ while true; do
     echo "[scheduler] scrape-health-watch $(date -u +%T)"
     node dist/apps/etl/src/scrape-health-watch.js \
       || echo "[scheduler] scrape-health-watch fallo (seguimos)"
+
+    # Chequeo de integridad de datos (#231): ventana de temporadas, coherencia
+    # eventos↔marcador, standings↔partidos, homónimos en temporada, refs
+    # compartidas, partidos sin season_teams y ganadores imposibles. Solo lee y
+    # avisa a Sentry; nunca escribe.
+    echo "[scheduler] integrity-check $(date -u +%T)"
+    node dist/apps/etl/src/integrity-check.js \
+      || echo "[scheduler] integrity-check fallo (seguimos)"
   fi
 
   touch "$ALIVE"   # latido: vuelta completada
