@@ -3,6 +3,7 @@ import { db } from '@sports/db';
 import { isUuid } from '../lib/uuid.js';
 import { buildPlayerCareer, type CareerRow } from '../lib/player-career.js';
 import { captureRouteError } from '../lib/route-error.js';
+import { penaltyScoredSql } from '../lib/penalty-sql.js';
 
 export const playerDetailRouter = new Hono();
 
@@ -32,6 +33,7 @@ interface CompStatsRow {
   competition_short: string | null;
   pj: string;           // COUNT DISTINCT — devuelve bigint como string en pg
   goals: string;
+  assists: string;
   blue_cards: string;
   red_cards: string;
   penalties_total: string;
@@ -54,11 +56,22 @@ playerDetailRouter.get('/:id', async (c) => {
     // 1) Datos del jugador
     const playerRes = await db.query<PlayerRow>(
       `SELECT id, first_name, last_name, birth_date, nationality, source_ref, photo_url,
-              -- Portero si aparece marcado como tal en alguna alineación (la
-              -- fuente no da posición de jugador, sólo el portero por partido).
+              -- Portero si aparece marcado como tal en la ÚLTIMA temporada con
+              -- alineaciones (#218): antes el badge era de por vida — un ex-
+              -- portero lo conservaba para siempre. La fuente no da posición,
+              -- sólo el portero por partido.
               EXISTS (
                 SELECT 1 FROM match_lineups ml
+                JOIN matches mx ON mx.id = ml.match_id
                 WHERE ml.player_id = players.id AND ml.is_goalkeeper = TRUE
+                  AND mx.season_id = (
+                    SELECT mx2.season_id FROM match_lineups ml2
+                      JOIN matches mx2 ON mx2.id = ml2.match_id
+                      JOIN seasons s2  ON s2.id  = mx2.season_id
+                     WHERE ml2.player_id = players.id
+                     ORDER BY s2.start_date DESC
+                     LIMIT 1
+                  )
               ) AS is_goalkeeper
        FROM players WHERE id = $1`,
       [id]
@@ -91,49 +104,70 @@ playerDetailRouter.get('/:id', async (c) => {
       LIMIT 1
     `, [id]),
 
-      // 3) Stats por competición (#213): por competición, la ÚLTIMA temporada
-      //     con eventos del jugador — no el flag global `is_current`. Con el
-      //     flag, las copas 2025/26 marcadas actuales hacían desaparecer las
-      //     estadísticas de la liga 2025/26 de la ficha (P0 del audit). Cuando
-      //     el jugador empiece la temporada siguiente de esa competición, el
-      //     máximo start_date pasa a ella: semántica de "temporada en curso".
-      //    PJ = partidos en los que el jugador tiene al menos 1 evento (proxy)
-      //    Penaltis marcados: detail ILIKE cualquier variante positiva
+      // 3) Stats por competición (#213 + #218): por competición, la ÚLTIMA
+      //     temporada con ACTIVIDAD del jugador (alineaciones ∪ eventos — antes
+      //     sólo eventos). PJ REAL = partidos con alineación del jugador, con
+      //     fallback a eventos donde no haya alineación (histórico sin actas);
+      //     el proxy COUNT(DISTINCT match_id) de eventos subestimaba (GAL·LA
+      //     SOLÉ: ~8 PJ por eventos vs 19 actas). Asistencias desde
+      //     match_lineups.assists (migración 009), que la ficha mostraba como
+      //     "—". La heurística de penalti marcado es la COMPARTIDA (#218).
       db.query<CompStatsRow>(`
-      WITH ultima AS (
+      WITH actividad AS (
         SELECT c.id AS competition_id, MAX(s.start_date) AS inicio
-          FROM match_events me
-          JOIN matches m  ON m.id  = me.match_id
-          JOIN seasons s  ON s.id  = m.season_id
-          JOIN competitions c ON c.id = s.competition_id
-         WHERE me.player_id = $1
+          FROM (
+            SELECT m.season_id FROM match_lineups ml JOIN matches m ON m.id = ml.match_id WHERE ml.player_id = $1
+            UNION
+            SELECT m.season_id FROM match_events me JOIN matches m ON m.id = me.match_id WHERE me.player_id = $1
+          ) act
+          JOIN seasons s      ON s.id  = act.season_id
+          JOIN competitions c ON c.id  = s.competition_id
+         GROUP BY c.id
+      ),
+      pj_real AS (
+        SELECT c.id AS competition_id, COUNT(DISTINCT x.match_id)::text AS pj,
+               COALESCE(SUM(ml.assists), 0)::text AS assists
+          FROM (
+            SELECT DISTINCT m.id AS match_id, s.competition_id
+              FROM match_lineups ml
+              JOIN matches m      ON m.id  = ml.match_id
+              JOIN seasons s      ON s.id  = m.season_id
+              JOIN actividad a    ON a.competition_id = s.competition_id AND s.start_date = a.inicio
+             WHERE ml.player_id = $1
+            UNION
+            SELECT DISTINCT m.id, s.competition_id
+              FROM match_events me
+              JOIN matches m      ON m.id  = me.match_id
+              JOIN seasons s      ON s.id  = m.season_id
+              JOIN actividad a    ON a.competition_id = s.competition_id AND s.start_date = a.inicio
+             WHERE me.player_id = $1
+          ) x
+          JOIN competitions c ON c.id = x.competition_id
+          LEFT JOIN match_lineups ml ON ml.match_id = x.match_id AND ml.player_id = $1
          GROUP BY c.id
       )
       SELECT
         c.id                AS competition_id,
         c.name              AS competition_name,
         c.short_name        AS competition_short,
-        COUNT(DISTINCT me.match_id)                                          AS pj,
+        COALESCE(p.pj, COUNT(DISTINCT me.match_id)::text)  AS pj,
+        COALESCE(p.assists, '0')                             AS assists,
         COUNT(*) FILTER (WHERE me.event_type = 'goal')                       AS goals,
         COUNT(*) FILTER (WHERE me.event_type = 'blue_card')                  AS blue_cards,
         COUNT(*) FILTER (WHERE me.event_type = 'red_card')                   AS red_cards,
         COUNT(*) FILTER (WHERE me.event_type = 'penalty')                    AS penalties_total,
         COUNT(*) FILTER (
           WHERE me.event_type = 'penalty'
-            AND (
-              me.detail ILIKE '%gol%'
-              OR me.detail ILIKE '%marcado%'
-              OR me.detail ILIKE '%anotado%'
-              OR me.detail ILIKE '%dentro%'
-            )
+            AND ${penaltyScoredSql('me')}
         )                                                                     AS penalties_scored
       FROM match_events me
       JOIN matches m    ON m.id  = me.match_id
       JOIN seasons s    ON s.id  = m.season_id
       JOIN competitions c ON c.id = s.competition_id
-      JOIN ultima u     ON u.competition_id = c.id AND s.start_date = u.inicio
+      JOIN actividad a  ON a.competition_id = c.id AND s.start_date = a.inicio
+      LEFT JOIN pj_real p ON p.competition_id = c.id
       WHERE me.player_id = $1
-      GROUP BY c.id, c.name, c.short_name
+      GROUP BY c.id, c.name, c.short_name, p.pj, p.assists
       ORDER BY goals DESC, pj DESC
     `, [id]),
 
@@ -199,12 +233,7 @@ playerDetailRouter.get('/:id', async (c) => {
         COUNT(*) FILTER (WHERE me.event_type = 'penalty'),
         COUNT(*) FILTER (
           WHERE me.event_type = 'penalty'
-            AND (
-              me.detail ILIKE '%gol%'
-              OR me.detail ILIKE '%marcado%'
-              OR me.detail ILIKE '%anotado%'
-              OR me.detail ILIKE '%dentro%'
-            )
+            AND ${penaltyScoredSql('me')}
         )
       FROM match_events me
       JOIN matches m      ON m.id = me.match_id
@@ -235,12 +264,13 @@ playerDetailRouter.get('/:id', async (c) => {
       (acc, r) => ({
         pj:              acc.pj              + Number(r.pj),
         goals:           acc.goals           + Number(r.goals),
+        assists:         acc.assists         + Number(r.assists),
         blueCards:       acc.blueCards       + Number(r.blue_cards),
         redCards:        acc.redCards        + Number(r.red_cards),
         penaltiesTotal:  acc.penaltiesTotal  + Number(r.penalties_total),
         penaltiesScored: acc.penaltiesScored + Number(r.penalties_scored),
       }),
-      { pj: 0, goals: 0, blueCards: 0, redCards: 0, penaltiesTotal: 0, penaltiesScored: 0 }
+      { pj: 0, goals: 0, assists: 0, blueCards: 0, redCards: 0, penaltiesTotal: 0, penaltiesScored: 0 }
     );
 
     return c.json({
@@ -271,6 +301,7 @@ playerDetailRouter.get('/:id', async (c) => {
         competitionShort: r.competition_short,
         pj:               Number(r.pj),
         goals:            Number(r.goals),
+        assists:          Number(r.assists),
         blueCards:        Number(r.blue_cards),
         redCards:         Number(r.red_cards),
         penaltiesTotal:   Number(r.penalties_total),

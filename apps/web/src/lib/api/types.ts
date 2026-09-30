@@ -424,6 +424,7 @@ export interface SeasonOverview {
 export interface PlayerSeasonTotals {
   pj: number;
   goals: number;
+  assists: number;
   blueCards: number;
   redCards: number;
   penaltiesTotal: number;
@@ -436,6 +437,7 @@ export interface PlayerCompStats {
   competitionShort: string | null;
   pj: number;
   goals: number;
+  assists: number;
   blueCards: number;
   redCards: number;
   penaltiesTotal: number;

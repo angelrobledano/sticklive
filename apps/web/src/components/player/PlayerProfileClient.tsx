@@ -217,7 +217,7 @@ function StatsGrid({ data }: { data: PlayerDetail }) {
       <div className="grid grid-cols-5 gap-2">
         <StatCard label={t('player.col_pj')} value={s.pj} />
         <StatCard label={t('player.col_g')}  value={s.goals} accent={s.goals > 0} />
-        <StatCard label={t('player.col_as')} value="—" />
+        <StatCard label={t('player.col_as')} value={s.assists > 0 ? s.assists : '—'} />
         <StatCard label={t('player.col_az')} value={s.blueCards > 0 ? s.blueCards : '—'} />
         <StatCard label={t('player.col_rj')} value={s.redCards  > 0 ? s.redCards  : '—'} />
       </div>

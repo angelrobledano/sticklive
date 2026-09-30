@@ -3,6 +3,7 @@ import { db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 import { captureRouteError } from '../lib/route-error.js';
+import { penaltyScoredSql } from '../lib/penalty-sql.js';
 import { orderClubTeams, sectionSuffix, type ClubTeamRow } from '../lib/team-section.js';
 
 export const teamDetailRouter = new Hono();
@@ -305,7 +306,7 @@ teamDetailRouter.get('/:id', async (c) => {
               COUNT(*) FILTER (WHERE e.event_type = 'direct_foul' AND e.detail = 'marcada')::text AS fd_scored,
               COUNT(*) FILTER (WHERE e.event_type = 'penalty')::text AS pen_total,
               COUNT(*) FILTER (
-                WHERE e.event_type = 'penalty' AND (e.detail ILIKE '%gol%' OR e.detail ILIKE '%marc%')
+                WHERE e.event_type = 'penalty' AND ${penaltyScoredSql('e')}
               )::text AS pen_scored
             FROM match_events e
             JOIN matches m ON m.id = e.match_id
