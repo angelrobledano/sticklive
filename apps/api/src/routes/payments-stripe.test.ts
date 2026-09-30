@@ -28,3 +28,39 @@ describe('GET /payments/stripe/session/:id — validación', () => {
     expect(res.status).toBe(400);
   });
 });
+
+/**
+ * #251: el restore exige deviceId + email bien formados ANTES de tocar
+ * Stripe/BD — un parámetro ausente o corrupto nunca debe llegar al proveedor.
+ */
+describe('POST /payments/stripe/restore — validación temprana', () => {
+  it('rechaza sin deviceId', async () => {
+    const res = await app.request('/payments/stripe/restore', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'a@b.es' }),
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: 'missing_device_id' });
+  });
+
+  it('rechaza sin email', async () => {
+    const res = await app.request('/payments/stripe/restore', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ deviceId: 'dev-1' }),
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: 'missing_email' });
+  });
+
+  it('rechaza un email mal formado', async () => {
+    const res = await app.request('/payments/stripe/restore', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ deviceId: 'dev-1', email: 'no-es-un-email' }),
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: 'missing_email' });
+  });
+});

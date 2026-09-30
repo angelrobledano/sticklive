@@ -12,6 +12,7 @@ import { isPremiumActive, isCheckoutSessionId, isPaidCheckoutSession } from '../
  *
  *   POST /payments/stripe/checkout        { deviceId } → { url } de Stripe Checkout
  *   GET  /payments/stripe/session/:id     verifica una Checkout Session (retorno)
+ *   POST /payments/stripe/restore         { deviceId, email } → recupera premium (#251)
  *   POST /payments/stripe/webhook         → checkout.session.completed activa premium
  */
 
@@ -96,10 +97,10 @@ stripeRouter.post('/checkout', rateLimit(10, 60_000), async (c) => {
     if (!deviceId) return c.json({ error: 'missing_device_id' }, 400);
 
     // Asegurar que el usuario existe (misma semántica que Redsys)
-    const userRes = await db.query<{ id: string; premium_until: string | null }>(
+    const userRes = await db.query<{ id: string; premium_until: string | null; stripe_customer_id: string | null }>(
       `INSERT INTO users (device_id) VALUES ($1)
        ON CONFLICT (device_id) DO UPDATE SET updated_at = NOW()
-       RETURNING id, premium_until`,
+       RETURNING id, premium_until, stripe_customer_id`,
       [deviceId]
     );
     // Premium activo = premium_until en el futuro (no el flag is_premium, que
@@ -108,8 +109,26 @@ stripeRouter.post('/checkout', rateLimit(10, 60_000), async (c) => {
       return c.json({ error: 'already_premium' }, 409);
     }
 
+    const user = userRes.rows[0]!;
+
+    // Customer de Stripe por usuario (#251): el Checkout le recolecta el email
+    // y es la única pieza que permite RESTAURAR el premium en otro dispositivo
+    // más adelante. Reutiliza el customer si ya hubo compra/restore.
+    let customerId = user.stripe_customer_id ?? undefined;
+    if (!customerId) {
+      const customer = await stripe().customers.create({
+        metadata: { deviceId, userId: user.id },
+      });
+      customerId = customer.id;
+      await db.query(
+        `UPDATE users SET stripe_customer_id = $2, updated_at = NOW() WHERE id = $1`,
+        [user.id, customerId]
+      );
+    }
+
     const session = await stripe().checkout.sessions.create({
       mode: 'payment',
+      customer: customerId,
       line_items: [{
         quantity: 1,
         price_data: {
@@ -134,6 +153,87 @@ stripeRouter.post('/checkout', rateLimit(10, 60_000), async (c) => {
   } catch (err) {
     captureRouteError(err, 'stripe] checkout error');
     logger.error({ err }, '[stripe] checkout error');
+    return c.json({ error: 'server_error' }, 500);
+  }
+});
+
+/**
+ * POST /payments/stripe/restore  { deviceId, email }
+ * Restaura el premium en ESTE dispositivo localizando los pagos del customer
+ * por el email que el Checkout recolectó (#251). El entitlement restaurado es
+ * el de la compra original (última sesión pagada + 1 año), no un año nuevo
+ * desde hoy. Si no hay pagos para ese email, respuesta genérica sin premium —
+ * misma forma para "email sin compras" y "email inexistente" (anti-enumeración).
+ * Rate-limit estricto: es un endpoint que consulta la API de Stripe.
+ */
+stripeRouter.post('/restore', rateLimit(5, 3_600_000), async (c) => {
+  try {
+    const { deviceId, email } = await c.req.json<{ deviceId?: string; email?: string }>();
+    if (!deviceId) return c.json({ error: 'missing_device_id' }, 400);
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return c.json({ error: 'missing_email' }, 400);
+    }
+
+    // El usuario del dispositivo NUEVO (donde se quiere restaurar)
+    const userRes = await db.query<{ id: string; premium_until: string | null; stripe_customer_id: string | null }>(
+      `INSERT INTO users (device_id) VALUES ($1)
+       ON CONFLICT (device_id) DO UPDATE SET updated_at = NOW()
+       RETURNING id, premium_until, stripe_customer_id`,
+      [deviceId]
+    );
+    const user = userRes.rows[0]!;
+    if (isPremiumActive(user.premium_until)) {
+      return c.json({ error: 'already_premium' }, 409);
+    }
+
+    // Customers de Stripe con ese email (típicamente 0 o 1)
+    const customers = await stripe().customers.list({ email, limit: 5 });
+    let paidUntil: Date | null = null;
+    let paidCustomerId: string | null = null;
+
+    for (const customer of customers.data) {
+      const sessions = await stripe().checkout.sessions.list({
+        customer: customer.id,
+        limit: 50,
+      });
+      for (const session of sessions.data) {
+        if (!isPaidCheckoutSession(session)) continue;
+        // El entitlement es la compra ORIGINAL: última sesión pagada + 1 año
+        // (el webhook ya extendió en su día desde la compra en el dispositivo
+        // original; restaurar "ahora + 1 año" regalaría un año por reinstalar).
+        const until = new Date((session.created + 365 * 24 * 3_600) * 1_000);
+        if (!paidUntil || until > paidUntil) {
+          paidUntil = until;
+          paidCustomerId = customer.id;
+        }
+      }
+    }
+
+    if (!paidUntil || !paidCustomerId) {
+      return c.json({ premium: false });
+    }
+
+    // Vincula el dispositivo nuevo al customer pagado y concede el entitlement
+    // original (GREATEST: si por carrera el dispositivo ya tuviera premium
+    // posterior, no se encoge).
+    await db.query(
+      `UPDATE users
+          SET stripe_customer_id = $2,
+              is_premium = TRUE,
+              premium_until = GREATEST(COALESCE(premium_until, NOW()), $3::timestamptz),
+              updated_at = NOW()
+        WHERE id = $1`,
+      [user.id, paidCustomerId, paidUntil.toISOString()]
+    );
+    logger.info({ userId: user.id, paidUntil: paidUntil.toISOString() }, '[stripe] Premium restaurado (#251)');
+
+    return c.json({
+      premium: isPremiumActive(paidUntil.toISOString()),
+      premiumUntil: paidUntil.toISOString(),
+    });
+  } catch (err) {
+    captureRouteError(err, 'stripe] restore error');
+    logger.error({ err }, '[stripe] restore error');
     return c.json({ error: 'server_error' }, 500);
   }
 });
