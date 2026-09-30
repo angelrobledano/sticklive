@@ -96,6 +96,7 @@ const OPERATIVOS = [
   'apps/etl/src/link-lineup-players.ts',
   'apps/etl/src/backfill-season-teams-from-lineups.ts', // season_teams desde alineaciones (#220)
   'apps/etl/src/cleanup-intruder-team-events.ts',       // reparación eventos intrusos (#325)
+  'apps/etl/src/enqueue-team-duplicates.ts',            // candidatos de higiene de equipos → cola HITL (#200)
   'apps/etl/src/merge-canonical-competitions.ts',
   'apps/etl/src/cleanup-synthetic-dupes.ts',
   'apps/etl/src/update-player-photos.ts',
