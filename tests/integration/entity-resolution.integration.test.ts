@@ -93,4 +93,43 @@ describe('Fase 1 — RefResolver (embudo determinista)', () => {
     const resolver = new RefResolver(sportId);
     expect(await resolver.resolveTeam(normalizeTeamName('Coinasa Liceo'))).toBe(teamId);
   });
+
+  // #194: el escalón slug NO debe aceptar un candidato cuyo género/categoría
+  // contradice las señales de la competición (fusión silenciosa M/F por slug).
+  it('slug con señales contradictorias (#194) no resuelve: sin fusión silenciosa', async () => {
+    // "CD Ourense" masculino en la BD; el feed femenino trae el mismo nombre.
+    await db.query(
+      `INSERT INTO teams (sport_id, name, slug, gender, age_category)
+       VALUES ($1, 'CD Ourense', 'cd-ourense', 'male', 'senior')`,
+      [sportId]
+    );
+
+    const resolver = new RefResolver(sportId);
+    await expect(
+      resolver.resolveTeam('CD Ourense', sourceId, { gender: 'female', ageCategory: 'senior' })
+    ).rejects.toThrow(/No se encontró equipo/);
+  });
+
+  it('slug con señales coherentes resuelve igual que antes (#194 no rompe el camino bueno)', async () => {
+    await db.query(
+      `INSERT INTO teams (sport_id, name, slug, gender, age_category)
+       VALUES ($1, 'CD Ourense', 'cd-ourense', 'female', 'senior')`,
+      [sportId]
+    );
+
+    const resolver = new RefResolver(sportId);
+    // Género coincidente → resuelve por slug sin problema.
+    expect(
+      await resolver.resolveTeam('CD Ourense', sourceId, { gender: 'female', ageCategory: 'senior' })
+    ).toBe(
+      (await db.query<{ id: string }>(`SELECT id FROM teams WHERE slug = 'cd-ourense'`)).rows[0]!.id
+    );
+    // Candidato legado sin género marcado (NULL) → no hay conflicto posible.
+    await db.query(`UPDATE teams SET gender = NULL WHERE slug = 'cd-ourense'`);
+    expect(
+      await resolver.resolveTeam('CD Ourense', sourceId, { gender: 'male', ageCategory: 'senior' })
+  ).toBe(
+      (await db.query<{ id: string }>(`SELECT id FROM teams WHERE slug = 'cd-ourense'`)).rows[0]!.id
+    );
+  });
 });

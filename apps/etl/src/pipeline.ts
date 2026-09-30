@@ -42,6 +42,9 @@ export interface PipelineContext {
   requireTeamsInSeason?: boolean;
   /** Sellar started_at/finished_at en el flujo de directo (#189). */
   stampLiveTimes?: boolean;
+  /** Guarda anti-cruce (#229): rechazar altas fuera de la ventana de temporada.
+   *  Por defecto activa salvo en enrich (que baja la guarda explícitamente). */
+  enforceSeasonWindow?: boolean;
 }
 
 export interface PipelineResult {
@@ -105,6 +108,9 @@ export class EtlPipeline {
       enrich: this.ctx.enrich,
       requireTeamsInSeason: this.ctx.requireTeamsInSeason,
       stampLiveTimes: this.ctx.stampLiveTimes,
+      // #229: activa por defecto; el enrich la baja (mueve partidos entre
+      // temporadas legítimamente y puede alimentar fechas desajustadas).
+      enforceSeasonWindow: this.ctx.enforceSeasonWindow ?? !this.ctx.enrich,
     });
 
     return {

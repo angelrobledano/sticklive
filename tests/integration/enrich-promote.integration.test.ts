@@ -71,9 +71,11 @@ function runScript(args: string[]): { code: number; out: string } {
     return { code: 0, out };
   } catch (e: unknown) {
     const err = e as { status?: number; stdout?: Buffer; stderr?: Buffer };
+    const out = (err.stdout?.toString() ?? '') + (err.stderr?.toString() ?? '');
+    if ((err.status ?? 1) !== 0) console.error(`[enrich-promote] script falló (status ${err.status}):\n${out}`);
     return {
       code: err.status ?? 1,
-      out: (err.stdout?.toString() ?? '') + (err.stderr?.toString() ?? ''),
+      out,
     };
   }
 }

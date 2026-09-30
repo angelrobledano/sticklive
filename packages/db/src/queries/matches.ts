@@ -481,6 +481,12 @@ export interface UpsertMatchLineupInput {
 
 /**
  * Reemplaza la alineación completa de un partido (idempotente por re-scrape).
+ *
+ * team_id (#212): la columna estaba muerta (100% NULL) pese a existir en el
+ * esquema — las queries que quieren goles POR EQUIPO desde alineaciones no
+ * podían usarla. Se rellena aquí desde el cruce del partido (is_home →
+ * home/away), igual que replaceMatchEvents resuelve el lado, para que ningún
+ * caller tenga que pasarla.
  */
 export async function replaceMatchLineups(
   matchId: string,
@@ -490,17 +496,25 @@ export async function replaceMatchLineups(
   await client.query('DELETE FROM match_lineups WHERE match_id = $1', [matchId]);
   if (lineups.length === 0) return;
 
+  const { rows: teams } = await client.query<{ home_team_id: string | null; away_team_id: string | null }>(
+    'SELECT home_team_id, away_team_id FROM matches WHERE id = $1',
+    [matchId]
+  );
+  const homeTeamId = teams[0]?.home_team_id ?? null;
+  const awayTeamId = teams[0]?.away_team_id ?? null;
+
   const values: unknown[] = [];
   const placeholders: string[] = [];
   let idx = 1;
 
   for (const l of lineups) {
     placeholders.push(
-      `($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`
+      `($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`
     );
     values.push(
       matchId,
       l.isHome,
+      l.isHome ? homeTeamId : awayTeamId,
       l.jerseyNumber ?? null,
       l.playerName,
       l.isGoalkeeper ?? false,
@@ -517,7 +531,7 @@ export async function replaceMatchLineups(
 
   await client.query(
     `INSERT INTO match_lineups
-       (match_id, is_home, jersey_number, player_name, is_goalkeeper, is_starter, is_captain, goals, assists, player_id, role, source_ref, scraped_at)
+       (match_id, is_home, team_id, jersey_number, player_name, is_goalkeeper, is_starter, is_captain, goals, assists, player_id, role, source_ref, scraped_at)
      VALUES ${placeholders.join(', ')}
      ON CONFLICT (match_id, is_home, player_name) DO NOTHING`,
     values

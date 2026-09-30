@@ -378,4 +378,73 @@ describe('match.loader (I2)', () => {
       `SELECT status FROM matches WHERE source_ref = 'm-reg-1'`)).rows[0]!;
     expect(m.status).toBe('scheduled'); // el glitch se registra, no se congela el dato
   });
+
+  // #229: guarda anti-cruce — un ALTA con fecha fuera de la ventana de su
+  // temporada se rechaza (fue el mecanismo de los 4 partidos de 2026/27
+  // colgando de la 2025/26). Temporadas sin fechas no se guardan.
+  test('#229 alta con scheduled_at fuera de la ventana de temporada → rechazada', async () => {
+    await equipoConRef('t-home', 'Equipo Casa');
+    await equipoConRef('t-away', 'Equipo Fuera');
+    // Ventana 2025/26 con margen de 45 días: noviembre 2026 está FUERA.
+    await db.query(
+      `UPDATE seasons SET start_date = '2025-09-01', end_date = '2026-06-15' WHERE id = $1`,
+      [seasonId]
+    );
+
+    const r = await loadMatches(resultOf([
+      scraped({
+        homeTeamRef: 't-home', awayTeamRef: 't-away', sourceRef: 'm-fuera-1',
+        status: 'scheduled', scheduledAt: '2026-11-15T18:00:00Z',
+      }),
+    ]), sportId);
+
+    expect(r.upserted).toBe(0);
+    expect(r.skipped).toBe(1);
+    expect(await countMatches()).toBe(0);
+  });
+
+  test('#229 alta dentro de la ventana (+margen) pasa', async () => {
+    await equipoConRef('t-home', 'Equipo Casa');
+    await equipoConRef('t-away', 'Equipo Fuera');
+    await db.query(
+      `UPDATE seasons SET start_date = '2025-09-01', end_date = '2026-06-15' WHERE id = $1`,
+      [seasonId]
+    );
+
+    const r = await loadMatches(resultOf([
+      scraped({
+        homeTeamRef: 't-home', awayTeamRef: 't-away', sourceRef: 'm-dentro-1',
+        status: 'scheduled', scheduledAt: '2026-07-10T18:00:00Z', // end + 25d < 45d
+      }),
+    ]), sportId);
+
+    expect(r.upserted).toBe(1);
+    expect(await countMatches()).toBe(1);
+  });
+
+  test('#229 un partido YA EXISTENTE fuera de ventana se actualiza (solo warn)', async () => {
+    const home = await equipoConRef('t-home', 'Equipo Casa');
+    const away = await equipoConRef('t-away', 'Equipo Fuera');
+    await db.query(
+      `UPDATE seasons SET start_date = '2025-09-01', end_date = '2026-06-15' WHERE id = $1`,
+      [seasonId]
+    );
+    await db.query(
+      `INSERT INTO matches (season_id, home_team_id, away_team_id, status, source_ref, scheduled_at)
+       VALUES ($1,$2,$3,'scheduled','m-fuera-2', '2026-11-15T18:00:00Z')`,
+      [seasonId, home, away]);
+
+    const r = await loadMatches(resultOf([
+      scraped({
+        homeTeamRef: 't-home', awayTeamRef: 't-away', sourceRef: 'm-fuera-2',
+        status: 'live', homeScore: 1, awayScore: 0, scheduledAt: '2026-11-15T18:00:00Z',
+      }),
+    ]), sportId);
+
+    // No se rechaza: es un UPDATE de marcador/estado, no un alta.
+    expect(r.upserted).toBe(1);
+    const m = (await db.query<{ status: string }>(
+      `SELECT status FROM matches WHERE source_ref = 'm-fuera-2'`)).rows[0]!;
+    expect(m.status).toBe('live');
+  });
 });

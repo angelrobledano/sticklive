@@ -1,4 +1,4 @@
-import { upsertStanding, updateTeamLogoUrl, withTransaction, insertScrapeLog, findTeamInSeasonByName } from '@sports/db';
+import { upsertStanding, updateTeamLogoUrl, withTransaction, insertScrapeLog, findTeamInSeasonByName, getSeasonSignals, type EntitySignals } from '@sports/db';
 import type { ScrapedStanding, ScrapeResult } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { RefResolver } from './ref-resolver.js';
@@ -10,6 +10,24 @@ export interface LoadStandingsResult {
   skipped: number;
   errors: Array<{ item: string; error: string }>;
 }
+
+/**
+ * Reintento ante deadlock (#316): durante 30 días hubo 736 errores 40P01
+ * (14,3% de ejecuciones) al cargar standings. Causa: dos pipelines
+ * concurrentes (el flock de /tmp no excluye entre contenedores, #317)
+ * actualizando los mismos teams/standings en ORDEN DISTINTO. Mitigación en el
+ * loader: reintentar el grupo con backoff; el orden determinista de abajo
+ * reduce la probabilidad de que el retry vuelva a chocar.
+ */
+const DEADLOCK_SQLSTATE = '40P01';
+const MAX_ATTEMPTS = 3;
+const RETRY_BACKOFF_MS = [250, 750];
+
+function isDeadlock(err: unknown): boolean {
+  return (err as { code?: string })?.code === DEADLOCK_SQLSTATE;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Loader de clasificaciones.
@@ -33,6 +51,11 @@ export async function loadStandings(
 
   log.info({ total: items.length, seasonId }, 'Cargando clasificaciones');
 
+  // Señales de dominio (género/categoría) de la competición (#194): sin ellas
+  // el resolver podía aceptar un equipo homónimo de OTRO género/categoría por
+  // slug — fusión silenciosa. El loader de partidos ya las pasaba; standings no.
+  const signals: EntitySignals = await getSeasonSignals(seasonId);
+
   // Agrupar por group_name para transacciones por grupo
   const groups = new Map<string, typeof items>();
   for (const item of items) {
@@ -43,53 +66,85 @@ export async function loadStandings(
 
   for (const [groupName, groupItems] of groups) {
     try {
-      await withTransaction(async (client) => {
-        for (const raw of groupItems) {
-          // Las clasificaciones traen solo el NOMBRE (sin ref): se busca primero
-          // dentro de los equipos de ESTA temporada, así un filial nombrado igual
-          // no cae en el primer equipo (que juega en otra liga). Si no aparece,
-          // cascada normal del resolver.
-          const teamId = (await findTeamInSeasonByName(seasonId, raw.teamRef, client))
-            ?? await resolver.resolveTeam(raw.teamRef);
+      // Resolución de equipos FUERA de la transacción y en orden determinista
+      // por team_id (#316): dos procesos concurrentes que tocan los mismos
+      // teams en distinto orden son la receta del deadlock; con el mismo orden,
+      // el segundo espera en fila en vez de bloquearse mutuamente. Además saca
+      // las queries de resolución fuera del lock de escritura.
+      const resolved: Array<{ raw: ScrapedStanding; teamId: string }> = [];
+      for (const raw of groupItems) {
+        // Las clasificaciones traen solo el NOMBRE (sin ref): se busca primero
+        // dentro de los equipos de ESTA temporada, así un filial nombrado igual
+        // no cae en el primer equipo (que juega en otra liga). Si no aparece,
+        // cascada normal del resolver (ahora con señales y fuente, #194).
+        const teamId = (await findTeamInSeasonByName(seasonId, raw.teamRef))
+          ?? await resolver.resolveTeam(raw.teamRef, raw.sourceId, signals);
+        resolved.push({ raw, teamId });
+      }
+      resolved.sort((a, b) => a.teamId.localeCompare(b.teamId));
 
-          // La tabla trae la abreviatura del equipo (`.mobile`): rellena
-          // `short_name` si está vacío (es lo que ve el usuario en listas).
-          const abbr = (raw.abbreviation ?? '').trim();
-          if (abbr) {
-            await client
-              .query(
-                `UPDATE teams SET short_name = $2, updated_at = NOW()
-                  WHERE id = $1 AND (short_name IS NULL OR short_name = '')`,
-                [teamId, abbr],
-              )
-              .catch(() => {});
+      let attempt = 0;
+      for (;;) {
+        attempt++;
+        let attempted = 0;
+        try {
+          await withTransaction(async (client) => {
+            for (const { raw, teamId } of resolved) {
+              // La tabla trae la abreviatura del equipo (`.mobile`): rellena
+              // `short_name` si está vacío (es lo que ve el usuario en listas).
+              const abbr = (raw.abbreviation ?? '').trim();
+              if (abbr) {
+                await client
+                  .query(
+                    `UPDATE teams SET short_name = $2, updated_at = NOW()
+                      WHERE id = $1 AND (short_name IS NULL OR short_name = '')`,
+                    [teamId, abbr],
+                  )
+                  .catch(() => {});
+              }
+
+              await upsertStanding({
+                seasonId,
+                teamId,
+                groupName: raw.groupName,
+                position: raw.position,
+                played: raw.played,
+                won: raw.won,
+                drawn: raw.drawn,
+                lost: raw.lost,
+                goalsFor: raw.goalsFor,
+                goalsAgainst: raw.goalsAgainst,
+                points: raw.points,
+                form: raw.form,
+                sourceId: raw.sourceId,
+                scrapedAt: raw.scrapedAt,
+              }, client);
+
+              // Persistir el logo scrapeado si viene en el standing
+              if (raw.logoUrl) {
+                await updateTeamLogoUrl(teamId, raw.logoUrl, client);
+              }
+
+              attempted++;
+            }
+          });
+          upserted += attempted;
+          break;
+        } catch (err) {
+          // 40P01: la transacción se abortó entera — el grupo vuelve a empezar
+          // desde cero (los UPDATE son idempotentes, re-ejecutar es seguro).
+          if (isDeadlock(err) && attempt < MAX_ATTEMPTS) {
+            const backoff = RETRY_BACKOFF_MS[Math.min(attempt - 1, RETRY_BACKOFF_MS.length - 1)] ?? 750;
+            log.warn(
+              { group: groupName, attempt, backoff },
+              'Deadlock al cargar standings — reintentando grupo'
+            );
+            await sleep(backoff);
+            continue;
           }
-
-          await upsertStanding({
-            seasonId,
-            teamId,
-            groupName: raw.groupName,
-            position: raw.position,
-            played: raw.played,
-            won: raw.won,
-            drawn: raw.drawn,
-            lost: raw.lost,
-            goalsFor: raw.goalsFor,
-            goalsAgainst: raw.goalsAgainst,
-            points: raw.points,
-            form: raw.form,
-            sourceId: raw.sourceId,
-            scrapedAt: raw.scrapedAt,
-          }, client);
-
-          // Persistir el logo scrapeado si viene en el standing
-          if (raw.logoUrl) {
-            await updateTeamLogoUrl(teamId, raw.logoUrl, client);
-          }
-
-          upserted++;
+          throw err;
         }
-      });
+      }
 
       log.debug({ group: groupName, count: groupItems.length }, 'Grupo de clasificacion cargado');
     } catch (err) {

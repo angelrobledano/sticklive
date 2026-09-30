@@ -26,12 +26,32 @@ import {
   findCompetitionBySourceRef,
   findCompetitionBySlug,
   findSeasonBySourceRef,
+  type DbTeam,
+  type EntitySignals,
 } from '@sports/db';
 import { createLogger } from '@sports/logger';
 import { slugify } from '../transformers/slugify.js';
 import { normalizeTeamName } from '../transformers/normalize.js';
 
 const log = createLogger({ module: 'ref-resolver' });
+
+/**
+ * ¿Contradice el equipo las señales de la competición? (#194)
+ *
+ * Sólo se considera conflicto cuando AMBOS lados conocen el dato (NULL en la
+ * BD = legado sin clasificar: no bloquea). El género y la categoría son más
+ * discriminantes que el nombre: son lo que separa al filial del primer equipo
+ * y al equipo femenino del masculino.
+ */
+function signalsConflict(
+  team: DbTeam,
+  signals?: { gender?: string | null; ageCategory?: string | null },
+): boolean {
+  if (!signals) return false;
+  if (team.gender && signals.gender && team.gender !== signals.gender) return true;
+  if (team.age_category && signals.ageCategory && team.age_category !== signals.ageCategory) return true;
+  return false;
+}
 
 export class RefResolver {
   // Caché: ref → UUID
@@ -89,13 +109,24 @@ export class RefResolver {
       }
     }
 
-    // 3. Por slug (nombre slugificado)
+    // 3. Por slug (nombre slugificado). CON GUARDA DE SEÑALES (#194): un slug
+    //    es sólo el nombre normalizado — "CD Ourense" masculino y femenino
+    //    comparten slug, y aceptar el primero fabricaba una fusión silenciosa
+    //    entre equipos de género/categoría distinta. Si el candidato CONOCE su
+    //    género/categoría y contradice las señales de la competición, no se
+    //    acepta: la cascada sigue (alias/fuzzy) y, sin resolución, el ref
+    //    termina en la cola HITL en vez de en un equipo equivocado.
     if (!teamId) {
       const slug = slugify(teamRef);
       const team = await findTeamBySlug(this.sportId, slug);
-      if (team) {
+      if (team && !signalsConflict(team, signals)) {
         teamId = team.id;
         log.debug({ teamRef, slug, method: 'slug' }, 'Equipo resuelto por slug');
+      } else if (team && signalsConflict(team, signals)) {
+        log.warn(
+          { teamRef, slug, candidato: team.name, gender: team.gender ?? null, ageCategory: team.age_category ?? null },
+          'Candidato por slug con señales contradictorias (#194) — se descarta y sigue la cascada'
+        );
       }
     }
 

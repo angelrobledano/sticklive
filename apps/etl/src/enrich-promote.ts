@@ -204,14 +204,39 @@ async function main() {
         updated++;
       }
 
+      // SEASON_TEAMS del lote (#204): la temporada creada por enrich quedaba sin
+      // season_teams (182 partidos, 15 standings, 0 plantillas) — las fichas de
+      // equipo y varios checks dependen de esta tabla. Se deriva de los propios
+      // partidos ya movidos (home/away), idempotente. El group_name fino lo
+      // lleva el re-scrape de clasificación si procede.
+      const stRes = await client.query(
+        `INSERT INTO season_teams (season_id, team_id)
+         SELECT DISTINCT m.season_id, t.team_id
+           FROM matches m
+           JOIN LATERAL (VALUES (m.home_team_id), (m.away_team_id)) AS t(team_id) ON TRUE
+          WHERE m.import_batch_id = $1
+         ON CONFLICT (season_id, team_id) DO NOTHING`,
+        bp
+      );
+
+      // Stats del lote ACUMULATIVAS (#209): re-ejecutar el promote pisa `stats`
+      // con enriquecidos=0 y la traza deja de cuadrar con enrich_changes. Se
+      // suman los nuevos sobre los previos (candidatos = el máximo visto).
       await client.query(
         `UPDATE import_batches SET status = 'promoted', finished_at = NOW(),
-                stats = $2::jsonb WHERE id = $1`,
-        [batchId, JSON.stringify({ enriquecidos: updated, saltados: skipped, candidatos: targets.length })]);
+                stats = COALESCE(stats, '{}'::jsonb) || jsonb_build_object(
+                  'enriquecidos', COALESCE((stats->>'enriquecidos')::int, 0) + $2,
+                  'saltados',     COALESCE((stats->>'saltados')::int, 0) + $3,
+                  'candidatos',   GREATEST(COALESCE((stats->>'candidatos')::int, 0), $4),
+                  'season_teams_derivados', COALESCE((stats->>'season_teams_derivados')::int, 0) + $5,
+                  'runs',         COALESCE((stats->>'runs')::int, 0) + 1)
+          WHERE id = $1`,
+        [batchId, updated, skipped, targets.length, stRes.rowCount ?? 0]);
       await client.query('COMMIT');
 
       process.stdout.write(`\n─── Enrich '${batchLabel}' COMPLETADO (staging → prod) ───\n`);
       process.stdout.write(`  ${updated} partidos enriquecidos (fecha + temporada), ${skipped} saltados.\n`);
+      process.stdout.write(`  ${stRes.rowCount ?? 0} season_teams derivados (#204).\n`);
       process.stdout.write(`  Revertir: npx tsx src/enrich-promote.ts --batch '${batchLabel}' --revert --commit\n\n`);
     } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
   } finally {

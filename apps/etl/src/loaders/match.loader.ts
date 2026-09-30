@@ -46,6 +46,12 @@ export interface LoadMatchesOptions {
    *  estado `live`/`finished` (#189). Solo el flujo de directo: en el histórico
    *  la hora de scrape no es el instante real del partido. */
   stampLiveTimes?: boolean;
+  /** Guarda anti-cruce (#229): rechazar ALTAS con scheduled_at fuera de la
+   *  ventana de su temporada [start−45d, end+45d]. Por defecto ACTIVA (false =
+   *  desactivar; el enrich y las herramientas de reparación pueden necesitar
+   *  saltarla — también hay kill-switch ETL_SEASON_WINDOW_GUARD=off). Solo
+   *  aplica a temporadas con fechas completas. */
+  enforceSeasonWindow?: boolean;
 }
 
 /**
@@ -148,6 +154,26 @@ export async function loadMatches(
     const s = await getSeasonSignals(seasonId);
     signalsCache.set(seasonId, s);
     return s;
+  }
+
+  // Ventana de fechas por temporada (#229), cacheada por ejecución. NULL =
+  // temporada sin fechas completas (p. ej. 'Histórico'): no se puede guardar,
+  // se deja pasar (el enrich ya movió esos partidos; aquí no hay señal).
+  const MARGEN_VENTANA_MS = 45 * 24 * 3_600_000; // 45 días: copas/ajustes de calendario
+  const windowCache = new Map<string, { start: number; end: number } | null>();
+  async function seasonWindow(seasonId: string | undefined): Promise<{ start: number; end: number } | null | undefined> {
+    if (!seasonId) return undefined;
+    if (windowCache.has(seasonId)) return windowCache.get(seasonId);
+    const { rows } = await db.query<{ start_date: string | null; end_date: string | null }>(
+      `SELECT start_date::text AS start_date, end_date::text AS end_date FROM seasons WHERE id = $1`,
+      [seasonId]
+    );
+    const r = rows[0];
+    const v = r?.start_date && r?.end_date
+      ? { start: new Date(r.start_date).getTime(), end: new Date(r.end_date).getTime() }
+      : null;
+    windowCache.set(seasonId, v);
+    return v;
   }
 
   log.info({ total: items.length, batchSize: BATCH_SIZE }, 'Cargando partidos');
@@ -299,6 +325,43 @@ export async function loadMatches(
               level: 'warning',
               extra: { sourceRef: input.sourceRef, from: prevStatus, to: input.status, seasonId: input.seasonId },
             });
+          }
+
+          // GUARDA ANTI-CRUCE (#229): un alta con scheduled_at fuera de la
+          // ventana de su temporada [start−45d, end+45d] fabrica exactamente los
+          // partidos "colgando de la temporada equivocada" (4 de sep-2026 en la
+          // 2025/26, #328/#206). Para ALTAS se rechaza (explícito, con Sentry);
+          // para partidos YA EXISTENTES solo se avisa: su marcador/estado es
+          // válido y el cambio de temporada lo lleva el enrich, no el loader.
+          // Kill-switch de emergencia: ETL_SEASON_WINDOW_GUARD=off.
+          if (options.enforceSeasonWindow !== false && process.env['ETL_SEASON_WINDOW_GUARD'] !== 'off' && input.scheduledAt) {
+            const ventana = await seasonWindow(input.seasonId);
+            if (ventana) {
+              const t = input.scheduledAt.getTime();
+              const fuera = t < ventana.start - MARGEN_VENTANA_MS || t > ventana.end + MARGEN_VENTANA_MS;
+              if (fuera && prevRow.rows.length === 0) {
+                log.error(
+                  {
+                    item: itemLabel, sourceRef: input.sourceRef, seasonId: input.seasonId,
+                    scheduledAt: input.scheduledAt.toISOString(),
+                    ventana: { desde: new Date(ventana.start).toISOString(), hasta: new Date(ventana.end).toISOString() },
+                  },
+                  'Partido NUEVO con fecha fuera de la ventana de su temporada — rechazado (#229). ¿Temporada equivocada en el feed o fechas de temporada desajustadas?'
+                );
+                Sentry.captureMessage('Alta de partido fuera de la ventana de temporada', {
+                  level: 'warning',
+                  extra: { sourceRef: input.sourceRef, seasonId: input.seasonId, scheduledAt: input.scheduledAt.toISOString() },
+                });
+                skipped++;
+                continue;
+              }
+              if (fuera) {
+                log.warn(
+                  { item: itemLabel, sourceRef: input.sourceRef, seasonId: input.seasonId, scheduledAt: input.scheduledAt.toISOString() },
+                  'Partido existente con fecha fuera de la ventana de su temporada — se actualiza marcador/estado pero conviene revisar su temporada (#229/#328)'
+                );
+              }
+            }
           }
 
           await upsertMatch({ ...input, homeTeamId, awayTeamId, importBatchId: options.importBatchId, enrich: options.enrich });

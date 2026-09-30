@@ -28,57 +28,12 @@ export interface DbTeam {
   updated_at: Date;
 }
 
-export interface UpsertTeamInput {
-  sportId: string;
-  name: string;
-  shortName?: string;
-  slug: string;
-  city?: string;
-  country: string;
-  logoUrl?: string;
-  websiteUrl?: string;
-  sourceId?: string;
-  sourceRef?: string;
-  sourceUrl?: string;
-  scrapedAt?: Date;
-}
-
-export async function upsertTeam(
-  input: UpsertTeamInput,
-  client: pg.PoolClient | typeof db = db
-): Promise<DbTeam> {
-  const result = await client.query<DbTeam>(
-    `INSERT INTO teams
-       (sport_id, name, short_name, slug, city, country, logo_url, website_url,
-        source_id, source_ref, source_url, scraped_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-     ON CONFLICT (sport_id, slug) DO UPDATE SET
-       name       = EXCLUDED.name,
-       short_name = COALESCE(EXCLUDED.short_name, teams.short_name),
-       city       = COALESCE(EXCLUDED.city,       teams.city),
-       logo_url   = COALESCE(EXCLUDED.logo_url,   teams.logo_url),
-       source_ref = COALESCE(EXCLUDED.source_ref, teams.source_ref),
-       source_url = COALESCE(EXCLUDED.source_url, teams.source_url),
-       scraped_at = EXCLUDED.scraped_at,
-       updated_at = NOW()
-     RETURNING *`,
-    [
-      input.sportId,
-      input.name,
-      input.shortName ?? null,
-      input.slug,
-      input.city ?? null,
-      input.country,
-      input.logoUrl ?? null,
-      input.websiteUrl ?? null,
-      input.sourceId ?? null,
-      input.sourceRef ?? null,
-      input.sourceUrl ?? null,
-      input.scrapedAt ?? null,
-    ]
-  );
-  return result.rows[0]!;
-}
+// `upsertTeam`, su interfaz `UpsertTeamInput` y `findTeamByNameSimilarity` se
+// eliminaron (#199): eran código muerto sin consumidores — el alta de equipos
+// vive en el seed de competición y el fuzzy disciplinado en entity-resolution
+// (autoConfirmTeam + cola HITL). El viejo umbral 0.4 de
+// findTeamByNameSimilarity fue, además, el origen del falso positivo del Liceo
+// (#322).
 
 export async function findTeamBySourceRef(sourceRef: string): Promise<DbTeam | null> {
   // Busca tanto en source_ref principal como en el array alt_source_refs.
@@ -129,22 +84,7 @@ export async function updateTeamLogoUrl(
   );
 }
 
-/** Busqueda por nombre aproximado via pg_trgm. */
-export async function findTeamByNameSimilarity(
-  sportId: string,
-  name: string
-): Promise<DbTeam | null> {
-  const result = await db.query<DbTeam>(
-    `SELECT *, similarity(name, $2) AS sim
-     FROM teams
-     WHERE sport_id = $1
-       AND similarity(name, $2) > 0.4
-     ORDER BY sim DESC
-     LIMIT 1`,
-    [sportId, name]
-  );
-  return result.rows[0] ?? null;
-}
+// findTeamByNameSimilarity eliminada (#199): ver nota arriba.
 
 /**
  * Equipo de ESTA temporada cuyo nombre coincide con el de la fuente.

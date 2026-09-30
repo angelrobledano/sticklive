@@ -218,6 +218,28 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
                 { matchId: this.cfg.matchId, players: lineups.length },
                 'Alineaciones inyectadas en match_lineups'
               );
+              // ROSTER desde alineaciones (#216): team_players solo se llenaba
+              // desde eventos con playerTeamRef — los jugadores SIN evento en el
+              // acta no entraban nunca en la plantilla (roster crónicamente
+              // incompleto, matching fallido en silencio). La primera acta
+              // completa debe poblar la plantilla de cada lado del cruce.
+              const roster = await db.query(
+                `INSERT INTO team_players (season_id, team_id, player_id)
+                 SELECT DISTINCT m.season_id,
+                        CASE WHEN ml.is_home THEN m.home_team_id ELSE m.away_team_id END,
+                        ml.player_id
+                   FROM match_lineups ml
+                   JOIN matches m ON m.id = ml.match_id
+                  WHERE ml.match_id = $1 AND ml.player_id IS NOT NULL
+                 ON CONFLICT (season_id, team_id, player_id) DO NOTHING`,
+                [this.cfg.matchId]
+              );
+              if ((roster.rowCount ?? 0) > 0) {
+                this.log.info(
+                  { matchId: this.cfg.matchId, altas: roster.rowCount },
+                  'team_players poblado desde alineaciones (#216)'
+                );
+              }
               // Dorsales: el acta es la fuente — actualizar team_players
               await db.query(
                 `UPDATE team_players tp
@@ -307,7 +329,13 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
       const idNum = ev.playerSourceRef!.replace('fep_player_', '');
       const photoUrl = `https://sidgad.cloud/rfep/images/fichas/${idNum}_1.jpg`;
 
-      // Upsert por source_ref; si no existe, insert con slug único por sport
+      // Upsert por source_ref; si no existe, insert con slug único por sport.
+      // HOMÓNIMOS (#176): el viejo ON CONFLICT (sport_id, slug) DO UPDATE SET
+      // source_ref = EXCLUDED.source_ref ROBABA la identidad — dos jugadores
+      // distintos con el mismo nombre (equipos distintos) colisionaban por slug
+      // y el segundo PISABA el source_ref del primero, fusionando sus carreras.
+      // Si el slug existe con OTRA ref, se desambigua el slug con el id de
+      // fuente (slug-idFuente) y queda el aviso para revisión.
       const found = await db.query<{ id: string }>(
         `SELECT id FROM players WHERE source_ref = $1`, [ev.playerSourceRef]
       );
@@ -318,6 +346,18 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
           [playerId, photoUrl]
         );
       } else {
+        const clash = await db.query<{ id: string; source_ref: string | null }>(
+          `SELECT id, source_ref FROM players WHERE sport_id = $1 AND slug = $2`,
+          [ctx.sport_id, slug]
+        );
+        let finalSlug = slug;
+        if (clash.rows.length > 0 && clash.rows[0]!.source_ref !== ev.playerSourceRef) {
+          finalSlug = `${slug}-${idNum}`;
+          this.log.warn(
+            { nombre: name, slug, slugDesambiguado: finalSlug, refNueva: ev.playerSourceRef, refExistente: clash.rows[0]!.source_ref },
+            'Homónimo detectado: mismo nombre, distinta ref de fuente — se crea jugador con slug desambiguado (#176)'
+          );
+        }
         const ins = await db.query<{ id: string }>(
           `INSERT INTO players (sport_id, first_name, last_name, slug, source_ref, photo_url, scraped_at)
            VALUES ($1, $2, $3, $4, $5, $6, NOW())
@@ -326,19 +366,34 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
              photo_url  = COALESCE(players.photo_url, EXCLUDED.photo_url),
              updated_at = NOW()
            RETURNING id`,
-          [ctx.sport_id, firstName, lastName, slug, ev.playerSourceRef, photoUrl]
+          [ctx.sport_id, firstName, lastName, finalSlug, ev.playerSourceRef, photoUrl]
         );
         playerId = ins.rows[0]!.id;
       }
 
-      // Pertenencia equipo/temporada (si conocemos el equipo sidgad)
+      // Pertenencia equipo/temporada (si conocemos el equipo sidgad).
+      // GUARDA (#216/#325): la ref de equipo del acta puede ser del PRIMER
+      // equipo del club en fichas de filiales — la pertenencia fabricada
+      // ensuciaba la plantilla. Solo se acepta si el equipo es uno de los dos
+      // del cruce; y si el INSERT no afecta a ninguna fila, queda el aviso
+      // (antes era un fallo silencioso: roster incompleto sin señal).
       if (ev.playerTeamRef) {
-        await db.query(
+        const ins = await db.query(
           `INSERT INTO team_players (season_id, team_id, player_id)
-           SELECT $1, t.id, $2 FROM teams t WHERE t.source_ref = $3
+           SELECT $1, t.id, $2
+             FROM teams t
+            WHERE t.source_ref = $3
+              AND t.id IN (SELECT m.home_team_id FROM matches m WHERE m.id = $4
+                           UNION SELECT m.away_team_id FROM matches m WHERE m.id = $4)
            ON CONFLICT (season_id, team_id, player_id) DO NOTHING`,
-          [ctx.season_id, playerId, ev.playerTeamRef]
+          [ctx.season_id, playerId, ev.playerTeamRef, matchId]
         );
+        if ((ins.rowCount ?? 0) === 0) {
+          this.log.warn(
+            { matchId, playerRef: ev.playerSourceRef, teamRef: ev.playerTeamRef },
+            'team_players: pertenencia NO insertada — ref de equipo inexistente o fuera del cruce (#216)'
+          );
+        }
       }
 
       map.set(normalizeName(name), playerId);
@@ -380,6 +435,18 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
     }));
     await withTransaction(async (client) => {
       await replaceMatchEvents(matchId, input, client);
+      // COBERTURA (#201): la ficha trajo acta → hay timeline. Antes la bandera
+      // event_coverage='none' (import histórico sin acta) no se promocionaba al
+      // recuperar el acta y 364 partidos mantenían el timeline oculto con los
+      // eventos YA en la base. Mismo guardado anti-acta-vacía de #149: si la
+      // ficha vino vacía no hay eventos y no se toca la bandera.
+      if (input.length > 0) {
+        await client.query(
+          `UPDATE matches SET event_coverage = 'full', updated_at = NOW()
+            WHERE id = $1 AND event_coverage IS DISTINCT FROM 'full'`,
+          [matchId]
+        );
+      }
     });
     this.log.info(
       { matchId, inserted: input.length, types: [...new Set(events.map(e => e.eventType))] },

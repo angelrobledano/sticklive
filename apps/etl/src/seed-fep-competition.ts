@@ -179,6 +179,33 @@ async function main() {
     );
     return (r.rowCount ?? 0) > 0;
   };
+  /**
+   * Salud del candidato (#195): los SÚPER-EQUIPOS del legado (#192) fusionaron
+   * secciones M/F/cantera en una fila y tienen gender NULL, así que
+   * `mismoGenero` los deja pasar. Reutilizar una fila con historial MEZCLADO
+   * (más de un género o categoría en sus season_teams) hereda ese historial al
+   * equipo nuevo. Solo se aplica a los match por NOMBRE (slug/alias): un match
+   * por source_ref es la misma entidad de la fuente, su historial es el que es.
+   */
+  const mezclaEnHistorial = async (teamId: string): Promise<boolean> => {
+    const r = await db.query<{ ok: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM season_teams st
+           JOIN seasons s ON s.id = st.season_id
+           JOIN competitions c ON c.id = s.competition_id
+          WHERE st.team_id = $1 AND c.gender IS NOT NULL
+         HAVING COUNT(DISTINCT c.gender) > 1
+       ) OR EXISTS (
+         SELECT 1 FROM season_teams st
+           JOIN seasons s ON s.id = st.season_id
+           JOIN competitions c ON c.id = s.competition_id
+          WHERE st.team_id = $1 AND c.age_category IS NOT NULL
+         HAVING COUNT(DISTINCT c.age_category) > 1
+       ) AS ok`,
+      [teamId],
+    );
+    return r.rows[0]?.ok ?? false;
+  };
   const gTag = (g?: string | null) => (g === 'female' ? 'F' : g === 'male' ? 'M' : '·');
   const etiqueta = `[${gTag(GENDER)}/${AGE}${SQUAD_LEVEL > 1 ? `/B${SQUAD_LEVEL}` : ''}]`;
   const plan: Fila[] = [];
@@ -198,6 +225,12 @@ async function main() {
         plan.push({ t, accion: 'dudoso', candidatos: [{ teamId: bySlug.id, name: bySlug.name, gender: bySlug.gender ?? null, score: 1 }] });
         continue;
       }
+      // Súper-equipo del legado (#195): gender NULL pasa el filtro de arriba,
+      // pero si su historial mezcla géneros/categorías es una fila fusionada.
+      if (await mezclaEnHistorial(bySlug.id)) {
+        plan.push({ t, accion: 'dudoso', candidatos: [{ teamId: bySlug.id, name: bySlug.name, gender: bySlug.gender ?? null, score: 1 }] });
+        continue;
+      }
       plan.push({ t, accion: 'reusar-slug', teamId: bySlug.id });
       continue;
     }
@@ -206,6 +239,10 @@ async function main() {
       const g = (await db.query<{ name: string; gender: string | null; age_category: string | null }>(`SELECT name, gender, age_category FROM teams WHERE id=$1`, [aliasId])).rows[0];
       if (mismoGenero(g?.gender) && mismaCategoria(g?.age_category)) {
         if (!ALLOW_SHARED && await enOtraLigaActual(aliasId)) {
+          plan.push({ t, accion: 'dudoso', candidatos: [{ teamId: aliasId, name: g!.name, gender: g?.gender ?? null, score: 1 }] });
+          continue;
+        }
+        if (await mezclaEnHistorial(aliasId)) {
           plan.push({ t, accion: 'dudoso', candidatos: [{ teamId: aliasId, name: g!.name, gender: g?.gender ?? null, score: 1 }] });
           continue;
         }
