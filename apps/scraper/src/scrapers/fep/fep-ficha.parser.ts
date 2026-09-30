@@ -695,6 +695,15 @@ export function parseLineups(html: string, idp: string): UpsertMatchLineupInput[
         .trim();
       if (!playerName) return;
 
+      // Ref del acta para el jugador (#219): las celdas de nombre de las
+      // tablas de alineación traen `id_player` (mismo ancla que las
+      // incidencias). Con la REF no hay colisión de homónimos por nombre.
+      let playerSourceRef: string | undefined;
+      if (nameIdx >= 0) {
+        const idPlayer = $(cells[nameIdx]).find('[id_player]').attr('id_player');
+        if (idPlayer && idPlayer !== '0') playerSourceRef = `fep_player_${idPlayer}`;
+      }
+
       const isGoalkeeper = cells.eq(1).text().trim().toUpperCase() === 'P';
       // "5" en alguna de las columnas 2-4 = cinco inicial
       const isStarter = [2, 3, 4].some((i) => cells.eq(i).text().trim() === '5');
@@ -711,6 +720,7 @@ export function parseLineups(html: string, idp: string): UpsertMatchLineupInput[
         isHome,
         jerseyNumber,
         playerName,
+        playerSourceRef,
         isGoalkeeper,
         isStarter,
         isCaptain,

@@ -473,6 +473,8 @@ export interface UpsertMatchLineupInput {
   goals?: number;
   assists?: number;
   playerId?: string;
+  /** Ref del acta del jugador (#219): vinculación exacta sin heurística. */
+  playerSourceRef?: string;
   /** Cuerpo técnico: 'E1' | 'E2' | 'A' | 'D'. NULL/undefined = jugador. */
   role?: string;
   sourceRef?: string;
@@ -509,7 +511,7 @@ export async function replaceMatchLineups(
 
   for (const l of lineups) {
     placeholders.push(
-      `($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`
+      `($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`
     );
     values.push(
       matchId,
@@ -523,6 +525,7 @@ export async function replaceMatchLineups(
       l.goals ?? 0,
       l.assists ?? 0,
       l.playerId ?? null,
+      l.playerSourceRef ?? null,
       l.role ?? null,
       l.sourceRef ?? null,
       l.scrapedAt ?? null
@@ -531,7 +534,7 @@ export async function replaceMatchLineups(
 
   await client.query(
     `INSERT INTO match_lineups
-       (match_id, is_home, team_id, jersey_number, player_name, is_goalkeeper, is_starter, is_captain, goals, assists, player_id, role, source_ref, scraped_at)
+       (match_id, is_home, team_id, jersey_number, player_name, is_goalkeeper, is_starter, is_captain, goals, assists, player_id, player_source_ref, role, source_ref, scraped_at)
      VALUES ${placeholders.join(', ')}
      ON CONFLICT (match_id, is_home, player_name) DO NOTHING`,
     values

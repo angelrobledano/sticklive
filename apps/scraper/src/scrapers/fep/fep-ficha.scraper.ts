@@ -192,13 +192,32 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
             }
             // Alineaciones: vienen en el mismo HTML (tablas competiciones_tabla_basic)
             const lineups = parseLineups(html, idp);
-            // Vincular jugador por nombre (la tabla de alineación no trae id_player)
+            // Vinculación (#219): REF del acta primero (exacta — la tabla de
+            // alineación SÍ trae id_player), luego mapa nombre (fallback), y
+            // para jugadores de alineación SIN evento: alta por ref (un
+            // suplente que no anotó existe igualmente). El cuerpo técnico no se
+            // vincula a players (es staff, no jugador).
             for (const l of lineups) {
-              l.playerId = playerMap.get(normalizeName(l.playerName)) ?? undefined;
+              if (l.role) continue;
+              l.playerId = (l.playerSourceRef ? playerMap.get(`r:${l.playerSourceRef}`) : undefined)
+                ?? playerMap.get(`n:${normalizeName(l.playerName)}`)
+                ?? undefined;
             }
-            // Fallback: jugadores sin evento en ESTE partido pero ya creados
-            // por fichas anteriores — enlace por slug canónico en DB.
-            const unresolved = lineups.filter((l) => !l.playerId);
+            // Jugadores de alineación cuya ref no está en el mapa (no salió en
+            // los eventos): alta por ref — así su player_id queda vinculado
+            // EXACTAMENTE en esta misma pasada.
+            const sinEvento = lineups.filter((l) => !l.role && !l.playerId && l.playerSourceRef);
+            for (const l of sinEvento) {
+              const pid = await this.upsertPlayerByRef(l.playerSourceRef!, l.playerName, undefined, this.cfg.matchId!);
+              if (pid) {
+                l.playerId = pid;
+                playerMap.set(`r:${l.playerSourceRef}`, pid);
+                playerMap.set(`n:${normalizeName(l.playerName)}`, pid);
+              }
+            }
+            // Último recurso: jugadores sin ref y sin evento en ESTE partido
+            // pero ya creados por fichas anteriores — enlace por slug canónico.
+            const unresolved = lineups.filter((l) => !l.role && !l.playerId);
             if (unresolved.length > 0) {
               const slugs = [...new Set(unresolved.map((l) => slugifyPlayerName(l.playerName)))];
               const found = await db.query<{ id: string; slug: string }>(
@@ -287,8 +306,125 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
 
 
   /**
-   * Crea/actualiza los jugadores que aparecen en la ficha y su pertenencia
-   * a equipo/temporada (team_players). Devuelve mapa nombre normalizado → UUID.
+   * Contexto del partido (temporada y sport), cacheado por ejecución del
+   * scrape: lo necesitan el alta de jugadores por eventos y la de los
+   * jugadores de alineación sin evento (#219).
+   */
+  private ctxCache: { season_id: string; sport_id: string } | null = null;
+  private async matchContext(matchId: string): Promise<{ season_id: string; sport_id: string } | null> {
+    if (this.ctxCache) return this.ctxCache;
+    const ctxRes = await db.query<{ season_id: string; sport_id: string }>(
+      `SELECT m.season_id, c.sport_id
+       FROM matches m
+       JOIN seasons s ON s.id = m.season_id
+       JOIN competitions c ON c.id = s.competition_id
+       WHERE m.id = $1`,
+      [matchId]
+    );
+    this.ctxCache = ctxRes.rows[0] ?? null;
+    return this.ctxCache;
+  }
+
+  /**
+   * Alta/actualización de UN jugador por su ref de acta + pertenencia a
+   * equipo/temporada (mismas guardas #176/#216/#325). Devuelve el UUID o null.
+   * Extraído para poder dar de alta también a los jugadores de ALINEACIÓN sin
+   * evento (#219): un suplente que no anotó existe igualmente.
+   */
+  private async upsertPlayerByRef(
+    playerSourceRef: string,
+    name: string,
+    playerTeamRef: string | undefined,
+    matchId: string
+  ): Promise<string | null> {
+    const ctx = await this.matchContext(matchId);
+    if (!ctx) return null;
+
+    // "FONT SÁNCHEZ FERRAN" → apellidos + nombre (última palabra)
+    const parts = name.split(/\s+/);
+    const firstName = parts.length > 1 ? parts[parts.length - 1]! : name;
+    const lastName  = parts.length > 1 ? parts.slice(0, -1).join(' ') : name;
+    const slug = slugifyPlayerName(name);
+
+    // Foto: patrón sidgad descubierto con fep-player-photo-probe.ts
+    const idNum = playerSourceRef.replace('fep_player_', '');
+    const photoUrl = `https://sidgad.cloud/rfep/images/fichas/${idNum}_1.jpg`;
+
+    // Upsert por source_ref; si no existe, insert con slug único por sport.
+    // HOMÓNIMOS (#176): el viejo ON CONFLICT (sport_id, slug) DO UPDATE SET
+    // source_ref = EXCLUDED.source_ref ROBABA la identidad — dos jugadores
+    // distintos con el mismo nombre (equipos distintos) colisionaban por slug
+    // y el segundo PISABA el source_ref del primero, fusionando sus carreras.
+    // Si el slug existe con OTRA ref, se desambigua el slug con el id de
+    // fuente (slug-idFuente) y queda el aviso para revisión.
+    const found = await db.query<{ id: string }>(
+      `SELECT id FROM players WHERE source_ref = $1`, [playerSourceRef]
+    );
+    let playerId = found.rows[0]?.id;
+    if (playerId) {
+      await db.query(
+        `UPDATE players SET photo_url = COALESCE(photo_url, $2), updated_at = NOW() WHERE id = $1`,
+        [playerId, photoUrl]
+      );
+    } else {
+      const clash = await db.query<{ id: string; source_ref: string | null }>(
+        `SELECT id, source_ref FROM players WHERE sport_id = $1 AND slug = $2`,
+        [ctx.sport_id, slug]
+      );
+      let finalSlug = slug;
+      if (clash.rows.length > 0 && clash.rows[0]!.source_ref !== playerSourceRef) {
+        finalSlug = `${slug}-${idNum}`;
+        this.log.warn(
+          { nombre: name, slug, slugDesambiguado: finalSlug, refNueva: playerSourceRef, refExistente: clash.rows[0]!.source_ref },
+          'Homónimo detectado: mismo nombre, distinta ref de fuente — se crea jugador con slug desambiguado (#176)'
+        );
+      }
+      const ins = await db.query<{ id: string }>(
+        `INSERT INTO players (sport_id, first_name, last_name, slug, source_ref, photo_url, scraped_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW())
+         ON CONFLICT (sport_id, slug) DO UPDATE SET
+           source_ref = EXCLUDED.source_ref,
+           photo_url  = COALESCE(players.photo_url, EXCLUDED.photo_url),
+           updated_at = NOW()
+         RETURNING id`,
+        [ctx.sport_id, firstName, lastName, finalSlug, playerSourceRef, photoUrl]
+      );
+      playerId = ins.rows[0]!.id;
+    }
+
+    // Pertenencia equipo/temporada (si conocemos el equipo sidgad).
+    // GUARDA (#216/#325): la ref de equipo del acta puede ser del PRIMER
+    // equipo del club en fichas de filiales — la pertenencia fabricada
+    // ensuciaba la plantilla. Solo se acepta si el equipo es uno de los dos
+    // del cruce; y si el INSERT no afecta a ninguna fila, queda el aviso
+    // (antes era un fallo silencioso: roster incompleto sin señal).
+    if (playerTeamRef) {
+      const ins = await db.query(
+        `INSERT INTO team_players (season_id, team_id, player_id)
+         SELECT $1, t.id, $2
+           FROM teams t
+          WHERE t.source_ref = $3
+            AND t.id IN (SELECT m.home_team_id FROM matches m WHERE m.id = $4
+                         UNION SELECT m.away_team_id FROM matches m WHERE m.id = $4)
+         ON CONFLICT (season_id, team_id, player_id) DO NOTHING`,
+        [ctx.season_id, playerId, playerTeamRef, matchId]
+      );
+      if ((ins.rowCount ?? 0) === 0) {
+        this.log.warn(
+          { matchId, playerRef: playerSourceRef, teamRef: playerTeamRef },
+          'team_players: pertenencia NO insertada — ref de equipo inexistente o fuera del cruce (#216)'
+        );
+      }
+    }
+
+    return playerId;
+  }
+
+  /**
+   * Crea/actualiza los jugadores que aparecen en los EVENTOS de la ficha y su
+   * pertenencia a equipo/temporada (team_players). Devuelve el mapa de
+   * vinculación del propio scrape con claves `r:{ref}` y `n:{nombre}` (#219):
+   * la vinculación por REF es exacta y la de nombre queda como fallback.
    */
   private async upsertPlayers(
     events: ScrapedMatchEvent[],
@@ -299,107 +435,37 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
     const withPlayer = events.filter((e) => e.playerSourceRef && e.playerName);
     if (withPlayer.length === 0) return map;
 
-    // Contexto del partido: temporada y sport
-    const ctxRes = await db.query<{ season_id: string; sport_id: string }>(
-      `SELECT m.season_id, c.sport_id
-       FROM matches m
-       JOIN seasons s ON s.id = m.season_id
-       JOIN competitions c ON c.id = s.competition_id
-       WHERE m.id = $1`,
-      [matchId]
-    );
-    const ctx = ctxRes.rows[0];
-    if (!ctx) return map;
-
     // Dedupe por playerSourceRef
     const unique = new Map<string, ScrapedMatchEvent>();
     for (const ev of withPlayer) {
       if (!unique.has(ev.playerSourceRef!)) unique.set(ev.playerSourceRef!, ev);
     }
 
+    // HOMÓNIMOS EN EL MISMO ACTA (#219): la fuente distingue por id_player,
+    // pero el mapa por nombre los colapsaría. Con claves de ref no colisionan;
+    // el aviso queda como señal para la cola de ER de jugadores.
+    const nameToRef = new Map<string, string>();
+
     for (const ev of unique.values()) {
       const name = ev.playerName!;
-      // "FONT SÁNCHEZ FERRAN" → apellidos + nombre (última palabra)
-      const parts = name.split(/\s+/);
-      const firstName = parts.length > 1 ? parts[parts.length - 1]! : name;
-      const lastName  = parts.length > 1 ? parts.slice(0, -1).join(' ') : name;
-      const slug = slugifyPlayerName(name);
+      const playerId = await this.upsertPlayerByRef(ev.playerSourceRef!, name, ev.playerTeamRef, matchId);
+      if (!playerId) continue;
 
-      // Foto: patrón sidgad descubierto con fep-player-photo-probe.ts
-      const idNum = ev.playerSourceRef!.replace('fep_player_', '');
-      const photoUrl = `https://sidgad.cloud/rfep/images/fichas/${idNum}_1.jpg`;
-
-      // Upsert por source_ref; si no existe, insert con slug único por sport.
-      // HOMÓNIMOS (#176): el viejo ON CONFLICT (sport_id, slug) DO UPDATE SET
-      // source_ref = EXCLUDED.source_ref ROBABA la identidad — dos jugadores
-      // distintos con el mismo nombre (equipos distintos) colisionaban por slug
-      // y el segundo PISABA el source_ref del primero, fusionando sus carreras.
-      // Si el slug existe con OTRA ref, se desambigua el slug con el id de
-      // fuente (slug-idFuente) y queda el aviso para revisión.
-      const found = await db.query<{ id: string }>(
-        `SELECT id FROM players WHERE source_ref = $1`, [ev.playerSourceRef]
-      );
-      let playerId = found.rows[0]?.id;
-      if (playerId) {
-        await db.query(
-          `UPDATE players SET photo_url = COALESCE(photo_url, $2), updated_at = NOW() WHERE id = $1`,
-          [playerId, photoUrl]
+      const normalizedName = normalizeName(name);
+      const prevRef = nameToRef.get(normalizedName);
+      if (prevRef && prevRef !== ev.playerSourceRef) {
+        this.log.warn(
+          { matchId, nombre: name, refs: [prevRef, ev.playerSourceRef] },
+          'Dos id_player distintos con el mismo nombre en el mismo acta (#219) — posible homónimo: revisar identidad en la cola de ER'
         );
-      } else {
-        const clash = await db.query<{ id: string; source_ref: string | null }>(
-          `SELECT id, source_ref FROM players WHERE sport_id = $1 AND slug = $2`,
-          [ctx.sport_id, slug]
-        );
-        let finalSlug = slug;
-        if (clash.rows.length > 0 && clash.rows[0]!.source_ref !== ev.playerSourceRef) {
-          finalSlug = `${slug}-${idNum}`;
-          this.log.warn(
-            { nombre: name, slug, slugDesambiguado: finalSlug, refNueva: ev.playerSourceRef, refExistente: clash.rows[0]!.source_ref },
-            'Homónimo detectado: mismo nombre, distinta ref de fuente — se crea jugador con slug desambiguado (#176)'
-          );
-        }
-        const ins = await db.query<{ id: string }>(
-          `INSERT INTO players (sport_id, first_name, last_name, slug, source_ref, photo_url, scraped_at)
-           VALUES ($1, $2, $3, $4, $5, $6, NOW())
-           ON CONFLICT (sport_id, slug) DO UPDATE SET
-             source_ref = EXCLUDED.source_ref,
-             photo_url  = COALESCE(players.photo_url, EXCLUDED.photo_url),
-             updated_at = NOW()
-           RETURNING id`,
-          [ctx.sport_id, firstName, lastName, finalSlug, ev.playerSourceRef, photoUrl]
-        );
-        playerId = ins.rows[0]!.id;
       }
+      nameToRef.set(normalizedName, ev.playerSourceRef!);
 
-      // Pertenencia equipo/temporada (si conocemos el equipo sidgad).
-      // GUARDA (#216/#325): la ref de equipo del acta puede ser del PRIMER
-      // equipo del club en fichas de filiales — la pertenencia fabricada
-      // ensuciaba la plantilla. Solo se acepta si el equipo es uno de los dos
-      // del cruce; y si el INSERT no afecta a ninguna fila, queda el aviso
-      // (antes era un fallo silencioso: roster incompleto sin señal).
-      if (ev.playerTeamRef) {
-        const ins = await db.query(
-          `INSERT INTO team_players (season_id, team_id, player_id)
-           SELECT $1, t.id, $2
-             FROM teams t
-            WHERE t.source_ref = $3
-              AND t.id IN (SELECT m.home_team_id FROM matches m WHERE m.id = $4
-                           UNION SELECT m.away_team_id FROM matches m WHERE m.id = $4)
-           ON CONFLICT (season_id, team_id, player_id) DO NOTHING`,
-          [ctx.season_id, playerId, ev.playerTeamRef, matchId]
-        );
-        if ((ins.rowCount ?? 0) === 0) {
-          this.log.warn(
-            { matchId, playerRef: ev.playerSourceRef, teamRef: ev.playerTeamRef },
-            'team_players: pertenencia NO insertada — ref de equipo inexistente o fuera del cruce (#216)'
-          );
-        }
-      }
-
-      map.set(normalizeName(name), playerId);
+      map.set(`r:${ev.playerSourceRef}`, playerId);
+      map.set(`n:${normalizedName}`, playerId);
     }
 
-    this.log.info({ matchId, players: map.size }, 'Jugadores upsertados desde la ficha');
+    this.log.info({ matchId, players: map.size / 2 }, 'Jugadores upsertados desde la ficha');
     return map;
   }
 
@@ -428,7 +494,11 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
       period:    ev.period,
       clock:     ev.clock ?? null,
       teamId:    ev.isHome === true ? homeTeamId : ev.isHome === false ? awayTeamId : null,
-      playerId:  (ev.playerName ? playerMap.get(normalizeName(ev.playerName)) : null) ?? null,
+      // Vinculación ref-first (#219): la ref del acta es exacta; el nombre es
+      // el fallback para eventos sin id_player.
+      playerId:  (ev.playerSourceRef ? playerMap.get(`r:${ev.playerSourceRef}`) : undefined)
+        ?? (ev.playerName ? playerMap.get(`n:${normalizeName(ev.playerName)}`) : undefined)
+        ?? null,
       detail:    ev.detail,
       sourceRef: ev.sourceRef,
       scrapedAt: new Date(),

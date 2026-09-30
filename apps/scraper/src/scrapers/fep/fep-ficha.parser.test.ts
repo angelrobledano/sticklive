@@ -433,6 +433,21 @@ describe('parseLineups — acta de World Skate (selecciones)', () => {
     expect(golesVisitante).toBe(0);
   });
 
+  it('#219: la alineación captura la ref del acta (id_player) para el vínculo exacto', () => {
+    const jugadores = wse().filter((l) => !l.role);
+    // El fixture trae id_player en las celdas de nombre de las tablas de
+    // alineación (mismo ancla nombre_ficha_jugador_plus que las incidencias).
+    const conRef = jugadores.filter((l) => l.playerSourceRef);
+    expect(conRef.length).toBeGreaterThan(0);
+    for (const l of conRef) {
+      expect(l.playerSourceRef).toMatch(/^fep_player_\d+$/);
+    }
+    // Los cuerpos técnicos no llevan vínculo de jugador.
+    for (const st of wse().filter((l) => l.role)) {
+      expect(st.playerSourceRef).toBeUndefined();
+    }
+  });
+
   it('el acta de World Skate también da eventos', () => {
     const eventos = parseFicha(load('acta-wse-finalizada'), '3095', { eventPrefix: 'wse_event_' });
     expect(eventos).toHaveLength(25);

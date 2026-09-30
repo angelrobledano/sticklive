@@ -14,10 +14,25 @@ function slugify(name: string): string {
 }
 
 void (async () => {
+  // PASO 1 (#219): vinculación EXACTA por ref del acta — player_source_ref
+  // (migración 061) contra players.source_ref. Sin heurística de nombre: la
+  // ref es el id federativo del acta. Este paso cura las alineaciones
+  // scrapeadas ANTES de que el scraper guardara la ref.
+  const porRef = await db.query(
+    `UPDATE match_lineups ml
+        SET player_id = p.id
+       FROM players p
+      WHERE ml.player_id IS NULL
+        AND ml.player_source_ref IS NOT NULL
+        AND p.source_ref = ml.player_source_ref`
+  );
+  console.log(`🎯 ${porRef.rowCount ?? 0} vinculadas por ref exacta del acta (#219)`);
+
+  // PASO 2: fallback por slug canónico del nombre (histórico sin ref).
   const { rows: pending } = await db.query<{ id: string; player_name: string }>(
     `SELECT id, player_name FROM match_lineups WHERE player_id IS NULL`
   );
-  console.log(`${pending.length} filas de alineación sin jugador vinculado`);
+  console.log(`${pending.length} filas de alineación sin jugador vinculado (tras la fase por ref)`);
 
   const { rows: players } = await db.query<{ id: string; slug: string }>(
     `SELECT id, slug FROM players`
@@ -31,7 +46,7 @@ void (async () => {
     await db.query(`UPDATE match_lineups SET player_id = $2 WHERE id = $1`, [row.id, playerId]);
     linked++;
   }
-  console.log(`✅ ${linked} vinculadas · ${pending.length - linked} sin jugador en DB (aún sin eventos en ninguna ficha)`);
+  console.log(`✅ ${linked} vinculadas por slug · ${pending.length - linked} sin jugador en DB (aún sin eventos en ninguna ficha)`);
 
   // Backfill de dorsales en team_players desde el acta más reciente de cada jugador
   const dorsales = await db.query(
