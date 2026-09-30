@@ -69,7 +69,11 @@ playerDetailRouter.get('/:id', async (c) => {
     // 2-4) Equipo actual, stats de la temporada activa y carrera (#217). Las
     // tres consultas sólo dependen del id → en paralelo.
     const [teamRes, statsRes, careerRes] = await Promise.all([
-      // 2) Equipo actual (temporada activa, registro más reciente)
+      // 2) Equipo actual (#213): la última TEMPORADA con registro del jugador,
+      // no el flag global `is_current` — ese flag estaba disperso (copas 2025/26
+      // marcadas actuales tapaban la liga en curso) y cambiaba qué ficha se
+      // mostraba. El registro más reciente por start_date es la pertenencia
+      // vigente de verdad.
       db.query<TeamRow>(`
       SELECT
         t.id          AS team_id,
@@ -82,16 +86,29 @@ playerDetailRouter.get('/:id', async (c) => {
       JOIN teams t   ON t.id  = tp.team_id
       JOIN seasons s ON s.id  = tp.season_id
       WHERE tp.player_id = $1
-        AND s.is_current  = TRUE
         AND tp.is_active  = TRUE
       ORDER BY s.start_date DESC NULLS LAST
       LIMIT 1
     `, [id]),
 
-      // 3) Stats por competición (temporada activa)
+      // 3) Stats por competición (#213): por competición, la ÚLTIMA temporada
+      //     con eventos del jugador — no el flag global `is_current`. Con el
+      //     flag, las copas 2025/26 marcadas actuales hacían desaparecer las
+      //     estadísticas de la liga 2025/26 de la ficha (P0 del audit). Cuando
+      //     el jugador empiece la temporada siguiente de esa competición, el
+      //     máximo start_date pasa a ella: semántica de "temporada en curso".
       //    PJ = partidos en los que el jugador tiene al menos 1 evento (proxy)
       //    Penaltis marcados: detail ILIKE cualquier variante positiva
       db.query<CompStatsRow>(`
+      WITH ultima AS (
+        SELECT c.id AS competition_id, MAX(s.start_date) AS inicio
+          FROM match_events me
+          JOIN matches m  ON m.id  = me.match_id
+          JOIN seasons s  ON s.id  = m.season_id
+          JOIN competitions c ON c.id = s.competition_id
+         WHERE me.player_id = $1
+         GROUP BY c.id
+      )
       SELECT
         c.id                AS competition_id,
         c.name              AS competition_name,
@@ -114,8 +131,8 @@ playerDetailRouter.get('/:id', async (c) => {
       JOIN matches m    ON m.id  = me.match_id
       JOIN seasons s    ON s.id  = m.season_id
       JOIN competitions c ON c.id = s.competition_id
+      JOIN ultima u     ON u.competition_id = c.id AND s.start_date = u.inicio
       WHERE me.player_id = $1
-        AND s.is_current = TRUE
       GROUP BY c.id, c.name, c.short_name
       ORDER BY goals DESC, pj DESC
     `, [id]),
