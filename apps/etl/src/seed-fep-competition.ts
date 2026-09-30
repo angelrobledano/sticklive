@@ -365,10 +365,19 @@ async function main() {
       if (!(await libre(slug))) slug = `${slug}-${GENDER === 'female' ? 'f' : 'm'}`;
       if (!(await libre(slug)) && SQUAD_LEVEL > 1) slug = `${slug}-b${SQUAD_LEVEL}`;
       if (!(await libre(slug))) slug = `${slug}-${t.ref}`;
+      // #198: derivar squad_level del NOMBRE de la fuente ("X B", "X II", "X 2"
+      // al final) cuando el flag CLI no lo diga — el seed masivo de ligas no
+      // pasa --squad-level y los filiales entraban como primer equipo. Sólo se
+      // sube de nivel (nunca se baja el del flag). "B B" ruidoso cuenta una vez.
+      const nivelNombre = / (?:B|II|2)$/i.test(t.name) ? 2 : / C$/i.test(t.name) ? 3 : 1;
+      const nivelFinal = Math.max(SQUAD_LEVEL, nivelNombre);
+      if (nivelNombre > 1) {
+        console.log(`  ℹ️  ${t.name} → squad_level=${nivelNombre} (derivado del nombre, #198)`);
+      }
       teamId = (await db.query<{ id: string }>(
         `INSERT INTO teams (sport_id, name, short_name, slug, gender, age_category, squad_level, country, source_id, source_ref, scraped_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW()) RETURNING id`,
-        [sportId, t.name, t.abbr || null, slug, GENDER, AGE, SQUAD_LEVEL, COUNTRY, sourceId, t.ref],
+        [sportId, t.name, t.abbr || null, slug, GENDER, AGE, nivelFinal, COUNTRY, sourceId, t.ref],
       )).rows[0]!.id;
       await upsertSourceEntityMapTeam(sourceId, t.ref, teamId).catch(() => {});
       created++;

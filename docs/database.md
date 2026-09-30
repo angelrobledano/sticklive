@@ -9,6 +9,14 @@
 - La password del rol NO vive en el repo: se fija en el servidor con `ALTER ROLE sticklive_app WITH PASSWORD '…';` y se referencia en `.env.prod` como `APP_DB_PASSWORD` (la consume el `DATABASE_URL` de api/etl en `docker-compose.prod.yml`).
 - Rotación: `ALTER ROLE … PASSWORD`, actualizar `APP_DB_PASSWORD` en `.env.prod` y `$DC up -d api etl`. Rollback: restaurar el `DATABASE_URL` anterior.
 
+## Identidad de equipo (#198, decisión)
+
+**El modelo es `team = club × gender × age_category × squad_level`** (1=primer equipo, 2=B, 3=C; migración 044). Decisión sobre la relación filial→primer equipo:
+
+- **Se apuesta por la fase 2 de `clubs`** (agrupación real de clubes + la UNIQUE diferida `club_id, gender, age_category, squad_level`), NO por una columna `parent_team_id`. Razón: la fila de club ya existe (`clubs`, 044) y `parent_team_id` duplicaría la relación con una segunda fuente de verdad que habría que mantener sincronizada con `split-filial-teams`.
+- **Condición previa** (ya anotada en 044 y aquí): el backfill actual de clubs es 1:1 — reutiliza el slug del team como slug de club, así que agrupar "CP LAS ROZAS" / "CLUB PATIN LAS ROZAS" / "CP LAS ROZAS B" chocará al normalizar. La fase 2 necesita su plan de migración de slugs de club y una pasada HITL por los clubes multi-nombre (caso extremo conocido: CP LAS ROZAS con 10 filas). Hasta entonces la UNIQUE sigue DIFERIDA a propósito.
+- **Origen del dato**: el seed deriva `squad_level` del nombre de la fuente (patrones ` B`/` II`/` 2`/` C` al final, #198) cuando no viene por flag; `split-filial-teams.ts` sigue siendo la herramienta de reparación masiva de los ya mal creados.
+
 ## Migraciones
 
 - Ficheros SQL versionados en `packages/db/migrations/`, aplicados en orden por el runner idempotente `packages/db/src/migrate.ts` (tabla `_migrations`; re-aplicar es no-op). Comando: `npm run db:migrate`.
