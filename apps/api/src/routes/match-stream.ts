@@ -51,7 +51,10 @@ export const matchStreamRouter = new Hono();
 // hub al instante. Este intervalo es sólo la red de seguridad por si se pierde
 // un aviso (reconexión del listener, etc.), de ahí que sea lento.
 const BACKUP_POLL_MS         = Number(process.env['SSE_BACKUP_POLL_MS'] ?? 60_000);
-const KEEPALIVE_INTERVAL_MS   = 25_000;
+// Keepalive: mantiene viva la conexión y, de paso, es el ciclo en el que el
+// handler nota un cliente desaparecido (el write falla) y libera su cupo.
+// Env-driven (#378): los tests de e2e lo bajan para verificar la liberación.
+const KEEPALIVE_INTERVAL_MS   = Number(process.env['SSE_KEEPALIVE_INTERVAL_MS'] ?? 25_000);
 // #371: intervalo de reconexión base que se anuncia al navegador con `retry:`.
 // Sin esto, tras un reinicio del servidor todo el parque reconecta a la vez
 // (herd) con el intervalo por defecto. El cliente añade backoff+jitter encima.
