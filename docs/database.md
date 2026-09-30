@@ -1,6 +1,13 @@
 # Base de datos
 
-*PostgreSQL 16. Contrastado con `packages/db/migrations` (53 ficheros) y el runner actual. Arquitectura general en [architecture.md](./architecture.md).*
+*PostgreSQL 16. Contrastado con `packages/db/migrations` (62 ficheros) y el runner actual. Arquitectura general en [architecture.md](./architecture.md).*
+
+## Rol de aplicación (mínimo privilegio, #298)
+
+- `sticklive_app` es el rol con el que conectan **api y etl**: `SELECT/INSERT/UPDATE/DELETE` sobre todas las tablas (actuales y futuras vía `DEFAULT PRIVILEGES`), `USAGE` de secuencias y `CREATE` de esquema **sólo** para las particiones que crea el `partition-guard` (único DDL legítimo del runtime). Sin `DROP`, sin `ALTER`, sin superusuario.
+- `migrate` (servicio de despliegue) sigue conectando con el **dueño del esquema** (`POSTGRES_USER`): las migraciones necesitan DDL sin límites.
+- La password del rol NO vive en el repo: se fija en el servidor con `ALTER ROLE sticklive_app WITH PASSWORD '…';` y se referencia en `.env.prod` como `APP_DB_PASSWORD` (la consume el `DATABASE_URL` de api/etl en `docker-compose.prod.yml`).
+- Rotación: `ALTER ROLE … PASSWORD`, actualizar `APP_DB_PASSWORD` en `.env.prod` y `$DC up -d api etl`. Rollback: restaurar el `DATABASE_URL` anterior.
 
 ## Migraciones
 

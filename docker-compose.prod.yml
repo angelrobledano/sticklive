@@ -106,7 +106,9 @@ services:
     command: node dist/apps/api/src/index.js
     env_file: .env.prod
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-sports_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}
+      # Rol de mínimo privilegio (#298): DML sin DDL. La password vive en
+      # .env.prod (APP_DB_PASSWORD) y migrate sigue con el dueño del esquema.
+      DATABASE_URL: postgresql://sticklive_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}
     volumes:
       # Mismo volumen de escudos que web/etl (solo lectura): la API sirve los
       # escudos en /teams/:id/logo desde aquí (auditoría A3).
@@ -187,7 +189,9 @@ services:
     command: sh deploy/etl-scheduler.sh
     env_file: .env.prod
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-sports_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}
+      # Rol de mínimo privilegio (#298): DML + CREATE de particiones. La
+      # password vive en .env.prod (APP_DB_PASSWORD); migrate sigue con el dueño.
+      DATABASE_URL: postgresql://sticklive_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-sports_results}
     volumes:
       # Mismo volumen que web: el etl escribe los escudos, web los sirve.
       # La ruta la fija ESCUDOS_DIR en la imagen (deploy/Dockerfile).
