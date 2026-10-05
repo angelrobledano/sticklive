@@ -166,8 +166,9 @@ describe('applyStreamPatch', () => {
   });
 
   // Cualquier snapshot/update posterior significa datos frescos: limpia el
-  // desfase (el `stale: false` del hub va seguido del fanout con el DTO
-  // completo, así que el reset canónico ocurre ahí).
+  // desfase. El `stale: false` de recuperación se ignora; si llega sin fanout
+  // (recuperación sin cambios de datos), el flag persiste hasta el próximo
+  // snapshot/update o re-enfoque.
   it('snapshot y update posteriores limpian el desfase', () => {
     let state = applyStreamPatch(base, { kind: 'stale', staleAt: 1_234 });
     state = applyStreamPatch(state, { kind: 'snapshot', detail: mkDetail() });

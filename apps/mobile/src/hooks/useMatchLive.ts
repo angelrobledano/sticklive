@@ -149,8 +149,9 @@ export function useMatchLive(matchId: string, token: string | null | undefined) 
     // Congelación de datos (#284): el hub avisa `stale` cuando su poll falla.
     // Sin reconexión ni cambio de transporte: el aviso sólo marca el estado
     // que la ficha pinta como "posible desfase". El `stale: false` de
-    // recuperación se ignora a propósito: llega seguido del fanout con el DTO
-    // completo, y snapshot/update limpian el flag en el reducer.
+    // recuperación se ignora: si llega sin fanout (recuperación sin cambios
+    // de datos), el flag persiste hasta el próximo snapshot/update o
+    // re-enfoque.
     es.addEventListener('stale', (ev) => {
       try {
         const p = JSON.parse(ev.data as string) as { stale: boolean };

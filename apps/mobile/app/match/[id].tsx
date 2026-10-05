@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useIsFocused } from 'expo-router';
 import { ScrollView, Text, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useLocale } from '@/src/i18n/LocaleContext';
@@ -23,13 +23,17 @@ export default function MatchScreen() {
 
   // Reloj del desfase (Task 5.2): sólo corre mientras el stream está marcado
   // como stale (los datos están congelados y el "hace N s" avanza); con la
-  // recuperación el intervalo se limpia y no hay re-renders extra.
+  // recuperación el intervalo se limpia y no hay re-renders extra. La ficha
+  // sigue montada en el stack al desenfocarse, así que el reloj se gatea
+  // además por foco (useIsFocused): nada late con la pantalla en segundo
+  // plano (spec §4).
   const [now, setNow] = useState(() => Date.now());
+  const focused = useIsFocused();
   useEffect(() => {
-    if (!live.stale) return;
+    if (!live.stale || !focused) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [live.stale]);
+  }, [live.stale, focused]);
 
   // live.detail y query.data comparten la misma caché de QueryClient; el stream
   // es la fuente en caliente y la query el fallback en frío.
