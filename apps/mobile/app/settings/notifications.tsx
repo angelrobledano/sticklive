@@ -210,7 +210,9 @@ export default function NotificationsScreen() {
         // Analítica (Task 5.1): el fallo también se cuenta, con el motivo del
         // contrato PUSH_ERRORS. El capture NO sustituye al error visible:
         // banner en pantalla + consola siguen (regla "nunca silencioso").
-        capture('push_failed', { reason });
+        // El motivo se trunca: los mensajes del SO pueden ser volcados largos
+        // y la propiedad de analítica no necesita el texto completo.
+        capture('push_failed', { reason: reason.slice(0, 200) });
       })
       .finally(() => setRegistering(false));
   }, []);

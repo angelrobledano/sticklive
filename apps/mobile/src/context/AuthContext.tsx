@@ -1,7 +1,7 @@
 import * as WebBrowser from 'expo-web-browser';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { API_URL, apiFetch, ApiError } from '@/src/lib/api/client';
-import { capture, identifyUser } from '@/src/lib/analytics';
+import { capture, identifyUser, resetIdentity } from '@/src/lib/analytics';
 import { getDeviceId } from '@/src/lib/device';
 import {
   clearSession,
@@ -134,6 +134,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Hagas lo que haga clearSession, la UI desloguea: seguir mostrando una
       // "sesión" con un botón de salida muerto es peor. Si el token sobrevivió
       // en disco, reaparecerá al relanzar (loadSession es la fuente de verdad).
+      // Analítica (review 5.1): también muere el email persistido en PostHog —
+      // si el SDK conservara el distinct del login A, un login B posterior
+      // enviaría $identify con A como anon y fusionaría ambas personas.
+      // resetIdentity nunca lanza (try/catch interno).
+      resetIdentity();
       setSession(null);
     }
   }, []);

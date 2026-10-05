@@ -1,5 +1,6 @@
 import { PostHog } from 'posthog-react-native';
 import { getDeviceId } from '@/src/lib/device';
+import { loadSession } from '@/src/lib/session';
 import type { FavoriteKind } from '@/src/hooks/favorites';
 
 /**
@@ -16,7 +17,9 @@ import type { FavoriteKind } from '@/src/hooks/favorites';
  * ETL usa device_id como distinctId), así que cliente y servidor caen en la
  * misma persona sin joins. Al iniciar sesión, `identifyUser(email)` fusiona la
  * persona del dispositivo con la de la cuenta (el SDK envía $identify con el
- * id previo como $anon_distinct_id, verificado en @posthog/core).
+ * id previo como $anon_distinct_id, verificado en @posthog/core). Al CERRAR
+ * sesión, `resetIdentity()` mata el email persistido en el SDK para que un
+ * login posterior con otra cuenta nunca fusione su persona con la anterior.
  *
  * Regla del "UN punto de llamada": ningún módulo importa posthog-react-native
  * directamente; todo pasa por `capture`/`identifyUser` de aquí.
@@ -66,23 +69,26 @@ export function getPostHogClient(): PostHog | null {
 }
 
 /**
- * Siembra la identidad anónima del dispositivo UNA vez por proceso: la persona
- * pasa a ser el deviceId en cuanto el SDK está listo. Si el SDK ya trae
- * identidad persistida propia (deviceId de una sesión anterior, o el email de
- * un login), NO se toca: un identify de más emite un $identify innecesario y
- * cambiaría el distinct_id de la sesión sin beneficio.
+ * Siembra la identidad UNA vez por proceso, en cuanto el SDK está listo:
+ *  · Con sesión persistida NO se toca nada: el distinct del SDK ya es el email
+ *    del login (lo puso identifyUser en signInWithGoogle) y re-identificar el
+ *    deviceId voltearía la identidad de la sesión (y reabriría el camino de
+ *    fusión entre cuentas que resetIdentity cierra).
+ *  · Sin sesión, la persona anónima pasa a ser el deviceId — salvo que el SDK
+ *    ya traiga ese mismo deviceId de una sesión anterior (entonces un identify
+ *    de más solo emitiría un $identify innecesario).
  */
 function seedDeviceIdentity(ph: PostHog): void {
   if (identitySeeded) return;
   identitySeeded = true;
-  void getDeviceId()
-    .then((deviceId) => {
-      if (ph.getDistinctId() !== deviceId) ph.identify(deviceId);
+  void Promise.all([getDeviceId(), loadSession()])
+    .then(([deviceId, session]) => {
+      if (!session?.email && ph.getDistinctId() !== deviceId) ph.identify(deviceId);
     })
     .catch((err) => {
       // Sin deviceId los eventos salen con el uuid del SDK y quedan fusionados
       // con la cuenta al hacer login. Nunca silencioso, nunca fatal.
-      console.warn('[analytics] no se pudo resolver el deviceId para la identidad', err);
+      console.warn('[analytics] no se pudo resolver la identidad del dispositivo', err);
     });
 }
 
@@ -97,6 +103,23 @@ export function identifyUser(email: string): void {
     ph.identify(email);
   } catch (err) {
     console.warn('[analytics] no se pudo identificar al usuario', err);
+  }
+}
+
+/**
+ * Al cerrar sesión: borra la identidad del SDK (el distinct/email persistido
+ * incluido). Sin esto, un login posterior con OTRA cuenta en la misma sesión
+ * enviaría $identify con el email anterior como $anon_distinct_id y PostHog
+ * FUSIONARÍA la persona A con la B. El seed del próximo arranque (sin sesión)
+ * deja la identidad otra vez en el deviceId. Nunca lanza.
+ */
+export function resetIdentity(): void {
+  const ph = getPostHogClient();
+  if (!ph) return;
+  try {
+    ph.reset();
+  } catch (err) {
+    console.warn('[analytics] no se pudo resetear la identidad', err);
   }
 }
 

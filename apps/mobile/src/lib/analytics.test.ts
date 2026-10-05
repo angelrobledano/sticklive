@@ -10,6 +10,7 @@ const ph = vi.hoisted(() => ({
     options?: Record<string, unknown>;
     capture: ReturnType<typeof vi.fn>;
     identify: ReturnType<typeof vi.fn>;
+    reset: ReturnType<typeof vi.fn>;
   }[],
   distinctId: 'sdk-anon-uuid', // lo que "devuelve" getDistinctId del SDK mockeado
 }));
@@ -18,6 +19,7 @@ vi.mock('posthog-react-native', () => ({
   PostHog: class {
     capture = vi.fn();
     identify = vi.fn();
+    reset = vi.fn();
     getDistinctId = vi.fn(() => ph.distinctId);
     apiKey!: string;
     options?: Record<string, unknown>;
@@ -31,6 +33,13 @@ vi.mock('posthog-react-native', () => ({
 
 vi.mock('@/src/lib/device', () => ({ getDeviceId: vi.fn(async () => 'device-123') }));
 
+// El seed consulta la sesión persistida (con sesión el distinct ya es el email
+// del login y NO se toca). Por defecto, sin sesión.
+const sessionState = vi.hoisted(() => ({
+  loadSession: vi.fn(async (): Promise<{ token: string; email: string | null } | null> => null),
+}));
+vi.mock('@/src/lib/session', () => ({ loadSession: sessionState.loadSession }));
+
 /** Drena las microtareas (la siembra de identidad es un .then async). */
 const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -38,6 +47,7 @@ beforeEach(() => {
   vi.resetModules();
   ph.instances.length = 0;
   ph.distinctId = 'sdk-anon-uuid';
+  sessionState.loadSession.mockClear();
   delete process.env['EXPO_PUBLIC_POSTHOG_KEY'];
   delete process.env['EXPO_PUBLIC_POSTHOG_HOST'];
 });
@@ -96,6 +106,18 @@ describe('con key', () => {
     expect(ph.instances[0]!.identify).not.toHaveBeenCalled();
   });
 
+  it('NO re-identifica si hay sesión persistida: el distinct ya es el email del login', async () => {
+    // Caso divergente (review 5.1): el SDK conservó el email de un login
+    // anterior y la sesión sigue viva. Re-identificar el deviceId VOLTEARÍA la
+    // identidad de la sesión y reabriría la fusión cruzada entre cuentas.
+    sessionState.loadSession.mockResolvedValueOnce({ token: 'tok', email: 'a@b.c' });
+    ph.distinctId = 'a@b.c';
+    const a = await import('./analytics');
+    a.getPostHogClient();
+    await flush();
+    expect(ph.instances[0]!.identify).not.toHaveBeenCalled();
+  });
+
   it('capture pasa evento y props al cliente tal cual', async () => {
     const a = await import('./analytics');
     a.getPostHogClient();
@@ -126,6 +148,7 @@ describe('con key', () => {
     const a = await import('./analytics');
     a.getPostHogClient();
     const inst = ph.instances[0]!;
+    await flush(); // M3: el seed async identifica primero; sin esto su llamada caería en el mock que lanzará
     a.identifyUser('user@example.com');
     expect(inst.identify).toHaveBeenCalledWith('user@example.com');
 
@@ -145,9 +168,54 @@ describe('con key', () => {
     const a = await import('./analytics');
     a.getPostHogClient();
     await flush();
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('deviceId'), expect.any(Error));
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('identidad del dispositivo'),
+      expect.any(Error),
+    );
     expect(ph.instances[0]!.identify).not.toHaveBeenCalled();
     expect(() => a.capture('live_tab_viewed')).not.toThrow();
+    warn.mockRestore();
+  });
+});
+
+describe('resetIdentity (cierre de sesión)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    ph.instances.length = 0;
+    ph.distinctId = 'sdk-anon-uuid';
+    sessionState.loadSession.mockClear();
+    delete process.env['EXPO_PUBLIC_POSTHOG_KEY'];
+    delete process.env['EXPO_PUBLIC_POSTHOG_HOST'];
+  });
+
+  it('llama a reset del SDK (muere el email persistido al cerrar sesión)', async () => {
+    process.env['EXPO_PUBLIC_POSTHOG_KEY'] = 'phc_test';
+    const a = await import('./analytics');
+    a.getPostHogClient();
+    const inst = ph.instances[0]!;
+    await flush();
+    a.resetIdentity();
+    expect(inst.reset).toHaveBeenCalledTimes(1);
+  });
+
+  it('es no-op sin key: no hay cliente y no lanza', async () => {
+    const a = await import('./analytics');
+    expect(() => a.resetIdentity()).not.toThrow(); // sin key: no hay cliente
+    expect(ph.instances).toHaveLength(0);
+  });
+
+  it('no lanza si el SDK falla (warn y seguir)', async () => {
+    process.env['EXPO_PUBLIC_POSTHOG_KEY'] = 'phc_test';
+    const a = await import('./analytics');
+    a.getPostHogClient();
+    await flush();
+    const inst = ph.instances[0]!;
+    inst.reset.mockImplementation(() => {
+      throw new Error('boom');
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(() => a.resetIdentity()).not.toThrow();
+    expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
 });
