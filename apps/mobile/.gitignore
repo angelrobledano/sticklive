@@ -33,6 +33,9 @@ yarn-error.*
 # local env files
 .env*.local
 
+# credenciales de submit de Google Play (Task 5.3, nunca se commitea)
+play-service-account.json
+
 # typescript
 *.tsbuildinfo
 

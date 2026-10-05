@@ -32,8 +32,16 @@ export default {
       // Publicar source maps además requiere sentryCli authToken como secret de
       // EAS en build — paso de release (5.3/5.4), no de esta tarea.
       ['@sentry/react-native/expo', {}],
+      // OTA (Task 5.3): la URL de updates aún es placeholder hasta `eas init`
+      // (mismo prerequisito humano de Task 4.2): sustituir <projectId> por el
+      // ID real que devuelve `npx eas init`.
+      'expo-updates',
     ],
     experiments: { typedRoutes: true },
+    // OTA (Task 5.3): runtimeVersion derivada de `version` — cada release
+    // pública lleva runtime propia y `eas update` sólo toca JS compatible.
+    runtimeVersion: { policy: 'appVersion' },
+    updates: { url: 'https://u.expo.dev/<projectId>' },
     extra: {
       eas: { projectId: '' }, // se rellena con `eas init` en M5 (push lo exige)
       // DSN de la app móvil (env en build; vacío = Sentry.init no se llama).
