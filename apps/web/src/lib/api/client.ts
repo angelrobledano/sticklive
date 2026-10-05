@@ -365,8 +365,9 @@ export async function getSeasonStats(seasonId: string): Promise<SeasonStats> {
 
 // ─── Team detail ───
 
-export async function getTeamDetail(teamId: string): Promise<TeamDetail> {
-  return apiFetch<TeamDetail>(`/teams/${teamId}`, {
+export async function getTeamDetail(teamId: string, seasonId?: string | null): Promise<TeamDetail> {
+  const qs = seasonId ? `?season=${encodeURIComponent(seasonId)}` : '';
+  return apiFetch<TeamDetail>(`/teams/${teamId}${qs}`, {
     next: { revalidate: 120, tags: [`team-${teamId}`] },
   });
 }

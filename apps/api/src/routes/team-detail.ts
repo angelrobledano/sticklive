@@ -48,6 +48,27 @@ interface StandingRow {
   penalization_points: number | null;
 }
 
+interface SeasonRow {
+  id: string;
+  name: string;
+  is_current: boolean;
+  competition_name: string;
+  competition_short_name: string | null;
+}
+
+/**
+ * Temporada a mostrar en la ficha: la pedida por `?season=` si el equipo
+ * participa en ella; si no (o si no se pide), la PRIMERA del listado — que ya
+ * viene ordenado con la actual (y la que tiene clasificación) primero. Pura.
+ */
+export function resolveSelectedSeason(
+  requested: string | null,
+  seasons: readonly { id: string }[],
+): string | null {
+  if (requested && seasons.some((s) => s.id === requested)) return requested;
+  return seasons[0]?.id ?? null;
+}
+
 interface MatchRow {
   id: string;
   status: string;
@@ -83,8 +104,10 @@ interface SquadRow {
 }
 
 /**
- * GET /teams/:id
- * Devuelve: datos del club, standing actual, partidos de temporada, plantilla con stats.
+ * GET /teams/:id[?season=<uuid>]
+ * Devuelve: datos del club, temporadas del equipo (para el selector), y la
+ * clasificación, partidos, plantilla con stats y cuerpo técnico DE LA TEMPORADA
+ * elegida (por defecto, la actual).
  */
 teamDetailRouter.get('/:id', async (c) => {
   const id = c.req.param('id');
@@ -93,10 +116,18 @@ teamDetailRouter.get('/:id', async (c) => {
   // (enlace corrupto/bot) en vez de 404 (#275).
   if (!isUuid(id)) return c.json({ error: 'Not found' }, 404);
 
+  // Temporada a mostrar (opcional): la elegida por el selector de la ficha. Un
+  // id malformado es un error de petición, no un 404.
+  const seasonParam = c.req.query('season');
+  if (seasonParam !== undefined && !isUuid(seasonParam)) {
+    return c.json({ error: 'season must be a UUID' }, 400);
+  }
+
   try {
-    // #333: equipo, clasificación, temporadas activas y secciones del club sólo
-    // dependen de `id` y son independientes → en paralelo.
-    const [teamRes, standingRes, seasonsRes, clubTeamsRes] = await Promise.all([
+    // #333: equipo, temporadas del equipo y secciones del club sólo dependen de
+    // `id` → en paralelo. La clasificación depende de la temporada elegida, así
+    // que se consulta en el segundo lote.
+    const [teamRes, seasonsRes, clubTeamsRes] = await Promise.all([
       // 1) Info del equipo
       db.query<TeamRow>(
         `SELECT t.id, t.name, t.short_name, t.city, t.country, t.logo_url, t.website_url,
@@ -113,35 +144,25 @@ teamDetailRouter.get('/:id', async (c) => {
         [id]
       ),
 
-      // 2) Standing + nombre de competición (temporada activa)
-      db.query<StandingRow>(`
-        SELECT
-          s.season_id,
-          se.competition_id,
-          c.name          AS competition_name,
-          c.short_name    AS competition_short_name,
-          s.position,
-          s.played,   s.won,   s.drawn,   s.lost,
-          s.goals_for, s.goals_against, s.goal_diff,
-          s.points,   s.form,
-          s.penalization_points
-        FROM standings s
-        JOIN seasons se ON se.id = s.season_id
+      // 2) TODAS las temporadas con datos del equipo (season_teams ∪ clasificación
+      // ∪ partidos) para el selector. Orden: actual primero y, dentro de las
+      // actuales, la que tiene clasificación (la liga, no la copa) → buen default.
+      db.query<SeasonRow>(`
+        SELECT se.id, se.name, se.is_current,
+               c.name AS competition_name, c.short_name AS competition_short_name
+        FROM seasons se
         JOIN competitions c ON c.id = se.competition_id
-        WHERE s.team_id = $1
-          AND se.is_current = TRUE
-        ORDER BY s.points DESC
-        LIMIT 1
-      `, [id]),
-
-      // Temporadas activas del equipo — desde season_teams, NO desde standings.
-      // Las eliminatorias (playoff) no tienen clasificación y dejaban la ficha
-      // del equipo sin partidos ni plantilla.
-      db.query<{ season_id: string }>(`
-        SELECT st.season_id
-        FROM season_teams st
-        JOIN seasons se ON se.id = st.season_id
-        WHERE st.team_id = $1 AND se.is_current = TRUE
+        WHERE se.id IN (
+          SELECT season_id FROM season_teams WHERE team_id = $1
+          UNION
+          SELECT season_id FROM standings   WHERE team_id = $1
+          UNION
+          SELECT season_id FROM matches     WHERE home_team_id = $1 OR away_team_id = $1
+        )
+        ORDER BY se.is_current DESC,
+                 EXISTS (SELECT 1 FROM standings st WHERE st.season_id = se.id AND st.team_id = $1) DESC,
+                 se.start_date DESC NULLS LAST,
+                 se.name DESC
       `, [id]),
 
       // #197: otras secciones del mismo club (join sobre club_id; el self-join no
@@ -159,12 +180,11 @@ teamDetailRouter.get('/:id', async (c) => {
 
     if (teamRes.rows.length === 0) return c.json({ error: 'Team not found' }, 404);
     const teamRow = teamRes.rows[0]!;
-    const standingRow = standingRes.rows[0] ?? null;
     const clubTeams = orderClubTeams(clubTeamsRes.rows);
-    const currentSeasonIds = seasonsRes.rows.map((r) => r.season_id);
-    if (standingRow && !currentSeasonIds.includes(standingRow.season_id)) {
-      currentSeasonIds.push(standingRow.season_id);
-    }
+    const seasons = seasonsRes.rows;
+    const selectedSeasonId = resolveSelectedSeason(seasonParam ?? null, seasons);
+    const currentSeasonIds = selectedSeasonId ? [selectedSeasonId] : [];
+    let standingRow: StandingRow | null = null;
 
     // #333: partidos, plantilla, cuerpo técnico y stats sólo dependen del mismo
     // `currentSeasonIds` → un único Promise.all para los cuatro grupos (antes
@@ -175,8 +195,28 @@ teamDetailRouter.get('/:id', async (c) => {
     let teamStats: Record<string, unknown> | null = null;
 
     if (currentSeasonIds.length > 0) {
-      const [matchRes, squadRes, staffRes, [resultsRes, eventsRes, lineupRes]] = await Promise.all([
-        // 3) Partidos de las temporadas activas donde participa el equipo
+      const [standingRes, matchRes, squadRes, staffRes, [resultsRes, eventsRes, lineupRes]] = await Promise.all([
+        // 2) Clasificación del equipo EN LA TEMPORADA elegida (puede no haber:
+        // una eliminatoria no tiene clasificación).
+        db.query<StandingRow>(`
+          SELECT
+            s.season_id,
+            se.competition_id,
+            c.name          AS competition_name,
+            c.short_name    AS competition_short_name,
+            s.position,
+            s.played,   s.won,   s.drawn,   s.lost,
+            s.goals_for, s.goals_against, s.goal_diff,
+            s.points,   s.form,
+            s.penalization_points
+          FROM standings s
+          JOIN seasons se ON se.id = s.season_id
+          JOIN competitions c ON c.id = se.competition_id
+          WHERE s.team_id = $1 AND s.season_id = $2
+          LIMIT 1
+        `, [id, selectedSeasonId]),
+
+        // 3) Partidos de la temporada elegida donde participa el equipo
         db.query<MatchRow>(`
           SELECT
             m.id, m.status, m.scheduled_at, m.started_at, m.finished_at,
@@ -201,7 +241,7 @@ teamDetailRouter.get('/:id', async (c) => {
           ORDER BY m.scheduled_at ASC NULLS LAST
         `, [currentSeasonIds, id]),
 
-        // 4) Plantilla con stats agregadas de match_events (temporadas activas)
+        // 4) Plantilla con stats agregadas de match_events (temporada elegida)
         db.query<SquadRow>(`
           SELECT
             p.id            AS player_id,
@@ -266,7 +306,7 @@ teamDetailRouter.get('/:id', async (c) => {
           ORDER BY ml.player_name, m.scheduled_at DESC
         `, [currentSeasonIds, id]),
 
-        // 5) Estadísticas propias del equipo (temporadas activas)
+        // 5) Estadísticas propias del equipo (temporada elegida)
         Promise.all([
           // Resultados y faltas de equipo desde matches
           db.query<{
@@ -323,6 +363,7 @@ teamDetailRouter.get('/:id', async (c) => {
         ]),
       ]);
 
+      standingRow = standingRes.rows[0] ?? null;
       matchRows = matchRes.rows;
       squadRows = squadRes.rows;
 
@@ -455,7 +496,25 @@ teamDetailRouter.get('/:id', async (c) => {
       sectionSuffix: sectionSuffix(r),
     }));
 
-    return c.json({ team, clubTeams: clubTeamsPayload, standing, matches, squad, staff, stats: teamStats });
+    const seasonsPayload = seasons.map((s) => ({
+      id: s.id,
+      name: s.name,
+      isCurrent: s.is_current,
+      competitionName: s.competition_name,
+      competitionShort: s.competition_short_name,
+    }));
+
+    return c.json({
+      team,
+      clubTeams: clubTeamsPayload,
+      seasons: seasonsPayload,
+      selectedSeasonId,
+      standing,
+      matches,
+      squad,
+      staff,
+      stats: teamStats,
+    });
   } catch (err) {
     captureRouteError(err, 'team-detail] GET /:id error');
     logger.error({ err }, '[team-detail] GET /:id error');

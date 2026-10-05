@@ -225,6 +225,15 @@ export interface CompetitionSeason {
   isCurrent: boolean;
 }
 
+/** Temporada del equipo para el selector de su ficha (con la competición). */
+export interface TeamSeason {
+  id: string;
+  name: string;
+  isCurrent: boolean;
+  competitionName: string;
+  competitionShort: string | null;
+}
+
 export interface SeasonLeader {
   playerId: string | null;
   playerName: string;
@@ -342,6 +351,10 @@ export interface TeamDetail {
     club: TeamClub | null;
   };
   standing: TeamStanding | null;
+  /** Temporadas del equipo para el selector (actual primero). */
+  seasons?: TeamSeason[];
+  /** Temporada mostrada (la de `?season=` o, por defecto, la actual). */
+  selectedSeasonId?: string | null;
   matches: TeamMatchSummary[];
   squad: SquadPlayer[];
   staff?: TeamStaffMember[];

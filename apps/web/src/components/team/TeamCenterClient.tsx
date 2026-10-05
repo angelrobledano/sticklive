@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import type { TeamDetail, TeamMatchSummary, SquadPlayer } from '@/lib/api/client';
+import { useRouter } from 'next/navigation';
+import type { TeamDetail, TeamMatchSummary, SquadPlayer, TeamSeason } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName } from '@/components/shared/TeamName';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
@@ -84,6 +85,15 @@ export function teamSearchHref(team: TeamDetailView['team']): string {
   return `/search?q=${encodeURIComponent(q)}`;
 }
 
+/**
+ * Etiqueta de una opción del selector de temporada: "Competición · 2025/26"
+ * (+ "· Actual" si es la vigente). Pura: recibe `t` para testearla sin i18n.
+ */
+export function seasonOptionLabel(s: TeamSeason, t: (key: string) => string): string {
+  const comp = s.competitionShort ?? s.competitionName;
+  return `${comp} · ${s.name}${s.isCurrent ? ` · ${t('common.current')}` : ''}`;
+}
+
 // La zona de la competición del partido (columna 042); cae a Europe/Madrid. Un
 // equipo puede jugar en varias competiciones, así que la TZ es por partido.
 function formatTime(iso: string | null, locale = 'es', tz?: string | null): string {
@@ -120,6 +130,8 @@ function FormBadge({ result }: { result: string }) {
 function TeamHeader({ data }: { data: TeamDetailView }) {
   const { team, standing } = data;
   const { t } = useT();
+  const router = useRouter();
+  const seasons = data.seasons ?? [];
   const form = standing?.form?.slice(-5) ?? [];
   // #196: dos secciones del mismo club comparten nombre canónico; el badge las
   // distingue (p. ej. "Femenino · Senior", "Masculino · Senior · Filial B").
@@ -152,6 +164,31 @@ function TeamHeader({ data }: { data: TeamDetailView }) {
             >
               {standing.competitionShort ?? standing.competitionName}
             </Link>
+          )}
+
+          {/* Selector de temporada: acota la ficha (clasificación, partidos,
+              plantilla y stats) a la temporada elegida. Solo si hay más de una.
+              Navega a `?season=` → el servidor re-renderiza con esa temporada. */}
+          {seasons.length > 1 && (
+            <select
+              value={data.selectedSeasonId ?? ''}
+              onChange={(e) => {
+                // Preserva `?tab=` (y otros): cambiar de temporada no debe
+                // devolver al usuario a la pestaña Resumen.
+                const params = new URLSearchParams(window.location.search);
+                params.set('season', e.target.value);
+                router.push(`/teams/${team.id}?${params.toString()}`);
+              }}
+              className="block max-w-full mt-1 text-xs font-light text-slate-500 dark:text-slate-400
+                         bg-transparent border-0 rounded-md px-1 py-0 pr-6 cursor-pointer appearance-auto
+                         hover:text-slate-600 dark:hover:text-slate-300
+                         focus:outline-none focus:ring-1 focus:ring-rink-passion dark:focus:ring-red-400"
+              aria-label={tt(t, 'team.season', 'Temporada')}
+            >
+              {seasons.map((s) => (
+                <option key={s.id} value={s.id}>{seasonOptionLabel(s, t)}</option>
+              ))}
+            </select>
           )}
         </div>
 

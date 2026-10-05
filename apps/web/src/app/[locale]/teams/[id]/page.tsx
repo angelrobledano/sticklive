@@ -12,6 +12,7 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
 interface Props {
   params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<{ season?: string }>;
 }
 
 const DESC: Record<string, (n: string) => string> = {
@@ -39,9 +40,10 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
 export default async function TeamDetailPage(props: Props) {
   const params = await props.params;
+  const searchParams = await props.searchParams;
   let data;
   try {
-    data = await getTeamDetail(params.id);
+    data = await getTeamDetail(params.id, searchParams.season);
   } catch (err) {
     if (isApiNotFound(err)) notFound();
     throw err; // error boundary con reintento — no convertir caídas de API en 404
