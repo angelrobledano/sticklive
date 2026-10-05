@@ -83,7 +83,7 @@ function mkDetail(
   };
 }
 
-const base: MatchState = { detail: null, connected: false, transport: 'sse' };
+const base: MatchState = { detail: null, connected: false, transport: 'sse', stale: false, staleAt: null };
 
 describe('backoffDelay', () => {
   it('crece exponencialmente y se topa en 30s', () => {
@@ -151,5 +151,31 @@ describe('applyStreamPatch', () => {
     expect(state.transport).toBe('poll');
     expect(state.connected).toBe(false);
     expect(state.detail).not.toBeNull();
+  });
+
+  // Task 5.2 (backlog #5): el hub emite `event: stale` cuando su poll falla
+  // (#284). El patch marca el desfase conservando el detalle y la conexión
+  // (el SSE sigue abierto: lo que está congelado son los DATOS, no el canal).
+  it('stale marca el desfase con su instante y conserva detalle y conexión', () => {
+    let state = applyStreamPatch(base, { kind: 'snapshot', detail: mkDetail() });
+    state = applyStreamPatch(state, { kind: 'stale', staleAt: 1_234 });
+    expect(state.stale).toBe(true);
+    expect(state.staleAt).toBe(1_234);
+    expect(state.detail).not.toBeNull();
+    expect(state.connected).toBe(true);
+  });
+
+  // Cualquier snapshot/update posterior significa datos frescos: limpia el
+  // desfase (el `stale: false` del hub va seguido del fanout con el DTO
+  // completo, así que el reset canónico ocurre ahí).
+  it('snapshot y update posteriores limpian el desfase', () => {
+    let state = applyStreamPatch(base, { kind: 'stale', staleAt: 1_234 });
+    state = applyStreamPatch(state, { kind: 'snapshot', detail: mkDetail() });
+    expect(state.stale).toBe(false);
+    expect(state.staleAt).toBeNull();
+    state = applyStreamPatch(state, { kind: 'stale', staleAt: 5_678 });
+    state = applyStreamPatch(state, { kind: 'update', detail: mkDetail() });
+    expect(state.stale).toBe(false);
+    expect(state.staleAt).toBeNull();
   });
 });

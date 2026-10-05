@@ -6,7 +6,7 @@ import { MatchCard } from '@/src/components/match/MatchCard';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { capture } from '@/src/lib/analytics';
-import { formatDayLabel, isEffectivelyLive } from '@/src/lib/time';
+import { formatDayKey, formatDayLabel, isEffectivelyLive } from '@/src/lib/time';
 import type { MatchSummary } from '@/src/lib/api/types';
 
 interface Section {
@@ -27,16 +27,23 @@ export default function LiveScreen() {
   const sections = useMemo<Section[]>(() => {
     const list = data ?? [];
     const live = list.filter((m) => isEffectivelyLive(m.status, m.scheduledAt));
+    // Clave de sección = fecha ISO (formatDayKey, Task 5.2): estable y sin
+    // colisiones con '__live__' ni con etiquetas localizadas. La etiqueta
+    // humanizada va aparte (todos los partidos del bucket comparten día).
     const byDay = new Map<string, MatchSummary[]>();
     for (const m of list.filter((x) => !isEffectivelyLive(x.status, x.scheduledAt))) {
-      const key = formatDayLabel(m.scheduledAt) || '—';
+      const key = formatDayKey(m.scheduledAt) || 'nodate';
       const bucket = byDay.get(key) ?? [];
       bucket.push(m);
       byDay.set(key, bucket);
     }
     return [
       ...(live.length ? [{ key: '__live__', title: t('match_states.live'), matches: live }] : []),
-      ...[...byDay.entries()].map(([key, matches]) => ({ key, title: key, matches })),
+      ...[...byDay.entries()].map(([key, matches]) => ({
+        key,
+        title: key === 'nodate' ? '—' : formatDayLabel(matches[0]?.scheduledAt ?? null),
+        matches,
+      })),
     ];
   }, [data, t]);
 

@@ -105,6 +105,9 @@
     "manage_help": "Le squadre e i campionati selezionati appariranno in cima al tuo calendario e attiverai i loro avvisi automatici.",
     "teams": "Squadre",
     "leagues": "Campionati",
+    "placeholder_team": "Squadra",
+    "placeholder_league": "Campionato",
+    "placeholder_player": "Giocatore",
     "onboarding_done": "Fatto · Vedi le partite",
     "onboarding_skip": "Salta per ora",
     "onboarding_title": "La tua tribuna personalizzata",
@@ -385,7 +388,6 @@
     "theme_system": "Sistema",
     "theme_light": "Chiaro",
     "theme_dark": "Scuro",
-    "notif_coming_soon": "Prossimamente disponibile",
     "footer": "Stick Live v1.0.0 · Fatto per gli appassionati di hockey",
     "privacy_link": "Informativa sulla privacy"
   },

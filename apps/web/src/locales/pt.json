@@ -105,6 +105,9 @@
     "manage_help": "As equipas e ligas que selecionares aparecerão no topo do teu calendário e ativarás os seus alertas automáticos.",
     "teams": "Equipas",
     "leagues": "Ligas",
+    "placeholder_team": "Equipa",
+    "placeholder_league": "Liga",
+    "placeholder_player": "Jogador",
     "onboarding_done": "Pronto · Ver jogos",
     "onboarding_skip": "Saltar por agora",
     "onboarding_title": "A tua bancada personalizada",
@@ -385,7 +388,6 @@
     "theme_system": "Sistema",
     "theme_light": "Claro",
     "theme_dark": "Escuro",
-    "notif_coming_soon": "Disponível em breve",
     "footer": "Stick Live v1.0.0 · Feito para apaixonados do hóquei",
     "privacy_link": "Política de privacidade"
   },

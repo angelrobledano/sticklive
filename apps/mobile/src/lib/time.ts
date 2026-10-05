@@ -21,6 +21,20 @@ export function formatDayLabel(iso: string | null): string {
 }
 
 /**
+ * Clave estable de sección por día (YYYY-MM-DD en Europe/Madrid), Task 5.2:
+ * la home la usa como key de sección (la etiqueta humanizada va aparte y puede
+ * repetirse/localizarse; la clave es ISO y no colisiona con '__live__').
+ */
+export function formatDayKey(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: MADRID,
+  }).format(d);
+}
+
+/**
  * "En juego por reloj": misma regla que la web (MatchCard) y el API
  * (effective-status): un partido scheduled dentro de las STALE_LIVE_HOURS tras
  * el saque se pinta EN DIRECTO. Fuente única en @sports/shared-types.

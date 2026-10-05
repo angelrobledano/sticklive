@@ -17,11 +17,14 @@ export function MatchCard({ match }: { match: MatchSummary }) {
   return (
     <Pressable
       onPress={() => router.push(`/match/${match.id}`)}
+      accessibilityRole="button"
       className="mx-3 my-1 rounded-xl bg-white p-3 active:opacity-70 dark:bg-slate-900"
     >
-      <Text className="text-[10px] uppercase tracking-wide text-slate-500">
-        {match.competitionName ?? ''}
-      </Text>
+      {match.competitionName ? (
+        <Text className="text-[10px] uppercase tracking-wide text-slate-500">
+          {match.competitionName}
+        </Text>
+      ) : null}
       <View className="mt-1 flex-row items-center justify-between">
         <Text className="flex-1 text-base font-semibold text-slate-900 dark:text-slate-100" numberOfLines={1}>
           {match.homeTeam.shortName ?? match.homeTeam.name}

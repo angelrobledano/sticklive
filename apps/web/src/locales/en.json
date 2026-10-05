@@ -136,6 +136,9 @@
     "manage_help": "The teams and leagues you select will appear at the top of your calendar and their automatic alerts will be enabled.",
     "teams": "Teams",
     "leagues": "Leagues",
+    "placeholder_team": "Team",
+    "placeholder_league": "League",
+    "placeholder_player": "Player",
     "onboarding_done": "Done · See matches",
     "onboarding_skip": "Skip for now",
     "onboarding_title": "Your personal stand",
@@ -416,7 +419,6 @@
     "theme_system": "System",
     "theme_light": "Light",
     "theme_dark": "Dark",
-    "notif_coming_soon": "Coming soon",
     "footer": "Stick Live v1.0.0 · Made for hockey lovers",
     "privacy_link": "Privacy policy"
   },

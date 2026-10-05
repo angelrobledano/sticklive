@@ -30,8 +30,11 @@ const MAX_SSE_FAILURES = 3;
  *   inexistente, :250) y el servidor cierra; `timeout` →
  *   `{"reason":"max_duration"}` y el servidor cierra (:374); `keepalive` →
  *   vacío (:386); `stale` → `{ stale, updatedAt }` cuando el poll del hub
- *   falla (#284, :244). El móvil ignora keepalive y stale (sin indicador de
- *   frescura por ahora); finished/error/timeout se gestionan abajo.
+ *   falla (#284, :244) y `{ stale: false, updatedAt }` al recuperar (:256).
+ *   El móvil ignora keepalive; de `stale` sólo el aviso true marca desfase
+ *   (la recuperación va seguida del fanout con el DTO completo, y cualquier
+ *   snapshot/update limpia el desfase en el reducer); finished/error/timeout
+ *   se gestionan abajo.
  * - Autenticación: el endpoint es PÚBLICO (limita conexiones por IP,
  *   match-stream.ts:325-337; no hay middleware de sesión en la ruta). El
  *   header Authorization se envía sólo si hay token; hoy es inofensivo.
@@ -46,9 +49,9 @@ const MAX_SSE_FAILURES = 3;
  *   después de esa programación y la limpia.
  */
 
-type StreamEventName = 'snapshot' | 'update' | 'finished' | 'timeout';
+type StreamEventName = 'snapshot' | 'update' | 'finished' | 'timeout' | 'stale';
 
-const INITIAL: MatchState = { detail: null, connected: false, transport: 'sse' };
+const INITIAL: MatchState = { detail: null, connected: false, transport: 'sse', stale: false, staleAt: null };
 
 /** Cierra el EventSource en el siguiente tick (ver comentario de arriba). */
 function closeDeferred(es: EventSource<StreamEventName>): void {
@@ -141,6 +144,19 @@ export function useMatchLive(matchId: string, token: string | null | undefined) 
         if (detail) onData(detail);
       } catch {
         // Ídem.
+      }
+    });
+    // Congelación de datos (#284): el hub avisa `stale` cuando su poll falla.
+    // Sin reconexión ni cambio de transporte: el aviso sólo marca el estado
+    // que la ficha pinta como "posible desfase". El `stale: false` de
+    // recuperación se ignora a propósito: llega seguido del fanout con el DTO
+    // completo, y snapshot/update limpian el flag en el reducer.
+    es.addEventListener('stale', (ev) => {
+      try {
+        const p = JSON.parse(ev.data as string) as { stale: boolean };
+        if (p.stale) dispatch({ kind: 'stale', staleAt: Date.now() });
+      } catch {
+        // Payload malformado: no tumbar la pantalla.
       }
     });
     // Reciclaje normal del servidor (2h): reconectar inmediatamente no cuenta

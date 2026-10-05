@@ -69,8 +69,8 @@ export default function StandingsScreen() {
                 onPress={() => setSelectedId(item.id)}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
-                className={`min-h-[44px] justify-center rounded-full px-3 ${
-                  active ? 'bg-rink-passion' : 'bg-slate-100 active:opacity-70 dark:bg-slate-800'
+                className={`min-h-[44px] justify-center rounded-full px-3 active:opacity-70 ${
+                  active ? 'bg-rink-passion' : 'bg-slate-100 dark:bg-slate-800'
                 }`}
               >
                 <Text
@@ -105,6 +105,9 @@ export default function StandingsScreen() {
           data={rows}
           keyExtractor={(r) => r.id}
           contentContainerStyle={{ paddingBottom: 24 }}
+          // Datos previos mientras carga el chip nuevo (keepPreviousData):
+          // atenuados para que no se lean como definitivos.
+          style={standings.isPlaceholderData ? { opacity: 0.6 } : undefined}
           ListEmptyComponent={<EmptyState title={t('standings.no_data')} />}
           renderItem={({ item }) => (
             <Pressable

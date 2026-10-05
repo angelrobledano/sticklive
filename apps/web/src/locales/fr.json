@@ -105,6 +105,9 @@
     "manage_help": "Les équipes et ligues sélectionnées apparaîtront en haut de votre calendrier et leurs alertes automatiques seront activées.",
     "teams": "Équipes",
     "leagues": "Ligues",
+    "placeholder_team": "Équipe",
+    "placeholder_league": "Ligue",
+    "placeholder_player": "Joueur",
     "onboarding_done": "Prêt · Voir les matchs",
     "onboarding_skip": "Passer pour l’instant",
     "onboarding_title": "Votre tribune personnalisée",
@@ -385,7 +388,6 @@
     "theme_system": "Système",
     "theme_light": "Clair",
     "theme_dark": "Sombre",
-    "notif_coming_soon": "Bientôt disponible",
     "footer": "Stick Live v1.0.0 · Fait pour les passionnés de hockey",
     "privacy_link": "Politique de confidentialité"
   },

@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { ScrollView, Text, View } from 'react-native';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useMatchDetail } from '@/src/hooks/queries';
 import { useMatchLive } from '@/src/hooks/useMatchLive';
@@ -20,6 +20,17 @@ export default function MatchScreen() {
   useEffect(() => {
     if (matchId) capture('match_opened', { match_id: matchId });
   }, [matchId]);
+
+  // Reloj del desfase (Task 5.2): sólo corre mientras el stream está marcado
+  // como stale (los datos están congelados y el "hace N s" avanza); con la
+  // recuperación el intervalo se limpia y no hay re-renders extra.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!live.stale) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [live.stale]);
+
   // live.detail y query.data comparten la misma caché de QueryClient; el stream
   // es la fuente en caliente y la query el fallback en frío.
   const current = live.detail ?? query.data;
@@ -33,6 +44,11 @@ export default function MatchScreen() {
   }
 
   const m = current.match;
+  const finished = m.status === 'finished';
+  // Edad del desfase en segundos (el locale lleva el placeholder {s}, igual
+  // que search.hint con {n}: t() del móvil no interpola).
+  const staleSeconds =
+    live.stale && live.staleAt != null ? Math.max(0, Math.round((now - live.staleAt) / 1000)) : 0;
   return (
     <>
       <Stack.Screen
@@ -51,13 +67,22 @@ export default function MatchScreen() {
             </Text>
             <Text className="flex-1 text-center font-semibold">{m.awayTeam.shortName ?? m.awayTeam.name}</Text>
           </View>
-          {/* El poll degradado se muestra aunque lleguen datos; distingue SSE de poll */}
-          <Text className="mt-1 text-xs text-slate-500">
-            {live.transport === 'poll'
-              ? t('match_detail.live_poll')
-              : live.connected
-                ? t('match_detail.live_connected')
-                : t('match_detail.connecting')}
+          {/* Estado del canal/datos: final > poll > desfase > conectado > conectando.
+              En finished el hub muere y cierra: "conectado" sería engañoso (Task 5.2). */}
+          <Text
+            className={`mt-1 text-xs ${
+              live.stale && !finished ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500'
+            }`}
+          >
+            {finished
+              ? t('match_detail.finished')
+              : live.transport === 'poll'
+                ? t('match_detail.live_poll')
+                : live.stale
+                  ? t('match_detail.freshness_stale').replace('{s}', String(staleSeconds))
+                  : live.connected
+                    ? t('match_detail.live_connected')
+                    : t('match_detail.connecting')}
           </Text>
         </View>
         {/* Eventos (el más reciente arriba) */}

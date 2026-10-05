@@ -19,9 +19,14 @@ import type {
  * NO hay endpoint de bulk (se evaluará en M5 si la UX lo pide).
  */
 
-/** Placeholders en duro en español por ahora: el plan los migra a t() en M5
- * (mismo caso que EmptyState; no hay claves singulares en los locales). */
-export const PLACEHOLDER: Record<FavoriteKind, string> = { team: 'Equipo', league: 'Liga', player: 'Jugador' };
+/** Placeholders cuando el nombre no está en caché: claves i18n resueltas con
+ * t() en el punto de uso (Task 5.2; singulares nuevos en los 5 locales bajo
+ * favorites.placeholder_*). La lib sigue siendo pura, sin React. */
+export const PLACEHOLDER_KEY: Record<FavoriteKind, string> = {
+  team: 'favorites.placeholder_team',
+  league: 'favorites.placeholder_league',
+  player: 'favorites.placeholder_player',
+};
 
 export function resolveFavoriteName(qc: QueryClient, kind: FavoriteKind, id: string): string | null {
   if (kind === 'team') {

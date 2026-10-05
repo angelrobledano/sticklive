@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
-import { PLACEHOLDER, resolveFavoriteName } from '@/src/lib/favorite-names';
+import { PLACEHOLDER_KEY, resolveFavoriteName } from '@/src/lib/favorite-names';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
@@ -148,7 +148,7 @@ export default function FavoritesScreen() {
                     key={id}
                     kind={s.kind}
                     refId={id}
-                    name={resolveFavoriteName(qc, s.kind, id) ?? PLACEHOLDER[s.kind]}
+                    name={resolveFavoriteName(qc, s.kind, id) ?? t(PLACEHOLDER_KEY[s.kind])}
                     onPress={() => openFavorite(s.kind, id)}
                   />
                 ))}

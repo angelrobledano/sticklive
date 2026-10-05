@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDayLabel, formatKickoff, isEffectivelyLive } from './time';
+import { formatDayKey, formatDayLabel, formatKickoff, isEffectivelyLive } from './time';
 import { STALE_LIVE_HOURS } from '@sports/shared-types';
 
 describe('time', () => {
@@ -26,5 +26,21 @@ describe('time', () => {
   it('guard de NaN: fecha inválida → "--:--" / ""', () => {
     expect(formatKickoff('no-fecha')).toBe('--:--');
     expect(formatDayLabel('no-fecha')).toBe('');
+  });
+
+  // Task 5.2: clave de sección de la home por fecha ISO (estable, sin
+  // colisiones con '__live__' ni entre etiquetas localizadas).
+  it('formatDayKey pinta YYYY-MM-DD en Europe/Madrid', () => {
+    // 17:00 UTC de un día de verano = 19:00 Madrid → mismo día
+    expect(formatDayKey('2026-10-03T17:00:00.000Z')).toBe('2026-10-03');
+  });
+
+  it('formatDayKey cruza el día según Madrid (22:30 UTC de octubre = 00:30 del día siguiente)', () => {
+    expect(formatDayKey('2026-10-03T22:30:00.000Z')).toBe('2026-10-04');
+  });
+
+  it('formatDayKey: sin fecha o inválida → ""', () => {
+    expect(formatDayKey(null)).toBe('');
+    expect(formatDayKey('no-fecha')).toBe('');
   });
 });

@@ -6,7 +6,7 @@ import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
 import { getDeviceId } from '@/src/lib/device';
-import { PLACEHOLDER, resolveFavoriteName } from '@/src/lib/favorite-names';
+import { PLACEHOLDER_KEY, resolveFavoriteName } from '@/src/lib/favorite-names';
 import {
   getSavedPushToken,
   loadPushPrefs,
@@ -371,7 +371,7 @@ export default function NotificationsScreen() {
                     key={id}
                     kind={s.kind}
                     id={id}
-                    name={resolveFavoriteName(queryClient, s.kind, id) ?? PLACEHOLDER[s.kind]}
+                    name={resolveFavoriteName(queryClient, s.kind, id) ?? t(PLACEHOLDER_KEY[s.kind])}
                     preset={uiPreset(prefs.presets[presetKey(s.kind, id)] ?? 'key_events')}
                     onPreset={setEntityPreset}
                   />

@@ -105,6 +105,10 @@ export function useStandings(seasonId: string | undefined) {
     queryFn: () => fetchStandings(seasonId ?? ''),
     enabled: standingsEnabled(seasonId),
     select: selectStandings,
+    // Task 5.2: conserva la tabla anterior mientras carga el chip nuevo
+    // (sin flash de vacío al cambiar de competición; la UI marca los datos
+    // previos con isPlaceholderData).
+    placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
 }

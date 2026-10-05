@@ -141,6 +141,9 @@
     "manage_help": "Los equipos y ligas que selecciones aparecerán en la parte superior de tu calendario y activarás sus alertas automáticas.",
     "teams": "Equipos",
     "leagues": "Ligas",
+    "placeholder_team": "Equipo",
+    "placeholder_league": "Liga",
+    "placeholder_player": "Jugador",
     "onboarding_done": "Listo · Ver partidos",
     "onboarding_skip": "Saltar por ahora",
     "onboarding_title": "Tu grada personalizada",
@@ -421,7 +424,6 @@
     "theme_system": "Sistema",
     "theme_light": "Claro",
     "theme_dark": "Oscuro",
-    "notif_coming_soon": "Disponible próximamente",
     "footer": "Stick Live v1.0.0 · Hecho para apasionados del hockey",
     "privacy_link": "Política de privacidad"
   },
