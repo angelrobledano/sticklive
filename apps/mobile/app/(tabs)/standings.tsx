@@ -67,7 +67,9 @@ export default function StandingsScreen() {
             return (
               <Pressable
                 onPress={() => setSelectedId(item.id)}
-                className={`min-h-[36px] justify-center rounded-full px-3 ${
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                className={`min-h-[44px] justify-center rounded-full px-3 ${
                   active ? 'bg-rink-passion' : 'bg-slate-100 active:opacity-70 dark:bg-slate-800'
                 }`}
               >

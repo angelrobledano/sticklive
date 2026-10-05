@@ -33,7 +33,7 @@ function OptionChip({ label, active, onPress }: { label: string; active: boolean
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={`min-h-[36px] justify-center rounded-full px-3 active:opacity-70 ${
+      className={`min-h-[44px] justify-center rounded-full px-3 active:opacity-70 ${
         active ? 'bg-rink-passion' : 'bg-slate-100 dark:bg-slate-800'
       }`}
     >
@@ -60,7 +60,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 24 }} className="bg-rink-floor dark:bg-rink-floor-dark">
+    <ScrollView contentContainerStyle={{ paddingBottom: 24 }} className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
       <Text className="px-4 pt-4 text-2xl font-bold text-slate-900 dark:text-slate-100">
         {t('settings.title')}
       </Text>
