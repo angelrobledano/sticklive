@@ -16,10 +16,10 @@
   "dependencies": {
     "@sports/logger": "*",
     "@sports/shared-types": "*",
-    "pg": "^8.22.0"
+    "pg": "^8.23.1"
   },
   "devDependencies": {
-    "@types/pg": "^8.11.0",
+    "@types/pg": "^8.23.1",
     "@types/node": "^20.0.0",
     "ts-node": "^10.9.0",
     "typescript": "^5.4.0",
