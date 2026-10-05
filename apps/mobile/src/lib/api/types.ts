@@ -146,6 +146,11 @@ export interface MatchDetail {
       isStarter: boolean; isCaptain: boolean; goals: number; assists: number;
       playerId: string | null; photoUrl: string | null; }[];
   };
+  /**
+   * Sólo en el stream SSE: instante de captura del snapshot (el API lo añade
+   * al DTO en apps/api/src/routes/match-stream.ts:140-143). REST no lo trae.
+   */
+  updatedAt?: string;
 }
 
 /** Temporada de referencia anidada en cada ítem de /competitions (competitions.ts:110-118). */

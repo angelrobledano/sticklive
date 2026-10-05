@@ -41,6 +41,7 @@
     "playoffs": "Playoffs",
     "stats": "Statistiques",
     "summary": "RÃ©sumÃ©",
+    "events": "Événements",
     "lineups": "Compositions"
   },
   "match_states": {
@@ -230,6 +231,8 @@
     "connecting": "Connexionâ€¦",
     "reconnecting_short": "Reconnexion Â· signal faible",
     "signal_weak": "Signal faible",
+    "live_connected": "En direct · connecté",
+    "live_poll": "En direct · mise à jour",
     "timeline_aria": "Ã‰vÃ©nements du match",
     "referee_short": "Arb.",
     "badge_starter": "5i",

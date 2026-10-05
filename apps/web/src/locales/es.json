@@ -68,6 +68,7 @@
     "playoffs": "Playoffs",
     "stats": "Estadísticas",
     "summary": "Resumen",
+    "events": "Eventos",
     "lineups": "Alineaciones"
   },
   "fixtures": {
@@ -262,6 +263,8 @@
     "connecting": "Conectando…",
     "reconnecting_short": "Reconectando · señal débil",
     "signal_weak": "Señal débil",
+    "live_connected": "En directo · conectado",
+    "live_poll": "En directo · actualizando",
     "timeline_aria": "Eventos del partido",
     "referee_short": "Árb.",
     "badge_starter": "5i",
