@@ -1,17 +1,17 @@
 import { Hono } from 'hono';
-import { randomBytes, createHash } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { db, withTransaction } from '@sports/db';
 import { logger } from '@sports/logger';
 import { rateLimit, rateLimitBy } from '../lib/rate-limit.js';
 import { captureRouteError } from '../lib/route-error.js';
 import { buildFavoritePairs } from '../lib/favorites.js';
+import { hashToken, SESSION_TTL_DAYS, userFromBearer } from '../lib/session-lookup.js';
 import { signState, verifyState } from '../lib/auth-state.js';
 import { postgresNonceStore } from '../lib/oauth-nonce-pg.js';
 
 export const authRouter = new Hono();
 
 const MAGIC_LINK_TTL_MIN = 15;
-const SESSION_TTL_DAYS = 90;
 // Vida del código de canje que el callback entrega a la app por el scheme
 // sticklive:// (Task 3.1). Corto a propósito: es un secreto de un solo uso que
 // viaja por una URL; la app lo canjea inmediatamente al volver a primer plano.
@@ -32,40 +32,9 @@ const DEV_LINKS =
 function newToken(bytes = 32): string {
   return randomBytes(bytes).toString('base64url');
 }
-function hashToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
-}
-
-async function userFromBearer(authHeader: string | undefined) {
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7);
-  if (!token) return null;
-  const res = await db.query<{ id: string; email: string | null; session_id: string }>(
-    `SELECT u.id, u.email, s.id AS session_id
-       FROM user_sessions s
-       JOIN users u ON u.id = s.user_id
-      WHERE s.token_hash = $1
-        AND s.expires_at > NOW()
-        AND u.status = 'active'`,
-    [hashToken(token)]
-  );
-  const user = res.rows[0];
-  if (!user) return null;
-
-  // Caducidad renovable (sliding): cada uso empuja expires_at a +90 días.
-  // El WHERE acota la escritura a una vez al día por sesión como mucho: con
-  // más de TTL-1 días por delante no hay nada que renovar.
-  await db.query(
-    `UPDATE user_sessions
-        SET expires_at = NOW() + make_interval(days => $2::int),
-            last_used_at = NOW()
-      WHERE id = $1
-        AND expires_at < NOW() + make_interval(days => ($2::int - 1))`,
-    [user.session_id, SESSION_TTL_DAYS]
-  );
-
-  return { id: user.id, email: user.email };
-}
+// hashToken y userFromBearer viven en lib/session-lookup.ts: las comparte el
+// push nativo (Task 4.1), que asocia el token del dispositivo al usuario de la
+// sesión opcional. Movidos sin cambiar comportamiento.
 
 async function openSession(userId: string): Promise<string> {
   const session = newToken();
