@@ -16,6 +16,7 @@
  * atraparía. Ese fue el fallo de la prueba de re-scrape de la 23/24.
  */
 import { db, closeDb } from '@sports/db';
+import { STANDINGS_RECONCILE_SQL } from './standings-reconcile.js';
 
 // ── Umbrales (ajustables) ─────────────────────────────────────────────────────
 const MAX_PLAUSIBLE_SCORE = 40;   // marcador por encima de esto = imposible en hockey patines
@@ -111,6 +112,14 @@ async function main() {
        WHERE ${scope} AND m.event_coverage = 'full' AND m.status = 'finished'
          AND ( COALESCE((SELECT g FROM ev WHERE ev.match_id = m.id AND ev.team_id = m.home_team_id), 0) <> COALESCE(m.home_score, 0)
             OR COALESCE((SELECT g FROM ev WHERE ev.match_id = m.id AND ev.team_id = m.away_team_id), 0) <> COALESCE(m.away_score, 0) )`);
+
+  // #226: clasificación ↔ partidos de su MISMA temporada. FAIL acotado al lote
+  // (sus temporadas deben reconciliar antes de promocionar nada); WARN en la
+  // auditoría global (es la deuda histórica conocida, no del lote en curso).
+  await add('standings_reconcile',
+    'Clasificaciones que no reconcilian con los partidos de su temporada (PJ/V/E/D/GF/GC)',
+    batchId ? 'FAIL' : 'WARN',
+    STANDINGS_RECONCILE_SQL, (n) => n > 0, [batchId]);
 
   // ── Informe ────────────────────────────────────────────────────────────────
   const failed = checks.filter((c) => c.fail);
