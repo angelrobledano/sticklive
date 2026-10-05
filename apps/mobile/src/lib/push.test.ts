@@ -1,12 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildSubscribeBody, loadPushPrefs, presetKey } from './push';
+import {
+  buildSubscribeBody,
+  loadPushPrefs,
+  presetKey,
+  pushErrorKey,
+  registerForPushNotifications,
+} from './push';
 
 // Los módulos NATIVOS no existen en vitest (node): mocks mínimos para que la
 // importación de './push' no explote (patrón del repo: session.test.ts).
-const { storage } = vi.hoisted(() => ({ storage: new Map<string, string>() }));
+// expo-constants es MUTABLE para simular Expo Go vs development build.
+const { expoConstants, storage } = vi.hoisted(() => ({
+  expoConstants: {
+    expoConfig: null,
+    easConfig: null,
+    appOwnership: 'bare',
+  },
+  storage: new Map<string, string>(),
+}));
 vi.mock('expo-notifications', () => ({ AndroidImportance: { MAX: 5 } }));
 vi.mock('expo-device', () => ({ isDevice: true }));
-vi.mock('expo-constants', () => ({ default: { expoConfig: null, easConfig: null } }));
+vi.mock('expo-constants', () => ({ default: expoConstants }));
 vi.mock('expo-secure-store', () => ({
   getItemAsync: vi.fn(async () => null),
   setItemAsync: vi.fn(async () => undefined),
@@ -101,5 +115,29 @@ describe('loadPushPrefs', () => {
   it('un JSON corrupto NO se traga: rechaza (regla del repo), el servidor queda intacto', async () => {
     storage.set('sticklive.notif.prefs', '{corrupto');
     await expect(loadPushPrefs()).rejects.toThrow();
+  });
+});
+
+describe('pushErrorKey', () => {
+  it('mapea cada error conocido a su clave i18n (el detalle tras el prefijo no rompe el mapeo)', () => {
+    expect(pushErrorKey('push_requiere_dispositivo_fisico')).toBe('settings.notif_requires_device');
+    expect(pushErrorKey('push_requiere_development_build')).toBe('settings.notif_requires_dev_build');
+    expect(pushErrorKey('permiso_notificaciones_denegado')).toBe('settings.notif_denied_app');
+    // El motivo de projectId viaja con detalle técnico como sufijo: genérico.
+    expect(pushErrorKey('falta_projectid_eas_init: falta extra.eas.projectId')).toBe('settings.notif_error');
+    expect(pushErrorKey('otro_error_inesperado')).toBe('settings.notif_error');
+  });
+});
+
+describe('registerForPushNotifications en Expo Go', () => {
+  it('rechaza con un motivo explícito pidiendo development build (push remoto no soportado desde SDK 53)', async () => {
+    expoConstants.appOwnership = 'expo';
+    try {
+      // Debe lanzar ANTES de crear el canal o pedir permisos: en Expo Go nada
+      // de eso lleva a un token útil.
+      await expect(registerForPushNotifications()).rejects.toThrow('push_requiere_development_build');
+    } finally {
+      expoConstants.appOwnership = 'bare';
+    }
   });
 });

@@ -11,6 +11,7 @@ import {
   getSavedPushToken,
   loadPushPrefs,
   presetKey,
+  pushErrorKey,
   registerForPushNotifications,
   savePushPrefs,
   syncPushSubscription,
@@ -51,14 +52,6 @@ const PRESETS_BY_KIND: Record<FavoriteKind, readonly NotificationPreset[]> = {
 /** Normaliza un preset guardado al más cercano que ofrece la UI (web uiPreset). */
 function uiPreset(p: NotificationPreset): NotificationPreset {
   return p === 'complete' ? 'key_events' : p;
-}
-
-/** Código de error de registro → clave i18n (desconocido → error genérico; el
- * motivo real queda en consola, nunca silencioso). */
-function pushErrorKey(message: string): string {
-  if (message.startsWith('push_requiere_dispositivo_fisico')) return 'settings.notif_requires_device';
-  if (message.startsWith('permiso_notificaciones_denegado')) return 'settings.notif_denied_app';
-  return 'settings.notif_error';
 }
 
 /** Chip de preset (mismo patrón que OptionChip de settings.tsx). */

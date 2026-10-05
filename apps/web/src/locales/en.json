@@ -372,6 +372,7 @@
     "notif_denied_app": "You've blocked notifications for Stick Live. Enable them from your system settings.",
     "notif_error": "Couldn't save your settings. Check your connection and try again.",
     "notif_requires_device": "Push notifications need a physical device (they don't work on an emulator).",
+    "notif_requires_dev_build": "Push notifications require installing the app (development build): Expo Go doesn't support them.",
     "notif_enable_hint": "Turn on the switch above to allow notifications on this device.",
     "notif_activate_btn": "Turn on notifications on this device",
     "notif_test_btn": "Send a test notification",

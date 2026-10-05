@@ -26,6 +26,33 @@ const PREFS_KEY = 'sticklive.notif.prefs';
  * notifications v57). El emisor (Task 4.3) debe dirigir aquí los envíos. */
 export const LIVE_CHANNEL_ID = 'live';
 
+/**
+ * Motivos de error del registro push (strings estables, en español y con
+ * prefijo `push_`/dominio propio). Los lanza registerForPushNotifications y
+ * `pushErrorKey` los mapea a claves i18n. No renombrar un string sin revisar
+ * pushErrorKey y los tests: son parte del contrato pantalla↔lib.
+ */
+export const PUSH_ERRORS = {
+  /** Sin hardware real no hay token (Expo Go/emulador no sirven). */
+  requiresPhysicalDevice: 'push_requiere_dispositivo_fisico',
+  /** Expo Go no soporta push remoto desde SDK 53: hace falta development build. */
+  requiresDevelopmentBuild: 'push_requiere_development_build',
+  /** El usuario denegó el permiso de notificaciones del sistema. */
+  permissionDenied: 'permiso_notificaciones_denegado',
+  /** Sin projectId de EAS el token no puede dirigirse al proyecto. */
+  missingEasProjectId: 'falta_projectid_eas_init',
+} as const;
+
+/** Código de error de registro → clave i18n (desconocido → error genérico; el
+ * motivo real queda en consola, nunca silencioso). Vive en la lib (no en la
+ * pantalla) para poder testearlo sin montar componentes nativos. */
+export function pushErrorKey(message: string): string {
+  if (message.startsWith(PUSH_ERRORS.requiresPhysicalDevice)) return 'settings.notif_requires_device';
+  if (message.startsWith(PUSH_ERRORS.requiresDevelopmentBuild)) return 'settings.notif_requires_dev_build';
+  if (message.startsWith(PUSH_ERRORS.permissionDenied)) return 'settings.notif_denied_app';
+  return 'settings.notif_error';
+}
+
 /** Mismo catálogo que VALID_PRESETS del API (routes/push.ts). */
 const VALID_PRESETS: ReadonlySet<string> = new Set([
   'complete',
@@ -116,10 +143,18 @@ export function buildSubscribeBody(input: {
  * projectId de EAS (`eas init`): los fallos nunca son silenciosos.
  */
 export async function registerForPushNotifications(): Promise<string> {
+  // PRIMERO Expo Go: no soporta push remoto (ni getExpoPushTokenAsync con
+  // projectId) desde SDK 53. En un móvil físico con Expo Go, chequear antes
+  // `Device.isDevice` daría un motivo engañoso ("falta dispositivo") cuando el
+  // problema real es que hace falta un development build.
+  if (Constants.appOwnership === 'expo') {
+    throw new Error(PUSH_ERRORS.requiresDevelopmentBuild);
+  }
+
   if (!Device.isDevice) {
     // Expo Go no lleva push remoto desde SDK 53 y el emulador no siempre lo
     // soporta: sin hardware real no hay token (doc expo-notifications v57).
-    throw new Error('push_requiere_dispositivo_fisico');
+    throw new Error(PUSH_ERRORS.requiresPhysicalDevice);
   }
 
   if (Platform.OS === 'android') {
@@ -139,7 +174,7 @@ export async function registerForPushNotifications(): Promise<string> {
     status = (await Notifications.requestPermissionsAsync()).status;
   }
   if (status !== 'granted') {
-    throw new Error('permiso_notificaciones_denegado');
+    throw new Error(PUSH_ERRORS.permissionDenied);
   }
 
   // getExpoPushTokenAsync SOLO se llama con projectId: sin él Expo no puede
@@ -149,7 +184,7 @@ export async function registerForPushNotifications(): Promise<string> {
     Constants.easConfig?.projectId;
   if (!projectId) {
     throw new Error(
-      'falta_projectid_eas_init: falta extra.eas.projectId — ejecuta `eas init` en apps/mobile y recompila',
+      `${PUSH_ERRORS.missingEasProjectId}: falta extra.eas.projectId — ejecuta \`eas init\` en apps/mobile y recompila`,
     );
   }
 

@@ -341,6 +341,7 @@
     "notif_denied_app": "Hai bloccato le notifiche per Stick Live. Attivale dalle impostazioni di sistema.",
     "notif_error": "Impossibile salvare le impostazioni. Controlla la connessione e riprova.",
     "notif_requires_device": "Le notifiche push richiedono un dispositivo fisico (non funzionano su emulatore).",
+    "notif_requires_dev_build": "Le notifiche push richiedono l'installazione dell'app (development build): Expo Go non le supporta.",
     "notif_enable_hint": "Attiva l’interruttore qui sopra per consentire le notifiche su questo dispositivo.",
     "notif_activate_btn": "Attiva le notifiche su questo dispositivo",
     "notif_test_btn": "Invia una notifica di prova",
