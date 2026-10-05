@@ -66,35 +66,44 @@ export function diffLiveScores(prev: Match[], next: Match[]): LiveScoreChange[] 
 }
 
 /**
- * Escena del estado vacío: la bola cruza la pista, gol y celebración.
- * Reutiliza los @keyframes rink* de globals.css (respetan reduce-motion).
- * Decorativa: aria-hidden.
+ * Escena del estado vacío — "una jugada, una vez": la bola entra en la portería
+ * UNA sola vez al montar (la red vibra y se enciende el esmeralda ~300 ms) y la
+ * escena queda en calma. Sin bucle perpetuo: no hay partido en juego, así que no
+ * hay movimiento continuo. Reutiliza los @keyframes rink* de globals.css, que
+ * respetan reduce-motion (dejan la escena estática). Decorativa: aria-hidden.
  */
 function EmptyRinkScene() {
-  const anim = (name: string) => ({ animation: `${name} 3s ease-in-out infinite` });
+  // `both` fija el fotograma final para que la animación no "vuelva" al inicio.
+  const once = (name: string, duration: string, ease = 'ease-out') => ({
+    animation: `${name} ${duration} ${ease} both`,
+  });
   return (
-    <div aria-hidden="true" className="relative mx-auto mb-1 h-[72px] w-[200px] select-none">
-      {/* Línea de pista */}
-      <span className="absolute left-0 right-0 bottom-3 h-px bg-slate-200 dark:bg-slate-700" />
-      {/* Portería / red a la derecha */}
-      <svg viewBox="0 0 24 24" className="rink-empty-anim absolute bottom-2 right-1 w-8 h-10 text-slate-300 dark:text-slate-600"
-           style={anim('rinkNet')} fill="none" stroke="currentColor" strokeWidth={1.5}>
-        <path d="M4 4h16v14H4z" />
-        <path d="M4 8h16M4 12h16M8 4v14M12 4v14M16 4v14" strokeWidth={0.5} />
+    <div aria-hidden="true" className="relative mx-auto mb-2 h-20 w-64 select-none">
+      {/* Línea de pista (se "dibuja" una vez) */}
+      <span
+        className="rink-empty-anim absolute inset-x-4 bottom-6 h-px origin-left bg-slate-300 dark:bg-slate-600"
+        style={once('rinkDraw', '0.9s')}
+      />
+      {/* Portería (marco + red ligera), apoyada en la línea */}
+      <svg viewBox="0 0 54 40"
+           className="rink-empty-anim absolute bottom-6 right-3 h-10 w-14 text-slate-400 dark:text-slate-500"
+           style={once('rinkNetHit', '1.8s')}
+           fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round">
+        <path d="M2 2v36M52 2v36M2 2h50" />
+        <path d="M2 14h50M2 26h50" strokeWidth={0.5} />
+        <path d="M18 2v36M36 2v36" strokeWidth={0.5} />
       </svg>
-      {/* Stick */}
-      <svg viewBox="0 0 24 24" className="rink-empty-anim absolute bottom-2 left-2 w-6 h-8 text-slate-500 dark:text-slate-400"
-           style={{ ...anim('rinkStick'), transformOrigin: 'bottom center' }}
-           fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2v14M12 16c-2 0-4 1-5 3" />
-      </svg>
-      {/* Bola */}
-      <span className="rink-empty-anim absolute bottom-[10px] left-[26px] w-2.5 h-2.5 rounded-full bg-rink-passion"
-            style={anim('rinkShot')} />
-      {/* Destello de gol */}
-      <svg viewBox="0 0 24 24" className="rink-empty-anim absolute bottom-4 right-3 w-6 h-6 text-emerald-500"
-           style={anim('rinkGoalFlash')} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-        <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2" />
+      {/* Bola (apoyada en la línea) */}
+      <span
+        className="rink-empty-anim absolute bottom-6 left-10 h-3 w-3 rounded-full bg-rink-passion shadow-[0_1px_2px_rgba(0,0,0,0.25)]"
+        style={once('rinkBall', '1.8s', 'cubic-bezier(0.16,1,0.3,1)')}
+      />
+      {/* Destello de gol (invisible salvo el instante del gol) */}
+      <svg viewBox="0 0 24 24"
+           className="rink-empty-anim absolute bottom-12 right-8 h-5 w-5 text-emerald-500 opacity-0"
+           style={once('rinkFlash', '1.8s')}
+           fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+        <path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l1.8 1.8M16.2 16.2L18 18M18 6l-1.8 1.8M7.8 16.2L6 18" />
       </svg>
     </div>
   );
