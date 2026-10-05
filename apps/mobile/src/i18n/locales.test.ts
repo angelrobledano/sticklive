@@ -18,6 +18,7 @@ describe('locales', () => {
   });
 
   it('resuelve claves anidadas y hace fallback a la clave si no existe', () => {
+    expect(resolveKey(dictionaries.es, 'match_states.final')).toBe('Final');
     expect(resolveKey(dictionaries.es, 'no.existe')).toBe('no.existe');
   });
 });

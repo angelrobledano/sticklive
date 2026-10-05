@@ -2,8 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { dictionaries, LOCALES, resolveKey, type Locale } from './locales';
 
-// instalado: npx expo install @react-native-async-storage/async-storage
-
 interface LocaleCtx {
   locale: Locale;
   setLocale: (l: Locale) => void;
@@ -17,9 +15,10 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('es');
 
   useEffect(() => {
+    // Carrera teórica: un cambio de idioma previo a la resolución de getItem sería sobreescrito por el valor guardado (no alcanzable en la práctica).
     AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
       if (saved && LOCALES.includes(saved as Locale)) setLocaleState(saved as Locale);
-    }).catch(() => {});
+    }).catch(() => {}); // Fallo de persistencia de preferencia → fallback al idioma por defecto; no es dato de negocio (regla de explicitud aplica a la ingesta, no a prefs de UI).
   }, []);
 
   const setLocale = useCallback((l: Locale) => {
