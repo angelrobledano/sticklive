@@ -2,6 +2,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useTeam } from '@/src/hooks/queries';
+import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { formatDayLabel, formatKickoff, isEffectivelyLive } from '@/src/lib/time';
@@ -36,8 +37,11 @@ export default function TeamScreen() {
     <>
       <Stack.Screen options={{ title: team.shortName ?? team.name }} />
       <ScrollView className="bg-rink-floor dark:bg-rink-floor-dark">
-        {/* Cabecera */}
-        <View className="items-center rounded-xl bg-white p-4 mx-3 mt-2 dark:bg-slate-900">
+        {/* Cabecera (la estrella de seguir es un favorito del EQUIPO, no del partido) */}
+        <View className="relative items-center rounded-xl bg-white p-4 mx-3 mt-2 dark:bg-slate-900">
+          <View className="absolute right-0 top-0">
+            <FollowButton kind="team" refId={team.id} />
+          </View>
           <Avatar uri={teamLogoUri(team.id, 192)} name={team.name} size={72} />
           <Text className="mt-2 text-center text-lg font-bold">{team.name}</Text>
           {team.sectionSuffix ? <Text className="text-xs text-slate-500">{team.sectionSuffix}</Text> : null}

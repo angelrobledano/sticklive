@@ -10,6 +10,7 @@ import {
   saveSession,
   type Session,
 } from '@/src/lib/session';
+import { mergeLocalOnLogin } from '@/src/hooks/favorites';
 
 /**
  * Sobre `WebBrowser.maybeCompleteAuthSession()`: NO se llama. Es método SOLO
@@ -89,6 +90,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       const s: Session = { token: data.session, email: data.email ?? parsed.email };
       await saveSession(s);
+      // Fusión de favoritos anónimos → cuenta (merge idempotente, Task 3.3).
+      // ANTES de setSession: la primera lectura de favoritos ya ve el estado
+      // fusionado y no hay flash de "0 favoritos". Si falla (red) el login NO
+      // se rompe: los locales sobreviven intactos y el merge se reintenta con
+      // el próximo login (o al tocar la estrella, que manda su propio merge).
+      // Fallo explícito no silencioso por consola (mismo canal que signOut;
+      // Sentry lo capturará en 5.1): meterlo en lastAuthError mostraría un
+      // error de Google cuando el login ha IDO BIEN.
+      try {
+        await mergeLocalOnLogin(s.token);
+      } catch (mergeErr) {
+        console.error('[auth] no se pudieron fusionar los favoritos locales con la cuenta', mergeErr);
+      }
       setSession(s);
     } catch (err) {
       setLastAuthError(err instanceof ApiError ? err.code : 'unknown');

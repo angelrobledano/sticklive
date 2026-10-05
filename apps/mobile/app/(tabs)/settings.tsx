@@ -2,33 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
-
-/**
- * Mapa motivo de fallo del login → clave i18n EXISTENTE (auth.*). Cubre los
- * reasons que el callback del API redirige por el scheme (fail consciente del
- * cliente: google_denied, google_not_configured, google_email,
- * account_disabled, bad_state, state_reused) y los codes de ApiError del
- * canje. Los codes del canje (invalid_code, network, http_*) no tienen clave
- * propia en los locales: caen al genérico auth.google_failed, que describe
- * exactamente ese caso ("no se pudo completar el acceso con Google").
- */
-function authErrorKey(reason: string): string {
-  switch (reason) {
-    case 'google_denied':
-      return 'auth.google_denied';
-    case 'google_not_configured':
-      return 'auth.google_unavailable';
-    case 'google_email':
-      return 'auth.google_email';
-    case 'account_disabled':
-      return 'auth.account_disabled';
-    case 'bad_state':
-    case 'state_reused':
-      return 'auth.google_state';
-    default:
-      return 'auth.google_failed';
-  }
-}
+import { authErrorKey } from '@/src/lib/auth-errors';
 
 // Task 3.4 añadirá aquí las secciones de idioma/tema/notificaciones.
 export default function SettingsScreen() {
