@@ -29,6 +29,7 @@ import {
   type EventSnap,
 } from './push-diff.js';
 import { wants, morningPendingSubs, type PushEventType } from './push-segmentation.js';
+import { deliverNative, loadNativeSubs, type ExpoPayload, type NativeSubRow } from './push-expo.js';
 
 const log = createLogger({ service: 'push-dispatcher' });
 
@@ -286,6 +287,81 @@ async function deliver(sub: SubRow, payload: PushPayload): Promise<'sent' | 'pru
   }
 }
 
+// ── Canal nativo (Expo Push) — Task 4.3 ─────────────────────────────────────
+
+/**
+ * Cache de suscripciones nativas con TTL de 60 s. cron-live es un proceso
+ * LONGEVO (bucle de polling cada 45 s hasta 180 min, ver cron-live.ts): un
+ * cache "por invocación" serviría preferencias obsoletas durante todo un
+ * directo. 60 s acota la frescura (un registro nuevo tarda ≤1 min en recibir)
+ * con UNA query por minuto como máximo, compartida por todos los emisores.
+ *
+ * NUNCA lanza: si la recarga falla se sigue con la última válida (o vacío si
+ * no la hay) con log explícito — el canal web no depende de esta carga y no
+ * debe verse afectado por ella.
+ */
+const NATIVE_SUBS_TTL_MS = 60_000;
+let nativeSubsCache: { rows: NativeSubRow[]; at: number } | null = null;
+async function nativeSubs(): Promise<NativeSubRow[]> {
+  if (!nativeSubsCache || Date.now() - nativeSubsCache.at > NATIVE_SUBS_TTL_MS) {
+    try {
+      nativeSubsCache = { rows: await loadNativeSubs(), at: Date.now() };
+    } catch (err) {
+      log.warn({ err }, 'no se pudieron cargar suscripciones nativas — sigo con lo cacheado (o vacío)');
+      if (!nativeSubsCache) return [];
+    }
+  }
+  return nativeSubsCache.rows;
+}
+
+/** Evento del directo listo para el canal nativo: gate por suscripción (la
+ *  MISMA regla que aplicó el bucle web) + payload idéntico al web. */
+interface NativeEvent {
+  gate: (sub: NativeSubRow) => boolean;
+  payload: ExpoPayload;
+}
+
+/**
+ * Entrega los eventos del directo al canal NATIVO con la misma segmentación
+ * que el bucle web (master, silencio nocturno y gate por evento). ADITIVO:
+ * corre DESPUÉS del envío web y no lo toca; un fallo del canal nativo queda
+ * logueado y no afecta al diff ni a los envíos web ya servidos.
+ */
+async function deliverNativeEvents(events: NativeEvent[], night: boolean): Promise<void> {
+  if (events.length === 0) return;
+  const natives = (await nativeSubs()).filter((s) => {
+    const cfg = s.config ?? {};
+    if (cfg['master'] === false) return false;
+    if (night && cfg['quietNight'] !== false) return false; // por defecto, respetar la noche
+    return true;
+  });
+  if (natives.length === 0) return;
+  for (const e of events) {
+    const targets = natives.filter(e.gate);
+    if (targets.length === 0) continue;
+    try {
+      const res = await deliverNative(targets, e.payload, captureSent);
+      log.info({ type: e.payload.type, nativeSent: res.sent, nativeFailed: res.failed }, '📱 Push nativo');
+    } catch (err) {
+      log.warn({ err, type: e.payload.type }, 'push nativo fallo — el canal web ya corrió');
+    }
+  }
+}
+
+/** Gate + payload nativo de un evento de partido/entidad ya resuelto. */
+function nativeEventOf(
+  ev: PushEventType,
+  teamIds: string[], competitionId: string | null, playerId: string | null,
+  payload: ExpoPayload,
+): NativeEvent {
+  return { gate: (s) => wants(s, ev, teamIds, competitionId, playerId), payload };
+}
+
+/** Los dos equipos de un evento, sin nulos (mismo filtro que el bucle web). */
+function eventTeamIds(x: { homeTeamId: string | null; awayTeamId: string | null }): string[] {
+  return [x.homeTeamId, x.awayTeamId].filter(Boolean) as string[];
+}
+
 // ── Resumen matinal (#272) ─────────────────────────────────────────────────
 
 interface NightFinal {
@@ -363,7 +439,8 @@ export async function deliverMorningSummaries(now: Date = new Date()): Promise<v
   if (finals.length === 0) return;
 
   const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
-  if (subs.rows.length === 0) return;
+  // El canal nativo es aditivo: no depende de que existan suscripciones web.
+  if (subs.rows.length === 0 && (await nativeSubs()).length === 0) return;
 
   // Ledger del día: suscripciones ya servidas (persistente, sobrevive reinicios).
   const logged = await db.query<{ subscription_id: string }>(
@@ -373,7 +450,6 @@ export async function deliverMorningSummaries(now: Date = new Date()): Promise<v
   const alreadySent = new Set(logged.rows.map((r) => r.subscription_id));
 
   const pending = morningPendingSubs(subs.rows, finals, alreadySent);
-  if (pending.length === 0) return;
 
   const tag = morningSummaryTag(dateKey);
   let sent = 0, sentPruned = 0, failed = 0;
@@ -405,7 +481,68 @@ export async function deliverMorningSummaries(now: Date = new Date()): Promise<v
     }
   }
 
-  log.info({ matches: finals.length, pending: pending.length, sent, pruned: sentPruned, failed }, '🌅 Resumen matinal');
+  if (pending.length > 0) {
+    log.info({ matches: finals.length, pending: pending.length, sent, pruned: sentPruned, failed }, '🌅 Resumen matinal');
+  }
+
+  // Canal nativo (Task 4.3): mismo resumen, ledger propio (channel='native',
+  // migración 066) para no bloquearse ni duplicarse con el web. Nunca debe
+  // romper el resumen web, ya servido arriba.
+  try { await deliverNativeMorningSummaries(finals, dateKey, tag); }
+  catch (err) { log.warn({ err }, 'resumen matinal nativo fallo — el canal web ya corrió'); }
+}
+
+/**
+ * Resumen matinal por el canal NATIVO: la misma selección pura
+ * (`morningPendingSubs`) sobre push_tokens y un ledger PROPIO (channel
+ * 'native') para que web y nativo no se bloqueen ni dupliquen entre sí.
+ * ADITIVO: un fallo aquí no toca al resumen web ya servido.
+ */
+async function deliverNativeMorningSummaries(
+  finals: NightFinal[], dateKey: string, tag: string,
+): Promise<void> {
+  const natives = await nativeSubs();
+  if (natives.length === 0) return;
+
+  // Solo el ledger del canal nativo: el web tiene el suyo.
+  const logged = await db.query<{ subscription_id: string }>(
+    `SELECT subscription_id FROM push_summary_log WHERE day = $1 AND channel = 'native'`,
+    [dateKey],
+  );
+  const alreadySentNative = new Set(logged.rows.map((r) => r.subscription_id));
+
+  const pending = morningPendingSubs(natives, finals, alreadySentNative);
+  if (pending.length === 0) return;
+
+  let nativeSent = 0, nativeFailed = 0;
+  for (const { sub, matches } of pending) {
+    const results: MorningResult[] = matches.map((m) => ({
+      homeShort: m.homeShort, awayShort: m.awayShort,
+      homeScore: m.homeScore, awayScore: m.awayScore,
+      kickoffLocal: m.kickoffLocal,
+    }));
+    const payload: ExpoPayload = {
+      title: branded(morningSummary(results)),
+      body: '',
+      tag,
+      url: `${WEB_BASE}/matches/${matches[0]!.matchId}`,
+      type: 'morning_summary',
+    };
+    const res = await deliverNative([sub], payload, captureSent);
+    if (res.sent > 0) {
+      // Registrar ANTES de contar (igual que la web): si el INSERT falla no se
+      // marca y se reintentará, sin duplicar a los ya servidos. Un envío
+      // rechazado NO se marca: podría ser transitorio y se reintenta.
+      await db.query(
+        `INSERT INTO push_summary_log (subscription_id, day, channel) VALUES ($1, $2, 'native') ON CONFLICT DO NOTHING`,
+        [sub.id, dateKey],
+      );
+      nativeSent += res.sent;
+    } else {
+      nativeFailed += res.failed;
+    }
+  }
+  log.info({ pending: pending.length, nativeSent, nativeFailed }, '🌅 Resumen matinal (nativo)');
 }
 
 type MatchEv = { kind: 'start' | 'final'; matchTeams: string[]; payload: PushPayload };
@@ -492,7 +629,8 @@ export async function diffAndNotify(
 
   const compId = await seasonCompetitionId(seasonId);
   const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
-  if (subs.rows.length === 0) return;
+  // El canal nativo es aditivo: no depende de que existan suscripciones web.
+  if (subs.rows.length === 0 && (await nativeSubs()).length === 0) return;
 
   const night = isQuietHours();
   let sent = 0, pruned = 0;
@@ -522,6 +660,34 @@ export async function diffAndNotify(
   }
 
   log.info({ events: toSend.length, sent, pruned }, '📲 Push despachadas');
+
+  // Canal nativo (Task 4.3): la MISMA segmentación que el bucle web de arriba,
+  // otro transporte. ADITIVO — el bucle web no se toca.
+  const nativeEvents: NativeEvent[] = toSend.map((ev) => {
+    if ('matchTeams' in ev) {
+      return nativeEventOf(ev.kind, ev.matchTeams, compId, null, ev.payload);
+    }
+    // Jornada (global): toggles globales, fuera del modelo de presets (paridad web).
+    const toggle = ev.kind === 'jornada_start' ? 'globalJornadaStart' : 'globalJornadaEnd';
+    return { gate: (s) => (s.config ?? {})[toggle] === true, payload: ev.payload };
+  });
+  await deliverNativeEvents(nativeEvents, night);
+}
+
+/** Payload de gol (goleador + minuto) — compartido por el canal web y el nativo. */
+function goalPayload(g: GoalSnap): PushPayload {
+  const ref: MatchRef = {
+    homeShort: g.homeShort, awayShort: g.awayShort,
+    homeScore: g.homeScore, awayScore: g.awayScore,
+    minute: g.minute,
+  };
+  return {
+    title: branded(playerGoalAlert(g.playerName, ref)),
+    body: liveBody(ref),
+    tag: matchTag(g.matchId), // un único tag por partido → sin duplicar
+    url: `${WEB_BASE}/matches/${g.matchId}`,
+    type: 'goal',
+  };
 }
 
 /**
@@ -546,7 +712,8 @@ export async function diffGoals(
   if (fresh.length === 0) return;
 
   const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
-  if (subs.rows.length === 0) return;
+  // El canal nativo es aditivo: no depende de que existan suscripciones web.
+  if (subs.rows.length === 0 && (await nativeSubs()).length === 0) return;
 
   const night = isQuietHours();
   let sent = 0, pruned = 0;
@@ -559,28 +726,40 @@ export async function diffGoals(
     for (const g of fresh) {
       // Sigues el partido si sigues a cualquiera de los dos equipos (también el gol
       // del rival), la competición o al goleador; y el preset incluye 'goal'.
-      const teamIds = [g.homeTeamId, g.awayTeamId].filter(Boolean) as string[];
-      if (!wants(sub, 'goal', teamIds, g.competitionId, g.playerId)) continue;
+      if (!wants(sub, 'goal', eventTeamIds(g), g.competitionId, g.playerId)) continue;
 
-      const ref: MatchRef = {
-        homeShort: g.homeShort, awayShort: g.awayShort,
-        homeScore: g.homeScore, awayScore: g.awayScore,
-        minute: g.minute,
-      };
-      const payload: PushPayload = {
-        title: branded(playerGoalAlert(g.playerName, ref)),
-        body: liveBody(ref),
-        tag: matchTag(g.matchId), // un único tag por partido → sin duplicar
-        url: `${WEB_BASE}/matches/${g.matchId}`,
-        type: 'goal',
-      };
-      const res = await deliver(sub, payload);
+      const res = await deliver(sub, goalPayload(g));
       if (res === 'sent') sent++;
       else if (res === 'pruned') { pruned++; break; }
     }
   }
 
   log.info({ goals: fresh.length, sent, pruned }, '⚽ Push de gol (goleador+minuto)');
+
+  // Canal nativo (Task 4.3): misma segmentación (equipos/competición/goleador),
+  // payload idéntico. ADITIVO.
+  await deliverNativeEvents(
+    fresh.map((g) => nativeEventOf('goal', eventTeamIds(g), g.competitionId, g.playerId, goalPayload(g))),
+    night,
+  );
+}
+
+/** Payload de tarjeta/falta — compartido por el canal web y el nativo. */
+function cardFoulPayload(eventType: 'red_card' | 'blue_card' | 'direct_foul', c: GoalSnap): PushPayload {
+  const ref: MatchRef = {
+    homeShort: c.homeShort, awayShort: c.awayShort,
+    homeScore: c.homeScore, awayScore: c.awayScore, minute: c.minute,
+  };
+  const title = eventType === 'direct_foul'
+    ? directFoulAlert(c.scorerTeamShort ?? '', c.minute)
+    : cardAlert(eventType === 'blue_card' ? 'azul' : 'roja', c.playerName, c.scorerTeamShort ?? '', c.minute);
+  return {
+    title: branded(title),
+    body: liveBody(ref),
+    tag: matchTag(c.matchId),
+    url: `${WEB_BASE}/matches/${c.matchId}`,
+    type: eventType,
+  };
 }
 
 /**
@@ -600,7 +779,8 @@ export async function diffCardOrFoul(
   if (fresh.length === 0) return;
 
   const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
-  if (subs.rows.length === 0) return;
+  // El canal nativo es aditivo: no depende de que existan suscripciones web.
+  if (subs.rows.length === 0 && (await nativeSubs()).length === 0) return;
 
   const night = isQuietHours();
   let sent = 0, pruned = 0;
@@ -611,30 +791,21 @@ export async function diffCardOrFoul(
     if (night && cfg['quietNight'] !== false) continue;
 
     for (const c of fresh) {
-      const teamIds = [c.homeTeamId, c.awayTeamId].filter(Boolean) as string[];
-      if (!wants(sub, eventType, teamIds, c.competitionId, c.playerId)) continue;
+      if (!wants(sub, eventType, eventTeamIds(c), c.competitionId, c.playerId)) continue;
 
-      const ref: MatchRef = {
-        homeShort: c.homeShort, awayShort: c.awayShort,
-        homeScore: c.homeScore, awayScore: c.awayScore, minute: c.minute,
-      };
-      const title = eventType === 'direct_foul'
-        ? directFoulAlert(c.scorerTeamShort ?? '', c.minute)
-        : cardAlert(eventType === 'blue_card' ? 'azul' : 'roja', c.playerName, c.scorerTeamShort ?? '', c.minute);
-      const payload: PushPayload = {
-        title: branded(title),
-        body: liveBody(ref),
-        tag: matchTag(c.matchId),
-        url: `${WEB_BASE}/matches/${c.matchId}`,
-        type: eventType,
-      };
-      const res = await deliver(sub, payload);
+      const res = await deliver(sub, cardFoulPayload(eventType, c));
       if (res === 'sent') sent++;
       else if (res === 'pruned') { pruned++; break; }
     }
   }
 
   log.info({ eventType, count: fresh.length, sent, pruned }, '🟦 Push de tarjeta/falta');
+
+  // Canal nativo (Task 4.3): misma segmentación, payload idéntico. ADITIVO.
+  await deliverNativeEvents(
+    fresh.map((c) => nativeEventOf(eventType, eventTeamIds(c), c.competitionId, c.playerId, cardFoulPayload(eventType, c))),
+    night,
+  );
 }
 
 // `freshEvents` y `collapsePerScorer` viven en push-diff.ts (importados arriba).
@@ -688,7 +859,24 @@ export async function diffBlueAndFouls(
   }
 
   const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
-  if (subs.rows.length === 0) return;
+  // El canal nativo es aditivo: no depende de que existan suscripciones web.
+  if (subs.rows.length === 0 && (await nativeSubs()).length === 0) return;
+
+  // Payload azul/FD — compartido por el canal web y el nativo.
+  const blueFoulPayload = (em: Emission): PushPayload => {
+    const s = em.snap;
+    const ref: MatchRef = {
+      homeShort: s.homeShort, awayShort: s.awayShort,
+      homeScore: s.homeScore, awayScore: s.awayScore, minute: s.minute,
+    };
+    return {
+      title: branded(em.title),
+      body: liveBody(ref),
+      tag: matchTag(s.matchId),
+      url: `${WEB_BASE}/matches/${s.matchId}`,
+      type: em.type,
+    };
+  };
 
   const night = isQuietHours();
   let sent = 0, pruned = 0;
@@ -700,27 +888,22 @@ export async function diffBlueAndFouls(
 
     for (const em of emissions) {
       const s = em.snap;
-      const teamIds = [s.homeTeamId, s.awayTeamId].filter(Boolean) as string[];
-      if (!wants(sub, em.gate, teamIds, s.competitionId, s.playerId)) continue;
+      if (!wants(sub, em.gate, eventTeamIds(s), s.competitionId, s.playerId)) continue;
 
-      const ref: MatchRef = {
-        homeShort: s.homeShort, awayShort: s.awayShort,
-        homeScore: s.homeScore, awayScore: s.awayScore, minute: s.minute,
-      };
-      const payload: PushPayload = {
-        title: branded(em.title),
-        body: liveBody(ref),
-        tag: matchTag(s.matchId),
-        url: `${WEB_BASE}/matches/${s.matchId}`,
-        type: em.type,
-      };
-      const res = await deliver(sub, payload);
+      const res = await deliver(sub, blueFoulPayload(em));
       if (res === 'sent') sent++;
       else if (res === 'pruned') { pruned++; break; }
     }
   }
 
   log.info({ blue: freshBlue.length, fouls: freshFoul.length, bundles: bundled.size, sent, pruned }, '🔵 Push azul/FD (bundling)');
+
+  // Canal nativo (Task 4.3): misma segmentación, payload idéntico. ADITIVO.
+  await deliverNativeEvents(
+    emissions.map((em) =>
+      nativeEventOf(em.gate, eventTeamIds(em.snap), em.snap.competitionId, em.snap.playerId, blueFoulPayload(em))),
+    night,
+  );
 }
 
 // ── Prórroga y penaltis (inicio en vivo + final por tipo) ─────────────────────
@@ -764,6 +947,19 @@ export async function snapshotExtraPhases(seasonIds: string[]): Promise<Map<stri
   return map;
 }
 
+/** Payload de inicio de prórroga/penaltis — compartido por el canal web y el nativo. */
+function phasePayload(ev: { snap: ExtraPhaseSnap; kind: 'overtime' | 'penalties' }): PushPayload {
+  const s = ev.snap;
+  const ref: MatchRef = { homeShort: s.homeShort, awayShort: s.awayShort, homeScore: s.homeScore, awayScore: s.awayScore };
+  return {
+    title: branded(ev.kind === 'overtime' ? overtimeStartAlert(ref) : penaltyStartAlert(ref)),
+    body: '',
+    tag: matchTag(s.matchId),
+    url: `${WEB_BASE}/matches/${s.matchId}`,
+    type: ev.kind === 'overtime' ? 'overtime' : 'penalty_shootout',
+  };
+}
+
 /**
  * Inicio de PRÓRROGA (el crono entra en periodo ≥3) e inicio de PENALTIS
  * (aparece marcador de tanda). Snapshot ANTES de las fichas, diff DESPUÉS.
@@ -783,7 +979,8 @@ export async function diffOvertimePenalties(
   if (events.length === 0) return;
 
   const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
-  if (subs.rows.length === 0) return;
+  // El canal nativo es aditivo: no depende de que existan suscripciones web.
+  if (subs.rows.length === 0 && (await nativeSubs()).length === 0) return;
   const night = isQuietHours();
   let sent = 0, pruned = 0;
 
@@ -793,22 +990,20 @@ export async function diffOvertimePenalties(
     if (night && cfg['quietNight'] !== false) continue;
     for (const ev of events) {
       const s = ev.snap;
-      const teamIds = [s.homeTeamId, s.awayTeamId].filter(Boolean) as string[];
-      if (!wants(sub, ev.kind, teamIds, s.competitionId, null)) continue;
-      const ref: MatchRef = { homeShort: s.homeShort, awayShort: s.awayShort, homeScore: s.homeScore, awayScore: s.awayScore };
-      const payload: PushPayload = {
-        title: branded(ev.kind === 'overtime' ? overtimeStartAlert(ref) : penaltyStartAlert(ref)),
-        body: '',
-        tag: matchTag(s.matchId),
-        url: `${WEB_BASE}/matches/${s.matchId}`,
-        type: ev.kind === 'overtime' ? 'overtime' : 'penalty_shootout',
-      };
-      const res = await deliver(sub, payload);
+      if (!wants(sub, ev.kind, eventTeamIds(s), s.competitionId, null)) continue;
+      const res = await deliver(sub, phasePayload(ev));
       if (res === 'sent') sent++;
       else if (res === 'pruned') { pruned++; break; }
     }
   }
   log.info({ events: events.length, sent, pruned }, '⏱️ Push de prórroga/penaltis');
+
+  // Canal nativo (Task 4.3): misma segmentación, payload idéntico. ADITIVO.
+  // El final por tipo sí llega con playerId, aquí la fase es del partido: null.
+  await deliverNativeEvents(
+    events.map((ev) => nativeEventOf(ev.kind, eventTeamIds(ev.snap), ev.snap.competitionId, null, phasePayload(ev))),
+    night,
+  );
 }
 
 export interface ResultSnap {
@@ -853,6 +1048,23 @@ export async function snapshotResults(seasonIds: string[]): Promise<Map<string, 
   return map;
 }
 
+/** Payload de final por tipo (prórroga/penaltis) — compartido por web y nativo. */
+function resolutionPayload(r: ResultSnap): PushPayload {
+  const ref: MatchRef = { homeShort: r.homeShort, awayShort: r.awayShort, homeScore: r.homeScore, awayScore: r.awayScore };
+  const winnerShort = r.winnerTeamId === r.homeTeamId ? r.homeShort
+    : r.winnerTeamId === r.awayTeamId ? r.awayShort : r.homeShort;
+  const title = r.winType === 'overtime'
+    ? finalOvertimeAlert(ref, winnerShort)
+    : finalPenaltiesAlert(ref, winnerShort, `${r.homePen ?? 0}-${r.awayPen ?? 0}`);
+  return {
+    title: branded(title),
+    body: '',
+    tag: matchTag(r.matchId), // mismo tag que el final genérico → lo reemplaza
+    url: `${WEB_BASE}/matches/${r.matchId}`,
+    type: r.winType === 'overtime' ? 'final_overtime' : 'final_penalties',
+  };
+}
+
 /**
  * FINAL POR TIPO: cuando se resuelve win_type a prórroga/penaltis (lo fija la
  * ficha/derivación, después del final genérico), emite un final enriquecido con
@@ -873,7 +1085,8 @@ export async function diffResolution(
   if (fresh.length === 0) return;
 
   const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
-  if (subs.rows.length === 0) return;
+  // El canal nativo es aditivo: no depende de que existan suscripciones web.
+  if (subs.rows.length === 0 && (await nativeSubs()).length === 0) return;
   const night = isQuietHours();
   let sent = 0, pruned = 0;
 
@@ -882,25 +1095,17 @@ export async function diffResolution(
     if (cfg['master'] === false) continue;
     if (night && cfg['quietNight'] !== false) continue;
     for (const r of fresh) {
-      const teamIds = [r.homeTeamId, r.awayTeamId].filter(Boolean) as string[];
-      if (!wants(sub, 'final', teamIds, r.competitionId, null)) continue;
-      const ref: MatchRef = { homeShort: r.homeShort, awayShort: r.awayShort, homeScore: r.homeScore, awayScore: r.awayScore };
-      const winnerShort = r.winnerTeamId === r.homeTeamId ? r.homeShort
-        : r.winnerTeamId === r.awayTeamId ? r.awayShort : r.homeShort;
-      const title = r.winType === 'overtime'
-        ? finalOvertimeAlert(ref, winnerShort)
-        : finalPenaltiesAlert(ref, winnerShort, `${r.homePen ?? 0}-${r.awayPen ?? 0}`);
-      const payload: PushPayload = {
-        title: branded(title),
-        body: '',
-        tag: matchTag(r.matchId), // mismo tag que el final genérico → lo reemplaza
-        url: `${WEB_BASE}/matches/${r.matchId}`,
-        type: r.winType === 'overtime' ? 'final_overtime' : 'final_penalties',
-      };
-      const res = await deliver(sub, payload);
+      if (!wants(sub, 'final', eventTeamIds(r), r.competitionId, null)) continue;
+      const res = await deliver(sub, resolutionPayload(r));
       if (res === 'sent') sent++;
       else if (res === 'pruned') { pruned++; break; }
     }
   }
   log.info({ resolved: fresh.length, sent, pruned }, '🏁 Push de final por tipo (prórroga/penaltis)');
+
+  // Canal nativo (Task 4.3): misma segmentación, payload idéntico. ADITIVO.
+  await deliverNativeEvents(
+    fresh.map((r) => nativeEventOf('final', eventTeamIds(r), r.competitionId, null, resolutionPayload(r))),
+    night,
+  );
 }
