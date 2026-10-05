@@ -24,6 +24,12 @@ export interface OAuthState {
   iat?: number;
   /** caduca en (epoch segundos). */
   exp?: number;
+  /**
+   * Login desde la app móvil (Task 3.1): el callback de Google emite un código
+   * de canje single-use en vez de una sesión web. Solo viaja si el cliente pidió
+   * `?client=app`; verificado con el mismo HMAC que el resto del payload.
+   */
+  client?: 'app';
 }
 
 function stateSecret(): string {

@@ -180,6 +180,50 @@ authRouter.post('/verify', rateLimit(20, 10 * 60_000), async (c) => {
 });
 
 /**
+ * POST /auth/exchange  { code }
+ * Canjea el código de login de la app móvil (Task 3.1) por una sesión Bearer.
+ * El código lo entrega el callback de Google por el scheme sticklive:// y
+ * caduca en 2 minutos. Canje atómico single-use: el UPDATE solo toca la fila si
+ * no está usada ni caducada, así el 2º canje del mismo código no devuelve
+ * filas → 400. Mismo patrón (hash + single-use) que /auth/verify.
+ */
+authRouter.post('/exchange', rateLimit(10, 10 * 60_000), async (c) => {
+  try {
+    const { code } = await c.req.json<{ code?: string }>().catch((): { code?: string } => ({}));
+    if (!code || code.length > 512) return c.json({ error: 'invalid_code' }, 400);
+
+    const codeHash = hashToken(code);
+    const userId = await withTransaction(async (tx) => {
+      // Higiene de caducados: purga de códigos expirados hace más de 1 día,
+      // en la misma transacción y sin cron. El volumen de canjes está acotado
+      // por el rate limit y cada código vive 2 min, así que basta con esto para
+      // que la tabla no crezca sin techo (índice expires_at → barato).
+      await tx.query(
+        `DELETE FROM app_login_codes WHERE expires_at < NOW() - INTERVAL '1 day'`
+      );
+      const res = await tx.query<{ user_id: string }>(
+        `UPDATE app_login_codes SET used_at = NOW()
+          WHERE code_hash = $1 AND used_at IS NULL AND expires_at > NOW()
+          RETURNING user_id`,
+        [codeHash]
+      );
+      return res.rows[0]?.user_id ?? null;
+    });
+    if (!userId) return c.json({ error: 'invalid_code' }, 400);
+
+    const session = await openSession(userId);
+    const u = await db.query<{ email: string | null }>(
+      `SELECT email FROM users WHERE id = $1`, [userId]
+    );
+    return c.json({ session, email: u.rows[0]?.email ?? null });
+  } catch (err) {
+    captureRouteError(err, 'auth] exchange error');
+    logger.error({ err }, '[auth] exchange error');
+    return c.json({ error: 'server_error' }, 500);
+  }
+});
+
+/**
  * Busca/crea el usuario por email, adoptando el usuario anónimo del dispositivo
  * si procede. Devuelve el id, o 'disabled' si la cuenta está deshabilitada.
  */
@@ -236,9 +280,18 @@ authRouter.get('/google', (c) => {
   const clientId = process.env['GOOGLE_CLIENT_ID'];
   if (!clientId) return c.json({ error: 'google_not_configured' }, 503);
 
-  const deviceId = c.req.query('device_id') ?? '';
+  // deviceId: la web manda `device_id` (histórico); la app manda `device`
+  // (Task 3.2). Ambos acaban en el state como `d`.
+  const deviceId = c.req.query('device_id') ?? c.req.query('device') ?? '';
+  // client=app (valor EXACTO): el flujo viene de la app móvil y el callback
+  // emitirá un código de canje en vez de abrir sesión web.
+  const isAppClient = c.req.query('client') === 'app';
   // State FIRMADO (HMAC): el callback lo verifica → no se acepta un state ajeno.
-  const state = signState({ d: deviceId, n: randomBytes(8).toString('hex') });
+  const state = signState({
+    d: deviceId,
+    n: randomBytes(8).toString('hex'),
+    ...(isAppClient ? { client: 'app' as const } : {}),
+  });
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -312,6 +365,23 @@ authRouter.get('/google/callback', async (c) => {
     const userId = await resolveUserByEmail(email, deviceId);
     if (userId === 'disabled') return fail('account_disabled');
 
+    // Login desde la APP (Task 3.1): la sesión NUNCA viaja por el custom scheme
+    // sticklive:// (otra app del dispositivo podría interceptarlo). Se emite un
+    // código single-use (2 min) que la app canjea por Bearer vía POST /auth/exchange.
+    // Se guarda el HASH (patrón auth_tokens); el claro solo va en la redirect URL.
+    if (st.client === 'app') {
+      const appCode = newToken(24);
+      await db.query(
+        `INSERT INTO app_login_codes (code_hash, user_id, expires_at)
+         VALUES ($1, $2, NOW() + make_interval(secs => 120))`,
+        [hashToken(appCode), userId]
+      );
+      return c.redirect(
+        `sticklive://auth/callback?code=${encodeURIComponent(appCode)}&email=${encodeURIComponent(email)}`
+      );
+    }
+
+    // Flujo web existente, intacto:
     const session = await openSession(userId);
     return c.redirect(
       `${WEB_BASE}/login#session=${encodeURIComponent(session)}&email=${encodeURIComponent(email)}`

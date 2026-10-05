@@ -59,4 +59,15 @@ describe('signState / verifyState (CSRF de login, HMAC)', () => {
     process.env['AUTH_STATE_SECRET'] = 'test-secret-para-hmac';
     expect(res).toBeNull();
   });
+
+  // Contrato del login de la app móvil (Task 3.1): el payload del state es
+  // Record<string, unknown> — el campo `client: 'app'` viaja firmado y el
+  // callback lo lee tras verificarlo para emitir un código de canje en vez de
+  // una sesión web. signState ya aceptaba campos extra; este test lo fija.
+  it('el state admite client=app y lo devuelve verificado', () => {
+    const raw = signState({ client: 'app', n: 'nonce-1' });
+    const st = verifyState(raw);
+    expect(st?.['client']).toBe('app');
+    expect(st?.n).toBe('nonce-1');
+  });
 });
