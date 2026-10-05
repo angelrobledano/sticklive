@@ -18,6 +18,8 @@ interface Options {
   signal?: AbortSignal;
 }
 
+// Sin timeout por defecto: los retries los gestiona TanStack Query; reconsiderar
+// AbortSignal.any si se observa algún colgado.
 export async function apiFetch<T>(path: string, opts: Options = {}): Promise<T> {
   const headers: Record<string, string> = {};
   if (opts.token) headers['Authorization'] = `Bearer ${opts.token}`;
@@ -31,13 +33,15 @@ export async function apiFetch<T>(path: string, opts: Options = {}): Promise<T> 
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
       signal: opts.signal,
     });
-  } catch {
+  } catch (err) {
+    // La cancelación del llamador no es un fallo de red: se propaga tal cual.
+    if (err instanceof Error && err.name === 'AbortError') throw err;
     throw new ApiError(0, 'network');
   }
 
   if (!res.ok) {
     const envelope = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new ApiError(res.status, envelope.error ?? `http_${res.status}`);
+    throw new ApiError(res.status, typeof envelope.error === 'string' ? envelope.error : `http_${res.status}`);
   }
   return (await res.json()) as T;
 }

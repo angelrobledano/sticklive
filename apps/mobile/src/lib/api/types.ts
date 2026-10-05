@@ -26,7 +26,7 @@ import type { MatchStatus } from '@sports/shared-types';
  * - `status` es el crudo de la BD (para /current, siempre uno de
  *   'scheduled' | 'live' | 'finished', live.ts:235): NO pasa por
  *   `effectiveMatchStatus`; el badge "EN VIVO por reloj" lo calcula la UI con
- *   `STALE_LIVE_HOURS` (#190, igual que la web).
+ *   `STALE_LIVE_HOURS` (#150, como apps/api/src/lib/effective-status.ts y la web).
  * - `scheduledAt`/`startedAt`: pg devuelve `Date` y `c.json()` lo serializa a
  *   string ISO (de ahí `string | null` y no `Date`).
  * Los partidos de `/seasons/:id/matches` vienen en OTRA forma (snake_case, sin
