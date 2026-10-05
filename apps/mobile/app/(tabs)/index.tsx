@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { FlatList, RefreshControl, Text, View } from 'react-native';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useCurrentMatches } from '@/src/hooks/queries';
 import { MatchCard } from '@/src/components/match/MatchCard';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
+import { capture } from '@/src/lib/analytics';
 import { formatDayLabel, isEffectivelyLive } from '@/src/lib/time';
 import type { MatchSummary } from '@/src/lib/api/types';
 
@@ -17,6 +18,11 @@ interface Section {
 export default function LiveScreen() {
   const { data, isPending, isError, refetch, isRefetching } = useCurrentMatches();
   const { t } = useLocale();
+
+  // Analítica (Task 5.1): vista de la pestaña "En directo" (la home de la app).
+  useEffect(() => {
+    capture('live_tab_viewed');
+  }, []);
 
   const sections = useMemo<Section[]>(() => {
     const list = data ?? [];

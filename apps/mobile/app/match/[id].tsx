@@ -1,10 +1,12 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { ScrollView, Text, View } from 'react-native';
+import { useEffect } from 'react';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useMatchDetail } from '@/src/hooks/queries';
 import { useMatchLive } from '@/src/hooks/useMatchLive';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { EventRow } from '@/src/components/match/EventRow';
+import { capture } from '@/src/lib/analytics';
 
 export default function MatchScreen() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -13,6 +15,11 @@ export default function MatchScreen() {
   const query = useMatchDetail(matchId ?? '');
   // la sesión llega en M3: mientras, sin token (el stream es público).
   const live = useMatchLive(matchId ?? '', undefined);
+
+  // Analítica (Task 5.1): apertura de la ficha, una vez por matchId.
+  useEffect(() => {
+    if (matchId) capture('match_opened', { match_id: matchId });
+  }, [matchId]);
   // live.detail y query.data comparten la misma caché de QueryClient; el stream
   // es la fuente en caliente y la query el fallback en frío.
   const current = live.detail ?? query.data;

@@ -28,6 +28,12 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
+// analytics importa posthog-react-native (SDK real no parseable en node):
+// los captures de las mutaciones se mockean (los asserts del wrapper viven en
+// analytics.test.ts).
+const { captureMock } = vi.hoisted(() => ({ captureMock: vi.fn() }));
+vi.mock('@/src/lib/analytics', () => ({ capture: captureMock }));
+
 const ok = (body: unknown) =>
   new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
 

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiFetch } from '@/src/lib/api/client';
+import { capture } from '@/src/lib/analytics';
 import { qk, useFavorites } from './queries';
 
 /**
@@ -115,7 +116,9 @@ export function useAddFavorite(token: string | null | undefined) {
         await saveLocalFavorites(addLocalFavorite(await loadLocalFavorites(), kind, refId));
       }
     },
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
+      // Analítica (Task 5.1): activación de favoritos (paridad web: kind).
+      capture('favorite_added', { kind: variables.kind });
       void qc.invalidateQueries({ queryKey: qk.favorites });
       void qc.invalidateQueries({ queryKey: LOCAL_FAVORITES_QUERY_KEY });
     },
@@ -132,7 +135,9 @@ export function useRemoveFavorite(token: string | null | undefined) {
         await saveLocalFavorites(removeLocalFavorite(await loadLocalFavorites(), kind, refId));
       }
     },
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
+      // Analítica (Task 5.1): los removed son señal de fricción (web).
+      capture('favorite_removed', { kind: variables.kind });
       void qc.invalidateQueries({ queryKey: qk.favorites });
       void qc.invalidateQueries({ queryKey: LOCAL_FAVORITES_QUERY_KEY });
     },

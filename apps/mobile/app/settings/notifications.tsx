@@ -17,6 +17,7 @@ import {
   syncPushSubscription,
   type PushPrefs,
 } from '@/src/lib/push';
+import { capture } from '@/src/lib/analytics';
 import type { NotificationPreset } from '@sports/shared-types';
 
 /**
@@ -197,11 +198,19 @@ export default function NotificationsScreen() {
     setRegistering(true);
     setRegisterError(null);
     registerForPushNotifications()
-      .then((tok) => setPushToken(tok))
+      .then((tok) => {
+        setPushToken(tok);
+        // Analítica (Task 5.1): alta de push nativo (adopción).
+        capture('push_registered');
+      })
       .catch((err: unknown) => {
         const reason = err instanceof Error ? err.message : String(err);
         setRegisterError(reason);
         console.error('[push] no se pudo registrar el dispositivo para push', err);
+        // Analítica (Task 5.1): el fallo también se cuenta, con el motivo del
+        // contrato PUSH_ERRORS. El capture NO sustituye al error visible:
+        // banner en pantalla + consola siguen (regla "nunca silencioso").
+        capture('push_failed', { reason });
       })
       .finally(() => setRegistering(false));
   }, []);

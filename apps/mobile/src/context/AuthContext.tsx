@@ -1,6 +1,7 @@
 import * as WebBrowser from 'expo-web-browser';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { API_URL, apiFetch, ApiError } from '@/src/lib/api/client';
+import { capture, identifyUser } from '@/src/lib/analytics';
 import { getDeviceId } from '@/src/lib/device';
 import {
   clearSession,
@@ -90,6 +91,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       const s: Session = { token: data.session, email: data.email ?? parsed.email };
       await saveSession(s);
+      // Analítica (Task 5.1): identificar con el email ANTES del capture de
+      // login_completed (así el evento ya cae en la persona de la cuenta; el
+      // SDK fusiona la persona anónima del deviceId con la del email). Sin
+      // email en el canje no hay identify: la persona sigue siendo el deviceId.
+      // identifyUser no lanza (try/catch interno) y el capture tampoco: la
+      // analítica no puede romper un login correcto.
+      if (s.email) identifyUser(s.email);
+      capture('login_completed', { method: 'google' });
       // Fusión de favoritos anónimos → cuenta (merge idempotente, Task 3.3).
       // ANTES de setSession: la primera lectura de favoritos ya ve el estado
       // fusionado y no hay flash de "0 favoritos". Si falla (red) el login NO
