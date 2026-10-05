@@ -130,6 +130,21 @@ describe('applyStreamPatch', () => {
     expect(next.connected).toBe(true);
   });
 
+  // Corrección de acta que SUSTITUYE el evento por otro id (#177): con el
+  // reemplazo en bloque el id antiguo desaparece; un merge por id lo dejaría
+  // huérfano junto al nuevo.
+  it('update sustituye un evento corregido (#177): el id antiguo desaparece', () => {
+    let state = applyStreamPatch(base, {
+      kind: 'snapshot',
+      detail: mkDetail({ events: [event('e1', 10)] }),
+    });
+    state = applyStreamPatch(state, {
+      kind: 'update',
+      detail: mkDetail({ events: [event('e9', 10)] }),
+    });
+    expect(state.detail?.events.map((e) => e.id)).toEqual(['e9']);
+  });
+
   it('transport degrada a poll y desconecta conservando el último detalle', () => {
     let state = applyStreamPatch(base, { kind: 'snapshot', detail: mkDetail() });
     state = applyStreamPatch(state, { kind: 'transport', transport: 'poll' });

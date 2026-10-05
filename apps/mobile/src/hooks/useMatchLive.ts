@@ -110,6 +110,10 @@ export function useMatchLive(matchId: string, token: string | null | undefined) 
 
   const connect = useCallback(() => {
     stopAll();
+    // Todo intento de conexión es SSE: restaura el transporte si venimos de
+    // una degradación a poll (p. ej. al re-enfocar la pantalla), y no-op en el
+    // camino normal. El reducer conserva `detail` con este patch.
+    dispatch({ kind: 'transport', transport: 'sse' });
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
