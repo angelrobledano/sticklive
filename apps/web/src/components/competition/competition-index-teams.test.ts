@@ -57,7 +57,7 @@ describe('competitionTeamsForIndex (#339)', () => {
     expect(result.map((t) => t.id)).toEqual(['t1', 't2']);
   });
 
-  it('prefiere el nombre corto y ordena por nombre', () => {
+  it('usa el nombre COMPLETO (texto ancla) y ordena por nombre', () => {
     const result = competitionTeamsForIndex({
       standings: [],
       matches: [
@@ -66,8 +66,22 @@ describe('competitionTeamsForIndex (#339)', () => {
       ],
     });
     expect(result).toEqual([
-      { id: 'a', name: 'ALF' },
+      { id: 'a', name: 'Alfa Club' },
       { id: 'b', name: 'Beta Club' },
+    ]);
+  });
+
+  it('la clasificación tiene prioridad sobre el nombre del partido', () => {
+    const result = competitionTeamsForIndex({
+      standings: [standing({ id: 's1', teamId: 't1', teamName: 'Nombre Oficial FC' })],
+      matches: [
+        match({ id: 'm1', homeTeam: { id: 't1', name: 'Nombre Corto', shortName: 'NCO', logoUrl: null },
+               awayTeam: { id: 't2', name: 'Otro', shortName: null, logoUrl: null } }),
+      ],
+    });
+    expect(result).toEqual([
+      { id: 't1', name: 'Nombre Oficial FC' },
+      { id: 't2', name: 'Otro' },
     ]);
   });
 

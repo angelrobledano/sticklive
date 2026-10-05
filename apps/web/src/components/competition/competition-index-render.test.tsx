@@ -32,26 +32,32 @@ const DATA: SeasonOverview = {
     competitionCountry: 'ES', competitionRegion: null, competitionTimezone: 'Europe/Madrid',
   },
   standings: [standing()],
-  rounds: [],
+  rounds: [{ id: 'r1', number: 1, name: null, roundType: 'regular' }],
   matches: [{
     id: 'm1', status: 'scheduled', competitionTimezone: 'Europe/Madrid',
     scheduledAt: '2026-10-31T15:30:00.000Z', startedAt: null, finishedAt: null,
-    score: { home: null, away: null }, venueName: null, roundId: null,
-    roundNumber: null, roundName: null, roundType: 'regular',
+    score: { home: null, away: null }, venueName: null, roundId: 'r1',
+    roundNumber: 1, roundName: null, roundType: 'regular',
     homeTeam: { id: 't1', name: 'Equipo Uno', shortName: 'UNO', logoUrl: null },
     awayTeam: { id: 't2', name: 'Equipo Dos', shortName: 'DOS', logoUrl: null },
   }],
 };
 
 describe('CompetitionClient índice enlazado (#339)', () => {
-  it('enlaza equipos y partidos en el HTML inicial aunque el tab activo no los muestre', () => {
+  it('enlaza equipos (visible) y partidos (crawler) en el HTML inicial', () => {
     const html = renderToStaticMarkup(
       <I18nProvider initialLocale="es" dict={{}} referenceDict={{}}>
         <CompetitionClient data={DATA} competitionId="c1" />
       </I18nProvider>,
     );
+    // Equipos: nav visible con escudo + nombre (texto ancla).
     expect(html).toContain('/teams/t1');
     expect(html).toContain('/teams/t2');
+    expect(html).toContain('aria-label="Equipos"');
+    // Partidos: nav crawler-only (sr-only), sin coste visual.
     expect(html).toContain('/matches/m1');
+    expect(html).toContain('sr-only');
+    // Fuera las "Jornadas": eran la MISMA URL con `?journey=` (0 valor SEO).
+    expect(html).not.toContain('journey=');
   });
 });

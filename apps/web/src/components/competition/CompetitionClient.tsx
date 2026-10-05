@@ -11,7 +11,7 @@ import { GameweeksTab } from './GameweeksTab';
 import { PlayoffsTab } from './PlayoffsTab';
 import { StatsLeadersTab } from './StatsLeadersTab';
 import { tt } from '@/components/search/translate';
-import { roundLabel } from './format';
+import { TeamShield } from '@/components/shared/TeamShield';
 import { clubName } from '@/lib/names';
 
 // ─── Componente principal ───
@@ -48,18 +48,19 @@ export interface CompetitionIndexTeam {
 
 /**
  * #339: equipos únicos de la competición (clasificación + partidos) para
- * enlazarlos en el HTML server-side. Antes los equipos solo eran enlazables via
- * la pestaña Clasificación (que no existe sin clasificación publicada). Función
- * pura, testeable sin navegador.
+ * enlazarlos en el HTML server-side. Devuelve el NOMBRE COMPLETO — es el texto
+ * ancla del enlace y da mejor SEO que las siglas. Función pura, testeable.
  */
 export function competitionTeamsForIndex(
   data: Pick<SeasonOverview, 'standings' | 'matches'>,
 ): CompetitionIndexTeam[] {
   const map = new Map<string, string>();
-  for (const s of data.standings) map.set(s.teamId, s.teamShortName ?? s.teamName);
+  // La clasificación tiene prioridad; los partidos rellenan los equipos que no
+  // aparezcan en ella (una eliminatoria puede no tener clasificación).
+  for (const s of data.standings) map.set(s.teamId, s.teamName);
   for (const m of data.matches) {
-    if (m.homeTeam?.id) map.set(m.homeTeam.id, m.homeTeam.shortName ?? m.homeTeam.name);
-    if (m.awayTeam?.id) map.set(m.awayTeam.id, m.awayTeam.shortName ?? m.awayTeam.name);
+    if (m.homeTeam?.id && !map.has(m.homeTeam.id)) map.set(m.homeTeam.id, m.homeTeam.name);
+    if (m.awayTeam?.id && !map.has(m.awayTeam.id)) map.set(m.awayTeam.id, m.awayTeam.name);
   }
   return [...map.entries()]
     .map(([id, name]) => ({ id, name }))
@@ -133,17 +134,11 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
     router.replace(`${pathname}?${params}`, { scroll: false });
   }, [sp, pathname, router]);
 
-  // #339: índice enlazado server-side. Los equipos/partidos solo existían en
-  // pestañas cliente; este índice viaja en el HTML inicial para el crawler.
+  // #339: índice enlazado server-side para el crawler (las pestañas son cliente).
   const teamsIndex = useMemo(
     () => competitionTeamsForIndex(data),
     [data],
   );
-  const compId = competitionId ?? data.season.competitionId;
-  const seasonParam = sp.get('season');
-  const fixturesHref = (journey: number) =>
-    `/competitions/${compId}?tab=fixtures&journey=${journey}` +
-    (seasonParam ? `&season=${encodeURIComponent(seasonParam)}` : '');
 
   // #358: patrón ARIA tabs con roving tabindex y navegación por flechas.
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -206,75 +201,49 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
       {currentTab === 'Estadísticas'  && stats && <StatsLeadersTab stats={stats} />}
       </div>
 
-      {/* #339: grafo de enlaces HTML. Jornadas, partidos y equipos solo eran
-          descubribles dentro de pestañas cliente; este índice (plegado, no
-          oculto) los enlaza server-side para que el crawler los encuentre. */}
-      {(teamsIndex.length > 0 || data.matches.length > 0) && (
-        <details className="card px-4 py-3">
-          <summary className="cursor-pointer select-none text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            {tt(t, 'competition.index_title', 'Equipos y partidos')}
-          </summary>
+      {/* #339: índice enlazado server-side (las pestañas son cliente). Diseño
+          curado: equipos VISIBLES como chips (escudo + nombre completo, buen
+          texto ancla) y los partidos en un nav `sr-only`. El sitemap ya lista
+          los partidos; volcar 180 enlaces visibles diluiría el enlace. Fuera
+          las "Jornadas": son la MISMA URL con `?journey=`, no páginas nuevas. */}
+      {teamsIndex.length > 0 && (
+        <nav aria-label={tt(t, 'competition.index_teams', 'Equipos')} className="card p-4 space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+            {tt(t, 'competition.index_teams', 'Equipos')}
+          </h2>
+          <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {teamsIndex.map((tm) => (
+              <li key={tm.id}>
+                <Link
+                  href={`/teams/${tm.id}`}
+                  className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 px-2.5 py-2 min-h-[44px]
+                             hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                >
+                  <TeamShield teamId={tm.id} teamName={tm.name} size={24} />
+                  <span className="min-w-0 truncate text-[13px] font-medium text-slate-700 dark:text-slate-200">
+                    {clubName(tm.name)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
 
-          {teamsIndex.length > 0 && (
-            <section className="pt-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-1">
-                {tt(t, 'competition.index_teams', 'Equipos')}
-              </p>
-              <ul className="flex flex-wrap gap-x-3 gap-y-0.5">
-                {teamsIndex.map((tm) => (
-                  <li key={tm.id}>
-                    <Link
-                      href={`/teams/${tm.id}`}
-                      className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-red-400 hover:underline"
-                    >
-                      {clubName(tm.name)}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {data.rounds.length > 0 && (
-            <section className="pt-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-1">
-                {tt(t, 'competition.index_rounds', 'Jornadas')}
-              </p>
-              <ul className="flex flex-wrap gap-x-3 gap-y-0.5">
-                {data.rounds.map((r) => (
-                  <li key={r.id}>
-                    <Link
-                      href={fixturesHref(r.number)}
-                      className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-red-400 hover:underline"
-                    >
-                      {roundLabel(r, t)}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {data.matches.length > 0 && (
-            <section className="pt-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-1">
-                {tt(t, 'competition.index_matches', 'Partidos')}
-              </p>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
-                {data.matches.map((m) => (
-                  <li key={m.id}>
-                    <Link
-                      href={`/matches/${m.id}`}
-                      className="block truncate text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-red-400 hover:underline"
-                    >
-                      {m.homeTeam.shortName ?? m.homeTeam.name} – {m.awayTeam.shortName ?? m.awayTeam.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </details>
+      {/* Partidos para el crawler: ruta server-side a TODOS (incluidos los
+          históricos fuera de la ventana del sitemap), sin coste visual. */}
+      {data.matches.length > 0 && (
+        <nav className="sr-only" aria-hidden="true">
+          <ul>
+            {data.matches.map((m) => (
+              <li key={m.id}>
+                <Link href={`/matches/${m.id}`} tabIndex={-1}>
+                  {m.homeTeam.name} – {m.awayTeam.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
       )}
     </div>
   );
