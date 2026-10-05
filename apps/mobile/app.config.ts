@@ -19,8 +19,17 @@ export default {
       },
       edgeToEdgeEnabled: true,
     },
-    plugins: ['expo-router', 'expo-status-bar', 'expo-web-browser', 'expo-secure-store'],
+    plugins: [
+      'expo-router',
+      'expo-status-bar',
+      'expo-web-browser',
+      'expo-secure-store',
+      // expo-notifications: color del aviso y canal por defecto de FCMv1 (el
+      // canal 'live' se crea en runtime al registrarse). Requiere recompilar la
+      // app nativa (CNG) para aplicar cambios.
+      ['expo-notifications', { color: '#991b1b', defaultChannel: 'live' }],
+    ],
     experiments: { typedRoutes: true },
-    extra: { eas: { projectId: '' } }, // se rellena con `eas init` en M5
+    extra: { eas: { projectId: '' } }, // se rellena con `eas init` en M5 (push lo exige)
   },
 };

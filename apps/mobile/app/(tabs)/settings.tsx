@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { LOCALES, type Locale } from '@/src/i18n/locales';
@@ -10,7 +12,7 @@ import { authErrorKey } from '@/src/lib/auth-errors';
  * Ajustes (Task 3.4). Orden coherente con la página de settings de la web
  * (apps/web/src/app/[locale]/settings/page.tsx): tema antes de idioma y
  * notificaciones al final; la cuenta queda arriba como en Task 3.2.
- * Notificaciones es un PLACEHOLDER hasta M4 (push nativo): sin lógica aquí.
+ * Notificaciones enlaza a settings/notifications (Task 4.2, push nativo).
  */
 
 /** Endónimos: el nombre del idioma en sí mismo no se traduce (paridad con
@@ -51,6 +53,7 @@ export default function SettingsScreen() {
   const { pref, setPref } = useThemePref();
   const { session, ready, lastAuthError, signInWithGoogle, signOut } = useSession();
   const [signingIn, setSigningIn] = useState(false);
+  const router = useRouter();
 
   const handleSignIn = () => {
     setSigningIn(true);
@@ -147,13 +150,20 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      {/* Notificaciones: llega en M4 (push nativo); nada que configurar hoy */}
-      <View className="mx-4 mt-3 rounded-xl bg-white p-4 dark:bg-slate-900">
-        <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
-          {t('settings.notif_title')}
-        </Text>
-        <Text className="mt-0.5 text-sm text-slate-500">{t('settings.notif_coming_soon')}</Text>
-      </View>
+      {/* Notificaciones (Task 4.2): abre los ajustes de push */}
+      <Pressable
+        onPress={() => router.push('/settings/notifications')}
+        accessibilityRole="button"
+        className="mx-4 mt-3 flex-row items-center justify-between rounded-xl bg-white p-4 active:opacity-70 dark:bg-slate-900"
+      >
+        <View className="flex-1 pr-2">
+          <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            {t('settings.notif_title')}
+          </Text>
+          <Text className="mt-0.5 text-sm text-slate-500">{t('settings.notif_entity_help')}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color="#64748b" />
+      </Pressable>
     </ScrollView>
   );
 }
