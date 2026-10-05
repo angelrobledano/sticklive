@@ -351,7 +351,7 @@ export interface PlayerDetail {
       isCurrent: boolean;
       competitionName: string;
       totals: { pj: number; goals: number };
-      teams: { teamId: string; teamName: string; pj: number; goals: number }[];
+      teams: { competitionId: string; teamId: string; teamName: string; pj: number; goals: number }[];
     }[];
     totals: { pj: number; goals: number };
   };

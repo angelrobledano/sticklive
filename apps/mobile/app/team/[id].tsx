@@ -4,7 +4,7 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 import { useTeam } from '@/src/hooks/queries';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
-import { formatKickoff, isEffectivelyLive } from '@/src/lib/time';
+import { formatDayLabel, formatKickoff, isEffectivelyLive } from '@/src/lib/time';
 
 /**
  * Ficha de equipo (Task 2.5) — `GET /teams/:id` (TeamDetail en types.ts, shape
@@ -70,6 +70,16 @@ export default function TeamScreen() {
           matches.map((m) => {
             const live = isEffectivelyLive(m.status, m.scheduledAt);
             const showScore = live || m.status === 'finished';
+            // En finished, la fecha distingue filas del calendario (formatDayLabel
+            // devuelve '' si no hay fecha → sin separador colgante).
+            const dateLabel = formatDayLabel(m.scheduledAt);
+            const when = m.status === 'finished'
+              ? dateLabel
+                ? `${t('match_states.final')} · ${dateLabel}`
+                : t('match_states.final')
+              : live
+                ? ''
+                : formatKickoff(m.scheduledAt);
             return (
               <Pressable
                 key={m.id}
@@ -77,9 +87,7 @@ export default function TeamScreen() {
                 className="mx-3 my-1 rounded-xl bg-white p-3 active:opacity-70 dark:bg-slate-900"
               >
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-xs text-slate-500">
-                    {m.status === 'finished' ? t('match_states.final') : live ? '' : formatKickoff(m.scheduledAt)}
-                  </Text>
+                  <Text className="text-xs text-slate-500">{when}</Text>
                   {live ? (
                     <View className="rounded-full bg-rink-passion px-2 py-0.5">
                       <Text className="text-[10px] font-bold text-white">{t('match_states.live')}</Text>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { useSearch } from '@/src/hooks/queries';
+import { MIN_SEARCH_LENGTH, searchEnabled, useSearch } from '@/src/hooks/queries';
 import { SEARCH_DEBOUNCE_MS, useDebounced } from '@/src/hooks/useDebounced';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
@@ -14,9 +14,6 @@ import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Ava
  * `name`, sólo firstName/lastName) y competiciones → tab de clasificación.
  */
 
-// Mismo mínimo que el API (searchEnabled en queries.ts): >= 2 caracteres.
-const MIN_SEARCH_CHARS = 2;
-
 export default function SearchScreen() {
   const router = useRouter();
   const { t } = useLocale();
@@ -25,7 +22,7 @@ export default function SearchScreen() {
   const search = useSearch(debounced);
 
   const clean = debounced.trim();
-  const tooShort = clean.length < MIN_SEARCH_CHARS;
+  const tooShort = !searchEnabled(clean);
   const results = search.data;
 
   const sectionTitle = 'px-4 pb-1 pt-4 text-xs font-bold uppercase text-slate-500';
@@ -55,7 +52,7 @@ export default function SearchScreen() {
       </View>
 
       {tooShort ? (
-        <EmptyState title={t('search.hint').replace('{n}', String(MIN_SEARCH_CHARS))} />
+        <EmptyState title={t('search.hint').replace('{n}', String(MIN_SEARCH_LENGTH))} />
       ) : search.isPending && !results ? (
         <View className="flex-1" />
       ) : search.isError && !results ? (
@@ -63,7 +60,10 @@ export default function SearchScreen() {
       ) : !results || results.total === 0 ? (
         <EmptyState title={t('common.no_search_results')} />
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 24 }}
+          keyboardShouldPersistTaps="handled"
+        >
           {results.teams.length > 0 ? (
             <>
               <Text className={sectionTitle}>{t('search.section_teams')}</Text>

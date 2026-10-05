@@ -27,9 +27,13 @@ const initials = (name: string): string =>
  * el API responde 404 (equipo/jugador sin imagen) o falla la carga.
  */
 export function Avatar({ uri, name, size = 28 }: { uri: string | null; name: string; size?: number }) {
-  const [failed, setFailed] = useState(false);
+  // Estado derivado, no boolean: al cambiar la uri el componente reintenta solo
+  // (listas recicladas de FlatList incluidas) sin useEffect + setState, que el
+  // lint prohíbe (react-hooks/set-state-in-effect).
+  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const broken = uri == null || failedUri === uri;
 
-  if (!uri || failed) {
+  if (broken) {
     return (
       <View
         style={{ width: size, height: size, borderRadius: size / 5 }}
@@ -47,7 +51,7 @@ export function Avatar({ uri, name, size = 28 }: { uri: string | null; name: str
       source={{ uri }}
       style={{ width: size, height: size, borderRadius: size / 5 }}
       resizeMode="contain"
-      onError={() => setFailed(true)}
+      onError={() => setFailedUri(uri)}
     />
   );
 }

@@ -17,8 +17,9 @@ const queryClient = new QueryClient({
   },
 });
 
-// Las pantallas fuera de (tabs) mantienen el header oculto (navegación con
-// gesto/botón atrás); match/[id] ajusta su título dinámico internamente.
+// Con headerShown: false global, estos Stack.Screen son hoy inertes (el
+// options.title que fijan las pantallas no llega a pintarse); el comportamiento
+// real de los headers se decide en M5.
 export default function RootLayout() {
   return (
     <ThemeProvider>

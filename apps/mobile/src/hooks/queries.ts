@@ -34,7 +34,10 @@ export const qk = {
 // no usan @testing-library/react-native; ver queries.test.ts).
 
 /** Mismo mínimo que el API: apps/api/src/routes/search.ts:9 (MIN_SEARCH_LENGTH). */
-export const searchEnabled = (q: string): boolean => q.trim().length >= 2;
+export const MIN_SEARCH_LENGTH = 2;
+
+/** Gating de /search: mínimo efectivo tras trim (función pura testeada). */
+export const searchEnabled = (q: string): boolean => q.trim().length >= MIN_SEARCH_LENGTH;
 
 export const standingsEnabled = (seasonId: string | undefined): boolean => Boolean(seasonId);
 

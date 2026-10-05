@@ -104,7 +104,10 @@ export default function PlayerScreen() {
                 </View>
                 {season.teams.map((team) => (
                   <Pressable
-                    key={team.teamId}
+                    // competitionId en la key: el mismo equipo podría repetirse
+                    // en la trayectoria con distinta competición (CareerTeamEntry
+                    // lo trae, player-career.ts:51).
+                    key={`${team.competitionId}-${team.teamId}`}
                     onPress={() => router.push(`/team/${team.teamId}`)}
                     className="mt-0.5 flex-row items-center justify-between active:opacity-70"
                   >
