@@ -46,8 +46,24 @@ jobs:
       # Además, desde que producción corre JS compilado sin devDependencies
       # (PR #49), `--omit=dev` audita de verdad lo que se ejecuta en el
       # servidor. Antes no: corría con `npx tsx`, que es devDependency.
+      # La app móvil NO se despliega (excluida del build de producción por
+      # .dockerignore) y sus deps de toolchain (expo) no deben tumbar este gate.
+      # Auditamos solo los workspaces del servidor, derivados del Dockerfile de
+      # producción (= lo que se copia a la imagen). El audit completo (con la app
+      # móvil) sigue en el paso informativo de abajo, sin bloquear.
       - name: Audit (prod deps)
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          set -euo pipefail
+          d="$(mktemp -d)"
+          cp package.json package-lock.json "$d/"
+          grep -oE '^COPY (apps|packages)/[^/]+/package\.json' deploy/Dockerfile \
+            | awk '{print $2}' | xargs -n1 dirname | sort -u \
+            | while read -r w; do
+                mkdir -p "$d/$w"
+                cp "$w/package.json" "$d/$w/"
+              done
+          cd "$d"
+          npm audit --omit=dev --audit-level=high
 
       # Informativo, NO bloquea. El umbral de arriba es `high` por una razón
       # concreta: queda un `postcss` moderate dentro del propio Next
