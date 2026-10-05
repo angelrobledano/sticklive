@@ -19,8 +19,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Fallo de persistencia → degrada grácilmente a 'system'; no es dato de negocio (la regla de explicitud aplica a la ingesta, no a prefs de UI).
     AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
-      if (saved === 'light' || saved === 'dark' || saved === 'system') setPrefState(saved);
+      if (saved === 'light' || saved === 'dark' || saved === 'system') {
+        setPrefState(saved);
+        setColorScheme(saved); // aplicar también al esquema real; sin esto el tema guardado no llega a la UI en cold start
+      }
     }).catch(() => {});
+    // setColorScheme omitido de deps a propósito: nativewind devuelve un objeto
+    // nuevo en cada render (no estable) y la hidratación solo debe correr al montar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ver comentario anterior
   }, []);
 
   const setPref = useCallback((p: ThemePref) => {
