@@ -40,6 +40,12 @@
     "live": "In diretta",
     "in_play": "In gioco",
     "final": "Finale",
+    "final_overtime": "Finale (Supplementari)",
+    "final_penalties": "Finale (Rigori)",
+    "overtime": "Tempi supplementari",
+    "penalty_shootout": "Rigori",
+    "penalties_label": "Rigori",
+    "winner": "Vincente",
     "half_time": "Intervallo",
     "first_half": "1Â° Tempo",
     "second_half": "2Â° Tempo",
@@ -91,6 +97,8 @@
     "manage_help": "Le squadre e i campionati selezionati appariranno in cima al tuo calendario e attiverai i loro avvisi automatici.",
     "teams": "Squadre",
     "leagues": "Campionati",
+    "onboarding_done": "Fatto · Vedi le partite",
+    "onboarding_skip": "Salta per ora",
     "onboarding_title": "La tua tribuna personalizzata",
     "onboarding_body": "Segna le tue squadre e i campionati con la stella per vedere le loro partite in alto e ricevere avvisi in diretta.",
     "onboarding_cta": "Esplora le competizioni",
@@ -125,6 +133,11 @@
     "upsell_guest": "Continua come ospite",
     "google_failed": "Accesso con Google non riuscito. Riprova o usa il link via email.",
     "account_disabled": "Questo account Ã¨ disattivato. Se pensi sia un errore, contattaci.",
+    "google_unavailable": "L’accesso con Google non è disponibile al momento. Accedi con la tua email e sarà lo stesso account.",
+    "google_state": "La connessione con Google è scaduta per sicurezza. Riprova.",
+    "google_email": "Il tuo account Google non espone un’email verificata. Accedi con quella stessa email e sarà lo stesso account.",
+    "google_denied": "Hai annullato l’accesso con Google. Puoi riprovare o accedere con la tua email.",
+    "link_hint": "Se ti sei già registrato con questa email, nessun problema: usiamo la stessa email per identificarti, quindi entrerai nel tuo account di sempre.",
     "error_invalid_email": "Questa email non sembra valida. Controllala e riprova.",
     "error_email_unavailable": "Non possiamo inviare il link ora. Riprova tra qualche minuto.",
     "error_generic": "Qualcosa Ã¨ andato storto. Riprova.",
@@ -138,6 +151,10 @@
     "show_more": "Mostra di piÃ¹ ({n})",
     "show_less": "Mostra meno",
     "language": "Lingua",
+    "no_matches_today": "Nessuna partita per oggi",
+    "no_matches_this_day": "Nessuna partita in questo giorno",
+    "upcoming_intro": "Queste sono le prossime partite",
+    "no_upcoming": "Nessuna prossima partita in programma",
     "teams_lc": "squadre",
     "matches_lc": "partite",
     "match_lc": "partita",
@@ -212,6 +229,7 @@
     "badge_goalkeeper": "P"
   },
   "playoffs": {
+    "round_of_16": "Ottavi",
     "quarters": "Quarti",
     "semis": "Semifinali",
     "final": "Finale",
@@ -296,9 +314,32 @@
     "my_players": "I miei giocatori",
     "teams_load_error": "Impossibile caricare le squadre",
     "fav_note": "{n} preferiti Â· in evidenza nella schermata iniziale",
+    "install_app": "Installa l’app",
+    "install_app_desc": "Accesso diretto dalla tua schermata iniziale e notifiche, come un’app nativa.",
+    "install_ios_help": "Su iPhone: tocca il pulsante Condividi (il quadrato con la freccia verso l’alto) e scegli «Aggiungi alla schermata Home».",
     "notif_title": "Notifiche",
     "master": "Consenti notifiche",
     "master_desc": "Attiva o disattiva tutti gli avvisi dellâ€™app",
+    "notif_unavailable": "Le notifiche non sono disponibili in questo browser al momento.",
+    "notif_ios_install": "Su iPhone, aggiungi Stick Live alla tua schermata Home (pulsante Condividi → «Aggiungi alla schermata Home») per poter ricevere le notifiche.",
+    "notif_denied": "Hai bloccato le notifiche per questo sito. Riattivale dalle impostazioni del browser.",
+    "notif_enable_hint": "Attiva l’interruttore qui sopra per consentire le notifiche su questo dispositivo.",
+    "notif_activate_btn": "Attiva le notifiche su questo dispositivo",
+    "notif_test_btn": "Invia una notifica di prova",
+    "notif_test_sending": "Invio…",
+    "notif_test_ok": "Inviata. Dovrebbe arrivare in pochi secondi.",
+    "notif_test_nosub": "Ancora nessuna iscrizione su questo dispositivo. Attiva prima l’interruttore.",
+    "notif_test_fail": "Impossibile inviare. Controlla il permesso e riprova.",
+    "sec_jornada": "Avvisi di giornata",
+    "jornada_alerts": "Inizio e riepilogo di giornata",
+    "jornada_alerts_desc": "Un avviso quando parte la giornata e un altro con il riepilogo alla chiusura.",
+    "sec_favs": "Notifiche dei miei preferiti",
+    "sec_rest": "Riposo",
+    "notif_nav_competitions": "Competizioni preferite",
+    "notif_nav_teams": "Squadre preferite",
+    "notif_nav_players": "Giocatori preferiti",
+    "notif_entity_help": "Attiva o disattiva le notifiche per ciascuno.",
+    "notif_entity_empty": "Non segui ancora nulla di questo tipo.",
     "global_section": "Avvisi globali",
     "j_start": "Inizio giornata",
     "j_start_desc": "Ti avvisiamo quando parte una nuova giornata",
@@ -391,6 +432,8 @@
     "career_totals": "Totali in carriera"
   },
   "fixtures": {
+    "by_round": "Per giornata",
+    "empty": "Nessuna partita programmata per questa selezione.",
     "matchday": "Giornata {n}"
   },
   "search": {
@@ -423,10 +466,24 @@
     "dismiss": "Chiudi"
   },
   "notif_presets": {
+    "title": "Cosa vuoi ricevere?",
+    "complete": {
+      "label": "Tutto",
+      "desc": "Non ti perderai nulla della partita."
+    },
+    "results": {
+      "label": "Risultati",
+      "desc": "Inizio e risultato finale delle partite."
+    },
+    "silent": {
+      "label": "Silenzioso",
+      "desc": "Potrai seguirla dall’applicazione."
+    },
     "push_offer_title": "Attiva le notifiche",
     "push_offer_desc": "Consenti le notifiche su questo dispositivo per ricevere gli avvisi delle tue squadre.",
     "push_offer_cta": "Attiva avvisi",
     "key_events": {
+      "label": "Eventi chiave",
       "desc": "Inizio partita, gol, cartellini blu, falli diretti e risultato finale."
     }
   },

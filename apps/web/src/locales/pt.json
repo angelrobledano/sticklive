@@ -40,6 +40,12 @@
     "live": "Em direto",
     "in_play": "Em jogo",
     "final": "Fim",
+    "final_overtime": "Fim (Prolongamento)",
+    "final_penalties": "Fim (Grandes penalidades)",
+    "overtime": "Prolongamento",
+    "penalty_shootout": "Grandes penalidades",
+    "penalties_label": "Grandes penalidades",
+    "winner": "Vencedor",
     "half_time": "Intervalo",
     "first_half": "1Âª Parte",
     "second_half": "2Âª Parte",
@@ -91,6 +97,8 @@
     "manage_help": "As equipas e ligas que selecionares aparecerÃ£o no topo do teu calendÃ¡rio e ativarÃ¡s os seus alertas automÃ¡ticos.",
     "teams": "Equipas",
     "leagues": "Ligas",
+    "onboarding_done": "Pronto · Ver jogos",
+    "onboarding_skip": "Saltar por agora",
     "onboarding_title": "A tua bancada personalizada",
     "onboarding_body": "Marca as tuas equipas e ligas com a estrela para veres os seus jogos no topo e receberes alertas em direto.",
     "onboarding_cta": "Explorar competiÃ§Ãµes",
@@ -125,6 +133,11 @@
     "upsell_guest": "Continuar como convidado",
     "google_failed": "NÃ£o foi possÃ­vel concluir o acesso com o Google. Tenta de novo ou usa o link por email.",
     "account_disabled": "Esta conta estÃ¡ desativada. Se achas que Ã© um erro, contacta-nos.",
+    "google_unavailable": "O acesso com o Google não está disponível neste momento. Entra com o teu email e ficará a mesma conta.",
+    "google_state": "A ligação com o Google expirou por segurança. Volta a tentar.",
+    "google_email": "A tua conta Google não expõe um email verificado. Entra com esse mesmo email e será a mesma conta.",
+    "google_denied": "Cancelaste o acesso com o Google. Podes tentar outra vez ou entrar com o teu email.",
+    "link_hint": "Se já te registaste com este email, não faz mal: usamos o mesmo email para te identificar, por isso entrarás na tua conta de sempre.",
     "error_invalid_email": "Esse email nÃ£o parece vÃ¡lido. Verifica e tenta de novo.",
     "error_email_unavailable": "NÃ£o podemos enviar o link agora. Tenta de novo dentro de alguns minutos.",
     "error_generic": "Algo correu mal. Tenta de novo.",
@@ -138,6 +151,10 @@
     "show_more": "Mostrar mais ({n})",
     "show_less": "Mostrar menos",
     "language": "Idioma",
+    "no_matches_today": "Sem jogos para hoje",
+    "no_matches_this_day": "Sem jogos neste dia",
+    "upcoming_intro": "Estes são os próximos jogos",
+    "no_upcoming": "Sem próximos jogos programados",
     "teams_lc": "equipas",
     "matches_lc": "jogos",
     "match_lc": "jogo",
@@ -297,9 +314,32 @@
     "my_players": "Os meus jogadores",
     "teams_load_error": "NÃ£o foi possÃ­vel carregar as equipas",
     "fav_note": "{n} favoritos Â· aparecem destacados no ecrÃ£ inicial",
+    "install_app": "Instalar a app",
+    "install_app_desc": "Acesso direto a partir do teu ecrã inicial e notificações, como uma app nativa.",
+    "install_ios_help": "No iPhone: toca no botão Partilhar (o quadrado com a seta para cima) e escolhe «Adicionar ao ecrã principal».",
     "notif_title": "NotificaÃ§Ãµes",
     "master": "Permitir notificaÃ§Ãµes",
     "master_desc": "Ativa ou desativa todos os alertas da app",
+    "notif_unavailable": "As notificações não estão disponíveis neste navegador neste momento.",
+    "notif_ios_install": "No iPhone, adiciona o Stick Live ao teu ecrã principal (botão Partilhar → «Adicionar ao ecrã principal») para poderes receber notificações.",
+    "notif_denied": "Bloqueaste as notificações para este site. Volta a ativá-las nas definições do navegador.",
+    "notif_enable_hint": "Ativa o interruptor acima para permitir as notificações neste dispositivo.",
+    "notif_activate_btn": "Ativar as notificações neste dispositivo",
+    "notif_test_btn": "Enviar notificação de teste",
+    "notif_test_sending": "A enviar…",
+    "notif_test_ok": "Enviada. Deve chegar em alguns segundos.",
+    "notif_test_nosub": "Ainda não há subscrição neste dispositivo. Ativa primeiro o interruptor.",
+    "notif_test_fail": "Não foi possível enviar. Verifica a permissão e volta a tentar.",
+    "sec_jornada": "Alertas da jornada",
+    "jornada_alerts": "Início e resumo de jornada",
+    "jornada_alerts_desc": "Um aviso quando a jornada arranca e outro com o resumo ao fechar.",
+    "sec_favs": "Notificações dos meus favoritos",
+    "sec_rest": "Descanso",
+    "notif_nav_competitions": "Competições favoritas",
+    "notif_nav_teams": "Equipas favoritas",
+    "notif_nav_players": "Jogadores favoritos",
+    "notif_entity_help": "Ativa ou desativa as notificações para cada um.",
+    "notif_entity_empty": "Ainda não segues nada deste tipo.",
     "global_section": "Alertas globais",
     "j_start": "InÃ­cio de jornada",
     "j_start_desc": "Avisamos-te quando arranca uma nova jornada",
@@ -392,6 +432,8 @@
     "career_totals": "Totais da carreira"
   },
   "fixtures": {
+    "by_round": "Por jornada",
+    "empty": "Não há jogos programados para esta seleção.",
     "matchday": "Jornada {n}"
   },
   "search": {
@@ -424,10 +466,24 @@
     "dismiss": "Fechar"
   },
   "notif_presets": {
+    "title": "O que queres receber?",
+    "complete": {
+      "label": "Tudo",
+      "desc": "Não perderás nada do jogo."
+    },
+    "results": {
+      "label": "Resultados",
+      "desc": "Início e resultado final dos jogos."
+    },
+    "silent": {
+      "label": "Silencioso",
+      "desc": "Poderás segui-lo na aplicação."
+    },
     "push_offer_title": "Ativa os avisos",
     "push_offer_desc": "Permite as notificaÃ§Ãµes neste dispositivo para receberes os alertas das tuas equipas.",
     "push_offer_cta": "Ativar avisos",
     "key_events": {
+      "label": "Eventos-chave",
       "desc": "InÃ­cio do jogo, golos, cartÃµes azuis, faltas diretas e resultado final."
     }
   },

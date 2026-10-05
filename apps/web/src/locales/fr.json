@@ -40,6 +40,12 @@
     "live": "En direct",
     "in_play": "En jeu",
     "final": "TerminÃ©",
+    "final_overtime": "Terminé (Prolongation)",
+    "final_penalties": "Terminé (Tirs au but)",
+    "overtime": "Prolongation",
+    "penalty_shootout": "Tirs au but",
+    "penalties_label": "Tirs au but",
+    "winner": "Vainqueur",
     "half_time": "Mi-temps",
     "first_half": "1Ã¨re PÃ©riode",
     "second_half": "2Ã¨me PÃ©riode",
@@ -91,6 +97,8 @@
     "manage_help": "Les Ã©quipes et ligues sÃ©lectionnÃ©es apparaÃ®tront en haut de votre calendrier et leurs alertes automatiques seront activÃ©es.",
     "teams": "Ã‰quipes",
     "leagues": "Ligues",
+    "onboarding_done": "Prêt · Voir les matchs",
+    "onboarding_skip": "Passer pour l’instant",
     "onboarding_title": "Votre tribune personnalisÃ©e",
     "onboarding_body": "Marquez vos Ã©quipes et ligues avec lâ€™Ã©toile pour voir leurs matchs en haut et recevoir des alertes en direct.",
     "onboarding_cta": "Explorer les compÃ©titions",
@@ -125,6 +133,11 @@
     "upsell_guest": "Continuer en invitÃ©",
     "google_failed": "La connexion avec Google n'a pas pu aboutir. RÃ©essayez ou utilisez le lien par email.",
     "account_disabled": "Ce compte est dÃ©sactivÃ©. Si vous pensez qu'il s'agit d'une erreur, contactez-nous.",
+    "google_unavailable": "La connexion avec Google n’est pas disponible pour le moment. Connectez-vous avec votre email et ce sera le même compte.",
+    "google_state": "La connexion avec Google a expiré par sécurité. Veuillez réessayer.",
+    "google_email": "Votre compte Google n’expose pas d’email vérifié. Connectez-vous avec ce même email et ce sera le même compte.",
+    "google_denied": "Vous avez annulé la connexion avec Google. Vous pouvez réessayer ou vous connecter avec votre email.",
+    "link_hint": "Si vous vous êtes déjà inscrit avec cet email, aucun souci : nous utilisons le même email pour vous identifier, vous arriverez donc sur votre compte habituel.",
     "error_invalid_email": "Cet email ne semble pas valide. VÃ©rifiez-le et rÃ©essayez.",
     "error_email_unavailable": "Nous ne pouvons pas envoyer le lien maintenant. RÃ©essayez dans quelques minutes.",
     "error_generic": "Quelque chose s'est mal passÃ©. RÃ©essayez.",
@@ -138,6 +151,10 @@
     "show_more": "Afficher plus ({n})",
     "show_less": "Afficher moins",
     "language": "Langue",
+    "no_matches_today": "Aucun match aujourd’hui",
+    "no_matches_this_day": "Aucun match ce jour",
+    "upcoming_intro": "Voici les prochains matchs",
+    "no_upcoming": "Aucun match à venir programmé",
     "teams_lc": "Ã©quipes",
     "matches_lc": "matchs",
     "match_lc": "match",
@@ -212,6 +229,7 @@
     "badge_goalkeeper": "G"
   },
   "playoffs": {
+    "round_of_16": "Huitièmes",
     "quarters": "Quarts",
     "semis": "Demies",
     "final": "Finale",
@@ -296,9 +314,32 @@
     "my_players": "Mes joueurs",
     "teams_load_error": "Impossible de charger les Ã©quipes",
     "fav_note": "{n} favoris Â· mis en avant sur lâ€™Ã©cran dâ€™accueil",
+    "install_app": "Installer l’app",
+    "install_app_desc": "Accès direct depuis votre écran d’accueil et notifications, comme une app native.",
+    "install_ios_help": "Sur iPhone : touchez le bouton Partager (le carré avec la flèche vers le haut) et choisissez « Ajouter à l’écran d’accueil ».",
     "notif_title": "Notifications",
     "master": "Autoriser les notifications",
     "master_desc": "Active ou dÃ©sactive toutes les alertes de lâ€™app",
+    "notif_unavailable": "Les notifications ne sont pas disponibles dans ce navigateur pour le moment.",
+    "notif_ios_install": "Sur iPhone, ajoutez Stick Live à votre écran d’accueil (bouton Partager → « Ajouter à l’écran d’accueil ») pour pouvoir recevoir des notifications.",
+    "notif_denied": "Vous avez bloqué les notifications pour ce site. Réactivez-les depuis les réglages du navigateur.",
+    "notif_enable_hint": "Activez l’interrupteur ci-dessus pour autoriser les notifications sur cet appareil.",
+    "notif_activate_btn": "Activer les notifications sur cet appareil",
+    "notif_test_btn": "Envoyer une notification de test",
+    "notif_test_sending": "Envoi…",
+    "notif_test_ok": "Envoyée. Elle devrait arriver dans quelques secondes.",
+    "notif_test_nosub": "Pas encore d’abonnement sur cet appareil. Activez d’abord l’interrupteur.",
+    "notif_test_fail": "Envoi impossible. Vérifiez l’autorisation et réessayez.",
+    "sec_jornada": "Alertes de la journée",
+    "jornada_alerts": "Début et résumé de journée",
+    "jornada_alerts_desc": "Un avis au démarrage de la journée et un autre avec le résumé à la fermeture.",
+    "sec_favs": "Notifications de mes favoris",
+    "sec_rest": "Repos",
+    "notif_nav_competitions": "Compétitions favorites",
+    "notif_nav_teams": "Équipes favorites",
+    "notif_nav_players": "Joueurs favoris",
+    "notif_entity_help": "Activez ou désactivez les notifications pour chacun.",
+    "notif_entity_empty": "Vous ne suivez encore rien de ce type.",
     "global_section": "Alertes globales",
     "j_start": "DÃ©but de journÃ©e",
     "j_start_desc": "On vous prÃ©vient quand une nouvelle journÃ©e dÃ©marre",
@@ -391,6 +432,8 @@
     "career_totals": "Totaux de carriÃ¨re"
   },
   "fixtures": {
+    "by_round": "Par journée",
+    "empty": "Aucun match programmé pour cette sélection.",
     "matchday": "JournÃ©e {n}"
   },
   "search": {
@@ -423,10 +466,24 @@
     "dismiss": "Fermer"
   },
   "notif_presets": {
+    "title": "Que voulez-vous recevoir ?",
+    "complete": {
+      "label": "Tout",
+      "desc": "Vous ne raterez rien du match."
+    },
+    "results": {
+      "label": "Résultats",
+      "desc": "Coup d’envoi et résultat final des matchs."
+    },
+    "silent": {
+      "label": "Silencieux",
+      "desc": "Vous pourrez le suivre depuis l’application."
+    },
     "push_offer_title": "Activer les notifications",
     "push_offer_desc": "Autorisez les notifications sur cet appareil pour recevoir les alertes de vos Ã©quipes.",
     "push_offer_cta": "Activer les alertes",
     "key_events": {
+      "label": "Événements clés",
       "desc": "DÃ©but du match, buts, cartons bleus, fautes directes et rÃ©sultat final."
     }
   },
