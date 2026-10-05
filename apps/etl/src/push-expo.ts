@@ -46,8 +46,9 @@ function toUrlPath(url: string): string {
 }
 
 /** Mensaje del API v2: channelId 'live' (lo crea la app antes de pedir
- *  permiso) y collapseId = tag del partido (smart bundling: la notificación
- *  viva se REEMPLAZA en la pantalla de bloqueo en vez de apilarse). */
+ *  permiso), collapseId = tag del partido (smart bundling: la notificación
+ *  viva se REEMPLAZA en la pantalla de bloqueo en vez de apilarse) y TTL de
+ *  1 h (paridad con el canal web: un gol entregado horas después no vale nada). */
 export function toExpoMessage(sub: { expo_push_token: string }, payload: ExpoPayload) {
   return {
     to: sub.expo_push_token,
@@ -55,6 +56,7 @@ export function toExpoMessage(sub: { expo_push_token: string }, payload: ExpoPay
     body: payload.body,
     channelId: 'live',
     sound: 'default',
+    ttl: 3600,
     collapseId: payload.tag,
     data: { type: payload.type, urlPath: toUrlPath(payload.url) },
   };
@@ -103,6 +105,10 @@ export async function deliverNative(
   // receipt id → token: el recibo NO trae el token; sin este mapa no se podría
   // podar la fila correcta en processReceipts.
   const receiptTokens = new Map<string, string>();
+  // Poda por ticket: Expo puede marcar DeviceNotRegistered YA en la respuesta
+  // del envío (error por-item, sin recibo que consultar) — esos tokens se podan
+  // de inmediato, sin esperar a /push/getReceipts.
+  const deadTokens: string[] = [];
   let sent = 0, failed = 0;
 
   for (const [ci, chunk] of chunkMessages(messages).entries()) {
@@ -120,7 +126,15 @@ export async function deliverNative(
         failed += chunk.length;
         continue;
       }
-      const data = (await res.json()) as { data: Array<{ id?: string; status?: string; message?: string }> };
+      const data = (await res.json()) as {
+        data: Array<{ id?: string; status?: string; message?: string; details?: { error?: string } }>;
+        errors?: Array<Record<string, unknown>>;
+      };
+      // Errores TOP-LEVEL de la respuesta (rate limit, formato…): antes se
+      // tragaban en silencio; van al log para diagnóstico.
+      if (data.errors?.length) {
+        log.warn({ errors: data.errors }, 'Expo Push API devolvió errores top-level');
+      }
       for (const [i, item] of (data.data ?? []).entries()) {
         const sub = subs[ci * SEND_CHUNK + i]; // correspondencia 1:1 por orden
         if (!sub) break; // respuesta desalineada: mejor no inventar destinatarios
@@ -130,7 +144,11 @@ export async function deliverNative(
           captureSent(sub.device_id, payload.type);
         } else {
           failed += 1;
-          log.warn({ deviceId: sub.device_id, detail: item.message ?? item.status }, 'Envío Expo rechazado');
+          if (item.details?.error === 'DeviceNotRegistered') deadTokens.push(sub.expo_push_token);
+          log.warn(
+            { deviceId: sub.device_id, detail: item.message ?? item.details?.error ?? item.status },
+            'Envío Expo rechazado',
+          );
         }
       }
     } catch (err) {
@@ -139,8 +157,22 @@ export async function deliverNative(
     }
   }
 
+  // Poda INMEDIATA por ticket: el token marcado en el propio envío ya está
+  // muerto. Un fallo de BD aquí no pierde el ciclo: warn y sigue con los
+  // recibos (la poda no es urgente, el próximo envío reintenta).
+  if (deadTokens.length > 0) {
+    try { await pruneDeadTokens(deadTokens); }
+    catch (err) { log.warn({ err }, 'Poda por ticket falló — se reintentará con el próximo envío'); }
+  }
   if (receiptTokens.size > 0) await processReceipts(receiptTokens);
   return { sent, failed };
+}
+
+/** Poda (DELETE) tokens muertos por DeviceNotRegistered: desinstalación o
+ *  token rotado. Compartido por la poda por ticket y la por recibo. */
+async function pruneDeadTokens(dead: string[]): Promise<void> {
+  await db.query(`DELETE FROM push_tokens WHERE expo_push_token = ANY($1::text[])`, [dead]);
+  log.info({ pruned: dead.length }, 'Tokens nativos podados (DeviceNotRegistered)');
 }
 
 /**
@@ -167,10 +199,7 @@ async function processReceipts(receiptTokens: Map<string, string>): Promise<void
           if (token) dead.push(token);
         }
       }
-      if (dead.length > 0) {
-        await db.query(`DELETE FROM push_tokens WHERE expo_push_token = ANY($1::text[])`, [dead]);
-        log.info({ pruned: dead.length }, 'Tokens nativos podados (DeviceNotRegistered)');
-      }
+      if (dead.length > 0) await pruneDeadTokens(dead);
     } catch (err) {
       log.warn({ err }, 'Fallo procesando recibos Expo — se reintentará con el próximo envío');
     }

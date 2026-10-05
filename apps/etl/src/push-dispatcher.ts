@@ -341,7 +341,7 @@ async function deliverNativeEvents(events: NativeEvent[], night: boolean): Promi
     if (targets.length === 0) continue;
     try {
       const res = await deliverNative(targets, e.payload, captureSent);
-      log.info({ type: e.payload.type, nativeSent: res.sent, nativeFailed: res.failed }, '📱 Push nativo');
+      log.info({ type: e.payload.type, tag: e.payload.tag, nativeSent: res.sent, nativeFailed: res.failed }, '📱 Push nativo');
     } catch (err) {
       log.warn({ err, type: e.payload.type }, 'push nativo fallo — el canal web ya corrió');
     }
@@ -442,9 +442,11 @@ export async function deliverMorningSummaries(now: Date = new Date()): Promise<v
   // El canal nativo es aditivo: no depende de que existan suscripciones web.
   if (subs.rows.length === 0 && (await nativeSubs()).length === 0) return;
 
-  // Ledger del día: suscripciones ya servidas (persistente, sobrevive reinicios).
+  // Ledger del día SOLO del canal web: el nativo tiene el suyo (channel
+  // 'native', migración 066) y mezclarlos haría que el resumen web saltara a
+  // quien ya lo sirvió el nativo (y viceversa).
   const logged = await db.query<{ subscription_id: string }>(
-    `SELECT subscription_id FROM push_summary_log WHERE day = $1`,
+    `SELECT subscription_id FROM push_summary_log WHERE day = $1 AND channel = 'web'`,
     [dateKey],
   );
   const alreadySent = new Set(logged.rows.map((r) => r.subscription_id));
@@ -471,8 +473,10 @@ export async function deliverMorningSummaries(now: Date = new Date()): Promise<v
     if (res === 'sent' || res === 'pruned') {
       // Registrar ANTES de contarlo: si el INSERT falla, no se marca y se
       // reintentará en la siguiente invocación, sin duplicar a los ya servidos.
+      // Columna channel EXPLÍCITA ('web'): aunque hoy sea el DEFAULT, el ledger
+      // es por canal y dejarlo implícito es cómo nació el bug del filtro.
       await db.query(
-        `INSERT INTO push_summary_log (subscription_id, day) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        `INSERT INTO push_summary_log (subscription_id, day, channel) VALUES ($1, $2, 'web') ON CONFLICT DO NOTHING`,
         [sub.id, dateKey],
       );
       if (res === 'sent') sent++; else sentPruned++;
