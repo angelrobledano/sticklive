@@ -6,9 +6,18 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "react-native": [
+        "./node_modules/react-native"
       ]
     }
   },
+  // "react-native" fijo a la copia del workspace: npm anida una segunda copia
+  // (react-native 0.87.1) bajo nativewind/node_modules para satisfacer el peer
+  // "react-native": "*" de react-native-css-interop, y sin el path los
+  // augmentation de tipos de esa copia anidada no se aplican a la que usa la
+  // app (className de NativeWind). Metro ya resuelve a la copia del workspace;
+  // esto replica el mismo hecho en tsc.
   "include": [
     "**/*.ts",
     "**/*.tsx",

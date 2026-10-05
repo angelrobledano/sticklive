@@ -1,4 +1,11 @@
 {
+  "nav": {
+    "live": "Em direto",
+    "standings": "Classificação",
+    "search": "Pesquisar",
+    "favorites": "Favoritos",
+    "settings": "Definições"
+  },
   "a11y": {
     "skip_to_content": "Saltar para o conteÃºdo",
     "nav_primary": "NavegaÃ§Ã£o principal",
