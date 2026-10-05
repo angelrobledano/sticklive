@@ -17,6 +17,7 @@
  */
 import { db, closeDb } from '@sports/db';
 import { STANDINGS_RECONCILE_SQL } from './standings-reconcile.js';
+import { REF_COLLISION_TOTAL_SQL } from './ref-collisions.js';
 
 // ── Umbrales (ajustables) ─────────────────────────────────────────────────────
 const MAX_PLAUSIBLE_SCORE = 40;   // marcador por encima de esto = imposible en hockey patines
@@ -120,6 +121,14 @@ async function main() {
     'Clasificaciones que no reconcilian con los partidos de su temporada (PJ/V/E/D/GF/GC)',
     batchId ? 'FAIL' : 'WARN',
     STANDINGS_RECONCILE_SQL, (n) => n > 0, [batchId]);
+
+  // #228: refs de sidgad compartidas por >1 entidad del mismo tipo (colisiones
+  // entre portales sin namespacing). WARN: es un cambio de identidad a hacer con
+  // HITL, no debe cortar la promoción de un lote; sí avisar.
+  await add('ref_collisions',
+    'Refs (source_ref/alt_source_refs) compartidas por >1 entidad del mismo tipo (#228)',
+    'WARN',
+    REF_COLLISION_TOTAL_SQL, (n) => n > 0, []);
 
   // ── Informe ────────────────────────────────────────────────────────────────
   const failed = checks.filter((c) => c.fail);
