@@ -8,7 +8,7 @@ vi.hoisted(() => {
 
 import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
-import { collectRoundRows } from './fep-calendar.scraper.js';
+import { collectRoundRows, extractTeamLogoUrls } from './fep-calendar.scraper.js';
 
 /**
  * Regresión: la fuente agrupa por fase con VARIOS <thead class="head_jornada"> +
@@ -56,5 +56,33 @@ describe('collectRoundRows — fase por fila', () => {
   it('una liga con un solo thead etiqueta todas las filas igual', () => {
     const out = rows(LIGA);
     expect(out.map((r) => r.round)).toEqual(['JORNADA 5', 'JORNADA 5']);
+  });
+});
+
+const ROW_CON_LOGOS = `
+<table class="tabla_standard"><tbody>
+<tr class="team_3741 team_3688 team_class" gamedate="20261024">
+  <td>1</td><td>2</td><td>16:00</td>
+  <td><img src='https://sidgad.cloud/rfep/images//logos_clubes/44_4.png' class='team_logo'></td>
+  <td class="nombre_junto_logo">HOCKEY CLUB LICEO</td>
+  <td><img src='https://sidgad.cloud/rfep/images//logos_clubes/vilafranca.png' class='team_logo'></td>
+  <td class="nombre_junto_logo">AMETLLER ORIGEN CP VILAFRANCA</td>
+</tr>
+</tbody></table>`;
+
+describe('extractTeamLogoUrls — escudos de la fila', () => {
+  it('devuelve (local, visitante) y normaliza la doble barra del CDN', () => {
+    const $ = cheerio.load(ROW_CON_LOGOS);
+    const row = $('tr.team_class').get(0) as Element;
+    expect(extractTeamLogoUrls($, row)).toEqual([
+      'https://sidgad.cloud/rfep/images/logos_clubes/44_4.png',
+      'https://sidgad.cloud/rfep/images/logos_clubes/vilafranca.png',
+    ]);
+  });
+
+  it('sin escudos devuelve null en ambos lados', () => {
+    const $ = cheerio.load('<tr class="team_1 team_2 team_class"><td>x</td></tr>');
+    const row = $('tr.team_class').get(0) as Element;
+    expect(extractTeamLogoUrls($, row)).toEqual([null, null]);
   });
 });

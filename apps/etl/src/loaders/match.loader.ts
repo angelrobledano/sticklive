@@ -207,6 +207,24 @@ export async function loadMatches(
             resolver.resolveTeam(awayTeamRef, raw.sourceId, signals),
           ]);
 
+          // Escudo del calendario: rellena `teams.logo_url` si está vacío (la
+          // fuente sirve el logo del CDN). Solo si falta, para no pisar uno ya
+          // bueno; resolver el equipo no lo persiste.
+          for (const l of [
+            { id: homeTeamId, url: raw.homeTeamLogoUrl },
+            { id: awayTeamId, url: raw.awayTeamLogoUrl },
+          ]) {
+            const url = (l.url ?? '').trim();
+            if (!url) continue;
+            await db
+              .query(
+                `UPDATE teams SET logo_url = $2, updated_at = NOW()
+                  WHERE id = $1 AND (logo_url IS NULL OR logo_url = '')`,
+                [l.id, url],
+              )
+              .catch(() => {});
+          }
+
           // ADOPCIÓN de placeholders sintéticos: algunas fuentes (World Skate)
           // no publican el id del partido (idp) hasta que se juega, así que el
           // partido se guarda antes con ref sintética. Cuando aparece el idp la

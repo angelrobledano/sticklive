@@ -187,6 +187,9 @@ export type ScrapedMatch = Omit<Match, 'id' | 'homeTeamId' | 'awayTeamId'> & Scr
   /** Abreviatura del equipo que trae la fila del feed (3 letras). Rellena `teams.short_name`. */
   homeTeamAbbr?: string | null;
   awayTeamAbbr?: string | null;
+  /** URL del escudo del equipo que trae la fila (CDN). Rellena `teams.logo_url` si falta. */
+  homeTeamLogoUrl?: string | null;
+  awayTeamLogoUrl?: string | null;
   /** Nombre de ronda/fase de la fuente (Jornada 1, Cuartos, Final…) — para mostrar. */
   roundRef?: string;
   /** Número de ronda para la identidad en DB (UNIQUE season+number+type). Requerido si se crean rondas. */

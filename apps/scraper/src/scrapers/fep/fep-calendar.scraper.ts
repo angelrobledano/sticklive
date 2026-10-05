@@ -31,6 +31,26 @@ const BASE_URL = 'https://www.server2.sidgad.es/rfep';
 const SOURCE_ID = requireFepSourceId();
 
 /**
+ * URLs de los escudos (local, visitante) de una fila del calendario. La fuente
+ * pone un `<img class="team_logo">` por equipo con el logo del CDN; sin capturarlo
+ * `teams.logo_url` queda NULL y la web cae al escudo genérico. El CDN aparece a
+ * veces con doble barra (`images//logos_clubes/…`): se normaliza a una sola.
+ * Función pura para poder testearla.
+ */
+export function extractTeamLogoUrls(
+  $: cheerio.CheerioAPI,
+  row: Element,
+): [string | null, string | null] {
+  const srcs = $(row)
+    .find('img')
+    .map((_, img) => $(img).attr('src') ?? '')
+    .get()
+    .filter((s) => /logos_clubes\//.test(s))
+    .map((s) => s.replace(/\/{2,}logos_clubes\//, '/logos_clubes/'));
+  return [srcs[0] ?? null, srcs[1] ?? null];
+}
+
+/**
  * Asocia cada fila de partido con el nombre de fase que la precede.
  *
  * La fuente agrupa por jornada/fase con VARIOS `<thead class="head_jornada">` +
@@ -166,6 +186,9 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
     const homeTeamName = $row.find('.nombre_junto_logo').eq(0).text().trim();
     const awayTeamName = $row.find('.nombre_junto_logo').eq(1).text().trim();
 
+    // Escudos del CDN (local, visitante) → rellenan `teams.logo_url` si falta.
+    const [homeTeamLogoUrl, awayTeamLogoUrl] = extractTeamLogoUrls($, $row.get(0)!);
+
     // La fila de descanso (bye) trae a "DESCANSO" como rival, con su propia ref
     // (verificado en Bronce N/S 2026/27). No es un partido: se omite aquí para
     // no emitirlo y acabar con un descarte ruidoso + cola HITL ensuciada.
@@ -206,6 +229,8 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
       roundRef: ctx.roundName || undefined, // nombre de ronda de la fuente (Final, Cuartos…)
       homeTeamRef,
       awayTeamRef,
+      homeTeamLogoUrl,
+      awayTeamLogoUrl,
       homeScore,
       awayScore,
       status,

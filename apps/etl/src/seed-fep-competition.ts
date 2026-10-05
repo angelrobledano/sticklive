@@ -25,6 +25,7 @@ import {
   findTeamByNormalizedAlias, findSimilarTeamNames, enqueueResolution, upsertSourceEntityMapTeam,
 } from '@sports/db';
 import { normalizeTeamName } from './transformers/normalize.js';
+import { deriveShortName } from './derive-short-name.js';
 import { createLogger } from '@sports/logger';
 import { sidgadPost, SIDGAD_LANG } from '../../scraper/src/scrapers/fep/sidgad-client.js';
 import * as cheerio from 'cheerio';
@@ -327,13 +328,18 @@ async function main() {
   let created = 0, reused = 0, aliased = 0, pending = 0;
   for (const f of plan) {
     const t = f.t;
+    // Abreviatura: la de la fuente si la hay; si no, la derivada del nombre
+    // (la fuente del calendario no trae abreviatura → antes quedaba NULL y la
+    // web mostraba el nombre completo en listas móviles).
+    const short = (t.abbr || deriveShortName(t.name)).trim() || null;
     let teamId: string | null = f.teamId ?? null;
 
     if (f.accion === 'reusar-ref') {
       // Rellena género/categoría si faltaban (COALESCE: no pisa lo que ya hay).
       await db.query(
-        `UPDATE teams SET gender=COALESCE(gender,$2), age_category=COALESCE(age_category,$3), updated_at=NOW() WHERE id=$1`,
-        [teamId, GENDER, AGE],
+        `UPDATE teams SET gender=COALESCE(gender,$2), age_category=COALESCE(age_category,$3),
+                          short_name=COALESCE(NULLIF(short_name,''), $4), updated_at=NOW() WHERE id=$1`,
+        [teamId, GENDER, AGE, short],
       );
       reused++;
     } else if (f.accion === 'reusar-slug' || f.accion === 'reusar-alias') {
@@ -342,8 +348,9 @@ async function main() {
       await addTeamAltRef(teamId!, t.ref);
       await upsertSourceEntityMapTeam(sourceId, t.ref, teamId!).catch(() => {});
       await db.query(
-        `UPDATE teams SET gender=COALESCE(gender,$2), age_category=COALESCE(age_category,$3), updated_at=NOW() WHERE id=$1`,
-        [teamId, GENDER, AGE],
+        `UPDATE teams SET gender=COALESCE(gender,$2), age_category=COALESCE(age_category,$3),
+                          short_name=COALESCE(NULLIF(short_name,''), $4), updated_at=NOW() WHERE id=$1`,
+        [teamId, GENDER, AGE, short],
       );
       aliased++;
     } else if (f.accion === 'dudoso') {
@@ -381,7 +388,7 @@ async function main() {
       teamId = (await db.query<{ id: string }>(
         `INSERT INTO teams (sport_id, name, short_name, slug, gender, age_category, squad_level, country, source_id, source_ref, scraped_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW()) RETURNING id`,
-        [sportId, t.name, t.abbr || null, slug, GENDER, AGE, nivelFinal, COUNTRY, sourceId, t.ref],
+        [sportId, t.name, short, slug, GENDER, AGE, nivelFinal, COUNTRY, sourceId, t.ref],
       )).rows[0]!.id;
       await upsertSourceEntityMapTeam(sourceId, t.ref, teamId).catch(() => {});
       created++;
