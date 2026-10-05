@@ -1,4 +1,9 @@
-const API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://10.0.2.2:3000';
+/**
+ * Base del API: única fuente para REST (apiFetch) y para URLs absolutas de
+ * imágenes (escudos/fotos se sirven proxied por el API con normalización;
+ * ver apps/api/src/routes/team-logo.ts y player-photo.ts).
+ */
+export const API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://10.0.2.2:3000';
 
 export class ApiError extends Error {
   readonly status: number;

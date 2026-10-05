@@ -7,9 +7,11 @@ import type {
   FavoritesResponse,
   MatchDetail,
   MatchSummary,
+  PlayerDetail,
   SearchResults,
   StandingsResponse,
   StandingsRow,
+  TeamDetail,
 } from '@/src/lib/api/types';
 
 /**
@@ -23,6 +25,8 @@ export const qk = {
   standings: (seasonId: string) => ['standings', seasonId] as const,
   search: (q: string) => ['search', q] as const,
   favorites: ['favorites'] as const,
+  team: (id: string) => ['teams', id] as const,
+  player: (id: string) => ['players', id] as const,
 };
 
 // ── Gating y selectores puros ────────────────────────────────────────────────
@@ -117,5 +121,25 @@ export function useFavorites(token: string | null | undefined) {
     queryKey: qk.favorites,
     queryFn: () => apiFetch<FavoritesResponse>('/auth/favorites', { token: token ?? undefined }),
     enabled: favoritesEnabled(token),
+  });
+}
+
+/** Ficha de equipo (Task 2.5): estable → staleTime generoso. */
+export function useTeam(id: string) {
+  return useQuery({
+    queryKey: qk.team(id),
+    queryFn: () => apiFetch<TeamDetail>(`/teams/${id}`),
+    enabled: Boolean(id),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Ficha de jugador (Task 2.5): estable → staleTime generoso. */
+export function usePlayer(id: string) {
+  return useQuery({
+    queryKey: qk.player(id),
+    queryFn: () => apiFetch<PlayerDetail>(`/players/${id}`),
+    enabled: Boolean(id),
+    staleTime: 5 * 60_000,
   });
 }

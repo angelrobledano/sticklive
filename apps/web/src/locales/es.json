@@ -439,6 +439,7 @@
     "next_match": "Próximo partido",
     "last_result": "Último resultado",
     "no_season_matches": "Sin partidos en la temporada actual",
+    "squad_empty": "Sin plantilla en la temporada actual",
     "no_date": "Sin fecha",
     "form_w": "V",
     "form_d": "E",

@@ -17,8 +17,8 @@ const queryClient = new QueryClient({
   },
 });
 
-// Solo se declara (tabs): match/[id], team/[id] y player/[id] llegan en M2 y,
-// con typedRoutes: true, declararlos aquí rompería el typecheck hasta entonces.
+// Las pantallas fuera de (tabs) mantienen el header oculto (navegación con
+// gesto/botón atrás); match/[id] ajusta su título dinámico internamente.
 export default function RootLayout() {
   return (
     <ThemeProvider>
@@ -26,6 +26,9 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="match/[id]" />
+            <Stack.Screen name="team/[id]" />
+            <Stack.Screen name="player/[id]" />
           </Stack>
         </QueryClientProvider>
       </LocaleProvider>

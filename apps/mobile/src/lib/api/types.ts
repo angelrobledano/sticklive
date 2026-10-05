@@ -270,3 +270,89 @@ export interface FavoritesResponse {
   leagues: string[];
   players: string[];
 }
+
+/**
+ * Task 2.5 — `GET /teams/:id` → `TeamDetail`, verificado contra
+ * apps/api/src/routes/team-detail.ts (c.json en :458). Sólo se declaran los
+ * campos que pinta la app (el JSON real trae además club/clubTeams/staff/stats;
+ * los campos no declarados se ignoran en runtime).
+ *
+ * OJO: `matches` NO es `MatchSummary` — es un shape PROPIO (:408-429) sin
+ * competitionName/isHalftime/live; `status` es el crudo de la BD. Por eso la
+ * ficha de equipo pinta filas locales en vez de reutilizar MatchCard.
+ * Timestamps pg → string ISO (ídem scheduledAt en MatchSummary).
+ */
+export interface TeamDetail {
+  team: {
+    id: string;
+    name: string;
+    shortName: string | null;
+    /** #196: sufijo de sección (género/categoría/filial), team-detail.ts:386. */
+    sectionSuffix: string | null;
+  };
+  /** Standing de la temporada ACTIVA; null sin clasificación (playoffs, etc.). */
+  standing: {
+    competitionName: string;
+    position: number | null;
+    played: number;
+    won: number;
+    drawn: number;
+    lost: number;
+    goalDiff: number;
+    points: number;
+  } | null;
+  matches: {
+    id: string;
+    status: string;
+    scheduledAt: string | null;
+    score: { home: number | null; away: number | null };
+    homeTeam: { id: string; name: string; shortName: string | null; logoUrl: string | null };
+    awayTeam: { id: string; name: string; shortName: string | null; logoUrl: string | null };
+  }[];
+  squad: {
+    playerId: string;
+    firstName: string;
+    lastName: string;
+    isGoalkeeper: boolean;
+    jerseyNumber: number | null;
+    goals: number;
+  }[];
+}
+
+/**
+ * Task 2.5 — `GET /players/:id` → `PlayerDetail`, verificado contra
+ * apps/api/src/routes/player-detail.ts (c.json en :276-310) y el shape de
+ * `career` = `PlayerCareer` de apps/api/src/lib/player-career.ts:76-79
+ * (CareerSeason :62-73, CareerStats :40-47). Ídem: sólo lo pintado — el JSON
+ * trae además sourceRef/birthDate/statsByCompetition.
+ */
+export interface PlayerDetail {
+  player: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    nationality: string | null;
+    isGoalkeeper: boolean;
+    photoUrl: string | null;
+  };
+  /** Última temporada con registro del jugador (player-detail.ts:287-294); null sin plantilla. */
+  currentTeam: {
+    id: string;
+    name: string;
+    shortName: string | null;
+    jerseyNumber: number | null;
+  } | null;
+  /** Suma de la temporada activa (player-detail.ts:263-274). */
+  seasonTotals: { pj: number; goals: number; assists: number };
+  career: {
+    seasons: {
+      seasonId: string;
+      seasonName: string;
+      isCurrent: boolean;
+      competitionName: string;
+      totals: { pj: number; goals: number };
+      teams: { teamId: string; teamName: string; pj: number; goals: number }[];
+    }[];
+    totals: { pj: number; goals: number };
+  };
+}

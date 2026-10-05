@@ -2,7 +2,7 @@ import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
 import EventSource from 'react-native-sse';
 import { useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '@/src/lib/api/client';
+import { API_URL, apiFetch } from '@/src/lib/api/client';
 import type { MatchDetail } from '@/src/lib/api/types';
 import { qk } from '@/src/hooks/queries';
 import {
@@ -11,8 +11,6 @@ import {
   type MatchState,
   type StreamPatch,
 } from '@/src/lib/match-stream';
-
-const API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://10.0.2.2:3000';
 
 const POLL_MS = 15_000;
 const MAX_SSE_FAILURES = 3;
