@@ -88,6 +88,15 @@ while true; do
     touch "$ALIVE"   # latido entre fases (#146)
     $LOCK node dist/apps/etl/src/run-pipeline.js --entity=standings  || true
     touch "$ALIVE"
+
+    # Escudos: los equipos nuevos aparecen al scrapear calendario/clasificación,
+    # así que se sincronizan justo después. Con el volumen al día es idempotente y
+    # barato (solo revalida los ficheros existentes). Sin esto, un equipo nuevo se
+    # quedaba sin fichero local y /teams/:id/logo pagaba BD+CDN en cada visita
+    # (incidente 2026-10-05: trazas de 5–13 s y timeouts de conexión).
+    echo "[scheduler] download-logos $(date -u +%T)"
+    $LOCK node dist/apps/etl/src/run-pipeline.js --entity=download-logos || true
+    touch "$ALIVE"
   fi
 
   # ── Diario a las 06 UTC: actas pendientes + purga de logs ──

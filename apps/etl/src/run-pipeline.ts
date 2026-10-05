@@ -19,14 +19,11 @@
  */
 import './instrument.js'; // Sentry.init — el PRIMERO de todo
 import * as Sentry from '@sentry/node';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { createLogger } from '@sports/logger';
 import { db, closeDb, getActiveScrapePlan, insertScrapeLog, startScrapeRun, finishScrapeRun } from '@sports/db';
 import { EtlPipeline } from './pipeline.js';
 import { forEachLimited } from './concurrency.js';
-import { normalizeLogoBuffer, normalizeLogoFile } from './logo-normalize.js';
+import { downloadTeamLogos } from './team-logos.js';
 import { scrapeRunStatus } from './scrape-log-status.js';
 import { acquireEtlLock } from './etl-lock.js';
 
@@ -607,89 +604,14 @@ async function mainInner() {
     log.info({ matchId: match.id, eventsFound: result.data.length }, '✅ Ficha de partido procesada');
   }
 
-  // ── Descarga de logos ──────────────────────────────
+  // ── Sincronización de escudos ──────────────────────
+  // Una sola implementación (`team-logos.ts`), basada en `teams.logo_url` como
+  // fuente de verdad. Antes era un mapa de 14 equipos hardcodeado aquí: el
+  // scheduler solo ejecutaba esto, así que el resto de equipos se quedaban sin
+  // fichero local y pagaban BD+CDN en cada visita (incidente 2026-10-05).
   if (entity === 'download-logos') {
-    // Ruta resuelta desde la ubicación de ESTE módulo (apps/etl/src), NO desde
-    // process.cwd(): así da igual desde dónde se lance el comando. Antes, al
-    // ejecutarlo desde /app/apps/etl, los escudos caían en
-    // /app/apps/etl/apps/web/public/escudos y nunca llegaban al volumen de web.
-    // Override opcional con ESCUDOS_DIR.
-    const outDir =
-      process.env['ESCUDOS_DIR'] ??
-      path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web/public/escudos');
-    fs.mkdirSync(outDir, { recursive: true });
-
-    // Mapa descubierto via fep-competition-inspector.ts:
-    // teams_array de competicion_header_creator.php
-    // clave: source_ref del equipo (ID sidgad), valor: filename en sidgad.cloud
-    const LOGO_CDN = 'https://sidgad.cloud/rfep/images/logos_clubes';
-    const LOGO_MAP: Record<string, string> = {
-      '3373': '44_3.png',          // HOCKEY CLUB LICEO
-      '3358': 'fcbarcelona.png',   // BARCA
-      '3408': '69_1.png',          // IGUALADA RIGAT HC
-      '3359': 'calafell.png',      // CALAFELL LA MENORQUINA
-      '3332': 'reusdep.png',       // REUS DEPORTIU BRASILIA
-      '3412': '78_2.png',          // CP VOLTREGA MOVENTO STERN
-      '3387': '71.png',            // CE NOIA FREIXENET
-      '3411': 'lleida.png',        // PONS LLEIDA
-      '3363': '66_1.png',          // AITEX PAS ALCOI
-      '3374': '109.png',           // ADISS HOCKEY RIVAS
-      '3336': 'shum.png',          // SHUM FRIT RAVICH
-      '3337': 'caldes.png',        // CH CALDES RECAM LASER
-      '3350': '460_4.png',         // INNOAESTHETICS HC SANT JUST
-      '3361': '98_1.png',          // CERDANYOLA CLUB D HOQUEI
-    };
-
-    const { rows } = await db.query<{ id: string; name: string; source_ref: string | null }>(
-      'SELECT id, name, source_ref FROM teams ORDER BY name'
-    );
-    log.info({ total: rows.length, outDir }, 'Descargando logos de equipos desde sidgad.cloud');
-    let ok = 0, norm = 0, skip = 0, fail = 0;
-
-    for (const team of rows) {
-      const dest = path.join(outDir, team.id + '.png');
-      if (fs.existsSync(dest)) {
-        // Normaliza el escudo existente (idempotente). Antes se saltaba siempre,
-        // así que los ficheros con transparencia nunca se corregían.
-        try {
-          const action = await normalizeLogoFile(dest);
-          if (action === 'normalized') { log.info({ name: team.name }, 'NORM'); norm++; }
-          else { log.info({ name: team.name }, 'SKIP'); skip++; }
-        } catch (e) {
-          log.error({ name: team.name, err: String(e) }, 'FAIL normalizando escudo existente');
-          fail++;
-        }
-        continue;
-      }
-
-      const filename = team.source_ref ? LOGO_MAP[team.source_ref] : undefined;
-      if (!filename) {
-        log.warn({ name: team.name, sourceRef: team.source_ref }, 'Sin mapeo de logo -- anadelo a LOGO_MAP');
-        fail++;
-        continue;
-      }
-
-      const logoUrl = `${LOGO_CDN}/${filename}`;
-      try {
-        const res = await fetch(logoUrl, {
-          headers: { 'Referer': 'https://www.hockeypatines.fep.es/', 'User-Agent': 'SportsBot/1.0' },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const raw = Buffer.from(await res.arrayBuffer());
-        if (raw.length < 500) throw new Error('respuesta demasiado pequenya');
-        const buf = await normalizeLogoBuffer(raw);
-        fs.writeFileSync(dest, buf);
-        // Actualizar logo_url en DB con la URL correcta de sidgad.cloud
-        await db.query('UPDATE teams SET logo_url = $2 WHERE id = $1', [team.id, logoUrl]);
-        log.info({ name: team.name, bytes: buf.length }, 'OK');
-        ok++;
-      } catch (e) {
-        log.error({ name: team.name, url: logoUrl, err: String(e) }, 'FAIL');
-        fail++;
-      }
-      await new Promise((r) => setTimeout(r, 120));
-    }
-    log.info({ ok, norm, skip, fail }, 'Logos completado');
+    const summary = await downloadTeamLogos();
+    log.info(summary, 'Sincronización de escudos completada');
   }
 
   log.info('🏁 Pipeline completado');

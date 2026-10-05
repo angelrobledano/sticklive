@@ -6,7 +6,7 @@ import { logger as honoLogger } from 'hono/logger';
 import { cors } from 'hono/cors';
 import { bodyLimit } from 'hono/body-limit';
 import { logger } from '@sports/logger';
-import { assertSchemaCurrent, SchemaOutdatedError, db } from '@sports/db';
+import { assertSchemaCurrent, SchemaOutdatedError } from '@sports/db';
 import { assertEnv } from './lib/env.js';
 import { rateLimit } from './lib/rate-limit.js';
 import { corsOrigins } from './lib/cors-origins.js';
@@ -27,6 +27,7 @@ import { searchRouter } from './routes/search.js';
 import { seasonStatsRouter } from './routes/season-stats.js';
 import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
+import { healthRouter } from './routes/health.js';
 import { pushRouter } from './routes/push.js';
 import { metaRouter } from './routes/meta.js';
 import { stripeRouter } from './routes/payments-stripe.js';
@@ -76,20 +77,11 @@ app.use('*', async (c, next) => {
 const readLimit = rateLimit(READ_LIMIT_MAX, READ_LIMIT_WINDOW_MS);
 for (const path of READ_LIMIT_PATHS) app.use(path, readLimit);
 
-// Health check. #377(P3-12): además del proceso, comprueba que Postgres
-// responde. Antes /health devolvía ok aunque la BD estuviera caída, así que el
-// healthcheck del contenedor (y el sidecar autoheal) no era señal de salud de la
-// BD. Un `SELECT 1` barato la valida; si falla, 503 → unhealthy.
-app.get('/health', async (c) => {
-  const timestamp = new Date().toISOString();
-  try {
-    await db.query('SELECT 1');
-    return c.json({ status: 'ok', db: 'ok', timestamp });
-  } catch (err) {
-    logger.error({ err }, 'health: Postgres no responde');
-    return c.json({ status: 'degraded', db: 'down', timestamp }, 503);
-  }
-});
+// Health. #377(P3-12): `/health` (readiness) comprueba que Postgres responde
+// además del proceso; NO lo usa el healthcheck del contenedor, porque un bache
+// de BD no debe provocar un reinicio vía `autoheal` (incidente 2026-10-05). Ese
+// healthcheck usa `/health/live` (liveness, sin BD). Ver routes/health.ts.
+app.route('/', healthRouter);
 
 // Raíz
 app.get('/', (c) => {
@@ -98,6 +90,7 @@ app.get('/', (c) => {
     version: '0.1.0',
     endpoints: [
       'GET /health',
+      'GET /health/live',
       'GET /competitions',
       'GET /competitions/:id/seasons',
       'GET /seasons/:id/overview',

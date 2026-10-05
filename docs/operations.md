@@ -21,6 +21,7 @@
 | `cron-live` (directo) | 5 min (bucle 45 s en vivo) | próxima pasada en 5 min; idempotente | Sentry Cron Monitor (~10 min de silencio) + alerta si el feed da 0 partidos 3 ciclos seguidos |
 | `worldskate` | 5 min | idem | scrape-health diaria |
 | calendario + standings | cada hora | siguiente pasada a la hora | scrape-health diaria (>26 h parado) |
+| escudos (`download-logos`) | cada hora (tras calendario+standings) | siguiente pasada a la hora; la API sigue sirviendo el escudo proxeado del CDN | log del ETL |
 | `fichas-pendientes` | diaria 06 UTC | actas se acumulan; se recuperan al día siguiente | scrape-health diaria |
 | purga `scrape_logs` / `partition-guard` / `scrape-health-watch` | diaria 06 UTC | sin efecto inmediato; vigilar disco/particiones | Sentry |
 | backup BD | diaria 04:15 (cron del host) | exit 2 si falla el off-site a Storage Box; el verify falla si el dump supera `MAX_AGE_HOURS` | ping a `BACKUP_PING_URL` (éxito/fallo) + `/var/log/sticklive-backup.log` |
@@ -62,7 +63,7 @@ Además: `scrape_logs` en BD (trazabilidad por scraper, estado y filas) y Sentry
 
 - Reiniciar un servicio: `$DC restart api` (o `web`, `etl`). Rebuild si cambió código: `$DC up -d --build api`.
 - **Crash-loop de la API** (lección del 26/09/2026, nodemailer): imagen compilada + entrypoints presentes pero una dependencia que no resuelve → exit 1 en bucle. Diagnóstico: `$DC logs api`; prevención: el job `docker` del CI verifica que todas las dependencias externas de `dist/` resuelven en la imagen. No desplegar sin ese job en verde.
-- Contenedor `unhealthy`: `api`/`web` los reinicia el sidecar `autoheal` (label `autoheal`, #164). El `etl` queda fuera a propósito por diseño (reiniciarlo durante un directo mataría el bucle); para él hay una salvaguarda propia, ver [Salud del ETL](#salud-del-etl-373). `api`/`web` sanos exigen `/health` y `/` respectivamente.
+- Contenedor `unhealthy`: `api`/`web` los reinicia el sidecar `autoheal` (label `autoheal`, #164). El `etl` queda fuera a propósito por diseño (reiniciarlo durante un directo mataría el bucle); para él hay una salvaguarda propia, ver [Salud del ETL](#salud-del-etl-373). El healthcheck de `api` usa **`/health/live`** (liveness: solo comprueba que el proceso responde, **sin tocar la BD**); `web` usa `/` (la home captura el fallo de API y responde 200). `/health` (con `SELECT 1`) es **readiness** y solo lo consume el monitor externo: un bache de Postgres no debe reiniciar la API (incidente 2026-10-05, ver `apps/api/src/routes/health.ts`).
   - El sidecar `autoheal` **monta `/var/run/docker.sock`** (equivale a root en el host): riesgo aceptado y documentado en `docker-compose.prod.yml`. Para eliminarlo: borrar el servicio `autoheal` y los labels `autoheal` de api/web; reiniciar `api`/`web` pasa a ser manual (el ETL ya tiene su propia salvaguarda).
 - PostgreSQL no está expuesto a internet: solo `127.0.0.1:5432` en el VPS. Acceso desde el PC por túnel SSH (ver [DEPLOY.md](./DEPLOY.md)).
 

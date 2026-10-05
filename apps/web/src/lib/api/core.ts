@@ -6,6 +6,15 @@
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
 /**
+ * Presupuesto máximo por petición a la API (ms).
+ *
+ * Una API colgada (proceso vivo pero sin responder) no debe congelar el SSR de
+ * Next ni, con él, el healthcheck de `web` (incidente 2026-10-05). Las lecturas
+ * normales tardan <100 ms; 8 s deja margen de sobra a un `match-detail` pesado.
+ */
+export const API_TIMEOUT_MS = 8000;
+
+/**
  * Error tipado de la capa API. `status` es el código HTTP real, para que las
  * páginas no dependan de parsear el mensaje (frágil ante cambios de formato).
  */
@@ -25,11 +34,17 @@ export class ApiError extends Error {
 
 export async function apiFetch<T>(
   path: string,
-  init?: RequestInit & { next?: { revalidate?: number; tags?: string[] } }
+  init?: RequestInit & { next?: { revalidate?: number; tags?: string[] } },
+  timeoutMs: number = API_TIMEOUT_MS,
 ): Promise<T> {
   const url = `${API_URL}${path}`;
+  // `AbortSignal.any` combina el signal del llamante (si lo hay) con el timeout:
+  // abortar cualquiera de los dos cancela la petición.
+  const timeout = AbortSignal.timeout(timeoutMs);
+  const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
   const res = await fetch(url, {
     ...init,
+    signal,
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   });
   if (!res.ok) {

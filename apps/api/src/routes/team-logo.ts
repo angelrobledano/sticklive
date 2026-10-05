@@ -4,6 +4,7 @@ import path from 'node:path';
 import { db } from '@sports/db';
 import { setBounded } from '../lib/bounded-cache.js';
 import { isUuid } from '../lib/uuid.js';
+import { lookupImageUrl } from '../lib/image-url.js';
 import { imageResponse, renderNormalizedLogo, resolveImageWidth } from '../lib/image.js';
 
 /**
@@ -16,6 +17,10 @@ import { imageResponse, renderNormalizedLogo, resolveImageWidth } from '../lib/i
  *   2. Si no hay fichero, PROXY del CDN sidgad con Referer (evita el bloqueo de
  *      hotlink que tendría el navegador al cargar sidgad directamente).
  *   3. Si nada, 404 → el cliente cae a su escudo genérico / iniciales.
+ *
+ * Un fallo o lentitud de la BD al resolver `logo_url` NO debe romper el escudo:
+ * `lookupImageUrl` lo convierte en el mismo 404 (fallback) en vez de un 500
+ * (incidente 2026-10-05: timeouts de conexión durante un reinicio de la API).
  *
  * `teams.logo_url` queda como la fuente de verdad; el fichero local es solo una
  * caché en disco.
@@ -57,10 +62,14 @@ teamLogoRouter.get('/:id/logo', async (c) => {
 
   // 2) Proxy del CDN sidgad (con Referer).
   if (!source) {
-    const r = await db.query<{ logo_url: string | null }>(
-      `SELECT logo_url FROM teams WHERE id = $1`, [id]
-    );
-    const url = r.rows[0]?.logo_url;
+    // `lookupImageUrl` acota y captura el fallo de la BD: si Postgres no
+    // responde, esto es un 404 (fallback del cliente), no un 500 colgado.
+    const url = await lookupImageUrl(async () => {
+      const r = await db.query<{ logo_url: string | null }>(
+        `SELECT logo_url FROM teams WHERE id = $1`, [id]
+      );
+      return r.rows[0]?.logo_url ?? null;
+    });
     if (!url) return c.notFound();
     try {
       const res = await fetch(url, {

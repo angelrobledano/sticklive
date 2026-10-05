@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { ApiError, isApiNotFound } from './core';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { ApiError, apiFetch, API_TIMEOUT_MS, isApiNotFound } from './core';
 
 /**
  * #365: `isApiNotFound` no puede confundir un 404 de INFRAESTRUCTURA (proxy/CDN
@@ -37,5 +37,45 @@ describe('isApiNotFound (#365)', () => {
     expect(isApiNotFound('API 404 - /teams/abc')).toBe(false);
     expect(isApiNotFound(null)).toBe(false);
     expect(isApiNotFound(undefined)).toBe(false);
+  });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+/**
+ * Incidente 2026-10-05: el cliente web llamaba a la API sin timeout. Si la API
+ * se colgaba (no caía), el SSR de Next se quedaba esperando y podía tumbar
+ * también el healthcheck de `web`. `apiFetch` debe abortar y rechazar.
+ */
+describe('apiFetch timeout', () => {
+  /** fetch que solo resuelve/rechaza cuando aborta el signal de la petición. */
+  const hangingFetch = () => vi.fn((_url: string, init?: RequestInit) =>
+    new Promise<never>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () =>
+        reject(new DOMException('aborted', 'AbortError')),
+      );
+    }),
+  );
+
+  it('aborta y rechaza cuando la API no responde a tiempo', async () => {
+    vi.stubGlobal('fetch', hangingFetch());
+    await expect(apiFetch('/health', undefined, 20)).rejects.toThrow();
+  });
+
+  it('respeta un signal del llamante combinándolo con el timeout', async () => {
+    const ctrl = new AbortController();
+    vi.stubGlobal('fetch', hangingFetch());
+
+    const pending = apiFetch('/matches/1', { signal: ctrl.signal }, 5000);
+    ctrl.abort();
+
+    await expect(pending).rejects.toThrow();
+  });
+
+  it('expone un presupuesto por defecto razonable', () => {
+    expect(API_TIMEOUT_MS).toBeGreaterThan(0);
+    expect(API_TIMEOUT_MS).toBeLessThanOrEqual(30_000);
   });
 });

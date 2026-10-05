@@ -7,7 +7,7 @@
 - Errores JSON `{ "error": "..." }`; handler global que **no** filtra `err.message` al cliente (lo loguea en servidor y Sentry).
 - `Cache-Control` por recurso en lecturas (`read-cache.ts`) + rate limit en memoria por ruta+IP (`rate-limit.ts`).
 - Body limit global 64 KB. CORS con allowlist (`WEB_BASE_URL` + localhost dev).
-- Health check: `GET /health` → `{ status: "ok" }`.
+- Health: `GET /health/live` → `{ status: "ok" }` (liveness, sin BD; lo usa el healthcheck del contenedor) y `GET /health` → `{ status: "ok", db: "ok" }` (readiness, `SELECT 1`; 503 si Postgres no responde; lo usa el monitor externo).
 
 ## Lecturas públicas
 

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { setBounded } from '../lib/bounded-cache.js';
 import { isUuid } from '../lib/uuid.js';
+import { lookupImageUrl } from '../lib/image-url.js';
 import { imageResponse, renderResizedImage, resolveImageWidth } from '../lib/image.js';
 
 /**
@@ -32,10 +33,12 @@ playerPhotoRouter.get('/:id/photo', async (c) => {
   const cached = photoCache.get(key);
   if (cached) return imageResponse(cached);
 
-  const r = await db.query<{ photo_url: string | null }>(
-    `SELECT photo_url FROM players WHERE id = $1`, [id]
-  );
-  const url = r.rows[0]?.photo_url;
+  const url = await lookupImageUrl(async () => {
+    const r = await db.query<{ photo_url: string | null }>(
+      `SELECT photo_url FROM players WHERE id = $1`, [id]
+    );
+    return r.rows[0]?.photo_url ?? null;
+  });
   if (!url) return c.notFound();
 
   try {
