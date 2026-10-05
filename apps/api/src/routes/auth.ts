@@ -12,6 +12,10 @@ export const authRouter = new Hono();
 
 const MAGIC_LINK_TTL_MIN = 15;
 const SESSION_TTL_DAYS = 90;
+// Vida del código de canje que el callback entrega a la app por el scheme
+// sticklive:// (Task 3.1). Corto a propósito: es un secreto de un solo uso que
+// viaja por una URL; la app lo canjea inmediatamente al volver a primer plano.
+const APP_CODE_TTL_SECONDS = 120;
 // Tope de sesiones simultáneas por usuario (PC + móvil + tablet con margen).
 // Al crear la 6ª se expulsa la más antigua: acota el daño de un token filtrado
 // sin expulsar dispositivos reales (decisión de producto 26/09/2026).
@@ -307,24 +311,39 @@ authRouter.get('/google', (c) => {
 authRouter.get('/google/callback', async (c) => {
   const clientId = process.env['GOOGLE_CLIENT_ID'];
   const clientSecret = process.env['GOOGLE_CLIENT_SECRET'];
-  // Log de cada motivo de fallo para diagnóstico (el cliente solo ve el motivo).
+  // fail() consciente del cliente (Task 3.2): si el state VERIFICADO es de la
+  // app (client=app), los fallos se reportan por el scheme
+  // sticklive://auth/callback?error=… y la app los muestra en pantalla; un
+  // redirect a la web dejaría a la app esperando un retorno que nunca llega.
+  // Sin state verificado no hay cliente conocido (no se puede fiar del
+  // target): se redirige a la web como siempre.
+  let appClient = false;
   const fail = (reason: string) => {
-    logger.error({ reason }, '[auth] google login failed');
+    logger.error({ reason, client: appClient ? 'app' : 'web' }, '[auth] google login failed');
+    if (appClient) {
+      return c.redirect(`sticklive://auth/callback?error=${encodeURIComponent(reason)}`);
+    }
     return c.redirect(`${WEB_BASE}/login#error=${reason}`);
   };
 
   try {
     if (!clientId || !clientSecret) return fail('google_not_configured');
-    const code = c.req.query('code');
-    if (!code) return fail('google_denied');
 
-    // Verificar el state firmado y su TTL (CSRF). Si no valida, abortar.
+    // El state se verifica ANTES de mirar el code: Google redirige con
+    // error=access_denied SIN code (usuario cancela el consentimiento) pero
+    // CON el state; verificándolo primero, fail() sabe dirigir el error al
+    // cliente correcto (web o app). Con state válido el nonce se consume igual
+    // (seguía siendo de un solo uso); solo cambia el orden de las comprobaciones.
     const st = verifyState(c.req.query('state'));
     if (!st || !st.n) return fail('bad_state');
+    appClient = st.client === 'app';
     // Single-use (#306): el nonce se consume una sola vez. Reutilizar un state
     // (aunque siga vigente) se rechaza. Fallo de BD → fail-closed.
     const fresh = await postgresNonceStore.consume(st.n, new Date((st.exp ?? 0) * 1000));
     if (!fresh) return fail('state_reused');
+
+    const code = c.req.query('code');
+    if (!code) return fail('google_denied');
     const deviceId = typeof st.d === 'string' ? st.d : '';
 
     const redirectUri = `${API_PUBLIC}/auth/google/callback`;
@@ -373,8 +392,8 @@ authRouter.get('/google/callback', async (c) => {
       const appCode = newToken(24);
       await db.query(
         `INSERT INTO app_login_codes (code_hash, user_id, expires_at)
-         VALUES ($1, $2, NOW() + make_interval(secs => 120))`,
-        [hashToken(appCode), userId]
+         VALUES ($1, $2, NOW() + make_interval(secs => $3::int))`,
+        [hashToken(appCode), userId, APP_CODE_TTL_SECONDS]
       );
       return c.redirect(
         `sticklive://auth/callback?code=${encodeURIComponent(appCode)}&email=${encodeURIComponent(email)}`

@@ -65,6 +65,21 @@ export function EventIcon({ type }: { type: MatchEventType | 'accumulated_foul' 
   }
 }
 
+/** Trofeo — marca al campeón de una serie o competición. Trazo consistente. */
+export function TrophyIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
+         className={className} aria-hidden="true">
+      <path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" strokeLinejoin="round" />
+      <path d="M8 5H6a2 2 0 0 0 2 4" strokeLinecap="round" />
+      <path d="M16 5h2a2 2 0 0 1-2 4" strokeLinecap="round" />
+      <path d="M12 13v4" strokeLinecap="round" />
+      <path d="M9 17h6" strokeLinecap="round" />
+      <path d="M8 21h8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /** Bola de hockey: negra con anillo sutil (visible en ambos temas) */
 export function BallIcon({ size = 9 }: { size?: number }) {
   return (

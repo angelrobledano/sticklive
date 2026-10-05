@@ -17,6 +17,17 @@ export interface PlayoffSeries {
   winsB: number;
 }
 
+/**
+ * Ganador de un partido. El ganador explícito (penaltis/prórroga) manda; si no,
+ * se deriva del marcador. Un empate sin ganador explícito no se atribuye a nadie
+ * (antes se contaba como victoria del visitante por error).
+ */
+export function gameWinnerId(g: SeasonMatch): string | null {
+  if (g.winnerTeamId) return g.winnerTeamId;
+  if (g.score.home === null || g.score.away === null || g.score.home === g.score.away) return null;
+  return g.score.home > g.score.away ? g.homeTeam.id : g.awayTeam.id;
+}
+
 /** Agrupa los partidos de una fase por eliminatoria (pareja de equipos). */
 export function buildSeries(games: SeasonMatch[]): PlayoffSeries[] {
   const map = new Map<string, SeasonMatch[]>();
@@ -34,20 +45,29 @@ export function buildSeries(games: SeasonMatch[]): PlayoffSeries[] {
       let winsA = 0, winsB = 0;
       for (const g of sorted) {
         if (g.status !== 'finished') continue;
-        // Ganador explícito (penaltis/prórroga) manda; si no, se deriva del
-        // marcador. Un empate sin ganador explícito NO se atribuye a nadie
-        // (antes lo contaba como victoria del visitante por error).
-        let winnerId: string | null = g.winnerTeamId ?? null;
-        if (!winnerId) {
-          if (g.score.home === null || g.score.away === null || g.score.home === g.score.away) continue;
-          winnerId = g.score.home > g.score.away ? g.homeTeam.id : g.awayTeam.id;
-        }
+        const winnerId = gameWinnerId(g);
+        if (!winnerId) continue;
         if (winnerId === teamA.id) winsA++;
         else if (winnerId === teamB.id) winsB++;
       }
       return { games: sorted, teamA, teamB, winsA, winsB };
     })
     .sort((a, b) => ((a.games[0]!.scheduledAt ?? '') < (b.games[0]!.scheduledAt ?? '') ? -1 : 1));
+}
+
+/**
+ * Ganador de una serie YA decidida (el campeón, en la final por el título):
+ * todas las partidas terminadas, ninguna en juego y un equipo por delante en
+ * victorias. Devuelve el id del vencedor o null si la serie sigue abierta.
+ *
+ * No conocemos el "al mejor de N" de cada torneo, así que no damos la serie por
+ * cerrada mientras queden partidas pendientes: esperamos a que terminen todas.
+ */
+export function seriesWinnerId(serie: PlayoffSeries): string | null {
+  if (serie.games.some((g) => g.status === 'live')) return null;
+  if (serie.games.some((g) => g.status !== 'finished')) return null;
+  if (serie.winsA === serie.winsB) return null;
+  return serie.winsA > serie.winsB ? serie.teamA.id : serie.teamB.id;
 }
 
 /** Reparte los partidos de playoff en fases según roundNumber (1=QF, 2=SF, 3=F). */

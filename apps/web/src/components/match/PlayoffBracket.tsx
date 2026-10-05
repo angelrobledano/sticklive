@@ -10,7 +10,9 @@ import {
   buildSeries,
   groupByPhase,
   advancedFrom,
+  seriesWinnerId,
 } from '@/lib/playoff';
+import { TrophyIcon } from '@/components/match/icons';
 import { useT } from '@/lib/i18n';
 
 /**
@@ -20,11 +22,13 @@ import { useT } from '@/lib/i18n';
  * Colapsable para no robar espacio una vez el usuario se ha contextualizado.
  */
 
-function MicroSeries({ serie, isCurrent, advanced, linkable }: {
+function MicroSeries({ serie, isCurrent, advanced, linkable, isFinal = false }: {
   serie: PlayoffSeries;
   isCurrent: boolean;
   advanced: Set<string>;
   linkable: boolean;
+  /** Columna de la final: marca al campeón con trofeo cuando la serie está cerrada. */
+  isFinal?: boolean;
 }) {
   // Eliminatoria a partido único: en vez del marcador de victorias (1–0, que
   // parece el resultado del partido y confunde) mostramos el marcador real.
@@ -34,6 +38,8 @@ function MicroSeries({ serie, isCurrent, advanced, linkable }: {
     { team: serie.teamA, wins: serie.winsA, score: single?.score.home ?? null },
     { team: serie.teamB, wins: serie.winsB, score: single?.score.away ?? null },
   ];
+  // En la final, el que cierra la serie es el campeón (trofeo en vez de check).
+  const championId = isFinal ? seriesWinnerId(serie) : null;
   // Partido enlazable: el último jugado o el próximo
   const target = serie.games.find((g) => g.status === 'live')
     ?? [...serie.games].reverse().find((g) => g.status === 'finished')
@@ -49,7 +55,8 @@ function MicroSeries({ serie, isCurrent, advanced, linkable }: {
       }`}
     >
       {rows.map(({ team, wins, score }, idx) => {
-        const qualified = advanced.has(team.id);
+        const isChampion = championId === team.id;
+        const qualified = advanced.has(team.id) || isChampion;
         const value = single ? (singleScored && score != null ? score : '–') : wins;
         return (
           <div key={team.id}
@@ -59,12 +66,14 @@ function MicroSeries({ serie, isCurrent, advanced, linkable }: {
             }`}>
               {team.shortName ?? team.name.slice(0, 3).toUpperCase()}
             </span>
-            {qualified && (
+            {isChampion ? (
+              <TrophyIcon className="w-3 h-3 text-rink-passion dark:text-red-400 shrink-0" />
+            ) : qualified ? (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}
                    className="w-3 h-3 text-emerald-500 shrink-0">
                 <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            )}
+            ) : null}
             <span className="text-[11px] font-bold tabular-nums text-slate-700 dark:text-slate-200">{value}</span>
           </div>
         );
@@ -102,7 +111,7 @@ export function PlayoffBracket({ matches, currentMatchId, linkable = false }: {
   const advanced: Record<PlayoffPhase, Set<string>> = useMemo(() => ({
     Cuartos: advancedFrom(phases.Semis),
     Semis:   advancedFrom(phases.Final),
-    Final:   new Set<string>(), // el campeón se decide al cerrar la serie
+    Final:   new Set<string>(), // sin fase siguiente; el campeón lo marca MicroSeries
   }), [phases]);
 
   const hasSeries = PLAYOFF_PHASES.some((p) => phases[p].length > 0);
@@ -152,6 +161,7 @@ export function PlayoffBracket({ matches, currentMatchId, linkable = false }: {
                     serie={serie}
                     advanced={advanced[phase]}
                     linkable={linkable}
+                    isFinal={phase === 'Final'}
                     isCurrent={!!currentMatchId && serie.games.some((g) => g.id === currentMatchId)}
                   />
                 ))}

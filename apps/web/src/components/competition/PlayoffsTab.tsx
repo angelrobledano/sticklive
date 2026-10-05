@@ -8,8 +8,9 @@ import type { SeasonMatch, SeasonStandingRow } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
 import { PlayoffBracket } from '@/components/match/PlayoffBracket';
+import { TrophyIcon } from '@/components/match/icons';
 import { KnockoutBracket } from './KnockoutBracket';
-import { buildSeries, groupByPhase, placementMatches, type PlayoffSeries } from '@/lib/playoff';
+import { buildSeries, gameWinnerId, groupByPhase, placementMatches, seriesWinnerId, type PlayoffSeries } from '@/lib/playoff';
 import { fmtDate, fmtTime } from './format';
 
 const PLAYOFF_PHASES = ['Cuartos', 'Semis', 'Final'] as const;
@@ -71,12 +72,14 @@ function SingleMatchSeries({ serie, label }: { serie: PlayoffSeries; label: stri
   return <Link href={`/matches/${g.id}`} className="block hover:opacity-90 transition-opacity">{card}</Link>;
 }
 
-function SeriesCard({ serie, label }: { serie: PlayoffSeries; label: string }) {
+export function SeriesCard({ serie, label, isFinal = false }: { serie: PlayoffSeries; label: string; isFinal?: boolean }) {
   const { t, locale } = useT();
   // Partido único → tarjeta de partido (sin marcador de victorias de serie).
   if (serie.games.length === 1) return <SingleMatchSeries serie={serie} label={label} />;
   const hasLive = serie.games.some((g) => g.status === 'live');
   const notStarted = serie.winsA === 0 && serie.winsB === 0 && !hasLive;
+  // Campeón: solo en la final por el título y solo con la serie ya cerrada.
+  const championId = isFinal ? seriesWinnerId(serie) : null;
   const rows = [
     { team: serie.teamA, wins: serie.winsA, winner: serie.winsA > serie.winsB },
     { team: serie.teamB, wins: serie.winsB, winner: serie.winsB > serie.winsA },
@@ -84,53 +87,85 @@ function SeriesCard({ serie, label }: { serie: PlayoffSeries; label: string }) {
 
   return (
     <div className={`card overflow-hidden border ${hasLive ? 'border-emerald-400/40' : 'border-slate-200 dark:border-slate-800'}`}>
-      <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
+      <div className="px-3 pt-2.5 pb-0.5 flex items-center justify-between">
         <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</p>
-        {/* No mostramos "al mejor de N": el formato varía por torneo y no es
-            inferible de los partidos programados. Los badges de victorias ya
-            cuentan la serie por sí solos. */}
         {hasLive && (
           <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">● {t('playoffs.live')}</span>
         )}
       </div>
 
-      {rows.map(({ team, wins, winner }, idx) => (
-        <div key={team.id}
-             className={`flex items-center gap-2.5 px-3 py-2 ${idx === 0 ? 'border-b border-slate-100 dark:border-slate-800' : ''}
-                         ${notStarted ? 'opacity-60' : ''}`}>
-          <TeamShield teamId={team.id} teamName={team.shortName ?? team.name} size={24} />
-          <Link href={`/teams/${team.id}`}
-                className={`flex-1 text-sm truncate hover:underline ${winner ? 'font-bold text-slate-900 dark:text-slate-50' : 'font-medium text-slate-700 dark:text-slate-300'}`}>
-            <AdaptiveTeamName name={team.name} shortName={team.shortName} mobile="abbr" />
-          </Link>
-          {/* Victorias de la serie — badge para diferenciarlo de un marcador de partido */}
-          <span className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1 rounded-md
-                            font-score text-sm font-bold tabular-nums ${
-            winner
-              ? 'bg-rink-passion text-white'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-          }`}>
-            {wins}
-          </span>
-        </div>
-      ))}
+      {/* Rótulo de la columna de cifras: son VICTORIAS de la serie, no un
+          marcador de partido (ese malentendido era el problema de claridad). */}
+      <div className="px-3 flex justify-end">
+        <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          {t('playoffs.series_wins')}
+        </span>
+      </div>
 
-      {/* Partidos de la serie — pills neutras, siglas siempre */}
+      {rows.map(({ team, wins, winner }, idx) => {
+        const isChampion = championId === team.id;
+        return (
+          <div key={team.id}
+               className={`flex items-center gap-2.5 px-3 py-2 ${idx === 0 ? 'border-b border-slate-100 dark:border-slate-800' : ''}
+                           ${notStarted ? 'opacity-60' : ''}`}>
+            <TeamShield teamId={team.id} teamName={team.shortName ?? team.name} size={24} />
+            <Link href={`/teams/${team.id}`}
+                  className={`flex-1 text-sm truncate hover:underline ${winner ? 'font-bold text-slate-900 dark:text-slate-50' : 'font-medium text-slate-700 dark:text-slate-300'}`}>
+              <AdaptiveTeamName name={team.name} shortName={team.shortName} mobile="abbr" />
+            </Link>
+            {isChampion && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rink-passion px-1.5 py-0.5
+                               text-[9px] font-bold uppercase tracking-wider text-white">
+                <TrophyIcon className="w-3 h-3" />
+                {t('playoffs.champion')}
+              </span>
+            )}
+            {/* Victorias de la serie — badge para diferenciarlo de un marcador de partido */}
+            <span className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1 rounded-md
+                              font-score text-sm font-bold tabular-nums ${
+              winner
+                ? 'bg-rink-passion text-white'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+            }`}>
+              {wins}
+            </span>
+          </div>
+        );
+      })}
+
+      {/* Partidos de la serie — numerados; se marca penaltis/prórroga para que
+          una victoria que no se lee en el marcador (p. ej. un 2-2) no confunda. */}
       <div className="flex flex-wrap gap-1.5 px-3 py-2">
-        {serie.games.map((g) => (
-          <Link key={g.id} href={`/matches/${g.id}`}
-                className={`text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full transition-colors ${
-                  g.status === 'live'
-                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-                    : g.status === 'finished'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-rink-passion'
-                      : 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600'
-                }`}>
-            {g.status === 'finished' || g.status === 'live'
-              ? `${(g.homeTeam.shortName ?? g.homeTeam.name).slice(0, 4)} ${g.score.home ?? '-'}-${g.score.away ?? '-'} ${(g.awayTeam.shortName ?? g.awayTeam.name).slice(0, 4)}`
-              : fmtDate(g.scheduledAt, undefined, locale)}
-          </Link>
-        ))}
+        {serie.games.map((g, i) => {
+          const played = g.status === 'finished' || g.status === 'live';
+          const winnerId = played ? gameWinnerId(g) : null;
+          const decidedBy = g.winType === 'penalties' ? t('playoffs.pens_short')
+            : g.winType === 'overtime' ? t('playoffs.ot_short') : null;
+          const homeAbbr = (g.homeTeam.shortName ?? g.homeTeam.name).slice(0, 4);
+          const awayAbbr = (g.awayTeam.shortName ?? g.awayTeam.name).slice(0, 4);
+          return (
+            <Link key={g.id} href={`/matches/${g.id}`}
+                  className={`inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full transition-colors ${
+                    g.status === 'live'
+                      ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                      : g.status === 'finished'
+                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-rink-passion'
+                        : 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600'
+                  }`}>
+              <span className="text-[9px] tabular-nums opacity-60">{i + 1}</span>
+              {played ? (
+                <>
+                  <span className={winnerId === g.homeTeam.id ? 'font-bold' : 'opacity-70'}>{homeAbbr}</span>
+                  <span className="tabular-nums">{g.score.home ?? '-'}-{g.score.away ?? '-'}</span>
+                  <span className={winnerId === g.awayTeam.id ? 'font-bold' : 'opacity-70'}>{awayAbbr}</span>
+                  {decidedBy && <span className="text-[8px] font-bold uppercase opacity-80">{decidedBy}</span>}
+                </>
+              ) : (
+                <span>{fmtDate(g.scheduledAt, undefined, locale)}</span>
+              )}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
@@ -232,6 +267,7 @@ export function PlayoffsTab({ matches }: { standings?: SeasonStandingRow[]; matc
             key={i}
             serie={serie}
             label={labelOf(i)}
+            isFinal={phase === 'Final'}
           />
         ))}
       </div>

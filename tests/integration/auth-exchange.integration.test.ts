@@ -16,7 +16,8 @@ import { Hono } from 'hono';
 import { createHash, randomBytes } from 'node:crypto';
 import { db, closeDb } from '@sports/db';
 import { authRouter } from '../../apps/api/src/routes/auth.js';
-import { verifyState } from '../../apps/api/src/lib/auth-state.js';
+import { signState, verifyState } from '../../apps/api/src/lib/auth-state.js';
+import { postgresNonceStore } from '../../apps/api/src/lib/oauth-nonce-pg.js';
 import { limpiar } from './support/db.js';
 
 const app = new Hono();
@@ -48,8 +49,11 @@ const exchange = (code: string) =>
 
 beforeAll(() => {
   // /auth/google requiere cliente configurado; el state se firma con este
-  // secreto y el test lo verifica con el mismo.
+  // secreto y el test lo verifica con el mismo. El secreto de Google (que el
+  // callback exige presente) se fija para que las pruebas del callback no
+  // dependan del entorno local.
   process.env['GOOGLE_CLIENT_ID'] = 'test-client-id';
+  process.env['GOOGLE_CLIENT_SECRET'] = 'test-client-secret';
   process.env['AUTH_STATE_SECRET'] = 'test-secret-integration';
 });
 beforeEach(async () => { await limpiar(); });
@@ -138,5 +142,47 @@ describe('POST /auth/exchange', () => {
 
     const larguísimo = await exchange('a'.repeat(513));
     expect(larguísimo.status).toBe(400);
+  });
+});
+
+describe('GET /auth/google/callback — fallos conscientes del cliente (Task 3.2)', () => {
+  // Cuando el flujo viene de la app (state con client=app), los fallos del
+  // callback deben reportarse POR EL SCHEME sticklive://auth/callback?error=…
+  // para que la app los muestre en pantalla; un redirect a la web dejaría la
+  // app esperando un retorno que nunca llega.
+  //
+  // NOTA: el fallo del INSERT del código (catch → google_error) no se simula
+  // end-to-end porque requeriría romper la BD a mitad de request; la rama de
+  // fail() es la misma que cubren estos dos tests.
+
+  it('consentimiento cancelado (llega sin code, con state válido) reporta google_denied por el scheme', async () => {
+    const state = signState({ d: 'dev-app-fail', n: randomBytes(8).toString('hex'), client: 'app' });
+    const res = await app.request(`/auth/google/callback?state=${encodeURIComponent(state)}`);
+    expect(res.status).toBe(302);
+    const location = res.headers.get('location') ?? '';
+    expect(location.startsWith('sticklive://auth/callback')).toBe(true);
+    expect(location).toContain('error=google_denied');
+  });
+
+  it('state_reused (nonce ya consumido) también se reporta por el scheme en la rama app', async () => {
+    const n = randomBytes(8).toString('hex');
+    const state = signState({ d: 'dev-app-reuse', n, client: 'app' });
+    // Primer consumo del nonce (el legítimo): el del callback será un reuso.
+    expect(await postgresNonceStore.consume(n, new Date(Date.now() + 10 * 60_000))).toBe(true);
+
+    const res = await app.request(`/auth/google/callback?code=x&state=${encodeURIComponent(state)}`);
+    expect(res.status).toBe(302);
+    const location = res.headers.get('location') ?? '';
+    expect(location.startsWith('sticklive://auth/callback')).toBe(true);
+    expect(location).toContain('error=state_reused');
+  });
+
+  it('la rama web (state sin client) sigue reportando sus fallos a la web', async () => {
+    const state = signState({ d: 'dev-web-fail', n: randomBytes(8).toString('hex') });
+    const res = await app.request(`/auth/google/callback?state=${encodeURIComponent(state)}`);
+    expect(res.status).toBe(302);
+    const location = res.headers.get('location') ?? '';
+    expect(location.startsWith('sticklive://')).toBe(false);
+    expect(location).toContain('/login#error=google_denied');
   });
 });
