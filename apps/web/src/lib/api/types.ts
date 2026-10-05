@@ -415,6 +415,12 @@ export interface SeasonOverview {
     competitionRegion: string | null;
     /** IANA TZ de la competición (migración 042). La web cae a Europe/Madrid. */
     competitionTimezone?: string | null;
+    /**
+     * Formato de la competición (competition_sources.external_ids.format):
+     * 'league' | 'bracket' | 'final_four'. `final_four` = torneo a 4
+     * (Semifinal x2 → Final, partido único).
+     */
+    competitionFormat?: 'league' | 'bracket' | 'final_four';
   };
   standings: SeasonStandingRow[];
   rounds: SeasonRound[];

@@ -30,6 +30,33 @@ const DEFAULT_TIMEZONE = 'Europe/Madrid';
 const BASE_URL = 'https://www.server2.sidgad.es/rfep';
 const SOURCE_ID = requireFepSourceId();
 
+/**
+ * Asocia cada fila de partido con el nombre de fase que la precede.
+ *
+ * La fuente agrupa por jornada/fase con VARIOS `<thead class="head_jornada">` +
+ * su `<tbody>` dentro de la MISMA tabla (p. ej. la Final Four: "SEMIFINALES" y
+ * "FINAL"). Coger el último thead etiquetaba TODAS las filas con la última fase
+ * (las semifinales salían como "FINAL"). Función pura para poder testearla.
+ */
+export function collectRoundRows(
+  $: cheerio.CheerioAPI,
+  table: Element,
+): Array<{ roundName: string; row: Element }> {
+  const out: Array<{ roundName: string; row: Element }> = [];
+  let roundName = '';
+  $(table).children().each((_, el) => {
+    const tag = (el as Element).tagName;
+    if (tag === 'thead') {
+      if ($(el).hasClass('head_jornada')) roundName = $(el).text().trim();
+    } else if (tag === 'tbody') {
+      $(el).find('tr.team_class').each((_, row) => {
+        out.push({ roundName, row: row as Element });
+      });
+    }
+  });
+  return out;
+}
+
 export interface CalendarScraperConfig {
   /** ID de competición sidgad (ej: "3150" para OK LIGA) */
   idc: string;
@@ -86,32 +113,25 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
     const $ = cheerio.load(html);
     const matches: ScrapedMatch[] = [];
     const scrapedAt = new Date();
-    let currentRoundName = '';
 
-    // Recorrer la tabla — thead contiene el nombre de jornada, tbody los partidos
+    // Recorrer la tabla asociando cada fila con su fase (ver collectRoundRows).
     $('table.tabla_standard').each((_, table) => {
-      $(table).find('thead.head_jornada').each((_, thead) => {
-        currentRoundName = $(thead).text().trim();
-      });
-
-      $(table).find('tbody tr.team_class').each((_, row) => {
-        const $row = $(row);
+      for (const { roundName, row } of collectRoundRows($, table as Element)) {
         const errors = this.parseErrors;
-
         try {
-          const match = this.parseMatchRow($, $row, {
+          const match = this.parseMatchRow($, $(row), {
             idc,
             seasonId,
-            roundName: currentRoundName,
+            roundName,
             scrapedAt,
           });
           if (match) matches.push(match);
         } catch (err) {
           this.captureError(errors, err, {
-            entityRef: $row.attr('class') ?? 'unknown',
+            entityRef: $(row).attr('class') ?? 'unknown',
           });
         }
-      });
+      }
     });
 
     this.log.info({ idc, total: matches.length }, 'Partidos extraídos del calendario');

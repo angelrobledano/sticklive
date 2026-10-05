@@ -28,7 +28,8 @@ function phaseRank(name: string | null, roundNumber: number | null): number {
   return key ? PHASE_RANK[key]! : 10 + (roundNumber ?? 0);
 }
 
-function MatchCard({ m }: { m: SeasonMatch }) {
+/** Tarjeta de un partido a partido único (bracket/copa/final four). */
+export function KnockoutMatchCard({ m }: { m: SeasonMatch }) {
   const { t, locale } = useT();
   const isFinished = m.status === 'finished';
   const isLive = m.status === 'live';
@@ -116,7 +117,7 @@ export function KnockoutBracket({ matches }: { matches: SeasonMatch[] }) {
               })()}
             </h3>
             <div className="flex flex-col gap-3 justify-around h-full">
-              {col.matches.map((m) => <MatchCard key={m.id} m={m} />)}
+              {col.matches.map((m) => <KnockoutMatchCard key={m.id} m={m} />)}
             </div>
           </div>
         ))}

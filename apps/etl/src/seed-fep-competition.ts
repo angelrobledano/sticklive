@@ -68,6 +68,10 @@ const END = argv['end'] ?? '2027-06-30';
 const TEMP = argv['temp'] ? `temp_${argv['temp']}` : null;
 const ACTIVE = argv['active'] !== 'false';
 const WRITE = argv['write'] === 'true' || argv['write'] === '1';
+// Formato del calendario en la fuente (#166). `final_four` = torneo a 4
+// (2 semifinales → final, partido único): sus rondas se crean como 'playoff'
+// con numeración canónica semi=1/final=2, y la web lo pinta como cuadro.
+const FORMAT = (argv['format'] ?? 'league') as 'league' | 'bracket' | 'final_four';
 // Altas de club confirmadas por un humano (el panel HITL no crea entidades, solo
 // asigna o descarta): estas refs se fuerzan a "nuevo" aunque la similitud
 // encuentre candidatos. Formato: --force-new=3729,3737,3695
@@ -140,7 +144,7 @@ async function main() {
 
   console.log('\n──────── SEED FEP (dry-run=' + String(!WRITE) + ') ────────');
   console.log(`Competición: ${NAME} [${compSlug}] idc=${IDC} ${GENDER}/${AGE} ${SCOPE}/${ORGANIZER}${REGION ? '/' + REGION : ''}`);
-  console.log(`Temporada:   ${SEASON_NAME} [${SEASON_SLUG}] ${START}→${END} ${TEMP ?? '(sin temp)'} · active=${ACTIVE}`);
+  console.log(`Temporada:   ${SEASON_NAME} [${SEASON_SLUG}] ${START}→${END} ${TEMP ?? '(sin temp)'} · active=${ACTIVE} · format=${FORMAT}`);
   console.log(`Equipos (${teams.length}):`);
   teams.forEach((t) => console.log(`  ${t.ref.padEnd(6)} ${t.abbr.padEnd(5)} ${t.name}`));
   if (teams.length === 0) console.log('  ⚠️  Ninguno (plantilla no publicada aún): se crea competición+temporada+source igual.');
@@ -393,7 +397,7 @@ async function main() {
   await upsertCompetitionSource({
     competitionId: comp.id,
     sourceId,
-    externalIds: { idc: IDC, playoff_idcs: [], cup_idcs: [] },
+    externalIds: { idc: IDC, playoff_idcs: [], cup_idcs: [], ...(FORMAT !== 'league' ? { format: FORMAT } : {}) },
     isActive: ACTIVE,
   });
 

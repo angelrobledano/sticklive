@@ -213,6 +213,9 @@ export async function loadMatches(
           // ref cambia y, sin esto, se insertaría un DUPLICADO dejando el
           // fantasma programado. Adoptamos la fila existente reescribiendo su
           // source_ref: el partido conserva su id, historial y favoritos.
+          // Adopción también de placeholders SIN fecha (scheduled_at NULL): son
+          // los "nodate" del calendario de copas/supercopas. Sin esto, el
+          // partido real se insertaba aparte y el fantasma quedaba duplicado.
           if (!input.sourceRef.startsWith('synthetic:') && input.scheduledAt) {
             const adopted = await db.query(
               `UPDATE matches SET source_ref = $1, updated_at = NOW()
@@ -221,8 +224,8 @@ export async function loadMatches(
                  WHERE season_id    = $2
                    AND home_team_id = $3
                    AND away_team_id = $4
-                   AND scheduled_at::date = $5::date
                    AND source_ref LIKE 'synthetic:%'
+                   AND ($5::timestamptz IS NULL OR scheduled_at IS NULL OR scheduled_at::date = $5::date)
                  LIMIT 1
                )
                AND NOT EXISTS (SELECT 1 FROM matches WHERE source_ref = $1)`,
@@ -236,27 +239,37 @@ export async function loadMatches(
             }
           }
 
-          // Guardia anti-duplicados: el calendario del playoff lista cada
-          // eliminatoria con filas placeholder sin idp (ref sintética, hora
-          // 00:00). Si ya existe un partido REAL (con idp) del mismo cruce
-          // en la misma fecha, no insertamos el sintético.
-          if (input.sourceRef.startsWith('synthetic:') && input.scheduledAt) {
-            // Placeholder con fecha pasada: si a estas alturas no tiene idp,
-            // el partido no se jugó (o la fuente lo publicará como partido
-            // real cuando ocurra). No insertamos fantasmas.
-            const scheduled = new Date(input.scheduledAt).getTime();
-            if (scheduled < Date.now() - 6 * 3_600_000) {
-              log.debug({ item: itemLabel }, 'Placeholder sintético pasado omitido');
-              skipped++;
-              continue;
+          // Guardia anti-duplicados: el calendario lista cada cruce con filas
+          // placeholder sin idp (ref sintética). Si ya existe un partido REAL
+          // del mismo cruce, no insertamos el sintético.
+          if (input.sourceRef.startsWith('synthetic:')) {
+            // Placeholder con fecha pasada: si a estas alturas no tiene idp, el
+            // partido no se jugó. Solo aplica cuando tiene fecha.
+            if (input.scheduledAt) {
+              const scheduled = new Date(input.scheduledAt).getTime();
+              if (scheduled < Date.now() - 6 * 3_600_000) {
+                log.debug({ item: itemLabel }, 'Placeholder sintético pasado omitido');
+                skipped++;
+                continue;
+              }
             }
+            // Con fecha: el mismo día. Sin fecha ("nodate"): solo si hay un
+            // único partido real del cruce (con dos mangas no se toca).
             const dupe = await db.query(
-              `SELECT id FROM matches
-               WHERE season_id    = $1
-                 AND home_team_id = $2
-                 AND away_team_id = $3
-                 AND scheduled_at::date = $4::date
-                 AND source_ref NOT LIKE 'synthetic:%'
+              `SELECT 1 FROM matches r
+               WHERE r.season_id    = $1
+                 AND r.home_team_id = $2
+                 AND r.away_team_id = $3
+                 AND r.source_ref NOT LIKE 'synthetic:%'
+                 AND (
+                   -- Con fecha: el mismo cruce el mismo día.
+                   ($4::timestamptz IS NOT NULL AND (r.scheduled_at IS NULL OR r.scheduled_at::date = $4::date))
+                   -- Sin fecha ("nodate"): solo si hay UN único partido real del cruce.
+                   OR ($4::timestamptz IS NULL AND (
+                         SELECT count(*) FROM matches r2
+                          WHERE r2.season_id = $1 AND r2.home_team_id = $2 AND r2.away_team_id = $3
+                            AND r2.source_ref NOT LIKE 'synthetic:%') = 1)
+                 )
                LIMIT 1`,
               [input.seasonId, homeTeamId, awayTeamId, input.scheduledAt]
             );

@@ -26,6 +26,7 @@ import { forEachLimited } from './concurrency.js';
 import { downloadTeamLogos } from './team-logos.js';
 import { scrapeRunStatus } from './scrape-log-status.js';
 import { acquireEtlLock } from './etl-lock.js';
+import { cupRoundNumber, finalFourRoundNumber } from './cup-rounds.js';
 
 // Los scrapers viven en apps/scraper — importamos via ruta relativa (ts-node lo resuelve)
 import { FepCalendarScraper } from '../../scraper/src/scrapers/fep/fep-calendar.scraper.js';
@@ -74,17 +75,6 @@ const COMPETITION_SOURCES_DRIVEN =
 // a decenas de ligas sin martillear sidgad (secuencial + pausa se quedaba corto).
 const SCRAPE_CONCURRENCY = Number(process.env['SCRAPE_CONCURRENCY'] ?? 4);
 
-/** Número de orden de una ronda de copa por su fase (para ordenar el bracket). */
-function cupRoundNumber(name: string): number {
-  const n = name.toLowerCase();
-  if (/octavos|1\/8/.test(n)) return 1;
-  if (/cuartos|1\/4/.test(n)) return 2;
-  if (/semi/.test(n))         return 3;
-  if (/final/.test(n))        return 4;
-  if (/tercer|bronce|consol/.test(n)) return 5;
-  return 9;
-}
-
 /** Get-or-create de una ronda por (temporada, nombre); busca número libre. */
 async function getOrCreateRound(seasonId: string, name: string, number: number, type: string): Promise<string> {
   const found = await db.query<{ id: string }>(
@@ -106,8 +96,13 @@ async function getOrCreateRound(seasonId: string, name: string, number: number, 
 }
 
 /**
- * Elimina placeholders sintéticos que ya tienen partido real (mismo cruce y
- * fecha) o cuya fecha pasó hace >6h sin convertirse en partido real.
+ * Elimina placeholders sintéticos obsoletos:
+ *  1. El que ya tiene un partido real del mismo cruce y fecha (o sin fecha).
+ *  2. Sintéticos DUPLICADOS del mismo cruce y día: la ref sintética incluye el
+ *     `scheduledAt`, así que cuando la fuente publicó la hora del partido se creó
+ *     una fila nueva (p. ej. 16:00) y quedó la vieja a medianoche (00:00). Gana el
+ *     más reciente (o el que tiene hora frente al de medianoche).
+ *  3. Sintéticos pasados (>6h) que nunca llegaron a partido real.
  * Misma lógica que cleanup-synthetic-dupes.ts, integrada en el pipeline.
  */
 async function reconcileSyntheticMatches(): Promise<number> {
@@ -121,8 +116,16 @@ async function reconcileSyntheticMatches(): Promise<number> {
        AND r.away_team_id = s.away_team_id
        -- Comparar el DÍA en hora española: un placeholder a las 00:00 (Madrid)
        -- y el partido real a las 20:30 caen en días UTC distintos y no casaban.
-       AND (r.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
-         = (s.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
+       AND (
+         (r.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
+           = (s.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
+         -- Placeholder SIN fecha: se elimina solo si hay UN único partido real
+         -- del cruce (con dos mangas reales no sabemos a cuál corresponde).
+         OR (s.scheduled_at IS NULL AND (
+               SELECT count(*) FROM matches r2
+                WHERE r2.season_id = s.season_id AND r2.home_team_id = s.home_team_id
+                  AND r2.away_team_id = s.away_team_id AND r2.source_ref NOT LIKE 'synthetic:%') = 1)
+       )
      RETURNING s.id`
   );
   const stale = await db.query(
@@ -132,7 +135,29 @@ async function reconcileSyntheticMatches(): Promise<number> {
        AND scheduled_at < NOW() - INTERVAL '6 hours'
      RETURNING id`
   );
-  return (dupes.rowCount ?? 0) + (stale.rowCount ?? 0);
+  // Sintéticos DUPLICADOS del mismo cruce y día (la ref incluye la hora, así que
+  // un cambio de hora de la fuente creaba una fila nueva y dejaba la vieja).
+  const synDupes = await db.query(
+    `DELETE FROM matches s
+     USING matches r
+     WHERE s.source_ref LIKE 'synthetic:%'
+       AND r.source_ref LIKE 'synthetic:%'
+       AND s.id <> r.id
+       AND r.season_id    = s.season_id
+       AND r.home_team_id = s.home_team_id
+       AND r.away_team_id = s.away_team_id
+       AND (r.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
+           = (s.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
+       AND (
+         -- el placeholder de medianoche (solo fecha) cede ante el que tiene hora
+         ((s.scheduled_at AT TIME ZONE 'Europe/Madrid')::time = TIME '00:00'
+          AND (r.scheduled_at AT TIME ZONE 'Europe/Madrid')::time <> TIME '00:00')
+         -- o cualquier sintético más reciente supera a uno más viejo
+         OR (r.scraped_at > s.scraped_at)
+       )
+     RETURNING s.id`
+  );
+  return (dupes.rowCount ?? 0) + (synDupes.rowCount ?? 0) + (stale.rowCount ?? 0);
 }
 
 /**
@@ -148,6 +173,7 @@ async function processCalendar(
   timezone?: string,
   playoffIdcs: ReadonlySet<string> = LEGACY_PLAYOFF_IDCS,
   cupIdcs: ReadonlySet<string> = CUP_IDCS,
+  cupFormat: 'bracket' | 'final_four' = 'bracket',
   dryRun = false,
 ): Promise<void> {
   for (const calIdc of idcs) {
@@ -193,14 +219,16 @@ async function processCalendar(
 
     // Copas: crear rondas por nombre (Octavos/Cuartos/Semis/Final) como
     // 'playoff' y asignarlas a cada partido → la web las pinta como bracket.
+    // Final Four: numeración canónica Semifinal(1)/Final(2).
     if (cupIdcs.has(calIdc)) {
+      const roundNumberOf = cupFormat === 'final_four' ? finalFourRoundNumber : cupRoundNumber;
       const cache = new Map<string, string>();
       for (const m of result.data) {
         const rname = m.roundRef?.trim();
         if (!rname) continue;
         let rid = cache.get(rname.toLowerCase());
         if (!rid) {
-          rid = await getOrCreateRound(seasonId, rname, cupRoundNumber(rname), 'playoff');
+          rid = await getOrCreateRound(seasonId, rname, roundNumberOf(rname), 'playoff');
           cache.set(rname.toLowerCase(), rid);
         }
         m.roundId = rid;
@@ -315,12 +343,14 @@ async function runMultiCompetition(
     const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: item.seasonId, dryRun });
     try {
       const playoff = new Set(item.playoffIdcs);
-      // `format: 'bracket'` en competition_sources marca las copas (#166): su
-      // propio idc primario es el que crea las rondas de eliminatoria, sin la
-      // lista CUP_IDCS hardcodeada.
-      const cups = item.format === 'bracket' ? new Set([item.primaryIdc]) : new Set<string>();
+      // `format: 'bracket' | 'final_four'` en competition_sources marca las
+      // copas/supercopas (#166): su propio idc primario es el que crea las
+      // rondas de eliminatoria, sin la lista CUP_IDCS hardcodeada.
+      const isKnockout = item.format === 'bracket' || item.format === 'final_four';
+      const cups = isKnockout ? new Set([item.primaryIdc]) : new Set<string>();
       if (entity === 'calendar') {
-        await processCalendar(item.seasonId, [item.primaryIdc, ...item.playoffIdcs], pipeline, item.timezone, playoff, cups, dryRun);
+        await processCalendar(item.seasonId, [item.primaryIdc, ...item.playoffIdcs], pipeline, item.timezone, playoff, cups,
+          item.format === 'final_four' ? 'final_four' : 'bracket', dryRun);
       } else {
         await processStandings(item.primaryIdc, item.competitionName, pipeline, playoff, cups, dryRun);
       }
@@ -419,7 +449,7 @@ async function mainInner() {
 
   // ── Calendario ─────────────────────────────────────
   if (entity === 'calendar' || entity === 'all') {
-    await processCalendar(seasonId!, idcs, pipeline, undefined, undefined, undefined, dryRun);
+    await processCalendar(seasonId!, idcs, pipeline, undefined, undefined, undefined, 'bracket', dryRun);
     // Reconciliación automática: si un placeholder sintético ya tiene su
     // partido real (con idp), eliminarlo para no duplicar en la web.
     const reconciled = await reconcileSyntheticMatches();

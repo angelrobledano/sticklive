@@ -36,7 +36,7 @@ Ambas son **la misma plataforma sidgad** servida como instancias distintas: el c
 
 ## Deduplicación de partidos y competiciones
 
-- Una competición = una fila en `competitions`; liga y playoff comparten temporada (playoff como `rounds` con `round_type='playoff'`); copas y supercopas se modelan como rondas de playoff. Ver modelo en [RUNBOOK_COMPETICIONES.md](./RUNBOOK_COMPETICIONES.md).
+- Una competición = una fila en `competitions`; liga y playoff comparten temporada (playoff como `rounds` con `round_type='playoff'`); copas y supercopas se modelan como rondas de playoff. El formato se declara en `competition_sources.external_ids.format`: `bracket` (copa) o `final_four` (supercopa a 4: Semifinal x2 → Final). Ver modelo en [RUNBOOK_COMPETICIONES.md](./RUNBOOK_COMPETICIONES.md).
 - El alta de competiciones es **data-driven**: `seed-fep-competition.ts` descubre equipos en la fuente y crea competición + temporada 2026/27 (is_current) + equipos + fila en `competition_sources`. Dry-run por defecto, `--write` para escribir. Paso a paso: [runbook-alta-ligas-2026-27.md](./runbook-alta-ligas-2026-27.md).
 - Importaciones históricas masivas (`import-history`, `import-federations`, volcado v1) se etiquetan con `import_batches` para trazabilidad y reversibilidad; el ciclo seguro staging→promoción está descrito en [A4_STAGING_SCRAPING.md](./A4_STAGING_SCRAPING.md) y [A5_ENRICH_PROMOTE.md](./A5_ENRICH_PROMOTE.md).
 

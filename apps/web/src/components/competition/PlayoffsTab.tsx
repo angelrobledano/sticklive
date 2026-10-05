@@ -10,6 +10,7 @@ import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
 import { PlayoffBracket } from '@/components/match/PlayoffBracket';
 import { TrophyIcon } from '@/components/match/icons';
 import { KnockoutBracket } from './KnockoutBracket';
+import { FinalFourBracket } from './FinalFourBracket';
 import { buildSeries, gameWinnerId, groupByPhase, placementMatches, seriesWinnerId, type PlayoffSeries } from '@/lib/playoff';
 import { fmtDate, fmtTime } from './format';
 
@@ -182,7 +183,7 @@ function phaseFromSlug(s: string | null): PlayoffViewPhase | null {
   return (Object.keys(PHASE_SLUG) as PlayoffViewPhase[]).find((p) => PHASE_SLUG[p] === s) ?? null;
 }
 
-export function PlayoffsTab({ matches }: { standings?: SeasonStandingRow[]; matches: SeasonMatch[] }) {
+export function PlayoffsTab({ matches, format }: { standings?: SeasonStandingRow[]; matches: SeasonMatch[]; format?: string }) {
   const { t } = useT();
 
   // Eliminatoria con fases nombradas por la fuente (World Skate: Cuartos/Semis/
@@ -279,6 +280,16 @@ export function PlayoffsTab({ matches }: { standings?: SeasonStandingRow[]; matc
     : phase === 'Cuartos' ? t('playoffs.quarters')
     : phase === 'Semis' ? t('playoffs.semis')
     : t('playoffs.final');
+
+  // Final Four (Supercopa): cuadro propio Semifinal x2 → Final. Se decide por
+  // el formato declarado en la competición, no por heurística de rondas.
+  if (format === 'final_four') {
+    return (
+      <div className="space-y-3">
+        <FinalFourBracket matches={matches} />
+      </div>
+    );
+  }
 
   // Cuadro de eliminatorias por nombre de fase (World Skate) — todos los hooks
   // de arriba se han ejecutado ya, así que este return no rompe las reglas.

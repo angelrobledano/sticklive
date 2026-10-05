@@ -42,5 +42,31 @@ void (async () => {
   );
   console.log(`👻 Eliminados ${stale.rows.length} placeholders pasados sin partido real:`);
   for (const r of stale.rows) console.log('  -', r.source_ref);
+
+  // Sintéticos DUPLICADOS del mismo cruce y día: la ref sintética incluye el
+  // `scheduledAt`, así que un cambio de hora de la fuente creó una fila nueva y
+  // dejó la vieja (medianoche o la hora anterior). Gana el que tiene hora / el
+  // más reciente. (Mismo criterio que reconcileSyntheticMatches en run-pipeline.)
+  const synDupes = await db.query(
+    `DELETE FROM matches s
+     USING matches r
+     WHERE s.source_ref LIKE 'synthetic:%'
+       AND r.source_ref LIKE 'synthetic:%'
+       AND s.id <> r.id
+       AND r.season_id    = s.season_id
+       AND r.home_team_id = s.home_team_id
+       AND r.away_team_id = s.away_team_id
+       AND (r.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
+           = (s.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
+       AND (
+         ((s.scheduled_at AT TIME ZONE 'Europe/Madrid')::time = TIME '00:00'
+          AND (r.scheduled_at AT TIME ZONE 'Europe/Madrid')::time <> TIME '00:00')
+         OR (r.scraped_at > s.scraped_at)
+       )
+     RETURNING s.source_ref`
+  );
+  console.log(`🔁 Eliminados ${synDupes.rows.length} placeholders sintéticos duplicados del mismo cruce y día:`);
+  for (const r of synDupes.rows) console.log('  -', r.source_ref);
+
   await closeDb();
 })();

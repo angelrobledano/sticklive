@@ -16,9 +16,11 @@ export interface ExternalIds {
   /** idc de copas/eliminatorias asociadas. */
   cup_idcs?: string[];
   /** Formato del calendario: `bracket` = eliminatoria (sus rondas Octavos/
-   *  Cuartos/Semis/Final se crean como `round_type='playoff'`). Por defecto
-   *  `league`. Sustituye a la lista CUP_IDCS hardcodeada de run-pipeline (#166). */
-  format?: 'league' | 'bracket';
+   *  Cuartos/Semis/Final se crean como `round_type='playoff'`); `final_four` =
+   *  torneo a 4 (Semifinal x2 → Final, también `round_type='playoff'`, con
+   *  numeración canónica semi=1/final=2). Por defecto `league`. Sustituye a la
+   *  lista CUP_IDCS hardcodeada de run-pipeline (#166). */
+  format?: 'league' | 'bracket' | 'final_four';
 }
 
 /** Política de sondeo en directo. NULL en BD = usar los defaults de cron-live. */
@@ -104,8 +106,9 @@ export interface ScrapePlanItem {
   seasonId: string | null;
   primaryIdc: string;
   playoffIdcs: string[];
-  /** Formato del calendario (`bracket` = eliminatoria). Ver ExternalIds.format. */
-  format: 'league' | 'bracket';
+  /** Formato del calendario (`bracket` = eliminatoria, `final_four` = torneo a 4).
+   *  Ver ExternalIds.format. */
+  format: 'league' | 'bracket' | 'final_four';
   /** Zona IANA en la que la fuente publica los horarios (default Europe/Madrid). */
   timezone: string;
 }

@@ -4,6 +4,13 @@ Historial de hitos de producto y plataforma. El estado vivo está en [ESTADO_PRO
 
 ---
 
+## Octubre 2026 — Supercopa como Final Four y arreglo de duplicados
+
+- **Modelo FINAL_FOUR.** La Supercopa de España (masc./fem.) se modela como torneo a 4 mediante `competition_sources.external_ids.format='final_four'`: sus rondas se crean como `round_type='playoff'` con numeración canónica Semifinal=1 / Final=2 (`run-pipeline` + `seed-fep-competition --format=`), y la API expone `competitionFormat` en la ficha de temporada. La web la pinta como cuadro **Semifinal x2 → Final → campeón** (`FinalFourBracket`) con pestaña "Final Four", sin Jornadas ni Clasificación (antes aparecía como liga).
+- **Fix de cruces duplicados (placeholders sintéticos).** La `source_ref` sintética incluye el `scheduledAt`, así que cuando la fuente cambió la hora de un partido se creó una fila nueva (p. ej. 16:00) y quedó la vieja (medianoche o la hora anterior), con el mismo cruce y día — afectaba a OK Liga M/F, Plata, Bronce y Supercopas (14 casos en prod). `reconcileSyntheticMatches` ahora deduplica **sintético-vs-sintético** por cruce+día en Madrid (gana el que tiene hora / el más reciente), además de la regla sintético-vs-real. Endurecida también la adopción/reconciliación para placeholders sin fecha.
+
+---
+
 ## Hito septiembre 2026 — Temporada 2026/27 y endurecimiento post-auditoría
 
 - **Alta de la 2026/27 con seed genérico.** Nuevo `apps/etl/src/seed-fep-competition.ts`: descubre los equipos en la fuente, crea competición + temporada (is_current) + equipos + `competition_sources`, con embudo de identidad (no crea equipos a ciegas; lo dudoso a la cola HITL) y `--force-new` para altas confirmadas a mano. 11 competiciones operando (OK Liga M/F, Plata N/S/F, Bronce N/S, Supercopas). Runbook: [runbook-alta-ligas-2026-27.md](./runbook-alta-ligas-2026-27.md).

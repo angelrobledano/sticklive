@@ -20,6 +20,9 @@ interface SeasonRow {
   competition_country: string | null;
   competition_region: string | null;
   competition_timezone: string | null;
+  /** Formato declarado en competition_sources.external_ids.format (#166):
+   *  'league' | 'bracket' | 'final_four'. NULL/vacío ⇒ liga. */
+  competition_format: string | null;
 }
 
 interface StandingRow {
@@ -103,9 +106,11 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
                c.scope      AS competition_scope,
                c.country    AS competition_country,
                c.region     AS competition_region,
-               c.timezone   AS competition_timezone
+               c.timezone   AS competition_timezone,
+               cs.external_ids->>'format' AS competition_format
         FROM seasons s
         JOIN competitions c ON c.id = s.competition_id
+        LEFT JOIN competition_sources cs ON cs.competition_id = c.id
         WHERE s.id = $1
       `, [seasonId]),
 
@@ -199,7 +204,10 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
     const distinctPlayoffRounds = new Set(
       playoffRows.map((m) => m.round_id).filter((x): x is string => !!x)
     );
-    const hasRealPhases = distinctPlayoffRounds.size > 1;
+    // Final Four: sus rondas son la verdad aunque por ahora solo exista la de
+    // semifinales (la final no se publica hasta conocerse los finalistas). No
+    // derivar por cronología. Ver `format` en competition_sources.
+    const hasRealPhases = distinctPlayoffRounds.size > 1 || s.competition_format === 'final_four';
 
     const derivedRound = new Map<string, number>(); // matchId → roundNumber
     if (playoffRows.length > 0 && !hasRealPhases) {
@@ -259,6 +267,12 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         competitionCountry:   s.competition_country,
         competitionRegion:    s.competition_region,
         competitionTimezone:  s.competition_timezone,
+        // Formato de competición (competition_sources): solo se reconocen los
+        // valores conocidos; cualquier otro cae a 'league'.
+        competitionFormat:
+          s.competition_format === 'bracket' || s.competition_format === 'final_four'
+            ? s.competition_format
+            : 'league',
       },
       standings: standingsRes.rows.map((r) => ({
         id:                 r.id,

@@ -83,6 +83,23 @@ export function nextTabIndex(current: number, key: string, count: number): numbe
   }
 }
 
+export function competitionVisibleTabs(
+  data: Pick<SeasonOverview, 'standings' | 'matches'>,
+  stats: SeasonStats | null | undefined,
+  format: SeasonOverview['season']['competitionFormat'],
+): MainTab[] {
+  // Una Final Four (Supercopa) es un cuadro: sin Clasificación ni Jornadas.
+  const isFinalFour = format === 'final_four';
+  const tabs: MainTab[] = [];
+  if (!isFinalFour && data.standings.length > 0) tabs.push('Clasificación');
+  if (!isFinalFour && data.matches.some((m) => m.roundType === 'regular')) tabs.push('Jornadas');
+  if (isFinalFour || data.matches.some((m) => m.roundType === 'playoff')) tabs.push('Playoffs');
+  if (stats && (stats.topScorers.length > 0 || stats.topAssists.length > 0 || stats.topCards.length > 0)) {
+    tabs.push('Estadísticas');
+  }
+  return tabs.length > 0 ? tabs : ['Clasificación'];
+}
+
 export function CompetitionClient({ data, seasons, competitionId, stats }: {
   data: SeasonOverview;
   seasons?: CompetitionSeason[];
@@ -91,16 +108,12 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
 }) {
   // Pestañas según los datos: una eliminatoria pura (playoff) no tiene
   // clasificación, y una liga sin fase final no necesita pestaña Playoffs.
-  const visibleTabs = useMemo<MainTab[]>(() => {
-    const tabs: MainTab[] = [];
-    if (data.standings.length > 0) tabs.push('Clasificación');
-    if (data.matches.some((m) => m.roundType === 'regular')) tabs.push('Jornadas');
-    if (data.matches.some((m) => m.roundType === 'playoff')) tabs.push('Playoffs');
-    if (stats && (stats.topScorers.length > 0 || stats.topAssists.length > 0 || stats.topCards.length > 0)) {
-      tabs.push('Estadísticas');
-    }
-    return tabs.length > 0 ? tabs : ['Clasificación'];
-  }, [data.standings, data.matches, stats]);
+  // Una Final Four (Supercopa) es un cuadro: sin Clasificación ni Jornadas.
+  const isFinalFour = data.season.competitionFormat === 'final_four';
+  const visibleTabs = useMemo<MainTab[]>(
+    () => competitionVisibleTabs(data, stats, data.season.competitionFormat),
+    [data, stats],
+  );
 
   const { t } = useT();
   const sp = useSearchParams();
@@ -169,7 +182,7 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
                 : 'border-transparent font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 active:bg-slate-50 dark:active:bg-slate-800/60 active:text-slate-900 dark:active:text-slate-100'
             }`}
           >
-            {t(MAIN_TAB_KEYS[tab])}
+            {isFinalFour && tab === 'Playoffs' ? t('playoffs.final_four') : t(MAIN_TAB_KEYS[tab])}
           </button>
         ))}
       </div>
@@ -187,7 +200,7 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
       )}
       {currentTab === 'Playoffs'      && (
         <Suspense fallback={<div className="card h-40 animate-pulse" aria-hidden="true" />}>
-          <PlayoffsTab matches={data.matches} />
+          <PlayoffsTab matches={data.matches} format={data.season.competitionFormat} />
         </Suspense>
       )}
       {currentTab === 'Estadísticas'  && stats && <StatsLeadersTab stats={stats} />}

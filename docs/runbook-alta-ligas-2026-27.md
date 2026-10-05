@@ -42,9 +42,9 @@ $DC_ETL --idc=3571 --name="OK LIGA PLATA FEMENINA" --short="Plata Fem"   --gende
 $DC_ETL --idc=3572 --name="OK LIGA BRONCE MASCULINA NORTE" --short="Bronce Norte" --gender=male
 $DC_ETL --idc=3573 --name="OK LIGA BRONCE MASCULINA SUR"   --short="Bronce Sur"   --gender=male
 
-# Supercopas (KO corto) — al final
-$DC_ETL --idc=3592 --name="SUPERCOPA DE ESPAÑA MASCULINA" --short="Supercopa" --gender=male
-$DC_ETL --idc=3593 --name="SUPERCOPA DE ESPAÑA FEMENINA"  --short="Supercopa" --gender=female
+# Supercopas (Final Four: 2 semifinales + final, partido único) — al final
+$DC_ETL --idc=3592 --name="SUPERCOPA DE ESPAÑA MASCULINA" --short="Supercopa" --gender=male   --format=final_four
+$DC_ETL --idc=3593 --name="SUPERCOPA DE ESPAÑA FEMENINA"  --short="Supercopa" --gender=female --format=final_four
 ```
 
 Añade `--write` al final de cada uno cuando el dry-run se vea bien. Cada `--write` imprime `SEASON_ID` (guárdalo para el paso 2).
@@ -60,7 +60,7 @@ $DC exec -T etl node dist/apps/etl/src/run-pipeline.js --entity=calendar  --idc=
 $DC exec -T etl node dist/apps/etl/src/run-pipeline.js --entity=standings --idc=<idc> --season-id=<SEASON_ID>
 ```
 
-Las Supercopas: solo `calendar` (son eliminatoria; el parser capta las rondas del `thead.head_jornada`, sin clasificación de liga).
+Las Supercopas: `--format=final_four` en el seed (torneo a 4: 2 semifinales + final, partido único) y solo `calendar`; el parser capta las rondas del `thead.head_jornada` y la web las pinta como cuadro (sin clasificación de liga).
 
 ## 3. Verificación
 

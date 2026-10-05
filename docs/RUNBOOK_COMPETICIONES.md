@@ -12,7 +12,7 @@ Cómo añadir una competición nueva, fusionar liga + playoff, y los errores que
 - **`idc`**: identificador de competición en la fuente FEP (`sidgad`/`rfep`). Cada competición-temporada tiene el suyo. El histórico se importa por lista de `idc`.
 - **`temp_39`**: temporada actual 2025/26 en la fuente. `is_current` se marca cuando `comp.tempId === '39'`.
 - **Modelo de datos**: `competitions → seasons (is_current única por competición) → rounds (round_type: regular/playoff/cup/friendly) → matches`. La competición de un partido se deriva vía su `season`.
-- **Una competición = liga + playoff**: la OK Liga (masc. y fem.) es **una sola competición**; los partidos de playoff son `rounds` con `round_type='playoff'` dentro de la misma temporada. Las copas/campeonatos de España se modelan también como rondas de playoff.
+- **Una competición = liga + playoff**: la OK Liga (masc. y fem.) es **una sola competición**; los partidos de playoff son `rounds` con `round_type='playoff'` dentro de la misma temporada. Las copas/campeonatos de España se modelan también como rondas de playoff. Una **Final Four** (Supercopa) se declara con `competition_sources.external_ids.format='final_four'`: sus rondas se crean como `round_type='playoff'` con numeración canónica **Semifinal=1 / Final=2** y la web la pinta como cuadro (Semifinal x2 → Final), nunca como liga.
 
 ---
 
@@ -61,7 +61,7 @@ git pull
    ```
 
    - `PLAYOFF_IDCS_PIPELINE = ['3481','3484']` → esas `idc` se tratan como rondas de playoff.
-   - Las `idc` de copa (CUP_IDCS) generan rondas de playoff cuyo número/nombre sale del `roundRef` del calendario.
+   - Las `idc` de copa (CUP_IDCS) generan rondas de playoff cuyo número/nombre sale del `roundRef` del calendario. Con `format='bracket'` o `'final_four'` en `competition_sources.external_ids` se hace sin la lista hardcodeada; `final_four` usa Semifinal=1 / Final=2.
 
 3. **Verificar** en la web que aparecen los partidos, que el equipo compartido no se ha duplicado, y que la etiqueta de competición es correcta en la home.
 
