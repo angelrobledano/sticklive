@@ -9,8 +9,11 @@ import { qk, useFavorites } from './queries';
  * cap 200/kind, refs UUID). kind 'league' = competición (nomenclatura del API).
  *
  * Al iniciar sesión `mergeLocalOnLogin` envía lo local al merge y deja el
- * estado local como ESPEJO del servidor (así, al cerrar sesión, el usuario no
- * pierde de vista lo que seguía con la cuenta).
+ * estado local como ESPEJO del servidor EN EL MOMENTO DEL LOGIN (así, al
+ * cerrar sesión, el usuario no pierde de vista lo que seguía con la cuenta).
+ * Matiz: los favoritos que cambie CON sesión activa no se replican en ese
+ * local al cerrar sesión (paridad con la web, decidida en el plan); se
+ * recuperan al volver a iniciar sesión.
  */
 
 const LOCAL_KEY = 'sticklive.favorites.local';

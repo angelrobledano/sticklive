@@ -94,7 +94,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // ANTES de setSession: la primera lectura de favoritos ya ve el estado
       // fusionado y no hay flash de "0 favoritos". Si falla (red) el login NO
       // se rompe: los locales sobreviven intactos y el merge se reintenta con
-      // el próximo login (o al tocar la estrella, que manda su propio merge).
+      // el próximo login. Tocar la estrella también dispara su propio merge,
+      // pero recupera SOLO ese favorito (merge de 1 elemento); el resto del
+      // estado local se recupera con el próximo login.
       // Fallo explícito no silencioso por consola (mismo canal que signOut;
       // Sentry lo capturará en 5.1): meterlo en lastAuthError mostraría un
       // error de Google cuando el login ha IDO BIEN.

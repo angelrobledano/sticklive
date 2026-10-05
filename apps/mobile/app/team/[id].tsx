@@ -39,7 +39,7 @@ export default function TeamScreen() {
       <ScrollView className="bg-rink-floor dark:bg-rink-floor-dark">
         {/* Cabecera (la estrella de seguir es un favorito del EQUIPO, no del partido) */}
         <View className="relative items-center rounded-xl bg-white p-4 mx-3 mt-2 dark:bg-slate-900">
-          <View className="absolute right-0 top-0">
+          <View className="absolute right-1 top-1">
             <FollowButton kind="team" refId={team.id} />
           </View>
           <Avatar uri={teamLogoUri(team.id, 192)} name={team.name} size={72} />

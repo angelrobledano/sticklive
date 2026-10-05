@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   addLocalFavorite,
   mergeFavoritesIntoRequest,
@@ -39,6 +39,7 @@ const local = (over: Partial<LocalFavorites> = {}): LocalFavorites => ({
 });
 
 beforeEach(() => store.clear());
+afterEach(() => vi.unstubAllGlobals());
 
 describe('mergeFavoritesIntoRequest', () => {
   it('construye el body de merge desde el estado local', () => {
