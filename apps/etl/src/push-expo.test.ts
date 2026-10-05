@@ -182,6 +182,21 @@ describe('deliverNative', () => {
     );
   });
 
+  it('cuenta como fallidos los mensajes no cubiertos cuando expo responde con errors', async () => {
+    // Lote de 3; la respuesta trae errors top-level y SOLO 1 item en data:
+    // los 2 mensajes sin respuesta no pueden perderse del recuento.
+    fetchMock
+      .mockResolvedValueOnce(jsonRes({
+        errors: [{ code: 'PUSH_TOO_MANY_EXPERIENCE_IDS', message: 'too many ids' }],
+        data: [{ status: 'ok', id: 'r1' }],
+      }))
+      .mockResolvedValueOnce(jsonRes({ data: { r1: { status: 'ok' } } }));
+
+    const res = await deliverNative([mkSub(1), mkSub(2), mkSub(3)], { ...PAYLOAD }, vi.fn());
+
+    expect(res).toEqual({ sent: 1, failed: 2 });
+  });
+
   it('un fallo de BD en la poda por ticket NO pierde el ciclo (warn y sigue con recibos)', async () => {
     fetchMock
       .mockResolvedValueOnce(jsonRes({

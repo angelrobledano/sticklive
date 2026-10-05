@@ -151,6 +151,12 @@ export async function deliverNative(
           );
         }
       }
+      // Con errores top-level Expo puede responder con MENOS items que mensajes
+      // enviados: lo no cubierto ni se contó como sent ni falló por-item. Se
+      // contabiliza como failed para no perder envíos del lote (nunca silencioso).
+      if (data.errors?.length) {
+        failed += Math.max(0, chunk.length - (data.data?.length ?? 0));
+      }
     } catch (err) {
       failed += chunk.length;
       log.error({ err }, 'Fallo de red contra Expo Push');
