@@ -14,6 +14,17 @@ import type { MatchStatus } from '@sports/shared-types';
  *   ambas rutas (mapper único `buildMatchDetail`).
  * - `GET /auth/favorites` → `FavoritesResponse`:
  *   apps/api/src/routes/auth.ts:339-356.
+ *
+ * Task 2.2 añade (misma metodología, sin levantar servidor):
+ * - `GET /search` → `SearchResults`: apps/api/src/routes/search.ts:77-91
+ *   (buildSearchResults :94-127, c.json :212; con q<2 responde la misma forma
+ *   vacía en :202).
+ * - `GET /seasons/:id/standings` → `StandingsResponse`: envoltorio en
+ *   apps/api/src/routes/standings.ts:40-45; filas SNAKE_CASE = DbStanding
+ *   (packages/db/src/queries/standings.ts:4-23) + columnas del JOIN con teams
+ *   (queries del :98/:108).
+ * - `GET /competitions` → `CompetitionsResponse`: apps/api/src/routes/
+ *   competitions.ts:96-121 (ítem con `season` ANIDADA, no `currentSeasonId`).
  */
 
 /**
@@ -137,28 +148,115 @@ export interface MatchDetail {
   };
 }
 
+/** Temporada de referencia anidada en cada ítem de /competitions (competitions.ts:110-118). */
+export interface CompetitionSeasonSummary {
+  id: string;
+  name: string;
+  /** Fechas de temporada: pg las serializa a string ISO (ídem scheduledAt). */
+  startDate: string | null;
+  endDate: string | null;
+  isCurrent: boolean;
+  teamCount: number;
+  matchCount: number;
+}
+
+/**
+ * Ítem de `GET /competitions` (competitions.ts:96-119). Sustituye al
+ * placeholder anterior (gender?/currentSeasonId?): la temporada de referencia
+ * viene ANIDADA en `season` (no hay `currentSeasonId`) y el ítem incluye
+ * slug/categoría/calidad de datos.
+ */
 export interface CompetitionSummary {
   id: string;
   name: string;
-  gender?: string;
-  currentSeasonId?: string | null;
-}
-
-export interface StandingsRow {
-  teamId: string;
-  teamName: string;
+  nameI18n: Record<string, string> | null;
   shortName: string | null;
-  logoUrl: string | null;
-  position?: number;
-  played?: number; won?: number; drawn?: number; lost?: number;
-  goalsFor?: number; goalsAgainst?: number; points?: number;
-  [key: string]: unknown;
+  slug: string;
+  gender: string | null;
+  category: string | null;
+  country: string | null;
+  organizer: string;
+  scope: string;
+  region: string | null;
+  ageCategory: string;
+  dataQuality: string;
+  season: CompetitionSeasonSummary | null;
 }
 
+/** Envoltorio REAL de `/competitions` (competitions.ts:121): NO es un array plano. */
+export interface CompetitionsResponse {
+  count: number;
+  competitions: CompetitionSummary[];
+}
+
+/**
+ * Verificado: fila cruda de `/seasons/:id/standings`. El API NO mapea a
+ * camelCase: devuelve `DbStanding` tal cual (packages/db/src/queries/
+ * standings.ts:4-23; columnas en 001_initial_schema.sql:236-260) más las
+ * columnas del JOIN con teams (`team_name`, `team_short_name`,
+ * `team_logo_url`; query en standings.ts del paquete db, :98/:108).
+ * Los timestamps llegan como string ISO (pg Date → JSON), igual que
+ * scheduledAt en MatchSummary.
+ */
+export interface StandingsRow {
+  id: string;
+  season_id: string;
+  team_id: string;
+  /** "Grupo A", "Norte"… null si la liga es de grupo único (schema:240). */
+  group_name: string | null;
+  position: number | null;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goals_for: number;
+  goals_against: number;
+  /** Columna generada en BD (schema:250). */
+  goal_diff: number;
+  points: number;
+  /** Últimos 5 resultados ["W","W","D","L","W"] (schema:252). */
+  form: string[] | null;
+  source_id: string | null;
+  scraped_at: string | null;
+  created_at: string;
+  updated_at: string;
+  /** teams.name es NOT NULL (001_initial_schema.sql:90) y el JOIN es inner. */
+  team_name: string;
+  team_short_name: string | null;
+  team_logo_url: string | null;
+}
+
+/** Envoltorio REAL de `/seasons/:id/standings` (standings.ts:40-45): NO es un array plano. */
+export interface StandingsResponse {
+  seasonId: string;
+  /** Nombre de grupo si se pidió `?group=`; null en la general (standings.ts:42). */
+  group: string | null;
+  count: number;
+  standings: StandingsRow[];
+}
+
+/**
+ * Verificado: `SearchResults` de apps/api/src/routes/search.ts:77-91,
+ * construido por buildSearchResults (:94-127) y devuelto por c.json (:212).
+ * Con `q` de menos de 2 caracteres el API responde la MISMA forma vacía
+ * (:202), pero la app móvil ni siquiera dispara la petición (gating en
+ * useSearch). OJO: los jugadores van separados en firstName/lastName (no hay
+ * `name`) y el envoltorio añade `query` y `total`.
+ */
 export interface SearchResults {
-  teams: { id: string; name: string; logoUrl: string | null }[];
-  players: { id: string; name: string; teamName?: string | null }[];
-  competitions: { id: string; name: string }[];
+  query: string;
+  total: number;
+  teams: { id: string; name: string; shortName: string | null; logoUrl: string | null; country: string | null }[];
+  players: { id: string; firstName: string; lastName: string; photoUrl: string | null; teamName: string | null }[];
+  competitions: {
+    id: string;
+    name: string;
+    nameI18n: Record<string, string> | null;
+    shortName: string | null;
+    country: string | null;
+    scope: string | null;
+    seasonName: string | null;
+  }[];
 }
 
 /** Verificado: apps/api/src/routes/auth.ts:346-350 (refs agrupadas por kind). */
