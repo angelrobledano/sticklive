@@ -19,7 +19,7 @@ export default {
       },
       edgeToEdgeEnabled: true,
     },
-    plugins: ['expo-router', 'expo-status-bar'],
+    plugins: ['expo-router', 'expo-status-bar', 'expo-web-browser', 'expo-secure-store'],
     experiments: { typedRoutes: true },
     extra: { eas: { projectId: '' } }, // se rellena con `eas init` en M5
   },

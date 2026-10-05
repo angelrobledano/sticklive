@@ -1,15 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-// SecureStore es código NATIVO: en vitest (node) no existe. El mock declárese
-// antes del import del módulo testeado; vi.mock se hoistea y el factory se
-// invoca al importarse './session', cuando `store` ya está inicializado.
-const store = new Map<string, string>();
-vi.mock('expo-secure-store', () => ({
-  getItemAsync: vi.fn(async (k: string) => store.get(k) ?? null),
-  setItemAsync: vi.fn(async (k: string, v: string) => void store.set(k, v)),
-  deleteItemAsync: vi.fn(async (k: string) => void store.delete(k)),
-}));
-
 import {
   clearSession,
   loadSession,
@@ -17,6 +6,17 @@ import {
   parseAuthRedirect,
   saveSession,
 } from './session';
+
+// SecureStore es código NATIVO: en vitest (node) no existe y hay que mockearlo.
+// El store vive en vi.hoisted para que el factory del mock lo vea ya
+// inicializado cuando se importe './session' (patrón del repo:
+// apps/api/src/lib/mailer.test.ts).
+const { store } = vi.hoisted(() => ({ store: new Map<string, string>() }));
+vi.mock('expo-secure-store', () => ({
+  getItemAsync: vi.fn(async (k: string) => store.get(k) ?? null),
+  setItemAsync: vi.fn(async (k: string, v: string) => void store.set(k, v)),
+  deleteItemAsync: vi.fn(async (k: string) => void store.delete(k)),
+}));
 
 describe('parseAuthRedirect', () => {
   it('extrae code y email del redirect del callback', () => {

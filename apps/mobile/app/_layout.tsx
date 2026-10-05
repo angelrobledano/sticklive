@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import '../global.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from '@/src/context/AuthContext';
 import { LocaleProvider } from '@/src/i18n/LocaleContext';
 import { ThemeProvider } from '@/src/theme/ThemeContext';
 import { ApiError } from '@/src/lib/api/client';
@@ -22,17 +23,21 @@ const queryClient = new QueryClient({
 // real de los headers se decide en M5.
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <LocaleProvider>
-        <QueryClientProvider client={queryClient}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="match/[id]" />
-            <Stack.Screen name="team/[id]" />
-            <Stack.Screen name="player/[id]" />
-          </Stack>
-        </QueryClientProvider>
-      </LocaleProvider>
-    </ThemeProvider>
+    // AuthProvider lo más externo: no depende de tema/idioma (solo de la red y
+    // SecureStore) y deja la sesión disponible para cualquier provider interno.
+    <AuthProvider>
+      <ThemeProvider>
+        <LocaleProvider>
+          <QueryClientProvider client={queryClient}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="match/[id]" />
+              <Stack.Screen name="team/[id]" />
+              <Stack.Screen name="player/[id]" />
+            </Stack>
+          </QueryClientProvider>
+        </LocaleProvider>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
