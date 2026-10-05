@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatKickoff, isEffectivelyLive } from './time';
+import { formatDayLabel, formatKickoff, isEffectivelyLive } from './time';
 import { STALE_LIVE_HOURS } from '@sports/shared-types';
 
 describe('time', () => {
@@ -21,5 +21,10 @@ describe('time', () => {
 
   it('isEffectivelyLive: finished nunca es live', () => {
     expect(isEffectivelyLive('finished', new Date().toISOString())).toBe(false);
+  });
+
+  it('guard de NaN: fecha inválida → "--:--" / ""', () => {
+    expect(formatKickoff('no-fecha')).toBe('--:--');
+    expect(formatDayLabel('no-fecha')).toBe('');
   });
 });

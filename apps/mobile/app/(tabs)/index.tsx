@@ -24,7 +24,9 @@ export default function LiveScreen() {
     const byDay = new Map<string, MatchSummary[]>();
     for (const m of list.filter((x) => !isEffectivelyLive(x.status, x.scheduledAt))) {
       const key = formatDayLabel(m.scheduledAt) || '—';
-      (byDay.get(key) ?? byDay.set(key, []).get(key)!).push(m);
+      const bucket = byDay.get(key) ?? [];
+      bucket.push(m);
+      byDay.set(key, bucket);
     }
     return [
       ...(live.length ? [{ key: '__live__', title: t('match_states.live'), matches: live }] : []),
@@ -33,11 +35,14 @@ export default function LiveScreen() {
   }, [data, t]);
 
   if (isPending) return <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark" />;
-  if (isError) return <ErrorState onRetry={() => void refetch()} />;
+  // Con datos previos (fallo de refetch en segundo plano) se CONSERVA la lista:
+  // el ErrorState solo sustituye la pantalla si no hay nada que mostrar.
+  if (isError && !data) return <ErrorState onRetry={() => void refetch()} />;
 
   return (
     <FlatList
       className="bg-rink-floor dark:bg-rink-floor-dark"
+      contentContainerStyle={{ flexGrow: 1 }}
       data={sections}
       keyExtractor={(s) => s.key}
       refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}

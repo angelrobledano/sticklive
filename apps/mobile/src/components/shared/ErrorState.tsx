@@ -8,8 +8,8 @@ export function ErrorState({ onRetry }: { onRetry: () => void }) {
       <Text className="text-center text-base text-slate-700 dark:text-slate-300">
         No se ha podido cargar. Revisa tu conexión.
       </Text>
-      <Pressable onPress={onRetry} className="mt-3 rounded-lg bg-rink-passion px-4 py-2">
-        <Text className="font-semibold text-white">Reintentar</Text>
+      <Pressable onPress={onRetry} className="mt-3 min-h-[44px] justify-center rounded-lg bg-rink-passion px-4">
+        <Text className="text-center font-semibold text-white">Reintentar</Text>
       </Pressable>
     </View>
   );

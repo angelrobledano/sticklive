@@ -4,16 +4,20 @@ const MADRID = 'Europe/Madrid';
 
 export function formatKickoff(iso: string | null): string {
   if (!iso) return '--:--';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '--:--'; // paridad con la web (match-time.ts)
   return new Intl.DateTimeFormat('es-ES', {
     hour: '2-digit', minute: '2-digit', timeZone: MADRID, hour12: false,
-  }).format(new Date(iso));
+  }).format(d);
 }
 
 export function formatDayLabel(iso: string | null): string {
   if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return ''; // paridad con la web (match-time.ts)
   return new Intl.DateTimeFormat('es-ES', {
     weekday: 'long', day: 'numeric', month: 'short', timeZone: MADRID,
-  }).format(new Date(iso));
+  }).format(d);
 }
 
 /**

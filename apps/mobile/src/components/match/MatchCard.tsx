@@ -17,7 +17,7 @@ export function MatchCard({ match }: { match: MatchSummary }) {
   return (
     <Pressable
       onPress={() => router.push(`/match/${match.id}`)}
-      className="mx-3 my-1 rounded-xl bg-white p-3 dark:bg-slate-900"
+      className="mx-3 my-1 rounded-xl bg-white p-3 active:opacity-70 dark:bg-slate-900"
     >
       <Text className="text-[10px] uppercase tracking-wide text-slate-500">
         {match.competitionName ?? ''}
