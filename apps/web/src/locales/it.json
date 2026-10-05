@@ -257,6 +257,7 @@
     "placement_help": "La 9ª e la 10ª della stagione regolare giocano questa serie per fissare l’ordine finale, che decide l’ultimo posto europeo (WSE Cup) della prossima stagione.",
     "bracket_title": "Tabellone playoff",
     "series_wins": "Vittorie della serie",
+    "final_four": "Final Four",
     "champion": "Campione",
     "pens_short": "rig.",
     "ot_short": "supp.",
@@ -488,18 +489,22 @@
     },
     "results": {
       "label": "Risultati",
-      "desc": "Inizio e risultato finale delle partite."
+      "desc": "Solo inizio e risultato finale."
     },
     "silent": {
       "label": "Silenzioso",
-      "desc": "Potrai seguirla dall’applicazione."
+      "desc": "Nessun avviso. Segui la partita nell’app."
+    },
+    "player": {
+      "key_events": { "desc": "I suoi gol, cartellini e falli diretti." },
+      "silent": { "desc": "Nessun avviso. Segui le sue partite nell’app." }
     },
     "push_offer_title": "Attiva le notifiche",
-    "push_offer_desc": "Consenti le notifiche su questo dispositivo per ricevere gli avvisi delle tue squadre.",
+    "push_offer_desc": "Consenti le notifiche su questo dispositivo per ricevere gli avvisi che scegli.",
     "push_offer_cta": "Attiva avvisi",
     "key_events": {
       "label": "Eventi chiave",
-      "desc": "Inizio partita, gol, cartellini blu, falli diretti e risultato finale."
+      "desc": "Gol, cartellini, falli diretti, inizio e risultato finale."
     }
   },
   "ads": {

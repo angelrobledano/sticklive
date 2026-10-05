@@ -22,6 +22,12 @@ export interface SubPrefs {
 
 // Cada preset es una colección de tipos de evento (no booleanos sueltos), para
 // poder ampliar el catálogo sin rediseñar la segmentación.
+//
+// NOTA: 'complete' y 'key_events' tienen HOY el mismo repertorio (el catálogo
+// solo tiene estos 8 tipos), así que 'complete' es un alias legacy: se mantiene
+// por compatibilidad (presets guardados) pero la app ya NO lo ofrece — el
+// selector ofrece Eventos clave / Resultados / Silencioso (ver `UI_PRESETS` en
+// apps/web/src/lib/notif-prefs.ts).
 export const PRESET_EVENTS: Record<NotificationPreset, PushEventType[]> = {
   complete:   ['start', 'goal', 'blue_card', 'direct_foul', 'red_card', 'overtime', 'penalties', 'final'],
   // 'start' incluido: es el preset por defecto al seguir y el inicio del partido

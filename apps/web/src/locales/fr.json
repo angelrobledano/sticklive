@@ -257,6 +257,7 @@
     "placement_help": "Le 9e et le 10e de la saison régulière disputent cette série pour fixer le classement final, qui décide de la dernière place européenne (WSE Cup) de la saison prochaine.",
     "bracket_title": "Tableau des playoffs",
     "series_wins": "Victoires de la série",
+    "final_four": "Final Four",
     "champion": "Champion",
     "pens_short": "tab",
     "ot_short": "prol.",
@@ -488,18 +489,22 @@
     },
     "results": {
       "label": "Résultats",
-      "desc": "Coup d’envoi et résultat final des matchs."
+      "desc": "Uniquement le coup d’envoi et le résultat final."
     },
     "silent": {
       "label": "Silencieux",
-      "desc": "Vous pourrez le suivre depuis l’application."
+      "desc": "Aucune alerte. Suivez le match dans l’app."
+    },
+    "player": {
+      "key_events": { "desc": "Ses buts, cartons et fautes directes." },
+      "silent": { "desc": "Aucune alerte. Suivez ses matchs dans l’app." }
     },
     "push_offer_title": "Activer les notifications",
-    "push_offer_desc": "Autorisez les notifications sur cet appareil pour recevoir les alertes de vos équipes.",
+    "push_offer_desc": "Autorisez les notifications sur cet appareil pour recevoir les alertes de votre choix.",
     "push_offer_cta": "Activer les alertes",
     "key_events": {
       "label": "Événements clés",
-      "desc": "Début du match, buts, cartons bleus, fautes directes et résultat final."
+      "desc": "Buts, cartons, fautes directes, coup d’envoi et résultat final."
     }
   },
   "ads": {

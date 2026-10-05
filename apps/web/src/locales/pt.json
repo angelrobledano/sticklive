@@ -257,6 +257,7 @@
     "placement_help": "O 9º e o 10º da fase regular disputam esta série para fixar a ordem final, que decide a última vaga europeia (WSE Cup) da próxima época.",
     "bracket_title": "Quadro dos playoffs",
     "series_wins": "Vitórias na série",
+    "final_four": "Final Four",
     "champion": "Campeão",
     "pens_short": "gp",
     "ot_short": "prol.",
@@ -488,18 +489,22 @@
     },
     "results": {
       "label": "Resultados",
-      "desc": "Início e resultado final dos jogos."
+      "desc": "Apenas o início e o resultado final."
     },
     "silent": {
       "label": "Silencioso",
-      "desc": "Poderás segui-lo na aplicação."
+      "desc": "Sem avisos. Segue o jogo na app."
+    },
+    "player": {
+      "key_events": { "desc": "Os seus golos, cartões e faltas diretas." },
+      "silent": { "desc": "Sem avisos. Segue os seus jogos na app." }
     },
     "push_offer_title": "Ativa os avisos",
-    "push_offer_desc": "Permite as notificações neste dispositivo para receberes os alertas das tuas equipas.",
+    "push_offer_desc": "Permite as notificações neste dispositivo para receberes os avisos que escolheres.",
     "push_offer_cta": "Ativar avisos",
     "key_events": {
       "label": "Eventos-chave",
-      "desc": "Início do jogo, golos, cartões azuis, faltas diretas e resultado final."
+      "desc": "Golos, cartões, faltas diretas, início e resultado final."
     }
   },
   "ads": {

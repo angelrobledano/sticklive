@@ -48,7 +48,7 @@
     },
     "key_events": {
       "label": "Key events",
-      "desc": "Match start, goals, blue cards, direct fouls and final result."
+      "desc": "Goals, cards, direct fouls, kick-off and final result."
     },
     "results": {
       "label": "Results",
@@ -56,10 +56,14 @@
     },
     "silent": {
       "label": "Silent",
-      "desc": "Follow it from the app, no push."
+      "desc": "No alerts. Follow the match in the app."
+    },
+    "player": {
+      "key_events": { "desc": "Their goals, cards and direct fouls." },
+      "silent": { "desc": "No alerts. Follow their matches in the app." }
     },
     "push_offer_title": "Turn on notifications",
-    "push_offer_desc": "Allow notifications on this device to receive alerts for your teams.",
+    "push_offer_desc": "Allow notifications on this device to get the alerts you choose.",
     "push_offer_cta": "Enable alerts"
   },
   "match_tabs": {
@@ -284,6 +288,7 @@
     "placement_help": "The 9th and 10th placed teams play this series to set the final order, which decides next season’s last European spot (WSE Cup).",
     "bracket_title": "Playoff bracket",
     "series_wins": "Series wins",
+    "final_four": "Final Four",
     "champion": "Champion",
     "pens_short": "pens",
     "ot_short": "OT",

@@ -67,6 +67,33 @@ export function isNotifEnabled(kind: NotifKind, id: string): boolean {
 
 export type NotificationPreset = 'complete' | 'key_events' | 'results' | 'silent';
 
+/**
+ * Presets que OFRECE el selector de la app. 'complete' ya no se ofrece: el
+ * emisor le da exactamente el mismo repertorio de eventos que a 'key_events'
+ * (ver `PRESET_EVENTS` en apps/etl), así que mantener ambos era un falso dilema.
+ * Se conserva el valor 'complete' por compatibilidad (presets ya guardados y
+ * emisor), pero la UI lo presenta como 'key_events' mediante `uiPreset`.
+ */
+export const UI_PRESETS: readonly NotificationPreset[] = ['key_events', 'results', 'silent'];
+
+/** Normaliza un preset guardado al más cercano de los que ofrece la UI. */
+export function uiPreset(preset: NotificationPreset): NotificationPreset {
+  return preset === 'complete' ? 'key_events' : preset;
+}
+
+/**
+ * Presets que OFRECE el selector para una entidad.
+ *
+ * Para un JUGADOR no se ofrece "Resultados": los eventos de partido (inicio,
+ * prórroga, penaltis, final) se evalúan sin jugador (`playerId = null`), así que
+ * seguir solo al jugador con ese preset no entregaría NINGÚN aviso. Sí recibe sus
+ * goles y tarjetas/faltas ("Eventos clave"), que llegan con `playerId`. Ver
+ * `wants()` en apps/etl/src/push-segmentation.ts.
+ */
+export function presetsFor(kind: NotifKind): readonly NotificationPreset[] {
+  return kind === 'player' ? UI_PRESETS.filter((p) => p !== 'results') : UI_PRESETS;
+}
+
 const PRESETS_KEY = 'rink-notif-presets';
 
 /**
@@ -87,9 +114,9 @@ export function isPresetEnabled(preset: NotificationPreset): boolean {
   return preset !== 'silent';
 }
 
-/** #266 — Preset que aplica el switch al alternarlo (on → complete, off → silent). */
+/** #266 — Preset que aplica el switch al alternarlo (on → key_events, off → silent). */
 export function presetFromToggle(enabled: boolean): NotificationPreset {
-  return enabled ? 'complete' : 'silent';
+  return enabled ? 'key_events' : 'silent';
 }
 
 function presetKey(kind: NotifKind, id: string): string {

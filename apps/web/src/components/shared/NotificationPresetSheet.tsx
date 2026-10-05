@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';
-import { getPreset, setPreset, type NotificationPreset } from '@/lib/notif-prefs';
+import { getPreset, setPreset, uiPreset, presetsFor, type NotificationPreset } from '@/lib/notif-prefs';
 import {
   enablePush, syncPushConfig, notificationPermission, pushSupported,
   vapidMissing, isIOS, isStandalone, shouldOfferPushActivation,
@@ -11,7 +11,16 @@ import {
 
 type Kind = 'team' | 'league' | 'player';
 
-const ORDER: NotificationPreset[] = ['complete', 'key_events', 'results', 'silent'];
+/**
+ * Clave i18n de la descripción de cada opción. Un jugador tiene copy propia en
+ * las opciones que le aplican ("sus goles/tarjetas"), porque la genérica nombra
+ * el inicio y el resultado final del partido, que no le llegan.
+ */
+function descKey(kind: Kind, p: NotificationPreset): string {
+  return kind === 'player' && p !== 'results'
+    ? `notif_presets.player.${p}.desc`
+    : `notif_presets.${p}.desc`;
+}
 
 /** Selector de elementos tabulables dentro de un diálogo modal. */
 const FOCUSABLE_SELECTOR =
@@ -85,7 +94,11 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
   onCloseRef.current = onClose;
 
   useEffect(() => {
-    if (open) setSelected(getPreset(kind, id));
+    if (!open) return;
+    // Normaliza al repertorio del tipo: un jugador con "Resultados" guardado (ya
+    // no ofrecido) cae a "Eventos clave" para que siempre haya opción marcada.
+    const raw = uiPreset(getPreset(kind, id));
+    setSelected(presetsFor(kind).includes(raw) ? raw : 'key_events');
   }, [open, kind, id]);
 
   // Al abrir (p. ej. tras el primer follow) decidimos si ofrecer "Activar avisos":
@@ -147,9 +160,10 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
   if (!open) return null;
 
   const entityType = kind === 'league' ? 'competition' : kind;
+  const options = presetsFor(kind);
 
   const choose = (preset: NotificationPreset) => {
-    const previous = getPreset(kind, id);
+    const previous = uiPreset(getPreset(kind, id));
     setSelected(preset);
     setPreset(kind, id, preset);
     void syncPushConfig();
@@ -208,7 +222,7 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
         )}
 
         <div className="space-y-2 mt-3">
-          {ORDER.map((p) => {
+          {options.map((p) => {
             const active = selected === p;
             return (
               <button
@@ -228,7 +242,7 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold">{t(`notif_presets.${p}.label`)}</span>
                   <span className={`block text-xs mt-0.5 ${active ? 'text-rink-passion/80' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {t(`notif_presets.${p}.desc`)}
+                    {t(descKey(kind, p))}
                   </span>
                 </span>
                 {active && (

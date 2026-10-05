@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { resolvePreset, isPresetEnabled, presetFromToggle, type NotificationPreset } from './notif-prefs';
+import {
+  resolvePreset, isPresetEnabled, presetFromToggle, uiPreset, presetsFor, UI_PRESETS,
+  type NotificationPreset,
+} from './notif-prefs';
 
 /**
  * #266: el switch de notificaciones por entidad no silenciaba cuando la entidad
@@ -36,8 +39,29 @@ describe('isPresetEnabled — estado del switch', () => {
 });
 
 describe('presetFromToggle — preset que aplica el switch', () => {
-  it('activar → complete, desactivar → silent', () => {
-    expect(presetFromToggle(true)).toBe('complete');
+  it('activar → key_events (default), desactivar → silent', () => {
+    expect(presetFromToggle(true)).toBe('key_events');
     expect(presetFromToggle(false)).toBe('silent');
+  });
+});
+
+describe('uiPreset / UI_PRESETS — el selector ofrece tres opciones', () => {
+  it('ofrece Eventos clave, Resultados y Silencioso (sin "Completo")', () => {
+    expect(UI_PRESETS).toEqual(['key_events', 'results', 'silent']);
+  });
+
+  it('"complete" (legacy) se muestra como "key_events"; el resto se respeta', () => {
+    expect(uiPreset('complete')).toBe('key_events');
+    expect(uiPreset('key_events')).toBe('key_events');
+    expect(uiPreset('results')).toBe('results');
+    expect(uiPreset('silent')).toBe('silent');
+  });
+});
+
+describe('presetsFor — opciones por tipo de entidad', () => {
+  it('equipo y liga ofrecen las tres; un jugador, solo dos (sin "Resultados")', () => {
+    expect(presetsFor('team')).toEqual(['key_events', 'results', 'silent']);
+    expect(presetsFor('league')).toEqual(['key_events', 'results', 'silent']);
+    expect(presetsFor('player')).toEqual(['key_events', 'silent']);
   });
 });
