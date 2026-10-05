@@ -59,6 +59,8 @@ beforeEach(async () => {
 });
 afterEach(() => {
   vi.unstubAllGlobals();
+  // Los spyOn (p. ej. logger.warn del test de envío fallido) no quedan colgando.
+  vi.restoreAllMocks();
 });
 afterAll(async () => {
   await closeDb();
@@ -158,8 +160,29 @@ describe('POST /push/native/subscribe', () => {
     expect(sinAuth.rows[0]!.user_id).toBeNull();
   });
 
+  it('logout: re-suscribirse SIN Bearer des-asocia el user_id (la fila refleja el último estado)', async () => {
+    const { token: session } = await sembrarSesion('dev-logout');
+    await subscribe(
+      { expoPushToken: TOKEN, deviceId: 'dev-logout' },
+      { Authorization: `Bearer ${session}` }
+    );
+    expect((await filasToken(TOKEN)).rows[0]!.user_id).toBeTruthy();
+
+    // Contrato de logout: la app re-suscribe sin cabecera y el user_id se
+    // limpia; al iniciar sesión volverá a asociarse con Bearer.
+    await subscribe({ expoPushToken: TOKEN, deviceId: 'dev-logout' });
+    expect((await filasToken(TOKEN)).rows[0]!.user_id).toBeNull();
+  });
+
   it('rechaza un token con formato inválido con 400 invalid_token', async () => {
     const res = await subscribe({ expoPushToken: 'no-es-un-token', deviceId: 'dev-1' });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: 'invalid_token' });
+  });
+
+  it('rechaza un token demasiado corto con 400 (hardening: [\\w-]{10,64})', async () => {
+    // Los tokens reales de Expo rondan los 22 caracteres dentro del corchete.
+    const res = await subscribe({ expoPushToken: 'ExponentPushToken[abc]', deviceId: 'dev-1' });
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({ error: 'invalid_token' });
   });
@@ -216,6 +239,23 @@ describe('DELETE /push/native/subscribe', () => {
     );
     expect(res.status).toBe(200);
     expect((await filasToken(TOKEN_AUTH)).rows).toHaveLength(0);
+  });
+
+  it('ownership: el Bearer de OTRO usuario NO borra el token ajeno', async () => {
+    const dueno = await sembrarSesion('dev-dueno');
+    const otro = await sembrarSesion('dev-otro-b');
+    await subscribe(
+      { expoPushToken: TOKEN, deviceId: 'dev-dueno' },
+      { Authorization: `Bearer ${dueno.token}` }
+    );
+    // Sin deviceId en el body: la única vía de borrado sería el user de la
+    // sesión, y no es el dueño. 200 idempotente, pero la fila SOBREVIVE.
+    const res = await unsubscribe(
+      { expoPushToken: TOKEN },
+      { Authorization: `Bearer ${otro.token}` }
+    );
+    expect(res.status).toBe(200);
+    expect((await filasToken(TOKEN)).rows).toHaveLength(1);
   });
 
   it('sin token en el body → 400 missing_token', async () => {
@@ -304,6 +344,33 @@ describe('POST /push/native/test', () => {
     expect(await res.json()).toMatchObject({ ok: true, sent: 0 });
     // Log explícito del resultado (contrato del endpoint sancionado):
     expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it('ownership: el Bearer del dueño basta, con o sin deviceId en el body → sent 1', async () => {
+    const { token: session } = await sembrarSesion('dev-test-auth');
+    await subscribe(
+      { expoPushToken: TOKEN_AUTH, deviceId: 'dev-test-auth' },
+      { Authorization: `Bearer ${session}` }
+    );
+    mockExpoOk();
+
+    // Sin deviceId en el body: el user de la sesión es el dueño.
+    const sinDevice = await app.request('/push/native/test', {
+      method: 'POST',
+      body: JSON.stringify({ expoPushToken: TOKEN_AUTH }),
+      headers: { 'content-type': 'application/json', Authorization: `Bearer ${session}` },
+    });
+    expect(sinDevice.status).toBe(200);
+    expect(await sinDevice.json()).toMatchObject({ ok: true, sent: 1 });
+
+    // Con un deviceId DISTINTO en el body: no revierte el ownership del user.
+    const otroDevice = await app.request('/push/native/test', {
+      method: 'POST',
+      body: JSON.stringify({ expoPushToken: TOKEN_AUTH, deviceId: 'dev-distinto' }),
+      headers: { 'content-type': 'application/json', Authorization: `Bearer ${session}` },
+    });
+    expect(otroDevice.status).toBe(200);
+    expect(await otroDevice.json()).toMatchObject({ ok: true, sent: 1 });
   });
 
   it('ownership: el token de otro device sin sesión → 403 y ni intenta el envío', async () => {

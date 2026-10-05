@@ -293,7 +293,10 @@ pushRouter.post(
 
 // ── Push nativo (Expo Push → FCM/APNs) ───────────────────────────────────────
 
-const EXPO_TOKEN_RE = /^ExponentPushToken\[[\w-]+\]$/;
+// Hardening: los tokens reales de Expo rondan los ~22 caracteres dentro del
+// corchete; acotamos la longitud ([\w-]{10,64}) para no dar entrada libre a
+// basura en una columna UNIQUE.
+const EXPO_TOKEN_RE = /^ExponentPushToken\[[\w-]{10,64}\]$/;
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
 interface NativeSubBody {
@@ -337,6 +340,18 @@ function validateFavList(xs: unknown): string[] | null {
 }
 
 /**
+ * Recorta los campos de texto libres del cliente antes del INSERT: JSONB no
+ * valida y un deviceId de 10 KB no aporta nada (hincha filas, índices y logs).
+ * Topes: deviceId 128 (mismo tope que deviceKey del rate limit), platform y
+ * appVersion 32, locale 16 (un BCP-47 cabe de sobra). Trim de extremos:
+ * un campo de espacios se trata como ausente.
+ */
+const clip = (s: string | undefined, max: number): string | null => {
+  const t = s?.trim();
+  return t ? t.slice(0, max) : null;
+};
+
+/**
  * POST /push/native/subscribe
  * Registra/actualiza el dispositivo nativo. Upsert idempotente por
  * expo_push_token: la fila siempre refleja el último estado del cliente.
@@ -344,6 +359,10 @@ function validateFavList(xs: unknown): string[] | null {
  * (segmentación por cuenta y borrado cross-dispositivo); sin ella, el
  * deviceId hace de owner. Re-suscribirse sin sesión des-asocia el usuario
  * (la fila refleja el último estado, igual que la web).
+ *
+ * El tope de suscripciones por dispositivo de la web (MAX_PUSH_SUBS_PER_DEVICE,
+ * #305) NO aplica aquí: push_tokens tiene una fila por token (el upsert no
+ * acumula filas), y la poda de tokens muertos es cosa del dispatcher del ETL.
  */
 pushRouter.post(
   '/native/subscribe',
@@ -357,7 +376,10 @@ pushRouter.post(
       if (!body.expoPushToken || !EXPO_TOKEN_RE.test(body.expoPushToken)) {
         return c.json({ error: 'invalid_token' }, 400);
       }
-      if (!body.deviceId) return c.json({ error: 'missing_device_id' }, 400);
+      // Recortado a 128 y sin espacios-fantasma: un deviceId vacío es un
+      // missing_device_id, no una fila basura (NOT NULL con 'unknown').
+      const deviceId = clip(body.deviceId, 128);
+      if (!deviceId) return c.json({ error: 'missing_device_id' }, 400);
 
       const favTeams   = validateFavList(body.favTeams);
       const favLeagues = validateFavList(body.favLeagues);
@@ -389,10 +411,10 @@ pushRouter.post(
         [
           body.expoPushToken,
           user?.id ?? null,
-          body.deviceId,
-          body.platform ?? 'android',
-          body.appVersion ?? null,
-          body.locale ?? null,
+          deviceId,
+          clip(body.platform, 32) ?? 'android',
+          clip(body.appVersion, 32),
+          clip(body.locale, 16),
           JSON.stringify(favTeams),
           JSON.stringify(favLeagues),
           JSON.stringify(favPlayers),
@@ -421,12 +443,15 @@ pushRouter.delete('/native/subscribe', rateLimit(30, 10 * 60_000), async (c) => 
     if (!body.expoPushToken) return c.json({ error: 'missing_token' }, 400);
 
     const user = await userFromBearer(c.req.header('Authorization'));
+    // Mismo recorte que en el subscribe: el deviceId se compara con el que se
+    // almacenó (recortado), si no el ownership fallaría en el borde con
+    // espacios. undefined/espacios → null → esa rama del OR no aplica.
     await db.query(
       `DELETE FROM push_tokens
         WHERE expo_push_token = $1
           AND ($2::text IS NOT NULL AND device_id = $2
                OR $3::uuid IS NOT NULL AND user_id = $3)`,
-      [body.expoPushToken, body.deviceId ?? null, user?.id ?? null]
+      [body.expoPushToken, clip(body.deviceId, 128), user?.id ?? null]
     );
     return c.json({ ok: true }); // idempotente: borrar lo inexistente es ok
   } catch (err) {
