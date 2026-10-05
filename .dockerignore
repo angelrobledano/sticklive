@@ -1,0 +1,4 @@
+# El build de producción (api/web/etl/migrate) no compila ni usa la app móvil.
+# Sin esto, `npm ci` del builder (tras `COPY . .`) instalaría expo/react-native
+# en la imagen de runtime, porque el package-lock.json incluye apps/mobile.
+apps/mobile
