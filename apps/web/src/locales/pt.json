@@ -160,6 +160,7 @@
     "language": "Idioma",
     "no_matches_today": "Sem jogos para hoje",
     "no_matches_this_day": "Sem jogos neste dia",
+    "no_matches_hint": "Volte mais tarde ou consulte as competições.",
     "upcoming_intro": "Estes são os próximos jogos",
     "no_upcoming": "Sem próximos jogos programados",
     "teams_lc": "equipas",

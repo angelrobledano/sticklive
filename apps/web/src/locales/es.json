@@ -192,6 +192,7 @@
     "language": "Idioma",
     "no_matches_today": "No hay partidos para hoy",
     "no_matches_this_day": "No hay partidos este día",
+    "no_matches_hint": "Vuelve más tarde o consulta las competiciones.",
     "upcoming_intro": "Estos son los próximos encuentros",
     "no_upcoming": "No hay próximos partidos programados",
     "teams_lc": "equipos",

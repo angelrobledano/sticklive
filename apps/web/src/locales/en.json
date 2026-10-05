@@ -187,6 +187,7 @@
     "language": "Language",
     "no_matches_today": "No matches today",
     "no_matches_this_day": "No matches on this day",
+    "no_matches_hint": "Check back later or browse the competitions.",
     "upcoming_intro": "Here are the upcoming matches",
     "no_upcoming": "No upcoming matches scheduled",
     "teams_lc": "teams",
