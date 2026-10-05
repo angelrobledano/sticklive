@@ -106,6 +106,15 @@ while true; do
     $LOCK node dist/apps/etl/src/run-pipeline.js --entity=fichas-pendientes || true
     touch "$ALIVE"   # latido entre fases (#146)
 
+    # Fotos de jugador: rellena/repara `photo_url`. El scraper ya no la inventa;
+    # este verificador comprueba qué fichero existe de verdad en el CDN (patrones
+    # `{id}.jpg` y `{id}_{n}.jpg`) y limpia a NULL si no hay ninguna. Va tras las
+    # fichas del día para que los jugadores nuevos tengan foto esa misma noche.
+    echo "[scheduler] update-player-photos $(date -u +%T)"
+    node dist/apps/etl/src/update-player-photos.js \
+      || echo "[scheduler] update-player-photos falló (seguimos)"
+    touch "$ALIVE"
+
     # scrape_logs crece ~1.000 filas/día y no lo lee nadie. Se conservan 30
     # días (SCRAPE_LOGS_RETENTION_DAYS). Va sin lock: borra por lotes y no
     # compite con el scraping.

@@ -346,9 +346,10 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
     const lastName  = parts.length > 1 ? parts.slice(0, -1).join(' ') : name;
     const slug = slugifyPlayerName(name);
 
-    // Foto: patrón sidgad descubierto con fep-player-photo-probe.ts
+    // Id de fuente (para desambiguar el slug de homónimos). La FOTO no se
+    // inventa aquí: `photo_url` lo fija el verificador `update-player-photos`
+    // (comprueba qué patrón existe de verdad en el CDN; ver player-photo-url.ts).
     const idNum = playerSourceRef.replace('fep_player_', '');
-    const photoUrl = `https://sidgad.cloud/rfep/images/fichas/${idNum}_1.jpg`;
 
     // Upsert por source_ref; si no existe, insert con slug único por sport.
     // HOMÓNIMOS (#176): el viejo ON CONFLICT (sport_id, slug) DO UPDATE SET
@@ -361,12 +362,7 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
       `SELECT id FROM players WHERE source_ref = $1`, [playerSourceRef]
     );
     let playerId = found.rows[0]?.id;
-    if (playerId) {
-      await db.query(
-        `UPDATE players SET photo_url = COALESCE(photo_url, $2), updated_at = NOW() WHERE id = $1`,
-        [playerId, photoUrl]
-      );
-    } else {
+    if (!playerId) {
       const clash = await db.query<{ id: string; source_ref: string | null }>(
         `SELECT id, source_ref FROM players WHERE sport_id = $1 AND slug = $2`,
         [ctx.sport_id, slug]
@@ -379,15 +375,16 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
           'Homónimo detectado: mismo nombre, distinta ref de fuente — se crea jugador con slug desambiguado (#176)'
         );
       }
+      // Sin `photo_url`: la fija el verificador `update-player-photos`. Inventarla
+      // a ciegas dejaba URLs muertas para ~39 % de los jugadores (auditoría 2026-10).
       const ins = await db.query<{ id: string }>(
-        `INSERT INTO players (sport_id, first_name, last_name, slug, source_ref, photo_url, scraped_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        `INSERT INTO players (sport_id, first_name, last_name, slug, source_ref, scraped_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
          ON CONFLICT (sport_id, slug) DO UPDATE SET
            source_ref = EXCLUDED.source_ref,
-           photo_url  = COALESCE(players.photo_url, EXCLUDED.photo_url),
            updated_at = NOW()
          RETURNING id`,
-        [ctx.sport_id, firstName, lastName, finalSlug, playerSourceRef, photoUrl]
+        [ctx.sport_id, firstName, lastName, finalSlug, playerSourceRef]
       );
       playerId = ins.rows[0]!.id;
     }
