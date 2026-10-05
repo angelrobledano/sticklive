@@ -44,8 +44,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [lastAuthError, setLastAuthError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Fail-closed: si SecureStore es ilegible (storage corrupto, permiso
+    // denegado…), desloguear es lo correcto — no hay sesión fiable que
+    // mostrar y un usuario sin sesión ve el botón de login. Nunca en silencio.
     loadSession()
       .then(setSession)
+      .catch((err) => {
+        console.error('[auth] no se pudo leer la sesión de SecureStore', err);
+        setSession(null);
+      })
       .finally(() => setReady(true));
   }, []);
 
@@ -89,9 +96,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    await clearSession();
-    setSession(null);
     setLastAuthError(null);
+    try {
+      await clearSession();
+    } catch (err) {
+      // Fallo explícito, no silencioso. No hay clave i18n de "logout fallido"
+      // (auth.* habla del login) y reusar lastAuthError mostraría un mensaje
+      // de Google sin relación con lo ocurrido: el canal mínimo coherente con
+      // el repo es la consola del dispositivo (Sentry la capturará en 5.1).
+      console.error('[auth] no se pudo borrar la sesión de SecureStore', err);
+    } finally {
+      // Hagas lo que haga clearSession, la UI desloguea: seguir mostrando una
+      // "sesión" con un botón de salida muerto es peor. Si el token sobrevivió
+      // en disco, reaparecerá al relanzar (loadSession es la fuente de verdad).
+      setSession(null);
+    }
   }, []);
 
   const value = useMemo(

@@ -6,8 +6,11 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 /**
  * Mapa motivo de fallo del login → clave i18n EXISTENTE (auth.*). Cubre los
  * reasons que el callback del API redirige por el scheme (fail consciente del
- * cliente) y los codes de ApiError del canje; cualquier motivo no listado cae
- * en el genérico auth.google_failed.
+ * cliente: google_denied, google_not_configured, google_email,
+ * account_disabled, bad_state, state_reused) y los codes de ApiError del
+ * canje. Los codes del canje (invalid_code, network, http_*) no tienen clave
+ * propia en los locales: caen al genérico auth.google_failed, que describe
+ * exactamente ese caso ("no se pudo completar el acceso con Google").
  */
 function authErrorKey(reason: string): string {
   switch (reason) {
@@ -15,6 +18,8 @@ function authErrorKey(reason: string): string {
       return 'auth.google_denied';
     case 'google_not_configured':
       return 'auth.google_unavailable';
+    case 'google_email':
+      return 'auth.google_email';
     case 'account_disabled':
       return 'auth.account_disabled';
     case 'bad_state':
@@ -31,7 +36,7 @@ export default function SettingsScreen() {
   const { session, ready, lastAuthError, signInWithGoogle, signOut } = useSession();
   const [signingIn, setSigningIn] = useState(false);
 
-  const entrar = () => {
+  const handleSignIn = () => {
     setSigningIn(true);
     // signInWithGoogle captura sus fallos en lastAuthError (no lanza), pero el
     // finally garantiza reactivar el botón pase lo que pase.
@@ -71,7 +76,7 @@ export default function SettingsScreen() {
         ) : (
           <>
             <Pressable
-              onPress={entrar}
+              onPress={handleSignIn}
               disabled={signingIn}
               className="mt-3 self-start rounded-lg bg-rink-passion px-4 py-2 active:opacity-80 disabled:opacity-50"
             >
