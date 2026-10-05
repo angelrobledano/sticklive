@@ -39,7 +39,9 @@ const local = (over: Partial<LocalFavorites> = {}): LocalFavorites => ({
 });
 
 beforeEach(() => store.clear());
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('mergeFavoritesIntoRequest', () => {
   it('construye el body de merge desde el estado local', () => {
