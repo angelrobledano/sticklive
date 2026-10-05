@@ -232,11 +232,18 @@ export default function NotificationsScreen() {
   // Sincroniza por CONTENIDO, no por referencia: las queries de favoritos
   // recrean el objeto en cada refetch y un POST por refetch sería spam.
   const lastSyncedRef = useRef<string | null>(null);
+  // Un sync nuevo aborta al POST anterior: con cambios rápidos de preferencias
+  // sólo importa el último estado (el upsert es idempotente por token) y se
+  // evita que una respuesta antigua pise el banner de error del último sync.
+  const syncAbortRef = useRef<AbortController | null>(null);
   useEffect(() => {
     if (!pushToken || !deviceId || !prefs || !favs) return;
     const contentKey = JSON.stringify([pushToken, deviceId, locale, authToken ?? null, prefs, favs]);
     if (lastSyncedRef.current === contentKey) return;
     lastSyncedRef.current = contentKey;
+    syncAbortRef.current?.abort();
+    const ac = new AbortController();
+    syncAbortRef.current = ac;
     syncPushSubscription({
       expoPushToken: pushToken,
       deviceId,
@@ -244,12 +251,23 @@ export default function NotificationsScreen() {
       favorites: favs,
       prefs,
       authToken,
+      signal: ac.signal,
     })
       .then(() => setSyncError(false))
       .catch((err: unknown) => {
+        // La cancelación la provoca este mismo flujo (un sync nuevo la sustituye,
+        // y ese ya dejó su contentKey en el ref): no es fallo de red ni de API.
+        if (err instanceof Error && err.name === 'AbortError') return;
         // Visible, nunca silencioso (regla del repo): banner + consola.
         setSyncError(true);
         console.error('[push] no se pudo sincronizar la suscripción de push', err);
+        // Sin esto, un estado cuyo sync falló quedaría marcado como sincronizado
+        // para siempre: el guard por contenido lo descartaría aunque el effect
+        // vuelva a correr con el mismo contenido (p.ej. refetch de favoritos).
+        // Reset a null = el próximo disparo reintenta. NO crea bucle: el ref no
+        // es dependencia del effect, sólo re-corre si cambian token/deviceId/
+        // prefs/favs/locale/authToken.
+        lastSyncedRef.current = null;
       });
   }, [pushToken, deviceId, prefs, favs, locale, authToken]);
 
@@ -323,7 +341,9 @@ export default function NotificationsScreen() {
         </View>
       ) : null}
 
-      {prefs && total === 0 ? (
+      {/* `favs` puede ser undefined mientras cargan los favoritos: sin ese
+          check, el estado vacío de "no sigues nada" hace flash durante la carga. */}
+      {prefs && favs && total === 0 ? (
         <View className="mx-4 mt-3 rounded-xl bg-white p-4 dark:bg-slate-900">
           <Text className="text-sm text-slate-500">{t('settings.notif_entity_empty')}</Text>
           <Pressable

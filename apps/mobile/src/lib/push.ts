@@ -176,10 +176,13 @@ export async function syncPushSubscription(vars: {
   favorites: LocalFavorites;
   prefs: PushPrefs;
   authToken?: string | null;
+  /** Cancela el POST en curso si la pantalla inicia otro sync (review 4.2). */
+  signal?: AbortSignal;
 }): Promise<void> {
   await apiFetch('/push/native/subscribe', {
     method: 'POST',
     token: vars.authToken ?? undefined,
+    signal: vars.signal,
     body: buildSubscribeBody({
       expoPushToken: vars.expoPushToken,
       deviceId: vars.deviceId,
