@@ -5,6 +5,9 @@ import { db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { rateLimit, rateLimitBy } from '../lib/rate-limit.js';
 import { captureRouteError } from '../lib/route-error.js';
+import { userFromBearer } from '../lib/session-lookup.js';
+import { isUuid } from '../lib/uuid.js';
+import { MAX_FAVORITES_PER_KIND } from '../lib/favorites.js';
 import {
   isAllowedPushEndpoint,
   canDeleteSubscription,
@@ -13,15 +16,22 @@ import {
 } from '../lib/push-security.js';
 
 /**
- * Suscripciones Web Push.
+ * Suscripciones Push.
  *
- *   POST   /push/subscribe   { subscription, deviceId, favTeams, config, locale }
- *   DELETE /push/subscribe   { endpoint, deviceId|token }  → prueba de ownership
- *   POST   /push/test        { deviceId }   → envía una notificación de prueba
+ *   WEB (VAPID):
+ *   POST   /push/subscribe          { subscription, deviceId, favTeams, config, locale }
+ *   DELETE /push/subscribe          { endpoint, deviceId|token }  → prueba de ownership
+ *   POST   /push/test               { deviceId }   → envía una notificación de prueba
+ *
+ *   NATIVO (Expo Push → FCM/APNs, Task 4.1):
+ *   POST   /push/native/subscribe   { expoPushToken, deviceId, ...prefs }  (auth opcional)
+ *   DELETE /push/native/subscribe   { expoPushToken, deviceId? }           (auth opcional)
+ *   POST   /push/native/opened      { expoPushToken?, type? }  → beacon analítica
+ *   POST   /push/native/test        { expoPushToken, deviceId? } → prueba Expo Push
  *
  * El cliente re-llama a subscribe cada vez que cambian sus preferencias o
- * favoritos (upsert por endpoint): la fila siempre refleja el último estado.
- * El EMISOR de eventos reales (goles, inicio/final) vive en el ETL
+ * favoritos (upsert por endpoint / token): la fila siempre refleja el último
+ * estado. El EMISOR de eventos reales (goles, inicio/final) vive en el ETL
  * (cron-live → push-dispatcher); aquí solo va el envío de prueba manual.
  */
 
@@ -186,6 +196,23 @@ pushRouter.delete('/subscribe', rateLimit(30, 60_000), async (c) => {
 });
 
 /**
+ * Analítica de apertura (server-side): emite `notification_opened` a PostHog.
+ * Fire-and-forget: sin POSTHOG_API_KEY el módulo lanza al importar y se ignora
+ * — la apertura NUNCA se rompe por analítica. Compartido por /push/opened
+ * (web) y /push/native/opened (app).
+ */
+async function captureOpened(
+  distinctId: string,
+  properties: { notification_type: string; url?: string }
+): Promise<void> {
+  try {
+    const { analytics } = await import('@sports/analytics');
+    analytics.capture({ distinctId, event: 'notification_opened', properties });
+    await analytics.flush();
+  } catch { /* sin POSTHOG_API_KEY no rompemos la apertura */ }
+}
+
+/**
  * POST /push/opened  { endpoint, type, url }
  * Beacon del service worker al abrir una notificación. Emite `notification_opened`
  * a PostHog (server-side); el distinctId se deriva del device_id de la suscripción.
@@ -201,15 +228,7 @@ pushRouter.post('/opened', rateLimit(120, 60_000), async (c) => {
       );
       deviceId = r.rows[0]?.device_id ?? 'unknown';
     }
-    try {
-      const { analytics } = await import('@sports/analytics');
-      analytics.capture({
-        distinctId: deviceId,
-        event: 'notification_opened',
-        properties: { notification_type: type ?? 'unknown', url: url ?? '/' },
-      });
-      await analytics.flush();
-    } catch { /* sin POSTHOG_API_KEY no rompemos la apertura */ }
+    await captureOpened(deviceId, { notification_type: type ?? 'unknown', url: url ?? '/' });
     return c.json({ ok: true });
   } catch {
     return c.json({ ok: false }, 200); // nunca un error de analítica molesta al cliente
@@ -267,6 +286,274 @@ pushRouter.post(
     } catch (err) {
       captureRouteError(err, 'push] test error');
       logger.error({ err }, '[push] test error');
+      return c.json({ error: 'server_error' }, 500);
+    }
+  }
+);
+
+// ── Push nativo (Expo Push → FCM/APNs) ───────────────────────────────────────
+
+const EXPO_TOKEN_RE = /^ExponentPushToken\[[\w-]+\]$/;
+const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
+
+interface NativeSubBody {
+  expoPushToken?: string;
+  deviceId?: string;
+  platform?: string;
+  appVersion?: string;
+  locale?: string;
+  favTeams?: string[];
+  favLeagues?: string[];
+  favPlayers?: string[];
+  /** Mapa "<tipo>:<id>" → preset de notificación (igual que la web). */
+  presets?: Record<string, string>;
+  config?: Record<string, unknown>;
+}
+
+/**
+ * Validación ESTRICTA de favoritos para el push nativo (review de Task 3.1,
+ * minor #3). JSONB no valida nada: un id que no es UUID se persistiría "bien"
+ * y la segmentación del emisor jamás casaría con nada — datos malos guardados
+ * como buenos. Decisión (fallo explícito > descarte silencioso, convención del
+ * repo): UN solo id inválido rechaza la petición con 400 invalid_favorites,
+ * para que el cliente sepa que NO se guardó nada y corrija su estado local.
+ * (El endpoint web mantiene su descarte silencioso histórico: no se toca.)
+ *
+ * El tope de 200/kind es el mismo recorte defensivo de buildFavoritePairs
+ * (MAX_FAVORITES_PER_KIND en lib/favorites.ts), no un error de datos.
+ *
+ * Devuelve el array validado (recortado al tope) o null si alguno no es UUID
+ * (o el campo no es un array).
+ */
+function validateFavList(xs: unknown): string[] | null {
+  if (xs === undefined || xs === null) return [];
+  if (!Array.isArray(xs)) return null;
+  const out: string[] = [];
+  for (const id of xs.slice(0, MAX_FAVORITES_PER_KIND)) {
+    if (!isUuid(id)) return null;
+    out.push(id);
+  }
+  return out;
+}
+
+/**
+ * POST /push/native/subscribe
+ * Registra/actualiza el dispositivo nativo. Upsert idempotente por
+ * expo_push_token: la fila siempre refleja el último estado del cliente.
+ * Auth OPCIONAL con Bearer: con sesión, el token queda asociado al usuario
+ * (segmentación por cuenta y borrado cross-dispositivo); sin ella, el
+ * deviceId hace de owner. Re-suscribirse sin sesión des-asocia el usuario
+ * (la fila refleja el último estado, igual que la web).
+ */
+pushRouter.post(
+  '/native/subscribe',
+  rateLimit(30, 10 * 60_000),
+  // Paridad #305 con la web: además por deviceId, para que rotar la IP no
+  // permita inundar la tabla (el deviceId llega en el body).
+  rateLimitBy(30, 10 * 60_000, deviceKey),
+  async (c) => {
+    try {
+      const body = await c.req.json<NativeSubBody>().catch((): NativeSubBody => ({}));
+      if (!body.expoPushToken || !EXPO_TOKEN_RE.test(body.expoPushToken)) {
+        return c.json({ error: 'invalid_token' }, 400);
+      }
+      if (!body.deviceId) return c.json({ error: 'missing_device_id' }, 400);
+
+      const favTeams   = validateFavList(body.favTeams);
+      const favLeagues = validateFavList(body.favLeagues);
+      const favPlayers = validateFavList(body.favPlayers);
+      if (favTeams === null || favLeagues === null || favPlayers === null) {
+        return c.json({ error: 'invalid_favorites' }, 400);
+      }
+      const presets = sanitizePresets(body.presets);
+
+      const user = await userFromBearer(c.req.header('Authorization'));
+
+      await db.query(
+        `INSERT INTO push_tokens
+           (expo_push_token, user_id, device_id, platform, app_version, locale,
+            fav_teams, fav_leagues, fav_players, presets, config)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9::jsonb, $10::jsonb, $11::jsonb)
+         ON CONFLICT (expo_push_token) DO UPDATE SET
+           user_id     = EXCLUDED.user_id,
+           device_id   = EXCLUDED.device_id,
+           platform    = EXCLUDED.platform,
+           app_version = EXCLUDED.app_version,
+           locale      = EXCLUDED.locale,
+           fav_teams   = EXCLUDED.fav_teams,
+           fav_leagues = EXCLUDED.fav_leagues,
+           fav_players = EXCLUDED.fav_players,
+           presets     = EXCLUDED.presets,
+           config      = EXCLUDED.config,
+           updated_at  = NOW()`,
+        [
+          body.expoPushToken,
+          user?.id ?? null,
+          body.deviceId,
+          body.platform ?? 'android',
+          body.appVersion ?? null,
+          body.locale ?? null,
+          JSON.stringify(favTeams),
+          JSON.stringify(favLeagues),
+          JSON.stringify(favPlayers),
+          JSON.stringify(presets),
+          JSON.stringify(body.config ?? {}),
+        ]
+      );
+      return c.json({ ok: true });
+    } catch (err) {
+      captureRouteError(err, 'push] native subscribe error');
+      logger.error({ err }, '[push] native subscribe error');
+      return c.json({ error: 'server_error' }, 500);
+    }
+  }
+);
+
+/**
+ * DELETE /push/native/subscribe  { expoPushToken, deviceId? }  (auth opcional)
+ * Baja con ownership: solo se borra si el deviceId coincide o el token
+ * pertenece al usuario de la sesión. Si no, la fila sobrevive y la respuesta
+ * es idéntica (200): no se filtra la existencia del token. Idempotente.
+ */
+pushRouter.delete('/native/subscribe', rateLimit(30, 10 * 60_000), async (c) => {
+  try {
+    const body = await c.req.json<NativeSubBody>().catch((): NativeSubBody => ({}));
+    if (!body.expoPushToken) return c.json({ error: 'missing_token' }, 400);
+
+    const user = await userFromBearer(c.req.header('Authorization'));
+    await db.query(
+      `DELETE FROM push_tokens
+        WHERE expo_push_token = $1
+          AND ($2::text IS NOT NULL AND device_id = $2
+               OR $3::uuid IS NOT NULL AND user_id = $3)`,
+      [body.expoPushToken, body.deviceId ?? null, user?.id ?? null]
+    );
+    return c.json({ ok: true }); // idempotente: borrar lo inexistente es ok
+  } catch (err) {
+    captureRouteError(err, 'push] native unsubscribe error');
+    logger.error({ err }, '[push] native unsubscribe error');
+    return c.json({ error: 'server_error' }, 500);
+  }
+});
+
+/**
+ * POST /push/native/opened  { expoPushToken?, type? }
+ * Beacon de la app al abrir una notificación. Resuelve el device_id por token
+ * y emite `notification_opened` con el MISMO patrón que /push/opened (web).
+ * Con token desconocido o ausente responde ok igualmente: es un beacon, nunca
+ * debe molestar al cliente.
+ */
+pushRouter.post('/native/opened', rateLimit(120, 60_000), async (c) => {
+  try {
+    const body = await c.req
+      .json<{ expoPushToken?: string; type?: string }>()
+      .catch((): { expoPushToken?: string; type?: string } => ({}));
+    let deviceId: string | null = null;
+    if (body.expoPushToken) {
+      const r = await db.query<{ device_id: string }>(
+        `SELECT device_id FROM push_tokens WHERE expo_push_token = $1`,
+        [body.expoPushToken]
+      );
+      deviceId = r.rows[0]?.device_id ?? null;
+    }
+    if (deviceId) {
+      await captureOpened(deviceId, { notification_type: body.type ?? 'unknown' });
+    }
+    return c.json({ ok: true });
+  } catch {
+    return c.json({ ok: false }, 200); // beacon: nunca un error de analítica molesta
+  }
+});
+
+interface ExpoDelivery {
+  status: 'ok' | 'error' | 'request_error';
+  message?: string;
+}
+
+/**
+ * Envía una notificación a un token vía la API HTTP v2 de Expo Push.
+ * NUNCA lanza: el resultado (con el mensaje de Expo si lo hay) vuelve al
+ * llamador para loguearse explícitamente. Sin EXPO_ACCESS_TOKEN Expo admite
+ * envíos con límites propios (suficiente para la prueba manual).
+ */
+async function sendExpoPush(token: string, title: string, body: string): Promise<ExpoDelivery> {
+  try {
+    const res = await fetch(EXPO_PUSH_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(process.env['EXPO_ACCESS_TOKEN']
+          ? { Authorization: `Bearer ${process.env['EXPO_ACCESS_TOKEN']}` }
+          : {}),
+      },
+      body: JSON.stringify({ to: token, title, body, sound: 'default' }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return { status: 'request_error', message: `http_${res.status}` };
+    const payload = (await res.json()) as {
+      data?: { status?: string; message?: string }[];
+      errors?: { message?: string }[];
+    };
+    const receipt = payload.data?.[0];
+    if (receipt?.status === 'ok') return { status: 'ok' };
+    if (receipt) return { status: 'error', message: receipt.message ?? 'unknown' };
+    return { status: 'request_error', message: payload.errors?.[0]?.message ?? 'unknown' };
+  } catch (err) {
+    return { status: 'request_error', message: (err as Error)?.message ?? 'fetch_failed' };
+  }
+}
+
+/**
+ * POST /push/native/test  { expoPushToken, deviceId? }   (sancionado, Task 4.1)
+ * Notificación de prueba vía Expo Push para verificar el flujo end-to-end en
+ * la app sin esperar a un gol real — mismo espíritu que /push/test (web).
+ * CON ownership: el token debe pertenecer al deviceId del body o al usuario de
+ * la sesión; conocer un token ajeno no permite enviarle pushes. Rate limit
+ * estricto (10/10 min, como la web) y por deviceId. El resultado del envío se
+ * loguea SIEMPRE de forma explícita.
+ */
+pushRouter.post(
+  '/native/test',
+  rateLimit(10, 10 * 60_000),
+  rateLimitBy(10, 10 * 60_000, deviceKey),
+  async (c) => {
+    try {
+      const body = await c.req
+        .json<{ expoPushToken?: string; deviceId?: string }>()
+        .catch((): { expoPushToken?: string; deviceId?: string } => ({}));
+      if (!body.expoPushToken || !EXPO_TOKEN_RE.test(body.expoPushToken)) {
+        return c.json({ error: 'invalid_token' }, 400);
+      }
+
+      const user = await userFromBearer(c.req.header('Authorization'));
+      const found = await db.query<{ device_id: string; user_id: string | null }>(
+        `SELECT device_id, user_id FROM push_tokens WHERE expo_push_token = $1`,
+        [body.expoPushToken]
+      );
+      const row = found.rows[0];
+      if (!row) return c.json({ error: 'no_subscription', sent: 0 }, 404);
+      const owned =
+        (body.deviceId !== undefined && row.device_id === body.deviceId) ||
+        (user !== null && row.user_id === user.id);
+      if (!owned) return c.json({ error: 'forbidden' }, 403);
+
+      const delivery = await sendExpoPush(
+        body.expoPushToken,
+        'Stick Live',
+        '¡Notificaciones activadas! Esto es una prueba ✓'
+      );
+      if (delivery.status === 'ok') {
+        logger.info({ status: delivery.status }, '[push] native test enviado');
+      } else {
+        logger.warn(
+          { status: delivery.status, message: delivery.message },
+          '[push] native test fallido'
+        );
+      }
+      return c.json({ ok: true, sent: delivery.status === 'ok' ? 1 : 0 });
+    } catch (err) {
+      captureRouteError(err, 'push] native test error');
+      logger.error({ err }, '[push] native test error');
       return c.json({ error: 'server_error' }, 500);
     }
   }
