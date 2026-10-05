@@ -413,6 +413,11 @@
     "quiet": "Silenciar por la noche",
     "quiet_desc": "Los partidos tardíos no te despiertan: te llega el resumen por la mañana",
     "vapid_note": "Las notificaciones push requieren configurar las claves VAPID y el Service Worker. Tu configuración queda guardada y se activará cuando el sistema esté listo.",
+    "appearance": "Apariencia",
+    "theme_system": "Sistema",
+    "theme_light": "Claro",
+    "theme_dark": "Oscuro",
+    "notif_coming_soon": "Disponible próximamente",
     "footer": "Stick Live v1.0.0 · Hecho para apasionados del hockey",
     "privacy_link": "Política de privacidad"
   },
