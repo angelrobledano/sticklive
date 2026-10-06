@@ -20,6 +20,8 @@ import { standingsRouter } from '../../apps/api/src/routes/standings.js';
 import { matchesRouter } from '../../apps/api/src/routes/matches.js';
 import { matchDetailRouter } from '../../apps/api/src/routes/match-detail.js';
 import { searchRouter } from '../../apps/api/src/routes/search.js';
+import { teamDetailRouter } from '../../apps/api/src/routes/team-detail.js';
+import { playerDetailRouter } from '../../apps/api/src/routes/player-detail.js';
 import { limpiar } from './support/db.js';
 import {
   crearDeporte, crearCompeticion, crearTemporada,
@@ -261,5 +263,45 @@ describe('GET /search — visibilidad', () => {
     const hidden = await searchRouter.request(`/?q=${encodeURIComponent(name)}`);
     const hBody = await hidden.json() as { competitions: Array<{ id: string }> };
     expect(hBody.competitions.some((c) => c.id === compId)).toBe(false);
+  });
+});
+
+describe('fichas — visibilidad', () => {
+  it('la ficha de equipo no ofrece temporadas ocultas', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    const { homeTeamId } = await crearPartido({ seasonId });
+
+    const visible = await get(teamDetailRouter, `/${homeTeamId}`);
+    expect((visible.body as { seasons: Array<{ id: string }> }).seasons.some((s) => s.id === seasonId)).toBe(true);
+
+    await setSeasonQualityDirect(seasonId, 'en_revision');
+
+    const hidden = await get(teamDetailRouter, `/${homeTeamId}`);
+    expect((hidden.body as { seasons: Array<{ id: string }> }).seasons.some((s) => s.id === seasonId)).toBe(false);
+  });
+
+  it('la ficha de jugador no expone carrera de temporadas ocultas', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    const { homeTeamId } = await crearPartido({ seasonId });
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO players (sport_id, first_name, last_name, slug)
+       VALUES ($1, 'Test', 'Jugador', 'test-jugador-' || gen_random_uuid()::text) RETURNING id`,
+      [sportId]
+    );
+    const playerId = rows[0]!.id;
+    await db.query(
+      `INSERT INTO team_players (season_id, team_id, player_id) VALUES ($1, $2, $3)`,
+      [seasonId, homeTeamId, playerId]
+    );
+
+    const visible = await get(playerDetailRouter, `/${playerId}`);
+    expect((visible.body as { career: { seasons: Array<{ seasonId: string }> } }).career.seasons.length).toBeGreaterThan(0);
+
+    await setCompQualityDirect(compId, 'en_revision');
+
+    const hidden = await get(playerDetailRouter, `/${playerId}`);
+    expect((hidden.body as { career: { seasons: Array<{ seasonId: string }> } }).career.seasons.length).toBe(0);
   });
 });

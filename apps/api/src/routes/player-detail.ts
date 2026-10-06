@@ -98,8 +98,11 @@ playerDetailRouter.get('/:id', async (c) => {
       FROM team_players tp
       JOIN teams t   ON t.id  = tp.team_id
       JOIN seasons s ON s.id  = tp.season_id
+      JOIN competitions c ON c.id = s.competition_id
       WHERE tp.player_id = $1
         AND tp.is_active  = TRUE
+        AND s.data_quality = 'ok'
+        AND c.data_quality = 'ok'
       ORDER BY s.start_date DESC NULLS LAST
       LIMIT 1
     `, [id]),
@@ -122,6 +125,7 @@ playerDetailRouter.get('/:id', async (c) => {
           ) act
           JOIN seasons s      ON s.id  = act.season_id
           JOIN competitions c ON c.id  = s.competition_id
+         WHERE s.data_quality = 'ok' AND c.data_quality = 'ok'
          GROUP BY c.id
       ),
       pj_real AS (
@@ -218,6 +222,8 @@ playerDetailRouter.get('/:id', async (c) => {
           AND m.season_id   = tp.season_id
       ) agg ON TRUE
       WHERE tp.player_id = $1
+        AND s.data_quality = 'ok'
+        AND c.data_quality = 'ok'
 
       UNION ALL
 
@@ -241,6 +247,8 @@ playerDetailRouter.get('/:id', async (c) => {
       JOIN competitions c ON c.id = s.competition_id
       JOIN teams t        ON t.id = me.team_id
       WHERE me.player_id = $1
+        AND s.data_quality = 'ok'
+        AND c.data_quality = 'ok'
         AND me.team_id IS NOT NULL
         AND NOT EXISTS (
           SELECT 1 FROM team_players tp
