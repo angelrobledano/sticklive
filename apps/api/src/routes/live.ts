@@ -156,6 +156,8 @@ liveRouter.get('/live', async (c) => {
       LEFT JOIN teams ht ON ht.id = m.home_team_id
       LEFT JOIN teams at ON at.id = m.away_team_id
       WHERE m.status = 'live'
+        AND s2.data_quality = 'ok'
+        AND comp.data_quality = 'ok'
       ORDER BY m.started_at ASC NULLS LAST
     `);
 
@@ -233,6 +235,8 @@ liveRouter.get('/current', async (c) => {
       LEFT JOIN teams ht ON ht.id = m.home_team_id
       LEFT JOIN teams at ON at.id = m.away_team_id
       WHERE m.status IN ('scheduled', 'live', 'finished')
+        AND s.data_quality = 'ok'
+        AND comp.data_quality = 'ok'
         ${where}
       ORDER BY m.scheduled_at ASC NULLS LAST
     `, params);

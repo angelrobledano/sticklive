@@ -18,6 +18,7 @@ import { seasonOverviewRouter } from '../../apps/api/src/routes/season-overview.
 import { seasonStatsRouter } from '../../apps/api/src/routes/season-stats.js';
 import { standingsRouter } from '../../apps/api/src/routes/standings.js';
 import { matchesRouter } from '../../apps/api/src/routes/matches.js';
+import { matchDetailRouter } from '../../apps/api/src/routes/match-detail.js';
 import { limpiar } from './support/db.js';
 import {
   crearDeporte, crearCompeticion, crearTemporada,
@@ -169,5 +170,18 @@ describe('endpoints de temporada — visibilidad', () => {
 
     expect((await get(seasonOverviewRouter, `/${seasonId}/overview`)).status).toBe(404);
     expect((await get(standingsRouter, `/${seasonId}/standings`)).status).toBe(404);
+  });
+});
+
+describe('partidos — visibilidad', () => {
+  it('404 en la ficha del partido cuando su temporada está oculta', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    const { matchId } = await crearPartido({ seasonId });
+
+    expect((await get(matchDetailRouter, `/${matchId}`)).status).toBe(200);
+
+    await setSeasonQualityDirect(seasonId, 'en_revision');
+    expect((await get(matchDetailRouter, `/${matchId}`)).status).toBe(404);
   });
 });
