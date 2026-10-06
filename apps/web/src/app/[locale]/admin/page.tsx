@@ -186,6 +186,8 @@ export default function AdminPage() {
         ))}
       </div>
 
+      {error && <p className="text-xs text-red-500">{error}</p>}
+
       {tab === 'users' && (
         <>
       {/* KPIs */}
@@ -195,8 +197,6 @@ export default function AdminPage() {
         <KpiCard label="Premium"      value={data.premium} />
         <KpiCard label="Desactivados" value={data.disabled} />
       </div>
-
-      {error && <p className="text-xs text-red-500">{error}</p>}
 
       {/* Tabla */}
       <div className="card overflow-hidden overflow-x-auto">

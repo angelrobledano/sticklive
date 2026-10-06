@@ -556,7 +556,6 @@
   },
   "competitions": {
     "all_index": "All competitions ({n})",
-    "en_revision": "Data under review",
     "international": "International",
     "unclassified": "Unclassified",
     "other_region": "Other",

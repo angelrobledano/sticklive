@@ -155,7 +155,7 @@ export function AdminCompetitions({ token, onError }: { token: string; onError: 
                       busy={busy === s.id}
                       onSet={(quality) => void patch(
                         `/admin/seasons/${s.id}/quality`, quality, s.id,
-                        () => loadSeasons(c.id),
+                        async () => { await loadSeasons(c.id); await loadComps(); },
                       )}
                     />
                   </div>
