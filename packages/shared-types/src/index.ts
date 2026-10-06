@@ -196,6 +196,12 @@ export type ScrapedMatch = Omit<Match, 'id' | 'homeTeamId' | 'awayTeamId'> & Scr
   roundNumber?: number;
   /** Tipo de ronda; por defecto 'regular'. */
   roundType?: RoundType;
+  /**
+   * Grupo de la fase de grupos al que pertenece el partido ("A", "B"...).
+   * Solo en fases de grupos; en eliminatorias es NULL (cada equipo viene de
+   * un grupo distinto). Alimenta `matches.group_name`.
+   */
+  groupName?: string | null;
 };
 
 export type ScrapedStanding = Omit<Standing, 'id' | 'seasonId' | 'teamId'> & ScrapedTrace & {
@@ -204,6 +210,23 @@ export type ScrapedStanding = Omit<Standing, 'id' | 'seasonId' | 'teamId'> & Scr
   /** Abreviatura del equipo que trae la tabla (`.mobile`). Rellena `teams.short_name`. */
   abbreviation?: string | null;
 };
+
+/**
+ * Ronda/fase como estructura de datos (calendarios multi-fase, p. ej. World
+ * Skate): se emite AUNQUE la fase aún no tenga partidos (eliminatorias cuyos
+ * participantes publica la fuente más tarde), para que la UI pueda mostrar
+ * la estructura de la competición desde el primer día.
+ */
+export interface ScrapedRound {
+  seasonId: string;
+  /** Número canónico de ronda (UNIQUE season+number+type). */
+  number: number;
+  /** Nombre canónico ES ("Jornada 3", "Cuartos de final", "Final"...). */
+  name?: string;
+  roundType?: RoundType;
+  sourceId: string;
+  scrapedAt: Date;
+}
 
 // ============================================================
 // Resultados de ejecucion de scrapers

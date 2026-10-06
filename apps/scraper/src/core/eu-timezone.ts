@@ -63,10 +63,26 @@ export function euZonedToUtc(
   return isNaN(d.getTime()) ? new Date(NaN) : d;
 }
 
+/**
+ * Zonas de offset FIJO (sin cambio de hora). Paraguay abolió el DST
+ * (UTC-4 permanente desde 2024): es la sede de los World Skate Games
+ * Asunción 2026, y la lógica UE le aplicaría CET (+1) por el fallback.
+ */
+const FIXED_OFFSET: Record<string, number> = {
+  'America/Asuncion': -4,
+};
+
 /** Atajo: convierte usando el nombre de la zona IANA. */
 export function zonedToUtc(
   timezone: string | undefined | null,
   year: number, month: number, day: number, hour: number, min: number
 ): Date {
+  const fixed = timezone ? FIXED_OFFSET[timezone] : undefined;
+  if (fixed !== undefined) {
+    // Offset constante: hora local − offset = UTC, sin fronteras de DST.
+    const localApprox = Date.UTC(year, month, day, hour, min, 0);
+    const d = new Date(localApprox - fixed * 3_600_000);
+    return isNaN(d.getTime()) ? new Date(NaN) : d;
+  }
   return euZonedToUtc(year, month, day, hour, min, winterOffsetOf(timezone));
 }

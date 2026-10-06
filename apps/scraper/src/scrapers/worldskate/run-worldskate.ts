@@ -60,6 +60,7 @@ type ScrapeOut = Awaited<ReturnType<WorldskateScraper['run']>>;
  * `EtlPipeline` encaja estructuralmente, así que en la práctica se pasa tal cual.
  */
 export interface WorldskatePipeline {
+  runRounds(result: ScrapeOut['rounds']): Promise<{ upserted: number }>;
   runMatches(result: ScrapeOut['matches']): Promise<{ upserted: number }>;
   runStandings(result: ScrapeOut['standings']): Promise<{ upserted: number }>;
 }
@@ -237,11 +238,16 @@ export async function runWorldskate(
   }
 
   const pipeline = makePipeline(ctx.seasonId);
+  // Las rondas ANTES de los partidos: la estructura de fases (incluidas las
+  // eliminatorias con participantes aún sin publicar) existe desde el primer
+  // scrape, aunque sus partidos lleguen cuando la fuente publique equipos.
+  const rEtl = out.rounds.success ? await pipeline.runRounds(out.rounds) : { upserted: 0 };
   const mEtl = out.matches.success   ? await pipeline.runMatches(out.matches)     : { upserted: 0 };
   const sEtl = out.standings.success ? await pipeline.runStandings(out.standings) : { upserted: 0 };
 
   log.info(
     { competition: ctx.name, idc: ctx.idc, ok,
+      roundsUpserted: rEtl.upserted,
       matchesFound: out.matches.data.length, matchesUpserted: mEtl.upserted,
       standingsFound: out.standings.data.length, standingsUpserted: sEtl.upserted },
     'World Skate ETL'

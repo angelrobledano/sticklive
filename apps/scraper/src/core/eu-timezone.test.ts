@@ -37,6 +37,15 @@ describe('zonedToUtc', () => {
   });
 });
 
+describe('zonedToUtc — zonas de offset fijo (fuera de la UE)', () => {
+  it('America/Asuncion: UTC-4 permanente, sin DST (Paraguay abolió el cambio de hora)', () => {
+    // Octubre (antiguo horario de verano paraguayo) sigue en -4: sede WSG Asunción 2026.
+    expect(zonedToUtc('America/Asuncion', 2026, 9, 12, 13, 15).toISOString()).toBe('2026-10-12T17:15:00.000Z');
+    // Y en el otro extremo del año, el mismo offset.
+    expect(zonedToUtc('America/Asuncion', 2026, 6, 15, 21, 0).toISOString()).toBe('2026-07-16T01:00:00.000Z');
+  });
+});
+
 describe('winterOffsetOf', () => {
   it('mapea las zonas conocidas y cae a +1 por defecto', () => {
     expect(winterOffsetOf('Europe/Lisbon')).toBe(0);
