@@ -297,6 +297,11 @@
       "gd": "Differenza reti"
     }
   },
+  "season": {
+    "note": {
+      "covid": "Stagione conclusa per il COVID-19 (giornata {matchday})"
+    }
+  },
   "leaders": {
     "no_data": "I leader appariranno quando saranno elaborati i referti.",
     "goals_short": "Gol",

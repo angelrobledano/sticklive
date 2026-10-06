@@ -328,6 +328,11 @@
       "gd": "Goal difference"
     }
   },
+  "season": {
+    "note": {
+      "covid": "Season ended early due to COVID-19 (matchday {matchday})"
+    }
+  },
   "leaders": {
     "no_data": "Leaders will appear once match reports are processed.",
     "goals_short": "Goals",

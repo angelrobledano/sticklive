@@ -9,6 +9,7 @@ import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
 import { fedLabelFromSeason } from './format';
 import { competitionName } from '@/lib/names';
+import { SeasonNoteLine } from './SeasonNote';
 
 export function CompetitionHeader({ data, seasons, competitionId }: {
   data: SeasonOverview;
@@ -67,6 +68,8 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
         ) : (
           <p className="text-xs font-light text-slate-500 dark:text-slate-400">{season.name}</p>
         )}
+        {/* Temporada que no acabó por calendario (p. ej. COVID-19): contexto, no error. */}
+        <SeasonNoteLine competitionSlug={season.competitionSlug} seasonSlug={season.slug} />
         {/* 3.2.2: elegir temporada navega; se avisa antes de usar el control
             (descripción accesible enlazada con aria-describedby, #364). */}
         <span id="season-select-hint" className="sr-only">{t('common.change_season_hint')}</span>

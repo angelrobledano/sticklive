@@ -448,9 +448,13 @@ export interface SeasonOverview {
   season: {
     id: string;
     name: string;
+    /** Slug de la temporada (p. ej. "2019-20"). Ver `lib/season-notes`. */
+    slug?: string;
     startDate: string | null;
     endDate: string | null;
     competitionId: string;
+    /** Slug de la competición (p. ej. "ok-liga-masculina"). Ver `lib/season-notes`. */
+    competitionSlug?: string;
     competitionName: string;
     /** Traducciones del nombre por locale; la web cae a `competitionName`. Ver migración 038. */
     competitionNameI18n?: Record<string, string> | null;

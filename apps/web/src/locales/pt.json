@@ -297,6 +297,11 @@
       "gd": "Diferença de golos"
     }
   },
+  "season": {
+    "note": {
+      "covid": "Temporada terminada por COVID-19 na jornada {matchday}"
+    }
+  },
   "leaders": {
     "no_data": "Os líderes aparecerão quando houver fichas de jogo processadas.",
     "goals_short": "Golos",
