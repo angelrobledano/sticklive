@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isPremiumActive, isCheckoutSessionId, isPaidCheckoutSession } from './premium.js';
+import { isPremiumActive, isCheckoutSessionId, isPaidCheckoutSession, isUserPremium } from './premium.js';
 
 describe('isPremiumActive', () => {
   const now = new Date('2026-06-16T12:00:00Z');
@@ -77,5 +77,30 @@ describe('isPaidCheckoutSession', () => {
   it('no_payment_required solo si la sesión está completa', () => {
     expect(isPaidCheckoutSession({ payment_status: 'no_payment_required', status: 'complete' })).toBe(true);
     expect(isPaidCheckoutSession({ payment_status: 'no_payment_required', status: 'open' })).toBe(false);
+  });
+});
+
+/**
+ * Guard único de premium (spec monetización §4): la compra única de Google Play
+ * (lifetime) concede premium para siempre, aunque `premium_until` esté vacío o
+ * en el pasado. `null`/`undefined` siguen sin ser premium.
+ */
+describe('isUserPremium (lifetime)', () => {
+  it('lifetime concede aunque premium_until esté en el pasado', () => {
+    expect(
+      isUserPremium({ premiumLifetime: true, premiumUntil: '2020-01-01T00:00:00Z' })
+    ).toBe(true);
+  });
+
+  it('lifetime NULL/FALSE mantiene la regla premium_until', () => {
+    expect(isUserPremium({ premiumLifetime: false, premiumUntil: null })).toBe(false);
+    expect(
+      isUserPremium({ premiumLifetime: null, premiumUntil: '2099-01-01T00:00:00Z' })
+    ).toBe(true);
+  });
+
+  it('usuario null nunca es premium', () => {
+    expect(isUserPremium(null)).toBe(false);
+    expect(isUserPremium(undefined)).toBe(false);
   });
 });

@@ -34,3 +34,23 @@ export function isPaidCheckoutSession(
   if (session.payment_status === 'paid') return true;
   return session.payment_status === 'no_payment_required' && session.status === 'complete';
 }
+
+/** Campos de usuario relevantes para el guard (subconjunto de users). */
+export interface PremiumFields {
+  premiumUntil?: string | Date | null;
+  premiumLifetime?: boolean | null;
+}
+
+/**
+ * Guard ÚNICO de premium para todas las superficies (web y app): lifetime
+ * (compra única Play) o suscripción vigente. `isPremiumActive` sigue siendo
+ * la regla de caducidad; esto solo añade el OR del lifetime (spec §4).
+ */
+export function isUserPremium(
+  user: PremiumFields | null | undefined,
+  now: Date = new Date()
+): boolean {
+  if (!user) return false;
+  if (user.premiumLifetime) return true;
+  return isPremiumActive(user.premiumUntil, now);
+}
