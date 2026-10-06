@@ -9,10 +9,12 @@ export const seasonOverviewRouter = new Hono();
 interface SeasonRow {
   id: string;
   name: string;
+  season_slug: string;
   start_date: Date | null;
   end_date: Date | null;
   competition_id: string;
   competition_name: string;
+  competition_slug: string;
   competition_name_i18n: Record<string, string> | null;
   competition_short_name: string | null;
   competition_organizer: string;
@@ -97,9 +99,10 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
     const [seasonRes, standingsRes, roundsRes, matchesRes] = await Promise.all([
       // 1) Season + competition info
       db.query<SeasonRow>(`
-        SELECT s.id, s.name, s.start_date, s.end_date,
+        SELECT s.id, s.name, s.slug AS season_slug, s.start_date, s.end_date,
                c.id         AS competition_id,
                c.name       AS competition_name,
+               c.slug       AS competition_slug,
                c.name_i18n  AS competition_name_i18n,
                c.short_name AS competition_short_name,
                c.organizer  AS competition_organizer,
@@ -209,6 +212,11 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
     // derivar por cronología. Ver `format` en competition_sources.
     const hasRealPhases = distinctPlayoffRounds.size > 1 || s.competition_format === 'final_four';
 
+    // Una competición `bracket`/`final_four` es de eliminatorias: sus partidos
+    // son de playoff aunque el scrape no les haya asignado una ronda (p. ej. una
+    // eliminatoria cuyos partidos vienen de otra fuente que su calendario).
+    const isKnockoutComp = s.competition_format === 'bracket' || s.competition_format === 'final_four';
+
     const derivedRound = new Map<string, number>(); // matchId → roundNumber
     if (playoffRows.length > 0 && !hasRealPhases) {
       const seriesMap = new Map<string, { firstDate: number; matchIds: string[] }>();
@@ -256,10 +264,12 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
       season: {
         id:               s.id,
         name:             s.name,
+        slug:             s.season_slug,
         startDate:        s.start_date,
         endDate:          s.end_date,
         competitionId:    s.competition_id,
         competitionName:  s.competition_name,
+        competitionSlug:  s.competition_slug,
         competitionNameI18n: s.competition_name_i18n,
         competitionShort: s.competition_short_name,
         competitionOrganizer: s.competition_organizer,
@@ -319,7 +329,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         // Liga: número de jornada.
         roundNumber: derivedRound.get(m.id) ?? m.round_number,
         roundName:   m.round_name,
-        roundType:   m.round_type ?? (derivedRound.has(m.id) ? 'playoff' : 'regular'),
+        roundType:   m.round_type ?? (derivedRound.has(m.id) || isKnockoutComp ? 'playoff' : 'regular'),
         homeTeam: {
           id:        m.home_team_id,
           name:      m.home_team_name,
