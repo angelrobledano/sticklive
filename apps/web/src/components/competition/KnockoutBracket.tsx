@@ -28,8 +28,14 @@ function phaseRank(name: string | null, roundNumber: number | null): number {
   return key ? PHASE_RANK[key]! : 10 + (roundNumber ?? 0);
 }
 
-/** Tarjeta de un partido a partido único (bracket/copa/final four). */
-export function KnockoutMatchCard({ m }: { m: SeasonMatch }) {
+/**
+ * Tarjeta de un partido a partido único (bracket/copa/final four).
+ * `label` (opcional) rotula la fase dentro de la propia tarjeta; lo usa el
+ * cuadro de Final Four, donde cada cruce vive solo y necesita su nombre.
+ * `showFinishedLabel` (def. true) antepone "Final ·" a la fecha de un partido
+ * terminado; el cuadro lo desactiva porque su propia etiqueta ya dice la fase.
+ */
+export function KnockoutMatchCard({ m, label, showFinishedLabel = true }: { m: SeasonMatch; label?: string; showFinishedLabel?: boolean }) {
   const { t, locale } = useT();
   const isFinished = m.status === 'finished';
   const isLive = m.status === 'live';
@@ -52,6 +58,11 @@ export function KnockoutMatchCard({ m }: { m: SeasonMatch }) {
       className={`block card overflow-hidden border transition-opacity hover:opacity-90
         ${isLive ? 'border-emerald-400/40' : 'border-slate-200 dark:border-slate-800'}`}
     >
+      {label && (
+        <p className="px-2.5 pt-1.5 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+          {label}
+        </p>
+      )}
       {sides.map(({ team, score }, idx) => {
         const isWinner = showScore && winnerId === team.id;
         return (
@@ -73,8 +84,9 @@ export function KnockoutMatchCard({ m }: { m: SeasonMatch }) {
       <div className="px-2.5 pb-1.5 pt-1">
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isLive ? 'text-emerald-500' : 'text-slate-500 dark:text-slate-400'}`}>
           {isLive ? `🟢 ${t('playoffs.live')}`
-            : isFinished ? `${t('match_states.final')} · ${fmtDate(m.finishedAt ?? m.scheduledAt, m.competitionTimezone, locale)}`
-            : `${fmtDate(m.scheduledAt, m.competitionTimezone, locale)} · ${fmtTime(m.scheduledAt, m.competitionTimezone, locale)}`}
+            : isFinished
+              ? `${showFinishedLabel ? `${t('match_states.final')} · ` : ''}${fmtDate(m.finishedAt ?? m.scheduledAt, m.competitionTimezone, locale)}`
+              : `${fmtDate(m.scheduledAt, m.competitionTimezone, locale)} · ${fmtTime(m.scheduledAt, m.competitionTimezone, locale)}`}
         </span>
       </div>
     </Link>

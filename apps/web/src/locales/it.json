@@ -264,7 +264,8 @@
     "champion": "Campione",
     "pens_short": "rig.",
     "ot_short": "supp.",
-    "third_place": "Finale 3º/4º posto"
+    "third_place": "Finale 3º/4º posto",
+    "tbd": "Da definire"
   },
   "standings": {
     "team": "Squadra",

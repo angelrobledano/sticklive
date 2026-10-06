@@ -18,7 +18,10 @@ vi.mock('next/navigation', () => ({
  */
 
 const ES = {
-  playoffs: { semis: 'Semis', final: 'Final', champion: 'Campeón', live: 'En directo', third_place: '3.er y 4.º puesto' },
+  playoffs: {
+    semis: 'Semis', final: 'Final', champion: 'Campeón', live: 'En directo',
+    third_place: '3.er y 4.º puesto', semifinal_n: 'Semifinal {n}', tbd: 'Por determinar',
+  },
   match_states: { final: 'Final' },
 };
 
@@ -64,7 +67,8 @@ describe('FinalFourBracket', () => {
   it('compone semifinales → final y corona al campeón', () => {
     const final = match('f', { roundName: 'Final', roundNumber: 2, homeTeam: HCL, awayTeam: IHC, status: 'finished', score: { home: 2, away: 3 }, winnerTeamId: 'ihc', scheduledAt: '2026-10-25T16:00:00Z' });
     const html = render(<FinalFourBracket matches={[SF1, SF2, final]} />);
-    expect(html).toContain('Semis');
+    expect(html).toContain('Semifinal 1');
+    expect(html).toContain('Semifinal 2');
     expect(html).toContain('Campeón');
     expect(html).toContain('Igualada Rigat HC');
   });
@@ -83,6 +87,28 @@ describe('FinalFourBracket', () => {
     // La final (número 2) es la que corona.
     expect(html).toContain('Campeón');
     expect(html).toContain('Igualada Rigat HC');
+  });
+
+  it('sin final creada aún: muestra los finalistas proyectados (ganadores de semis)', () => {
+    const html = render(<FinalFourBracket matches={[SF1, SF2]} />);
+    // La final aún no existe: se dibuja el hueco con los ganadores de las semis.
+    expect(html).toContain('Final');
+    expect(html).toContain('Hockey Club Liceo');
+    expect(html).toContain('Igualada Rigat HC');
+    expect(html).not.toContain('Campeón');
+  });
+
+  it('sin final ni ganadores: el hueco de la final queda "por determinar"', () => {
+    const s1 = match('q1', { roundName: 'Semifinales', roundNumber: 1, homeTeam: HCL, awayTeam: BAR });
+    const s2 = match('q2', { roundName: 'Semifinales', roundNumber: 1, homeTeam: IHC, awayTeam: CAL });
+    const html = render(<FinalFourBracket matches={[s1, s2]} />);
+    expect(html).toContain('Por determinar');
+  });
+
+  it('incluye el 3er y 4º puesto cuando la fuente lo trae', () => {
+    const third = match('t', { roundName: '3er y 4º puesto', roundNumber: 3, homeTeam: BAR, awayTeam: CAL, status: 'finished', score: { home: 1, away: 2 }, winnerTeamId: 'cal' });
+    const html = render(<FinalFourBracket matches={[SF1, SF2, third]} />);
+    expect(html).toContain('3.er y 4.º puesto');
   });
 });
 

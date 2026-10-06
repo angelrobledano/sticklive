@@ -2,21 +2,28 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
-import type { SeasonMatch } from '@/lib/api/client';
+import type { SeasonMatch, TeamSummary } from '@/lib/api/client';
 import { useT } from '@/lib/i18n';
 import { gameWinnerId } from '@/lib/playoff';
 import { TrophyIcon } from '@/components/match/icons';
+import { TeamShield } from '@/components/shared/TeamShield';
+import { TeamName } from '@/components/shared/TeamName';
 import { KnockoutMatchCard } from './KnockoutBracket';
 
 /**
  * Cuadro de un torneo FINAL FOUR (formato Supercopa): dos semifinales a partido
- * único el sábado y la final el domingo. NO es una liga (no hay jornadas) ni una
- * eliminatoria de ida/vuelta (cada cruce se juega una vez).
+ * único y la final. NO es una liga (no hay jornadas) ni una eliminatoria de
+ * ida/vuelta (cada cruce se juega una vez).
  *
- * Se compone en vertical (semis → final → campeón) para leerse de arriba abajo
- * en móvil sin scroll horizontal: cada semifinal alimenta la final. La fase se
- * agrupa por el nombre de ronda de la fuente y, si no lo trae, por la numeración
- * canónica de la Final Four (semis=1, final=2) o por el tamaño de la ronda.
+ * Se compone como un CUADRO centrado: las dos semifinales a la izquierda, con
+ * conectores que convergen en la final (centrada verticalmente a la derecha), y
+ * el trofeo/campeón bajo la final cuando la final ya está resuelta. El 3er y 4º
+ * puesto, si la fuente lo trae, va bajo el cuadro. Todo cabe en un móvil sin
+ * scroll horizontal.
+ *
+ * La fase se agrupa por el nombre de ronda de la fuente y, si no lo trae, por la
+ * numeración canónica de la Final Four (semis=1, final=2) o por el tamaño de la
+ * ronda.
  */
 
 type Bucket = 'semis' | 'final' | 'third';
@@ -32,6 +39,72 @@ function phaseOfName(name: string | null): Bucket | null {
 
 function sortByDate(a: SeasonMatch, b: SeasonMatch): number {
   return (a.scheduledAt ?? '') < (b.scheduledAt ?? '') ? -1 : 1;
+}
+
+/** Ganador de un partido ya terminado (penaltis/prórroga mandan); null si no lo hay. */
+function winnerOf(m: SeasonMatch | null): TeamSummary | null {
+  if (!m || m.status !== 'finished') return null;
+  const id = gameWinnerId(m);
+  return id === m.homeTeam.id ? m.homeTeam : id === m.awayTeam.id ? m.awayTeam : null;
+}
+
+const LABEL_CLS = 'px-2.5 pt-1.5 text-[9px] font-bold uppercase tracking-widest';
+
+/** Tarjeta de un cruce cuyos equipos aún no se conocen (fase por determinar). */
+function PendingCard({ label, teams }: { label: string; teams: (TeamSummary | null)[] }) {
+  const { t } = useT();
+  return (
+    <div className="card overflow-hidden border border-dashed border-slate-200 dark:border-slate-700">
+      <p className={`${LABEL_CLS} text-slate-500 dark:text-slate-400`}>{label}</p>
+      {[0, 1].map((i) => {
+        const tm = teams[i] ?? null;
+        return (
+          <div
+            key={i}
+            className={`flex items-center gap-2 px-2.5 py-2 ${i === 0 ? 'border-b border-slate-100 dark:border-slate-800' : ''}`}
+          >
+            {tm ? (
+              <>
+                <TeamShield teamId={tm.id} teamName={tm.shortName ?? tm.name} size={22} />
+                <span className="flex-1 truncate text-[13px] font-medium text-slate-700 dark:text-slate-300">
+                  <TeamName name={tm.name} shortName={tm.shortName} mobile="abbr" />
+                </span>
+              </>
+            ) : (
+              <>
+                <span
+                  className="h-[22px] w-[22px] shrink-0 rounded-full border border-dashed border-slate-200 dark:border-slate-700"
+                  aria-hidden="true"
+                />
+                <span className="flex-1 truncate text-[13px] italic text-slate-500 dark:text-slate-400">
+                  {t('playoffs.tbd')}
+                </span>
+              </>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Trofeo + campeón. Solo se monta cuando la final ya tiene ganador. */
+function ChampionBlock({ team }: { team: TeamSummary }) {
+  const { t } = useT();
+  return (
+    <div className="flex flex-col items-center gap-1.5 text-center">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-rink-passion px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
+        <TrophyIcon className="h-3.5 w-3.5" />
+        {t('playoffs.champion')}
+      </span>
+      <Link
+        href={`/teams/${team.id}`}
+        className="max-w-full truncate text-sm font-bold text-slate-900 hover:underline dark:text-slate-50"
+      >
+        <TeamName name={team.name} shortName={team.shortName} mobile="abbr" />
+      </Link>
+    </div>
+  );
 }
 
 export function FinalFourBracket({ matches }: { matches: SeasonMatch[] }) {
@@ -70,71 +143,87 @@ export function FinalFourBracket({ matches }: { matches: SeasonMatch[] }) {
     };
   }, [matches]);
 
-  // Campeón: la final ya terminada y con ganador claro (penaltis/prórroga
-  // mandan sobre el marcador). Una final en juego NO corona a nadie todavía.
   const finalMatch = final[0] ?? null;
-  const championTeam = useMemo(() => {
-    if (!finalMatch || finalMatch.status !== 'finished') return null;
-    const winnerId = gameWinnerId(finalMatch);
-    if (!winnerId) return null;
-    return winnerId === finalMatch.homeTeam.id ? finalMatch.homeTeam : finalMatch.awayTeam;
-  }, [finalMatch]);
+  // Campeón: la final ya terminada y con ganador claro (penaltis/prórroga mandan
+  // sobre el marcador). Una final en juego NO corona a nadie todavía.
+  const championTeam = useMemo(() => winnerOf(finalMatch), [finalMatch]);
 
   if (semis.length === 0 && final.length === 0) return null;
 
-  const phaseHeading = 'text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1';
+  // Una Final Four tiene dos semifinales; si el scrape aún no trae una, su hueco
+  // se dibuja como "por determinar" para que el cuadro no se rompa.
+  const semiSlots: (SeasonMatch | null)[] = [semis[0] ?? null, semis[1] ?? null];
+  const n = semiSlots.length;
+  // Finalistas proyectados mientras la final no existe: ganadores de las semis.
+  const projected = [winnerOf(semiSlots[0]), winnerOf(semiSlots[1])];
+
+  // Centro vertical (%) de cada semifinal dentro del cuadro: con 2 semis quedan
+  // al 25% y 75%, y la final al 50% — las líneas casan con esos centros.
+  const centers = semiSlots.map((_, i) => (((i + 0.5) / n) * 100).toFixed(2));
+  const connector = `${centers.map((y) => `M0 ${y} H20 V50`).join(' ')} M20 50 H40`;
 
   return (
-    <div className="space-y-2">
-      {semis.length > 0 && (
-        <section aria-label={t('playoffs.semis')} className="space-y-2">
-          <h3 className={phaseHeading}>{t('playoffs.semis')}</h3>
-          <div className="space-y-2">
-            {semis.map((m) => <KnockoutMatchCard key={m.id} m={m} />)}
+    <div className="mx-auto w-full max-w-xl space-y-3">
+      <div
+        className="grid grid-cols-[minmax(0,1fr)_20px_minmax(0,1fr)]"
+        style={{ gridTemplateRows: `repeat(${n}, minmax(0, 1fr))` }}
+      >
+        {/* Semifinales (izquierda), centradas cada una en su fila */}
+        {semiSlots.map((m, i) => (
+          <div
+            key={i}
+            className="col-start-1 flex items-center py-1.5"
+            style={{ gridRow: i + 1 }}
+          >
+            <div className="w-full">
+              {m ? (
+                <KnockoutMatchCard m={m} label={t('playoffs.semifinal_n', { n: i + 1 })} showFinishedLabel={false} />
+              ) : (
+                <PendingCard label={t('playoffs.semifinal_n', { n: i + 1 })} teams={[null, null]} />
+              )}
+            </div>
           </div>
-        </section>
-      )}
+        ))}
 
-      {/* Conector semis → final: el flujo del cuadro, sin decoración. */}
-      {semis.length > 0 && final.length > 0 && (
-        <div className="flex justify-center" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-               className="w-4 h-4 text-slate-300 dark:text-slate-600">
-            <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+        {/* Conectores semis → final (trazos SVG, no decoración) */}
+        <svg
+          viewBox="0 0 40 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          className="col-start-2 row-span-full h-full w-full text-slate-300 dark:text-slate-700"
+        >
+          <path
+            d={connector}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+
+        {/* Final (derecha), centrada; el campeón se cuelga debajo al decidirse */}
+        <div className="col-start-3 row-span-full grid grid-rows-[1fr_auto_1fr] pl-1">
+          <div aria-hidden="true" />
+          <div className="w-full">
+            {finalMatch ? (
+              <KnockoutMatchCard m={finalMatch} label={t('playoffs.final')} showFinishedLabel={false} />
+            ) : (
+              <PendingCard label={t('playoffs.final')} teams={projected} />
+            )}
+          </div>
+          <div className="flex justify-center pt-2">
+            {championTeam && <ChampionBlock team={championTeam} />}
+          </div>
         </div>
-      )}
+      </div>
 
-      {final.length > 0 && (
-        <section aria-label={t('playoffs.final')} className="space-y-2">
-          <h3 className={phaseHeading}>{t('playoffs.final')}</h3>
-          <div className="space-y-2">
-            {final.map((m) => <KnockoutMatchCard key={m.id} m={m} />)}
-          </div>
-
-          {championTeam && (
-            <Link
-              href={`/teams/${championTeam.id}`}
-              className="flex items-center gap-2 rounded-lg bg-rink-passion px-3 py-2 text-white
-                         transition-colors hover:bg-rink-passion-light"
-            >
-              <TrophyIcon className="w-4 h-4 shrink-0" />
-              <span className="text-[10px] font-bold uppercase tracking-wider opacity-90">
-                {t('playoffs.champion')}
-              </span>
-              <span className="flex-1 truncate text-right text-sm font-bold">{championTeam.name}</span>
-            </Link>
-          )}
-        </section>
-      )}
-
+      {/* 3er y 4º puesto: solo si la fuente trae ese cruce */}
       {third.length > 0 && (
-        <section aria-label={t('playoffs.third_place')} className="space-y-2">
-          <h3 className={phaseHeading}>{t('playoffs.third_place')}</h3>
-          <div className="space-y-2">
-            {third.map((m) => <KnockoutMatchCard key={m.id} m={m} />)}
-          </div>
-        </section>
+        <div className="mx-auto w-full max-w-xs">
+          <KnockoutMatchCard m={third[0]!} label={t('playoffs.third_place')} showFinishedLabel={false} />
+        </div>
       )}
     </div>
   );

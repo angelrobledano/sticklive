@@ -295,7 +295,8 @@
     "champion": "Champion",
     "pens_short": "pens",
     "ot_short": "OT",
-    "third_place": "Third place"
+    "third_place": "Third place",
+    "tbd": "To be decided"
   },
   "standings": {
     "team": "Team",
