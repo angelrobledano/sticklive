@@ -19,6 +19,7 @@ import { seasonStatsRouter } from '../../apps/api/src/routes/season-stats.js';
 import { standingsRouter } from '../../apps/api/src/routes/standings.js';
 import { matchesRouter } from '../../apps/api/src/routes/matches.js';
 import { matchDetailRouter } from '../../apps/api/src/routes/match-detail.js';
+import { searchRouter } from '../../apps/api/src/routes/search.js';
 import { limpiar } from './support/db.js';
 import {
   crearDeporte, crearCompeticion, crearTemporada,
@@ -240,5 +241,25 @@ describe('GET /matches/live — visibilidad', () => {
     const hidden = await get(liveRouter, '/live');
     const hBody = hidden.body as { matches: Array<{ id: string }> };
     expect(hBody.matches.some((m) => m.id === matchId)).toBe(false);
+  });
+});
+
+describe('GET /search — visibilidad', () => {
+  it('no devuelve competiciones ocultas', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    await crearPartido({ seasonId });
+    const { rows } = await db.query<{ name: string }>(`SELECT name FROM competitions WHERE id = $1`, [compId]);
+    const name = rows[0]!.name;
+
+    const visible = await searchRouter.request(`/?q=${encodeURIComponent(name)}`);
+    const vBody = await visible.json() as { competitions: Array<{ id: string }> };
+    expect(vBody.competitions.some((c) => c.id === compId)).toBe(true);
+
+    await setCompQualityDirect(compId, 'en_revision');
+
+    const hidden = await searchRouter.request(`/?q=${encodeURIComponent(name)}`);
+    const hBody = await hidden.json() as { competitions: Array<{ id: string }> };
+    expect(hBody.competitions.some((c) => c.id === compId)).toBe(false);
   });
 });
