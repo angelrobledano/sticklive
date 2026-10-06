@@ -266,7 +266,8 @@
     "pens_short": "tab",
     "ot_short": "prol.",
     "third_place": "3e place",
-    "tbd": "À déterminer"
+    "tbd": "À déterminer",
+    "round_n": "Tour {n}"
   },
   "standings": {
     "team": "Équipe",

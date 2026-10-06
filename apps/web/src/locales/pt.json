@@ -266,7 +266,8 @@
     "pens_short": "gp",
     "ot_short": "prol.",
     "third_place": "3.º e 4.º lugar",
-    "tbd": "Por decidir"
+    "tbd": "Por decidir",
+    "round_n": "Ronda {n}"
   },
   "standings": {
     "team": "Equipa",

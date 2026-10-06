@@ -266,7 +266,8 @@
     "pens_short": "rig.",
     "ot_short": "supp.",
     "third_place": "Finale 3º/4º posto",
-    "tbd": "Da definire"
+    "tbd": "Da definire",
+    "round_n": "Turno {n}"
   },
   "standings": {
     "team": "Squadra",

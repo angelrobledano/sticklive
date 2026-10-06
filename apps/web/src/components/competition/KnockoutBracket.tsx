@@ -3,38 +3,24 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import type { SeasonMatch } from '@/lib/api/client';
+import { useT } from '@/lib/i18n';
+import { buildBracketRounds, type BracketRound } from '@/lib/bracket';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
-import { useT } from '@/lib/i18n';
-import { fmtDate, fmtTime, playoffPhaseKey } from './format';
+import { fmtDate, fmtTime } from './format';
 
 /**
- * Cuadro de eliminatorias a partido único (formato World Skate: Cuartos →
- * Semis → Final, más 3º y 4º puesto). Distinto del playoff al mejor de N de
- * OK Liga: aquí cada cruce es un solo partido y las fases vienen con nombre
- * propio de la fuente (no la numeración 1/2/3 derivada).
+ * Cuadro de eliminatorias a partido único (formato World Skate: Cuartos → Semis
+ * → Final, más 3º y 4º puesto) y de las copas con la fase mal etiquetada por la
+ * fuente (Copa del Rey: todo "FINAL"). Las rondas se derivan en `lib/bracket`
+ * (por nombre de fase o por el grafo de avance).
  *
- * Se agrupa por nombre de ronda y se ordena por fase. Las columnas hacen
- * scroll horizontal en móvil.
+ * Escritorio: columnas con conectores (el ganador de cada cruce alimenta el
+ * siguiente). Móvil: las rondas se apilan con un conector hacia abajo, sin
+ * scroll horizontal. Comparte el lenguaje visual del cuadro de Final Four.
  */
 
-/** Rango de fase para ordenar las columnas (menor = antes). */
-// Orden de las columnas. Deriva de la clave canónica de fase (misma lógica que
-// el resto del playoff, en format.ts); las fases desconocidas van al final por
-// número de ronda.
-const PHASE_RANK: Record<string, number> = { quarters: 1, semis: 2, final: 3, third_place: 4 };
-function phaseRank(name: string | null, roundNumber: number | null): number {
-  const key = playoffPhaseKey(name, roundNumber);
-  return key ? PHASE_RANK[key]! : 10 + (roundNumber ?? 0);
-}
-
-/**
- * Tarjeta de un partido a partido único (bracket/copa/final four).
- * `label` (opcional) rotula la fase dentro de la propia tarjeta; lo usa el
- * cuadro de Final Four, donde cada cruce vive solo y necesita su nombre.
- * `showFinishedLabel` (def. true) antepone "Final ·" a la fecha de un partido
- * terminado; el cuadro lo desactiva porque su propia etiqueta ya dice la fase.
- */
+/** Tarjeta de un partido a partido único (bracket/copa/final four). */
 export function KnockoutMatchCard({ m, label, showFinishedLabel = true }: { m: SeasonMatch; label?: string; showFinishedLabel?: boolean }) {
   const { t, locale } = useT();
   const isFinished = m.status === 'finished';
@@ -93,47 +79,144 @@ export function KnockoutMatchCard({ m, label, showFinishedLabel = true }: { m: S
   );
 }
 
+const HEADING = 'text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1';
+
+/** ¿Las rondas forman un cuadro binario limpio (4→2→1, 2→1, 8→4→2→1…)? */
+function isBinaryBracket(rounds: BracketRound[]): boolean {
+  const base = rounds[0]?.matches.length ?? 0;
+  if (base < 2 || (base & (base - 1)) !== 0) return false; // potencia de 2
+  return rounds.every((r, i) => r.matches.length === base / 2 ** i);
+}
+
 export function KnockoutBracket({ matches }: { matches: SeasonMatch[] }) {
   const { t } = useT();
-  const columns = useMemo(() => {
-    const ko = matches.filter((m) => m.roundType === 'playoff');
-    const map = new Map<string, SeasonMatch[]>();
-    for (const m of ko) {
-      // Se agrupa por el nombre de la fuente (estable dentro de una competición);
-      // la traducción es sólo para MOSTRAR, más abajo.
-      const key = m.roundName ?? `Ronda ${m.roundNumber ?? ''}`;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(m);
-    }
-    return [...map.entries()]
-      .map(([name, ms]) => ({
-        name,
-        roundNumber: ms[0]?.roundNumber ?? null,
-        rank: phaseRank(name, ms[0]?.roundNumber ?? null),
-        matches: ms.sort((a, b) => ((a.scheduledAt ?? '') < (b.scheduledAt ?? '') ? -1 : 1)),
-      }))
-      .sort((a, b) => a.rank - b.rank);
-  }, [matches]);
+  const rounds = useMemo(() => buildBracketRounds(matches), [matches]);
 
-  if (columns.length === 0) return null;
+  const third = rounds.find((r) => r.key === 'third_place');
+  const bracket = useMemo(
+    () => rounds.filter((r) => r.key !== 'third_place' && r.matches.length > 0),
+    [rounds],
+  );
+
+  if (bracket.length === 0 && !third) return null;
+
+  const labelOf = (r: BracketRound, i: number) =>
+    r.key ? t(`playoffs.${r.key}`) : (r.name ?? t('playoffs.round_n', { n: r.roundNumber ?? i + 1 }));
+
+  const thirdBlock = third && third.matches.length > 0 ? (
+    <div className="mx-auto w-full max-w-xs space-y-2">
+      <h3 className={HEADING}>{t('playoffs.third_place')}</h3>
+      {third.matches.map((m) => <KnockoutMatchCard key={m.id} m={m} showFinishedLabel={false} />)}
+    </div>
+  ) : null;
+
+  // Una sola ronda (p. ej. una eliminatoria de ida/vuelta) o estructura no
+  // binaria: lista simple etiquetada, sin inventar un cuadro.
+  if (bracket.length < 2 || !isBinaryBracket(bracket)) {
+    return (
+      <div className="mx-auto w-full max-w-xl space-y-4">
+        {bracket.map((r, i) => (
+          <section key={i} className="space-y-2">
+            {(r.key || r.name) && <h3 className={HEADING}>{labelOf(r, i)}</h3>}
+            <div className="space-y-2">
+              {r.matches.map((m) => <KnockoutMatchCard key={m.id} m={m} showFinishedLabel={false} />)}
+            </div>
+          </section>
+        ))}
+        {thirdBlock}
+      </div>
+    );
+  }
+
+  const base = bracket[0]!.matches.length;
+  const columns: string[] = [];
+  bracket.forEach((_, i) => { if (i > 0) columns.push('20px'); columns.push('minmax(0,1fr)'); });
 
   return (
-    <div className="overflow-x-auto -mx-1 px-1 pb-1">
-      <div className="flex gap-3 min-w-min">
-        {columns.map((col) => (
-          <div key={col.name} className="flex flex-col gap-3 min-w-[220px] flex-1">
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">
-              {(() => {
-                const k = playoffPhaseKey(col.name, col.roundNumber);
-                return k ? t(`playoffs.${k}`) : col.name; // nombre propio no traducible tal cual
-              })()}
+    <div className="space-y-3">
+      {/* Escritorio: cuadro horizontal con conectores */}
+      <div className="hidden md:block mx-auto w-full max-w-3xl">
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: columns.join(' '), gridTemplateRows: `auto repeat(${base}, minmax(0, 1fr))` }}
+        >
+          {/* Cabecera de cada ronda encima de su columna */}
+          {bracket.map((r, ri) => (
+            <h3 key={`h${ri}`} className={HEADING} style={{ gridColumn: ri * 2 + 1, gridRow: 1 }}>
+              {labelOf(r, ri)}
             </h3>
-            <div className="flex flex-col gap-3 justify-around h-full">
-              {col.matches.map((m) => <KnockoutMatchCard key={m.id} m={m} />)}
+          ))}
+
+          {bracket.map((r, ri) => {
+            const span = base / r.matches.length;
+            return r.matches.map((m, j) => (
+              <div
+                key={m.id}
+                className="flex items-center py-1.5"
+                style={{ gridColumn: ri * 2 + 1, gridRow: `${2 + j * span} / span ${span}` }}
+              >
+                <div className="w-full"><KnockoutMatchCard m={m} showFinishedLabel={false} /></div>
+              </div>
+            ));
+          })}
+
+          {bracket.slice(0, -1).map((r, ri) => {
+            const children = r.matches.length;
+            const parents = bracket[ri + 1]!.matches.length;
+            const d: string[] = [];
+            for (let p = 0; p < parents; p++) {
+              const yP = (((p + 0.5) / parents) * 100).toFixed(2);
+              for (const c of [2 * p, 2 * p + 1]) {
+                if (c >= children) continue;
+                d.push(`M0 ${(((c + 0.5) / children) * 100).toFixed(2)} H20 V${yP}`);
+              }
+              d.push(`M20 ${yP} H40`);
+            }
+            return (
+              <svg
+                key={`c${ri}`}
+                viewBox="0 0 40 100"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+                className="h-full w-full text-slate-300 dark:text-slate-700"
+                style={{ gridColumn: ri * 2 + 2, gridRow: `2 / span ${base}` }}
+              >
+                <path
+                  d={d.join(' ')}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Móvil: rondas apiladas con conector hacia abajo */}
+      <div className="md:hidden space-y-2">
+        {bracket.map((r, ri) => (
+          <div key={ri} className="space-y-2">
+            <h3 className={HEADING}>{labelOf(r, ri)}</h3>
+            <div className="space-y-2">
+              {r.matches.map((m) => <KnockoutMatchCard key={m.id} m={m} showFinishedLabel={false} />)}
             </div>
+            {ri < bracket.length - 1 && (
+              <div className="flex justify-center py-0.5" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+                     className="h-4 w-4 text-slate-300 dark:text-slate-600">
+                  <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            )}
           </div>
         ))}
       </div>
+
+      {thirdBlock}
     </div>
   );
 }
