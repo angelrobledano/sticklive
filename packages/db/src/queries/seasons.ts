@@ -14,7 +14,7 @@ export interface DbSeason {
   source_ref: string | null;
   source_url: string | null;
   scraped_at: Date | null;
-  data_quality: string;
+  data_quality: DataQuality;
   created_at: Date;
   updated_at: Date;
 }
@@ -91,7 +91,7 @@ export interface SeasonQualityRow {
   name: string;
   slug: string;
   is_current: boolean;
-  data_quality: string;
+  data_quality: DataQuality;
   match_count: string;
 }
 
@@ -104,7 +104,7 @@ export async function listSeasonsForQuality(competitionId: string): Promise<Seas
       LEFT JOIN matches m ON m.season_id = s.id
      WHERE s.competition_id = $1
      GROUP BY s.id
-     ORDER BY s.is_current DESC, s.start_date DESC NULLS LAST, s.name DESC
+     ORDER BY s.is_current DESC, s.start_date DESC NULLS LAST, s.name DESC, s.slug
   `, [competitionId]);
   return result.rows;
 }

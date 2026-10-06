@@ -19,7 +19,7 @@ export interface DbCompetition {
   source_url: string | null;
   scraped_at: Date | null;
   archived_at: Date | null;
-  data_quality: string;
+  data_quality: DataQuality;
   created_at: Date;
   updated_at: Date;
 }
@@ -285,7 +285,7 @@ export interface CompetitionQualityRow {
   id: string;
   name: string;
   slug: string;
-  data_quality: string;
+  data_quality: DataQuality;
   archived_at: Date | null;
   season_count: string;
   visible_season_count: string;
@@ -296,11 +296,11 @@ export async function listCompetitionsForQuality(): Promise<CompetitionQualityRo
   const result = await db.query<CompetitionQualityRow>(`
     SELECT c.id, c.name, c.slug, c.data_quality, c.archived_at,
            COUNT(s.id)::text AS season_count,
-           COUNT(s.id) FILTER (WHERE s.data_quality = 'ok')::text AS visible_season_count
+           COUNT(s.id) FILTER (WHERE c.data_quality = 'ok' AND s.data_quality = 'ok')::text AS visible_season_count
       FROM competitions c
       LEFT JOIN seasons s ON s.competition_id = c.id
      GROUP BY c.id
-     ORDER BY c.name
+     ORDER BY c.name, c.slug
   `);
   return result.rows;
 }

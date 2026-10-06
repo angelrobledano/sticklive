@@ -1,23 +1,31 @@
 /**
- * Visibilidad por calidad de datos: competiciones y temporadas marcadas
- * 'en_revision' dejan de ser consultables por cualquier vía.
+ * Visibilidad por calidad de datos (migración 067).
+ *
+ * Cubre hoy: las funciones de calidad de @sports/db (listados y marcado) y el
+ * helper de la API `seasonVisible`. Los lotes de rutas (Tasks 4-10) ampliarán
+ * este fichero con las vías HTTP.
  */
+import { randomUUID } from 'node:crypto';
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import {
   db, closeDb,
   listCompetitionsForQuality, setCompetitionQuality,
   listSeasonsForQuality, setSeasonQuality,
 } from '@sports/db';
+import { seasonVisible } from '../../apps/api/src/lib/visibility.js';
 import { limpiar } from './support/db.js';
 import {
-  crearDeporte, crearCompeticion, crearTemporada, crearPartido,
+  crearDeporte, crearCompeticion, crearTemporada,
+  crearPartido, // usado en el lote de rutas (Tasks 4-10)
 } from './support/factorias.js';
 
+// usado en el lote de rutas (Tasks 4-10)
 async function get(router: { request: (p: string, init?: RequestInit) => Promise<Response> }, path: string) {
   const res = await router.request(path);
   return { status: res.status, body: await res.json().catch(() => null) };
 }
 
+// usado en el lote de rutas (Tasks 4-10)
 async function setCompQualityDirect(id: string, q: string) {
   await db.query(`UPDATE competitions SET data_quality = $2 WHERE id = $1`, [id, q]);
 }
@@ -62,5 +70,34 @@ describe('@sports/db — calidad', () => {
 
     const seasons = await listSeasonsForQuality(compId);
     expect(seasons.find((s) => s.id === seasonId)!.data_quality).toBe('en_revision');
+  });
+});
+
+describe('seasonVisible', () => {
+  it('temporada y competición en ok → true', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+
+    expect(await seasonVisible(seasonId)).toBe(true);
+  });
+
+  it('temporada en_revision → false', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    await setSeasonQualityDirect(seasonId, 'en_revision');
+
+    expect(await seasonVisible(seasonId)).toBe(false);
+  });
+
+  it('competición en_revision con temporada ok → false', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    await setCompQualityDirect(compId, 'en_revision');
+
+    expect(await seasonVisible(seasonId)).toBe(false);
+  });
+
+  it('id inexistente (uuid válido aleatorio) → false', async () => {
+    expect(await seasonVisible(randomUUID())).toBe(false);
   });
 });
