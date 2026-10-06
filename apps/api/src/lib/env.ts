@@ -20,6 +20,9 @@ const RECOMMENDED_PROD: Array<{ key: string; feature: string }> = [
   { key: 'SMTP_HOST',              feature: 'envío de magic links (sin ella, login por email deshabilitado)' },
   { key: 'STRIPE_SECRET_KEY',      feature: 'checkout de pago' },
   { key: 'STRIPE_WEBHOOK_SECRET',  feature: 'activación de premium vía webhook' },
+  { key: 'GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL', feature: 'verificación de compras Play (verify)' },
+  { key: 'GOOGLE_PLAY_PRIVATE_KEY',           feature: 'verificación de compras Play (verify)' },
+  { key: 'GOOGLE_PLAY_PACKAGE_NAME',          feature: 'verificación de compras Play (verify)' },
 ];
 
 export function assertEnv(): void {
