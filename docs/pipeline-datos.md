@@ -8,6 +8,7 @@
 |---|---|---|
 | FEP (RFEP) | `hockeypatines.fep.es` (plataforma sidgad, prefijo `rfep`) | Calendarios, clasificaciones, marcadores en vivo, actas (alineaciones + eventos), catálogo de competiciones |
 | World Skate Europe | `wse.sidgad.com` (prefijo `worldskate`) | Mismo tipo de datos para torneos europeos (grupos + eliminatorias) |
+| World Skate Games | `rinkhockey.worldskate.org` (mismo portal sidgad `worldskate`, temp 41 = 2026/27) | Los 4 torneos de los WSG Asunción 2026 (idc 325/329/330/331). Alta, formato y auditoría: [audit-wsg-asu26.md](./audit-wsg-asu26.md) |
 
 Ambas son **la misma plataforma sidgad** servida como instancias distintas: el cliente (`apps/scraper/src/scrapers/fep/sidgad-client.ts`) se parametriza por portal (`SIDGAD_PORTAL`). Los endpoints reales no son HTML: son **APIs JSON internas** de sidgad que se descubrieron interceptando XHR con Playwright durante la fase de exploración (las rutas y payloads están codificados en `sidgad-client.ts`).
 
@@ -18,7 +19,7 @@ Ambas son **la misma plataforma sidgad** servida como instancias distintas: el c
   - `fep-calendar` / `fep-standings` — calendario y clasificación por `idc` (competición en la fuente); soportan grupos y filas de bye (DESCANSO).
   - `fep-matches` — feed **global** de marcadores (`rfep_mc_1.php`): un POST devuelve todos los partidos en juego/del día de todas las competiciones.
   - `fep-ficha` — el acta: eventos con instante de juego (crono 25:00 → minuto transcurrido), alineaciones (dorsal, portero, 5 inicial, capitán), cuerpo técnico por rol y faltas de equipo. La falta directa marcada/fallada se infiere cruzando el instante del lanzamiento con los goles.
-  - `worldskate` — marcadores y calendario WSE (estado live inferido por reloj, caducado a las 3 h).
+  - `worldskate` — marcadores y calendario WSE y WSG (estado live inferido por reloj, caducado a las 3 h). El parser es agnóstico del torneo: clasifica fases por título (GRUPO/KNOCKOUT/FINAL PHASE/5TH-8TH…), emite la estructura de `rounds` como datos —incluidas eliminatorias cuyos participantes aún no publica la fuente—, numera las jornadas por fecha cuando la fuente cabeca por día y etiqueta `group_name` en los partidos de grupo. Detalle: [audit-wsg-asu26.md](./audit-wsg-asu26.md).
 - **Playwright** se usa para sesionar contra sidgad y cazar las APIs; Cheerio para lo HTML. Las zonas horarias se convierten sin dependencias (`eu-timezone.ts`, DST europeo, zona por competición según `competitions.timezone`).
 
 ## Carga (apps/etl)
