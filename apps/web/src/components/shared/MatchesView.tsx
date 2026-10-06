@@ -6,6 +6,7 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { useLiveScores } from '@/hooks/useLiveScores';
 import { DateSelector } from '@/components/shared/DateSelector';
 import { MatchCard } from '@/components/shared/MatchCard';
+import { UpcomingGroup } from '@/components/shared/UpcomingGroup';
 import { MiGrada } from '@/components/home/MiGrada';
 import { LiveBoard } from '@/components/home/LiveBoard';
 import { AdBanner } from '@/components/shared/AdBanner';
@@ -14,6 +15,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import { madridDateKey, madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
+import { groupUpcomingByDay } from '@/lib/upcoming';
 import { importanceRank } from '@/lib/competition-importance';
 import { tt } from '@/components/search/translate';
 
@@ -125,7 +127,7 @@ function EmptyRinkScene() {
  * Se mantiene pegado con scroll interno para no empujar la página.
  */
 function DesktopAside({
-  matches, hasFavorites, favorites, leagues, todayKey, selectedDate, className = '',
+  matches, hasFavorites, favorites, leagues, todayKey, selectedDate, showUpcoming = true, className = '',
 }: {
   matches: Match[];
   hasFavorites: boolean;
@@ -133,6 +135,8 @@ function DesktopAside({
   leagues: string[];
   todayKey: string;
   selectedDate: string;
+  /** false cuando los próximos ya se muestran en la vista principal (#414). */
+  showUpcoming?: boolean;
   className?: string;
 }) {
   const { t } = useT();
@@ -160,7 +164,7 @@ function DesktopAside({
           </div>
         )}
 
-        {upcoming.length > 0 && (
+        {showUpcoming && upcoming.length > 0 && (
           <section>
             <div className="flex items-center justify-between px-1 pb-2">
               <span className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
@@ -313,8 +317,9 @@ function formatDateHeader(dateKey: string, locale: string): string {
 
 /**
  * Estado vacío de la home: mensaje claro ("No hay partidos para hoy") y, debajo,
- * los PRÓXIMOS partidos agrupados por fecha (ascendente), con el mismo diseño de
- * MatchCard. Evita pantallas vacías y resultados antiguos.
+ * los PRÓXIMOS partidos agrupados por día y DENTRO de cada día por competición
+ * (#414: la lista plana con etiquetas flotantes se leía como una sopa de filas
+ * estiradas). Mismo lenguaje de secciones que la jornada de la portada.
  */
 function UpcomingMatches({ matches, selectedDate, todayKey, outOfWindow = false }: {
   matches: Match[];
@@ -328,55 +333,60 @@ function UpcomingMatches({ matches, selectedDate, todayKey, outOfWindow = false 
   // posteriores a un día ya pasado confunde. Solo el mensaje de "no hay partidos".
   const isPast = selectedDate < todayKey;
 
-  const groups = useMemo(() => {
-    if (isPast) return [] as Array<[string, Match[]]>;
-    const upcoming = matches
-      .map((m) => ({ m, key: madridDateKey(m.scheduledAt) }))
-      .filter((x): x is { m: Match; key: string } => !!x.key && x.key > selectedDate)
-      .sort((a, b) =>
-        a.key !== b.key
-          ? (a.key < b.key ? -1 : 1)
-          : ((a.m.scheduledAt ?? '') < (b.m.scheduledAt ?? '') ? -1 : 1)
-      );
-    const byDate = new Map<string, Match[]>();
-    for (const { m, key } of upcoming) {
-      const arr = byDate.get(key);
-      if (arr) arr.push(m); else byDate.set(key, [m]);
-    }
-    return Array.from(byDate.entries()); // ya ascendente por orden de inserción
-  }, [matches, selectedDate, isPast]);
+  const groups = useMemo(
+    () => groupUpcomingByDay(matches, selectedDate, locale),
+    [matches, selectedDate, locale],
+  );
+  const visibleGroups = isPast ? [] : groups;
 
   return (
     <div>
-      <div className={`flex flex-col items-center text-center pt-10 px-8 gap-1 ${isPast ? 'pb-12' : 'pb-4'}`}>
+      <div className={`flex flex-col items-center text-center pt-8 px-8 gap-1 ${isPast ? 'pb-12' : 'pb-2'}`}>
         <EmptyRinkScene />
         <p className="text-base font-bold text-slate-800 dark:text-slate-100">
           {outOfWindow
             ? t('common.day_out_of_window')
             : isToday ? t('common.no_matches_today') : t('common.no_matches_this_day')}
         </p>
-        {!isPast && !outOfWindow && groups.length > 0 && (
+        {!isPast && !outOfWindow && visibleGroups.length > 0 && (
           <p className="text-xs text-slate-500 dark:text-slate-400">{t('common.upcoming_intro')}</p>
         )}
       </div>
 
-      {isPast ? null : groups.length === 0 ? (
+      {isPast ? null : visibleGroups.length === 0 ? (
         <p className="text-center text-xs text-slate-500 dark:text-slate-400 px-8 pb-12">
           {t('common.no_upcoming')}
         </p>
       ) : (
-        <div className="xl:grid xl:grid-cols-2 xl:items-start xl:gap-x-6 min-[1800px]:grid-cols-3">
-          {groups.map(([dateKey, ms]) => (
-            <section key={dateKey}>
-              <SectionHeader label={formatDateHeader(dateKey, locale)} count={ms.length} />
-              <ul className="px-4 space-y-2 pb-2">
-                {ms.map((m) => (
-                  <li key={m.id}>
-                    <CompetitionCaption name={m.competitionName} id={m.competitionId} />
-                    <MatchCard match={m} />
-                  </li>
+        /*
+          Banda por día a todo el ancho: cabecera con hairline + competiciones
+          del día en masonry horizontal (misma mecánica que la jornada). Así el
+          ancho siempre se usa — un día de 1 partido es una banda corta, no una
+          columna huérfana flotando en blanco (#414).
+        */
+        <div className="pb-6">
+          {visibleGroups.map((day) => (
+            <section key={day.dateKey} className="min-w-0">
+              <div className="mx-4 flex items-baseline justify-between border-b border-slate-100
+                              pt-5 pb-2 dark:border-slate-800">
+                <h2 className="text-sm font-bold text-slate-900 dark:text-slate-50">
+                  {formatDateHeader(day.dateKey, locale)}
+                </h2>
+                <span className="text-[11px] font-light text-slate-500 dark:text-slate-400 tabular-nums shrink-0 ml-3">
+                  {day.total} {day.total === 1 ? t('common.match_lc') : t('common.matches_lc')}
+                </span>
+              </div>
+              <div className="px-4 pt-3 pb-1 columns-1 md:columns-2 gap-5
+                              min-[1500px]:columns-3 min-[2000px]:columns-4">
+                {day.competitions.map((comp) => (
+                  <UpcomingGroup
+                    key={comp.id ?? comp.name ?? 'other'}
+                    name={comp.name}
+                    id={comp.id}
+                    matches={comp.matches}
+                  />
                 ))}
-              </ul>
+              </div>
             </section>
           ))}
         </div>
@@ -714,7 +724,9 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
         )}
           </div>
 
-          {/* Carril de contexto — solo en pantallas muy anchas */}
+          {/* Carril de contexto — solo en pantallas muy anchas. Sin la sección
+              "Próximos" cuando la vista principal ya muestra los próximos
+              (día vacío): serían las mismas tarjetas dos veces (#414). */}
           <DesktopAside
             className="hidden 2xl:block"
             matches={matches}
@@ -723,6 +735,7 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
             leagues={leagues}
             todayKey={todayKey}
             selectedDate={selectedDate}
+            showUpcoming={dayMatches.length > 0}
           />
         </div>
       </div>
