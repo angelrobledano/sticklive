@@ -265,6 +265,19 @@ describe('GET /search — visibilidad', () => {
     const hBody = await hidden.json() as { competitions: Array<{ id: string }> };
     expect(hBody.competitions.some((c) => c.id === compId)).toBe(false);
   });
+
+  it('no devuelve una competición cuya única temporada con partidos está oculta', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    await crearPartido({ seasonId });
+    const { rows } = await db.query<{ name: string }>(`SELECT name FROM competitions WHERE id = $1`, [compId]);
+    const name = rows[0]!.name;
+
+    await setSeasonQualityDirect(seasonId, 'en_revision');
+    const hidden = await searchRouter.request(`/?q=${encodeURIComponent(name)}`);
+    const body = await hidden.json() as { competitions: Array<{ id: string }> };
+    expect(body.competitions.some((c) => c.id === compId)).toBe(false);
+  });
 });
 
 describe('fichas — visibilidad', () => {
@@ -305,6 +318,33 @@ describe('fichas — visibilidad', () => {
     const hidden = await get(playerDetailRouter, `/${playerId}`);
     expect((hidden.body as { career: { seasons: Array<{ seasonId: string }> } }).career.seasons.length).toBe(0);
   });
+
+  it('la ficha de equipo no ofrece temporadas de una competición oculta', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    const { homeTeamId } = await crearPartido({ seasonId });
+
+    await setCompQualityDirect(compId, 'en_revision');
+    const hidden = await get(teamDetailRouter, `/${homeTeamId}`);
+    expect((hidden.body as { seasons: Array<{ id: string }> }).seasons.some((s) => s.id === seasonId)).toBe(false);
+  });
+
+  it('la carrera de un jugador no incluye temporadas ocultas', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    const { homeTeamId } = await crearPartido({ seasonId });
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO players (sport_id, first_name, last_name, slug)
+       VALUES ($1, 'Test', 'Jugador2', 'test-jugador2-' || gen_random_uuid()::text) RETURNING id`,
+      [sportId]
+    );
+    const playerId = rows[0]!.id;
+    await db.query(`INSERT INTO team_players (season_id, team_id, player_id) VALUES ($1, $2, $3)`, [seasonId, homeTeamId, playerId]);
+
+    await setSeasonQualityDirect(seasonId, 'en_revision');
+    const hidden = await get(playerDetailRouter, `/${playerId}`);
+    expect((hidden.body as { career: { seasons: Array<{ seasonId: string }> } }).career.seasons.length).toBe(0);
+  });
 });
 
 describe('GET /meta/sitemap — visibilidad', () => {
@@ -324,5 +364,20 @@ describe('GET /meta/sitemap — visibilidad', () => {
     const hBody = await hidden.json() as { competitions: Array<{ id: string }>; matches: Array<{ id: string }> };
     expect(hBody.competitions.some((c) => c.id === compId)).toBe(false);
     expect(hBody.matches.some((m) => m.id === matchId)).toBe(false);
+  });
+
+  it('excluye competición y partido cuando la temporada está oculta', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    const { matchId } = await crearPartido({ seasonId });
+
+    await setSeasonQualityDirect(seasonId, 'en_revision');
+    const res = await metaRouter.request('/sitemap');
+    const body = await res.json() as { competitions: Array<{ id: string }>; matches: Array<{ id: string }> };
+    // El sitemap solo excluye competiciones ocultas/archivadas (spec Task 9); una
+    // competición en 'ok' cuya única temporada está oculta SIGUE listada. Lo que
+    // garantiza ocultar la temporada es el partido. Ver informe del lote.
+    expect(body.matches.some((m) => m.id === matchId)).toBe(false);
+    expect(body.competitions.some((c) => c.id === compId)).toBe(true);
   });
 });
