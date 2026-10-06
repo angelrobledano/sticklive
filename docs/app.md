@@ -225,6 +225,15 @@ Advertencias verificadas sobre `eas.json` (`appVersionSource: "remote"`,
   Lista exacta a reemplazar en el plan (Task 5.3, incluido el icono de
   notificación monocromo, que requiere recompilar).
 - **Sin E2E bloqueante** en v1 (documentado como limitación en el spec §8).
+- **Primera reclamación del push token (preexistente):** quien conozca un
+  `expo_push_token` ajeno ANTES de que la víctima se suscriba puede registrar la
+  fila con su dispositivo; la víctima queda sin push hasta la poda del emisor.
+  Inherente al modelo token-como-capabilidad (exige interceptar el token en
+  HTTPS); la poda por tickets/recibos limpia el padró.
+- **Coordinación API↔app en el despliegue:** desde el binding del canje al
+  deviceId (migración 068), una API desplegada con este cambio rechaza el login
+  de builds de app anteriores (no envían deviceId → 400). Desplegar API y app
+  en la misma ventana. Hoy no afecta a producción: la app no está publicada.
 - La validación de latencia del gol vía FCM frente a la web (objetivo: paridad)
   queda para la prueba interna (checklist de abajo).
 
