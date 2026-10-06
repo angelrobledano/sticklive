@@ -25,6 +25,12 @@ import {
   crearPartido, // usado en el lote de rutas (Tasks 4-10)
 } from './support/factorias.js';
 
+// El TTL de la micro-caché de /live se lee AL IMPORTAR `live.ts`, así que se
+// fija a 0 ANTES del import dinámico para que el test sea determinista (sin
+// esto, el segundo GET podría servir el valor cacheado del primero).
+process.env['LIVE_CACHE_TTL_MS'] = '0';
+const { liveRouter } = await import('../../apps/api/src/routes/live.js');
+
 // usado en el lote de rutas (Tasks 4-10)
 async function get(router: { request: (p: string, init?: RequestInit) => Promise<Response> }, path: string) {
   const res = await router.request(path);
@@ -216,5 +222,23 @@ describe('partidos — visibilidad', () => {
 
     await setSeasonQualityDirect(seasonId, 'en_revision');
     expect((await get(matchDetailRouter, `/${matchId}`)).status).toBe(404);
+  });
+});
+
+describe('GET /matches/live — visibilidad', () => {
+  it('no devuelve partidos en directo de temporadas ocultas', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    const { matchId } = await crearPartido({ seasonId, status: 'live' });
+
+    const visible = await get(liveRouter, '/live');
+    const vBody = visible.body as { matches: Array<{ id: string }> };
+    expect(vBody.matches.some((m) => m.id === matchId)).toBe(true);
+
+    await setSeasonQualityDirect(seasonId, 'en_revision');
+
+    const hidden = await get(liveRouter, '/live');
+    const hBody = hidden.body as { matches: Array<{ id: string }> };
+    expect(hBody.matches.some((m) => m.id === matchId)).toBe(false);
   });
 });

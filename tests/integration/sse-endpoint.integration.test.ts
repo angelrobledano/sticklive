@@ -197,4 +197,11 @@ describe('SSE /matches/:id/stream (e2e, #378)', () => {
     const nada = await s.next(1500);
     expect(nada).toBeNull();
   });
+
+  it('404 al abrir el stream de un partido cuya temporada está oculta', async () => {
+    await db.query(`UPDATE seasons SET data_quality = 'en_revision' WHERE id = $1`, [escenario.seasonId]);
+    const res = await fetch(`${BASE}/matches/${escenario.matchId}/stream`);
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: 'not_found' });
+  });
 });
