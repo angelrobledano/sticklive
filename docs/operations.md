@@ -101,7 +101,7 @@ Antes de reiniciar escribe una **alerta** (log siempre; a Sentry si el entorno d
 - Cabeceras de seguridad en el borde (HSTS sin preload, XCTO, XFO, Referrer-Policy; `-Server`).
 - `handle_path /api/*` hacia `api:3000` con `flush_interval -1` (imprescindible para el SSE).
 - **Publicidad (Google AdSense):** apagada por defecto; solo se carga si se define `NEXT_PUBLIC_ADSENSE_CLIENT`. La CSP (modo observación) ya incluye los hosts de AdSense. Guía de activación, consentimiento (CMP) y política: **[docs/monetizacion.md](./monetizacion.md)**.
-- Monitorización externa de la web: pendiente (issue #155) — hoy la única señal de "web caída" es abrir la web o mirar Sentry/healthchecks del compose.
+- **Monitorización externa (UptimeRobot, #155/#299):** monitor creado (dashboard id `804186186`) sobre `https://sticklive.eu` y `https://sticklive.eu/api/health` (readiness). Es la señal externa de "web/BD caída" (antes solo abrir la web o mirar Sentry). UptimeRobot expone además **MCP oficial** (`https://mcp.uptimerobot.com/mcp`), añadido a la config de OpenCode (`~/.config/opencode/opencode.jsonc`, OAuth al primer uso). Pendiente: **probar el canal de alertas**, añadir monitor de **TLS** y conectar la vigilancia de disco (`DISK_PING_URL`) a un heartbeat.
 
 ## Acceso, cuentas y SSH (#302, #304)
 
