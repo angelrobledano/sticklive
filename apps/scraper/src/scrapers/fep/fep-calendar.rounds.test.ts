@@ -86,3 +86,22 @@ describe('extractTeamLogoUrls — escudos de la fila', () => {
     expect(extractTeamLogoUrls($, row)).toEqual([null, null]);
   });
 });
+
+const MULTI_LANG = `
+<table class="tabla_standard">
+  <thead class="head_jornada"><tr><th>
+    <span class="lang_label lang_it">Giornata </span>
+    <span class="lang_label lang_es">Jornada </span> 3
+  </th></tr></thead>
+  <tbody>
+    <tr class="team_1 team_2 team_class" gamedate="20261024"><td>1</td><td>2</td><td>20:00</td></tr>
+  </tbody>
+</table>`;
+
+describe('collectRoundRows — etiqueta multi-idioma', () => {
+  it('se queda con el idioma activo (es), no concatena "Giornata Jornada 3"', () => {
+    const $ = cheerio.load(MULTI_LANG);
+    const table = $('table.tabla_standard').get(0) as Element;
+    expect(collectRoundRows($, table).map((r) => r.roundName)).toEqual(['Jornada 3']);
+  });
+});

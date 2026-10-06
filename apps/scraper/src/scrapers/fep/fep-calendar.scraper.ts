@@ -67,7 +67,13 @@ export function collectRoundRows(
   $(table).children().each((_, el) => {
     const tag = (el as Element).tagName;
     if (tag === 'thead') {
-      if ($(el).hasClass('head_jornada')) roundName = $(el).text().trim();
+      if (!$(el).hasClass('head_jornada')) return;
+      // La fuente etiqueta la jornada en varios idiomas (`span.lang_it`,
+      // `span.lang_es`…) y `text()` los concatena ("Giornata Jornada 1"). Se
+      // quitan los NO activos para quedarnos con el del `site_lang` (es).
+      const $th = $(el);
+      if ($th.find('.lang_label').length > 0) $th.find('.lang_label').not('.lang_es').remove();
+      roundName = $th.text().replace(/\s+/g, ' ').trim();
     } else if (tag === 'tbody') {
       $(el).find('tr.team_class').each((_, row) => {
         out.push({ roundName, row: row as Element });
