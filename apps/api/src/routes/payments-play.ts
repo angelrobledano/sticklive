@@ -11,6 +11,13 @@
  * entitlement SIN volver a consultar a Google, y un token reclamado por otra
  * cuenta es 409 explícito (nunca se concede en cross-account).
  *
+ * Limitación conocida (primer-claim): el purchaseToken es dato on-device y
+ * desde el servidor no se sabe de antemano a qué cuenta pertenece, así que
+ * quien verifica PRIMERO un token válido gana el entitlement para su cuenta;
+ * el dueño legítimo recibiría 409 después. Mitigación futura: comprar con
+ * obfuscatedExternalAccountId app-side y compararlo aquí (candidato para el
+ * plan B, compra en app).
+ *
  * Productos esperados (Play Console):
  *   premium_annual   → suscripción anual (purchases.subscriptionsv2.get)
  *   premium_lifetime → compra única no consumible (purchases.products.get)

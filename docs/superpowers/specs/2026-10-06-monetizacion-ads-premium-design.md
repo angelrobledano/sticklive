@@ -1,7 +1,7 @@
 # Diseño — Monetización: publicidad (AdSense web / AdMob app) y premium (Stripe + Google Play)
 
 Fecha: 2026-10-06
-Estado: Diseño aprobado en brainstorming; pendiente plan de implementación.
+Estado: En implementación por planes: A-servidor (2026-10-06-monetizacion-play-servidor.md) hecho; pendientes B-compra-en-app y C-admob. La app móvil base ya está implementada (plan 2026-10-05-app-movil.md).
 
 ## 1. Contexto y objetivo
 
@@ -141,7 +141,7 @@ y queda fuera del alcance de este diseño.
   - Token vinculado a otra cuenta → 409; `packageName`/producto inesperado →
     rechazo explícito.
   - Lifetime concede permanentemente; expiración excluye del guard
-    (`isPremiumActive` con y sin `premium_lifetime`).
+    (`isUserPremium` con y sin `premium_lifetime`).
   - Reconciliador: extiende al renovar, excluye al expirar, revoca lifetime
     reembolsado (mock de la Play Developer API + integración contra Postgres
     real).
@@ -153,7 +153,9 @@ y queda fuera del alcance de este diseño.
 ## 11. Hitos previstos para el plan
 
 1. **Migración + guard:** `premium_lifetime`, `play_purchases`,
-   `isPremiumActive` actualizado.
+   `isUserPremium` como guard único (`premium_lifetime` OR caducidad);
+   `isPremiumActive` queda como regla pura de fecha, consumida también por
+   Stripe.
 2. **Verificación:** `POST /payments/play/verify` + service account (validado
    con purchase token de prueba).
 3. **Reconciliación:** job diario en el ETL.
