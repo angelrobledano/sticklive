@@ -84,10 +84,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       // Canje: el código single-use vale 120 s; la sesión viaja por HTTPS y
-      // se guarda en SecureStore (nunca por el scheme ni en AsyncStorage).
+      // se guarda en SecureStore (nunca por el scheme ni en AsyncStorage). El
+      // body lleva el deviceId del login: el código quedó LIGADO a él (068) y
+      // sin él el canje siempre fallaría.
       const data = await apiFetch<{ session: string; email: string | null }>('/auth/exchange', {
         method: 'POST',
-        body: { code: parsed.code },
+        body: { code: parsed.code, deviceId },
       });
       const s: Session = { token: data.session, email: data.email ?? parsed.email };
       await saveSession(s);

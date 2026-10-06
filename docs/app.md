@@ -77,9 +77,13 @@ Flujo de login (verificado en `src/context/AuthContext.tsx`, `src/lib/session.ts
    (`app_login_codes`, migración 065, guarda SHA-256) y redirige a
    `sticklive://auth/callback?code=…&email=…`. Los fallos también van por el
    scheme (`?error=<reason>`) y la app los muestra en pantalla.
-4. La app canjea el código: `POST /auth/exchange { code }` → `{ session, email }`.
-   Canje atómico single-use (el 2º intento del mismo código → 400). La sesión
-   **nunca viaja por el custom scheme** (otra app podría interceptarlo).
+4. La app canjea el código: `POST /auth/exchange { code, deviceId }` →
+   `{ session, email }`. Canje atómico single-use (el 2º intento del mismo
+   código → 400). El canje **exige el deviceId del login** (migración 068): el
+   código queda ligado al device que inició el flujo (`device_hash` en
+   `app_login_codes`), de modo que otra app del dispositivo que intercepte el
+   scheme no puede canjearlo; un intento fallido no consume el código. La
+   sesión **nunca viaja por el custom scheme** (otra app podría interceptarlo).
 5. `deviceId` (`src/lib/device.ts`) es el Android ID o un UUID v4 en SecureStore;
    permite adoptar la cuenta anónima del dispositivo al hacer login (misma
    semántica que el `device_id` de la web).

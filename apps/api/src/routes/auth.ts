@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { db, withTransaction } from '@sports/db';
 import { logger } from '@sports/logger';
 import { rateLimit, rateLimitBy } from '../lib/rate-limit.js';
@@ -31,6 +31,18 @@ const DEV_LINKS =
 // ── Tokens: se generan en claro (van al cliente) y se guardan HASHEADOS ─────────
 function newToken(bytes = 32): string {
   return randomBytes(bytes).toString('base64url');
+}
+
+/**
+ * Comparación en tiempo constante de hashes hex (device_hash, migración 068):
+ * que el tiempo de respuesta del canje no delate cuántos bytes del hash
+ * coinciden. timingSafeEqual exige buffers de la misma longitud; la longitud se
+ * compara antes (no es secreta: SHA-256 son 64 hex, salvo fila legacy corrupta).
+ */
+function hashIguales(a: string, b: string): boolean {
+  const ba = Buffer.from(a, 'hex');
+  const bb = Buffer.from(b, 'hex');
+  return ba.length === bb.length && timingSafeEqual(ba, bb);
 }
 // hashToken y userFromBearer viven en lib/session-lookup.ts: las comparte el
 // push nativo (Task 4.1), que asocia el token del dispositivo al usuario de la
@@ -153,19 +165,30 @@ authRouter.post('/verify', rateLimit(20, 10 * 60_000), async (c) => {
 });
 
 /**
- * POST /auth/exchange  { code }
+ * POST /auth/exchange  { code, deviceId? }
  * Canjea el código de login de la app móvil (Task 3.1) por una sesión Bearer.
  * El código lo entrega el callback de Google por el scheme sticklive:// y
- * caduca en 2 minutos. Canje atómico single-use: el UPDATE solo toca la fila si
- * no está usada ni caducada, así el 2º canje del mismo código no devuelve
- * filas → 400. Mismo patrón (hash + single-use) que /auth/verify.
+ * caduca en 2 minutos. Canje atómico single-use, mismo patrón (hash +
+ * single-use) que /auth/verify.
+ *
+ * Binding al dispositivo (068): el callback emite el código LIGADO al deviceId
+ * que inició el login (device_hash en BD, deviceId firmado en el state) y el
+ * canje solo prospera con el MISMO deviceId — otra app del dispositivo que
+ * intercepte el scheme conoce el código, pero no puede canjearlo. El intento
+ * fallido NO consume el código (sigue vivo para su dueño hasta caducar) y
+ * responde el MISMO invalid_code que un código inexistente: no se filtra el
+ * motivo. Las filas legadas (device_hash NULL, previas al despliegue) canjean
+ * normal y caducan solas.
  */
 authRouter.post('/exchange', rateLimit(10, 10 * 60_000), async (c) => {
   try {
-    const { code } = await c.req.json<{ code?: string }>().catch((): { code?: string } => ({}));
+    const { code, deviceId } = await c.req.json<{ code?: string; deviceId?: string }>().catch(
+      (): { code?: string; deviceId?: string } => ({})
+    );
     if (!code || code.length > 512) return c.json({ error: 'invalid_code' }, 400);
 
     const codeHash = hashToken(code);
+    const deviceHash = deviceId ? hashToken(deviceId) : null;
     const userId = await withTransaction(async (tx) => {
       // Higiene de caducados: purga de códigos expirados hace más de 1 día,
       // en la misma transacción y sin cron. El volumen de canjes está acotado
@@ -174,9 +197,27 @@ authRouter.post('/exchange', rateLimit(10, 10 * 60_000), async (c) => {
       await tx.query(
         `DELETE FROM app_login_codes WHERE expires_at < NOW() - INTERVAL '1 day'`
       );
+      // SELECT ... FOR UPDATE en vez del UPDATE a ciegas de antes: el binding
+      // al dispositivo se valida aquí (timingSafeEqual) ANTES de consumir, y
+      // un intento fallido NO gasta el código. FOR UPDATE conserva la
+      // atomicidad single-use del UPDATE previo: el canje concurrente que
+      // llega después ya ve used_at puesto y sale por la misma puerta (400).
+      const pending = await tx.query<{ user_id: string; device_hash: string | null }>(
+        `SELECT user_id, device_hash FROM app_login_codes
+          WHERE code_hash = $1 AND used_at IS NULL AND expires_at > NOW()
+          FOR UPDATE`,
+        [codeHash]
+      );
+      const row = pending.rows[0];
+      if (!row) return null;
+      // Fila ligada a un device (068): sin deviceId o con uno distinto → fuera,
+      // sin consumir la fila. Fila legado (device_hash NULL) → canje normal.
+      if (row.device_hash !== null) {
+        if (!deviceHash || !hashIguales(deviceHash, row.device_hash)) return null;
+      }
       const res = await tx.query<{ user_id: string }>(
         `UPDATE app_login_codes SET used_at = NOW()
-          WHERE code_hash = $1 AND used_at IS NULL AND expires_at > NOW()
+          WHERE code_hash = $1 AND used_at IS NULL
           RETURNING user_id`,
         [codeHash]
       );
@@ -315,6 +356,13 @@ authRouter.get('/google/callback', async (c) => {
     if (!code) return fail('google_denied');
     const deviceId = typeof st.d === 'string' ? st.d : '';
 
+    // App sin device (068): el código de canje va LIGADO al deviceId que
+    // inicia el login; sin device no hay nada que ligar y el canje lo exigiría
+    // siempre, así que no se emite código (fail explícito, nunca un código
+    // huérfano). Se comprueba ANTES del canje con Google: no depende de su
+    // respuesta y ahorra el viaje.
+    if (st.client === 'app' && !deviceId) return fail('app_device_required');
+
     const redirectUri = `${API_PUBLIC}/auth/google/callback`;
     // Canjear el code por tokens (server-to-server, por TLS con Google)
     const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
@@ -358,11 +406,15 @@ authRouter.get('/google/callback', async (c) => {
     // código single-use (2 min) que la app canjea por Bearer vía POST /auth/exchange.
     // Se guarda el HASH (patrón auth_tokens); el claro solo va en la redirect URL.
     if (st.client === 'app') {
+      // Binding al dispositivo (068): el deviceId llegó FIRMADO en el state y
+      // se guarda HASHEADO (mismo patrón que el código). El scheme
+      // sticklive:// es interceptable por otra app del dispositivo: con el
+      // código solo podría canjear; ligado a este device, ya no.
       const appCode = newToken(24);
       await db.query(
-        `INSERT INTO app_login_codes (code_hash, user_id, expires_at)
-         VALUES ($1, $2, NOW() + make_interval(secs => $3::int))`,
-        [hashToken(appCode), userId, APP_CODE_TTL_SECONDS]
+        `INSERT INTO app_login_codes (code_hash, user_id, device_hash, expires_at)
+         VALUES ($1, $2, $3, NOW() + make_interval(secs => $4::int))`,
+        [hashToken(appCode), userId, hashToken(deviceId), APP_CODE_TTL_SECONDS]
       );
       return c.redirect(
         `sticklive://auth/callback?code=${encodeURIComponent(appCode)}&email=${encodeURIComponent(email)}`

@@ -59,7 +59,7 @@ SSE, no este endpoint.
 | POST | `/auth/verify` | Canjea el token del magic link (single-use atómico) y devuelve sesión. Rate limit 20/10 min. Fusiona los favoritos del dispositivo anónimo |
 | GET | `/auth/me` | Usuario de la sesión actual (Bearer token) |
 | GET | `/auth/google` + `/auth/google/callback` | OAuth Google (state firmado HMAC, validado en callback). La app móvil entra con `?client=app&device=<id>` y el callback le entrega un código de canje por el scheme `sticklive://` en vez de abrir sesión web |
-| POST | `/auth/exchange` | Canjea el código single-use del login de la app móvil (120 s) por sesión Bearer. Rate limit 10/10 min |
+| POST | `/auth/exchange` | Canjea el código single-use del login de la app móvil (120 s) por sesión Bearer. El código va ligado al deviceId que inició el login (`device_hash`, migración 068): `{ code, deviceId }` solo canjea con el deviceId del origen; un intento fallido no consume el código. Rate limit 10/10 min |
 | POST | `/auth/favorites/merge` | Fusión de favoritos anónimos → cuenta (cap 200/kind) |
 | DELETE | `/auth/favorites` | Elimina un favorito de la nube (`{ kind, refId }`) |
 
