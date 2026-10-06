@@ -143,6 +143,22 @@ describe('GET /competitions — filtrado por calidad', () => {
     const empty = await get(competitionsRouter, `/${compId}/seasons`);
     expect(empty.status).toBe(404);
   });
+
+  it('el listado elige la temporada visible si la de referencia está oculta', async () => {
+    const compId = await crearCompeticion(sportId);
+    const sCurrent = await crearTemporada(compId);                 // is_current = true (defecto)
+    const sOld = await crearTemporada(compId, { esActual: false });
+    await crearPartido({ seasonId: sCurrent });
+    await crearPartido({ seasonId: sOld });
+
+    await setSeasonQualityDirect(sCurrent, 'en_revision');
+
+    const res = await get(competitionsRouter, '/');
+    const body = res.body as { competitions: Array<{ id: string; season: { id: string } | null }> };
+    const row = body.competitions.find((c) => c.id === compId);
+    expect(row).toBeDefined();
+    expect(row!.season?.id).toBe(sOld);
+  });
 });
 
 describe('endpoints de temporada — visibilidad', () => {
@@ -169,6 +185,23 @@ describe('endpoints de temporada — visibilidad', () => {
     await setCompQualityDirect(compId, 'en_revision');
 
     expect((await get(seasonOverviewRouter, `/${seasonId}/overview`)).status).toBe(404);
+    expect((await get(standingsRouter, `/${seasonId}/standings`)).status).toBe(404);
+  });
+
+  it('la guarda de standings hace 404 en temporada oculta con clasificación real', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    const { homeTeamId } = await crearPartido({ seasonId });
+    await db.query(
+      `INSERT INTO standings (season_id, team_id, position, points) VALUES ($1, $2, 1, 3)`,
+      [seasonId, homeTeamId]
+    );
+
+    const visible = await get(standingsRouter, `/${seasonId}/standings`);
+    expect(visible.status).toBe(200);
+    expect((visible.body as { count: number }).count).toBe(1);
+
+    await setSeasonQualityDirect(seasonId, 'en_revision');
     expect((await get(standingsRouter, `/${seasonId}/standings`)).status).toBe(404);
   });
 });
