@@ -6,7 +6,8 @@ ninguna petición a Google. Issue de seguimiento: #382 (relacionadas: #250 CLS,
 #254 analítica de anuncios, #246 consentimiento).*
 
 AdMob **no aplica** a la web/PWA: es exclusivo de apps nativas. La red elegida es
-**Google AdSense** (mismo ecosistema, soporte web).
+**Google AdSense** (mismo ecosistema, soporte web). En la **app móvil** sí se usa
+AdMob: ver [§6](#6-admob--app-mvil).
 
 ---
 
@@ -119,7 +120,43 @@ la cuenta puede recibir avisos/sanción por política.
 
 ---
 
-## 6. Referencias
+## 6. AdMob — app móvil
+
+*Estado: **creados (2026-10-06)**, pendiente de que exista `apps/mobile` que los
+consuma (hitos M1+ del [spec de monetización](./superpowers/specs/2026-10-06-monetizacion-ads-premium-design.md)).
+Diseño de plazamientos y caps: §7–§8 del mismo spec.*
+
+> Los IDs de app y de bloque **no son secretos**: viajan horneados en el APK.
+> Igual que en web, van como variables `EXPO_PUBLIC_*` (build), nunca hardcode.
+
+| Variable (`EXPO_PUBLIC_*`) | Bloque | Superficie | ID |
+|---|---|---|---|
+| `ADMOB_APP_ID` | App | manifest Android (`~`) | `ca-app-pub-2994866776026136~4595623578` |
+| `ADMOB_BANNER_LIST` | Banner | Pie de listas (Directo, Clasificación, Búsqueda, Favoritos) | `ca-app-pub-2994866776026136/4268320510` |
+| `ADMOB_BANNER_MATCH` | Banner | Ficha de partido finalizada/por jugar | `ca-app-pub-2994866776026136/2815638044` |
+| `ADMOB_NATIVE_FEED` | Nativo avanzado | In-feed cada 6–8 items | `ca-app-pub-2994866776026136/8343296898` |
+| `ADMOB_APP_OPEN` | Aplicación abierta | Arranque frío, nunca tras push de gol | `ca-app-pub-2994866776026136/7030215228` |
+| `ADMOB_INTERSTITIAL` | Intersticial | Al salir de ficha finalizada | `ca-app-pub-2994866776026136/8847613791` |
+| `ADMOB_REWARDED` | Vídeo con recompensa | 30 min sin ads (recompensa: `30` × `adfree_min`) | `ca-app-pub-2994866776026136/6371739675` |
+
+**Perfiles EAS:** `development` y `preview` usan los **IDs de prueba de Google**
+(hacer clic en ads reales en builds de prueba es causa de baneo); los reales
+solo en `production`:
+
+| Formato | ID de prueba |
+|---|---|
+| Banner | `ca-app-pub-3940256099942544/6300978111` |
+| Nativo avanzado | `ca-app-pub-3940256099942544/2247696110` |
+| Aplicación abierta | `ca-app-pub-3940256099942544/3419835294` |
+| Intersticial | `ca-app-pub-3940256099942544/1033173712` |
+| Recompensado | `ca-app-pub-3940256099942544/5224354917` |
+
+**Pendientes fuera del repo:** vincular la app a su ficha de Play (cuando
+exista), crear el **mensaje GDPR/UMP** en Privacidad y mensajes (equivalente al
+CMP web de §4; obligatorio antes de servir ads en la UE) y confirmar la URL de
+política de privacidad.
+
+## 7. Referencias
 
 - `.env.prod.example` — plantilla de variables.
 - `deploy/Caddyfile` — CSP en modo observación con hosts de AdSense.
