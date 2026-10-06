@@ -29,7 +29,7 @@ import {
   type EventSnap,
 } from './push-diff.js';
 import { wants, morningPendingSubs, type PushEventType } from './push-segmentation.js';
-import { deliverNative, loadNativeSubs, type ExpoPayload, type NativeSubRow } from './push-expo.js';
+import { deliverNative, deliverNativeDetailed, loadNativeSubs, type ExpoPayload, type NativeSubRow } from './push-expo.js';
 
 const log = createLogger({ service: 'push-dispatcher' });
 
@@ -374,7 +374,7 @@ function eventTeamIds(x: { homeTeamId: string | null; awayTeamId: string | null 
 
 // ── Resumen matinal (#272) ─────────────────────────────────────────────────
 
-interface NightFinal {
+export interface NightFinal {
   matchId: string;
   homeTeamId: string | null;
   awayTeamId: string | null;
@@ -453,7 +453,8 @@ export async function deliverMorningSummaries(now: Date = new Date()): Promise<v
 
   const subs = await db.query<SubRow>(`SELECT ${SUBS_COLUMNS} FROM push_subscriptions`);
   // El canal nativo es aditivo: no depende de que existan suscripciones web.
-  if (subs.rows.length === 0 && (await nativeSubs()).length === 0) return;
+  const natives = await nativeSubs();
+  if (subs.rows.length === 0 && natives.length === 0) return;
 
   // Ledger del día SOLO del canal web: el nativo tiene el suyo (channel
   // 'native', migración 066) y mezclarlos haría que el resumen web saltara a
@@ -505,7 +506,7 @@ export async function deliverMorningSummaries(now: Date = new Date()): Promise<v
   // Canal nativo (Task 4.3): mismo resumen, ledger propio (channel='native',
   // migración 066) para no bloquearse ni duplicarse con el web. Nunca debe
   // romper el resumen web, ya servido arriba.
-  try { await deliverNativeMorningSummaries(finals, dateKey, tag); }
+  try { await deliverNativeMorningSummaries(natives, finals, dateKey, tag); }
   catch (err) { log.warn({ err }, 'resumen matinal nativo fallo — el canal web ya corrió'); }
 }
 
@@ -514,11 +515,17 @@ export async function deliverMorningSummaries(now: Date = new Date()): Promise<v
  * (`morningPendingSubs`) sobre push_tokens y un ledger PROPIO (channel
  * 'native') para que web y nativo no se bloqueen ni dupliquen entre sí.
  * ADITIVO: un fallo aquí no toca al resumen web ya servido.
+ *
+ * El envío va POR LOTES: `groupMorningByPayload` agrupa las subs cuyo resumen
+ * tiene el mismo contenido y cada grupo sale en UNA llamada a
+ * `deliverNativeDetailed` (troceada a 100 dentro) — con cientos de
+ * suscripciones son pocas llamadas HTTP dentro del cron y no un POST por sub.
+ * El ledger se marca SOLO de las subs con ticket ok (resultado por-sub).
+ * Exportada para tests (push-morning-native.test.ts).
  */
-async function deliverNativeMorningSummaries(
-  finals: NightFinal[], dateKey: string, tag: string,
+export async function deliverNativeMorningSummaries(
+  natives: NativeSubRow[], finals: NightFinal[], dateKey: string, tag: string,
 ): Promise<void> {
-  const natives = await nativeSubs();
   if (natives.length === 0) return;
 
   // Solo el ledger del canal nativo: el web tiene el suyo.
@@ -532,8 +539,8 @@ async function deliverNativeMorningSummaries(
   if (pending.length === 0) return;
 
   let nativeSent = 0, nativeFailed = 0;
-  for (const { sub, matches } of pending) {
-    const results: MorningResult[] = matches.map((m) => ({
+  for (const group of groupMorningByPayload(pending)) {
+    const results: MorningResult[] = group.matches.map((m) => ({
       homeShort: m.homeShort, awayShort: m.awayShort,
       homeScore: m.homeScore, awayScore: m.awayScore,
       kickoffLocal: m.kickoffLocal,
@@ -542,24 +549,49 @@ async function deliverNativeMorningSummaries(
       title: branded(morningSummary(results)),
       body: '',
       tag,
-      url: `${WEB_BASE}/matches/${matches[0]!.matchId}`,
+      url: `${WEB_BASE}/matches/${group.matches[0]!.matchId}`,
       type: 'morning_summary',
     };
-    const res = await deliverNative([sub], payload, captureSent);
-    if (res.sent > 0) {
-      // Registrar ANTES de contar (igual que la web): si el INSERT falla no se
-      // marca y se reintentará, sin duplicar a los ya servidos. Un envío
-      // rechazado NO se marca: podría ser transitorio y se reintenta.
+    const res = await deliverNativeDetailed(group.subs, payload, captureSent);
+    // Ledger SOLO de las subs con ticket ok, INSERT antes de contar (igual que
+    // la web): si el INSERT falla no se marca y se reintentará, sin duplicar a
+    // los ya servidos. Un envío rechazado NO se marca: podría ser transitorio
+    // y se reintenta. Idempotente por (day, subscription, channel).
+    for (const id of res.okSubIds) {
       await db.query(
         `INSERT INTO push_summary_log (subscription_id, day, channel) VALUES ($1, $2, 'native') ON CONFLICT DO NOTHING`,
-        [sub.id, dateKey],
+        [id, dateKey],
       );
-      nativeSent += res.sent;
-    } else {
-      nativeFailed += res.failed;
+      nativeSent++;
     }
+    nativeFailed += res.failed;
   }
   log.info({ pending: pending.length, nativeSent, nativeFailed }, '🌅 Resumen matinal (nativo)');
+}
+
+/**
+ * Agrupa los pendientes del resumen por CONTENIDO del mensaje:
+ * `deliverNativeDetailed` manda UN payload a muchas suscripciones (troceando
+ * a 100), así que las subs con los mismos partidos comparten lote y el resumen
+ * entero sale en pocas llamadas en vez de un POST por suscripción. Dos subs
+ * con distinto resumen (favoritos distintos) van en grupos separados. PURA y
+ * testeada.
+ */
+export function groupMorningByPayload(
+  pending: Array<{ sub: NativeSubRow; matches: NightFinal[] }>,
+): Array<{ subs: NativeSubRow[]; matches: NightFinal[] }> {
+  const groups = new Map<string, { subs: NativeSubRow[]; matches: NightFinal[] }>();
+  for (const { sub, matches } of pending) {
+    // La clave cubre TODO lo que afecta al payload: ids (url del primer
+    // partido), marcadores, nombres cortos y kickoff (todos entran en el copy).
+    const key = matches
+      .map((m) => `${m.matchId}|${m.homeScore}-${m.awayScore}|${m.homeShort}-${m.awayShort}|${m.kickoffLocal}`)
+      .join(';;');
+    const g = groups.get(key);
+    if (g) g.subs.push(sub);
+    else groups.set(key, { subs: [sub], matches });
+  }
+  return [...groups.values()];
 }
 
 type MatchEv = { kind: 'start' | 'final'; matchTeams: string[]; payload: PushPayload };

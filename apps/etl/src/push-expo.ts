@@ -93,17 +93,43 @@ export async function loadNativeSubs(): Promise<NativeSubRow[]> {
 }
 
 /**
- * Envía el payload a las suscripciones nativas por lotes; devuelve sent/failed
- * y consulta los recibos para PODAR los tokens con DeviceNotRegistered (igual
- * que la poda 404/410 del canal web).
- *
- * `master === false` y el silencio nocturno ya los filtra el llamador con la
- * segmentación existente: aquí no se re-decide a quién va el mensaje.
+ * Resultado COMPLETO de un despacho nativo: además del recuento agregado, QUÉ
+ * suscripciones obtuvieron ticket ok — lo necesita el ledger por suscripción
+ * del resumen matinal (#383). Un envío rechazado (por-item) o no cubierto
+ * (lote con errores top-level / rechazo HTTP / fallo de red) NO está en
+ * `okSubIds`: quien marca ledger NO debe darlo por servido.
+ */
+export interface NativeDeliveryOutcome {
+  sent: number;
+  failed: number;
+  /** id (sub.id) de las subs cuyo ticket fue `ok` en la respuesta del envío. */
+  okSubIds: Set<string>;
+}
+
+/**
+ * Envío sin detalle por suscripción: misma entrega, solo el recuento.
+ * Envoltorio de compatibilidad con los llamadores que solo cuentan
+ * (deliverNativeEvents); el detalle por sub vive en `deliverNativeDetailed`.
  */
 export async function deliverNative(
   subs: NativeSubRow[], payload: ExpoPayload, captureSent: (deviceId: string, type: string) => void,
 ): Promise<{ sent: number; failed: number }> {
-  if (subs.length === 0) return { sent: 0, failed: 0 };
+  const out = await deliverNativeDetailed(subs, payload, captureSent);
+  return { sent: out.sent, failed: out.failed };
+}
+
+/**
+ * Envía el payload a las suscripciones nativas por lotes; devuelve sent/failed
+ * y las subs con ticket ok, y consulta los recibos para PODAR los tokens con
+ * DeviceNotRegistered (igual que la poda 404/410 del canal web).
+ *
+ * `master === false` y el silencio nocturno ya los filtra el llamador con la
+ * segmentación existente: aquí no se re-decide a quién va el mensaje.
+ */
+export async function deliverNativeDetailed(
+  subs: NativeSubRow[], payload: ExpoPayload, captureSent: (deviceId: string, type: string) => void,
+): Promise<NativeDeliveryOutcome> {
+  if (subs.length === 0) return { sent: 0, failed: 0, okSubIds: new Set() };
   const messages = subs.map((s) => toExpoMessage(s, payload));
   // receipt id → token: el recibo NO trae el token; sin este mapa no se podría
   // podar la fila correcta en processReceipts.
@@ -112,6 +138,9 @@ export async function deliverNative(
   // del envío (error por-item, sin recibo que consultar) — esos tokens se podan
   // de inmediato, sin esperar a /push/getReceipts.
   const deadTokens: string[] = [];
+  // Tickets ok por SUB (índice 1:1 con `subs`): la correspondencia
+  // subs[ci * SEND_CHUNK + i] es la misma que usa el recuento.
+  const okSubIds = new Set<string>();
   let sent = 0, failed = 0;
 
   for (const [ci, chunk] of chunkMessages(messages).entries()) {
@@ -143,6 +172,7 @@ export async function deliverNative(
         if (!sub) break; // respuesta desalineada: mejor no inventar destinatarios
         if (item.status === 'ok' && item.id) {
           sent += 1;
+          okSubIds.add(sub.id);
           receiptTokens.set(item.id, sub.expo_push_token);
           captureSent(sub.device_id, payload.type);
         } else {
@@ -174,7 +204,7 @@ export async function deliverNative(
     catch (err) { log.warn({ err }, 'Poda por ticket falló — se reintentará con el próximo envío'); }
   }
   if (receiptTokens.size > 0) await processReceipts(receiptTokens);
-  return { sent, failed };
+  return { sent, failed, okSubIds };
 }
 
 /** Poda (DELETE) tokens muertos por DeviceNotRegistered: desinstalación o
