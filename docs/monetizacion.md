@@ -19,10 +19,11 @@ Todas viven en `/opt/sticklive/.env.prod` (plantilla: [`.env.prod.example`](../.
 | Variable | Qué es | Vacío / `0` |
 |---|---|---|
 | `NEXT_PUBLIC_ADSENSE_CLIENT` | **Interruptor maestro**: `ca-pub-…` de la cuenta | Vacío = sin AdSense (cero script, cero huecos) |
-| `NEXT_PUBLIC_ADSENSE_SLOT_BANNER` | Id de bloque del banner pequeño | Sin slot = esa superficie no muestra anuncio |
-| `NEXT_PUBLIC_ADSENSE_SLOT_INLINE` | Id de bloque del banner inline entre resultados | idem |
-| `NEXT_PUBLIC_ADSENSE_SLOT_SUMMARY` | Id de bloque del banner en el resumen | idem |
-| `NEXT_PUBLIC_ADSENSE_SLOT_STATS` | Id de bloque del banner en estadísticas | idem |
+| `NEXT_PUBLIC_ADSENSE_SLOT_HOME_TOP` | Id de bloque del banner de portada (arriba) | Sin slot = esa superficie no muestra anuncio |
+| `NEXT_PUBLIC_ADSENSE_SLOT_HOME_INLINE` | Id de bloque del banner inline de portada | idem |
+| `NEXT_PUBLIC_ADSENSE_SLOT_LIST_INLINE` | Id de bloque del banner entre resultados (requiere `ADS_LIST_EVERY > 0`) | idem |
+| `NEXT_PUBLIC_ADSENSE_SLOT_MATCH_SUMMARY` | Id de bloque del banner en el resumen del partido | idem |
+| `NEXT_PUBLIC_ADSENSE_SLOT_MATCH_STATS` | Id de bloque del banner en estadísticas | idem |
 | `NEXT_PUBLIC_ADSENSE_SLOT_INTERSTITIAL` | Id de bloque del interstitial | idem |
 | `NEXT_PUBLIC_ADS_INTERSTITIAL` | `0`/`1`: activa el interstitial | `0` = nunca se muestra |
 | `NEXT_PUBLIC_ADS_LIST_EVERY` | Cada cuántos resultados insertar un banner inline (p. ej. `6`) | `0` = ninguno |
@@ -46,11 +47,12 @@ Todas viven en `/opt/sticklive/.env.prod` (plantilla: [`.env.prod.example`](../.
 2. **Rellenar `.env.prod`** (en el VPS, nunca en el repo ni en el chat):
    `NEXT_PUBLIC_ADSENSE_CLIENT=ca-pub-…` y los `SLOT_*` que se vayan a usar.
    Empieza conservador: `NEXT_PUBLIC_ADS_INTERSTITIAL=0`.
-3. **Declarar las variables como build args del servicio `web`** en
-   `docker-compose.prod.yml` (bloque `args:` de `&app-build`, junto a
-   `NEXT_PUBLIC_POSTHOG_KEY`, etc.). **Mientras no estén ahí, definir las
-   variables en `.env.prod` no tiene ningún efecto** (issue #382; este paso lo
-   aplica el coordinador, no la guía).
+3. **Build args ya cableados (hecho).** Las variables están declaradas como
+   `ARG` en `deploy/Dockerfile` y como `args:` del servicio `web` en
+   `docker-compose.prod.yml` (bloque `&app-build`). Por eso basta con definirlas
+   en `.env.prod` y reconstruir. Si algún día se añade una `NEXT_PUBLIC_*` nueva,
+   hay que cablearla **en ambos sitios** (Dockerfile + compose) o no tendrá
+   efecto: las `NEXT_PUBLIC_*` se hornean en **build**, no en runtime.
 4. **Redesplegar con build** (obligatorio: el valor se hornea en el bundle):
    ```bash
    cd /opt/sticklive
