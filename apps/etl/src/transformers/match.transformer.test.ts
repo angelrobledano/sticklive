@@ -56,6 +56,13 @@ describe('transformMatch', () => {
     expect(r.warnings.length).toBeGreaterThan(0);
   });
 
+  it('groupName de la fase de grupos se valida y pasa al input', () => {
+    const r = transformMatch(raw({ groupName: 'A' }));
+    expect(r.input.groupName).toBe('A');
+    // Vacío/null → no llega al input (el loader escribirá NULL).
+    expect(transformMatch(raw({ groupName: undefined })).input.groupName).toBeUndefined();
+  });
+
   it('fecha válida → Date; fecha inválida → undefined + warning', () => {
     expect(transformMatch(raw({ scheduledAt: '2026-06-19T17:00:00.000Z' })).input.scheduledAt)
       .toBeInstanceOf(Date);

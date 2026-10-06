@@ -14,12 +14,13 @@
  * Si ejecutas los scrapers de forma asíncrona, asegúrate de que el ETL
  * respeta este orden antes de cargar partidos o clasificaciones.
  */
-import type { ScrapeResult, ScrapedCompetition, ScrapedMatch, ScrapedStanding } from '@sports/shared-types';
+import type { ScrapeResult, ScrapedCompetition, ScrapedMatch, ScrapedRound, ScrapedStanding } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { findSportBySlug } from '@sports/db';
 import { loadCompetitions } from './loaders/competition.loader.js';
 import { loadMatches } from './loaders/match.loader.js';
 import { loadStandings } from './loaders/standing.loader.js';
+import { loadRounds } from './loaders/round.loader.js';
 
 const log = createLogger({ module: 'pipeline' });
 
@@ -144,6 +145,33 @@ export class EtlPipeline {
 
     return {
       entityType: 'standing',
+      upserted: result.upserted,
+      skipped: result.skipped,
+      errorCount: result.errors.length,
+      durationMs: Date.now() - start,
+    };
+  }
+
+  /**
+   * Rondas/fases como estructura de datos (World Skate). Se ejecuta ANTES de
+   * los partidos: las rondas existen aunque su fase aún no tenga partidos
+   * (eliminatorias con participantes pendientes de publicar).
+   */
+  async runRounds(
+    scrapeResult: ScrapeResult<ScrapedRound>
+  ): Promise<PipelineResult> {
+    const start = Date.now();
+
+    if (this.ctx.dryRun) {
+      log.info('DRY RUN — rondas no persistidas');
+      return { entityType: 'round', upserted: 0, skipped: 0, errorCount: 0, durationMs: 0 };
+    }
+
+    log.info({ scraperKey: scrapeResult.scraperKey }, 'Pipeline: rondas');
+    const result = await loadRounds(scrapeResult);
+
+    return {
+      entityType: 'round',
       upserted: result.upserted,
       skipped: result.skipped,
       errorCount: result.errors.length,
