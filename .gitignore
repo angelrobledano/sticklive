@@ -29,3 +29,6 @@ dump.sql
 .tmp-close/
 Claude outputs/
 data/
+
+# Worktrees de desarrollo aislado (git worktree, nunca se versionan)
+.worktrees/
