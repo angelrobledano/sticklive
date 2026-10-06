@@ -19,6 +19,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { db, closeDb } from '@sports/db';
 import {
   snapshotMatches, snapshotGoals, snapshotEventsByType, snapshotRounds,
+  snapshotExtraPhases, snapshotResults,
 } from '../../apps/etl/src/push-dispatcher.js';
 import { limpiar } from './support/db.js';
 import { crearPartido } from './support/factorias.js';
@@ -185,5 +186,19 @@ describe('snapshots — visibilidad por calidad', () => {
     const { competitionId, seasonId, matchId } = await crearPartido({ status: 'live' });
     await db.query(`UPDATE competitions SET data_quality = 'en_revision' WHERE id = $1`, [competitionId]);
     expect((await snapshotMatches(seasonId)).has(matchId)).toBe(false);
+  });
+
+  it('snapshotExtraPhases ignora una temporada oculta', async () => {
+    const { seasonId, matchId } = await crearPartido({ status: 'live' });
+    expect((await snapshotExtraPhases([seasonId])).has(matchId)).toBe(true);
+    await db.query(`UPDATE seasons SET data_quality = 'en_revision' WHERE id = $1`, [seasonId]);
+    expect((await snapshotExtraPhases([seasonId])).has(matchId)).toBe(false);
+  });
+
+  it('snapshotResults ignora una temporada oculta', async () => {
+    const { seasonId, matchId } = await crearPartido({ status: 'finished', horasDesdeInicio: 1 });
+    expect((await snapshotResults([seasonId])).has(matchId)).toBe(true);
+    await db.query(`UPDATE seasons SET data_quality = 'en_revision' WHERE id = $1`, [seasonId]);
+    expect((await snapshotResults([seasonId])).has(matchId)).toBe(false);
   });
 });

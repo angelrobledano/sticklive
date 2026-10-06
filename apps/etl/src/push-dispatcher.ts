@@ -409,9 +409,12 @@ async function snapshotNightFinals(): Promise<NightFinal[]> {
            COALESCE(to_char(m.scheduled_at AT TIME ZONE 'Europe/Madrid', 'HH24:MI'), '--:--') AS kickoff_local
     FROM matches m
     JOIN seasons s ON s.id = m.season_id
+    JOIN competitions c ON c.id = s.competition_id
     LEFT JOIN teams ht ON ht.id = m.home_team_id
     LEFT JOIN teams at ON at.id = m.away_team_id
     WHERE m.status = 'finished'
+      AND s.data_quality = 'ok'
+      AND c.data_quality = 'ok'
       AND COALESCE(m.finished_at, m.updated_at) AT TIME ZONE 'Europe/Madrid'
             >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Madrid') - INTERVAL '1 hour')
       AND COALESCE(m.finished_at, m.updated_at) AT TIME ZONE 'Europe/Madrid'
@@ -948,6 +951,8 @@ export async function snapshotExtraPhases(seasonIds: string[]): Promise<Map<stri
     LEFT JOIN teams ht ON ht.id = m.home_team_id
     LEFT JOIN teams at ON at.id = m.away_team_id
     WHERE m.season_id = ANY($1) AND m.status IN ('live', 'overtime', 'penalty_shootout')
+      AND s.data_quality = 'ok'
+      AND comp.data_quality = 'ok'
   `, [seasonIds]);
   const map = new Map<string, ExtraPhaseSnap>();
   for (const r of res.rows) {
@@ -1047,6 +1052,8 @@ export async function snapshotResults(seasonIds: string[]): Promise<Map<string, 
     LEFT JOIN teams ht ON ht.id = m.home_team_id
     LEFT JOIN teams at ON at.id = m.away_team_id
     WHERE m.season_id = ANY($1) AND m.status = 'finished'
+      AND s.data_quality = 'ok'
+      AND comp.data_quality = 'ok'
       AND (m.scheduled_at > NOW() - INTERVAL '12 hours' OR m.updated_at > NOW() - INTERVAL '12 hours')
   `, [seasonIds]);
   const map = new Map<string, ResultSnap>();
