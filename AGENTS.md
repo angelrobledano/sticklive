@@ -7,8 +7,8 @@ un módulo), esas tienen prioridad para ese ámbito.
 ## Referencia rápida del proyecto
 
 **Stick Live** es una plataforma de resultados de hockey sobre patines en directo
-(producción: https://sticklive.eu). Monorepo Turborepo: `apps/{scraper,etl,api,web}`
-+ `packages/{db,shared-types,analytics,logger}`. Fuentes: sidgad/FEP y World Skate
+(producción: https://sticklive.eu). Monorepo Turborepo:
+`apps/{scraper,etl,api,web,mobile}` + `packages/{db,shared-types,analytics,logger}`. Fuentes: sidgad/FEP y World Skate
 Europe → scraper → ETL → PostgreSQL → API Hono (REST+SSE, :3000) → web Next.js 16
 (:3001). 53 migraciones SQL idempotentes en `packages/db/migrations`.
 

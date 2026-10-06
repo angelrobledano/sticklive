@@ -1,7 +1,7 @@
 # Diseño — App móvil Stick Live (Android primero, iOS preparado)
 
 Fecha: 2026-10-05
-Estado: Diseño aprobado en brainstorming; pendiente plan de implementación.
+Estado: Implementado (plan 2026-10-05-app-movil.md ejecutado; quedan verificaciones de release dependientes de humano: dispositivo real, assets de marca y prueba interna en Play).
 
 ## 1. Contexto y objetivo
 
