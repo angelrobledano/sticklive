@@ -33,6 +33,8 @@ import { FepCalendarScraper } from '../../scraper/src/scrapers/fep/fep-calendar.
 import { FepStandingsScraper } from '../../scraper/src/scrapers/fep/fep-standings.scraper.js';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
+import { resolveWorldskate } from '../../scraper/src/scrapers/worldskate/run-worldskate.js';
+import { resolveMatchSourceIds } from '../../scraper/src/core/sources.js';
 
 const log = createLogger({ service: 'run-pipeline' });
 
@@ -499,11 +501,20 @@ async function mainInner() {
     // En modo multi (flag activo, sin --season-id), el barrido de respaldo cubre
     // TODAS las competiciones FEP activas, no sólo la del entorno. Así las 15
     // ligas de la Fase 2 recuperan actas que el directo no capturara.
+    // WSG/europeos: resolveWorldskate añade las ediciones World Skate en
+    // ventana (sus partidos también se quedan sin ficha cuando terminan
+    // fuera del bucle de directo — 5 partidos del Mundial F del 6/10/2026).
     const seasons = wantsMulti
       ? (await getActiveScrapePlan(FEP_SCRAPER_KEY))
           .map((p) => p.seasonId)
           .filter((s): s is string => s !== null)
       : [seasonId!];
+    if (wantsMulti) {
+      const { active } = await resolveWorldskate();
+      for (const ctx of active) {
+        if (!seasons.includes(ctx.seasonId)) seasons.push(ctx.seasonId);
+      }
+    }
     log.info({ seasons: seasons.length, multi: wantsMulti }, '→ Barrido de fichas pendientes');
 
     const { rows: pending } = await db.query<{
@@ -520,7 +531,7 @@ async function mainInner() {
        JOIN competitions comp ON comp.id = s.competition_id
        WHERE m.season_id = ANY($1)
          AND m.status IN ('finished', 'live')
-         AND m.source_ref LIKE 'fep_match_%'
+         AND (m.source_ref LIKE 'fep_match_%' OR m.source_ref LIKE 'wse_match_%')
          AND ($2 OR NOT EXISTS (SELECT 1 FROM match_events e WHERE e.match_id = m.id))
        ORDER BY m.scheduled_at ASC`,
       [seasons, entity === 'refichas']
@@ -553,24 +564,31 @@ async function mainInner() {
       return null;
     });
 
-    let ok = 0, fail = 0;
+    let ok = 0, fail = 0, omitidas = 0;
     const startedAt = Date.now();
 
     for (const m of procesar) {
-      const matchIdp = m.source_ref.replace(/^fep_match_/, '');
-      const matchIdc = (m.comp_ref ?? idc).replace(/^fep_competition_/, '');
+      // Resolución multi-fuente (#333): FEP y World Skate (wse_match_/wse_competition_)
+      // comparten el FepFichaScraper parametrizado por fuente.
+      const ids = resolveMatchSourceIds(m.source_ref, m.comp_ref);
+      if (!ids) {
+        log.warn({ sourceRef: m.source_ref, compRef: m.comp_ref }, 'Fuente/idp no reconocido — ficha omitida');
+        omitidas++;
+        continue;
+      }
       try {
         const scraper = new FepFichaScraper({
-          idp: matchIdp,
-          idc: matchIdc,
+          idp: ids.idp,
+          idc: ids.idc,
+          source: ids.source,
           homeTeamName: m.home_team_name ?? undefined,
           matchId: m.id,
         });
         const result = await scraper.run();
-        log.info({ idp: matchIdp, events: result.data.length }, '✅ Ficha procesada');
+        log.info({ idp: ids.idp, source: ids.source.key, events: result.data.length }, '✅ Ficha procesada');
         ok++;
       } catch (err) {
-        log.error({ idp: matchIdp, err }, '❌ Error en ficha — continuando con la siguiente');
+        log.error({ idp: ids.idp, err }, '❌ Error en ficha — continuando con la siguiente');
         fail++;
       }
       // Pausa de cortesía con la fuente
@@ -587,7 +605,7 @@ async function mainInner() {
       }).catch((err) => log.warn({ err }, 'No se pudo cerrar el run del barrido de fichas'));
     }
 
-    log.info({ ok, fail, total: procesar.length, pendientesRestantes: pending.length - procesar.length }, '🏁 Fichas pendientes completadas');
+    log.info({ ok, fail, omitidas, total: procesar.length, pendientesRestantes: pending.length - procesar.length }, '🏁 Fichas pendientes completadas');
   }
 
   // ── Ficha resumen (eventos de partido) ─────────────────
@@ -597,9 +615,6 @@ async function mainInner() {
       log.error('--source-ref=fep_match_{idp} requerido para entity=ficha');
       process.exit(1);
     }
-
-    // Extraer idp numerico del source_ref (e.g. "fep_match_34267" -> "34267")
-    const idp = sourceRefArg.replace(/^fep_match_/, '');
 
     // Buscar el partido en DB por source_ref para obtener su UUID y equipo local
     const { rows: matchRows } = await db.query<{
@@ -625,17 +640,20 @@ async function mainInner() {
     const match = matchRows[0]!;
     log.info({ matchId: match.id, sourceRef: match.source_ref, homeTeam: match.home_team_name }, 'Scrapeando ficha');
 
-    // idc: el source_ref de la competicion (e.g. "3150" para OK Liga)
-    // Nota: el playoff guarda source_ref "fep_competition_3481" — extraemos el numero
-    const rawIdc = match.idc ?? idc;
-    const fichaIdc = rawIdc.replace(/^fep_competition_/, '') || idc;
-    log.info({ idp, idc: fichaIdc }, 'IDs para endpoint rfep_acta_idc_{IDC}_1.php');
+    // Resolución multi-fuente (#333): FEP y World Skate comparten el ficha
+    const ids = resolveMatchSourceIds(match.source_ref, match.idc ?? idc);
+    if (!ids) {
+      log.error({ sourceRef: match.source_ref }, 'Fuente no reconocida para este source_ref');
+      process.exit(1);
+    }
+    log.info({ idp: ids.idp, idc: ids.idc, source: ids.source.key }, 'IDs para el endpoint de ficha');
 
     // Pasar matchId al scraper para que inyecte directamente en match_events
     // en cuanto encuentre el endpoint activo (evita un segundo paso ETL)
     const scraper = new FepFichaScraper({
-      idp,
-      idc: fichaIdc,
+      idp: ids.idp,
+      idc: ids.idc,
+      source: ids.source,
       homeTeamName: match.home_team_name ?? undefined,
       matchId: match.id,
     });
