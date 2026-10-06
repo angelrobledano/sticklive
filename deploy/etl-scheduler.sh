@@ -143,6 +143,13 @@ while true; do
     echo "[scheduler] integrity-check $(date -u +%T)"
     node dist/apps/etl/src/integrity-check.js \
       || echo "[scheduler] integrity-check fallo (seguimos)"
+
+    # Reconciliación de compras Play (monetización): extiende premium_until de
+    # suscripciones renovadas, marca expiradas y revoca reembolsos. Sin lock:
+    # no compite con scraping (patrón partition-guard). Falla explícito.
+    echo "[scheduler] play-reconcile $(date -u +%T)"
+    node dist/apps/etl/src/play-reconcile.js \
+      || echo "[scheduler] play-reconcile fallo (seguimos)"
   fi
 
   touch "$ALIVE"   # latido: vuelta completada
