@@ -58,7 +58,8 @@ SSE, no este endpoint.
 | POST | `/auth/magic-link` | Envía magic link por email (Brevo). Rate limit 5/h. Sin SMTP configurado devuelve 503 (nunca filtra el enlace salvo modo dev explícito `AUTH_DEV_LINKS=1` fuera de producción) |
 | POST | `/auth/verify` | Canjea el token del magic link (single-use atómico) y devuelve sesión. Rate limit 20/10 min. Fusiona los favoritos del dispositivo anónimo |
 | GET | `/auth/me` | Usuario de la sesión actual (Bearer token) |
-| GET | `/auth/google` + `/auth/google/callback` | OAuth Google (state firmado HMAC, validado en callback) |
+| GET | `/auth/google` + `/auth/google/callback` | OAuth Google (state firmado HMAC, validado en callback). La app móvil entra con `?client=app&device=<id>` y el callback le entrega un código de canje por el scheme `sticklive://` en vez de abrir sesión web |
+| POST | `/auth/exchange` | Canjea el código single-use del login de la app móvil (120 s) por sesión Bearer. Rate limit 10/10 min |
 | POST | `/auth/favorites/merge` | Fusión de favoritos anónimos → cuenta (cap 200/kind) |
 | DELETE | `/auth/favorites` | Elimina un favorito de la nube (`{ kind, refId }`) |
 
@@ -72,6 +73,18 @@ Sesión: Bearer token opaco, hasheado en BD (`user_sessions`), caducidad 90 día
 | DELETE | `/push/subscribe` | Da de baja por endpoint |
 | POST | `/push/opened` | Beacon de apertura de notificación (rate limit 120/min) |
 | POST | `/push/test` | Envío de prueba por deviceId (rate limit 10/10 min) |
+
+### Push nativo de la app (`/push/native/*`, Expo Push → FCM)
+
+| Método | Ruta | Propósito |
+|---|---|---|
+| POST | `/push/native/subscribe` | Registra/actualiza el dispositivo nativo (upsert idempotente por `expo_push_token`; misma segmentación que la web). Auth opcional: con Bearer el token queda asociado al usuario |
+| DELETE | `/push/native/subscribe` | Da de baja el token con ownership (deviceId o usuario de la sesión); idempotente |
+| POST | `/push/native/opened` | Beacon de apertura de notificación (emite `notification_opened` a PostHog; rate limit 120/min) |
+| POST | `/push/native/test` | Envío de prueba Expo Push con ownership por token (rate limit 10/10 min) |
+
+Emisor real (goles, inicio/final, resumen matinal) en el ETL: `push-dispatcher.ts`
+con canal nativo `push-expo.ts`. Detalle: [docs/app.md](app.md).
 
 ## Pagos (Stripe — proveedor activo)
 

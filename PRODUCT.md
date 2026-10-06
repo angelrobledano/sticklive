@@ -49,7 +49,7 @@ Roadmap (Now/Next/Later) como decisiones de producto, no compromisos firmes:
 - Next: mejores notificaciones del directo (palanca de retención), ligas autonómicas (piloto FMP), app Android. *(OK Liga femenina: en producción desde junio 2026; histórico núcleo: volcado v1 hecho, enriquecimiento en curso.)*
 - Later: Portugal, Italia, Francia, estadísticas avanzadas, app iOS, modelo de negocio.
 
-Plataforma registrada como **adaptive**: web hoy; apps nativas (Android primero, iOS después) planificadas. El lenguaje de diseño nativo se define cuando arranque cada app.
+Plataforma registrada como **adaptive**: web en producción; **app Android (Expo) en preparación —release interno de Google Play pendiente—**; iOS compilable pero sin publicar (sin cuenta de Apple en v1). Detalle: `docs/app.md`.
 
 ## Brand Commitments
 

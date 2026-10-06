@@ -20,6 +20,8 @@ Fuentes oficiales (sidgad/FEP + wse.sidgad.com)
         ▼
    apps/api  (Hono)      REST + SSE del directo, auth, push, admin  :3000
         │
+        ├── apps/mobile (Expo SDK 57, Android)  la MISMA API (REST + SSE,
+        │                Bearer) y push nativo vía Expo Push → FCM
         ▼
    apps/web  (Next.js 16, App Router)  mobile-first, PWA, i18n ×5  :3001
         │
@@ -38,6 +40,7 @@ apps/
   etl/       Carga a BD, crons de directo, emisor de push, seeds de competiciones
   api/       API Hono (REST + SSE + auth + admin + push + pagos)
   web/       Frontend Next.js (App Router, i18n propio, PWA)
+  mobile/    App Android con Expo (SDK 57): paridad de la web + push nativo; docs/app.md
 packages/
   db/        Cliente pg + migraciones SQL + queries
   shared-types/   Tipos TS compartidos
@@ -122,4 +125,5 @@ La referencia es **`.env.example`** (desarrollo) y **`.env.prod.example`** (prod
 | [docs/RUNBOOK_ENTITY_RESOLUTION.md](docs/RUNBOOK_ENTITY_RESOLUTION.md) | Entity Resolution as-built |
 | [docs/NOTIFICACIONES.md](docs/NOTIFICACIONES.md) | Cuándo y cómo se envían los push |
 | [docs/TRACKING_POSTHOG.md](docs/TRACKING_POSTHOG.md) | Qué se mide y dónde verlo |
+| [docs/app.md](docs/app.md) | App móvil Android (Expo): sesión, push, i18n, EAS y checklist de release |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | Historial de hitos |
