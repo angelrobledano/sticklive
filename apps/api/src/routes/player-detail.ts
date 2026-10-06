@@ -68,7 +68,10 @@ playerDetailRouter.get('/:id', async (c) => {
                     SELECT mx2.season_id FROM match_lineups ml2
                       JOIN matches mx2 ON mx2.id = ml2.match_id
                       JOIN seasons s2  ON s2.id  = mx2.season_id
+                      JOIN competitions c2 ON c2.id = s2.competition_id
                      WHERE ml2.player_id = players.id
+                       AND s2.data_quality = 'ok'
+                       AND c2.data_quality = 'ok'
                      ORDER BY s2.start_date DESC
                      LIMIT 1
                   )
@@ -138,6 +141,7 @@ playerDetailRouter.get('/:id', async (c) => {
               JOIN seasons s      ON s.id  = m.season_id
               JOIN actividad a    ON a.competition_id = s.competition_id AND s.start_date = a.inicio
              WHERE ml.player_id = $1
+               AND s.data_quality = 'ok'
             UNION
             SELECT DISTINCT m.id, s.competition_id
               FROM match_events me
@@ -145,6 +149,7 @@ playerDetailRouter.get('/:id', async (c) => {
               JOIN seasons s      ON s.id  = m.season_id
               JOIN actividad a    ON a.competition_id = s.competition_id AND s.start_date = a.inicio
              WHERE me.player_id = $1
+               AND s.data_quality = 'ok'
           ) x
           JOIN competitions c ON c.id = x.competition_id
           LEFT JOIN match_lineups ml ON ml.match_id = x.match_id AND ml.player_id = $1
@@ -171,6 +176,8 @@ playerDetailRouter.get('/:id', async (c) => {
       JOIN actividad a  ON a.competition_id = c.id AND s.start_date = a.inicio
       LEFT JOIN pj_real p ON p.competition_id = c.id
       WHERE me.player_id = $1
+        AND s.data_quality = 'ok'
+        AND c.data_quality = 'ok'
       GROUP BY c.id, c.name, c.short_name, p.pj, p.assists
       ORDER BY goals DESC, pj DESC
     `, [id]),

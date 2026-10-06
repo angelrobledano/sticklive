@@ -1,9 +1,9 @@
 /**
  * Visibilidad por calidad de datos (migración 067).
  *
- * Cubre hoy: las funciones de calidad de @sports/db (listados y marcado) y el
- * helper de la API `seasonVisible`. Los lotes de rutas (Tasks 4-10) ampliarán
- * este fichero con las vías HTTP.
+ * Cubre las funciones de calidad de @sports/db (listados y marcado), el helper
+ * `seasonVisible` y las vías HTTP de la API (listados, temporadas, partidos,
+ * búsqueda, fichas de equipo/jugador y sitemap).
  */
 import { randomUUID } from 'node:crypto';
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
@@ -26,7 +26,7 @@ import { metaRouter } from '../../apps/api/src/routes/meta.js';
 import { limpiar } from './support/db.js';
 import {
   crearDeporte, crearCompeticion, crearTemporada,
-  crearPartido, // usado en el lote de rutas (Tasks 4-10)
+  crearPartido,
 } from './support/factorias.js';
 
 // El TTL de la micro-caché de /live se lee AL IMPORTAR `live.ts`, así que se
@@ -35,13 +35,13 @@ import {
 process.env['LIVE_CACHE_TTL_MS'] = '0';
 const { liveRouter } = await import('../../apps/api/src/routes/live.js');
 
-// usado en el lote de rutas (Tasks 4-10)
+// Invoca un router de Hono y devuelve `{ status, body }` (body null si no es JSON).
 async function get(router: { request: (p: string, init?: RequestInit) => Response | Promise<Response> }, path: string) {
   const res = await router.request(path);
   return { status: res.status, body: await res.json().catch(() => null) };
 }
 
-// usado en el lote de rutas (Tasks 4-10)
+// Actualiza la calidad directamente en la BD para aislar cada ruta bajo prueba.
 async function setCompQualityDirect(id: string, q: string) {
   await db.query(`UPDATE competitions SET data_quality = $2 WHERE id = $1`, [id, q]);
 }
@@ -344,6 +344,37 @@ describe('fichas — visibilidad', () => {
     await setSeasonQualityDirect(seasonId, 'en_revision');
     const hidden = await get(playerDetailRouter, `/${playerId}`);
     expect((hidden.body as { career: { seasons: Array<{ seasonId: string }> } }).career.seasons.length).toBe(0);
+  });
+
+  it('las stats por competición no mezclan una temporada oculta con la misma fecha', async () => {
+    const compId = await crearCompeticion(sportId);
+    const sOk = await crearTemporada(compId);
+    const sHidden = await crearTemporada(compId, { esActual: false });
+    await db.query(`UPDATE seasons SET start_date = DATE '2020-01-01' WHERE id IN ($1, $2)`, [sOk, sHidden]);
+
+    const mOk = await crearPartido({ seasonId: sOk });
+    const mHidden = await crearPartido({ seasonId: sHidden });
+
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO players (sport_id, first_name, last_name, slug)
+       VALUES ($1, 'Test', 'Stats', 'test-stats-' || gen_random_uuid()::text) RETURNING id`,
+      [sportId]
+    );
+    const playerId = rows[0]!.id;
+    await db.query(
+      `INSERT INTO match_events (match_id, match_date, team_id, player_id, event_type)
+       VALUES
+         ($1, (SELECT scheduled_at::date FROM matches WHERE id = $1), $2, $3, 'goal'),
+         ($4, (SELECT scheduled_at::date FROM matches WHERE id = $4), $5, $3, 'goal')`,
+      [mOk.matchId, mOk.homeTeamId, playerId, mHidden.matchId, mHidden.homeTeamId]
+    );
+
+    await setSeasonQualityDirect(sHidden, 'en_revision');
+
+    const res = await get(playerDetailRouter, `/${playerId}`);
+    const body = res.body as { statsByCompetition: Array<{ competitionId: string; goals: number }> };
+    const row = body.statsByCompetition.find((r) => r.competitionId === compId);
+    expect(row?.goals).toBe(1); // solo el gol de la temporada visible
   });
 });
 
