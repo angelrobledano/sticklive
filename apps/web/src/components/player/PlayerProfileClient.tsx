@@ -328,7 +328,7 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
 
               {/* PE */}
               <span className={`font-mono text-xs text-center tabular-nums ${
-                r.penaltiesTotal > 0 ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-slate-300 dark:text-slate-700'
+                r.penaltiesTotal > 0 ? 'text-slate-700 dark:text-slate-300 font-semibold' : 'text-slate-300 dark:text-slate-700'
               }`}>
                 {penStr}
               </span>

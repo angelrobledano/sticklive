@@ -216,10 +216,11 @@ function DesktopAside({
  * refuerza la promesa visual del producto (si la pantalla está verde, algo está
  * pasando ahora). Los directos se retiran de las listas en todos los breakpoints.
  */
-function LiveNowBand({ matches, favorites, className = '' }: {
+function LiveNowBand({ matches, favorites, className = '', degraded }: {
   matches: Match[];
   favorites: string[];
   className?: string;
+  degraded: boolean;
 }) {
   const { t } = useT();
   const favSet = useMemo(() => new Set(favorites), [favorites]);
@@ -237,6 +238,11 @@ function LiveNowBand({ matches, favorites, className = '' }: {
         <span className="text-[11px] font-light text-slate-500 dark:text-slate-400 tabular-nums">
           {matches.length}
         </span>
+        {degraded && (
+          <span className="text-[11px] font-medium text-rose-500 dark:text-rose-400" role="status" aria-live="polite">
+            · {tt(t, 'match_states.live_reconnecting', 'Reconectando…')}
+          </span>
+        )}
       </div>
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 min-[1700px]:grid-cols-3 min-[2000px]:grid-cols-4">
         {matches.map((m) => (
@@ -309,12 +315,19 @@ function LiveStripCard({ match, isFavoriteTeam }: { match: Match; isFavoriteTeam
   );
 }
 
-function LiveNowStrip({ matches, favorites }: { matches: Match[]; favorites: string[] }) {
+function LiveNowStrip({ matches, favorites, degraded }: { matches: Match[]; favorites: string[]; degraded: boolean }) {
   const { t } = useT();
   const favSet = useMemo(() => new Set(favorites), [favorites]);
   if (matches.length === 0) return null;
   return (
-    <section aria-label={t('common.live_now')} className="lg:hidden pb-3">
+    // El swipe horizontal de la tira no debe cambiar el día: cortamos la
+    // propagación de los eventos táctiles hacia el contenedor que hace el swipe.
+    <section
+      aria-label={t('common.live_now')}
+      className="lg:hidden pb-3"
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
+    >
       <div className="flex items-center gap-2 px-4 pt-1 pb-2">
         <span className="relative flex h-2 w-2" aria-hidden="true">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
@@ -324,6 +337,11 @@ function LiveNowStrip({ matches, favorites }: { matches: Match[]; favorites: str
           {t('common.live_now')}
         </h2>
         <span className="text-[11px] font-light text-slate-500 dark:text-slate-400 tabular-nums">{matches.length}</span>
+        {degraded && (
+          <span className="text-[11px] font-medium text-rose-500 dark:text-rose-400 truncate" role="status" aria-live="polite">
+            · {tt(t, 'match_states.live_reconnecting', 'Reconectando…')}
+          </span>
+        )}
       </div>
       <ul className="flex gap-2 overflow-x-auto scrollbar-none px-4 pb-1">
         {matches.map((m) => (
@@ -525,7 +543,7 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
   // Refresco en vivo: mientras haya partidos en juego, la lista se sincroniza con
   // el resultado real sondeando /current sin caché (la home es SSR y, si no, el
   // marcador quedaría congelado frente al detalle, que sí va por SSE).
-  const matches = useLiveScores(initialMatches);
+  const { matches, degraded } = useLiveScores(initialMatches);
 
   // "Hoy" anclado en Europe/Madrid: misma autoridad horaria que usa el filtrado
   // de partidos. Estable en SSR (servidor UTC) y en cualquier TZ del dispositivo.
@@ -722,7 +740,7 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
             últimos), independiente del día seleccionado. En móvil va en el
             flujo; en escritorio sube al carril de contexto. */}
         {/* Tira EN DIRECTO — solo móvil (en escritorio manda la banda) */}
-        <LiveNowStrip matches={liveMatches} favorites={favorites} />
+        <LiveNowStrip matches={liveMatches} favorites={favorites} degraded={degraded} />
 
         <div className="lg:hidden">
           <MiGrada matches={matches} teamIds={favorites} leagueIds={leagues} todayKey={todayKey} />
@@ -730,7 +748,7 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
 
         {/* Banda EN DIRECTO — solo escritorio */}
         {liveMatches.length > 0 && (
-          <LiveNowBand matches={liveMatches} favorites={favorites} className="hidden lg:block" />
+          <LiveNowBand matches={liveMatches} favorites={favorites} className="hidden lg:block" degraded={degraded} />
         )}
 
         {dayMatches.length === 0 ? (

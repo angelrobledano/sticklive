@@ -236,6 +236,7 @@
     "freshness_down": "Nessun segnale · ultimo aggiornamento {s} s fa",
     "connecting": "Connessione…",
     "reconnecting_short": "Riconnessione · segnale debole",
+    "live_reconnecting": "Riconnessione…",
     "signal_weak": "Segnale debole",
     "live_connected": "In diretto · connesso",
     "live_poll": "In diretto · aggiornamento",

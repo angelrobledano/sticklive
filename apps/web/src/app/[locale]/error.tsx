@@ -95,8 +95,8 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm px-6 py-5 max-w-sm w-full space-y-3">
         {/* Badge de árbitro */}
         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full
-                        bg-amber-50 dark:bg-amber-900/20
-                        text-amber-700 dark:text-amber-400
+                        bg-rose-50 dark:bg-rose-900/20
+                        text-rose-700 dark:text-rose-400
                         text-xs font-semibold tracking-wide">
           <WhistleIcon />
           <span>{tt(t, 'errors.boundary_badge', 'PARTIDO DETENIDO')}</span>

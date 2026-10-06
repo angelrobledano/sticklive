@@ -28,7 +28,7 @@ export function EventIcon({ type }: { type: MatchEventType | 'accumulated_foul' 
       );
     case 'penalty':
       return (
-        <div className="w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
+        <div className="w-7 h-7 rounded-full bg-slate-500 flex items-center justify-center shrink-0">
           <span aria-hidden="true" className="text-white text-[10px] font-extrabold">P</span>
         </div>
       );

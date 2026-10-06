@@ -39,8 +39,15 @@ function hasLiveActivity(matches: Match[]): boolean {
  * Devuelve la MISMA referencia del prop hasta que llega una actualización, de modo
  * que no rompe la memoización aguas abajo cuando no hay nada en vivo.
  */
-export function useLiveScores(initial: Match[]): Match[] {
+export interface LiveScoresState {
+  matches: Match[];
+  /** true si el último sondeo falló: el marcador puede estar congelado. */
+  degraded: boolean;
+}
+
+export function useLiveScores(initial: Match[]): LiveScoresState {
   const [matches, setMatches] = useState<Match[]>(initial);
+  const [degraded, setDegraded] = useState(false);
 
   // Resincroniza si cambia el prop del servidor (navegación, revalidate).
   useEffect(() => { setMatches(initial); }, [initial]);
@@ -61,11 +68,14 @@ export function useLiveScores(initial: Match[]): Match[] {
       if (document.visibilityState === 'hidden') return;
       try {
         const fresh = await getCurrentMatchesFresh();
-        if (!cancelled) setMatches(fresh);
+        if (!cancelled) { setMatches(fresh); setDegraded(false); }
       } catch (err) {
         // Mantén el estado actual; reintentamos en el próximo tick. #244: los
         // fallos del polling en vivo ya no se descartan en silencio.
-        if (!cancelled) Sentry.captureException(err, { tags: { scope: 'live-scores-poll' } });
+        if (!cancelled) {
+          setDegraded(true);
+          Sentry.captureException(err, { tags: { scope: 'live-scores-poll' } });
+        }
       }
     };
 
@@ -84,5 +94,5 @@ export function useLiveScores(initial: Match[]): Match[] {
     // Solo nos importa el flag de actividad: el contenido vive en matchesRef.
   }, [active]);
 
-  return matches;
+  return { matches, degraded };
 }

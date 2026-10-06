@@ -106,7 +106,7 @@ function StarIcon({ filled }: { filled: boolean }) {
       stroke="currentColor"
       strokeWidth={1.5}
       className={`w-[18px] h-[18px] transition-colors ${
-        filled ? 'text-amber-400' : 'text-slate-300 dark:text-slate-600'
+        filled ? 'text-rink-passion' : 'text-slate-300 dark:text-slate-600'
       }`}
     >
       <path

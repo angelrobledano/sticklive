@@ -236,6 +236,7 @@
     "freshness_down": "Sem sinal · última atualização há {s} s",
     "connecting": "A ligar…",
     "reconnecting_short": "A reconectar · sinal fraco",
+    "live_reconnecting": "A reconectar…",
     "signal_weak": "Sinal fraco",
     "live_connected": "Em direto · ligado",
     "live_poll": "Em direto · a atualizar",

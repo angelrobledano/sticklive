@@ -261,6 +261,7 @@ Rejilla fija de columnas; zonas de clasificación señaladas con barra lateral d
 ### Don't:
 - **Don't** usar el granate como relleno decorativo: es identidad y señal, no fondo.
 - **Don't** pintar de verde/ámbar estados que no son "en vivo"/"descanso".
+- **Don't** usar ámbar para la estrella de favorito, insignias (capitán) o avisos de dato: la estrella de favorito es granate (`rink-passion`), el capitán es slate y los avisos de dato/error van a slate/rose. El ámbar queda para descanso/aplazado (y el Premium, en oro).
 - **Don't** introducir fuentes nuevas; Inter para interfaz y monoespaciada para cifras es el sistema.
 - **Don't** usar negro plano ni sombras duras en modo oscuro; la profundidad es tonal.
 - **Don't** dejar que las cifras desplacen el layout al actualizarse: siempre tabulares.
