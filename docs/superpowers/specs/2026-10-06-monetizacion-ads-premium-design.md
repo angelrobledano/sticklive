@@ -117,6 +117,12 @@ ambas superficies comparten `isPremiumActive`. La activación de AdSense en
 producción sigue su propia guía ([docs/monetizacion.md](../../docs/monetizacion.md))
 y queda fuera del alcance de este diseño.
 
+**Actualización (2026-10-06):** sí hubo un cambio de código web, ajeno al
+premium: se desacopló el consentimiento de analítica del de publicidad para que
+el CMP certificado de Google pueda servirse (ver
+[docs/monetizacion.md §4.2](../../docs/monetizacion.md)). No altera ninguna de las
+decisiones de este diseño sobre la app.
+
 ## 9. Prerrequisitos manuales (fuera del repo)
 
 - Cuenta de Google Play Console con la app creada y los **dos productos**

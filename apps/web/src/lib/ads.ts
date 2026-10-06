@@ -7,16 +7,17 @@
  *   · Sin `NEXT_PUBLIC_ADSENSE_CLIENT` no se carga el script ni se renderiza
  *     ningún anuncio (comportamiento actual intacto).
  *   · Nunca anuncios para usuarios Premium.
- *   · Nunca anuncios sin consentimiento (RGPD/ePrivacy; ver `lib/consent.ts`).
+ *   · El consentimiento publicitario (RGPD; EEE/UK/Suiza) lo gestiona el CMP
+ *     certificado de Google (Funding Choices/TCF), que se sirve a través del
+ *     propio tag de AdSense. Por eso el tag NO se bloquea con el consentimiento
+ *     de analítica (`lib/consent.ts`), que solo gobierna PostHog: si lo
+ *     bloqueáramos, el mensaje de consentimiento nunca podría mostrarse (ver
+ *     docs/monetizacion.md §4).
  *
  * La lógica de decisión (`adsEnabled`, `listAdInsertIndex`,
- * `shouldShowInterstitial`) es PURA y está cubierta por tests. Los helpers de
- * cliente (carga del script, hook de consentimiento) son accesibles solo en el
- * navegador y nunca lanzan.
+ * `shouldShowInterstitial`) es PURA y está cubierta por tests. La carga del
+ * script es un helper de cliente: solo navegador y nunca lanza.
  */
-
-import { useEffect, useState } from 'react';
-import { CONSENT_EVENT, CONSENT_KEY, isAnalyticsAllowed, readConsent } from './consent';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -124,12 +125,15 @@ export interface AdsEnabledInput {
   /** Cliente AdSense configurado (`ca-pub-…`); vacío ⇒ desactivado. */
   client?: string | null;
   premium: boolean;
-  consentGranted: boolean;
 }
 
-/** ¿Se puede mostrar un anuncio? Cliente + no Premium + consentimiento. */
-export function adsEnabled({ client, premium, consentGranted }: AdsEnabledInput): boolean {
-  return clean(client).length > 0 && !premium && consentGranted === true;
+/**
+ * ¿Se puede mostrar un anuncio? Cliente configurado y usuario no Premium.
+ * El consentimiento y el tipo de anuncio (personalizado/no personalizado) los
+ * decide el CMP de Google (TCF) dentro del propio tag de AdSense, no esta capa.
+ */
+export function adsEnabled({ client, premium }: AdsEnabledInput): boolean {
+  return clean(client).length > 0 && !premium;
 }
 
 /**
@@ -148,7 +152,6 @@ export function listAdInsertIndex(itemCount: number, every: number = LIST_AD_EVE
 export interface InterstitialInput {
   enabled: boolean;
   premium: boolean;
-  consentGranted: boolean;
   alreadyShownThisSession: boolean;
   lastShownAt?: number | null;
   nowMs: number;
@@ -161,7 +164,7 @@ export interface InterstitialInput {
  * defecto). `lastShownAt` inválido se trata como "nunca mostrado".
  */
 export function shouldShowInterstitial(input: InterstitialInput): boolean {
-  if (!input.enabled || input.premium || !input.consentGranted) return false;
+  if (!input.enabled || input.premium) return false;
   if (input.alreadyShownThisSession) return false;
   const min = Number.isFinite(input.minIntervalMs)
     ? (input.minIntervalMs as number)
@@ -203,25 +206,3 @@ export function loadAdsenseScript(client: string): boolean {
   }
 }
 
-/**
- * Consentimiento de anuncios como estado reactivo. Arranca en `false` (SSR y
- * primer render) y se sincroniza en el efecto, reaccionando a cambios en la
- * misma pestaña (`CONSENT_EVENT`) o en otra (`storage`).
- */
-export function useAdConsent(): boolean {
-  const [granted, setGranted] = useState(false);
-  useEffect(() => {
-    const sync = () => setGranted(isAnalyticsAllowed(readConsent()));
-    sync();
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === CONSENT_KEY || e.key === null) sync();
-    };
-    window.addEventListener(CONSENT_EVENT, sync);
-    window.addEventListener('storage', onStorage);
-    return () => {
-      window.removeEventListener(CONSENT_EVENT, sync);
-      window.removeEventListener('storage', onStorage);
-    };
-  }, []);
-  return granted;
-}

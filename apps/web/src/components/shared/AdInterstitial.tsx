@@ -7,7 +7,8 @@
  * `NEXT_PUBLIC_ADS_INTERSTITIAL=1`):
  *   • Nunca al cargar sobre el contenido: aparece tras un tiempo de interacción
  *     en la página (≥ 25 s), no antes.
- *   • Nunca para Premium ni sin consentimiento.
+ *   • Nunca para Premium. El consentimiento publicitario lo gobierna el CMP de
+ *     Google (TCF) dentro del tag de AdSense (ver docs/monetizacion.md §4).
  *   • Botón de cerrar visible + `Escape`, con `role="dialog"` y `aria-modal`.
  *   • Frecuencia limitada: máximo uno por sesión y un intervalo mínimo (6 h).
  *   • Sin animaciones, por lo que respeta `prefers-reduced-motion` por defecto.
@@ -22,7 +23,6 @@ import {
   adsEnabled,
   adsenseConfig,
   shouldShowInterstitial,
-  useAdConsent,
   loadAdsenseScript,
   INTERSTITIAL_INTERACTION_MS,
   INTERSTITIAL_MIN_INTERVAL_MS,
@@ -48,7 +48,6 @@ function trapFocusIndex(current: number, count: number, backwards: boolean): num
 export function AdInterstitial() {
   const { t } = useT();
   const { isPremium, mounted } = usePremium();
-  const consentGranted = useAdConsent();
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -58,7 +57,7 @@ export function AdInterstitial() {
   // Programa la aparición tras un tiempo de interacción (nunca al cargar).
   useEffect(() => {
     if (!enabled || !mounted) return;
-    if (!adsEnabled({ client: ADS.client, premium: isPremium, consentGranted })) return;
+    if (!adsEnabled({ client: ADS.client, premium: isPremium })) return;
 
     let alreadyShown = false;
     let lastShownAt: number | null = null;
@@ -73,7 +72,6 @@ export function AdInterstitial() {
       if (!shouldShowInterstitial({
         enabled,
         premium: isPremium,
-        consentGranted,
         alreadyShownThisSession: alreadyShown,
         lastShownAt,
         nowMs,
@@ -92,7 +90,7 @@ export function AdInterstitial() {
     }, INTERSTITIAL_INTERACTION_MS);
 
     return () => clearTimeout(timer);
-  }, [enabled, mounted, isPremium, consentGranted]);
+  }, [enabled, mounted, isPremium]);
 
   const close = useCallback(() => {
     setOpen(false);
