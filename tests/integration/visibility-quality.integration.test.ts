@@ -36,7 +36,7 @@ process.env['LIVE_CACHE_TTL_MS'] = '0';
 const { liveRouter } = await import('../../apps/api/src/routes/live.js');
 
 // usado en el lote de rutas (Tasks 4-10)
-async function get(router: { request: (p: string, init?: RequestInit) => Promise<Response> }, path: string) {
+async function get(router: { request: (p: string, init?: RequestInit) => Response | Promise<Response> }, path: string) {
   const res = await router.request(path);
   return { status: res.status, body: await res.json().catch(() => null) };
 }
