@@ -13,8 +13,10 @@ import { APP_TZ } from '@/lib/match-time';
  */
 export function fmtTime(iso: string | null, tz?: string | null, locale = 'es'): string {
   if (!iso) return '--:--';
+  // Ciclo horario forzado a 23 (0-23): con locale 'en' el defecto es 12h AM/PM,
+  // impropio de un producto europeo (#413). Válido en todos los locales.
   return new Date(iso).toLocaleTimeString(locale, {
-    hour: '2-digit', minute: '2-digit', timeZone: tz || APP_TZ,
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: tz || APP_TZ,
   });
 }
 

@@ -24,6 +24,11 @@ describe('formatDate/formatTime con locale (#170)', () => {
     expect(formatTime(ISO, 'Europe/Madrid')).toBe('20:30');
   });
 
+  it('siempre 24h, también en locale en (#413: salía "08:30 PM")', () => {
+    expect(formatTime(ISO, 'Europe/Madrid', 'en')).toBe('20:30');
+    expect(formatTime(ISO, 'Europe/Madrid', 'fr')).toBe('20:30');
+  });
+
   it('sin fecha devuelve el marcador por defecto', () => {
     expect(formatTime(null)).toBe('--:--');
     expect(formatDate(null)).toBe('');

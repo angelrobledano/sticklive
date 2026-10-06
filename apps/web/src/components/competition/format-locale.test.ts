@@ -27,4 +27,8 @@ describe('fmtDate/fmtTime/dayPillLabel con locale (#170)', () => {
   it('la hora se formatea en la zona de la competición', () => {
     expect(fmtTime(ISO, 'Europe/Madrid')).toBe('20:30');
   });
+
+  it('siempre 24h, también en locale en (#413: salía "08:30 PM")', () => {
+    expect(fmtTime(ISO, 'Europe/Madrid', 'en')).toBe('20:30');
+  });
 });
