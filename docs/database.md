@@ -50,6 +50,16 @@ players ──< team_players
 - **Entity Resolution** — `source_entity_map` (ID de fuente → club o equipo, FK polimórfica), `team_aliases` (nombre normalizado → team, índice GIN de trigramas), `resolution_queue` (cola HITL). `teams.source_ref`/`alt_source_refs` coexisten con el mapa.
 - **`players` / `team_players`** — jugadores y plantillas; las plantillas se reconstruyen desde las actas.
 
+## Calidad de datos / visibilidad (migraciones 064 y 067)
+
+- `competitions.data_quality` (064) y `seasons.data_quality` (067): `'ok'` (defecto) | `'en_revision'`.
+- **Una temporada es visible ⇔ ella y su competición están en `'ok'`.** Si no, deja de ser consultable por el usuario: listados, búsqueda, selector de temporadas, endpoints de temporada (`overview`/`stats`/`standings`/`matches` → 404), ficha de partido, historial de equipo, carrera de jugador y sitemap.
+- La competición actúa de **interruptor maestro**: `en_revision` oculta todo su contenido.
+- El scraper/ETL **nunca** escribe estas columnas; la curación sobrevive a los upserts.
+- El **emisor de push** (`apps/etl/src/push-dispatcher.ts`) también filtra por visibilidad: nunca notifica partidos, jornadas ni eventos (gol/tarjeta/falta/prórroga/final) de temporadas o competiciones ocultas.
+- Curación: panel `/admin` → pestaña «Competiciones», o los endpoints `PATCH /admin/competitions/:id/quality` y `PATCH /admin/seasons/:id/quality` (cabecera `X-Admin-Token`, body `{ dataQuality }`).
+- Límite: las páginas web cacheadas por ISR pueden tardar hasta ~5 min en reflejar el cambio (la API responde 404 al instante).
+
 ## Cuenta y producto
 
 - `users` (email opcional, `status` admin, premium via `orders`/`premium_until`) · `user_sessions` (tokens **hasheados** SHA-256, caducidad 90 días, máx. 5 por usuario) · `auth_tokens` (magic links, hasheados, single-use atómico).

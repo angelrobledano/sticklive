@@ -115,6 +115,8 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         JOIN competitions c ON c.id = s.competition_id
         LEFT JOIN competition_sources cs ON cs.competition_id = c.id
         WHERE s.id = $1
+          AND s.data_quality = 'ok'
+          AND c.data_quality = 'ok'
       `, [seasonId]),
 
       // 2) Standings con info de equipo

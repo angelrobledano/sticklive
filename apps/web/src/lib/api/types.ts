@@ -205,7 +205,7 @@ export interface CompetitionSummary {
   scope: 'national' | 'regional' | 'international';
   region: string | null;
   ageCategory: string;
-  /** Calidad del histórico (#230): 'ok' | 'en_revision' — la web etiqueta (no oculta). */
+  /** Calidad (#064): el API público solo devuelve competiciones visibles ('ok'). */
   dataQuality?: 'ok' | 'en_revision' | string;
   season: {
     id: string;

@@ -5,9 +5,12 @@
  * CONSULTAS, que solo se pueden verificar contra Postgres real:
  *
  *   · snapshotMatches — qué partidos entran (ventana de ±4h, y los live SIEMPRE).
+ *   · snapshotRounds — qué rondas entran (solo temporadas/competiciones visibles).
  *   · snapshotGoals — solo goal/penalty y solo CON goleador identificado.
  *   · snapshotEventsByType — el mismo motor pero SIN exigir jugador (roja/azul
  *     sin lanzador se segmentan por equipo).
+ *   · Visibilidad por calidad (`data_quality`): el emisor NUNCA notifica
+ *     partidos, rondas ni eventos de una temporada o competición oculta.
  *
  * Si una migración o un refactor rompe una de estas ventanas/filtros, el push
  * en vivo fallaría o spamearía en silencio; estos tests lo cazan en CI.
@@ -15,7 +18,8 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { db, closeDb } from '@sports/db';
 import {
-  snapshotMatches, snapshotGoals, snapshotEventsByType,
+  snapshotMatches, snapshotGoals, snapshotEventsByType, snapshotRounds,
+  snapshotExtraPhases, snapshotResults,
 } from '../../apps/etl/src/push-dispatcher.js';
 import { limpiar } from './support/db.js';
 import { crearPartido } from './support/factorias.js';
@@ -144,5 +148,57 @@ describe('snapshotEventsByType — no exige goleador', () => {
     const snap = await snapshotEventsByType([seasonId], 'red_card');
 
     expect(snap.has(azul)).toBe(false);
+  });
+});
+
+describe('snapshots — visibilidad por calidad', () => {
+  it('snapshotMatches ignora una temporada oculta', async () => {
+    const { seasonId, matchId } = await crearPartido({ status: 'live' });
+    expect((await snapshotMatches(seasonId)).has(matchId)).toBe(true);
+
+    await db.query(`UPDATE seasons SET data_quality = 'en_revision' WHERE id = $1`, [seasonId]);
+    expect((await snapshotMatches(seasonId)).has(matchId)).toBe(false);
+  });
+
+  it('snapshotRounds ignora una temporada oculta', async () => {
+    const { seasonId, matchId } = await crearPartido({ status: 'live' });
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO rounds (season_id, number, name) VALUES ($1, 1, 'J1') RETURNING id`, [seasonId]);
+    const roundId = rows[0]!.id;
+    await db.query(`UPDATE matches SET round_id = $1 WHERE id = $2`, [roundId, matchId]);
+
+    expect((await snapshotRounds(seasonId)).has(roundId)).toBe(true);
+    await db.query(`UPDATE seasons SET data_quality = 'en_revision' WHERE id = $1`, [seasonId]);
+    expect((await snapshotRounds(seasonId)).has(roundId)).toBe(false);
+  });
+
+  it('snapshotGoals ignora eventos de una temporada oculta', async () => {
+    const { sportId, seasonId, matchId, homeTeamId } = await crearPartido({ status: 'live' });
+    const jugador = await crearJugador(sportId);
+    await crearEvento(matchId, { eventType: 'goal', playerId: jugador, teamId: homeTeamId, minute: 5 });
+
+    expect((await snapshotGoals([seasonId])).size).toBe(1);
+    await db.query(`UPDATE seasons SET data_quality = 'en_revision' WHERE id = $1`, [seasonId]);
+    expect((await snapshotGoals([seasonId])).size).toBe(0);
+  });
+
+  it('la competición oculta todo su contenido', async () => {
+    const { competitionId, seasonId, matchId } = await crearPartido({ status: 'live' });
+    await db.query(`UPDATE competitions SET data_quality = 'en_revision' WHERE id = $1`, [competitionId]);
+    expect((await snapshotMatches(seasonId)).has(matchId)).toBe(false);
+  });
+
+  it('snapshotExtraPhases ignora una temporada oculta', async () => {
+    const { seasonId, matchId } = await crearPartido({ status: 'live' });
+    expect((await snapshotExtraPhases([seasonId])).has(matchId)).toBe(true);
+    await db.query(`UPDATE seasons SET data_quality = 'en_revision' WHERE id = $1`, [seasonId]);
+    expect((await snapshotExtraPhases([seasonId])).has(matchId)).toBe(false);
+  });
+
+  it('snapshotResults ignora una temporada oculta', async () => {
+    const { seasonId, matchId } = await crearPartido({ status: 'finished', horasDesdeInicio: 1 });
+    expect((await snapshotResults([seasonId])).has(matchId)).toBe(true);
+    await db.query(`UPDATE seasons SET data_quality = 'en_revision' WHERE id = $1`, [seasonId]);
+    expect((await snapshotResults([seasonId])).has(matchId)).toBe(false);
   });
 });

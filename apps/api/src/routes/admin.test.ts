@@ -72,3 +72,52 @@ describe('admin — ids malformados no llegan a la BD (#321)', () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe('admin — calidad (guards sin BD)', () => {
+  it('PATCH /competitions/:id/quality con uuid inválido → 404', async () => {
+    const res = await adminRouter.request('/competitions/xyz/quality', {
+      method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({ dataQuality: 'ok' }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('PATCH /competitions/:id/quality con valor inválido → 400', async () => {
+    const res = await adminRouter.request('/competitions/00000000-0000-0000-0000-000000000001/quality', {
+      method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({ dataQuality: 'nope' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('PATCH /seasons/:id/quality con uuid inválido → 404', async () => {
+    const res = await adminRouter.request('/seasons/xyz/quality', {
+      method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({ dataQuality: 'ok' }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('PATCH /seasons/:id/quality con valor inválido → 400', async () => {
+    const res = await adminRouter.request('/seasons/00000000-0000-0000-0000-000000000001/quality', {
+      method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({ dataQuality: 'nope' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('GET /competitions/:id/seasons/quality con uuid inválido → 404', async () => {
+    const res = await adminRouter.request('/competitions/xyz/seasons/quality', { headers: AUTH });
+    expect(res.status).toBe(404);
+  });
+
+  it('PATCH /competitions/:id/quality sin body → 400', async () => {
+    const res = await adminRouter.request('/competitions/00000000-0000-0000-0000-000000000001/quality', {
+      method: 'PATCH', headers: AUTH,
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('PATCH /seasons/:id/quality sin body → 400', async () => {
+    const res = await adminRouter.request('/seasons/00000000-0000-0000-0000-000000000001/quality', {
+      method: 'PATCH', headers: AUTH,
+    });
+    expect(res.status).toBe(400);
+  });
+});

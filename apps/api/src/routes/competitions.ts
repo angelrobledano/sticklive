@@ -56,11 +56,12 @@ competitionsRouter.get('/', async (c) => {
         JOIN LATERAL (
           SELECT s2.id FROM seasons s2
           WHERE s2.competition_id = comp.id
+            AND s2.data_quality = 'ok'
             AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s2.id)
           ORDER BY s2.is_current DESC, s2.start_date DESC NULLS LAST
           LIMIT 1
         ) s ON TRUE
-        WHERE TRUE ` + archivedClause + `
+        WHERE comp.data_quality = 'ok' ` + archivedClause + `
       ),
       team_counts AS (
         SELECT st.season_id, COUNT(*)::text AS c
@@ -146,11 +147,14 @@ competitionsRouter.get('/:id/seasons', async (c) => {
       is_current: boolean;
       start_date: Date | null;
     }>(
-      `SELECT id, name, slug, is_current, start_date
+      `SELECT s.id, s.name, s.slug, s.is_current, s.start_date
         FROM seasons s
-        WHERE competition_id = $1
+        JOIN competitions c ON c.id = s.competition_id
+        WHERE s.competition_id = $1
+          AND s.data_quality = 'ok'
+          AND c.data_quality = 'ok'
           AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s.id)
-        ORDER BY start_date DESC NULLS LAST, name DESC`,
+        ORDER BY s.start_date DESC NULLS LAST, s.name DESC`,
       [id]
     );
 

@@ -119,6 +119,8 @@ async function fetchMatchSnapshot(matchId: string) {
       LEFT JOIN seasons s        ON s.id = m.season_id
       LEFT JOIN competitions comp ON comp.id = s.competition_id
       WHERE m.id = $1
+        AND s.data_quality = 'ok'
+        AND comp.data_quality = 'ok'
     `, [matchId]),
     db.query<MatchDtoEventRow>(`
       SELECT
@@ -328,6 +330,23 @@ matchStreamRouter.get('/:id/stream', async (c) => {
   const matchId = c.req.param('id');
 
   if (!isUuid(matchId)) {
+    return c.json({ error: 'not_found' }, 404);
+  }
+
+  // #067: no abrir el stream de un partido cuya temporada/competición esté
+  // oculta. El hub puede tener un snapshot cacheado y servírselo a un
+  // recién llegado; comprobamos al abrir. Un cambio a oculto con el stream ya
+  // abierto se corta en el siguiente poll (emite `error`). Si el partido no
+  // existe, no tocamos el comportamiento previo (lo cubre el poll del hub).
+  const vis = await db.query<{ hidden: boolean }>(
+    `SELECT (s.data_quality <> 'ok' OR c.data_quality <> 'ok') AS hidden
+       FROM matches m
+       JOIN seasons s      ON s.id = m.season_id
+       JOIN competitions c ON c.id = s.competition_id
+      WHERE m.id = $1`,
+    [matchId]
+  );
+  if (vis.rows[0]?.hidden === true) {
     return c.json({ error: 'not_found' }, 404);
   }
 

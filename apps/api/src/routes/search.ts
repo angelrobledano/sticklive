@@ -170,15 +170,17 @@ export const COMPETITION_QUERY = `
     comp.id, comp.name, comp.name_i18n, comp.short_name, comp.country, comp.scope,
     s.name AS season_name
   FROM competitions comp
-  LEFT JOIN LATERAL (
+  JOIN LATERAL (
     SELECT s2.name
     FROM seasons s2
     WHERE s2.competition_id = comp.id
+      AND s2.data_quality = 'ok'
       AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s2.id)
     ORDER BY s2.is_current DESC, s2.start_date DESC NULLS LAST
     LIMIT 1
   ) s ON TRUE
   WHERE comp.archived_at IS NULL
+    AND comp.data_quality = 'ok'
     AND (
       strpos(${unaccentExpr('comp.name')}, $1) > 0
       OR strpos(${unaccentExpr("coalesce(comp.short_name, '')")}, $1) > 0

@@ -159,6 +159,8 @@ teamDetailRouter.get('/:id', async (c) => {
           UNION
           SELECT season_id FROM matches     WHERE home_team_id = $1 OR away_team_id = $1
         )
+          AND se.data_quality = 'ok'
+          AND c.data_quality = 'ok'
         ORDER BY se.is_current DESC,
                  EXISTS (SELECT 1 FROM standings st WHERE st.season_id = se.id AND st.team_id = $1) DESC,
                  se.start_date DESC NULLS LAST,

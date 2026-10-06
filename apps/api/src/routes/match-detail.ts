@@ -58,6 +58,8 @@ matchDetailRouter.get('/:id', async (c) => {
         LEFT JOIN seasons s        ON s.id = m.season_id
         LEFT JOIN competitions comp ON comp.id = s.competition_id
         WHERE m.id = $1
+          AND s.data_quality = 'ok'
+          AND comp.data_quality = 'ok'
       `, [id]),
 
       // 2) Eventos del partido ordenados cronológicamente

@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { AdminCompetitions } from '@/components/admin/AdminCompetitions';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 const TOKEN_KEY = 'sticklive_admin_token';
@@ -55,6 +56,7 @@ export default function AdminPage() {
   const [error, setError]   = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy]     = useState<string | null>(null); // id de usuario en mutación
+  const [tab, setTab]       = useState<'users' | 'competitions'>('users');
 
   useEffect(() => {
     try {
@@ -157,7 +159,9 @@ export default function AdminPage() {
   return (
     <div className="px-4 py-6 max-w-4xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-50">Usuarios</h1>
+        <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-50">
+          {tab === 'users' ? 'Usuarios' : 'Competiciones'}
+        </h1>
         <button
           onClick={() => { setData(null); setToken(''); try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* noop */ } }}
           className="text-xs text-slate-400 hover:text-red-500 min-h-[44px] px-2"
@@ -166,6 +170,26 @@ export default function AdminPage() {
         </button>
       </div>
 
+      <div className="flex gap-1">
+        {([['users', 'Usuarios'], ['competitions', 'Competiciones']] as const).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`text-xs font-semibold px-3 min-h-[36px] rounded-lg ${
+              tab === key
+                ? 'bg-rink-passion text-white'
+                : 'text-slate-500 hover:text-rink-passion'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {error && <p className="text-xs text-red-500">{error}</p>}
+
+      {tab === 'users' && (
+        <>
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <KpiCard label="Total"        value={data.total} />
@@ -173,8 +197,6 @@ export default function AdminPage() {
         <KpiCard label="Premium"      value={data.premium} />
         <KpiCard label="Desactivados" value={data.disabled} />
       </div>
-
-      {error && <p className="text-xs text-red-500">{error}</p>}
 
       {/* Tabla */}
       <div className="card overflow-hidden overflow-x-auto">
@@ -237,6 +259,10 @@ export default function AdminPage() {
           </tbody>
         </table>
       </div>
+        </>
+      )}
+
+      {tab === 'competitions' && <AdminCompetitions token={token} onError={setError} />}
     </div>
   );
 }

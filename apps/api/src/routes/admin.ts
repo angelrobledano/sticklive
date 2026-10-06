@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats } from '@sports/db';
+import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, type DataQuality } from '@sports/db';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 import { captureRouteError } from '../lib/route-error.js';
@@ -236,6 +236,74 @@ adminRouter.post('/competitions/merge', async (c) => {
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     return c.json({ error: 'Merge failed', detail }, detail.includes('no existen') ? 404 : 500);
+  }
+});
+
+// ── Calidad de datos / visibilidad (migración 067) ───────────────────────────
+
+function parseQuality(raw: unknown): DataQuality | null {
+  return raw === 'ok' || raw === 'en_revision' ? raw : null;
+}
+
+/** GET /admin/competitions/quality — todas (incl. archivadas/ocultas) con recuento de temporadas. */
+adminRouter.get('/competitions/quality', async (c) => {
+  try {
+    const competitions = await listCompetitionsForQuality();
+    return c.json({ count: competitions.length, competitions });
+  } catch (err) {
+    captureRouteError(err, 'admin] competitions/quality error');
+    logger.error({ err }, '[admin] competitions/quality error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/** GET /admin/competitions/:id/seasons/quality — todas las temporadas (incl. ocultas). */
+adminRouter.get('/competitions/:id/seasons/quality', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Competition not found' }, 404);
+  try {
+    const seasons = await listSeasonsForQuality(id);
+    return c.json({ count: seasons.length, seasons });
+  } catch (err) {
+    captureRouteError(err, 'admin] seasons/quality error');
+    logger.error({ err }, '[admin] seasons/quality error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/** PATCH /admin/competitions/:id/quality — Body: { dataQuality: 'ok' | 'en_revision' } */
+adminRouter.patch('/competitions/:id/quality', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Competition not found' }, 404);
+  const body = await c.req.json().catch(() => ({})) as { dataQuality?: unknown };
+  const quality = parseQuality(body.dataQuality);
+  if (!quality) return c.json({ error: "dataQuality must be 'ok' or 'en_revision'" }, 400);
+  try {
+    const comp = await setCompetitionQuality(id, quality);
+    if (!comp) return c.json({ error: 'Competition not found' }, 404);
+    return c.json({ ok: true, competition: { id: comp.id, name: comp.name, dataQuality: comp.data_quality } });
+  } catch (err) {
+    captureRouteError(err, 'admin] set competition quality error');
+    logger.error({ err }, '[admin] set competition quality error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/** PATCH /admin/seasons/:id/quality — Body: { dataQuality: 'ok' | 'en_revision' } */
+adminRouter.patch('/seasons/:id/quality', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Season not found' }, 404);
+  const body = await c.req.json().catch(() => ({})) as { dataQuality?: unknown };
+  const quality = parseQuality(body.dataQuality);
+  if (!quality) return c.json({ error: "dataQuality must be 'ok' or 'en_revision'" }, 400);
+  try {
+    const season = await setSeasonQuality(id, quality);
+    if (!season) return c.json({ error: 'Season not found' }, 404);
+    return c.json({ ok: true, season: { id: season.id, name: season.name, dataQuality: season.data_quality } });
+  } catch (err) {
+    captureRouteError(err, 'admin] set season quality error');
+    logger.error({ err }, '[admin] set season quality error');
+    return c.json({ error: 'Database error' }, 500);
   }
 });
 

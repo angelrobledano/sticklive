@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
+import { seasonVisible } from '../lib/visibility.js';
 import { captureRouteError } from '../lib/route-error.js';
 import { penaltyScoredSql } from '../lib/penalty-sql.js';
 
@@ -37,6 +38,8 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
   // Un id no-UUID haría fallar el cast a uuid de Postgres y devolvería 500
   // (enlace corrupto/bot) en vez de 404 (#275).
   if (!isUuid(seasonId)) return c.json({ error: 'Not found' }, 404);
+
+  if (!(await seasonVisible(seasonId))) return c.json({ error: 'Not found' }, 404);
 
   try {
     const [leaders, eventStats] = await Promise.all([
