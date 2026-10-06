@@ -494,6 +494,7 @@
     "hint": "Escreve pelo menos {n} letras para pesquisar.",
     "press_enter": "Prime Enter para pesquisar.",
     "error": "Não foi possível concluir a pesquisa. Tenta novamente.",
+    "retry": "Tentar novamente",
     "empty": "Sem resultados para «{q}».",
     "results_count": "{n} resultados",
     "section_teams": "Equipas",

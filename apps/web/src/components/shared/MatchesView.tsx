@@ -6,6 +6,7 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { useLiveScores } from '@/hooks/useLiveScores';
 import { DateSelector } from '@/components/shared/DateSelector';
 import { MatchCard } from '@/components/shared/MatchCard';
+import { TeamShield } from '@/components/shared/TeamShield';
 import { UpcomingGroup } from '@/components/shared/UpcomingGroup';
 import { MiGrada } from '@/components/home/MiGrada';
 import { LiveBoard } from '@/components/home/LiveBoard';
@@ -210,10 +211,10 @@ function DesktopAside({
 }
 
 /**
- * Banda "En directo ahora" — solo escritorio. Destaca los partidos en juego del
- * día con jerarquía de marcador grande; refuerza la promesa visual del producto
- * (si la pantalla está verde, algo está pasando ahora). Los directos se retiran
- * de las listas por competición en `lg+` para no repetirlos.
+ * Banda "En directo ahora" — solo escritorio (en móvil la cubre LiveNowStrip).
+ * Destaca los partidos en juego del día con jerarquía de marcador grande;
+ * refuerza la promesa visual del producto (si la pantalla está verde, algo está
+ * pasando ahora). Los directos se retiran de las listas en todos los breakpoints.
  */
 function LiveNowBand({ matches, favorites, className = '' }: {
   matches: Match[];
@@ -246,6 +247,91 @@ function LiveNowBand({ matches, favorites, className = '' }: {
           />
         ))}
       </div>
+    </section>
+  );
+}
+
+/**
+ * Tira "En directo ahora" — solo móvil. La banda de escritorio (LiveNowBand) no
+ * se renderiza aquí, así que esta tira compacta y deslizable cubre el "qué se
+ * juega ahora" en la grada. Los directos se retiran de las listas en todos los
+ * breakpoints para no repetirlos.
+ */
+function LiveStripCard({ match, isFavoriteTeam }: { match: Match; isFavoriteTeam: boolean }) {
+  const { t } = useT();
+  const homeName = match.homeTeam?.shortName ?? match.homeTeam?.name ?? match.homeTeamId;
+  const awayName = match.awayTeam?.shortName ?? match.awayTeam?.name ?? match.awayTeamId;
+  const isHalftime = match.isHalftime === true;
+  return (
+    <Link
+      href={`/matches/${match.id}`}
+      aria-label={tt(t, 'a11y.view_match', 'Ver partido: {home} - {away}', { home: homeName, away: awayName })}
+      className="card relative flex w-[190px] shrink-0 flex-col gap-1.5 p-2.5 ring-1 ring-emerald-500/25
+                 hover:shadow-md dark:ring-emerald-400/25 focus:outline-none focus-visible:ring-2
+                 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent"
+    >
+      <span className="flex h-4 items-center justify-between gap-1.5">
+        {isFavoriteTeam ? (
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-3 w-3 shrink-0 text-rink-passion">
+            <path d="M12 2l3.09 6.26L22 9.27l-4.91 4.79 1.16 6.94L12 17.77l-6.25 3.23 1.16-6.94L2 9.27l6.91-1.01L12 2z" />
+          </svg>
+        ) : (
+          <span aria-hidden="true" />
+        )}
+        {isHalftime ? (
+          <span className="inline-flex shrink-0 items-center rounded-full bg-amber-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+            {t('match_states.half_time')}
+          </span>
+        ) : (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+            <span className="h-1 w-1 rounded-full bg-white animate-pulse" aria-hidden="true" />
+            {t('match_states.in_play')}
+          </span>
+        )}
+      </span>
+      <span className="flex items-center justify-between gap-2">
+        <span className="flex min-w-0 flex-col gap-1">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <TeamShield teamId={match.homeTeam?.id ?? ''} teamName={match.homeTeam?.name ?? homeName} size={18} className="shrink-0" />
+            <span className="truncate text-[11px] font-semibold text-slate-800 dark:text-slate-100">{homeName}</span>
+          </span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <TeamShield teamId={match.awayTeam?.id ?? ''} teamName={match.awayTeam?.name ?? awayName} size={18} className="shrink-0" />
+            <span className="truncate text-[11px] font-semibold text-slate-800 dark:text-slate-100">{awayName}</span>
+          </span>
+        </span>
+        <span className="flex shrink-0 flex-col items-end gap-1 font-score text-base font-extrabold leading-none tracking-tighter tabular-nums text-slate-900 dark:text-slate-50">
+          <span>{match.score.home ?? 0}</span>
+          <span>{match.score.away ?? 0}</span>
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+function LiveNowStrip({ matches, favorites }: { matches: Match[]; favorites: string[] }) {
+  const { t } = useT();
+  const favSet = useMemo(() => new Set(favorites), [favorites]);
+  if (matches.length === 0) return null;
+  return (
+    <section aria-label={t('common.live_now')} className="lg:hidden pb-3">
+      <div className="flex items-center gap-2 px-4 pt-1 pb-2">
+        <span className="relative flex h-2 w-2" aria-hidden="true">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+        </span>
+        <h2 className="text-[11px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+          {t('common.live_now')}
+        </h2>
+        <span className="text-[11px] font-light text-slate-500 dark:text-slate-400 tabular-nums">{matches.length}</span>
+      </div>
+      <ul className="flex gap-2 overflow-x-auto scrollbar-none px-4 pb-1">
+        {matches.map((m) => (
+          <li key={m.id} className="shrink-0">
+            <LiveStripCard match={m} isFavoriteTeam={favSet.has(m.homeTeamId) || favSet.has(m.awayTeamId)} />
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -497,14 +583,17 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
     [matches, selectedDate]
   );
 
-  // Separar favoritos del resto
+  // Separar favoritos del resto. Los directos se excluyen aquí: viven en la
+  // banda (escritorio) o en la tira (móvil), nunca duplicados en las listas.
   const { favMatches, restMatches } = useMemo(() => {
+    const notLive = (m: Match) => m.status !== 'live';
     if (favorites.length === 0) {
-      return { favMatches: [] as Match[], restMatches: dayMatches };
+      return { favMatches: [] as Match[], restMatches: dayMatches.filter(notLive) };
     }
     const fav: Match[] = [];
     const rest: Match[] = [];
     for (const m of dayMatches) {
+      if (!notLive(m)) continue;
       if (isFavorite(m.homeTeamId) || isFavorite(m.awayTeamId)) {
         fav.push(m);
       } else {
@@ -533,8 +622,9 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
 
   const hasBothSections = favMatches.length > 0 && restMatches.length > 0;
 
-  // Partidos en directo del día seleccionado: se destacan en la banda superior
-  // de escritorio y se retiran de las listas en `lg+` para no repetirlos.
+  // Partidos en directo del día seleccionado: se destacan en la banda
+  // (escritorio) o en la tira (móvil) y se retiran de las listas en todos los
+  // breakpoints para no repetirlos.
   const liveMatches = useMemo(
     () => dayMatches.filter((m) => m.status === 'live').sort((a, b) => timeOf(a) - timeOf(b)),
     [dayMatches]
@@ -631,6 +721,9 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
         {/* #263 "Mi grada": feed agregado de equipos/ligas seguidos (próximos +
             últimos), independiente del día seleccionado. En móvil va en el
             flujo; en escritorio sube al carril de contexto. */}
+        {/* Tira EN DIRECTO — solo móvil (en escritorio manda la banda) */}
+        <LiveNowStrip matches={liveMatches} favorites={favorites} />
+
         <div className="lg:hidden">
           <MiGrada matches={matches} teamIds={favorites} leagueIds={leagues} todayKey={todayKey} />
         </div>
@@ -652,8 +745,8 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
             {/* Onboarding de favoritos: solo si el usuario no sigue a nadie */}
             {favorites.length === 0 && <FavoritesOnboarding />}
 
-            {/* Bloque "Siguiendo" — tus equipos de hoy, siempre visibles (los
-                directos también viven en la banda, pero tu sección no se vacía). */}
+            {/* Bloque "Siguiendo" — tus equipos de hoy. Los directos viven en
+                la banda/tira, no aquí. */}
             {favMatches.length > 0 && (
               <section>
                 <div className="flex items-center justify-between pr-4">
@@ -706,7 +799,7 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
                     <SectionHeader label={comp} count={ms.length} />
                     <ul className="px-4 space-y-2 pb-4">
                       {ms.map((m) => (
-                        <li key={m.id} className={m.status === 'live' ? 'lg:hidden' : undefined}>
+                        <li key={m.id}>
                           <MatchCard match={m} />
                         </li>
                       ))}

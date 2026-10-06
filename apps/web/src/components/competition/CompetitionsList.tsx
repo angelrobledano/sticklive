@@ -643,7 +643,7 @@ export function CompetitionsList({
               >
                 {label}
                 {badge && (
-                  <span className="w-4 h-4 rounded-full bg-amber-600 text-slate-900 text-[10px] font-bold
+                  <span className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold
                                    flex items-center justify-center leading-none">
                     {badge}
                   </span>

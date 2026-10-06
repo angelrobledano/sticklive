@@ -525,6 +525,7 @@
     "hint": "Type at least {n} characters to search.",
     "press_enter": "Press Enter to search.",
     "error": "The search could not be completed. Try again.",
+    "retry": "Retry",
     "empty": "No results for “{q}”.",
     "results_count": "{n} results",
     "section_teams": "Teams",

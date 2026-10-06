@@ -324,8 +324,8 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
     if (isLive || isFinished) {
       return (
         <div className="card p-8 flex flex-col items-center gap-5 text-center">
-          <div className="w-14 h-14 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-7 h-7 text-amber-400 dark:text-amber-500">
+          <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-7 h-7 text-slate-400 dark:text-slate-500">
               <path d="M10.3 3.7L2.3 18a2 2 0 0 0 1.7 3h16a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0z" />
               <path d="M12 9v4M12 17h.01" strokeLinecap="round" />
             </svg>

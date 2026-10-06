@@ -74,7 +74,7 @@ function RinkChip({ p, accent }: { p: RinkPlayer; accent: boolean }) {
         </span>
         {p.isCaptain && (
           <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-700 text-white
-                           text-[8px] font-bold flex items-center justify-center">
+                           text-[9px] font-bold flex items-center justify-center">
             {tt(t, 'match_detail.badge_captain', 'C')}
           </span>
         )}

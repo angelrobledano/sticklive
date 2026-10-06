@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useT } from '@/lib/i18n';
 import { track, searchEventProps } from '@/lib/analytics';
@@ -62,6 +63,7 @@ function Section({ title, count, children }: {
 
 export function SearchView({ initialQuery, results, error }: SearchViewProps) {
   const { t, locale } = useT();
+  const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
 
   const pending = normalizeSearchQuery(query) !== normalizeSearchQuery(initialQuery);
@@ -142,7 +144,16 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
               {tt(t, 'search.error', 'No se pudo completar la búsqueda. Inténtalo de nuevo.')}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{error}</p>
+            <button
+              type="button"
+              onClick={() => router.refresh()}
+              className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-xl
+                         bg-rink-passion text-white text-[13px] font-semibold hover:bg-rink-passion-light
+                         transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion
+                         dark:focus-visible:ring-rink-accent"
+            >
+              {tt(t, 'search.retry', 'Reintentar')}
+            </button>
           </div>
         ) : results && total === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-4">

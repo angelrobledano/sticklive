@@ -159,7 +159,7 @@ export function SeriesCard({ serie, label, isFinal = false }: { serie: PlayoffSe
                   <span className={winnerId === g.homeTeam.id ? 'font-bold' : 'opacity-70'}>{homeAbbr}</span>
                   <span className="tabular-nums">{g.score.home ?? '-'}-{g.score.away ?? '-'}</span>
                   <span className={winnerId === g.awayTeam.id ? 'font-bold' : 'opacity-70'}>{awayAbbr}</span>
-                  {decidedBy && <span className="text-[8px] font-bold uppercase opacity-80">{decidedBy}</span>}
+                  {decidedBy && <span className="text-[9px] font-bold uppercase opacity-80">{decidedBy}</span>}
                 </>
               ) : (
                 <span>{fmtDate(g.scheduledAt, undefined, locale)}</span>

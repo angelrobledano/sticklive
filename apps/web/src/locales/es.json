@@ -525,6 +525,7 @@
     "hint": "Escribe al menos {n} letras para buscar.",
     "press_enter": "Pulsa Enter para buscar.",
     "error": "No se pudo completar la búsqueda. Inténtalo de nuevo.",
+    "retry": "Reintentar",
     "empty": "No hay resultados para «{q}».",
     "results_count": "{n} resultados",
     "section_teams": "Equipos",

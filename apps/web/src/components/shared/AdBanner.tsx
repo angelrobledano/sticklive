@@ -127,7 +127,7 @@ function AdLabel({ label }: { label: string }) {
   return (
     <span
       className="absolute top-0.5 right-1.5 z-10
-                 text-[8px] font-semibold tracking-widest uppercase
+                 text-[9px] font-semibold tracking-widest uppercase
                  text-slate-300 dark:text-zinc-600
                  select-none pointer-events-none"
       aria-hidden="true"
