@@ -233,3 +233,35 @@ npx tsx src/enrich-promote.ts --batch '<label>' --revert --commit
 - [ ] `validate-enrich --batch <label>` = PASA.
 - [ ] `enrich-promote --batch <label>` dry-run revisado → `--commit`.
 - [ ] Verificación en web (fecha + temporada).
+
+---
+
+## Ocultar competiciones/temporadas por calidad de datos
+
+Una competición o temporada con `data_quality <> 'ok'` deja de ser consultable por el usuario.
+
+**Regla:** visible ⇔ la **competición** y la **temporada** están en `data_quality='ok'`. La competición es el **interruptor maestro**: marcarla `en_revision` oculta todo su contenido (listados, búsqueda, selector de temporadas, endpoints de temporada, fichas de partido, historial de equipo, carrera de jugador y sitemap).
+
+**Flujo en el panel** (`/admin`, pestaña «Competiciones»):
+
+1. **Buscar** la competición en el campo de filtro.
+2. **Toggle de la fila** → oculta/muestra la competición entera (interruptor maestro).
+3. **Desplegar** la fila para ocultar **temporadas concretas** (cada una con su propio toggle).
+
+**Comprobar** que ya no es consultable:
+
+- Desaparece de `/competitions`.
+- Desaparece de la búsqueda.
+- Su URL directa (`/competitions/<id>`) da **404**.
+
+**Alternativa por API** (mismo token `X-Admin-Token`):
+
+```bash
+curl -X PATCH "$API/admin/seasons/<uuid>/quality" \
+  -H "X-Admin-Token: $ADMIN_TOKEN" -H 'content-type: application/json' \
+  -d '{"dataQuality":"en_revision"}'
+```
+
+(Análogo para competiciones: `PATCH /admin/competitions/<uuid>/quality`.)
+
+> **Retardo:** las páginas web cacheadas por ISR pueden tardar hasta ~5 min en reflejar el cambio; la API responde 404 **al instante**. Ver [database.md](./database.md#calidad-de-datos--visibilidad-migraciones-064-y-067).
