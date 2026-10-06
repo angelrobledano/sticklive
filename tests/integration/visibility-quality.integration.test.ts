@@ -11,6 +11,7 @@ import {
   db, closeDb,
   listCompetitionsForQuality, setCompetitionQuality,
   listSeasonsForQuality, setSeasonQuality,
+  upsertCompetition, upsertSeason,
 } from '@sports/db';
 import { seasonVisible } from '../../apps/api/src/lib/visibility.js';
 import { competitionsRouter } from '../../apps/api/src/routes/competitions.js';
@@ -458,5 +459,22 @@ describe('admin — calidad end-to-end', () => {
     expect(row).toBeDefined();
     expect(Number(row!.season_count)).toBe(1);
     expect(Number(row!.visible_season_count)).toBe(1);
+  });
+});
+
+describe('la curación sobrevive a los upserts', () => {
+  it('upsertCompetition y upsertSeason no resetean data_quality', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    await db.query(`UPDATE competitions SET data_quality = 'en_revision' WHERE id = $1`, [compId]);
+    await db.query(`UPDATE seasons SET data_quality = 'en_revision' WHERE id = $1`, [seasonId]);
+
+    const compSlug = (await db.query<{ slug: string }>(`SELECT slug FROM competitions WHERE id = $1`, [compId])).rows[0]!.slug;
+    const updatedComp = await upsertCompetition({ sportId, name: 'Renombrada', slug: compSlug, country: 'ES' });
+    expect(updatedComp.data_quality).toBe('en_revision');
+
+    const seasonSlug = (await db.query<{ slug: string }>(`SELECT slug FROM seasons WHERE id = $1`, [seasonId])).rows[0]!.slug;
+    const updatedSeason = await upsertSeason({ competitionId: compId, name: 'Renombrada', slug: seasonSlug });
+    expect(updatedSeason.data_quality).toBe('en_revision');
   });
 });
