@@ -428,6 +428,7 @@
     "form_d": "N",
     "form_l": "P",
     "other_teams": "Autres équipes du club",
+    "season": "Saison",
     "filial": "Équipe réserve",
     "gk_short": "GB"
   },
@@ -460,7 +461,16 @@
   "fixtures": {
     "by_round": "Par journée",
     "empty": "Aucun match programmé pour cette sélection.",
-    "matchday": "Journée {n}"
+    "matchday": "Journée {n}",
+    "filter_date": "Date",
+    "filter_round": "Journée",
+    "filter_team": "Équipe",
+    "filter_by": "Filtrer par",
+    "prev_round": "Journée précédente",
+    "next_round": "Journée suivante",
+    "choose_team": "Choisissez une équipe pour voir tous ses matchs.",
+    "match_count_one": "{n} match",
+    "match_count_many": "{n} matchs"
   },
   "search": {
     "title": "Rechercher",

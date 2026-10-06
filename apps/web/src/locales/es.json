@@ -78,7 +78,16 @@
   "fixtures": {
     "by_round": "Por jornada",
     "empty": "No hay partidos programados para esta selección.",
-    "matchday": "Jornada {n}"
+    "matchday": "Jornada {n}",
+    "filter_date": "Fecha",
+    "filter_round": "Jornada",
+    "filter_team": "Equipo",
+    "filter_by": "Filtrar por",
+    "prev_round": "Jornada anterior",
+    "next_round": "Jornada siguiente",
+    "choose_team": "Elige un equipo para ver todos sus partidos.",
+    "match_count_one": "{n} partido",
+    "match_count_many": "{n} partidos"
   },
   "match_states": {
     "live": "En directo",
@@ -464,6 +473,7 @@
     "form_d": "E",
     "form_l": "D",
     "other_teams": "Otros equipos del club",
+    "season": "Temporada",
     "filial": "Filial",
     "gk_short": "PO"
   },

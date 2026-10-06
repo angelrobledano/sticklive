@@ -428,6 +428,7 @@
     "form_d": "N",
     "form_l": "P",
     "other_teams": "Altre squadre del club",
+    "season": "Stagione",
     "filial": "Squadra B",
     "gk_short": "POR"
   },
@@ -460,7 +461,16 @@
   "fixtures": {
     "by_round": "Per giornata",
     "empty": "Nessuna partita programmata per questa selezione.",
-    "matchday": "Giornata {n}"
+    "matchday": "Giornata {n}",
+    "filter_date": "Data",
+    "filter_round": "Giornata",
+    "filter_team": "Squadra",
+    "filter_by": "Filtra per",
+    "prev_round": "Giornata precedente",
+    "next_round": "Giornata successiva",
+    "choose_team": "Scegli una squadra per vedere tutte le sue partite.",
+    "match_count_one": "{n} partita",
+    "match_count_many": "{n} partite"
   },
   "search": {
     "title": "Cerca",

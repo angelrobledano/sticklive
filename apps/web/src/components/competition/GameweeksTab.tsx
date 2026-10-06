@@ -400,7 +400,9 @@ function TeamHeader({ team, count }: { team: TeamSummary; count: number }) {
         {clubName(team.name)}
       </span>
       <span className="ml-auto shrink-0 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 tabular-nums">
-        {tt(t, 'fixtures.match_count', count === 1 ? '1 partido' : `${count} partidos`)}
+        {count === 1
+          ? tt(t, 'fixtures.match_count_one', '1 partido', { n: count })
+          : tt(t, 'fixtures.match_count_many', '{n} partidos', { n: count })}
       </span>
     </div>
   );

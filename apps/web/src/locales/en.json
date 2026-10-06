@@ -459,6 +459,7 @@
     "form_d": "D",
     "form_l": "L",
     "other_teams": "Other club teams",
+    "season": "Season",
     "filial": "Reserve team",
     "gk_short": "GK"
   },
@@ -491,7 +492,16 @@
   "fixtures": {
     "by_round": "By matchday",
     "empty": "No matches scheduled for this selection.",
-    "matchday": "Matchday {n}"
+    "matchday": "Matchday {n}",
+    "filter_date": "Date",
+    "filter_round": "Matchday",
+    "filter_team": "Team",
+    "filter_by": "Filter by",
+    "prev_round": "Previous matchday",
+    "next_round": "Next matchday",
+    "choose_team": "Pick a team to see all their matches.",
+    "match_count_one": "{n} match",
+    "match_count_many": "{n} matches"
   },
   "search": {
     "title": "Search",
