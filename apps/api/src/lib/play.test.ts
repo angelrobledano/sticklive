@@ -1,7 +1,17 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createVerify, generateKeyPairSync } from 'node:crypto';
 
-import { buildPlayJwt, normalizeProduct, normalizeSubscription } from './play.js';
+import { logger } from '@sports/logger';
+import {
+  buildPlayJwt,
+  getAccessToken,
+  getProduct,
+  getSubscription,
+  listVoidedPurchases,
+  normalizeProduct,
+  normalizeSubscription,
+  resetTokenCacheForTest,
+} from './play.js';
 
 // El cliente de Play no se toca en unit: se testean las piezas PURAS
 // (JWT, normalización) — las llamadas HTTP se validan en el test de la ruta
@@ -91,6 +101,17 @@ describe('normalizeSubscription (androidpublisher v3)', () => {
     ).toBe(false);
   });
 
+  it('mismatch de producto NO concede (token de otro producto) — y el match sí', () => {
+    // Crítico de ingresos: pedir premium_lifetime con el token de una suscripción
+    // annual no debe conceder NADA (sin fallback al primer lineItem).
+    const payload = {
+      subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE',
+      lineItems: [{ productId: 'premium_annual', expiryTime: '2030-01-01T00:00:00Z' }],
+    };
+    expect(normalizeSubscription(payload, 'premium_lifetime').valid).toBe(false);
+    expect(normalizeSubscription(payload, 'premium_annual').valid).toBe(true);
+  });
+
   it('expiryTime no parseable no concede (ni propaga Invalid Date)', () => {
     const n = normalizeSubscription({
       subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE',
@@ -117,6 +138,8 @@ describe('normalizeProduct (compra única)', () => {
 describe('getAccessToken (cache + error explícito)', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    // La caché es module-level: vaciarla entre tests evita orden-dependencia.
+    resetTokenCacheForTest();
   });
 
   it('falla explícito si no hay credenciales configuradas', async () => {
@@ -125,5 +148,157 @@ describe('getAccessToken (cache + error explícito)', () => {
     await expect(getAccessTokenForTest({ email: '', privateKey: '' })).rejects.toThrow(
       /play_not_configured/i
     );
+  });
+
+  it('cachea el token: dos llamadas seguidas → UN solo fetch', async () => {
+    resetTokenCacheForTest();
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ access_token: 't1', expires_in: 3600 }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const creds = { email: 'sa@x', privateKey: PRIVATE_KEY };
+    await expect(getAccessToken(creds)).resolves.toBe('t1');
+    await expect(getAccessToken(creds)).resolves.toBe('t1');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('expires_in 0 no supera el margen de 60 s → el segundo fetch repite', async () => {
+    resetTokenCacheForTest();
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ access_token: 't2', expires_in: 0 }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const creds = { email: 'sa@x', privateKey: PRIVATE_KEY };
+    await expect(getAccessToken(creds)).resolves.toBe('t2');
+    await expect(getAccessToken(creds)).resolves.toBe('t2');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('cliente HTTP (fetch stubbed)', () => {
+  beforeEach(() => {
+    // playGet resuelve credenciales de env (getPlayCredentials): stub para que
+    // el flujo llegue al fetch stubbed en lugar de play_not_configured.
+    vi.stubEnv('GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL', 'sa@test.iam.gserviceaccount.com');
+    vi.stubEnv('GOOGLE_PLAY_PRIVATE_KEY', PRIVATE_KEY);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    resetTokenCacheForTest();
+  });
+
+  /** Fetch que resuelve el token OAuth y, para androidpublisher, `api`. */
+  function stubFetch(api: () => Record<string, unknown>): void {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) => {
+        if (String(input).includes('oauth2.googleapis.com')) {
+          return { ok: true, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+        }
+        return api();
+      })
+    );
+  }
+
+  it('construye las URLs oficiales (token y productId como path params)', async () => {
+    vi.stubEnv('GOOGLE_PLAY_PACKAGE_NAME', 'com.test.app');
+    const urls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) => {
+        const u = String(input);
+        urls.push(u);
+        if (u.includes('oauth2.googleapis.com')) {
+          return { ok: true, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+        }
+        return { ok: true, json: async () => ({}) };
+      })
+    );
+
+    await getSubscription('tok con espacio', 'premium_annual');
+    expect(urls).toContain(
+      'https://androidpublisher.googleapis.com/androidpublisher/v3/applications/com.test.app/purchases/subscriptionsv2/tokens/tok%20con%20espacio'
+    );
+
+    await getProduct('t', 'p');
+    expect(urls).toContain(
+      'https://androidpublisher.googleapis.com/androidpublisher/v3/applications/com.test.app/purchases/products/p/tokens/t'
+    );
+  });
+
+  it('el log de error abrevia el token de la URL (8 chars, sin volar el token completo)', async () => {
+    const errSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    const fullToken = 'abcdef1234567890SECRET';
+    stubFetch(() => ({ ok: false, status: 500, text: async () => 'boom' }));
+    await expect(getSubscription(fullToken, 'premium_annual')).rejects.toMatchObject({
+      name: 'PlayApiError',
+      status: 500,
+    });
+    const logged = JSON.stringify(errSpy.mock.calls);
+    expect(logged).not.toContain(fullToken);
+    expect(logged).toContain(fullToken.slice(0, 8));
+    errSpy.mockRestore();
+  });
+
+  it('timeout del fetch sale como play_api_error: timeout (PlayApiError, status 0)', async () => {
+    stubFetch(() => {
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+    });
+    await expect(getSubscription('tok-x', 'premium_annual')).rejects.toMatchObject({
+      name: 'PlayApiError',
+      status: 0,
+      message: 'play_api_error: timeout',
+    });
+  });
+
+  it('voidedpurchases pagina con pageSelection.token y agrega todas las páginas', async () => {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) => {
+        const u = String(input);
+        urls.push(u);
+        if (u.includes('oauth2.googleapis.com')) {
+          return { ok: true, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+        }
+        if (u.includes('pageSelection.token=PAGE2')) {
+          return { ok: true, json: async () => ({ voidedPurchases: [{ purchaseToken: 'b2' }] }) };
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            voidedPurchases: [{ purchaseToken: 'b1' }, {}],
+            tokenPagination: { nextPageToken: 'PAGE2' },
+          }),
+        };
+      })
+    );
+    await expect(listVoidedPurchases()).resolves.toEqual([
+      { purchaseToken: 'b1' },
+      { purchaseToken: null },
+      { purchaseToken: 'b2' },
+    ]);
+    expect(urls.some((u) => u.includes('pageSelection.token=PAGE2'))).toBe(true);
+  });
+
+  it('voidedpurchases: tope de 10 páginas con warn explícito (puede quedar reembolso sin procesar)', async () => {
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
+    stubFetch(() => ({
+      ok: true,
+      json: async () => ({
+        voidedPurchases: [{ purchaseToken: 'x' }],
+        tokenPagination: { nextPageToken: 'next' },
+      }),
+    }));
+    await expect(listVoidedPurchases()).resolves.toHaveLength(10);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ pages: 10 }),
+      expect.stringContaining('sin procesar')
+    );
+    warnSpy.mockRestore();
   });
 });
