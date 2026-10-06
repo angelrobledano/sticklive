@@ -6,7 +6,7 @@
  * búsqueda, fichas de equipo/jugador y sitemap).
  */
 import { randomUUID } from 'node:crypto';
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import {
   db, closeDb,
   listCompetitionsForQuality, setCompetitionQuality,
@@ -14,6 +14,7 @@ import {
 } from '@sports/db';
 import { seasonVisible } from '../../apps/api/src/lib/visibility.js';
 import { competitionsRouter } from '../../apps/api/src/routes/competitions.js';
+import { adminRouter } from '../../apps/api/src/routes/admin.js';
 import { seasonOverviewRouter } from '../../apps/api/src/routes/season-overview.js';
 import { seasonStatsRouter } from '../../apps/api/src/routes/season-stats.js';
 import { standingsRouter } from '../../apps/api/src/routes/standings.js';
@@ -48,6 +49,10 @@ async function setCompQualityDirect(id: string, q: string) {
 async function setSeasonQualityDirect(id: string, q: string) {
   await db.query(`UPDATE seasons SET data_quality = $2 WHERE id = $1`, [id, q]);
 }
+
+// El middleware de admin lee ADMIN_TOKEN en tiempo de request; lo fijamos antes
+// de cualquier request (los guards de este fichero no dependen de la BD).
+beforeAll(() => { process.env['ADMIN_TOKEN'] ??= 'test-token'; });
 
 let sportId: string;
 
@@ -420,5 +425,33 @@ describe('GET /meta/sitemap — visibilidad', () => {
     const res = await metaRouter.request('/sitemap');
     const body = await res.json() as { competitions: Array<{ id: string }> };
     expect(body.competitions.some((c) => c.id === compId)).toBe(true);
+  });
+});
+
+describe('admin — calidad end-to-end', () => {
+  // Token fijo: `beforeAll` fija ADMIN_TOKEN, pero este `const` se evalúa al
+  // recolectar los tests (antes del hook), así que no dependemos del orden.
+  const AUTH = { 'x-admin-token': 'test-token' };
+  const JSON_AUTH = { ...AUTH, 'content-type': 'application/json' };
+
+  it('PATCH quality oculta y desoculta', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    await crearPartido({ seasonId });
+
+    const hide = await adminRouter.request(`/seasons/${seasonId}/quality`, {
+      method: 'PATCH', headers: JSON_AUTH, body: JSON.stringify({ dataQuality: 'en_revision' }),
+    });
+    expect(hide.status).toBe(200);
+    expect((await get(seasonOverviewRouter, `/${seasonId}/overview`)).status).toBe(404);
+
+    const show = await adminRouter.request(`/seasons/${seasonId}/quality`, {
+      method: 'PATCH', headers: JSON_AUTH, body: JSON.stringify({ dataQuality: 'ok' }),
+    });
+    expect(show.status).toBe(200);
+    expect((await get(seasonOverviewRouter, `/${seasonId}/overview`)).status).toBe(200);
+
+    const list = await adminRouter.request('/competitions/quality', { headers: AUTH });
+    expect(list.status).toBe(200);
   });
 });
