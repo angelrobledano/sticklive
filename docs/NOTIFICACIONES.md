@@ -1,6 +1,8 @@
 # Notificaciones push — cuándo y cómo se envían
 
-*Actualizado: 22 de junio de 2026*
+*Actualizado: 6 de octubre de 2026*
+
+> Este doc describe el canal **Web Push** (navegador). La app móvil usa además el canal **nativo** (Expo Push → FCM/APNs) para la misma segmentación y con ledger de resumen matinal **por canal** (`push_summary_log.channel`: web y nativo no se bloquean ni duplican). Arquitectura completa del canal nativo en [docs/app.md](app.md).
 
 ---
 
