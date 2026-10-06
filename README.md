@@ -30,7 +30,7 @@ Fuentes oficiales (sidgad/FEP + wse.sidgad.com)
 ```
 
 - **Directo (SSE):** el ETL escribe en la BD → triggers `NOTIFY` → la API refresca un poller por partido y hace fan-out a los clientes SSE (con polling de respaldo en la web).
-- **Notificaciones push:** el ETL compara el estado antes/después de cada ciclo y envía Web Push (VAPID) según preferencias por equipo/liga/jugador. Detalle: [docs/NOTIFICACIONES.md](docs/NOTIFICACIONES.md).
+- **Notificaciones push:** el ETL compara el estado antes/después de cada ciclo y envía Web Push (VAPID) y push nativo (Expo Push → FCM, app móvil) según preferencias por equipo/liga/jugador. Detalle: [docs/NOTIFICACIONES.md](docs/NOTIFICACIONES.md) y [docs/app.md](docs/app.md).
 
 ## Estructura del repositorio
 

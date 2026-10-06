@@ -65,7 +65,7 @@ SSE, no este endpoint.
 
 Sesión: Bearer token opaco, hasheado en BD (`user_sessions`), caducidad 90 días con renovación deslizante.
 
-## Web Push (`/push`)
+## Push (`/push` — web y nativo)
 
 | Método | Ruta | Propósito |
 |---|---|---|
