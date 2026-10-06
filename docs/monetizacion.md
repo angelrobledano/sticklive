@@ -157,10 +157,11 @@ solo en `production`:
 | Intersticial | `ca-app-pub-3940256099942544/1033173712` |
 | Recompensado | `ca-app-pub-3940256099942544/5224354917` |
 
-**Pendientes fuera del repo:** vincular la app a su ficha de Play (cuando
-exista) y crear el **mensaje GDPR/UMP** en Privacidad y mensajes (equivalente
-al CMP web de §4; obligatorio antes de servir ads en la UE). El **app-ads.txt**
-ya está publicado (ver §2).
+**Pendiente fuera del repo:** solo vincular la app a su ficha de Play (cuando
+exista, tarea del release M5). El **mensaje GDPR/UMP** está creado y publicado
+(2026-10-06) en Privacidad y mensajes — equivalente al CMP web de §4, idioma
+español por defecto + 4 adicionales, opciones de consentimiento por defecto,
+URL de privacidad de la web. El **app-ads.txt** ya está publicado (ver §2).
 
 ## 7. Referencias
 

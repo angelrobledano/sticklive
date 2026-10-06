@@ -129,8 +129,8 @@ y queda fuera del alcance de este diseño.
 - Cuenta de AdMob con app registrada y bloques de anuncios creados
   (paralelo a los slots de AdSense). **Hecho (2026-10-06):** app + 6 bloques
   registrados en [docs/monetizacion.md §6](../../docs/monetizacion.md#6-admob--app-mvil).
-  Pendiente: vincular a Play cuando exista la ficha y crear el mensaje
-  GDPR/UMP en Privacidad y mensajes.
+  Mensaje GDPR/UMP creado y publicado (2026-10-06). Pendiente: vincular a Play
+  cuando exista la ficha (tarea del release M5).
 
 ## 10. Testing (priorizado según AGENTS.md)
 
