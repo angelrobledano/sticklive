@@ -360,6 +360,14 @@ const clip = (s: string | undefined, max: number): string | null => {
  * deviceId hace de owner. Re-suscribirse sin sesión des-asocia el usuario
  * (la fila refleja el último estado, igual que la web).
  *
+ * Ownership del token EXISTENTE (review de seguridad): re-suscribir un token
+ * que ya tiene fila exige ser su dueño — mismo deviceId o usuario asociado —;
+ * si no, 403 sin tocar la fila. Quien conozca un expo_push_token ajeno no
+ * puede sobrescribirle prefs, user_id ni device (DELETE y /native/test ya
+ * verificaban; subscribe no). Un token NUEVO no tiene nada que proteger: el
+ * INSERT no cambia. El dueño por deviceId SIEMPRE puede (contrato de logout:
+ * re-suscribir sin Bearer des-asocia el user_id).
+ *
  * El tope de suscripciones por dispositivo de la web (MAX_PUSH_SUBS_PER_DEVICE,
  * #305) NO aplica aquí: push_tokens tiene una fila por token (el upsert no
  * acumula filas), y la poda de tokens muertos es cosa del dispatcher del ETL.
@@ -391,6 +399,24 @@ pushRouter.post(
 
       const user = await userFromBearer(c.req.header('Authorization'));
 
+      // Ownership del token EXISTENTE (review de seguridad): solo re-suscribe
+      // el dueño por deviceId o el usuario asociado a la fila; si no, 403 sin
+      // tocarla. El deviceId se compara CLIPADO (igual que se almacenó) y el
+      // user de la sesión contra el user_id de la fila. Un token nuevo no tiene
+      // nada que proteger: si no hay fila, se sigue directo al INSERT.
+      const existing = await db.query<{ device_id: string; user_id: string | null }>(
+        `SELECT device_id, user_id FROM push_tokens WHERE expo_push_token = $1`,
+        [body.expoPushToken]
+      );
+      const fila = existing.rows[0];
+      if (fila && fila.device_id !== deviceId && (user === null || fila.user_id !== user.id)) {
+        return c.json({ error: 'forbidden' }, 403);
+      }
+
+      // Cinturón y tirantes (misma regla que el SELECT de arriba): si entre el
+      // SELECT y este upsert la fila apareciera por otra petición concurrente,
+      // el WHERE del DO UPDATE impide pisarla — el UPDATE no se aplica y el
+      // cliente legítimo no nota nada (siempre casa su propia device/user).
       await db.query(
         `INSERT INTO push_tokens
            (expo_push_token, user_id, device_id, platform, app_version, locale,
@@ -407,7 +433,9 @@ pushRouter.post(
            fav_players = EXCLUDED.fav_players,
            presets     = EXCLUDED.presets,
            config      = EXCLUDED.config,
-           updated_at  = NOW()`,
+           updated_at  = NOW()
+         WHERE push_tokens.device_id = EXCLUDED.device_id
+            OR push_tokens.user_id = EXCLUDED.user_id`,
         [
           body.expoPushToken,
           user?.id ?? null,

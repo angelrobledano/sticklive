@@ -208,6 +208,102 @@ describe('POST /push/native/subscribe', () => {
   });
 });
 
+describe('POST /push/native/subscribe — ownership del token existente (review seguridad)', () => {
+  // Quien conozca un expo_push_token ajeno no puede sobrescribir la fila
+  // (prefs, user_id o device): solo re-suscribe el dueño por deviceId o el
+  // usuario asociado. Cada test usa su propia x-real-ip: el rate limit (30/10
+  // min por ruta+IP, compartido por POST y DELETE) es en memoria y en tests no
+  // hay conexión TCP, así que sin cabecera propia todos compartirían cubo.
+  it('re-suscripción por el MISMO deviceId → 200: el dueño por device siempre puede (y des-asocia user_id, contrato de logout)', async () => {
+    const { token: session } = await sembrarSesion('dev-dueno-a');
+    await subscribe(
+      { expoPushToken: TOKEN, deviceId: 'dev-a', favTeams: ['11111111-1111-1111-1111-111111111111'] },
+      { Authorization: `Bearer ${session}`, 'x-real-ip': '10.1.0.1' }
+    );
+
+    // Re-suscribe el MISMO device SIN Bearer (como el logout de la app):
+    const res = await subscribe(
+      { expoPushToken: TOKEN, deviceId: 'dev-a', favTeams: [] },
+      { 'x-real-ip': '10.1.0.1' }
+    );
+    expect(res.status).toBe(200);
+
+    const fila = (await filasToken(TOKEN)).rows[0]!;
+    expect(fila.device_id).toBe('dev-a');
+    expect(fila.user_id).toBeNull();
+    expect(fila.fav_teams).toEqual([]);
+  });
+
+  it('re-suscripción por el USUARIO dueño con Bearer → 200 y fila actualizada', async () => {
+    const { userId, token: session } = await sembrarSesion('dev-dueno-b');
+    await subscribe(
+      { expoPushToken: TOKEN, deviceId: 'dev-b' },
+      { Authorization: `Bearer ${session}`, 'x-real-ip': '10.1.0.2' }
+    );
+
+    const res = await subscribe(
+      { expoPushToken: TOKEN, deviceId: 'dev-b', favTeams: ['11111111-1111-1111-1111-111111111111'] },
+      { Authorization: `Bearer ${session}`, 'x-real-ip': '10.1.0.2' }
+    );
+    expect(res.status).toBe(200);
+
+    const fila = (await filasToken(TOKEN)).rows[0]!;
+    expect(fila.user_id).toBe(userId);
+    expect(fila.fav_teams).toEqual(['11111111-1111-1111-1111-111111111111']);
+  });
+
+  it('atacante con deviceId distinto y sin sesión → 403 forbidden y la fila SIN cambios', async () => {
+    await subscribe(
+      {
+        expoPushToken: TOKEN,
+        deviceId: 'dev-victima',
+        favTeams: ['11111111-1111-1111-1111-111111111111'],
+        config: { master: true },
+      },
+      { 'x-real-ip': '10.1.0.3' }
+    );
+
+    const res = await subscribe(
+      { expoPushToken: TOKEN, deviceId: 'dev-atacante', favTeams: [], config: {} },
+      { 'x-real-ip': '10.1.0.3' }
+    );
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ error: 'forbidden' });
+
+    // La fila sigue siendo de la víctima, byte a byte:
+    const fila = (await filasToken(TOKEN)).rows[0]!;
+    expect(fila.device_id).toBe('dev-victima');
+    expect(fila.user_id).toBeNull();
+    expect(fila.fav_teams).toEqual(['11111111-1111-1111-1111-111111111111']);
+    expect(fila.config).toEqual({ master: true });
+  });
+
+  it('atacante con sesión de OTRO usuario → 403 y la fila SIN cambios (ni user_id ni prefs)', async () => {
+    const dueno = await sembrarSesion('dev-dueno-c');
+    const atacante = await sembrarSesion('dev-atacante-c');
+    await subscribe(
+      {
+        expoPushToken: TOKEN,
+        deviceId: 'dev-victima-c',
+        favLeagues: ['22222222-2222-2222-2222-222222222222'],
+      },
+      { Authorization: `Bearer ${dueno.token}`, 'x-real-ip': '10.1.0.4' }
+    );
+
+    const res = await subscribe(
+      { expoPushToken: TOKEN, deviceId: 'dev-atacante-c', favLeagues: [] },
+      { Authorization: `Bearer ${atacante.token}`, 'x-real-ip': '10.1.0.4' }
+    );
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ error: 'forbidden' });
+
+    const fila = (await filasToken(TOKEN)).rows[0]!;
+    expect(fila.user_id).toBe(dueno.userId);
+    expect(fila.device_id).toBe('dev-victima-c');
+    expect(fila.fav_leagues).toEqual(['22222222-2222-2222-2222-222222222222']);
+  });
+});
+
 describe('DELETE /push/native/subscribe', () => {
   it('baja por deviceId e idempotente (200 también si ya no existe)', async () => {
     await subscribe({ expoPushToken: TOKEN, deviceId: 'dev-1' });

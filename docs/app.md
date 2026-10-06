@@ -114,6 +114,8 @@ ETL cron-live (push-dispatcher.ts) ── segmentación pura ──────�
   (requiere `extra.eas.projectId` de `eas init`) y sincroniza el estado COMPLETO
   con `POST /push/native/subscribe` (upsert idempotente por token). Con sesión
   viaja Bearer y el token se asocia al usuario; sin ella el `deviceId` es owner.
+  Re-suscribir un token que ya tiene fila exige ownership (mismo `deviceId` o
+  usuario de la fila): conocer un token ajeno no permite sobrescribirla (403).
   El body valida estrictamente favoritos (UUIDs, tope 200/kind) — un id inválido
   rechaza con 400, nunca se guarda "bien" un dato roto.
 - **Contrato de preferencias** (`SubPrefs` de `apps/etl/src/push-segmentation.ts`,
