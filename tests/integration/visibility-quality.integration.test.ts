@@ -14,6 +14,10 @@ import {
 } from '@sports/db';
 import { seasonVisible } from '../../apps/api/src/lib/visibility.js';
 import { competitionsRouter } from '../../apps/api/src/routes/competitions.js';
+import { seasonOverviewRouter } from '../../apps/api/src/routes/season-overview.js';
+import { seasonStatsRouter } from '../../apps/api/src/routes/season-stats.js';
+import { standingsRouter } from '../../apps/api/src/routes/standings.js';
+import { matchesRouter } from '../../apps/api/src/routes/matches.js';
 import { limpiar } from './support/db.js';
 import {
   crearDeporte, crearCompeticion, crearTemporada,
@@ -137,5 +141,33 @@ describe('GET /competitions — filtrado por calidad', () => {
     await setSeasonQualityDirect(s1, 'en_revision');
     const empty = await get(competitionsRouter, `/${compId}/seasons`);
     expect(empty.status).toBe(404);
+  });
+});
+
+describe('endpoints de temporada — visibilidad', () => {
+  it('404 en overview/stats/standings/matches cuando la temporada está oculta', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    await crearPartido({ seasonId });
+
+    expect((await get(seasonOverviewRouter, `/${seasonId}/overview`)).status).toBe(200);
+    expect((await get(seasonStatsRouter, `/${seasonId}/stats`)).status).toBe(200);
+
+    await setSeasonQualityDirect(seasonId, 'en_revision');
+
+    expect((await get(seasonOverviewRouter, `/${seasonId}/overview`)).status).toBe(404);
+    expect((await get(seasonStatsRouter, `/${seasonId}/stats`)).status).toBe(404);
+    expect((await get(standingsRouter, `/${seasonId}/standings`)).status).toBe(404);
+    expect((await get(matchesRouter, `/${seasonId}/matches`)).status).toBe(404);
+  });
+
+  it('la competición oculta todo su contenido aunque la temporada esté ok', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    await crearPartido({ seasonId });
+    await setCompQualityDirect(compId, 'en_revision');
+
+    expect((await get(seasonOverviewRouter, `/${seasonId}/overview`)).status).toBe(404);
+    expect((await get(standingsRouter, `/${seasonId}/standings`)).status).toBe(404);
   });
 });
