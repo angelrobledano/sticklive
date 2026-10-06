@@ -15,7 +15,10 @@ metaRouter.get('/sitemap', async (c) => {
     // `lastmod` real (no el timestamp de generación). El cliente tolera ambas
     // formas (id suelto u objeto) por retrocompatibilidad.
     const [comps, teams, players, matches] = await Promise.all([
-      db.query<{ id: string; updated_at: Date }>(`SELECT id, updated_at FROM competitions`),
+      db.query<{ id: string; updated_at: Date }>(
+        `SELECT id, updated_at FROM competitions
+          WHERE data_quality = 'ok' AND archived_at IS NULL`
+      ),
       db.query<{ id: string; updated_at: Date }>(`SELECT id, updated_at FROM teams`),
       // Solo jugadores con presencia en alineaciones (los demás no tienen ficha útil)
       db.query<{ id: string; updated_at: Date }>(`
@@ -25,10 +28,15 @@ metaRouter.get('/sitemap', async (c) => {
       `),
       // Partidos: últimos 60 días + próximos (las fichas viejas entran por los equipos)
       db.query<{ id: string; updated_at: Date; finished_at: Date | null; scheduled_at: Date | null }>(`
-        SELECT id, updated_at, finished_at, scheduled_at FROM matches
-        WHERE scheduled_at > NOW() - INTERVAL '60 days'
-        ORDER BY scheduled_at DESC
-        LIMIT 3000
+        SELECT m.id, m.updated_at, m.finished_at, m.scheduled_at
+          FROM matches m
+          JOIN seasons s      ON s.id = m.season_id
+          JOIN competitions c ON c.id = s.competition_id
+         WHERE m.scheduled_at > NOW() - INTERVAL '60 days'
+           AND s.data_quality = 'ok'
+           AND c.data_quality = 'ok'
+         ORDER BY m.scheduled_at DESC
+         LIMIT 3000
       `),
     ]);
 

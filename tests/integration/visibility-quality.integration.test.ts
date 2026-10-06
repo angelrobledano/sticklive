@@ -22,6 +22,7 @@ import { matchDetailRouter } from '../../apps/api/src/routes/match-detail.js';
 import { searchRouter } from '../../apps/api/src/routes/search.js';
 import { teamDetailRouter } from '../../apps/api/src/routes/team-detail.js';
 import { playerDetailRouter } from '../../apps/api/src/routes/player-detail.js';
+import { metaRouter } from '../../apps/api/src/routes/meta.js';
 import { limpiar } from './support/db.js';
 import {
   crearDeporte, crearCompeticion, crearTemporada,
@@ -303,5 +304,25 @@ describe('fichas — visibilidad', () => {
 
     const hidden = await get(playerDetailRouter, `/${playerId}`);
     expect((hidden.body as { career: { seasons: Array<{ seasonId: string }> } }).career.seasons.length).toBe(0);
+  });
+});
+
+describe('GET /meta/sitemap — visibilidad', () => {
+  it('excluye competiciones y partidos ocultos', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    const { matchId } = await crearPartido({ seasonId });
+
+    const visible = await metaRouter.request('/sitemap');
+    const vBody = await visible.json() as { competitions: Array<{ id: string }>; matches: Array<{ id: string }> };
+    expect(vBody.competitions.some((c) => c.id === compId)).toBe(true);
+    expect(vBody.matches.some((m) => m.id === matchId)).toBe(true);
+
+    await setCompQualityDirect(compId, 'en_revision');
+
+    const hidden = await metaRouter.request('/sitemap');
+    const hBody = await hidden.json() as { competitions: Array<{ id: string }>; matches: Array<{ id: string }> };
+    expect(hBody.competitions.some((c) => c.id === compId)).toBe(false);
+    expect(hBody.matches.some((m) => m.id === matchId)).toBe(false);
   });
 });
