@@ -52,7 +52,7 @@ async function setSeasonQualityDirect(id: string, q: string) {
 
 // El middleware de admin lee ADMIN_TOKEN en tiempo de request; lo fijamos antes
 // de cualquier request (los guards de este fichero no dependen de la BD).
-beforeAll(() => { process.env['ADMIN_TOKEN'] ??= 'test-token'; });
+beforeAll(() => { process.env['ADMIN_TOKEN'] = 'test-token'; });
 
 let sportId: string;
 
@@ -453,5 +453,10 @@ describe('admin — calidad end-to-end', () => {
 
     const list = await adminRouter.request('/competitions/quality', { headers: AUTH });
     expect(list.status).toBe(200);
+    const listBody = await list.json() as { competitions: Array<{ id: string; season_count: string; visible_season_count: string }> };
+    const row = listBody.competitions.find((c) => c.id === compId);
+    expect(row).toBeDefined();
+    expect(Number(row!.season_count)).toBe(1);
+    expect(Number(row!.visible_season_count)).toBe(1);
   });
 });

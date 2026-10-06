@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality } from '@sports/db';
+import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, type DataQuality } from '@sports/db';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 import { captureRouteError } from '../lib/route-error.js';
@@ -241,9 +241,7 @@ adminRouter.post('/competitions/merge', async (c) => {
 
 // ── Calidad de datos / visibilidad (migración 067) ───────────────────────────
 
-type Quality = 'ok' | 'en_revision';
-
-function parseQuality(raw: unknown): Quality | null {
+function parseQuality(raw: unknown): DataQuality | null {
   return raw === 'ok' || raw === 'en_revision' ? raw : null;
 }
 
