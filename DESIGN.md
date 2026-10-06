@@ -206,7 +206,7 @@ Lenguaje de esquinas redondeadas medias y coherentes: tarjetas y chips de fecha 
 Tarjeta de partido `live` con jerarquía de marcador grande (mono `text-4xl` `tabular-nums`), anillo esmeralda tenue (`ring-1 ring-emerald-500/25`) y escudo + nombre oficial a ambos lados; una estrella granate marca los equipos seguidos. Solo existe para estados `live`/descanso, nunca para programados. Cuando el marcador cambia en vivo, el número hace un pulso breve hacia el acento esmeralda (`.score-flash`) que se apaga solo: es el momento firmado de la portada, y `reduce-motion` lo neutraliza.
 
 ### Navigation
-- **Bottom Nav (móvil):** barra fija de 64px, 3 destinos, iconos SVG de trazo cuyo grosor sube (1.8 → 2.5) y color pasa a granate en el activo; etiqueta de 11px que pasa a `font-semibold`.
+- **Bottom Nav (móvil):** barra fija de 64px, 5 destinos ordenados por importancia — Partidos, Competiciones, Buscar, Favoritos, Ajustes (#414) —, iconos SVG de trazo cuyo grosor sube (1.8 → 2.5) y color pasa a granate en el activo; etiqueta de 11px que pasa a `font-semibold`.
 - **Sidebar (md+):** 256px, cabecera con logo e isotipo, enlaces `rounded-lg` con fondo slate-100/800 en activo; sección activa por prefijo de ruta, no por coincidencia exacta.
 
 ### Date Selector (componente de firma)

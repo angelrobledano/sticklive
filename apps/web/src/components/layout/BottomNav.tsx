@@ -31,17 +31,6 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: '/favorites',
-    labelKey: 'navigation.favorites',
-    icon: (active: boolean) => (
-      <svg viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} strokeWidth={active ? 2 : 1.8}
-           stroke="currentColor" className="w-6 h-6">
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-              strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
     href: '/search',
     labelKey: 'navigation.search',
     icon: (active: boolean) => (
@@ -49,6 +38,17 @@ const NAV_ITEMS = [
            stroke="currentColor" className="w-6 h-6">
         <circle cx="11" cy="11" r="7" />
         <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    href: '/favorites',
+    labelKey: 'navigation.favorites',
+    icon: (active: boolean) => (
+      <svg viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} strokeWidth={active ? 2 : 1.8}
+           stroke="currentColor" className="w-6 h-6">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+              strokeLinejoin="round" />
       </svg>
     ),
   },
@@ -69,10 +69,13 @@ export function BottomNav() {
   const pathname = usePathname();
   const { t } = useT();
 
-  // Estado activo por sección, no por coincidencia exacta de ruta:
-  // dentro de una liga (/competitions/xyz), de un equipo o de un jugador,
-  // la sección activa es Competiciones; los partidos cuelgan de Partidos.
-  // La ruta llega prefijada por idioma (/es/...): lo quitamos antes de comparar
+  // El orden es una decisión de producto: Partidos y Competiciones primero
+  // (el directo y el catálogo), después Buscar (descubrimiento), Favoritos y
+  // Ajustes (#414). El estado activo es por sección, no por coincidencia
+  // exacta de ruta: dentro de una liga (/competitions/xyz), de un equipo o de
+  // un jugador, la sección activa es Competiciones; los partidos cuelgan de
+  // Partidos. La ruta llega prefijada por idioma (/es/...): lo quitamos antes
+  // de comparar
   const path = pathname.replace(/^\/(es|en|pt|fr|it)(?=\/|$)/, '') || '/';
   const isActive = (href: string): boolean => {
     if (href === '/') return path === '/' || path.startsWith('/matches');
