@@ -19,6 +19,7 @@ export interface DbCompetition {
   source_url: string | null;
   scraped_at: Date | null;
   archived_at: Date | null;
+  data_quality: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -274,4 +275,45 @@ export async function mergeCompetitions(
   } finally {
     (client as pg.PoolClient).release();
   }
+}
+
+// ── Calidad de datos / visibilidad (migración 067) ───────────────────────────
+
+export type DataQuality = 'ok' | 'en_revision';
+
+export interface CompetitionQualityRow {
+  id: string;
+  name: string;
+  slug: string;
+  data_quality: string;
+  archived_at: Date | null;
+  season_count: string;
+  visible_season_count: string;
+}
+
+/** Lista TODAS las competiciones (incl. archivadas/ocultas) con recuento de temporadas. */
+export async function listCompetitionsForQuality(): Promise<CompetitionQualityRow[]> {
+  const result = await db.query<CompetitionQualityRow>(`
+    SELECT c.id, c.name, c.slug, c.data_quality, c.archived_at,
+           COUNT(s.id)::text AS season_count,
+           COUNT(s.id) FILTER (WHERE s.data_quality = 'ok')::text AS visible_season_count
+      FROM competitions c
+      LEFT JOIN seasons s ON s.competition_id = c.id
+     GROUP BY c.id
+     ORDER BY c.name
+  `);
+  return result.rows;
+}
+
+/** Marca la fiabilidad de una competición. Devuelve null si no existe. */
+export async function setCompetitionQuality(
+  id: string,
+  quality: DataQuality
+): Promise<DbCompetition | null> {
+  const result = await db.query<DbCompetition>(
+    `UPDATE competitions SET data_quality = $2, updated_at = NOW()
+      WHERE id = $1 RETURNING *`,
+    [id, quality]
+  );
+  return result.rows[0] ?? null;
 }

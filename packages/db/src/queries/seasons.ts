@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { db } from '../client.js';
+import type { DataQuality } from './competitions.js';
 
 export interface DbSeason {
   id: string;
@@ -13,6 +14,7 @@ export interface DbSeason {
   source_ref: string | null;
   source_url: string | null;
   scraped_at: Date | null;
+  data_quality: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -78,6 +80,44 @@ export async function findSeasonBySourceRef(sourceRef: string): Promise<DbSeason
   const result = await db.query<DbSeason>(
     'SELECT * FROM seasons WHERE source_ref = $1',
     [sourceRef]
+  );
+  return result.rows[0] ?? null;
+}
+
+// ── Calidad de datos / visibilidad (migración 067) ───────────────────────────
+
+export interface SeasonQualityRow {
+  id: string;
+  name: string;
+  slug: string;
+  is_current: boolean;
+  data_quality: string;
+  match_count: string;
+}
+
+/** Lista TODAS las temporadas de una competición (incl. ocultas). */
+export async function listSeasonsForQuality(competitionId: string): Promise<SeasonQualityRow[]> {
+  const result = await db.query<SeasonQualityRow>(`
+    SELECT s.id, s.name, s.slug, s.is_current, s.data_quality,
+           COUNT(m.id)::text AS match_count
+      FROM seasons s
+      LEFT JOIN matches m ON m.season_id = s.id
+     WHERE s.competition_id = $1
+     GROUP BY s.id
+     ORDER BY s.is_current DESC, s.start_date DESC NULLS LAST, s.name DESC
+  `, [competitionId]);
+  return result.rows;
+}
+
+/** Marca la fiabilidad de una temporada. Devuelve null si no existe. */
+export async function setSeasonQuality(
+  id: string,
+  quality: DataQuality
+): Promise<DbSeason | null> {
+  const result = await db.query<DbSeason>(
+    `UPDATE seasons SET data_quality = $2, updated_at = NOW()
+      WHERE id = $1 RETURNING *`,
+    [id, quality]
   );
   return result.rows[0] ?? null;
 }
