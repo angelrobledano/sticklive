@@ -1,8 +1,10 @@
 'use client';
 
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import { useT } from '@/lib/i18n';
 import { madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
+import { computeDateWindow } from '@/lib/date-window';
+import { tt } from '@/components/search/translate';
 
 /**
  * Construye las claves "YYYY-MM-DD" del carrusel, centradas en el "hoy" de
@@ -53,13 +55,86 @@ interface DateSelectorProps {
   availableTo?: string | null;
 }
 
-export function DateSelector({ selected, onChange, availableFrom, availableTo }: DateSelectorProps) {
+/**
+ * Chip de día — compartido por el carrusel (móvil) y la tira paginada
+ * (escritorio): mismo lenguaje visual, dos chasis de interacción.
+ */
+function DayChip({ dateKey, selected, outOfRange, onClick }: {
+  dateKey: string;
+  selected: string;
+  outOfRange: boolean;
+  onClick: (key: string) => void;
+}) {
   const { t, locale } = useT();
   const todayKey = madridTodayKey();
+  const date = labelDate(dateKey);
+  const isActive = dateKey === selected;
+  const relLabel = getRelativeKey(dateKey, todayKey) ? t(getRelativeKey(dateKey, todayKey)!) : null;
+
+  return (
+    <button
+      type="button"
+      data-active={isActive}
+      aria-current={isActive ? 'date' : undefined}
+      disabled={outOfRange}
+      title={outOfRange ? t('common.day_out_of_window') : undefined}
+      onClick={() => onClick(dateKey)}
+      className={`flex flex-col items-center shrink-0 rounded-xl px-3 py-1.5
+                  min-w-[52px] transition-all duration-150 select-none
+                  ${outOfRange
+                    ? 'opacity-30 cursor-not-allowed'
+                    : isActive
+                      ? 'bg-rink-passion/10 text-rink-passion'
+                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+    >
+      {relLabel ? (
+        <>
+          <span className="text-[10px] font-semibold uppercase tracking-wide leading-none mb-0.5">
+            {relLabel}
+          </span>
+          <span className={`text-base font-bold leading-none
+                            ${isActive ? 'text-rink-passion' : 'text-slate-700 dark:text-slate-200'}`}>
+            {date.getDate()}
+          </span>
+        </>
+      ) : (
+        <>
+          <span className="text-[10px] font-normal uppercase tracking-wide leading-none mb-0.5">
+            {dayAbbr(date, locale)}
+          </span>
+          <span className={`text-base font-bold leading-none
+                            ${isActive ? 'text-rink-passion' : 'text-slate-700 dark:text-slate-200'}`}>
+            {date.getDate()}
+          </span>
+          <span className="text-[10px] leading-none mt-0.5 opacity-70">
+            {monthAbbr(date, locale)}
+          </span>
+        </>
+      )}
+    </button>
+  );
+}
+
+/**
+ * Selector de fecha con dos chasis (#414):
+ *  · Móvil: carrusel deslizable de todos los días, centrado en el activo.
+ *  · md+: tira compacta de 7 días con flechas que pagan semana a semana —
+ *    navegación por teclado y flechas, sin una baranda de chips a todo el ancho.
+ * La lógica de paginación vive en `lib/date-window` (pura, testeada).
+ */
+export function DateSelector({ selected, onChange, availableFrom, availableTo }: DateSelectorProps) {
+  const { t } = useT();
   const dateKeys = buildDateKeys(7, 14);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Centrar el elemento activo al montar
+  // Ventana de escritorio: null = auto-centrada en el día seleccionado; las
+  // flechas la pagan y un cambio de selección vuelve a auto-centrarla.
+  const [startOverride, setStartOverride] = useState<number | null>(null);
+  useEffect(() => { setStartOverride(null); }, [selected]);
+  const window7 = computeDateWindow(dateKeys, selected, startOverride);
+
+  // Centrar el elemento activo al montar (carrusel móvil)
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -73,74 +148,67 @@ export function DateSelector({ selected, onChange, availableFrom, availableTo }:
     onChange(key);
   }, [onChange]);
 
+  const isOutOfRange = useCallback((key: string) =>
+    (!!availableFrom && key < availableFrom) || (!!availableTo && key > availableTo),
+    [availableFrom, availableTo]);
+
+  const arrowCls = (disabled: boolean) =>
+    `shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors
+     ${disabled
+       ? 'opacity-30 cursor-not-allowed text-slate-300 dark:text-slate-600'
+       : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200'}`;
+
   return (
     <div className="relative border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-      {/* Desvanecidos laterales: pista visual de que el carrusel es deslizable */}
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-6 z-10
-                      bg-gradient-to-r from-white dark:from-slate-900 to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-6 z-10
-                      bg-gradient-to-l from-white dark:from-slate-900 to-transparent" />
-    <div
-      ref={scrollRef}
-      className="flex gap-1.5 overflow-x-auto py-2.5 px-4 scrollbar-none
-                 lg:mx-auto lg:w-fit lg:max-w-full lg:px-6"
-      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-    >
-      {dateKeys.map((key) => {
-        const date = labelDate(key);
-        const isActive = key === selected;
-        const relKey = getRelativeKey(key, todayKey);
-        const relLabel = relKey ? t(relKey) : null;
-        // Fuera de la ventana de datos cargada: se muestra atenuado y deshabilitado
-        // en vez de abrir un día que siempre saldría vacío en falso (#365).
-        const outOfRange = (!!availableFrom && key < availableFrom)
-          || (!!availableTo && key > availableTo);
+      {/* Móvil: carrusel deslizable, pista de desvanecidos en los bordes */}
+      <div className="relative md:hidden">
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-6 z-10
+                        bg-gradient-to-r from-white dark:from-slate-900 to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-6 z-10
+                        bg-gradient-to-l from-white dark:from-slate-900 to-transparent" />
+        <div
+          ref={scrollRef}
+          className="flex gap-1.5 overflow-x-auto py-2.5 px-4 scrollbar-none"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {dateKeys.map((key) => (
+            <DayChip key={key} dateKey={key} selected={selected}
+                     outOfRange={isOutOfRange(key)} onClick={handleClick} />
+          ))}
+        </div>
+      </div>
 
-        return (
-          <button
-            key={key}
-            data-active={isActive}
-            aria-current={isActive ? 'date' : undefined}
-            disabled={outOfRange}
-            title={outOfRange ? t('common.day_out_of_window') : undefined}
-            onClick={() => handleClick(key)}
-            className={`flex flex-col items-center shrink-0 rounded-xl px-3 py-1.5
-                        min-w-[52px] transition-all duration-150 select-none
-                        ${outOfRange
-                          ? 'opacity-30 cursor-not-allowed'
-                          : isActive
-                            ? 'bg-rink-passion/10 text-rink-passion'
-                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                        }`}
-          >
-            {relLabel ? (
-              <>
-                <span className="text-[10px] font-semibold uppercase tracking-wide leading-none mb-0.5">
-                  {relLabel}
-                </span>
-                <span className={`text-base font-bold leading-none
-                                  ${isActive ? 'text-rink-passion' : 'text-slate-700 dark:text-slate-200'}`}>
-                  {date.getDate()}
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="text-[10px] font-normal uppercase tracking-wide leading-none mb-0.5">
-                  {dayAbbr(date, locale)}
-                </span>
-                <span className={`text-base font-bold leading-none
-                                  ${isActive ? 'text-rink-passion' : 'text-slate-700 dark:text-slate-200'}`}>
-                  {date.getDate()}
-                </span>
-                <span className="text-[10px] leading-none mt-0.5 opacity-70">
-                  {monthAbbr(date, locale)}
-                </span>
-              </>
-            )}
-          </button>
-        );
-      })}
-    </div>
+      {/* Escritorio: 7 días + paginación por semanas */}
+      <div className="hidden md:flex items-center justify-center gap-1.5 py-2 px-6">
+        <button
+          type="button"
+          onClick={() => setStartOverride(window7.start - 7)}
+          disabled={!window7.canPrev}
+          aria-label={tt(t, 'common.prev_week', 'Semana anterior')}
+          className={arrowCls(!window7.canPrev)}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+               className="w-4 h-4" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        {window7.keys.map((key) => (
+          <DayChip key={key} dateKey={key} selected={selected}
+                   outOfRange={isOutOfRange(key)} onClick={handleClick} />
+        ))}
+        <button
+          type="button"
+          onClick={() => setStartOverride(window7.start + 7)}
+          disabled={!window7.canNext}
+          aria-label={tt(t, 'common.next_week', 'Semana siguiente')}
+          className={arrowCls(!window7.canNext)}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+               className="w-4 h-4" aria-hidden="true">
+            <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }

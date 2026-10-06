@@ -183,7 +183,9 @@
     "current": "actuelle",
     "upcoming": "À venir",
     "live_now": "En direct maintenant",
-    "change_season_hint": "Changer de saison charge son classement."
+    "change_season_hint": "Changer de saison charge son classement.",
+    "prev_week": "Semaine précédente",
+    "next_week": "Semaine suivante"
   },
   "age_categories": {
     "senior": "Seniors",

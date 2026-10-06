@@ -214,7 +214,9 @@
     "current": "current",
     "upcoming": "Upcoming",
     "live_now": "Live now",
-    "change_season_hint": "Changing the season loads its standings."
+    "change_season_hint": "Changing the season loads its standings.",
+    "prev_week": "Previous week",
+    "next_week": "Next week"
   },
   "age_categories": {
     "senior": "Senior",

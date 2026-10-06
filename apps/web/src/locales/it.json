@@ -183,7 +183,9 @@
     "current": "attuale",
     "upcoming": "Prossime",
     "live_now": "In diretta ora",
-    "change_season_hint": "Cambiando la stagione si carica la sua classifica."
+    "change_season_hint": "Cambiando la stagione si carica la sua classifica.",
+    "prev_week": "Settimana precedente",
+    "next_week": "Settimana successiva"
   },
   "age_categories": {
     "senior": "Senior",
