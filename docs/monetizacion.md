@@ -35,6 +35,12 @@ Todas viven en `/opt/sticklive/.env.prod` (plantilla: [`.env.prod.example`](../.
 
 ## 2. Cómo activar
 
+> **ads.txt / app-ads.txt ya publicados (2026-10-06):** `apps/web/public/ads.txt`
+> y `apps/web/public/app-ads.txt` contienen la línea de autorización de Google
+> (`pub-2994866776026136`) para la web y la app respectivamente. Se sirven en
+> `https://sticklive.eu/ads.txt` y `/app-ads.txt` tras desplegar. Sin ads.txt,
+> AdSense avisa de "ingresos en riesgo"; es información pública, no un secreto.
+
 1. **Cuenta de AdSense aprobada** y, para cada superficie, un **bloque de
    anuncios** creado en el panel (Anuncios → Por unidad). Anota su `data-ad-slot`.
 2. **Rellenar `.env.prod`** (en el VPS, nunca en el repo ni en el chat):
@@ -152,9 +158,9 @@ solo en `production`:
 | Recompensado | `ca-app-pub-3940256099942544/5224354917` |
 
 **Pendientes fuera del repo:** vincular la app a su ficha de Play (cuando
-exista), crear el **mensaje GDPR/UMP** en Privacidad y mensajes (equivalente al
-CMP web de §4; obligatorio antes de servir ads en la UE) y confirmar la URL de
-política de privacidad.
+exista) y crear el **mensaje GDPR/UMP** en Privacidad y mensajes (equivalente
+al CMP web de §4; obligatorio antes de servir ads en la UE). El **app-ads.txt**
+ya está publicado (ver §2).
 
 ## 7. Referencias
 
