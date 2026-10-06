@@ -211,7 +211,7 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
               <button
                 onClick={activatePush}
                 disabled={activating}
-                className="mt-2 inline-flex items-center gap-2 min-h-[40px] px-3.5 rounded-xl text-xs font-semibold
+                className="mt-2 inline-flex items-center gap-2 min-h-[44px] px-3.5 rounded-xl text-xs font-semibold
                            bg-rink-passion text-white hover:opacity-90 disabled:opacity-50 transition-colors"
               >
                 {activating && <span className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden="true" />}

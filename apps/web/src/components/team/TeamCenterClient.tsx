@@ -180,7 +180,7 @@ function TeamHeader({ data }: { data: TeamDetailView }) {
               className="block max-w-full mt-1 text-xs font-light text-slate-500 dark:text-slate-400
                          bg-transparent border-0 rounded-md px-1 py-0 pr-6 cursor-pointer appearance-auto
                          hover:text-slate-600 dark:hover:text-slate-300
-                         focus:outline-none focus:ring-1 focus:ring-rink-passion dark:focus:ring-red-400"
+                         focus:outline-none focus:ring-1 focus:ring-rink-passion dark:focus:ring-rink-accent"
               aria-label={tt(t, 'team.season', 'Temporada')}
             >
               {seasons.map((s) => (
@@ -206,7 +206,7 @@ function TeamHeader({ data }: { data: TeamDetailView }) {
       {/* Racha de últimos resultados */}
       {form.length > 0 && (
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-slate-400 dark:text-slate-600 font-semibold mb-2">
+          <p className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400 font-semibold mb-2">
             {t('team.last_results')}
           </p>
           <div className="flex gap-2">
@@ -415,7 +415,7 @@ function SummaryTab({ data }: { data: TeamDetail }) {
         </div>
       ) : (
         <div className="card p-5 opacity-60 text-center">
-          <p className="text-sm text-slate-400 dark:text-slate-600">{t('standings.no_data')}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('standings.no_data')}</p>
         </div>
       )}
 
@@ -462,7 +462,7 @@ function CalendarTab({ data }: { data: TeamDetail }) {
   if (matches.length === 0) {
     return (
       <div className="card p-8 text-center opacity-60">
-        <p className="text-sm text-slate-400 dark:text-slate-600">{t('team.no_season_matches')}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t('team.no_season_matches')}</p>
       </div>
     );
   }
@@ -523,7 +523,7 @@ function PlayerRow({ player }: { player: SquadPlayer }) {
       className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group"
     >
       {/* Número */}
-      <span className="w-6 text-center text-xs font-mono text-slate-400 dark:text-slate-600 shrink-0">
+      <span className="w-6 text-center text-xs font-mono text-slate-500 dark:text-slate-400 shrink-0">
         {player.jerseyNumber ?? '—'}
       </span>
 
@@ -556,19 +556,19 @@ function PlayerRow({ player }: { player: SquadPlayer }) {
           {player.goals > 0 && (
             <div className="text-center">
               <p className="text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">{player.goals}</p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-600">{t('player.col_g')}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">{t('player.col_g')}</p>
             </div>
           )}
           {player.blueCards > 0 && (
             <div className="text-center">
               <p className="text-xs font-bold text-blue-600 dark:text-blue-400 tabular-nums">{player.blueCards}</p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-600">{t('player.col_az')}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">{t('player.col_az')}</p>
             </div>
           )}
           {player.redCards > 0 && (
             <div className="text-center">
               <p className="text-xs font-bold text-red-600 dark:text-red-400 tabular-nums">{player.redCards}</p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-600">{t('player.col_rj')}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">{t('player.col_rj')}</p>
             </div>
           )}
         </div>
@@ -589,7 +589,7 @@ function SquadTab({ data }: { data: TeamDetail }) {
   if (squad.length === 0) {
     return (
       <div className="card p-8 text-center opacity-60">
-        <p className="text-sm text-slate-400 dark:text-slate-600">{t('team.stats_empty')}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t('team.stats_empty')}</p>
       </div>
     );
   }
@@ -660,7 +660,7 @@ function StaffSection({ staff }: { staff: TeamDetail['staff'] }) {
           <div key={`${s.role}-${s.name}`} className="flex items-center gap-3 px-4 py-2.5">
             <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
-                   className="w-4 h-4 text-slate-400 dark:text-slate-600">
+                   className="w-4 h-4 text-slate-500 dark:text-slate-400">
                 <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
               </svg>
             </div>
@@ -695,7 +695,7 @@ function TeamStatsTab({ data }: { data: TeamDetail }) {
   if (!s || s.played === 0) {
     return (
       <div className="card p-8 text-center opacity-60">
-        <p className="text-sm text-slate-400 dark:text-slate-600">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           {t('team.stats_empty')}
         </p>
       </div>

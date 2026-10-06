@@ -70,7 +70,7 @@ export function NotificationStatus({ deviceId }: { deviceId: string }) {
   else if (perm === 'denied')            note = t('settings.notif_denied');
 
   const btn =
-    'inline-flex items-center gap-2 min-h-[40px] px-3.5 rounded-xl text-xs font-semibold ' +
+    'inline-flex items-center gap-2 min-h-[44px] px-3.5 rounded-xl text-xs font-semibold ' +
     'disabled:opacity-50 transition-colors';
 
   return (

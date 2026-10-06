@@ -117,7 +117,7 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
                          rounded-lg px-3 py-2 text-left break-all">
             {error.message}
             {error.digest && (
-              <span className="block mt-1 text-slate-400 dark:text-slate-600">
+              <span className="block mt-1 text-slate-500 dark:text-slate-400">
                 digest: {error.digest}
               </span>
             )}

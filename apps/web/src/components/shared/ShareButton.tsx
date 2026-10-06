@@ -63,7 +63,7 @@ export function ShareButton({ title, kind, className = '' }: {
       aria-label={t('common.share')}
       className={`h-11 rounded-full flex items-center justify-center shrink-0
                   ${status === 'error' ? 'w-auto px-2' : 'w-11'}
-                  text-slate-400 hover:text-rink-passion hover:bg-slate-100 dark:hover:bg-slate-800
+                  text-slate-500 dark:text-slate-400 hover:text-rink-passion hover:bg-slate-100 dark:hover:bg-slate-800
                   transition-colors ${className}`}
     >
       {status === 'copied' ? (

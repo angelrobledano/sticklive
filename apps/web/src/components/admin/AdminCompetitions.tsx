@@ -119,7 +119,7 @@ export function AdminCompetitions({ token, onError }: { token: string; onError: 
                    bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
                    focus:outline-none focus:ring-2 focus:ring-rink-passion"
       />
-      {loading && <p className="text-sm text-slate-400">Cargando…</p>}
+      {loading && <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>}
 
       <div className="card divide-y divide-slate-100 dark:divide-slate-800/60">
         {filtered.map((c) => (
@@ -130,7 +130,7 @@ export function AdminCompetitions({ token, onError }: { token: string; onError: 
                 className="flex-1 text-left min-w-0"
               >
                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{c.name}</p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                   {c.slug}
                   {c.archived_at ? ' · archivada' : ''}
                   {` · ${Number(c.visible_season_count)}/${Number(c.season_count)} temporadas visibles`}
@@ -161,14 +161,14 @@ export function AdminCompetitions({ token, onError }: { token: string; onError: 
                   </div>
                 ))}
                 {(seasons[c.id] ?? []).length === 0 && (
-                  <p className="text-xs text-slate-400 pl-4">Sin temporadas</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 pl-4">Sin temporadas</p>
                 )}
               </div>
             )}
           </div>
         ))}
         {!loading && filtered.length === 0 && (
-          <p className="px-4 py-8 text-center text-sm text-slate-400">Sin competiciones</p>
+          <p className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">Sin competiciones</p>
         )}
       </div>
     </div>

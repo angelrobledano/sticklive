@@ -113,7 +113,7 @@ function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
     return (
       <div className="flex items-center gap-3 py-2 select-none">
         <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
-        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-wider shrink-0">
+        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0">
           {t('match_detail.end_of_period', { n: ev.period ?? '' })}
         </span>
         <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
@@ -293,7 +293,7 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
           </div>
           <div className="space-y-1.5 max-w-xs">
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('match_detail.waiting_start')}</p>
-            <p className="text-xs text-slate-400 dark:text-slate-600 leading-relaxed">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               {t('match_detail.waiting_start_body')}
             </p>
           </div>
@@ -306,7 +306,7 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
       return (
         <div className="card p-8 flex flex-col items-center gap-5 text-center">
           <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-7 h-7 text-slate-400 dark:text-slate-500">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-7 h-7 text-slate-500 dark:text-slate-400">
               <path d="M3 7h18M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
@@ -348,7 +348,7 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
             <circle cx="12" cy="12" r="9" /><path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <p className="text-sm text-slate-400 dark:text-slate-600">{t('match_detail.no_events')}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t('match_detail.no_events')}</p>
       </div>
     );
   }

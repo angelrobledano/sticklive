@@ -147,7 +147,7 @@ function MatchCard({ match }: { match: SeasonMatch }) {
         {/* Grupo de la fase de grupos (WSG): en una misma jornada se mezclan
             grupos, y sin la etiqueta no se distingue a qué grupo pertenece. */}
         {match.groupName && (
-          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-600">
+          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             {t('standings.group')} {match.groupName}
           </span>
         )}
@@ -174,7 +174,7 @@ function EmptyFixtures() {
         <rect x="3" y="4" width="18" height="17" rx="2" />
         <path d="M3 9h18M8 2v4M16 2v4" strokeLinecap="round" />
       </svg>
-      <p className="text-sm text-slate-400 dark:text-slate-600">{t('fixtures.empty')}</p>
+      <p className="text-sm text-slate-500 dark:text-slate-400">{t('fixtures.empty')}</p>
     </div>
   );
 }
@@ -267,9 +267,9 @@ function FilterModeTabs({ mode, modes, onChange }: {
             type="button"
             aria-pressed={active}
             onClick={() => onChange(m)}
-            className={`flex-1 inline-flex items-center justify-center gap-1.5 min-h-[40px] px-2 rounded-xl text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-red-400 ${
+            className={`flex-1 inline-flex items-center justify-center gap-1.5 min-h-[44px] px-2 rounded-xl text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent ${
               active
-                ? 'bg-white dark:bg-slate-700 text-rink-passion dark:text-red-400 font-semibold shadow-sm'
+                ? 'bg-white dark:bg-slate-700 text-rink-passion dark:text-rink-accent font-semibold shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 font-medium hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           >
@@ -289,7 +289,7 @@ function StepArrow({ dir, ...rest }: { dir: 'prev' | 'next' } & React.ButtonHTML
       {...rest}
       className="shrink-0 inline-flex items-center justify-center w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-700
                  text-slate-500 dark:text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed
-                 hover:bg-slate-50 dark:hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-red-400"
+                 hover:bg-slate-50 dark:hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-rink-accent"
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className="w-4 h-4">
         <path d={dir === 'prev' ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'} strokeLinecap="round" strokeLinejoin="round" />
@@ -315,16 +315,16 @@ function RoundPicker({ rounds, value, onChange, onPrev, onNext }: {
           value={value != null ? String(value) : ''}
           onChange={(e) => { if (e.target.value) onChange(Number(e.target.value)); }}
           aria-label={tt(t, 'fixtures.by_round', 'Filtrar por jornada')}
-          className="w-full min-h-[40px] pl-3 pr-8 rounded-xl border border-slate-200 dark:border-slate-700
+          className="w-full min-h-[44px] pl-3 pr-8 rounded-xl border border-slate-200 dark:border-slate-700
                      bg-white dark:bg-slate-900 text-sm font-medium text-slate-700 dark:text-slate-200
-                     focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-red-400 cursor-pointer appearance-none"
+                     focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-rink-accent cursor-pointer appearance-none"
         >
           {rounds.map((r) => (
             <option key={r.id} value={r.number}>{roundLabel(r, t)}</option>
           ))}
         </select>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
-             className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none">
+             className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 dark:text-slate-400 pointer-events-none">
           <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
@@ -379,7 +379,7 @@ function TeamPicker({ teams, selectedId, onSelect }: {
             type="button"
             aria-pressed={active}
             onClick={() => onSelect(active ? null : tm.id)}
-            className={`flex flex-col items-center gap-1 rounded-xl border px-1.5 py-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-red-400 ${
+            className={`flex flex-col items-center gap-1 rounded-xl border px-1.5 py-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent ${
               active
                 ? 'border-rink-passion bg-rink-passion/5 dark:bg-rink-passion/10'
                 : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/60'
@@ -387,7 +387,7 @@ function TeamPicker({ teams, selectedId, onSelect }: {
           >
             <TeamShield teamId={tm.id} teamName={tm.shortName ?? tm.name} size={30} />
             <span className={`w-full truncate text-center text-[11px] font-semibold ${
-              active ? 'text-rink-passion dark:text-red-400' : 'text-slate-600 dark:text-slate-300'
+              active ? 'text-rink-passion dark:text-rink-accent' : 'text-slate-600 dark:text-slate-300'
             }`}>
               {clubName(tm.shortName ?? tm.name)}
             </span>
@@ -406,7 +406,7 @@ function TeamHeader({ team, count }: { team: TeamSummary; count: number }) {
       <span className="min-w-0 truncate text-sm font-bold text-slate-800 dark:text-slate-100">
         {clubName(team.name)}
       </span>
-      <span className="ml-auto shrink-0 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 tabular-nums">
+      <span className="ml-auto shrink-0 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 tabular-nums">
         {count === 1
           ? tt(t, 'fixtures.match_count_one', '1 partido', { n: count })
           : tt(t, 'fixtures.match_count_many', '{n} partidos', { n: count })}
@@ -593,7 +593,7 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
       {/* ── Resultados ────────────────────────────────────── */}
       {mode === 'team' ? (
         !activeTeam ? (
-          <p className="card p-6 text-center text-sm text-slate-400 dark:text-slate-600">
+          <p className="card p-6 text-center text-sm text-slate-500 dark:text-slate-400">
             {tt(t, 'fixtures.choose_team', 'Elige un equipo para ver todos sus partidos.')}
           </p>
         ) : (

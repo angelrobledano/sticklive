@@ -124,7 +124,7 @@ export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound
             className="card flex items-center justify-between px-3 py-2 border border-dashed border-slate-200 dark:border-slate-800"
           >
             <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">{r.name}</span>
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-600">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               {t('playoffs.tbd')}
             </span>
           </div>

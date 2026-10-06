@@ -17,7 +17,7 @@ export function SeasonNoteLine({ competitionSlug, seasonSlug }: {
   const note = seasonNote(competitionSlug, seasonSlug);
   if (!note) return null;
   return (
-    <p className="mt-0.5 text-[11px] font-light text-slate-400 dark:text-slate-500">
+    <p className="mt-0.5 text-[11px] font-light text-slate-500 dark:text-slate-400">
       {tt(
         t,
         seasonNoteI18nKey(note.code),

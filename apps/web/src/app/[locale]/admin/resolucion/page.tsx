@@ -154,11 +154,11 @@ export default function ResolucionPage() {
     <div className="px-4 py-6 max-w-3xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-50">
-          Cola de resolución <span className="text-slate-400 font-bold">({data.count})</span>
+          Cola de resolución <span className="text-slate-500 dark:text-slate-400 font-bold">({data.count})</span>
         </h1>
         <button
           onClick={() => { setData(null); setToken(''); try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* noop */ } }}
-          className="text-xs text-slate-400 hover:text-red-500 min-h-[44px] px-2"
+          className="text-xs text-slate-500 dark:text-slate-400 hover:text-red-500 min-h-[44px] px-2"
         >
           Cerrar sesión admin
         </button>
@@ -191,7 +191,7 @@ export default function ResolucionPage() {
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="font-bold text-slate-900 dark:text-slate-50 truncate">{it.rawText}</p>
-              <p className="text-[11px] font-mono text-slate-400 dark:text-slate-600 truncate">
+              <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate">
                 {it.normalized}{it.sourceRef ? ` · ${it.sourceRef}` : ''}
               </p>
             </div>
@@ -211,12 +211,12 @@ export default function ResolucionPage() {
                   className="text-xs font-semibold px-3 min-h-[36px] rounded-xl border border-slate-200 dark:border-slate-700
                              text-slate-700 dark:text-slate-300 hover:border-rink-passion hover:text-rink-passion disabled:opacity-40"
                 >
-                  {cnd.name} <span className="text-slate-400 tabular-nums">{Math.round(cnd.score * 100)}%</span>
+                  {cnd.name} <span className="text-slate-500 dark:text-slate-400 tabular-nums">{Math.round(cnd.score * 100)}%</span>
                 </button>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-400">Sin candidatos automáticos.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Sin candidatos automáticos.</p>
           )}
 
           <div className="flex items-center gap-2">
@@ -238,7 +238,7 @@ export default function ResolucionPage() {
             <button
               onClick={() => reject(it.id)}
               disabled={busy === it.id}
-              className="text-xs font-semibold text-slate-400 hover:text-red-500 px-2 min-h-[36px] disabled:opacity-40"
+              className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-red-500 px-2 min-h-[36px] disabled:opacity-40"
             >
               Descartar
             </button>
@@ -247,7 +247,7 @@ export default function ResolucionPage() {
       ))}
 
       {data.items.length === 0 && (
-        <div className="card p-8 text-center text-sm text-slate-400 dark:text-slate-600">
+        <div className="card p-8 text-center text-sm text-slate-500 dark:text-slate-400">
           Cola vacía. Nada pendiente de resolver.
         </div>
       )}

@@ -53,7 +53,7 @@ export function StatsTab({ data }: { data: MatchDetail }) {
     if (match.status === 'scheduled') {
       return (
         <div className="card p-8 text-center opacity-60">
-          <p className="text-sm text-slate-400 dark:text-slate-600">{t('match_detail.stats_pending')}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('match_detail.stats_pending')}</p>
         </div>
       );
     }

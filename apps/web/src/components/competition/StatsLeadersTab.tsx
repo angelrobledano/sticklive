@@ -82,7 +82,7 @@ export function StatsLeadersTab({ stats }: { stats: SeasonStats }) {
   if (empty) {
     return (
       <div className="card p-8 text-center opacity-60">
-        <p className="text-sm text-slate-400 dark:text-slate-600">{t('leaders.no_data')}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t('leaders.no_data')}</p>
       </div>
     );
   }

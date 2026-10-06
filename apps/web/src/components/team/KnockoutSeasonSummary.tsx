@@ -92,7 +92,7 @@ function SeriesRow({ serie, teamId, timezone }: {
                   {my ?? 0} – {opp ?? 0}
                 </span>
                 {serie.decidedBy && (
-                  <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     {serie.decidedBy === 'penalties' ? t('playoffs.pens_short') : t('playoffs.ot_short')}
                   </span>
                 )}
@@ -104,7 +104,7 @@ function SeriesRow({ serie, teamId, timezone }: {
             {fmtDate(first.scheduledAt, timezone, locale)} · {fmtTime(first.scheduledAt, timezone, locale)}
           </span>
         ) : (
-          <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0 tabular-nums">
+          <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0 tabular-nums">
             {serie.winsFor}–{serie.winsAgainst}
           </span>
         )}
@@ -123,7 +123,7 @@ function SeriesRow({ serie, teamId, timezone }: {
                         ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
                         : g.status === 'finished'
                           ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-rink-passion'
-                          : 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600'
+                          : 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400'
                     }`}>
                 <span className="text-[9px] tabular-nums opacity-60">{i + 1}</span>
                 <span className="tabular-nums">{played ? `${my ?? '-'}–${opp ?? '-'}` : fmtDate(g.scheduledAt, timezone, locale)}</span>
@@ -203,7 +203,7 @@ export function KnockoutSeasonSummary({ data, summary, renderMatch }: {
             {heading ?? competition}
           </h3>
         )}
-        <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-4">
+        <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
           {t('team.knockout_empty')}
         </p>
       </div>
@@ -218,7 +218,7 @@ export function KnockoutSeasonSummary({ data, summary, renderMatch }: {
           {heading && (
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">{heading}</h3>
           )}
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-0.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-0.5">
             {t('team.knockout_tag')}
           </p>
         </div>

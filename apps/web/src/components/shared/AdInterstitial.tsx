@@ -145,7 +145,7 @@ export function AdInterstitial() {
         className="relative w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-700
                    bg-white dark:bg-slate-900 shadow-2xl p-4"
       >
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
           {t('ads.interstitial_title')}
         </p>
 
@@ -154,7 +154,7 @@ export function AdInterstitial() {
           onClick={close}
           aria-label={t('ads.close')}
           className="absolute right-2 top-2 inline-flex h-11 w-11 items-center justify-center
-                     rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100
+                     rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-700 hover:bg-slate-100
                      dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-colors"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}

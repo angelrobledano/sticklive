@@ -7,7 +7,7 @@ import colors from 'tailwindcss/colors';
  *
  * En modo oscuro el anillo `ring-rink-passion` (red.800 = #991b1b) se queda en
  * ~2,1:1 sobre las superficies oscuras de la app — justo el valor medido en la
- * auditoría (#364). Por eso los inputs/selects usan `dark:focus:ring-red-400`.
+ * auditoría (#364). Por eso los inputs/selects usan `dark:focus:ring-rink-accent`.
  * Este test fija la decisión: si alguien cambia la paleta, salta.
  */
 const DARK_SURFACES = [

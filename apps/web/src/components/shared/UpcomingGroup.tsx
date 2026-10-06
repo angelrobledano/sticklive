@@ -59,7 +59,7 @@ export function UpcomingGroup({ name, id, matches, defaultCollapsed = true }: {
             </span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
                  aria-hidden="true"
-                 className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150
+                 className={`w-3.5 h-3.5 text-slate-500 dark:text-slate-400 transition-transform duration-150
                              ${collapsed ? '' : 'rotate-180'}`}>
               <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>

@@ -55,7 +55,7 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
             className="mt-0.5 -ml-1 text-xs font-light text-slate-500 dark:text-slate-400 bg-transparent
                        border-0 rounded-md px-1 py-0 pr-6 cursor-pointer appearance-auto
                        hover:text-slate-600 dark:hover:text-slate-300
-                       focus:outline-none focus:ring-1 focus:ring-rink-passion dark:focus:ring-red-400"
+                       focus:outline-none focus:ring-1 focus:ring-rink-passion dark:focus:ring-rink-accent"
             aria-label={t('common.change_season')}
             aria-describedby="season-select-hint"
           >

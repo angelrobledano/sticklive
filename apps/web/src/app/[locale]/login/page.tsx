@@ -265,7 +265,7 @@ function LoginInner() {
 
       <div className="flex items-center gap-3">
         <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
-        <span className="text-[10px] uppercase tracking-widest text-slate-400 dark:text-slate-600">{t('auth.or_email')}</span>
+        <span className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400">{t('auth.or_email')}</span>
         <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
       </div>
 
@@ -296,7 +296,7 @@ function LoginInner() {
             placeholder="tu@email.com"
             className="w-full min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-slate-700
                        bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
-                       placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-red-400"
+                       placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-rink-accent"
           />
           <button
             type="submit"

@@ -269,7 +269,7 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
                     ? 'text-rose-500'
                     : freshness.state === 'stale'
                       ? 'text-amber-500'
-                      : 'text-slate-400 dark:text-slate-500'
+                      : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
                 · {t(freshness.labelKey, { s: freshness.ageSeconds })}

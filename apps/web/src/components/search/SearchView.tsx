@@ -53,7 +53,7 @@ function Section({ title, count, children }: {
     <section className="mb-3">
       <div className="flex items-center gap-2 px-1 pt-1 pb-1.5">
         <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300 flex-1">{title}</span>
-        <span className="text-[10px] text-slate-400 dark:text-slate-600 tabular-nums font-medium">{count}</span>
+        <span className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums font-medium">{count}</span>
       </div>
       <div>{children}</div>
     </section>
@@ -91,7 +91,7 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
         <form action={`/${locale}/search`} method="get" role="search">
           <div className="relative">
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-                 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none">
+                 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-400 pointer-events-none">
               <circle cx="11" cy="11" r="7" />
               <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
             </svg>
@@ -114,7 +114,7 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
                 type="button"
                 onClick={() => setQuery('')}
                 aria-label={tt(t, 'search.clear', 'Limpiar búsqueda')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-600
                            dark:hover:text-slate-300 transition-colors"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
@@ -147,7 +147,7 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
           <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-4">
             <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
-                   className="w-6 h-6 text-slate-400">
+                   className="w-6 h-6 text-slate-500 dark:text-slate-400">
                 <circle cx="11" cy="11" r="7" />
                 <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
               </svg>
@@ -161,7 +161,7 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
           </div>
         ) : results ? (
           <>
-            <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 px-1 pb-2 tabular-nums">
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 px-1 pb-2 tabular-nums">
               {tt(t, 'search.results_count', '{n} resultados', { n: total })}
             </p>
 

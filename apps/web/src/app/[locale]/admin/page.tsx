@@ -164,7 +164,7 @@ export default function AdminPage() {
         </h1>
         <button
           onClick={() => { setData(null); setToken(''); try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* noop */ } }}
-          className="text-xs text-slate-400 hover:text-red-500 min-h-[44px] px-2"
+          className="text-xs text-slate-500 dark:text-slate-400 hover:text-red-500 min-h-[44px] px-2"
         >
           Cerrar sesión admin
         </button>
@@ -217,9 +217,9 @@ export default function AdminPage() {
               <tr key={u.id} className={u.status === 'disabled' ? 'opacity-50' : ''}>
                 <td className="px-4 py-2.5">
                   <p className="font-medium text-slate-800 dark:text-slate-200 truncate max-w-[220px]">
-                    {u.email ?? <span className="italic text-slate-400">anónimo</span>}
+                    {u.email ?? <span className="italic text-slate-500 dark:text-slate-400">anónimo</span>}
                   </p>
-                  <p className="text-[10px] font-mono text-slate-400 dark:text-slate-600 truncate max-w-[220px]">{u.deviceId}</p>
+                  <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate max-w-[220px]">{u.deviceId}</p>
                 </td>
                 <td className="text-center px-2 py-2.5 tabular-nums text-slate-600 dark:text-slate-400">{u.favorites}</td>
                 <td className="text-center px-2 py-2.5">
@@ -246,7 +246,7 @@ export default function AdminPage() {
                   <button
                     onClick={() => remove(u.id)}
                     disabled={busy === u.id}
-                    className="text-xs font-semibold text-slate-400 hover:text-red-500 px-2 min-h-[36px] disabled:opacity-40"
+                    className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-red-500 px-2 min-h-[36px] disabled:opacity-40"
                   >
                     Borrar
                   </button>
@@ -254,7 +254,7 @@ export default function AdminPage() {
               </tr>
             ))}
             {data.users.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">Sin usuarios todavía</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">Sin usuarios todavía</td></tr>
             )}
           </tbody>
         </table>

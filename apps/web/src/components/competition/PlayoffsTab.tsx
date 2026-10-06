@@ -151,7 +151,7 @@ export function SeriesCard({ serie, label, isFinal = false }: { serie: PlayoffSe
                       ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
                       : g.status === 'finished'
                         ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-rink-passion'
-                        : 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600'
+                        : 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400'
                   }`}>
               <span className="text-[9px] tabular-nums opacity-60">{i + 1}</span>
               {played ? (
@@ -254,7 +254,7 @@ export function PlayoffsTab({ rounds = [], matches, format }: { standings?: Seas
     if (series.length === 0) {
       return (
         <div className="card p-6 text-center opacity-60">
-          <p className="text-sm text-slate-400 dark:text-slate-600">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {phase === 'Cuartos' ? t('playoffs.no_quarters') : phase === 'Semis' ? t('playoffs.pending_quarters') : t('playoffs.pending_semis')}
           </p>
         </div>

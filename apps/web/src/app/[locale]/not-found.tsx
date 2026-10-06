@@ -24,7 +24,7 @@ export default function LocaleNotFound() {
       {/* Icono: portería con balón fuera (404) */}
       <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
-             className="w-8 h-8 text-slate-400 dark:text-slate-500" aria-hidden="true">
+             className="w-8 h-8 text-slate-500 dark:text-slate-400" aria-hidden="true">
           <path d="M4 4h16v14H4z" strokeLinejoin="round" />
           <path d="M4 8h16M4 12h16M8 4v14M12 4v14M16 4v14" strokeWidth={0.7} />
           <circle cx="19" cy="19" r="3" className="text-rink-passion" />

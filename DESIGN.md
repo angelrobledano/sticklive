@@ -5,6 +5,7 @@ colors:
   rink-passion: "#991b1b"
   rink-passion-light: "#b91c1c"
   rink-passion-dark: "#7f1d1d"
+  rink-accent: "#f87171"
   surface-bg: "#f8fafc"
   surface-card: "#ffffff"
   surface-bg-dark: "#0b1220"
@@ -39,12 +40,30 @@ typography:
     fontWeight: 400
     lineHeight: 1.4
     letterSpacing: "normal"
+  body-sm:
+    fontFamily: "var(--font-inter), system-ui, sans-serif"
+    fontSize: "0.8125rem"
+    fontWeight: 500
+    lineHeight: 1.35
+    letterSpacing: "normal"
   label:
     fontFamily: "var(--font-inter), system-ui, sans-serif"
     fontSize: "0.6875rem"
     fontWeight: 700
     lineHeight: 1
     letterSpacing: "0.1em"
+  label-sm:
+    fontFamily: "var(--font-inter), system-ui, sans-serif"
+    fontSize: "0.625rem"
+    fontWeight: 700
+    lineHeight: 1
+    letterSpacing: "0.08em"
+  label-xs:
+    fontFamily: "var(--font-inter), system-ui, sans-serif"
+    fontSize: "0.5625rem"
+    fontWeight: 700
+    lineHeight: 1
+    letterSpacing: "0.08em"
 rounded:
   md: "8px"
   lg: "12px"
@@ -107,6 +126,7 @@ Paleta sobria de grises azulados (slate) sobre la que el granate de identidad y 
 
 ### Primary
 - **Rink Passion / Granate de Pista** (#991b1b): la identidad del hockey sobre patines. Logotipo, sección activa de navegación, anillo de resaltado del equipo favorito, borde de zona de playoff, botón de acción. Hover sube a **Rink Passion Light** (#b91c1c), active baja a **Rink Passion Dark** (#7f1d1d), que también es el anillo de foco.
+- **Rink Accent / Acento en oscuro** (#f87171): el granate cuando el lienzo es oscuro. Sobre el azul-noche, Rink Passion se queda en ~2,1:1, así que el texto activo, los iconos de identidad y los anillos de foco (`dark:text-rink-accent`, `dark:ring-rink-accent`) suben a este paso para superar 3:1. Es identidad, no color semántico: el rojo de tarjeta/error/negativo es otro y no se toca.
 
 ### Secondary (estado en directo)
 - **Live / Esmeralda** (#10b981): único color de "en juego". Punto pulsante y etiqueta de directo en la ficha y en la tarjeta; también el diferencial de goles positivo y los penaltis marcados.
@@ -139,7 +159,8 @@ Paleta sobria de grises azulados (slate) sobre la que el granate de identidad y 
 - **Score** (mono, 700, hasta 3rem, `tracking-tighter`, `tabular-nums`): marcador principal en la ficha de partido. En tarjeta de lista baja a ~1.5rem.
 - **Display** (Inter, 700, ~1.125rem): marca "Stick Live", nombres de equipo en la ficha, títulos de bloque.
 - **Body** (Inter, 400–500, 0.875rem): texto general, nombres de equipo en listas, filas de ajuste.
-- **Label** (Inter, 700, 0.6875rem y menores —hasta 9px—, MAYÚSCULAS, `tracking-wide`/`tracking-widest`): encabezados de sección, cabeceras de tabla, badges de estado, metadatos.
+- **Body sm** (Inter, 400–500, 0.8125rem / 13px): metadatos de fila, subtítulos de tarjeta y texto secundario denso donde `body` no cabe.
+- **Label** (Inter, 700, MAYÚSCULAS, `tracking-wide`/`tracking-widest`): encabezados de sección, cabeceras de tabla, badges y metadatos. Es una escalera de tres pasos deliberada — `label` 0.6875rem/11px (el paso por defecto), `label-sm` 0.625rem/10px (la micro-etiqueta dominante de la densidad de tabla) y `label-xs` 0.5625rem/9px (el suelo). Por debajo solo existe una excepción: las iniciales de los avatares de escudo sin logo (7–8px), que no son texto de interfaz.
 
 ### Named Rules
 **The Tabular Scoreboard Rule.** Cualquier número que pueda cambiar en vivo o alinearse en columna (marcador, reloj, clasificación, estadísticas) va en monoespaciado con `tabular-nums`. Las cifras nunca deben desplazar el layout al actualizarse.
@@ -203,7 +224,7 @@ Lenguaje de esquinas redondeadas medias y coherentes: tarjetas y chips de fecha 
 - **Internal Padding:** típicamente `px-3 py-2.5` (tarjeta de lista) a `px-4 pt-4 pb-5` (ficha).
 
 ### Banda de directo (Live Board)
-Tarjeta de partido `live` con jerarquía de marcador grande (mono `text-4xl` `tabular-nums`), anillo esmeralda tenue (`ring-1 ring-emerald-500/25`) y escudo + nombre oficial a ambos lados; una estrella granate marca los equipos seguidos. Solo existe para estados `live`/descanso, nunca para programados. Cuando el marcador cambia en vivo, el número hace un pulso breve hacia el acento esmeralda (`.score-flash`) que se apaga solo: es el momento firmado de la portada, y `reduce-motion` lo neutraliza.
+Tarjeta de partido `live` con jerarquía de marcador grande (mono `text-4xl` `tabular-nums`), anillo esmeralda tenue (`ring-1 ring-emerald-500/25`) y escudo + nombre oficial a ambos lados; una estrella granate marca los equipos seguidos. Solo existe para estados `live`/descanso, nunca para programados. Cuando el marcador cambia en vivo, el número hace un pulso breve hacia el acento esmeralda (`.score-flash`) que se apaga solo: es el momento firmado de la portada. `reduce-motion` lo conserva —es una señal de color, no movimiento— y solo apaga bucles y desplazamientos.
 
 ### Navigation
 - **Bottom Nav (móvil):** barra fija de 64px, 5 destinos ordenados por importancia — Partidos, Competiciones, Buscar, Favoritos, Ajustes (#414) —, iconos SVG de trazo cuyo grosor sube (1.8 → 2.5) y color pasa a granate en el activo; etiqueta de 11px que pasa a `font-semibold`.

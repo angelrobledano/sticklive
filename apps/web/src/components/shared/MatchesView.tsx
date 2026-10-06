@@ -97,7 +97,7 @@ function EmptyRinkScene() {
       />
       {/* Portería (marco + red ligera), apoyada en la línea */}
       <svg viewBox="0 0 54 40"
-           className="rink-empty-anim absolute bottom-6 right-3 h-10 w-14 text-slate-400 dark:text-slate-500"
+           className="rink-empty-anim absolute bottom-6 right-3 h-10 w-14 text-slate-500 dark:text-slate-400"
            style={once('rinkNetHit', '1.8s')}
            fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round">
         <path d="M2 2v36M52 2v36M2 2h50" />

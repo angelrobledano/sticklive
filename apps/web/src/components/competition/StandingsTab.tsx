@@ -50,7 +50,7 @@ export function StandingsTab({ standings }: { standings: SeasonStandingRow[] }) 
   if (standings.length === 0) {
     return (
       <div className="card p-8 text-center opacity-60">
-        <p className="text-sm text-slate-400 dark:text-slate-600">{t('standings.no_data')}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t('standings.no_data')}</p>
       </div>
     );
   }
@@ -227,7 +227,7 @@ function StandingsTable({
               {/* DG */}
               <span role="cell" className={`text-xs font-semibold text-center tabular-nums ${
                 row.goalDiff > 0 ? 'text-emerald-600 dark:text-emerald-400' :
-                row.goalDiff < 0 ? 'text-red-500' : 'text-slate-400'
+                row.goalDiff < 0 ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'
               }`}>
                 {row.goalDiff > 0 ? `+${row.goalDiff}` : row.goalDiff}
               </span>

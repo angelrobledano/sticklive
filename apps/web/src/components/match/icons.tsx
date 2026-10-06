@@ -106,7 +106,7 @@ export function TimeoutDot() {
   return (
     <span className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-           className="w-2.5 h-2.5 text-slate-400 dark:text-slate-600">
+           className="w-2.5 h-2.5 text-slate-500 dark:text-slate-400">
         <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" strokeLinecap="round" />
       </svg>
     </span>

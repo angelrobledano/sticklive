@@ -25,7 +25,7 @@ export function TeamName({ name, shortName, mobile = 'short', suffix, className 
       <span className="hidden md:inline">{clubName(name)}</span>
       <span className="md:hidden">{mobileText}</span>
       {suffix ? (
-        <span className="ml-1 text-[11px] font-normal text-slate-400 dark:text-slate-500">{suffix}</span>
+        <span className="ml-1 text-[11px] font-normal text-slate-500 dark:text-slate-400">{suffix}</span>
       ) : null}
     </span>
   );
