@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sectionBadgeText, teamSearchHref, type TeamDetailView } from './TeamCenterClient';
+import { sectionBadgeText } from './TeamCenterClient';
 
 /**
  * #196/#197: desambiguación de secciones en la ficha de equipo. `sectionBadgeText`
@@ -28,24 +28,5 @@ describe('sectionBadgeText (#196)', () => {
 
   it('niveles de filial fuera de rango se recortan a Z', () => {
     expect(sectionBadgeText({ squadLevel: 30 }, t)).toBe('team.filial Z');
-  });
-});
-
-describe('teamSearchHref (#197)', () => {
-  const base = {
-    id: 't1', name: 'Igualada Rigat HC', shortName: null, city: null, country: 'ES',
-    logoUrl: null, websiteUrl: null, club: null,
-  } satisfies TeamDetailView['team'];
-
-  it('prefiltra la búsqueda global por el nombre canónico del club', () => {
-    const team = {
-      ...base,
-      club: { id: 'c1', canonicalName: 'Igualada HC', slug: 'igualada', crestUrl: null, city: null, country: 'ES' },
-    };
-    expect(teamSearchHref(team)).toBe('/search?q=Igualada%20HC');
-  });
-
-  it('sin club cae al nombre del equipo', () => {
-    expect(teamSearchHref(base)).toBe('/search?q=Igualada%20Rigat%20HC');
   });
 });

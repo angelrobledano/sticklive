@@ -79,12 +79,6 @@ export function sectionBadgeText(
   return parts.join(' · ');
 }
 
-/** URL de la búsqueda global pre-filtrada por el club (no duplica el buscador). */
-export function teamSearchHref(team: TeamDetailView['team']): string {
-  const q = clubName(team.club?.canonicalName ?? team.name);
-  return `/search?q=${encodeURIComponent(q)}`;
-}
-
 /**
  * Etiqueta de una opción del selector de temporada: "Competición · 2025/26"
  * (+ "· Actual" si es la vigente). Pura: recibe `t` para testearla sin i18n.
@@ -224,7 +218,12 @@ function TeamHeader({ data }: { data: TeamDetailView }) {
 
 function ClubSection({ data }: { data: TeamDetailView }) {
   const { t } = useT();
-  const { team, clubTeams = [] } = data;
+  const { clubTeams = [] } = data;
+  // Sin otras secciones del club no hay nada que mostrar. Antes esta tarjeta
+  // quedaba con un único enlace "Buscar equipos", que se ha retirado: era una
+  // búsqueda global dentro de la ficha (redundante con la nav y con ámbito poco
+  // claro).
+  if (clubTeams.length === 0) return null;
 
   return (
     <div className="card overflow-hidden">
@@ -259,25 +258,6 @@ function ClubSection({ data }: { data: TeamDetailView }) {
           </div>
         </>
       )}
-
-      {/* Búsqueda de equipos: enlaza al buscador global pre-filtrado por club
-          (no duplicamos `/search`). */}
-      <Link
-        href={teamSearchHref(team)}
-        className={`flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group ${
-          clubTeams.length > 0 ? 'border-t border-slate-100 dark:border-slate-800' : ''
-        }`}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-slate-400 dark:text-slate-600 shrink-0" aria-hidden="true">
-          <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" strokeLinecap="round" />
-        </svg>
-        <span className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-rink-passion transition-colors">
-          {t('team.search_teams')}
-        </span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-slate-300 dark:text-slate-700 shrink-0">
-          <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </Link>
     </div>
   );
 }
