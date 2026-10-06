@@ -234,6 +234,22 @@ export interface TeamSeason {
   competitionShort: string | null;
 }
 
+/**
+ * Formato de la competición (competition_sources.external_ids.format,
+ * normalizado por la API): 'league' | 'bracket' | 'final_four'.
+ * `bracket`/`final_four` = competición eliminatoria, sin clasificación.
+ */
+export type CompetitionFormat = 'league' | 'bracket' | 'final_four';
+
+/** Competición de la temporada mostrada en la ficha de equipo. */
+export interface TeamSeasonInfo {
+  competitionId: string;
+  competitionSlug: string | null;
+  competitionName: string;
+  competitionShort: string | null;
+  competitionFormat: CompetitionFormat;
+}
+
 export interface SeasonLeader {
   playerId: string | null;
   playerName: string;
@@ -292,6 +308,14 @@ export interface TeamMatchSummary {
   venue: MatchVenue | null;
   homeTeam: TeamSummary;
   awayTeam: TeamSummary;
+  /** Ronda del partido (join con `rounds`). Opcional: payload antiguo sin ella. */
+  roundId?: string | null;
+  roundNumber?: number | null;
+  roundName?: string | null;
+  roundType?: string | null;
+  /** Ganador explícito (eliminatorias resueltas en penaltis/prórroga). */
+  winnerTeamId?: string | null;
+  winType?: 'regular' | 'overtime' | 'penalties' | null;
 }
 
 export interface SquadPlayer {
@@ -351,6 +375,15 @@ export interface TeamDetail {
     club: TeamClub | null;
   };
   standing: TeamStanding | null;
+  /** Competición de la temporada mostrada (formato incluido). Opcional: payload antiguo. */
+  season?: TeamSeasonInfo | null;
+  /**
+   * Partidos de TODA la temporada (lite) cuando la competición es
+   * eliminatoria: el cuadro completo con el que se derivan las fases. Con sólo
+   * los partidos del equipo, la semifinal de un eliminado es indistinguible
+   * de una final. Ausente en ligas y en payloads antiguos.
+   */
+  knockoutMatches?: TeamMatchSummary[];
   /** Temporadas del equipo para el selector (actual primero). */
   seasons?: TeamSeason[];
   /** Temporada mostrada (la de `?season=` o, por defecto, la actual). */

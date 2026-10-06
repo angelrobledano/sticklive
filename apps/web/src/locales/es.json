@@ -477,7 +477,12 @@
     "other_teams": "Otros equipos del club",
     "season": "Temporada",
     "filial": "Filial",
-    "gk_short": "PO"
+    "gk_short": "PO",
+    "knockout_tag": "Competición eliminatoria",
+    "knockout_empty": "Sin partidos registrados en esta edición",
+    "knockout_incomplete": "Datos incompletos de esta edición: se muestran los partidos registrados.",
+    "eliminated": "Eliminado",
+    "view_competition": "Ver competición"
   },
   "player": {
     "current_team": "Equipo actual",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { TeamDetail, TeamMatchSummary, SquadPlayer, TeamSeason } from '@/lib/api/client';
@@ -13,6 +13,8 @@ import { ManageNotificationsButton } from '@/components/shared/ManageNotificatio
 import { ShareButton } from '@/components/shared/ShareButton';
 import { useT } from '@/lib/i18n';
 import { APP_TZ } from '@/lib/match-time';
+import { isKnockoutSeason, buildKnockoutSummary, knockoutPhaseLabel } from '@/lib/knockout';
+import { KnockoutSeasonSummary } from './KnockoutSeasonSummary';
 import { tt } from '@/components/search/translate';
 
 // ─── Sección de club (#196/#197) ───────────────────────────────────────
@@ -264,7 +266,7 @@ function ClubSection({ data }: { data: TeamDetailView }) {
 
 // ─── Tab A: Resumen ──────────────────────────────────────────────────
 
-function MiniMatchCard({ match, teamId }: { match: TeamMatchSummary; teamId: string }) {
+function MiniMatchCard({ match, teamId, roundLabel }: { match: TeamMatchSummary; teamId: string; roundLabel?: string | null }) {
   const { t, locale } = useT();
   const isHome = match.homeTeam.id === teamId;
   const opp  = isHome ? match.awayTeam  : match.homeTeam;
@@ -297,6 +299,8 @@ function MiniMatchCard({ match, teamId }: { match: TeamMatchSummary; teamId: str
           {isHome ? 'vs' : '@'} {opp.shortName ?? opp.name}
         </p>
         <p className="text-xs text-slate-500 dark:text-slate-400">
+          {/* En eliminatorias, la ronda da el contexto que la jornada da en liga */}
+          {roundLabel && <span className="font-semibold">{roundLabel} · </span>}
           {showScore ? (isLive ? t('playoffs.live') : formatMatchDate(match.scheduledAt ?? match.finishedAt, locale, match.competitionTimezone)) : formatMatchDate(match.scheduledAt, locale, match.competitionTimezone)}
         </p>
       </div>
@@ -320,6 +324,30 @@ function MiniMatchCard({ match, teamId }: { match: TeamMatchSummary; teamId: str
 function SummaryTab({ data }: { data: TeamDetail }) {
   const { t } = useT();
   const { standing, matches, team } = data;
+
+  // El formato de la competición decide el componente: una eliminatoria
+  // (Supercopa, Copa, playoffs) no tiene clasificación — mostrar "Sin datos
+  // de clasificación" parecía que faltaban datos. Síntesis de eliminatoria.
+  // La derivación de fases usa el CUADRO COMPLETO de la temporada
+  // (`knockoutMatches`, lo manda el API en eliminatorias): con sólo los
+  // partidos del equipo, su semifinal perdida sería indistinguible de una final.
+  const koSeason = isKnockoutSeason(data.season, standing, matches);
+  const koSummary = useMemo(
+    () => (koSeason ? buildKnockoutSummary(team.id, data.knockoutMatches ?? matches) : null),
+    [koSeason, team.id, data.knockoutMatches, matches],
+  );
+
+  if (koSeason) {
+    // El resumen ya contiene TODOS los partidos del equipo en la competición:
+    // los bloques de próximo/último serían duplicado.
+    return (
+      <KnockoutSeasonSummary
+        data={data}
+        summary={koSummary}
+        renderMatch={(m) => <MiniMatchCard match={m} teamId={team.id} />}
+      />
+    );
+  }
 
   const nextMatch = matches.find(
     (m) => m.status === 'scheduled' || m.status === 'live'
@@ -420,6 +448,15 @@ function CalendarTab({ data }: { data: TeamDetail }) {
   const { t, locale } = useT();
   const { matches, team } = data;
 
+  // En eliminatorias, cada partido se etiqueta con su ronda (semis/final…):
+  // es el contexto que las jornadas dan en una liga. La misma derivación
+  // conservadora del resumen: sin estructura fiable, sin etiquetas.
+  const koSeason = isKnockoutSeason(data.season, data.standing, matches);
+  const koSummary = useMemo(
+    () => (koSeason ? buildKnockoutSummary(team.id, data.knockoutMatches ?? matches) : null),
+    [koSeason, team.id, data.knockoutMatches, matches],
+  );
+
   if (matches.length === 0) {
     return (
       <div className="card p-8 text-center opacity-60">
@@ -450,7 +487,14 @@ function CalendarTab({ data }: { data: TeamDetail }) {
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
             {group.map((m) => (
-              <MiniMatchCard key={m.id} match={m} teamId={team.id} />
+              <MiniMatchCard
+                key={m.id}
+                match={m}
+                teamId={team.id}
+                roundLabel={koSummary?.phaseByMatch.get(m.id)
+                  ? knockoutPhaseLabel(koSummary.phaseByMatch.get(m.id)!, t)
+                  : null}
+              />
             ))}
           </div>
         </div>

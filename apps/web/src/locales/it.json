@@ -432,7 +432,12 @@
     "other_teams": "Altre squadre del club",
     "season": "Stagione",
     "filial": "Squadra B",
-    "gk_short": "POR"
+    "gk_short": "POR",
+    "knockout_tag": "Competizione a eliminazione diretta",
+    "knockout_empty": "Nessuna partita registrata per questa edizione",
+    "knockout_incomplete": "Dati incompleti per questa edizione: vengono mostrate le partite registrate.",
+    "eliminated": "Eliminato",
+    "view_competition": "Vedi competizione"
   },
   "player": {
     "current_team": "Squadra attuale",

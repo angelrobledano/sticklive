@@ -4,6 +4,7 @@ import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 import { captureRouteError } from '../lib/route-error.js';
 import { penaltyScoredSql } from '../lib/penalty-sql.js';
+import { normalizeCompetitionFormat, isKnockoutCompetitionFormat } from '../lib/competition-format.js';
 import { orderClubTeams, sectionSuffix, type ClubTeamRow } from '../lib/team-section.js';
 
 export const teamDetailRouter = new Hono();
@@ -88,6 +89,22 @@ interface MatchRow {
   away_team_short_name: string | null;
   away_team_logo_url: string | null;
   competition_timezone: string | null;
+  // Ronda y resolución de la eliminatoria (para la síntesis de copas/knockout).
+  round_id: string | null;
+  round_number: number | null;
+  round_name: string | null;
+  round_type: string | null;
+  winner_team_id: string | null;
+  win_type: string | null;
+}
+
+/** Competición de la temporada mostrada (para el resumen de eliminatorias). */
+interface SeasonInfoRow {
+  competition_id: string;
+  competition_slug: string;
+  competition_name: string;
+  competition_short_name: string | null;
+  competition_format: string | null;
 }
 
 interface SquadRow {
@@ -106,8 +123,9 @@ interface SquadRow {
 /**
  * GET /teams/:id[?season=<uuid>]
  * Devuelve: datos del club, temporadas del equipo (para el selector), y la
- * clasificación, partidos, plantilla con stats y cuerpo técnico DE LA TEMPORADA
- * elegida (por defecto, la actual).
+ * clasificación, partidos (con ronda y resolución de eliminatoria), plantilla
+ * con stats y cuerpo técnico DE LA TEMPORADA elegida (por defecto, la actual),
+ * más la competición de esa temporada con su formato (league/bracket/final_four).
  */
 teamDetailRouter.get('/:id', async (c) => {
   const id = c.req.param('id');
@@ -188,6 +206,28 @@ teamDetailRouter.get('/:id', async (c) => {
     const currentSeasonIds = selectedSeasonId ? [selectedSeasonId] : [];
     let standingRow: StandingRow | null = null;
 
+    // La COMPETICIÓN de la temporada elegida (formato incluido) se consulta
+    // antes del bloque grande: si es eliminatoria, hay que pedir además los
+    // partidos de TODA la temporada (lite) para que la web pueda derivar las
+    // fases del cuadro — con sólo los partidos del equipo, la semifinal de un
+    // equipo eliminado no se distingue de una final.
+    let seasonInfo: SeasonInfoRow | null = null;
+    if (selectedSeasonId) {
+      const seasonInfoRes = await db.query<SeasonInfoRow>(`
+        SELECT c.id     AS competition_id,
+               c.slug   AS competition_slug,
+               c.name   AS competition_name,
+               c.short_name AS competition_short_name,
+               cs.external_ids->>'format' AS competition_format
+        FROM seasons se
+        JOIN competitions c ON c.id = se.competition_id
+        LEFT JOIN competition_sources cs ON cs.competition_id = c.id
+        WHERE se.id = $1
+      `, [selectedSeasonId]);
+      seasonInfo = seasonInfoRes.rows[0] ?? null;
+    }
+    const isKnockoutComp = isKnockoutCompetitionFormat(seasonInfo?.competition_format);
+
     // #333: partidos, plantilla, cuerpo técnico y stats sólo dependen del mismo
     // `currentSeasonIds` → un único Promise.all para los cuatro grupos (antes
     // eran cuatro round-trips en serie).
@@ -195,9 +235,10 @@ teamDetailRouter.get('/:id', async (c) => {
     let squadRows: SquadRow[] = [];
     let staff: Array<{ name: string; role: string }> = [];
     let teamStats: Record<string, unknown> | null = null;
+    let koMatchRows: MatchRow[] = [];
 
     if (currentSeasonIds.length > 0) {
-      const [standingRes, matchRes, squadRes, staffRes, [resultsRes, eventsRes, lineupRes]] = await Promise.all([
+      const [standingRes, matchRes, squadRes, staffRes, koRes, [resultsRes, eventsRes, lineupRes]] = await Promise.all([
         // 2) Clasificación del equipo EN LA TEMPORADA elegida (puede no haber:
         // una eliminatoria no tiene clasificación).
         db.query<StandingRow>(`
@@ -218,12 +259,18 @@ teamDetailRouter.get('/:id', async (c) => {
           LIMIT 1
         `, [id, selectedSeasonId]),
 
-        // 3) Partidos de la temporada elegida donde participa el equipo
+        // 3) Partidos de la temporada elegida donde participa el equipo. Con
+        // ronda (join rounds) y resolución (ganador/prórroga/penaltis) para que
+        // la web pueda sintetizar eliminatorias (Supercopa, Copa, playoffs).
         db.query<MatchRow>(`
           SELECT
             m.id, m.status, m.scheduled_at, m.started_at, m.finished_at,
             m.home_score, m.away_score,
             m.venue_name, m.venue_city,
+            m.round_id, m.winner_team_id, m.win_type,
+            r.number       AS round_number,
+            r.name         AS round_name,
+            r.round_type,
             ht.id           AS home_team_id,
             ht.name         AS home_team_name,
             ht.short_name   AS home_team_short_name,
@@ -234,6 +281,7 @@ teamDetailRouter.get('/:id', async (c) => {
             at.logo_url     AS away_team_logo_url,
             c.timezone      AS competition_timezone
           FROM matches m
+          LEFT JOIN rounds r ON r.id = m.round_id
           LEFT JOIN teams ht ON ht.id = m.home_team_id
           LEFT JOIN teams at ON at.id = m.away_team_id
           LEFT JOIN seasons se ON se.id = m.season_id
@@ -308,6 +356,40 @@ teamDetailRouter.get('/:id', async (c) => {
           ORDER BY ml.player_name, m.scheduled_at DESC
         `, [currentSeasonIds, id]),
 
+        // 4c) Partidos de TODA la temporada (lite), sólo en competiciones
+        // eliminatorias: son el cuadro con el que la web deriva las fases
+        // (con sólo los partidos del equipo, una semifinal perdida sería
+        // indistinguible de una final). Payload pequeño (≤ ~10 filas).
+        isKnockoutComp
+          ? db.query<MatchRow>(`
+              SELECT
+                m.id, m.status, m.scheduled_at, m.started_at, m.finished_at,
+                m.home_score, m.away_score,
+                NULL::text AS venue_name, NULL::text AS venue_city,
+                m.round_id, m.winner_team_id, m.win_type,
+                r.number       AS round_number,
+                r.name         AS round_name,
+                r.round_type,
+                ht.id           AS home_team_id,
+                ht.name         AS home_team_name,
+                ht.short_name   AS home_team_short_name,
+                ht.logo_url     AS home_team_logo_url,
+                at.id           AS away_team_id,
+                at.name         AS away_team_name,
+                at.short_name   AS away_team_short_name,
+                at.logo_url     AS away_team_logo_url,
+                c.timezone      AS competition_timezone
+              FROM matches m
+              LEFT JOIN rounds r ON r.id = m.round_id
+              LEFT JOIN teams ht ON ht.id = m.home_team_id
+              LEFT JOIN teams at ON at.id = m.away_team_id
+              LEFT JOIN seasons se ON se.id = m.season_id
+              LEFT JOIN competitions c ON c.id = se.competition_id
+              WHERE m.season_id = ANY($1)
+              ORDER BY m.scheduled_at ASC NULLS LAST
+            `, [currentSeasonIds])
+          : Promise.resolve({ rows: [] as MatchRow[] }),
+
         // 5) Estadísticas propias del equipo (temporada elegida)
         Promise.all([
           // Resultados y faltas de equipo desde matches
@@ -368,6 +450,7 @@ teamDetailRouter.get('/:id', async (c) => {
       standingRow = standingRes.rows[0] ?? null;
       matchRows = matchRes.rows;
       squadRows = squadRes.rows;
+      koMatchRows = koRes.rows;
 
       const ROLE_ORDER: Record<string, number> = { E1: 0, E: 0, E2: 1, A: 2, D: 3 };
       staff = staffRes.rows
@@ -448,7 +531,10 @@ teamDetailRouter.get('/:id', async (c) => {
       penalizationPoints: standingRow.penalization_points ?? 0,
     } : null;
 
-    const matches = matchRows.map((m) => ({
+    // Formato declarado de la competición de la temporada mostrada. En una
+    // eliminatoria los partidos pueden venir sin ronda asignada (fuente que no
+    // las publica): se marcan como 'playoff' igual que hace season-overview.
+    const serializeMatch = (m: MatchRow) => ({
       id:          m.id,
       status:      m.status,
       competitionTimezone: m.competition_timezone,
@@ -457,6 +543,12 @@ teamDetailRouter.get('/:id', async (c) => {
       finishedAt:  m.finished_at,
       score:       { home: m.home_score, away: m.away_score },
       venue:       m.venue_name ? { name: m.venue_name, city: m.venue_city } : null,
+      roundId:     m.round_id,
+      roundNumber: m.round_number,
+      roundName:   m.round_name,
+      roundType:   m.round_type ?? (isKnockoutComp ? 'playoff' : null),
+      winnerTeamId: m.winner_team_id,
+      winType:     m.win_type,
       homeTeam: {
         id:        m.home_team_id,
         name:      m.home_team_name,
@@ -469,7 +561,9 @@ teamDetailRouter.get('/:id', async (c) => {
         shortName: m.away_team_short_name,
         logoUrl:   m.away_team_logo_url,
       },
-    }));
+    });
+
+    const matches = matchRows.map(serializeMatch);
 
     const squad = squadRows.map((p) => ({
       playerId:     p.player_id,
@@ -511,6 +605,18 @@ teamDetailRouter.get('/:id', async (c) => {
       clubTeams: clubTeamsPayload,
       seasons: seasonsPayload,
       selectedSeasonId,
+      // Competición de la temporada mostrada: la web la usa para el resumen de
+      // eliminatorias (formato) y para etiquetar la ronda de cada partido.
+      season: seasonInfo ? {
+        competitionId:    seasonInfo.competition_id,
+        competitionSlug:  seasonInfo.competition_slug,
+        competitionName:  seasonInfo.competition_name,
+        competitionShort: seasonInfo.competition_short_name,
+        competitionFormat: normalizeCompetitionFormat(seasonInfo.competition_format),
+      } : null,
+      // Cuadro completo de la temporada (lite) en competiciones eliminatorias:
+      // sin él, la fase de una eliminatoria del equipo no es derivable.
+      knockoutMatches: isKnockoutComp ? koMatchRows.map(serializeMatch) : undefined,
       standing,
       matches,
       squad,

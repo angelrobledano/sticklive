@@ -21,8 +21,16 @@ export interface PlayoffSeries {
  * Ganador de un partido. El ganador explícito (penaltis/prórroga) manda; si no,
  * se deriva del marcador. Un empate sin ganador explícito no se atribuye a nadie
  * (antes se contaba como victoria del visitante por error).
+ *
+ * Firma estructural (mínimo que necesita el cálculo) para servir también a los
+ * `TeamMatchSummary` de la ficha de equipo, no sólo a `SeasonMatch`.
  */
-export function gameWinnerId(g: SeasonMatch): string | null {
+export function gameWinnerId(g: {
+  winnerTeamId?: string | null;
+  score: { home: number | null; away: number | null };
+  homeTeam: { id: string };
+  awayTeam: { id: string };
+}): string | null {
   if (g.winnerTeamId) return g.winnerTeamId;
   if (g.score.home === null || g.score.away === null || g.score.home === g.score.away) return null;
   return g.score.home > g.score.away ? g.homeTeam.id : g.awayTeam.id;

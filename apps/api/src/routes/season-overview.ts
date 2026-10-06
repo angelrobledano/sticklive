@@ -3,6 +3,7 @@ import { db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 import { captureRouteError } from '../lib/route-error.js';
+import { normalizeCompetitionFormat } from '../lib/competition-format.js';
 
 export const seasonOverviewRouter = new Hono();
 
@@ -281,10 +282,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         competitionTimezone:  s.competition_timezone,
         // Formato de competición (competition_sources): solo se reconocen los
         // valores conocidos; cualquier otro cae a 'league'.
-        competitionFormat:
-          s.competition_format === 'bracket' || s.competition_format === 'final_four'
-            ? s.competition_format
-            : 'league',
+        competitionFormat: normalizeCompetitionFormat(s.competition_format),
       },
       standings: standingsRes.rows.map((r) => ({
         id:                 r.id,

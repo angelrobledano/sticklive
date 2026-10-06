@@ -432,7 +432,12 @@
     "other_teams": "Autres équipes du club",
     "season": "Saison",
     "filial": "Équipe réserve",
-    "gk_short": "GB"
+    "gk_short": "GB",
+    "knockout_tag": "Compétition à élimination directe",
+    "knockout_empty": "Aucun match enregistré pour cette édition",
+    "knockout_incomplete": "Données incomplètes pour cette édition : affichage des matchs enregistrés.",
+    "eliminated": "Éliminé",
+    "view_competition": "Voir la compétition"
   },
   "player": {
     "current_team": "Équipe actuelle",

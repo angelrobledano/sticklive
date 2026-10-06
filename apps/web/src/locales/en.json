@@ -463,7 +463,12 @@
     "other_teams": "Other club teams",
     "season": "Season",
     "filial": "Reserve team",
-    "gk_short": "GK"
+    "gk_short": "GK",
+    "knockout_tag": "Knockout competition",
+    "knockout_empty": "No matches recorded for this edition",
+    "knockout_incomplete": "Incomplete data for this edition: showing the recorded matches.",
+    "eliminated": "Eliminated",
+    "view_competition": "View competition"
   },
   "player": {
     "current_team": "Current team",

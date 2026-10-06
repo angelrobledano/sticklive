@@ -432,7 +432,12 @@
     "other_teams": "Outras equipas do clube",
     "season": "Época",
     "filial": "Equipa B",
-    "gk_short": "GR"
+    "gk_short": "GR",
+    "knockout_tag": "Competição a eliminatórias",
+    "knockout_empty": "Sem jogos registados nesta edição",
+    "knockout_incomplete": "Dados incompletos desta edição: são mostrados os jogos registados.",
+    "eliminated": "Eliminado",
+    "view_competition": "Ver competição"
   },
   "player": {
     "current_team": "Equipa atual",
