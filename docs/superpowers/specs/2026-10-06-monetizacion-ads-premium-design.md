@@ -42,9 +42,11 @@ compra entren **en la v1** de la app.
 ## 4. Modelo de datos (migración aditiva e idempotente)
 
 - `users.premium_lifetime BOOLEAN NOT NULL DEFAULT FALSE` — el pago único.
-- `isPremiumActive()` (`apps/api/src/lib/premium.ts`) pasa a ser:
-  `premium_lifetime || premium_until > NOW()`. Sigue siendo el **guard único**
-  (auditoría S9): una sola regla de exclusión de ads para todas las superficies.
+- El guard de usuario es `isUserPremium()` (`apps/api/src/lib/premium.ts`):
+  `premium_lifetime OR premium_until > NOW()`; `isPremiumActive` queda como
+  regla pura de caducidad y payments-stripe lo consume. Sigue siendo el
+  **guard único** (auditoría S9): una sola regla de exclusión de ads para
+  todas las superficies.
 - Tabla `play_purchases`:
   - `user_id`, `product_id` (`premium_annual` | `premium_lifetime`),
     `purchase_token` con **índice único** (idempotencia, patrón

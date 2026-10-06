@@ -88,15 +88,19 @@ describe('isPaidCheckoutSession', () => {
 describe('isUserPremium (lifetime)', () => {
   it('lifetime concede aunque premium_until esté en el pasado', () => {
     expect(
-      isUserPremium({ premiumLifetime: true, premiumUntil: '2020-01-01T00:00:00Z' })
+      isUserPremium({ premium_lifetime: true, premium_until: '2020-01-01T00:00:00Z' })
     ).toBe(true);
   });
 
   it('lifetime NULL/FALSE mantiene la regla premium_until', () => {
-    expect(isUserPremium({ premiumLifetime: false, premiumUntil: null })).toBe(false);
+    expect(isUserPremium({ premium_lifetime: false, premium_until: null })).toBe(false);
     expect(
-      isUserPremium({ premiumLifetime: null, premiumUntil: '2099-01-01T00:00:00Z' })
+      isUserPremium({ premium_lifetime: null, premium_until: '2099-01-01T00:00:00Z' })
     ).toBe(true);
+  });
+
+  it('lifetime canónico: premium_until NULL + premium_lifetime TRUE (comprador Play)', () => {
+    expect(isUserPremium({ premium_lifetime: true, premium_until: null })).toBe(true);
   });
 
   it('usuario null nunca es premium', () => {

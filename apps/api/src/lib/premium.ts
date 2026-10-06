@@ -35,22 +35,24 @@ export function isPaidCheckoutSession(
   return session.payment_status === 'no_payment_required' && session.status === 'complete';
 }
 
-/** Campos de usuario relevantes para el guard (subconjunto de users). */
+/** Campos de usuario relevantes para el guard (filas de pg: snake_case). */
 export interface PremiumFields {
-  premiumUntil?: string | Date | null;
-  premiumLifetime?: boolean | null;
+  premium_until?: string | Date | null;
+  premium_lifetime?: boolean | null;
 }
 
 /**
  * Guard ÚNICO de premium para todas las superficies (web y app): lifetime
- * (compra única Play) o suscripción vigente. `isPremiumActive` sigue siendo
- * la regla de caducidad; esto solo añade el OR del lifetime (spec §4).
+ * (compra única Play) o suscripción vigente (spec §4). La afirmación es cierta
+ * desde este commit: payments-stripe (web) consume este guard sobre sus filas
+ * de `users`, no `isPremiumActive` directamente. `isPremiumActive` queda como
+ * la regla pura de caducidad; aquí solo se añade el OR del lifetime.
  */
 export function isUserPremium(
   user: PremiumFields | null | undefined,
   now: Date = new Date()
 ): boolean {
   if (!user) return false;
-  if (user.premiumLifetime) return true;
-  return isPremiumActive(user.premiumUntil, now);
+  if (user.premium_lifetime) return true;
+  return isPremiumActive(user.premium_until, now);
 }

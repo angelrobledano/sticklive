@@ -4,7 +4,7 @@ import { db, withTransaction } from '@sports/db';
 import { logger } from '@sports/logger';
 import { rateLimit } from '../lib/rate-limit.js';
 import { captureRouteError } from '../lib/route-error.js';
-import { isPremiumActive, isCheckoutSessionId, isPaidCheckoutSession } from '../lib/premium.js';
+import { isPremiumActive, isCheckoutSessionId, isPaidCheckoutSession, isUserPremium } from '../lib/premium.js';
 
 /**
  * Pagos con Stripe — proveedor de pago ACTIVO (Redsys fue eliminado de la API:
@@ -30,17 +30,18 @@ function stripe(): Stripe {
 
 /**
  * GET /payments/stripe/status?deviceId=...
- * Estado premium AUTORITATIVO derivado de premium_until > NOW() (auditoría S9).
+ * Estado premium AUTORITATIVO con el guard único isUserPremium (auditoría S9 +
+ * spec monetización §4): lifetime (compra única Play) o suscripción vigente.
  * La web lo usa para que el premium caduque de verdad en el cliente.
  */
 stripeRouter.get('/status', async (c) => {
   const deviceId = c.req.query('deviceId');
   if (!deviceId) return c.json({ error: 'missing_device_id' }, 400);
-  const res = await db.query<{ premium_until: string | null }>(
-    `SELECT premium_until FROM users WHERE device_id = $1`, [deviceId]
+  const res = await db.query<{ premium_until: string | null; premium_lifetime: boolean }>(
+    `SELECT premium_until, premium_lifetime FROM users WHERE device_id = $1`, [deviceId]
   );
   const until = res.rows[0]?.premium_until ?? null;
-  const premium = isPremiumActive(until);
+  const premium = isUserPremium(res.rows[0] ?? undefined);
   return c.json({ premium, premiumUntil: premium ? until : null });
 });
 
@@ -67,11 +68,13 @@ stripeRouter.get('/session/:id', rateLimit(30, 60_000), async (c) => {
     const deviceId = session.metadata?.['deviceId'];
     if (deviceId) {
       try {
-        const res = await db.query<{ premium_until: string | null }>(
-          `SELECT premium_until FROM users WHERE device_id = $1`, [deviceId]
+        const res = await db.query<{ premium_until: string | null; premium_lifetime: boolean }>(
+          `SELECT premium_until, premium_lifetime FROM users WHERE device_id = $1`, [deviceId]
         );
         const until = res.rows[0]?.premium_until ?? null;
-        if (isPremiumActive(until)) {
+        // Guard único: solo si el usuario YA es premium (lifetime o caducidad
+        // futura) se sobreescribe el estado derivado de Stripe.
+        if (isUserPremium({ premium_until: until, premium_lifetime: res.rows[0]?.premium_lifetime })) {
           premium = true;
           premiumUntil = until;
         }
@@ -97,15 +100,16 @@ stripeRouter.post('/checkout', rateLimit(10, 60_000), async (c) => {
     if (!deviceId) return c.json({ error: 'missing_device_id' }, 400);
 
     // Asegurar que el usuario existe (misma semántica que Redsys)
-    const userRes = await db.query<{ id: string; premium_until: string | null; stripe_customer_id: string | null }>(
+    const userRes = await db.query<{ id: string; premium_until: string | null; premium_lifetime: boolean; stripe_customer_id: string | null }>(
       `INSERT INTO users (device_id) VALUES ($1)
        ON CONFLICT (device_id) DO UPDATE SET updated_at = NOW()
-       RETURNING id, premium_until, stripe_customer_id`,
+       RETURNING id, premium_until, premium_lifetime, stripe_customer_id`,
       [deviceId]
     );
-    // Premium activo = premium_until en el futuro (no el flag is_premium, que
-    // nunca se revierte). Así un usuario con premium caducado puede re-comprar.
-    if (isPremiumActive(userRes.rows[0]?.premium_until)) {
+    // Premium activo = guard único (lifetime o premium_until en el futuro; no
+    // el flag is_premium, que nunca se revierte). Un premium caducado puede
+    // re-comprar; un lifetime NO debe poder recomprar.
+    if (isUserPremium(userRes.rows[0])) {
       return c.json({ error: 'already_premium' }, 409);
     }
 
@@ -175,14 +179,15 @@ stripeRouter.post('/restore', rateLimit(5, 3_600_000), async (c) => {
     }
 
     // El usuario del dispositivo NUEVO (donde se quiere restaurar)
-    const userRes = await db.query<{ id: string; premium_until: string | null; stripe_customer_id: string | null }>(
+    const userRes = await db.query<{ id: string; premium_until: string | null; premium_lifetime: boolean; stripe_customer_id: string | null }>(
       `INSERT INTO users (device_id) VALUES ($1)
        ON CONFLICT (device_id) DO UPDATE SET updated_at = NOW()
-       RETURNING id, premium_until, stripe_customer_id`,
+       RETURNING id, premium_until, premium_lifetime, stripe_customer_id`,
       [deviceId]
     );
     const user = userRes.rows[0]!;
-    if (isPremiumActive(user.premium_until)) {
+    // Guard único: un lifetime NO debe poder "restaurar" (ya es premium para siempre).
+    if (isUserPremium(user)) {
       return c.json({ error: 'already_premium' }, 409);
     }
 
