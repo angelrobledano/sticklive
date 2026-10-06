@@ -20,3 +20,6 @@ dump.sql
 
 # Config del off-site de backups (host-only)
 .backup-offsite.env
+
+# Capturas efímeras de revisión de diseño (evidencia local, no se versiona)
+.impeccable/review/

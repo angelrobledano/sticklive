@@ -137,8 +137,11 @@ export default async function RootLayout({ children, params }: Props) {
                 de forma fiable (WCAG 2.4.1). */}
             <main id="main" tabIndex={-1} className="flex-1 min-w-0 pb-20 md:pb-0">
               {/* Ancho máximo cómodo y centrado: en escritorio el contenido deja
-                  de flotar pegado a la izquierda junto a la sidebar. */}
-              <div className="mx-auto w-full max-w-5xl">
+                  de flotar pegado a la izquierda junto a la sidebar.
+                  Las superficies de escritorio anchas (la portada) se marcan con
+                  `data-wide` y levantan el tope para componer su propia rejilla;
+                  el resto conserva la medida de lectura de 5xl. */}
+              <div className="mx-auto w-full max-w-5xl lg:has-[[data-wide]]:max-w-none">
                 {children}
               </div>
             </main>

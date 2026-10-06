@@ -227,6 +227,7 @@
     "female": "Femenina",
     "current": "actual",
     "upcoming": "Próximos",
+    "live_now": "En directo ahora",
     "change_season_hint": "Al cambiar la temporada se carga su clasificación."
   },
   "age_categories": {

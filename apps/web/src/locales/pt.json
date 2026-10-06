@@ -182,6 +182,7 @@
     "female": "Feminina",
     "current": "atual",
     "upcoming": "Próximos",
+    "live_now": "Em direto agora",
     "change_season_hint": "Ao mudar a temporada, carrega-se a sua classificação."
   },
   "age_categories": {

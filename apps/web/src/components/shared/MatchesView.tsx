@@ -7,6 +7,7 @@ import { useLiveScores } from '@/hooks/useLiveScores';
 import { DateSelector } from '@/components/shared/DateSelector';
 import { MatchCard } from '@/components/shared/MatchCard';
 import { MiGrada } from '@/components/home/MiGrada';
+import { LiveBoard } from '@/components/home/LiveBoard';
 import { AdBanner } from '@/components/shared/AdBanner';
 import { adsenseConfig, listAdInsertIndex } from '@/lib/ads';
 import Link from 'next/link';
@@ -35,6 +36,14 @@ export interface LiveScoreChange {
 
 function teamLabel(team: Match['homeTeam']): string {
   return team?.shortName ?? team?.name ?? '';
+}
+
+/** Instante del partido (o 0 si falta / es inválido) para ordenar establemente. */
+function timeOf(m: Match): number {
+  const iso = m.scheduledAt ?? m.startedAt;
+  if (!iso) return 0;
+  const t = Date.parse(iso);
+  return Number.isFinite(t) ? t : 0;
 }
 
 /**
@@ -110,23 +119,47 @@ function EmptyRinkScene() {
 }
 
 /**
- * Carril de contexto en escritorio (lg+): próximos partidos y, si no sigues a
- * nadie, una llamada a explorar competiciones. Reutiliza datos ya calculados,
- * sin peticiones nuevas. Oculto en móvil.
+ * Carril de contexto en escritorio (xl+): "Mi grada" (si sigues a alguien),
+ * próximos partidos y, si no sigues a nadie, una llamada a explorar
+ * competiciones. Reutiliza datos ya calculados, sin peticiones nuevas.
+ * Se mantiene pegado con scroll interno para no empujar la página.
  */
-function DesktopAside({ matches, hasFavorites }: { matches: Match[]; hasFavorites: boolean }) {
+function DesktopAside({
+  matches, hasFavorites, favorites, leagues, todayKey, selectedDate, className = '',
+}: {
+  matches: Match[];
+  hasFavorites: boolean;
+  favorites: string[];
+  leagues: string[];
+  todayKey: string;
+  selectedDate: string;
+  className?: string;
+}) {
   const { t } = useT();
+  // Próximos = días POSTERIORES al que se está viendo. Los partidos del día
+  // seleccionado ya están en la lista principal; repetirlos aquí sería ruido.
   const upcoming = useMemo(() => {
-    const now = Date.now();
     return matches
-      .filter((m) => m.scheduledAt && new Date(m.scheduledAt).getTime() > now)
+      .filter((m) => {
+        const k = madridDateKey(m.scheduledAt);
+        return !!k && k > selectedDate;
+      })
       .sort((a, b) => ((a.scheduledAt ?? '') < (b.scheduledAt ?? '') ? -1 : 1))
-      .slice(0, 4);
-  }, [matches]);
+      .slice(0, 5);
+  }, [matches, selectedDate]);
 
   return (
-    <aside className="hidden lg:block lg:w-80 lg:shrink-0 lg:py-4">
-      <div className="sticky top-4 flex flex-col gap-4">
+    <aside className={`shrink-0 ${className}`}>
+      <div className="rail-scroll sticky top-[76px] flex max-h-[calc(100vh-92px)]
+                      flex-col gap-5 overflow-y-auto pb-1">
+        {/* "Mi grada" sube al carril en escritorio (en móvil vive en el flujo).
+            -mx-4 neutraliza su padding para alinear con el resto del carril. */}
+        {hasFavorites && (
+          <div className="-mx-4">
+            <MiGrada matches={matches} teamIds={favorites} leagueIds={leagues} todayKey={todayKey} />
+          </div>
+        )}
+
         {upcoming.length > 0 && (
           <section>
             <div className="flex items-center justify-between px-1 pb-2">
@@ -147,6 +180,7 @@ function DesktopAside({ matches, hasFavorites }: { matches: Match[]; hasFavorite
             </ul>
           </section>
         )}
+
         {!hasFavorites && (
           <Link href="/competitions"
                 className="card p-4 flex items-center gap-3 transition-colors
@@ -168,6 +202,47 @@ function DesktopAside({ matches, hasFavorites }: { matches: Match[]; hasFavorite
         )}
       </div>
     </aside>
+  );
+}
+
+/**
+ * Banda "En directo ahora" — solo escritorio. Destaca los partidos en juego del
+ * día con jerarquía de marcador grande; refuerza la promesa visual del producto
+ * (si la pantalla está verde, algo está pasando ahora). Los directos se retiran
+ * de las listas por competición en `lg+` para no repetirlos.
+ */
+function LiveNowBand({ matches, favorites, className = '' }: {
+  matches: Match[];
+  favorites: string[];
+  className?: string;
+}) {
+  const { t } = useT();
+  const favSet = useMemo(() => new Set(favorites), [favorites]);
+
+  return (
+    <section aria-label={t('common.live_now')} className={`px-4 pt-1 pb-4 ${className}`}>
+      <div className="flex items-center gap-2 pb-3">
+        <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+        </span>
+        <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+          {t('common.live_now')}
+        </h2>
+        <span className="text-[11px] font-light text-slate-500 dark:text-slate-400 tabular-nums">
+          {matches.length}
+        </span>
+      </div>
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 min-[1700px]:grid-cols-3 min-[2000px]:grid-cols-4">
+        {matches.map((m) => (
+          <LiveBoard
+            key={m.id}
+            match={m}
+            isFavoriteTeam={favSet.has(m.homeTeamId) || favSet.has(m.awayTeamId)}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -290,19 +365,21 @@ function UpcomingMatches({ matches, selectedDate, todayKey, outOfWindow = false 
           {t('common.no_upcoming')}
         </p>
       ) : (
-        groups.map(([dateKey, ms]) => (
-          <section key={dateKey}>
-            <SectionHeader label={formatDateHeader(dateKey, locale)} count={ms.length} />
-            <ul className="px-4 space-y-2 pb-2">
-              {ms.map((m) => (
-                <li key={m.id}>
-                  <CompetitionCaption name={m.competitionName} id={m.competitionId} />
-                  <MatchCard match={m} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
+        <div className="xl:grid xl:grid-cols-2 xl:items-start xl:gap-x-6 min-[1800px]:grid-cols-3">
+          {groups.map(([dateKey, ms]) => (
+            <section key={dateKey}>
+              <SectionHeader label={formatDateHeader(dateKey, locale)} count={ms.length} />
+              <ul className="px-4 space-y-2 pb-2">
+                {ms.map((m) => (
+                  <li key={m.id}>
+                    <CompetitionCaption name={m.competitionName} id={m.competitionId} />
+                    <MatchCard match={m} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -446,6 +523,13 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
 
   const hasBothSections = favMatches.length > 0 && restMatches.length > 0;
 
+  // Partidos en directo del día seleccionado: se destacan en la banda superior
+  // de escritorio y se retiran de las listas en `lg+` para no repetirlos.
+  const liveMatches = useMemo(
+    () => dayMatches.filter((m) => m.status === 'live').sort((a, b) => timeOf(a) - timeOf(b)),
+    [dayMatches]
+  );
+
   // Banner in-list "entre resultados": posición sobre la lista del día (no
   // favoritos) y sección tras la que cae. -1 si no procede (pocos partidos).
   const adIndex = useMemo(
@@ -498,7 +582,7 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
   }, [matches, t]);
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div data-wide className="flex flex-col min-h-screen lg:mx-auto lg:w-full lg:max-w-[2200px]">
       {/* Encabezado principal de la home (oculto visualmente, para lectores y SEO) */}
       <h1 className="sr-only">{t('a11y.home_heading')}</h1>
 
@@ -525,13 +609,26 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
       */}
       <AdBanner zone="home-top" className="z-20" />
 
-      {/* Lista de partidos — swipe horizontal para cambiar de día. En escritorio,
-          carril de contexto (próximos + favoritos) a la derecha. */}
-      <div className="flex-1 lg:flex lg:justify-center lg:gap-6 lg:px-6">
-        <div className="w-full lg:max-w-2xl" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {/*
+        Composición de escritorio (lg+): barra de fecha → banda "En directo
+        ahora" → jornada en rejilla por competición → carril de contexto.
+        El móvil conserva su columna única: la misma estructura, sin rejilla.
+      */}
+      <div className="w-full flex-1 lg:px-6 lg:pt-4 lg:pb-10">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)] lg:items-start lg:gap-6
+                        2xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {/* #263 "Mi grada": feed agregado de equipos/ligas seguidos (próximos +
-            últimos), independiente del día seleccionado. Móvil y escritorio. */}
-        <MiGrada matches={matches} teamIds={favorites} leagueIds={leagues} todayKey={todayKey} />
+            últimos), independiente del día seleccionado. En móvil va en el
+            flujo; en escritorio sube al carril de contexto. */}
+        <div className="lg:hidden">
+          <MiGrada matches={matches} teamIds={favorites} leagueIds={leagues} todayKey={todayKey} />
+        </div>
+
+        {/* Banda EN DIRECTO — solo escritorio */}
+        {liveMatches.length > 0 && (
+          <LiveNowBand matches={liveMatches} favorites={favorites} className="hidden lg:block" />
+        )}
 
         {dayMatches.length === 0 ? (
           <UpcomingMatches
@@ -545,7 +642,8 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
             {/* Onboarding de favoritos: solo si el usuario no sigue a nadie */}
             {favorites.length === 0 && <FavoritesOnboarding />}
 
-            {/* Bloque "Siguiendo" — favoritos arriba, sin sepultar el día */}
+            {/* Bloque "Siguiendo" — tus equipos de hoy, siempre visibles (los
+                directos también viven en la banda, pero tu sección no se vacía). */}
             {favMatches.length > 0 && (
               <section>
                 <div className="flex items-center justify-between pr-4">
@@ -555,7 +653,7 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
                     {t('favorites.manage')}
                   </Link>
                 </div>
-                <ul className="px-4 space-y-2">
+                <ul className="px-4 grid grid-cols-1 gap-2 xl:grid-cols-2 xl:gap-x-6 min-[1800px]:grid-cols-3">
                   {(showAllFavs ? favMatches : favMatches.slice(0, FAV_PREVIEW)).map((m) => (
                     <li key={m.id}>
                       <CompetitionCaption name={m.competitionName} id={m.competitionId} />
@@ -588,28 +686,45 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
               <AdBanner zone="home-inline" className="my-1" />
             )}
 
-            {/* Bloque principal — una sección por competición */}
-            {restByCompetition.map(([comp, ms], i) => (
-              <Fragment key={comp}>
-                <section>
-                  <SectionHeader label={comp} count={ms.length} />
-                  <ul className="px-4 space-y-2 pb-4">
-                    {ms.map((m) => (
-                      <li key={m.id}>
-                        <MatchCard match={m} />
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-                {/* Banner entre resultados (solo si hay suficientes partidos).
-                    Si AdBanner no procede (Premium/sin config) no deja hueco. */}
-                {i === adSectionIndex && <AdBanner zone="list-inline" className="my-2" />}
-              </Fragment>
-            ))}
+            {/* Bloque principal — una sección por competición. En pantallas
+                anchas se reparte en 2–3 columnas equilibradas (masonry CSS)
+                para que toda la jornada entre sin huecos ni scroll. */}
+            <div className="xl:columns-2 xl:gap-6 min-[1800px]:columns-3">
+              {restByCompetition.map(([comp, ms], i) => (
+                <Fragment key={comp}>
+                  <section className="break-inside-avoid">
+                    <SectionHeader label={comp} count={ms.length} />
+                    <ul className="px-4 space-y-2 pb-4">
+                      {ms.map((m) => (
+                        <li key={m.id} className={m.status === 'live' ? 'lg:hidden' : undefined}>
+                          <MatchCard match={m} />
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                  {/* Banner entre resultados (solo si hay suficientes partidos).
+                      Si AdBanner no procede (Premium/sin config) no deja hueco. */}
+                  {i === adSectionIndex && (
+                    <AdBanner zone="list-inline" className="my-2 break-inside-avoid" />
+                  )}
+                </Fragment>
+              ))}
+            </div>
           </>
         )}
+          </div>
+
+          {/* Carril de contexto — solo en pantallas muy anchas */}
+          <DesktopAside
+            className="hidden 2xl:block"
+            matches={matches}
+            hasFavorites={favorites.length > 0}
+            favorites={favorites}
+            leagues={leagues}
+            todayKey={todayKey}
+            selectedDate={selectedDate}
+          />
         </div>
-        <DesktopAside matches={matches} hasFavorites={favorites.length > 0} />
       </div>
     </div>
   );

@@ -152,6 +152,17 @@ La densidad es alta y deliberada: tarjetas de partido compactas (`px-3 py-2.5`),
 
 Ritmo de espaciado sobre la escala de Tailwind; los gutters laterales viven en el contenedor (`px-4`) y el espaciado vertical en utilidades `space-y`/`gap`, nunca atajos que anulen los márgenes laterales en móvil.
 
+### Portada de escritorio — "Centro de mando del directo"
+
+El `<main>` conserva una medida de lectura de `max-w-5xl` para las superficies de contenido; la **portada** la levanta marcándose con `data-wide` en su raíz, que el contenedor reconoce (`lg:has-[[data-wide]]:max-w-none`). A partir de ahí la home compone su propia rejilla, con tope `lg:max-w-[2200px]` centrado:
+
+- **Barra de fecha** pegajosa (`sticky top-0`) a todo el ancho de la composición, con el carrusel centrado cuando cabe.
+- **Banda "En directo ahora"** (`lg+`): los partidos `live` del día en rejilla de 1 columna (lg) → 2 (xl) → 3 (≥1700px) → 4 (≥2000px). En `lg+` los directos se retiran de las listas por competición para no repetirse; en móvil la banda no se renderiza y el orden no cambia.
+- **Jornada en columnas**: las secciones por competición fluyen en masonry CSS (`xl:columns-2`, `min-[1800px]:columns-3`) con `break-inside-avoid`, de modo que una competición corta no deja un hueco vertical. El bloque "Siguiendo" usa la misma rejilla.
+- **Carril de contexto** (`2xl+`, 360px): `Mi grada` (si sigues a alguien) y `Próximos` — solo días posteriores al seleccionado, porque los del día ya están en la lista —, `sticky` con scroll interno y barra temática (`.rail-scroll`).
+
+El móvil no cambia: una sola columna, sin banda ni carril.
+
 ## Elevation & Depth
 
 Sistema **plano por defecto, con elevación como respuesta al estado**. En modo claro las tarjetas son superficies blancas planas con borde slate-200 de 1px; la sombra (`hover:shadow-md`) y el cambio de borde aparecen solo en hover. La profundidad no se finge en reposo.
@@ -189,6 +200,9 @@ Lenguaje de esquinas redondeadas medias y coherentes: tarjetas y chips de fecha 
 - **Border:** slate-200 en claro; blanco al 6% en oscuro.
 - **Shadow Strategy:** plana en reposo; ver Elevation & Depth.
 - **Internal Padding:** típicamente `px-3 py-2.5` (tarjeta de lista) a `px-4 pt-4 pb-5` (ficha).
+
+### Banda de directo (Live Board)
+Tarjeta de partido `live` con jerarquía de marcador grande (mono `text-4xl` `tabular-nums`), anillo esmeralda tenue (`ring-1 ring-emerald-500/25`) y escudo + nombre oficial a ambos lados; una estrella granate marca los equipos seguidos. Solo existe para estados `live`/descanso, nunca para programados. Cuando el marcador cambia en vivo, el número hace un pulso breve hacia el acento esmeralda (`.score-flash`) que se apaga solo: es el momento firmado de la portada, y `reduce-motion` lo neutraliza.
 
 ### Navigation
 - **Bottom Nav (móvil):** barra fija de 64px, 3 destinos, iconos SVG de trazo cuyo grosor sube (1.8 → 2.5) y color pasa a granate en el activo; etiqueta de 11px que pasa a `font-semibold`.

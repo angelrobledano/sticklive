@@ -82,7 +82,8 @@ export function DateSelector({ selected, onChange, availableFrom, availableTo }:
                       bg-gradient-to-l from-white dark:from-slate-900 to-transparent" />
     <div
       ref={scrollRef}
-      className="flex gap-1.5 overflow-x-auto py-2.5 px-4 scrollbar-none"
+      className="flex gap-1.5 overflow-x-auto py-2.5 px-4 scrollbar-none
+                 lg:mx-auto lg:w-fit lg:max-w-full lg:px-6"
       style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
     >
       {dateKeys.map((key) => {
