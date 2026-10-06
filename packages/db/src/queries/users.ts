@@ -7,6 +7,8 @@ export interface DbUser {
   device_id: string;
   is_premium: boolean;
   premium_until: Date | null;
+  // Migración 070: lifetime de Google Play; los SELECT * ya la traen.
+  premium_lifetime: boolean;
   email: string | null;
   created_at: Date;
   updated_at: Date;
