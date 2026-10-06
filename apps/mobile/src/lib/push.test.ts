@@ -20,6 +20,8 @@ const { expoConstants, storage } = vi.hoisted(() => ({
 }));
 vi.mock('expo-notifications', () => ({ AndroidImportance: { MAX: 5 } }));
 vi.mock('expo-device', () => ({ isDevice: true }));
+// Versión nativa que buildSubscribeBody manda al API (appVersion del body).
+vi.mock('expo-application', () => ({ nativeApplicationVersion: '1.2.3' }));
 vi.mock('expo-constants', () => ({ default: expoConstants }));
 vi.mock('expo-secure-store', () => ({
   getItemAsync: vi.fn(async () => null),
@@ -59,6 +61,7 @@ describe('buildSubscribeBody', () => {
       deviceId: 'dev-1',
       platform: 'android',
       locale: 'es',
+      appVersion: '1.2.3',
       favTeams: ['t1'],
       favLeagues: ['l1'],
       favPlayers: ['p1'],

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
@@ -113,7 +114,9 @@ export async function savePushPrefs(prefs: PushPrefs): Promise<void> {
 }
 
 /** Mapeo PURO al contrato de POST /push/native/subscribe (NativeSubBody del
- * API): los arrays viajan siempre presentes (lo ausente va vacío, no undefined). */
+ * API): los arrays viajan siempre presentes (lo ausente va vacío, no undefined)
+ * y `appVersion` viaja con la versión nativa instalada (expo-application), que
+ * el API recorta y persiste. */
 export function buildSubscribeBody(input: {
   expoPushToken: string;
   deviceId: string;
@@ -128,6 +131,7 @@ export function buildSubscribeBody(input: {
     deviceId: input.deviceId,
     platform: input.platform,
     locale: input.locale,
+    appVersion: Application.nativeApplicationVersion ?? undefined,
     favTeams: input.favorites.teams,
     favLeagues: input.favorites.leagues,
     favPlayers: input.favorites.players,
