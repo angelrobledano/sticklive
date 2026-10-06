@@ -114,6 +114,14 @@
   .score, [data-score] {
     @apply font-mono tabular-nums tracking-tight;
   }
+
+  /* Los buscadores de la app pintan su propia X (botón con aria-label
+     localizado, estilo del sistema). La nativa de los inputs type=search
+     (WebKit/Blink) la duplica — se oculta en toda la app. */
+  input[type='search']::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
 }
 
 /* ── Utilidades de componentes ───────────────────────────────────── */

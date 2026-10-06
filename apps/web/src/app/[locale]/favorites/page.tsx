@@ -173,17 +173,33 @@ function FavoritesInner() {
         </p>
       </div>
 
-      {/* Buscador */}
-      <input
-        type="search"
-        aria-label={t('favorites.search_placeholder')}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder={t('favorites.search_placeholder')}
-        className="w-full min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-slate-700
-                   bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
-                   placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-red-400"
-      />
+      {/* Buscador — X propia (la nativa de type=search está oculta en la app) */}
+      <div className="relative">
+        <input
+          type="search"
+          aria-label={t('favorites.search_placeholder')}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t('favorites.search_placeholder')}
+          className="w-full min-h-[48px] px-4 pr-12 rounded-xl border border-slate-200 dark:border-slate-700
+                     bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
+                     placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-red-400"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery('')}
+            className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center
+                       w-11 h-11 rounded-full text-slate-400 hover:text-slate-600
+                       dark:hover:text-slate-300 transition-colors"
+            aria-label={tt(t, 'a11y.clear_search', 'Limpiar búsqueda')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
+              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
+      </div>
 
       {catalogState === 'loading' ? (
         <div className="py-10 flex justify-center" aria-busy="true">
