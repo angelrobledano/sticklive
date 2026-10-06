@@ -80,7 +80,6 @@ Sesión: Bearer token opaco, hasheado en BD (`user_sessions`), caducidad 90 día
 |---|---|---|
 | POST | `/push/native/subscribe` | Registra/actualiza el dispositivo nativo (upsert idempotente por `expo_push_token`; misma segmentación que la web). Auth opcional: con Bearer el token queda asociado al usuario. Ownership si el token ya existe: solo re-suscribe el dueño (mismo `deviceId` o usuario de la fila); si no, 403 sin tocar la fila |
 | DELETE | `/push/native/subscribe` | Da de baja el token con ownership (deviceId o usuario de la sesión); idempotente |
-| POST | `/push/native/opened` | Beacon de apertura de notificación (emite `notification_opened` a PostHog; rate limit 120/min) |
 | POST | `/push/native/test` | Envío de prueba Expo Push con ownership por token (rate limit 10/10 min) |
 
 Emisor real (goles, inicio/final, resumen matinal) en el ETL: `push-dispatcher.ts`

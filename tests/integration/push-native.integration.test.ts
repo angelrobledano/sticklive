@@ -11,14 +11,14 @@
  *     guardó lo que no se guardó.
  *   - DELETE /push/native/subscribe — baja con ownership (deviceId que coincide
  *     O usuario de la sesión); idempotente: 200 aunque el token no exista.
- *   - POST  /push/native/opened — beacon de analítica: nunca rompe, con o sin
- *     token conocido.
  *   - POST  /push/native/test (sancionado) — notificación de prueba vía la API
  *     HTTP de Expo Push CON ownership. En tests fetch está MOCKEADO: jamás hay
  *     envíos reales desde la suite.
  *
- * Router real contra Postgres (patrón del repo); PostHog se mockea porque sin
- * POSTHOG_API_KEY el módulo real lanza al importar (comportamiento conocido).
+ * La apertura de notificación de la app va cliente-side (PostHog en
+ * app/_layout.tsx): el beacon /push/native/opened se retiró (código muerto).
+ *
+ * Router real contra Postgres (patrón del repo).
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
@@ -27,15 +27,6 @@ import { db, closeDb } from '@sports/db';
 import { logger } from '@sports/logger';
 import { pushRouter } from '../../apps/api/src/routes/push.js';
 import { limpiar } from './support/db.js';
-
-vi.mock('@sports/analytics', () => ({
-  analytics: {
-    capture: vi.fn(),
-    flush: vi.fn(async () => {}),
-  },
-}));
-
-import { analytics } from '@sports/analytics';
 
 const app = new Hono();
 app.route('/push', pushRouter);
@@ -55,7 +46,6 @@ beforeAll(() => {
 
 beforeEach(async () => {
   await limpiar();
-  vi.mocked(analytics.capture).mockClear();
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -358,43 +348,6 @@ describe('DELETE /push/native/subscribe', () => {
     const res = await unsubscribe({ deviceId: 'dev-1' });
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({ error: 'missing_token' });
-  });
-});
-
-describe('POST /push/native/opened', () => {
-  it('beacon sin token responde ok igualmente', async () => {
-    const res = await app.request('/push/native/opened', {
-      method: 'POST',
-      body: JSON.stringify({ type: 'match_goal' }),
-      headers: { 'content-type': 'application/json' },
-    });
-    expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ ok: true });
-  });
-
-  it('beacon con token conocido captura notification_opened con distinctId = device_id', async () => {
-    await subscribe({ expoPushToken: TOKEN, deviceId: 'dev-open' });
-    const res = await app.request('/push/native/opened', {
-      method: 'POST',
-      body: JSON.stringify({ expoPushToken: TOKEN, type: 'match_goal' }),
-      headers: { 'content-type': 'application/json' },
-    });
-    expect(res.status).toBe(200);
-    expect(analytics.capture).toHaveBeenCalledWith({
-      distinctId: 'dev-open',
-      event: 'notification_opened',
-      properties: { notification_type: 'match_goal' },
-    });
-  });
-
-  it('beacon con token desconocido responde ok y no captura', async () => {
-    const res = await app.request('/push/native/opened', {
-      method: 'POST',
-      body: JSON.stringify({ expoPushToken: TOKEN, type: 'match_goal' }),
-      headers: { 'content-type': 'application/json' },
-    });
-    expect(res.status).toBe(200);
-    expect(analytics.capture).not.toHaveBeenCalled();
   });
 });
 

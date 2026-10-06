@@ -142,8 +142,11 @@ ETL cron-live (push-dispatcher.ts) ── segmentación pura ──────�
   10/10 min). Expo Go NO vale: no soporta push remoto desde SDK 53 — hace falta
   development build y dispositivo físico; los fallos de registro se reportan con
   motivos explícitos (`src/lib/push.ts`, `PUSH_ERRORS`).
-- `POST/DELETE /push/native/subscribe` y `POST /push/native/opened` completan la
-  superficie nativa del API (ver [docs/api.md](api.md)).
+- `POST/DELETE /push/native/subscribe` completan la superficie nativa del API
+  (ver [docs/api.md](api.md)). El **CTR móvil va por PostHog cliente**: el tap
+  de la notificación captura `notification_opened` en la propia app (misma
+  propiedad `notification_type` que emite el servidor) — sin beacon del API,
+  que duplicaría la fuente (se retiró por no tener llamador).
 
 ## i18n compartido con la web
 

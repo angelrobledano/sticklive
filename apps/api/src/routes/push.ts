@@ -26,8 +26,12 @@ import {
  *   NATIVO (Expo Push → FCM/APNs, Task 4.1):
  *   POST   /push/native/subscribe   { expoPushToken, deviceId, ...prefs }  (auth opcional)
  *   DELETE /push/native/subscribe   { expoPushToken, deviceId? }           (auth opcional)
- *   POST   /push/native/opened      { expoPushToken?, type? }  → beacon analítica
  *   POST   /push/native/test        { expoPushToken, deviceId? } → prueba Expo Push
+ *
+ * La apertura de notificación de la APP NO va por beacon del API: el cliente la
+ * captura con PostHog (app/_layout.tsx, misma propiedad `notification_type`).
+ * El beacon /push/native/opened se retiró por no tener llamador y duplicar la
+ * fuente (el beacon web /push/opened sí se queda).
  *
  * El cliente re-llama a subscribe cada vez que cambian sus preferencias o
  * favoritos (upsert por endpoint / token): la fila siempre refleja el último
@@ -196,10 +200,17 @@ pushRouter.delete('/subscribe', rateLimit(30, 60_000), async (c) => {
 });
 
 /**
- * Analítica de apertura (server-side): emite `notification_opened` a PostHog.
- * Fire-and-forget: sin POSTHOG_API_KEY el módulo lanza al importar y se ignora
- * — la apertura NUNCA se rompe por analítica. Compartido por /push/opened
- * (web) y /push/native/opened (app).
+ * Analítica de apertura server-side del beacon WEB (/push/opened): emite
+ * `notification_opened` a PostHog. Fire-and-forget: sin POSTHOG_API_KEY el
+ * módulo lanza al importar y se ignora — la apertura NUNCA se rompe por
+ * analítica.
+ *
+ * Queda un único llamador (la web): se conserva como helper porque encapsula
+ * el contrato fire-and-forget — el import dinámico puede lanzar y la respuesta
+ * al cliente no debe depender de la analítica — y en línea anidaría el
+ * try/catch dentro del handler sin simplificar nada. La app móvil NO lo usa:
+ * captura la apertura cliente-side con PostHog (misma propiedad
+ * `notification_type`), y su beacon se retiró por duplicar la fuente.
  */
 async function captureOpened(
   distinctId: string,
@@ -486,35 +497,6 @@ pushRouter.delete('/native/subscribe', rateLimit(30, 10 * 60_000), async (c) => 
     captureRouteError(err, 'push] native unsubscribe error');
     logger.error({ err }, '[push] native unsubscribe error');
     return c.json({ error: 'server_error' }, 500);
-  }
-});
-
-/**
- * POST /push/native/opened  { expoPushToken?, type? }
- * Beacon de la app al abrir una notificación. Resuelve el device_id por token
- * y emite `notification_opened` con el MISMO patrón que /push/opened (web).
- * Con token desconocido o ausente responde ok igualmente: es un beacon, nunca
- * debe molestar al cliente.
- */
-pushRouter.post('/native/opened', rateLimit(120, 60_000), async (c) => {
-  try {
-    const body = await c.req
-      .json<{ expoPushToken?: string; type?: string }>()
-      .catch((): { expoPushToken?: string; type?: string } => ({}));
-    let deviceId: string | null = null;
-    if (body.expoPushToken) {
-      const r = await db.query<{ device_id: string }>(
-        `SELECT device_id FROM push_tokens WHERE expo_push_token = $1`,
-        [body.expoPushToken]
-      );
-      deviceId = r.rows[0]?.device_id ?? null;
-    }
-    if (deviceId) {
-      await captureOpened(deviceId, { notification_type: body.type ?? 'unknown' });
-    }
-    return c.json({ ok: true });
-  } catch {
-    return c.json({ ok: false }, 200); // beacon: nunca un error de analítica molesta
   }
 });
 
