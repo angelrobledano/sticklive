@@ -82,24 +82,28 @@ describe('hasSeasonYear', () => {
 });
 
 describe('importanceRank', () => {
-  it('ordena según la lista de producto', () => {
-    expect(importanceRank('ok-liga-masculina')).toBe(1);
-    expect(importanceRank('ok-liga-femenina')).toBe(2);
-    expect(importanceRank('copa-del-rey')).toBe(3);
-    expect(importanceRank('copa-de-la-reina-iberdrola')).toBe(4);
-    expect(importanceRank('supercopa-de-espana-masculina')).toBe(5);
-    expect(importanceRank('supercopa-de-espana-femenina')).toBe(6);
-    expect(importanceRank('ok-liga-plata-norte')).toBe(7);
-    expect(importanceRank('ok-liga-plata-sur')).toBe(8);
-    expect(importanceRank('ok-liga-plata-femenina')).toBe(9);
-    expect(importanceRank('copa-sar-la-princesa-masculina')).toBe(10);
-    expect(importanceRank('copa-sar-la-princesa-femenina')).toBe(11);
-    expect(importanceRank('ok-liga-bronce-masculina-norte')).toBe(12);
-    expect(importanceRank('ok-liga-bronce-masculina-sur')).toBe(13);
-    expect(importanceRank('ok-liga-plata-masculina-eliminatoria')).toBe(14);
-    expect(importanceRank('ok-liga-bronce-eliminatoria')).toBe(15);
-    expect(importanceRank(null)).toBeGreaterThan(15);
-    expect(importanceRank('torneo-desconocido')).toBeGreaterThan(15);
+  it('ordena según la lista de producto (mundiales World Skate encima)', () => {
+    expect(importanceRank('mundial-masculino-worldskate')).toBe(1);
+    expect(importanceRank('mundial-femenino-worldskate')).toBe(2);
+    expect(importanceRank('intercontinental-masculino-worldskate')).toBe(3);
+    expect(importanceRank('mundial-sub19-masculino-worldskate')).toBe(4);
+    expect(importanceRank('ok-liga-masculina')).toBe(5);
+    expect(importanceRank('ok-liga-femenina')).toBe(6);
+    expect(importanceRank('copa-del-rey')).toBe(7);
+    expect(importanceRank('copa-de-la-reina-iberdrola')).toBe(8);
+    expect(importanceRank('supercopa-de-espana-masculina')).toBe(9);
+    expect(importanceRank('supercopa-de-espana-femenina')).toBe(10);
+    expect(importanceRank('ok-liga-plata-norte')).toBe(11);
+    expect(importanceRank('ok-liga-plata-sur')).toBe(12);
+    expect(importanceRank('ok-liga-plata-femenina')).toBe(13);
+    expect(importanceRank('copa-sar-la-princesa-masculina')).toBe(14);
+    expect(importanceRank('copa-sar-la-princesa-femenina')).toBe(15);
+    expect(importanceRank('ok-liga-bronce-masculina-norte')).toBe(16);
+    expect(importanceRank('ok-liga-bronce-masculina-sur')).toBe(17);
+    expect(importanceRank('ok-liga-plata-masculina-eliminatoria')).toBe(18);
+    expect(importanceRank('ok-liga-bronce-eliminatoria')).toBe(19);
+    expect(importanceRank(null)).toBeGreaterThan(19);
+    expect(importanceRank('torneo-desconocido')).toBeGreaterThan(19);
   });
 });
 
