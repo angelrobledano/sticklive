@@ -56,6 +56,7 @@ players ──< team_players
 - **Una temporada es visible ⇔ ella y su competición están en `'ok'`.** Si no, deja de ser consultable por el usuario: listados, búsqueda, selector de temporadas, endpoints de temporada (`overview`/`stats`/`standings`/`matches` → 404), ficha de partido, historial de equipo, carrera de jugador y sitemap.
 - La competición actúa de **interruptor maestro**: `en_revision` oculta todo su contenido.
 - El scraper/ETL **nunca** escribe estas columnas; la curación sobrevive a los upserts.
+- El **emisor de push** (`apps/etl/src/push-dispatcher.ts`) también filtra por visibilidad: nunca notifica partidos, jornadas ni eventos (gol/tarjeta/falta/prórroga/final) de temporadas o competiciones ocultas.
 - Curación: panel `/admin` → pestaña «Competiciones», o los endpoints `PATCH /admin/competitions/:id/quality` y `PATCH /admin/seasons/:id/quality` (cabecera `X-Admin-Token`, body `{ dataQuality }`).
 - Límite: las páginas web cacheadas por ISR pueden tardar hasta ~5 min en reflejar el cambio (la API responde 404 al instante).
 

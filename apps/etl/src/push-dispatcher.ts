@@ -65,9 +65,13 @@ export async function snapshotMatches(seasonId: string): Promise<Map<string, Mat
            m.live_is_halftime, m.live_period,
            ht.short_name AS home_name, at.short_name AS away_name
     FROM matches m
+    JOIN seasons s      ON s.id = m.season_id
+    JOIN competitions c ON c.id = s.competition_id
     LEFT JOIN teams ht ON ht.id = m.home_team_id
     LEFT JOIN teams at ON at.id = m.away_team_id
     WHERE m.season_id = $1
+      AND s.data_quality = 'ok'
+      AND c.data_quality = 'ok'
       AND (m.status IN ('live')
            OR m.scheduled_at BETWEEN NOW() - INTERVAL '4 hours' AND NOW() + INTERVAL '4 hours')
   `, [seasonId]);
@@ -101,7 +105,11 @@ export async function snapshotRounds(seasonId: string): Promise<Map<string, Roun
            COUNT(*) FILTER (WHERE m.status = 'live')     AS live
     FROM rounds r
     JOIN matches m ON m.round_id = r.id
+    JOIN seasons s      ON s.id = r.season_id
+    JOIN competitions c ON c.id = s.competition_id
     WHERE r.season_id = $1
+      AND s.data_quality = 'ok'
+      AND c.data_quality = 'ok'
     GROUP BY r.id, r.number, r.name
   `, [seasonId]);
   return new Map(res.rows.map((r) => [r.id, {
@@ -160,6 +168,8 @@ async function snapshotEvents(
     LEFT JOIN teams ht ON ht.id = m.home_team_id
     LEFT JOIN teams at ON at.id = m.away_team_id
     WHERE m.season_id = ANY($1)
+      AND s.data_quality = 'ok'
+      AND comp.data_quality = 'ok'
       AND e.event_type = ANY($2)
       AND ($3::boolean = false OR e.player_id IS NOT NULL)
       AND (m.status = 'live' OR m.scheduled_at > NOW() - INTERVAL '6 hours')

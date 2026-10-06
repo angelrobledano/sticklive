@@ -218,6 +218,12 @@ factorías existentes (`crearCompeticion`, `crearTemporada`, `crearPartido`) y
 
 ## Fuera de alcance
 
+> **Nota (actualizado 2026-10-06):** el emisor de push **no** queda fuera de
+> alcance — `apps/etl/src/push-dispatcher.ts` respeta la visibilidad por calidad:
+> no notifica partidos, jornadas ni eventos (gol, tarjeta, falta, prórroga,
+> penaltis) de temporadas o competiciones ocultas. Cubierto por
+> `tests/integration/push-snapshots.integration.test.ts`.
+
 - Detección automática de datos dudosos (se cura a mano).
 - Revalidación forzada del caché ISR de Next desde el panel (ver límite).
 - Ocultar entidades `teams`/`players` en sí: siguen accesibles; solo se filtran
