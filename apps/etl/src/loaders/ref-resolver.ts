@@ -14,7 +14,7 @@
  * N queries a la DB para el mismo equipo en batches grandes.
  */
 import {
-  findTeamBySourceRef,
+  findTeamsBySourceRef,
   findTeamBySlug,
   resolveTeamViaSourceMap,
   upsertSourceEntityMapTeam,
@@ -50,6 +50,23 @@ function signalsConflict(
   if (team.gender && signals.gender && team.gender !== signals.gender) return true;
   if (team.age_category && signals.ageCategory && team.age_category !== signals.ageCategory) return true;
   return false;
+}
+
+/**
+ * #228: elige el equipo cuando la ref casa con N candidatos.
+ *   · 0 → ninguno;  · 1 → ese;  · >1 → AMBIGUO.
+ *
+ * El puente `source_ref`/`alt_source_refs` es GLOBAL (sin namespacing por portal
+ * sidgad), así que una misma ref puede designar 2-3 equipos distintos. Resolver
+ * "la primera" acierta o falla a ciegas; en ambiguo NO se resuelve por ref y se
+ * sigue la cascada (slug/alias/fuzzy/HITL). Pura y testeable sin navegador.
+ */
+export function pickUnambiguousTeam<T>(
+  rows: readonly T[],
+): { team: T | null; ambiguous: boolean } {
+  if (rows.length === 1) return { team: rows[0]!, ambiguous: false };
+  if (rows.length > 1) return { team: null, ambiguous: true };
+  return { team: null, ambiguous: false };
 }
 
 export class RefResolver {
@@ -96,9 +113,17 @@ export class RefResolver {
 
     // 2. Puente: teams.source_ref / alt_source_refs. Si resuelve y tenemos
     //    fuente, se alimenta el mapa para que la próxima entre por el escalón 1.
+    //    #228: si la ref casa con >1 equipo (colisión entre portales sidgad), NO
+    //    se resuelve por ref — coger "la primera" es resolver el equipo
+    //    equivocado en silencio. Se sigue la cascada (slug/alias/fuzzy/HITL).
     if (!teamId) {
-      const team = await findTeamBySourceRef(teamRef);
-      if (team) {
+      const { team, ambiguous } = pickUnambiguousTeam(await findTeamsBySourceRef(teamRef));
+      if (ambiguous) {
+        log.warn(
+          { teamRef, sourceId },
+          'Ref casada con >1 equipo (colisión entre portales, #228) — no se resuelve por ref; sigue la cascada'
+        );
+      } else if (team) {
         teamId = team.id;
         if (sourceId) {
           await upsertSourceEntityMapTeam(sourceId, teamRef, team.id).catch((err) => {

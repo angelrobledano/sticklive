@@ -47,6 +47,23 @@ export async function findTeamBySourceRef(sourceRef: string): Promise<DbTeam | n
 }
 
 /**
+ * TODOS los equipos cuyo source_ref (o alt) casa con `sourceRef` (#228).
+ *
+ * El puente `source_ref`/`alt_source_refs` es GLOBAL (sin namespacing por
+ * portal), así que la misma ref puede casar con 2-3 equipos. `findTeamBySourceRef`
+ * devuelve el primero a ciegas; esta variante permite al consumidor decidir (p.
+ * ej. NO resolver si es ambigua). Orden estable por `created_at` para que el
+ * resultado sea determinista.
+ */
+export async function findTeamsBySourceRef(sourceRef: string): Promise<DbTeam[]> {
+  const result = await db.query<DbTeam>(
+    'SELECT * FROM teams WHERE source_ref = $1 OR $1 = ANY(alt_source_refs) ORDER BY created_at, id',
+    [sourceRef]
+  );
+  return result.rows;
+}
+
+/**
  * Añade un ref alternativo al array alt_source_refs de un equipo.
  * Idempotente: no duplica si el ref ya existe.
  */
