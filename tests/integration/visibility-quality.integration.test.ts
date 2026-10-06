@@ -13,6 +13,7 @@ import {
   listSeasonsForQuality, setSeasonQuality,
 } from '@sports/db';
 import { seasonVisible } from '../../apps/api/src/lib/visibility.js';
+import { competitionsRouter } from '../../apps/api/src/routes/competitions.js';
 import { limpiar } from './support/db.js';
 import {
   crearDeporte, crearCompeticion, crearTemporada,
@@ -99,5 +100,42 @@ describe('seasonVisible', () => {
 
   it('id inexistente (uuid válido aleatorio) → false', async () => {
     expect(await seasonVisible(randomUUID())).toBe(false);
+  });
+});
+
+describe('GET /competitions — filtrado por calidad', () => {
+  it('excluye competiciones ocultas y no devuelve su temporada de referencia', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    await crearPartido({ seasonId });
+
+    const visible = await get(competitionsRouter, '/');
+    const vBody = visible.body as { competitions: Array<{ id: string }> };
+    expect(vBody.competitions.some((c) => c.id === compId)).toBe(true);
+
+    await setCompQualityDirect(compId, 'en_revision');
+
+    const hidden = await get(competitionsRouter, '/');
+    const hBody = hidden.body as { competitions: Array<{ id: string }> };
+    expect(hBody.competitions.some((c) => c.id === compId)).toBe(false);
+  });
+
+  it('solo lista temporadas visibles y 404 si la competición queda vacía', async () => {
+    const compId = await crearCompeticion(sportId);
+    const s1 = await crearTemporada(compId);
+    const s2 = await crearTemporada(compId, { esActual: false });
+    await crearPartido({ seasonId: s1 });
+    await crearPartido({ seasonId: s2 });
+
+    await setSeasonQualityDirect(s2, 'en_revision');
+
+    const res = await get(competitionsRouter, `/${compId}/seasons`);
+    expect(res.status).toBe(200);
+    const body = res.body as { seasons: Array<{ id: string }> };
+    expect(body.seasons.map((s) => s.id)).toEqual([s1]);
+
+    await setSeasonQualityDirect(s1, 'en_revision');
+    const empty = await get(competitionsRouter, `/${compId}/seasons`);
+    expect(empty.status).toBe(404);
   });
 });
