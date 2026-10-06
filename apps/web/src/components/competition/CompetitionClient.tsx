@@ -85,7 +85,7 @@ export function nextTabIndex(current: number, key: string, count: number): numbe
 }
 
 export function competitionVisibleTabs(
-  data: Pick<SeasonOverview, 'standings' | 'matches'>,
+  data: Pick<SeasonOverview, 'standings' | 'matches' | 'rounds'>,
   stats: SeasonStats | null | undefined,
   format: SeasonOverview['season']['competitionFormat'],
 ): MainTab[] {
@@ -94,7 +94,14 @@ export function competitionVisibleTabs(
   const tabs: MainTab[] = [];
   if (!isFinalFour && data.standings.length > 0) tabs.push('Clasificación');
   if (!isFinalFour && data.matches.some((m) => m.roundType === 'regular')) tabs.push('Jornadas');
-  if (isFinalFour || data.matches.some((m) => m.roundType === 'playoff')) tabs.push('Playoffs');
+  // La pestaña Playoffs aparece si hay partidos de playoff O si la competición
+  // declara rondas eliminatorias aún sin partidos (WSG: los cruces de la fase
+  // final se publican al cerrar los grupos — la estructura ya es visible).
+  if (isFinalFour
+    || data.matches.some((m) => m.roundType === 'playoff')
+    || data.rounds.some((r) => r.roundType === 'playoff')) {
+    tabs.push('Playoffs');
+  }
   if (stats && (stats.topScorers.length > 0 || stats.topAssists.length > 0 || stats.topCards.length > 0)) {
     tabs.push('Estadísticas');
   }
@@ -195,7 +202,7 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
       )}
       {currentTab === 'Playoffs'      && (
         <Suspense fallback={<div className="card h-40 animate-pulse" aria-hidden="true" />}>
-          <PlayoffsTab matches={data.matches} format={data.season.competitionFormat} />
+          <PlayoffsTab rounds={data.rounds} matches={data.matches} format={data.season.competitionFormat} />
         </Suspense>
       )}
       {currentTab === 'Estadísticas'  && stats && <StatsLeadersTab stats={stats} />}

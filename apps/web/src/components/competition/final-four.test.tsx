@@ -113,7 +113,7 @@ describe('FinalFourBracket', () => {
 });
 
 describe('competitionVisibleTabs — Final Four', () => {
-  const overview = (matches: SeasonMatch[]) => ({ standings: [], matches } as Pick<SeasonOverview, 'standings' | 'matches'>);
+  const overview = (matches: SeasonMatch[]) => ({ standings: [], matches, rounds: [] } as Pick<SeasonOverview, 'standings' | 'matches' | 'rounds'>);
 
   it('una final four solo ofrece el cuadro (ni Clasificación ni Jornadas)', () => {
     // Aunque el scrape aún traiga partidos como 'regular', un final_four no es liga.

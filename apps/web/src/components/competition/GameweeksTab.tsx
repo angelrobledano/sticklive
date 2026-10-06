@@ -144,6 +144,13 @@ function MatchCard({ match }: { match: SeasonMatch }) {
             {fmtTime(match.scheduledAt, match.competitionTimezone, locale)}
           </span>
         )}
+        {/* Grupo de la fase de grupos (WSG): en una misma jornada se mezclan
+            grupos, y sin la etiqueta no se distingue a qué grupo pertenece. */}
+        {match.groupName && (
+          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-600">
+            {t('standings.group')} {match.groupName}
+          </span>
+        )}
       </div>
 
       {/* Visitante */}
@@ -421,11 +428,16 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
   const teamParam = sp.get('team_id');
   const filterParam = sp.get('filter');
 
-  // Rondas para el selector: regular por número, luego playoff/cup.
+  // Rondas para el selector: regular por número, luego playoff/cup. Las rondas
+  // eliminatorias SIN partidos (WSG: cruces pendientes de publicar) no se
+  // ofrecen aquí — su lugar es la pestaña Playoffs ("por determinar").
   const orderedRounds = useMemo(() => {
     const rank = (rt: string) => (rt === 'regular' ? 0 : 1);
-    return [...rounds].sort((a, b) => rank(a.roundType) - rank(b.roundType) || a.number - b.number);
-  }, [rounds]);
+    const hasMatches = (r: SeasonRound) => matches.some((m) => m.roundId === r.id);
+    return [...rounds]
+      .filter((r) => r.roundType === 'regular' || hasMatches(r))
+      .sort((a, b) => rank(a.roundType) - rank(b.roundType) || a.number - b.number);
+  }, [rounds, matches]);
 
   // Equipos participantes (de los partidos), únicos y ordenados por nombre.
   const teams = useMemo(() => {

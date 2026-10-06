@@ -571,7 +571,7 @@
   },
   "competitions": {
     "all_index": "Tutte le competizioni ({n})",
-    "international": "Internazionale",
+    "international": "Mondo",
     "unclassified": "Non classificate",
     "other_region": "Altre",
     "search_placeholder": "Cerca campionato, paese o federazione...",

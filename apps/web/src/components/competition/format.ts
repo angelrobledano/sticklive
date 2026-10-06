@@ -29,7 +29,9 @@ export function fmtDate(iso: string | null, tz?: string | null, locale = 'es'): 
 
 export function fedLabelFromSeason(season: SeasonOverview['season'], locale: string): string {
   if (season.competitionScope === 'regional') return season.competitionRegion ?? season.competitionOrganizer;
-  if (season.competitionScope === 'international') return 'Internacional';
+  // Internacional: el organizador es más informativo que un genérico
+  // ("World Skate", "WSE") y casa con la categoría "Mundo" del índice.
+  if (season.competitionScope === 'international') return season.competitionOrganizer || 'Internacional';
   try {
     return new Intl.DisplayNames([locale], { type: 'region' }).of(season.competitionCountry ?? '') ?? season.competitionOrganizer;
   } catch {

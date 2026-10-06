@@ -4,7 +4,7 @@ import { useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useT } from '@/lib/i18n';
-import type { SeasonMatch, SeasonStandingRow } from '@/lib/api/client';
+import type { SeasonMatch, SeasonRound, SeasonStandingRow } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
 import { PlayoffBracket } from '@/components/match/PlayoffBracket';
@@ -183,7 +183,7 @@ function phaseFromSlug(s: string | null): PlayoffViewPhase | null {
   return (Object.keys(PHASE_SLUG) as PlayoffViewPhase[]).find((p) => PHASE_SLUG[p] === s) ?? null;
 }
 
-export function PlayoffsTab({ matches, format }: { standings?: SeasonStandingRow[]; matches: SeasonMatch[]; format?: string }) {
+export function PlayoffsTab({ rounds = [], matches, format }: { standings?: SeasonStandingRow[]; rounds?: SeasonRound[]; matches: SeasonMatch[]; format?: string }) {
   const { t } = useT();
 
   // Eliminatoria con fases nombradas por la fuente (World Skate: Cuartos/Semis/
@@ -297,7 +297,7 @@ export function PlayoffsTab({ matches, format }: { standings?: SeasonStandingRow
   if (format === 'bracket' || isNamedKnockout) {
     return (
       <div className="space-y-3">
-        <KnockoutBracket matches={matches} />
+        <KnockoutBracket rounds={rounds} matches={matches} />
       </div>
     );
   }

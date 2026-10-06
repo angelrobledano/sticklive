@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
-import type { SeasonMatch } from '@/lib/api/client';
+import type { SeasonMatch, SeasonRound } from '@/lib/api/client';
 import { useT } from '@/lib/i18n';
 import { buildBracketRounds, type BracketRound } from '@/lib/bracket';
 import { TeamShield } from '@/components/shared/TeamShield';
@@ -88,20 +88,50 @@ function isBinaryBracket(rounds: BracketRound[]): boolean {
   return rounds.every((r, i) => r.matches.length === base / 2 ** i);
 }
 
-export function KnockoutBracket({ matches }: { matches: SeasonMatch[] }) {
+export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound[]; matches: SeasonMatch[] }) {
   const { t } = useT();
-  const rounds = useMemo(() => buildBracketRounds(matches), [matches]);
+  const bracketRounds = useMemo(() => buildBracketRounds(matches), [matches]);
 
-  const third = rounds.find((r) => r.key === 'third_place');
+  const third = bracketRounds.find((r) => r.key === 'third_place');
   const bracket = useMemo(
-    () => rounds.filter((r) => r.key !== 'third_place' && r.matches.length > 0),
-    [rounds],
+    () => bracketRounds.filter((r) => r.key !== 'third_place' && r.matches.length > 0),
+    [bracketRounds],
   );
 
-  if (bracket.length === 0 && !third) return null;
+  // Fases DECLARADAS por la fuente (rounds) que aún no tienen partidos: los
+  // cruces de la fase final se publican cuando cierran los grupos (WSG). Se
+  // muestran como estructura "por determinar" para que la competición no
+  // parezca una liga sin fase final (excluidas las que ya tienen partidos).
+  const pending = useMemo(
+    () => (rounds ?? [])
+      .filter((r) => r.roundType === 'playoff' && !bracketRounds.some((b) => b.matches.some((m) => m.roundId === r.id)))
+      .sort((a, b) => a.number - b.number),
+    [rounds, bracketRounds],
+  );
+
+  if (bracket.length === 0 && !third && pending.length === 0) return null;
 
   const labelOf = (r: BracketRound, i: number) =>
     r.key ? t(`playoffs.${r.key}`) : (r.name ?? t('playoffs.round_n', { n: r.roundNumber ?? i + 1 }));
+
+  const pendingBlock = pending.length > 0 ? (
+    <div className="space-y-2">
+      <h3 className={HEADING}>{t('playoffs.tbd')}</h3>
+      <div className="space-y-1.5">
+        {pending.map((r) => (
+          <div
+            key={r.id}
+            className="card flex items-center justify-between px-3 py-2 border border-dashed border-slate-200 dark:border-slate-800"
+          >
+            <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">{r.name}</span>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-600">
+              {t('playoffs.tbd')}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  ) : null;
 
   const thirdBlock = third && third.matches.length > 0 ? (
     <div className="mx-auto w-full max-w-xs space-y-2">
@@ -124,6 +154,7 @@ export function KnockoutBracket({ matches }: { matches: SeasonMatch[] }) {
           </section>
         ))}
         {thirdBlock}
+        {pendingBlock}
       </div>
     );
   }
@@ -217,6 +248,7 @@ export function KnockoutBracket({ matches }: { matches: SeasonMatch[] }) {
       </div>
 
       {thirdBlock}
+      {pendingBlock}
     </div>
   );
 }

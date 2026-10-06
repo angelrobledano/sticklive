@@ -440,6 +440,8 @@ export interface SeasonMatch {
   roundNumber: number | null;
   roundName: string | null;
   roundType: string;
+  /** Grupo de la fase de grupos ("A", "B"...); null en eliminatorias/ligas. */
+  groupName?: string | null;
   homeTeam: TeamSummary;
   awayTeam: TeamSummary;
 }

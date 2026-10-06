@@ -70,6 +70,7 @@ interface MatchRow {
   round_number: number | null;
   round_name: string | null;
   round_type: string | null;
+  group_name: string | null;
   home_team_id: string;
   home_team_name: string;
   home_team_short_name: string | null;
@@ -163,6 +164,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         SELECT
           m.id, m.status, m.scheduled_at, m.started_at, m.finished_at,
           m.home_score, m.away_score, m.winner_team_id, m.win_type, m.venue_name, m.round_id,
+          m.group_name,
           r.number       AS round_number,
           r.name         AS round_name,
           r.round_type,
@@ -324,6 +326,9 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         winType:      m.win_type,
         venueName:   m.venue_name,
         roundId:     m.round_id,
+        // Grupo de la fase de grupos ("A", "B"...): NULL en eliminatorias y
+        // en competiciones sin grupos (ligas a partido único).
+        groupName:   m.group_name,
         // Playoff OK Liga: manda la fase derivada (1=QF/2=SF/3=F/0=playout).
         // Playoff con fases reales (World Skate): número real de la ronda.
         // Liga: número de jornada.

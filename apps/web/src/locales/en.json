@@ -571,7 +571,7 @@
   },
   "competitions": {
     "all_index": "All competitions ({n})",
-    "international": "International",
+    "international": "World",
     "unclassified": "Unclassified",
     "other_region": "Other",
     "search_placeholder": "Search league, country or federation...",
