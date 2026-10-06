@@ -90,6 +90,7 @@ const OPERATIVOS = [
   'apps/etl/src/seed-playoff-teams.ts',
   'apps/etl/src/seed-worldskate-u17.ts',
   'apps/etl/src/seed-worldskate-u17-women.ts',
+  'apps/etl/src/seed-worldskate-asu26.ts',     // WSG Asunción 2026 (idc 325/329/330/331)
   'apps/etl/src/seed-competition-sources.ts',
   'apps/etl/src/seed-fep-competition.ts',      // seed genérico por idc (2026/27)
   'apps/etl/src/split-filial-teams.ts',        // reparación filiales conflados (one-off)
