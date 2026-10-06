@@ -408,7 +408,7 @@ function SummaryTab({ data }: { data: TeamDetail }) {
           <div className="flex gap-6 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-sm text-slate-500 dark:text-slate-400">
             <span>{t('standings.cols.gf')}: <strong className="text-slate-700 dark:text-slate-300">{standing.goalsFor}</strong></span>
             <span>{t('standings.cols.ga')}: <strong className="text-slate-700 dark:text-slate-300">{standing.goalsAgainst}</strong></span>
-            <span>{t('standings.cols.gd')}: <strong className={standing.goalDiff >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}>
+            <span>{t('standings.cols.gd')}: <strong className={standing.goalDiff >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
               {standing.goalDiff >= 0 ? '+' : ''}{standing.goalDiff}
             </strong></span>
           </div>

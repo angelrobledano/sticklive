@@ -564,7 +564,7 @@ export function CompetitionsList({
                      bg-rink-passion hover:bg-red-700 active:bg-red-900
                      text-white font-semibold text-sm
                      px-5 py-2.5 rounded-xl transition-colors
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent focus-visible:ring-offset-2"
         >
           {tt(t, 'errors.retry', 'Reintentar')}
         </button>
@@ -822,7 +822,7 @@ export function CompetitionsList({
                     <li key={c.id}>
                       <Link
                         href={`/competitions/${c.id}`}
-                        className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-red-400 hover:underline"
+                        className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-rink-accent hover:underline"
                       >
                         {clubName(competitionName(c.name, c.nameI18n, locale))}
                       </Link>
@@ -841,7 +841,7 @@ export function CompetitionsList({
                     <li key={c.id}>
                       <Link
                         href={`/competitions/${c.id}`}
-                        className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-red-400 hover:underline"
+                        className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-rink-accent hover:underline"
                       >
                         {clubName(competitionName(c.name, c.nameI18n, locale))}
                       </Link>

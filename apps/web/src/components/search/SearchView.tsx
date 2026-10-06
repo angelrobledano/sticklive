@@ -103,10 +103,10 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
               onChange={(e) => setQuery(e.target.value)}
               aria-label={tt(t, 'a11y.search_global', 'Buscar equipos, jugadores o competiciones')}
               placeholder={tt(t, 'search.placeholder', 'Buscar equipo, jugador o competición…')}
-              className="w-full h-10 pl-9 pr-10 rounded-xl border border-slate-200 dark:border-slate-700
+              className="w-full h-10 pl-9 pr-12 rounded-xl border border-slate-200 dark:border-slate-700
                          bg-slate-50 dark:bg-slate-900 text-[13px] text-slate-800 dark:text-slate-200
                          placeholder:text-slate-500 dark:placeholder:text-slate-400
-                         focus:outline-none focus:ring-2 focus:ring-rink-passion focus:bg-white dark:focus:bg-slate-900
+                         focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-rink-accent focus:bg-white dark:focus:bg-slate-900
                          transition-colors"
             />
             {query && (
@@ -114,7 +114,8 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
                 type="button"
                 onClick={() => setQuery('')}
                 aria-label={tt(t, 'search.clear', 'Limpiar búsqueda')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-600
+                className="absolute right-0.5 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-11 h-11
+                           rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-600
                            dark:hover:text-slate-300 transition-colors"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">

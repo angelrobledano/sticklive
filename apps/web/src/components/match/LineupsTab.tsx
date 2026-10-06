@@ -17,7 +17,7 @@ import { tt } from '@/components/search/translate';
 const BADGE_BASE = 'inline-flex items-center justify-center h-5 min-w-[22px] px-1.5 rounded text-[11px] font-bold leading-none';
 const BADGE_STYLES = {
   '5i': 'bg-rink-passion text-white',
-  'C':  'bg-amber-500 text-white',
+  'C':  'bg-amber-700 text-white',
   'P':  'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
 } as const;
 
@@ -73,7 +73,7 @@ function RinkChip({ p, accent }: { p: RinkPlayer; accent: boolean }) {
           {p.jerseyNumber ?? '–'}
         </span>
         {p.isCaptain && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white
+          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-700 text-white
                            text-[8px] font-bold flex items-center justify-center">
             {tt(t, 'match_detail.badge_captain', 'C')}
           </span>

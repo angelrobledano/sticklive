@@ -18,6 +18,8 @@ colors:
   border-dark: "#1e293b"
   live: "#10b981"
   halftime: "#f59e0b"
+  live-deep: "#047857"
+  halftime-deep: "#b45309"
   premium-gold: "#fbbf24"
   relegation: "#f97316"
   card-blue: "#3b82f6"
@@ -43,6 +45,12 @@ typography:
   body-sm:
     fontFamily: "var(--font-inter), system-ui, sans-serif"
     fontSize: "0.8125rem"
+    fontWeight: 500
+    lineHeight: 1.35
+    letterSpacing: "normal"
+  body-xs:
+    fontFamily: "var(--font-inter), system-ui, sans-serif"
+    fontSize: "0.75rem"
     fontWeight: 500
     lineHeight: 1.35
     letterSpacing: "normal"
@@ -90,12 +98,12 @@ components:
     backgroundColor: "{colors.surface-card}"
     rounded: "{rounded.lg}"
   badge-live:
-    backgroundColor: "{colors.live}"
+    backgroundColor: "{colors.live-deep}"
     textColor: "{colors.text-inverse}"
     rounded: "{rounded.full}"
     padding: "2px 8px"
   badge-halftime:
-    backgroundColor: "{colors.halftime}"
+    backgroundColor: "{colors.halftime-deep}"
     textColor: "{colors.text-inverse}"
     rounded: "{rounded.full}"
     padding: "2px 8px"
@@ -160,6 +168,7 @@ Paleta sobria de grises azulados (slate) sobre la que el granate de identidad y 
 - **Display** (Inter, 700, ~1.125rem): marca "Stick Live", nombres de equipo en la ficha, títulos de bloque.
 - **Body** (Inter, 400–500, 0.875rem): texto general, nombres de equipo en listas, filas de ajuste.
 - **Body sm** (Inter, 400–500, 0.8125rem / 13px): metadatos de fila, subtítulos de tarjeta y texto secundario denso donde `body` no cabe.
+- **Body xs** (Inter, 400–600, 0.75rem / 12px, `text-xs`): el paso intermedio más usado — subtítulos, etiquetas de estado y metadatos compactos.
 - **Label** (Inter, 700, MAYÚSCULAS, `tracking-wide`/`tracking-widest`): encabezados de sección, cabeceras de tabla, badges y metadatos. Es una escalera de tres pasos deliberada — `label` 0.6875rem/11px (el paso por defecto), `label-sm` 0.625rem/10px (la micro-etiqueta dominante de la densidad de tabla) y `label-xs` 0.5625rem/9px (el suelo). Por debajo solo existe una excepción: las iniciales de los avatares de escudo sin logo (7–8px), que no son texto de interfaz.
 
 ### Named Rules
@@ -212,8 +221,8 @@ Lenguaje de esquinas redondeadas medias y coherentes: tarjetas y chips de fecha 
 - **Pill de acción (ver vídeo):** variante `rounded-full` granate con icono, para acciones contextuales dentro de una tarjeta.
 
 ### Badges de estado
-- **Live:** `rounded-full`, fondo esmeralda, texto blanco, MAYÚSCULAS `tracking-wide`, con punto blanco `animate-pulse`.
-- **Halftime:** idéntico en ámbar, punto estático.
+- **Live:** `rounded-full`, fondo **esmeralda-700** (#047857, no el esmeralda brillante de los puntos), texto blanco, MAYÚSCULAS `tracking-wide`, con punto blanco `animate-pulse`. El escalón profundo es necesario para que el texto blanco de 10px supere 4,5:1.
+- **Halftime:** idéntico en **ámbar-700** (#b45309), punto estático.
 - **Scheduled / Finished:** píldoras neutras en slate (claro/oscuro), sin color de estado.
 
 ### Cards / Containers (`.card`)

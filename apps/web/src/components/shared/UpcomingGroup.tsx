@@ -47,7 +47,7 @@ export function UpcomingGroup({ name, id, matches, defaultCollapsed = true }: {
           aria-expanded={!collapsed}
           aria-label={label}
           className="absolute inset-0 z-0 flex w-full items-center rounded-lg
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion"
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent"
         >
           <span className="sr-only">{label}</span>
         </button>

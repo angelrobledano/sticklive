@@ -168,9 +168,9 @@ function StandingsTable({
               key={row.id}
               role="row"
               className={`${GRID} px-3 py-2 items-center border-l-2
-                ${showPlayoffBorder    ? 'border-b-2 border-dashed border-b-rink-passion/30 dark:border-b-red-400/40' : ''}
+                ${showPlayoffBorder    ? 'border-b-2 border-dashed border-b-rink-passion/30 dark:border-b-rink-accent/40' : ''}
                 ${showRelegationBorder ? 'border-t-2 border-dashed border-t-orange-400/50 dark:border-t-orange-400/40' : ''}
-                ${isPlayoff            ? 'border-l-rink-passion dark:border-l-red-400 bg-rink-passion/[0.03] dark:bg-red-400/[0.06]' :
+                ${isPlayoff            ? 'border-l-rink-passion dark:border-l-rink-accent bg-rink-passion/[0.03] dark:bg-rink-accent/[0.06]' :
                   isRelegation         ? 'border-l-orange-500 dark:border-l-orange-400 bg-orange-50/40 dark:bg-orange-400/[0.06]' :
                                          'border-l-transparent'}
               `}
@@ -207,7 +207,7 @@ function StandingsTable({
                   {row.points}
                 </span>
                 {row.penalizationPoints < 0 && (
-                  <span className="text-[8px] font-bold text-red-500 tabular-nums leading-none">
+                  <span className="text-[8px] font-bold text-red-600 dark:text-red-400 tabular-nums leading-none">
                     {row.penalizationPoints}
                   </span>
                 )}
@@ -227,7 +227,7 @@ function StandingsTable({
               {/* DG */}
               <span role="cell" className={`text-xs font-semibold text-center tabular-nums ${
                 row.goalDiff > 0 ? 'text-emerald-600 dark:text-emerald-400' :
-                row.goalDiff < 0 ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'
+                row.goalDiff < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'
               }`}>
                 {row.goalDiff > 0 ? `+${row.goalDiff}` : row.goalDiff}
               </span>
@@ -240,7 +240,7 @@ function StandingsTable({
       {showZones && (
         <div className="px-3 py-1.5 flex flex-wrap gap-x-3 gap-y-0.5 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-rink-passion dark:bg-red-400 shrink-0" />
+            <span className="w-1.5 h-1.5 rounded-full bg-rink-passion dark:bg-rink-accent shrink-0" />
             <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('standings.playoffs_zone')}</span>
           </div>
           <div className="flex items-center gap-1">

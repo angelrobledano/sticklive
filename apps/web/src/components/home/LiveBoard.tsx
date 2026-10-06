@@ -65,7 +65,7 @@ function TeamSide({ team, name, align }: {
         // (capa de abajo) lleva al partido, igual que en MatchCard.
         <Link
           href={target.href}
-          className={`${row} pointer-events-auto rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion`}
+          className={`${row} pointer-events-auto rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent`}
         >
           {content}
         </Link>
@@ -101,7 +101,7 @@ export function LiveBoard({ match, isFavoriteTeam = false }: LiveBoardProps) {
       <Link
         href={`/matches/${match.id}`}
         aria-label={tt(t, 'a11y.view_match', 'Ver partido: {home} - {away}', { home: homeName, away: awayName })}
-        className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion"
+        className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent"
       />
 
       <div className="relative z-10 flex items-center justify-between gap-2">
@@ -118,11 +118,11 @@ export function LiveBoard({ match, isFavoriteTeam = false }: LiveBoardProps) {
         </span>
 
         {isHalftime ? (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
             {t('match_states.half_time')}
           </span>
         ) : (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
             <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" aria-hidden="true" />
             {t('match_states.in_play')}
           </span>

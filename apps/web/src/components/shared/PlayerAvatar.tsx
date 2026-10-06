@@ -75,6 +75,8 @@ export function PlayerAvatar({ photoUrl, name, className = 'w-20 h-20 rounded-2x
           <img
             src={ownApi ? withWidth(photoUrl!, PHOTO_WIDTH * 2) : photoUrl!}
             alt={name}
+            width={PHOTO_WIDTH}
+            height={PHOTO_WIDTH}
             className="w-full h-full object-cover object-top"
             onError={() => setFailed(true)}
             loading="lazy"

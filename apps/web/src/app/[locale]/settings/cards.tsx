@@ -101,6 +101,10 @@ export function FavoriteRow({ href, name, fallback, logoSrc, onRemove }: {
             <img
               src={logoSrc}
               alt={name}
+              width={32}
+              height={32}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-contain"
               onError={(e) => {
                 const el = e.currentTarget;

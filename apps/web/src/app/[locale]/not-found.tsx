@@ -47,7 +47,7 @@ export default function LocaleNotFound() {
           className="inline-flex items-center justify-center gap-1.5 px-5 min-h-[44px] rounded-xl
                      text-sm font-semibold bg-rink-passion text-white
                      hover:bg-red-700 active:bg-red-900 transition-colors
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent focus-visible:ring-offset-2"
         >
           {tt(t, 'errors.not_found_home', 'Volver al inicio')}
         </Link>
@@ -57,7 +57,7 @@ export default function LocaleNotFound() {
                      text-sm font-semibold text-slate-600 dark:text-slate-300
                      border border-slate-200 dark:border-slate-700
                      hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent focus-visible:ring-offset-2"
         >
           {tt(t, 'errors.not_found_competitions', 'Ver competiciones')}
         </Link>

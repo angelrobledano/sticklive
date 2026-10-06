@@ -159,7 +159,7 @@ function PhaseSection({ phase, teamId, timezone, showEliminated }: {
           {knockoutPhaseLabel(phase, t)}
         </h4>
         {showEliminated && (
-          <span className="text-[10px] font-bold uppercase tracking-wider text-red-500">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">
             {t('team.eliminated')}
           </span>
         )}

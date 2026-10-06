@@ -69,7 +69,7 @@ export function ShareButton({ title, kind, className = '' }: {
       {status === 'copied' ? (
         <span className="text-[10px] font-bold text-emerald-500">{t('common.copied')}</span>
       ) : status === 'error' ? (
-        <span role="status" className="text-[10px] font-bold text-red-500 whitespace-nowrap">
+        <span role="status" className="text-[10px] font-bold text-red-600 dark:text-red-400 whitespace-nowrap">
           {t('common.copy_failed')}
         </span>
       ) : (

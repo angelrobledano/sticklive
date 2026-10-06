@@ -225,7 +225,7 @@ function FavoritesInner() {
             className="mt-1 inline-flex items-center justify-center gap-1.5 px-5 min-h-[44px] rounded-xl
                        text-[13px] font-semibold bg-rink-passion text-white
                        hover:bg-rink-passion/90 transition-colors
-                       focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent focus-visible:ring-offset-2"
           >
             {tt(t, 'errors.retry', 'Reintentar')}
           </button>

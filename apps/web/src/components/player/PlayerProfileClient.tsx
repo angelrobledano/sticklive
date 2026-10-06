@@ -246,9 +246,9 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
 
   if (rows.length === 0) {
     return (
-      <div className="card p-6 text-center opacity-60">
+      <div className="card p-6 text-center">
         <p className="text-sm text-slate-500 dark:text-slate-400">{t('player.no_comp_records')}</p>
-        <p className="text-xs text-slate-300 dark:text-slate-700 mt-1">{t('player.comp_records_hint')}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('player.comp_records_hint')}</p>
       </div>
     );
   }
@@ -318,7 +318,7 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
 
               {/* Rj */}
               <span className={`font-mono text-xs text-center tabular-nums font-semibold ${
-                r.redCards > 0 ? 'text-red-500 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'
+                r.redCards > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'
               }`}>
                 {r.redCards > 0 ? r.redCards : '—'}
               </span>
@@ -339,7 +339,7 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
 
       {/* Nota sobre columnas pendientes */}
       <div className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-        <p className="text-[10px] text-slate-300 dark:text-slate-700">
+        <p className="text-[10px] text-slate-500 dark:text-slate-400">
           {t('player.pending_note')}
         </p>
       </div>

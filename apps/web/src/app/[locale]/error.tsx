@@ -133,7 +133,7 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
                    text-white font-semibold text-sm
                    px-5 py-2.5 rounded-xl
                    transition-colors duration-150
-                   focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+                   focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent focus-visible:ring-offset-2"
       >
         <RefreshIcon />
         {tt(t, 'errors.retry', 'Reintentar')}

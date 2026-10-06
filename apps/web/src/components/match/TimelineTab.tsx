@@ -129,7 +129,7 @@ function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
   const outcome =
     ev.eventType === 'direct_foul' && ev.detail ? (
       <span className={`text-xs font-bold uppercase tracking-wide ${
-        directScored ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'
+        directScored ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
       }`}>
         · {directScored ? t('timeline_events.scored') : t('timeline_events.missed')}
       </span>
@@ -137,7 +137,7 @@ function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
       <span className={`text-xs font-bold uppercase tracking-wide ${
         ev.detail.toLowerCase().includes('gol') || ev.detail.toLowerCase().includes('marc')
           ? 'text-emerald-600 dark:text-emerald-400'
-          : 'text-red-500 dark:text-red-400'
+          : 'text-red-600 dark:text-red-400'
       }`}>
         · {ev.detail.toLowerCase().includes('gol') || ev.detail.toLowerCase().includes('marc')
             ? t('timeline_events.scored') : t('timeline_events.missed')}
