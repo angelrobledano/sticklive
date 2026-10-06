@@ -374,10 +374,20 @@ describe('GET /meta/sitemap — visibilidad', () => {
     await setSeasonQualityDirect(seasonId, 'en_revision');
     const res = await metaRouter.request('/sitemap');
     const body = await res.json() as { competitions: Array<{ id: string }>; matches: Array<{ id: string }> };
-    // El sitemap solo excluye competiciones ocultas/archivadas (spec Task 9); una
-    // competición en 'ok' cuya única temporada está oculta SIGUE listada. Lo que
-    // garantiza ocultar la temporada es el partido. Ver informe del lote.
+    expect(body.competitions.some((c) => c.id === compId)).toBe(false);
     expect(body.matches.some((m) => m.id === matchId)).toBe(false);
+  });
+
+  it('mantiene la competición si le queda alguna temporada visible con partidos', async () => {
+    const compId = await crearCompeticion(sportId);
+    const sVisible = await crearTemporada(compId);
+    const sHidden = await crearTemporada(compId, { esActual: false });
+    await crearPartido({ seasonId: sVisible });
+    await crearPartido({ seasonId: sHidden });
+
+    await setSeasonQualityDirect(sHidden, 'en_revision');
+    const res = await metaRouter.request('/sitemap');
+    const body = await res.json() as { competitions: Array<{ id: string }> };
     expect(body.competitions.some((c) => c.id === compId)).toBe(true);
   });
 });

@@ -15,10 +15,18 @@ metaRouter.get('/sitemap', async (c) => {
     // `lastmod` real (no el timestamp de generación). El cliente tolera ambas
     // formas (id suelto u objeto) por retrocompatibilidad.
     const [comps, teams, players, matches] = await Promise.all([
-      db.query<{ id: string; updated_at: Date }>(
-        `SELECT id, updated_at FROM competitions
-          WHERE data_quality = 'ok' AND archived_at IS NULL`
-      ),
+      db.query<{ id: string; updated_at: Date }>(`
+        SELECT c.id, c.updated_at
+          FROM competitions c
+         WHERE c.data_quality = 'ok'
+           AND c.archived_at IS NULL
+           AND EXISTS (
+             SELECT 1 FROM seasons s
+              WHERE s.competition_id = c.id
+                AND s.data_quality = 'ok'
+                AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s.id)
+           )
+      `),
       db.query<{ id: string; updated_at: Date }>(`SELECT id, updated_at FROM teams`),
       // Solo jugadores con presencia en alineaciones (los demás no tienen ficha útil)
       db.query<{ id: string; updated_at: Date }>(`
