@@ -32,3 +32,14 @@ export function finalFourRoundNumber(name: string): number {
   if (/final/.test(n))                return 2;
   return 9;
 }
+
+/**
+ * Número de jornada a partir del nombre de la fuente ("JORNADA 5" → 5).
+ * `null` si no hay dígitos (esa ronda se descarta). La liga regular se modela
+ * como `round_type='regular'` con este número; sin ello, `rounds` queda vacío y
+ * la web no puede ofrecer el filtro por jornada.
+ */
+export function regularRoundNumber(name: string): number | null {
+  const m = /(\d+)/.exec(name);
+  return m ? Number(m[1]) : null;
+}

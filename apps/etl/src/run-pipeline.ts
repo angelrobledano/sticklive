@@ -26,7 +26,7 @@ import { forEachLimited } from './concurrency.js';
 import { downloadTeamLogos } from './team-logos.js';
 import { scrapeRunStatus } from './scrape-log-status.js';
 import { acquireEtlLock } from './etl-lock.js';
-import { cupRoundNumber, finalFourRoundNumber } from './cup-rounds.js';
+import { cupRoundNumber, finalFourRoundNumber, regularRoundNumber } from './cup-rounds.js';
 
 // Los scrapers viven en apps/scraper — importamos via ruta relativa (ts-node lo resuelve)
 import { FepCalendarScraper } from '../../scraper/src/scrapers/fep/fep-calendar.scraper.js';
@@ -229,6 +229,24 @@ async function processCalendar(
         let rid = cache.get(rname.toLowerCase());
         if (!rid) {
           rid = await getOrCreateRound(seasonId, rname, roundNumberOf(rname), 'playoff');
+          cache.set(rname.toLowerCase(), rid);
+        }
+        m.roundId = rid;
+      }
+    } else if (!playoffIdcs.has(calIdc)) {
+      // Liga: crear la ronda REGULAR por jornada (la fuente trae el thead
+      // "JORNADA N" → `roundRef`) y asignarla al partido. Sin esto `rounds`
+      // queda vacío, `roundNumber` nulo y la web no puede filtrar por jornada
+      // (solo Fecha/Equipo), que es lo que hacía.
+      const cache = new Map<string, string>();
+      for (const m of result.data) {
+        const rname = m.roundRef?.trim();
+        if (!rname) continue;
+        let rid = cache.get(rname.toLowerCase());
+        if (!rid) {
+          const n = regularRoundNumber(rname);
+          if (n == null) continue;
+          rid = await getOrCreateRound(seasonId, rname, n, 'regular');
           cache.set(rname.toLowerCase(), rid);
         }
         m.roundId = rid;

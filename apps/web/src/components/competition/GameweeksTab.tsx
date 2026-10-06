@@ -467,7 +467,10 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
   const requestedMode = fixturesFilterMode(
     filterParam,
     { journey: parsedJourney, date: dateParam, team: teamParam },
-    fallback.date ? 'date' : 'round',
+    // Por defecto, Jornada (si está disponible): es la dimensión natural de la
+    // pestaña. Si la temporada no tiene `rounds`, el guard de abajo cae al
+    // primer modo disponible (p. ej. Fecha).
+    'round',
   );
   const mode: FixturesFilterMode = availableModes.includes(requestedMode) ? requestedMode : availableModes[0]!;
 
