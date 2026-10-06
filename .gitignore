@@ -22,4 +22,10 @@ dump.sql
 .backup-offsite.env
 
 # Capturas efímeras de revisión de diseño (evidencia local, no se versiona)
-.impeccable/review/
+**/.impeccable/review/
+**/.impeccable/surfaces/
+
+# Artefactos locales de trabajo (no se versionan; permanecen en disco)
+.tmp-close/
+Claude outputs/
+data/
