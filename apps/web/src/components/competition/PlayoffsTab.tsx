@@ -291,9 +291,10 @@ export function PlayoffsTab({ matches, format }: { standings?: SeasonStandingRow
     );
   }
 
-  // Cuadro de eliminatorias por nombre de fase (World Skate) — todos los hooks
-  // de arriba se han ejecutado ya, así que este return no rompe las reglas.
-  if (isNamedKnockout) {
+  // Cuadro de eliminatorias: una competición DECLARADA como `bracket` (copas,
+  // eliminatorias) siempre se dibuja como cuadro; además, las ligas con una
+  // eliminatoria con fases de numeración alta (World Skate) también.
+  if (format === 'bracket' || isNamedKnockout) {
     return (
       <div className="space-y-3">
         <KnockoutBracket matches={matches} />
