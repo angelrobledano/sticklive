@@ -39,10 +39,13 @@ export interface NativeSubRow {
 
 export interface ExpoPayload { title: string; body: string; tag: string; url: string; type: string }
 
-/** Convierte la URL web (…/matches/<id>) en ruta de deep link de la app. */
+/** Convierte la URL web (…/matches/<id>) en ruta de deep link de la app:
+ *  la ficha vive en `app/match/[id]` → `/match/<id>` (SIN la s de la web).
+ *  OJO: no devolver la ruta web — expo-router no la resuelve y el tap del
+ *  push aterrizaría en la pantalla de ruta desconocida (Task 5.4). */
 function toUrlPath(url: string): string {
   const m = url.match(/\/matches\/([0-9a-f-]+)/i);
-  return m ? `/matches/${m[1]}` : '/';
+  return m ? `/match/${m[1]}` : '/';
 }
 
 /** Mensaje del API v2: channelId 'live' (lo crea la app antes de pedir

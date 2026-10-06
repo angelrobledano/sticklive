@@ -60,7 +60,7 @@ describe('toExpoMessage', () => {
       sound: 'default',
       ttl: 3600, // paridad con el TTL del canal web: un gol tardío no interesa
       collapseId: 'match:1',
-      data: { type: 'goal', urlPath: '/matches/1' },
+      data: { type: 'goal', urlPath: '/match/1' },
     });
   });
 
