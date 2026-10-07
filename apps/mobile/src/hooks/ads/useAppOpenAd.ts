@@ -13,6 +13,7 @@ import {
   registerFullScreenShow,
   setFullScreenBudget,
 } from '@/src/lib/ads/fullscreen';
+import { hasNavigatedBeyondInitial } from '@/src/lib/ads/navigation-state';
 import {
   consumePushInteraction,
   incrementSessionCountOnce,
@@ -34,10 +35,14 @@ import {
  *
  * Cuándo SE MUESTRA (doc instalada del SDK v17, "Cold starts and loading
  * screens": "If your app has completed loading and has sent the user to the
- * main content of your app, do not show the ad"): al llegar LOADED, SOLO si el
- * usuario sigue en la superficie inicial (no ha navegado a ninguna ruta) — el
- * "primer idle" del arranque. Si ya navegó, el anuncio se descarta SIN consumir
- * presupuesto (solo se registra un show que llegó a producirse).
+ * main content of your app, do not show the ad"): al llegar LOADED, SOLO si
+ * (a) no hubo tap de push hace < 60 s, (b) el usuario sigue en la superficie
+ * INICIAL — comparación RELATIVA al estado del root container capturado al
+ * arrancar (`hasNavigatedBeyondInitial`, src/lib/ads/navigation-state.ts: los
+ * tabs pre-pueblan sus rutas, una comparación absoluta daría siempre "navegó")
+ * y (c) el presupuesto compartido sigue verde — el "primer idle" del arranque.
+ * Si algo falla, el anuncio se descarta SIN consumir presupuesto (solo se
+ * registra un show que llegó a producirse).
  *
  * Cuándo SE DECIDE: UNA vez por arranque (ref del hook) cuando config y estado
  * premium están resueltos; sin config o con premium desconocido el efecto
@@ -56,27 +61,6 @@ function resolveAppOpenUnitId(): string {
   return process.env.EXPO_PUBLIC_ADMOB_APP_OPEN ?? '';
 }
 
-/** Mínimo estructural de un NavigationState de react-navigation (getRootState).
- * `index` es opcional porque las rutas anidadas pueden llegar como PartialState. */
-interface NavStateLike {
-  index?: number;
-  routes: { state?: NavStateLike }[];
-}
-
-/**
- * ¿Navegó el usuario más allá de la superficie inicial? Recorre la cadena de
- * estados anidados del root container (layout raíz → Stack de la app → …):
- * basta que UN nivel tenga más de una ruta para que haya navegación en curso.
- */
-function hasNavigatedBeyondInitial(state: NavStateLike | undefined | null): boolean {
-  let current = state ?? undefined;
-  while (current) {
-    if (current.routes.length > 1) return true;
-    current = current.routes[current.index ?? 0]?.state;
-  }
-  return false;
-}
-
 export function useAppOpenAd(): void {
   const { premium } = usePremiumStatus();
   const { data: config } = useAdsConfig();
@@ -85,12 +69,32 @@ export function useAppOpenAd(): void {
   // estado de navegación EN EL MOMENTO DEL EVENTO (LOADED), sin suscribirse.
   const navigationRef = useNavigationContainerRef();
   const decidedRef = useRef(false);
+  // Estado INICIAL del root container, capturado UNA vez en cuanto existe (el
+  // gate monta con la app, antes de que el usuario pueda navegar): es la
+  // referencia contra la que `hasNavigatedBeyondInitial` compara (Bug B del
+  // review — los tabs PRE-POBLAN sus rutas, TabRouter.getInitialState, así que
+  // sin este initial no hay "navegó" determinable). null = aún sin capturar
+  // (fail-closed: no se muestra).
+  const initialStateRef = useRef<unknown>(null);
+
+  // Captura temprana: los layout effects del navigator asientan el estado
+  // antes de este passive effect. Reintento de cortesía en el efecto de
+  // decisión por si el container tardara.
+  useEffect(() => {
+    if (initialStateRef.current !== null) return;
+    initialStateRef.current = navigationRef.current?.getRootState() ?? null;
+  }, [navigationRef]);
 
   useEffect(() => {
     // Grace period (invariante 3): la sesión se cuenta SIEMPRE al arrancar,
     // haya o no config de ads (singleton de promesa; el flujo de decisión la
     // await-ea más abajo para no leer un valor stale).
     void incrementSessionCountOnce();
+
+    // Reintento de captura del estado inicial (por si aún no existía).
+    if (initialStateRef.current === null) {
+      initialStateRef.current = navigationRef.current?.getRootState() ?? null;
+    }
 
     if (decidedRef.current) return;
     // Sin config (query en vuelo o error) NO se decide: el efecto reintenta
@@ -167,11 +171,28 @@ export function useAppOpenAd(): void {
           const currentAd = ad;
           if (cancelled || !currentAd) return;
           void (async () => {
+            // Cinturón del invariante 1 EN el instante del show: un tap de
+            // push durante la carga deja la ventana de 60 s activa.
+            if (consumePushInteraction(Date.now())) {
+              console.warn('[ads] app open listo pero interacción de push hace < 60 s: no se muestra');
+              finish();
+              return;
+            }
             // Doc instalada: si la app ya envió al usuario al contenido, NO
-            // mostrar (nunca interrumpir navegación en curso). Se descarta sin
-            // consumir presupuesto (solo cuentan los shows que ocurrieron).
-            if (hasNavigatedBeyondInitial(navigationRef.current?.getRootState())) {
-              console.warn('[ads] app open listo pero el usuario ya navegó: no se muestra');
+            // mostrar (nunca interrumpir navegación en curso). La comparación
+            // es RELATIVA al estado inicial capturado en el arranque (los tabs
+            // pre-pueblan sus rutas) y SIN initial capturado ⇒ fail-closed. Se
+            // descarta sin consumir presupuesto (solo cuentan los shows).
+            const initial = initialStateRef.current;
+            if (
+              initial === null ||
+              hasNavigatedBeyondInitial(navigationRef.current?.getRootState(), initial)
+            ) {
+              console.warn(
+                initial === null
+                  ? '[ads] app open descartado: sin estado inicial capturado (fail-closed)'
+                  : '[ads] app open listo pero el usuario ya navegó: no se muestra',
+              );
               finish();
               return;
             }

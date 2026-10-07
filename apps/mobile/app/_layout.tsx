@@ -62,13 +62,18 @@ Notifications.setNotificationHandler({
  */
 function useNotificationDeepLink() {
   useEffect(() => {
-    const openFrom = (data: unknown) => {
-      // Plan D (invariante 1, la ruta del gol): cualquier respuesta de
-      // notificación —en frío (getLastNotificationResponseAsync) o en caliente
-      // (el listener de abajo)— marca la interacción; durante los 60 s
-      // siguientes el presupuesto full-screen se considera rojo.
-      markPushInteraction();
-      const payload = (data as { urlPath?: unknown; type?: unknown } | null | undefined) ?? {};
+    const openFrom = (response: Notifications.NotificationResponse | null | undefined) => {
+      // Plan D (invariante 1, la ruta del gol): SOLO una respuesta REAL de
+      // notificación es una interacción de push. En un arranque normal la
+      // promesa de abajo resuelve null — marcar ese null convertía TODO
+      // arranque en "ruta del gol" durante 60 s y dejaba el app open
+      // inalcanzable (bug del review). La ventana de 60 s corre desde el tap.
+      if (response) markPushInteraction();
+      const payload =
+        (response?.notification.request.content.data as
+          | { urlPath?: unknown; type?: unknown }
+          | null
+          | undefined) ?? {};
       const urlPath = payload.urlPath;
       if (typeof urlPath === 'string' && urlPath.startsWith('/')) {
         router.push(urlPath as never);
@@ -82,11 +87,9 @@ function useNotificationDeepLink() {
         capture('notification_opened', { notification_type: payload.type });
       }
     };
-    void Notifications.getLastNotificationResponseAsync().then((r) =>
-      openFrom(r?.notification.request.content.data),
-    );
+    void Notifications.getLastNotificationResponseAsync().then((r) => openFrom(r));
     const subscription = Notifications.addNotificationResponseReceivedListener((r) =>
-      openFrom(r.notification.request.content.data),
+      openFrom(r),
     );
     return () => subscription.remove();
   }, []);
