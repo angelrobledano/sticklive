@@ -201,13 +201,26 @@ import { fetchPremiumStatus, qk } from './queries.js';
 import { useSession } from '@/src/context/AuthContext';
 import type { PremiumStatus } from '@/src/lib/api/types';
 
+export interface UsePremiumStatusResult {
+  /**
+   * boolean | undefined: `undefined` = cargando o error CON sesión → el guard
+   * shouldShowAds hace fail-closed (nunca banner ante desconocido). `false`
+   * solo sin sesión (el anónimo sí ve ads). NUNCA colapsar undefined a false:
+   * un premium vería un flash de banner (spec §7: premium ⇒ cero SDK).
+   */
+  premium: boolean | undefined;
+  premiumLifetime: boolean | undefined;
+  isLoading: boolean;
+  refresh: () => void;
+}
+
 /**
  * Estado premium de la SESIÓN (GET /payments/status). enabled solo con
  * sesión: sin login no hay entitlement que consultar (el anónimo ve ads).
  * Refresco on-focus: al volver del navegador tras pagar en la web, el estado
  * nuevo llega sin reiniciar la app.
  */
-export function usePremiumStatus() {
+export function usePremiumStatus(): UsePremiumStatusResult {
   const { session } = useSession();
   const qc = useQueryClient();
 
@@ -225,12 +238,15 @@ export function usePremiumStatus() {
   );
 
   return {
-    premium: query.data?.premium ?? false,
-    premiumLifetime: query.data?.premiumLifetime ?? false,
+    premium: session?.token ? query.data?.premium : false,
+    premiumLifetime: session?.token ? query.data?.premiumLifetime : false,
     isLoading: query.isPending,
+    refresh: () => void qc.invalidateQueries({ queryKey: qk.premium }),
   };
 }
 ```
+
+Nota de contrato (review Task 1): `premium` es `boolean | undefined` — AdBanner (Task 4) pasa el valor CRUDO a `shouldShowAds`, que hace fail-closed con `undefined`.
 
 - [ ] **Step 3: i18n + analítica**
 
