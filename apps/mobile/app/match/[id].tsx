@@ -6,7 +6,9 @@ import { useMatchDetail } from '@/src/hooks/queries';
 import { useMatchLive } from '@/src/hooks/useMatchLive';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { EventRow } from '@/src/components/match/EventRow';
+import { AdBanner } from '@/src/components/ads/AdBanner';
 import { capture } from '@/src/lib/analytics';
+import { isEffectivelyLive } from '@/src/lib/time';
 
 export default function MatchScreen() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -114,6 +116,10 @@ export default function MatchScreen() {
             ))}
           </View>
         </View>
+        {/* Banner solo si el partido NO está en vivo (spec §7: en vivo nada
+            toca la pantalla; `isEffectivelyLive` es la fuente única, igual
+            que la home). El DTO del detalle ya trae el estado EFECTIVO. */}
+        {!isEffectivelyLive(m.status, m.scheduledAt) ? <AdBanner variant="match" /> : null}
       </ScrollView>
     </>
   );

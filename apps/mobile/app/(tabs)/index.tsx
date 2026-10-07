@@ -3,6 +3,7 @@ import { FlatList, RefreshControl, Text, View } from 'react-native';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useCurrentMatches } from '@/src/hooks/queries';
 import { MatchCard } from '@/src/components/match/MatchCard';
+import { AdBanner } from '@/src/components/ads/AdBanner';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { capture } from '@/src/lib/analytics';
@@ -68,6 +69,7 @@ export default function LiveScreen() {
       ListEmptyComponent={
         <EmptyState title={t('common.no_matches_today')} hint={t('common.no_matches_hint')} />
       }
+      ListFooterComponent={<AdBanner variant="list" />}
     />
   );
 }

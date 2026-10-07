@@ -7,6 +7,7 @@ import { SEARCH_DEBOUNCE_MS, useDebounced } from '@/src/hooks/useDebounced';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
+import { AdBanner } from '@/src/components/ads/AdBanner';
 
 /**
  * Tab de búsqueda (Task 2.5): TextInput con debounce de 300 ms → useSearch.
@@ -126,6 +127,9 @@ export default function SearchScreen() {
               ))}
             </>
           ) : null}
+
+          {/* Pie del contenido: banner (el gating premium/consentimiento vive en AdBanner). */}
+          <AdBanner variant="list" />
         </ScrollView>
       )}
     </View>

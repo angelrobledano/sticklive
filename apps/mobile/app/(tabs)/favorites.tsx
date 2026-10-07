@@ -10,6 +10,7 @@ import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
+import { AdBanner } from '@/src/components/ads/AdBanner';
 import { authErrorKey } from '@/src/lib/auth-errors';
 
 /**
@@ -155,6 +156,9 @@ export default function FavoritesScreen() {
               </View>
             ))
         )}
+
+        {/* Pie del contenido: banner (el gating premium/consentimiento vive en AdBanner). */}
+        <AdBanner variant="list" />
       </ScrollView>
     </View>
   );

@@ -35,14 +35,18 @@ export function canRequestAdsAfterConsent(info: {
  * decisión final. Llamar en cada arranque de app (la doc lo recomienda: el
  * consentimiento puede expirar o cambiar el mensaje).
  *
+ * `options` pasa INTACTO a `AdsConsent.gatherConsent()`: producción lo llama
+ * sin opciones (comportamiento idéntico), y el smoke EEA (Task 5) pasa en el
+ * call-site `debugGeography` / `testDeviceIdentifiers` — no se cocinan aquí.
+ *
  * Los ERRORES se PROPAGAN (nunca silencio): si gatherConsent falla, la doc
  * permite reintentar con el estado de la sesión anterior — esa decisión es
- * del llamador (Task 4), que decide qué mostrar. Las opciones de debug
- * (debugGeography / testDeviceIdentifiers) NO se fijan aquí: son para el
- * smoke manual (Task 5) y deben llegar explícitas, no cocinadas en el wrapper.
+ * del llamador (Task 4), que decide qué mostrar.
  */
-export async function requestAdsConsent(): Promise<AdsConsentState> {
-  await AdsConsent.gatherConsent();
+export async function requestAdsConsent(
+  options?: Parameters<typeof AdsConsent.gatherConsent>[0],
+): Promise<AdsConsentState> {
+  await AdsConsent.gatherConsent(options);
   const info = await AdsConsent.getConsentInfo();
   return canRequestAdsAfterConsent(info);
 }
