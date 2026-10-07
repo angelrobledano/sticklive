@@ -31,7 +31,7 @@ import { healthRouter } from './routes/health.js';
 import { pushRouter } from './routes/push.js';
 import { metaRouter } from './routes/meta.js';
 import { stripeRouter } from './routes/payments-stripe.js';
-import { playRouter } from './routes/payments-play.js';
+import { statusRouter } from './routes/payments-status.js';
 
 const app = new Hono();
 
@@ -127,7 +127,7 @@ app.route('/seasons', seasonStatsRouter);    // /seasons/:id/stats — líderes 
 app.route('/players',  playerPhotoRouter);   // /players/:id/photo — foto (proxy CDN)
 app.route('/players',  playerDetailRouter);  // /players/:id
 app.route('/payments/stripe', stripeRouter);   // proveedor ACTIVO: checkout + webhook
-app.route('/payments/play', playRouter);       // Google Play: verify de compras (app)
+app.route('/payments/status', statusRouter);   // estado premium de la sesión (app móvil)
 app.route('/auth', authRouter);                // magic links + favoritos en nube
 app.route('/admin', adminRouter);              // panel de admin (X-Admin-Token)
 app.route('/push', pushRouter);                // suscripciones Web Push

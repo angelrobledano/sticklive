@@ -60,7 +60,6 @@ const SERVICIOS = [
   'apps/etl/src/scrape-health-watch.ts',      // vigilante diario de salud del scraping (I3)
   'apps/etl/src/integrity-check.ts',          // check diario de integridad de datos (#231)
   'apps/etl/src/audit-integrity-report.ts',   // informe histórico versionado, a mano (#237)
-  'apps/etl/src/play-reconcile.ts',           // reconciliación diaria de compras Play (monetización)
 ];
 
 /**

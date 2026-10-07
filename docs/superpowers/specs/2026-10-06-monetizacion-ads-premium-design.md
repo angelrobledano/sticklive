@@ -1,7 +1,7 @@
-# Diseño — Monetización: publicidad (AdSense web / AdMob app) y premium (Stripe + Google Play)
+# Diseño — Monetización: publicidad (AdSense web / AdMob app) y premium (Stripe, compra solo en web)
 
 Fecha: 2026-10-06
-Estado: En implementación por planes: A-servidor (2026-10-06-monetizacion-play-servidor.md) hecho; pendientes B-compra-en-app y C-admob. La app móvil base ya está implementada (plan 2026-10-05-app-movil.md).
+Estado: En implementación. **Enmienda 2026-10-07 (§14): la compra es SOLO en la web (Stripe) — no hay Play Billing ni compra en la app.** Servidor (plan A, purgado a lo esencial) hecho; pendiente la app (estado premium + AdMob). La app móvil base ya está implementada (plan 2026-10-05-app-movil.md).
 
 ## 1. Contexto y objetivo
 
@@ -195,3 +195,38 @@ y queda fuera del alcance de este diseño.
 - `apps/api/src/lib/premium.ts`, `apps/api/src/routes/payments-stripe.ts`,
   `packages/db/src/queries/users.ts` — patrón actual de premium y webhook
   idempotente.
+
+## 14. Enmienda 2026-10-07 — la compra es SOLO en la web
+
+**Decisión del usuario:** no habrá opción de comprar dentro de la app. Todo el
+premium se compra en la web (Stripe, ya construido) y la app solo LEE el
+estado de su sesión para apagar la publicidad.
+
+**Por qué funciona sin cambiar el modelo de cuentas:** `resolveUserByEmail`
+(routes/auth.ts) resuelve el login por el email de la cuenta de Google, no por
+dispositivo — la sesión de la app y la web caen en la MISMA fila `users`, así
+que lo pagado en la web se ve en la app al iniciar sesión o al refrescar
+estado.
+
+**Supera:** §5 (verificación de compras Play), §6 (job reconciler) y toda
+mención a Google Play Billing de §2/§9/§11. El plan
+`2026-10-06-monetizacion-play-servidor.md` se retira (historial en git).
+
+**Sobrevive del plan A (ya implementado y testado):**
+- Guard único `isUserPremium` (`premium_lifetime || premium_until > NOW()`) y
+  migración de `payments-stripe.ts` a ese guard.
+- `users.premium_lifetime` (migración 070, renombrada a
+  `070_premium_lifetime.sql`; la tabla `play_purchases` NO existe).
+- `GET /payments/status` (Bearer) — antes `/payments/play/status`; es lo que
+  consume la app.
+
+**Nuevo flujo en la app (sustituye al plan B de compra IAP):** la pantalla
+premium muestra los dos productos y abre `sticklive.eu` en el navegador del
+sistema para pagar; al volver (o al arrancar) la app refresca
+`GET /payments/status` y, si es premium, AdMob no se inicializa. El plan C
+(AdMob + UMP) sigue en pie tal cual.
+
+**Pendiente derivado:** producto "para siempre" por Stripe (segundo price de
+pago único; el webhook pone `premium_lifetime = TRUE` con la misma
+idempotencia actual). Trabajo web/API pequeño, pendiente de plan y de
+coordinarse con el trabajo de ads web ya en marcha en main.

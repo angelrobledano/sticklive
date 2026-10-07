@@ -13,4 +13,3 @@ export * from './queries/rounds.js';
 export * from './queries/standings.js';
 export * from './queries/scrape-logs.js';
 export * from './queries/users.js';
-export * from './queries/play-purchases.js';
