@@ -40,20 +40,24 @@ export interface AdBannerProps {
   variant: AdBannerVariant;
 }
 
-/** Env var por variante (docs/monetizacion.md §6): vacía/undefined ⇒ sin ads. */
-const BANNER_UNIT_ENV_KEYS: Record<AdBannerVariant, string> = {
-  list: 'EXPO_PUBLIC_ADMOB_BANNER_LIST',
-  match: 'EXPO_PUBLIC_ADMOB_BANNER_MATCH',
-};
-
 /**
  * Unit id con fail-closed triple: en `__DEV__` SIEMPRE TestIds (nunca clicar
  * ads reales en dev); en production, la env de la variante; vacía ⇒ '' (el
  * guard shouldShowAds colapsa).
+ *
+ * ACCESO ESTÁTICO OBLIGATORIO: babel-preset-expo solo inlinea `EXPO_PUBLIC_*`
+ * con dot notation o literal entre corchetes (docs expo/environment-variables).
+ * Un acceso computado (`process.env[BANNER_UNIT_ENV_KEYS[variant]]`) no se
+ * inlinea y en production `process.env` está vacío en runtime → undefined →
+ * banners muertos en producción, invisible en __DEV__ (TestIds sale antes) y
+ * en vitest (Node sí resuelve env dinámico). NO refactorizar a un mapping
+ * dinámico de claves.
  */
 function resolveBannerUnitId(variant: AdBannerVariant): string {
   if (__DEV__) return TestIds.BANNER;
-  return process.env[BANNER_UNIT_ENV_KEYS[variant]] ?? '';
+  return variant === 'match'
+    ? process.env.EXPO_PUBLIC_ADMOB_BANNER_MATCH ?? ''
+    : process.env.EXPO_PUBLIC_ADMOB_BANNER_LIST ?? '';
 }
 
 /** Reserva inicial de altura antes de conocer la real (anchored adaptativo). */
