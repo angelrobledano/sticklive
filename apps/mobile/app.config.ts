@@ -36,6 +36,21 @@ export default {
       // (mismo prerequisito humano de Task 4.2): sustituir <projectId> por el
       // ID real que devuelve `npx eas init`.
       'expo-updates',
+      // AdMob (docs/monetizacion.md §6). El plugin inyecta el App ID en el
+      // AndroidManifest; requiere recompilar la app nativa (CNG/dev build).
+      // iOS pendiente de publicación: sin `iosAppId` el plugin SOLO avisa
+      // (crashearía en un build iOS, que este hito Android-first no genera).
+      // delayAppMeasurementInit: doc del SDK (european-user-consent) — la
+      // medición de Google arranca al abrir la app; con true espera a
+      // initialize() o primera carga de ad, así un premium (que nunca llega a
+      // initialize, gating de Task 4) tampoco genera actividad de medición.
+      [
+        'react-native-google-mobile-ads',
+        {
+          androidAppId: 'ca-app-pub-2994866776026136~4595623578',
+          delayAppMeasurementInit: true,
+        },
+      ],
     ],
     experiments: { typedRoutes: true },
     // OTA (Task 5.3): runtimeVersion derivada de `version` — cada release
