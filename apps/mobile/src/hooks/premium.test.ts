@@ -19,6 +19,14 @@ describe('shouldShowAds', () => {
     expect(shouldShowAds({ premium: false, consentGranted: false, unitId: 'u' })).toBe(false);
     expect(shouldShowAds({ premium: false, consentGranted: true, unitId: '' })).toBe(false);
   });
+
+  it('premium desconocido (cargando/error) ⇒ fail-closed, nunca ads', () => {
+    expect(shouldShowAds({ premium: undefined, consentGranted: true, unitId: 'u' })).toBe(false);
+  });
+
+  it('premium desconocido sin consentimiento ⇒ false', () => {
+    expect(shouldShowAds({ premium: undefined, consentGranted: false, unitId: 'u' })).toBe(false);
+  });
 });
 
 describe('fetchPremiumStatus', () => {

@@ -48,14 +48,21 @@ export const favoritesEnabled = (token: string | null | undefined): boolean => B
 /**
  * Gating de publicidad (regla de dinero, fail-closed): premium SIEMPRE gana;
  * sin consentimiento UMP no hay ads; sin unit id configurado no hay ads.
+ *
+ * premium === undefined (cargando o error con sesión) ⇒ fail-closed: un
+ * premium no debe ver ni un frame de banner mientras se resuelve el estado.
+ * Sin sesión el llamador pasa false explícito (el anónimo SÍ ve ads).
+ * El hook de estado (usePremiumStatus, Task 2) debe devolver `undefined`
+ * mientras carga o ante error CON sesión, y `false` solo sin sesión.
+ *
  * Exportada para el test y para AdBanner (Task 4).
  */
 export function shouldShowAds(gate: {
-  premium: boolean;
+  premium: boolean | undefined;
   consentGranted: boolean;
   unitId: string | null | undefined;
 }): boolean {
-  if (gate.premium) return false;
+  if (gate.premium !== false) return false;
   if (!gate.consentGranted) return false;
   return Boolean(gate.unitId);
 }
