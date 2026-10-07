@@ -356,3 +356,17 @@ export interface PlayerDetail {
     totals: { pj: number; goals: number };
   };
 }
+
+/**
+ * Verificado: `GET /payments/status` (apps/api/src/routes/payments-status.ts,
+ * c.json en :37-41). Estado premium de la SESIÓN (Bearer): la compra es SOLO en
+ * la web y la app se limita a LEER este entitlement para decidir si muestra
+ * publicidad. `premiumUntil` llega como string ISO o null (pg Date → JSON,
+ * ídem scheduledAt en MatchSummary); el guard único del API es
+ * isUserPremium (lifetime OR premium_until > NOW()) y NO expone flags internos.
+ */
+export interface PremiumStatus {
+  premium: boolean;
+  premiumUntil: string | null;
+  premiumLifetime: boolean;
+}

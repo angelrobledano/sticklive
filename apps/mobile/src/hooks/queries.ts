@@ -8,6 +8,7 @@ import type {
   MatchDetail,
   MatchSummary,
   PlayerDetail,
+  PremiumStatus,
   SearchResults,
   StandingsResponse,
   StandingsRow,
@@ -27,6 +28,7 @@ export const qk = {
   favorites: ['favorites'] as const,
   team: (id: string) => ['teams', id] as const,
   player: (id: string) => ['players', id] as const,
+  premium: ['premium'] as const,
 };
 
 // ── Gating y selectores puros ────────────────────────────────────────────────
@@ -42,6 +44,21 @@ export const searchEnabled = (q: string): boolean => q.trim().length >= MIN_SEAR
 export const standingsEnabled = (seasonId: string | undefined): boolean => Boolean(seasonId);
 
 export const favoritesEnabled = (token: string | null | undefined): boolean => Boolean(token);
+
+/**
+ * Gating de publicidad (regla de dinero, fail-closed): premium SIEMPRE gana;
+ * sin consentimiento UMP no hay ads; sin unit id configurado no hay ads.
+ * Exportada para el test y para AdBanner (Task 4).
+ */
+export function shouldShowAds(gate: {
+  premium: boolean;
+  consentGranted: boolean;
+  unitId: string | null | undefined;
+}): boolean {
+  if (gate.premium) return false;
+  if (!gate.consentGranted) return false;
+  return Boolean(gate.unitId);
+}
 
 /** `/matches/current` y `/matches/live` devuelven `{ count, matches }` (live.ts:240-241). */
 export const selectCurrentMatches = (d: CurrentMatchesResponse): MatchSummary[] => d.matches;
@@ -68,6 +85,11 @@ export async function fetchStandings(seasonId: string): Promise<StandingsRespons
 
 export async function fetchSearch(q: string): Promise<SearchResults> {
   return apiFetch<SearchResults>(`/search?q=${encodeURIComponent(q)}`);
+}
+
+/** Estado premium de la SESIÓN (Task 1): la compra es SOLO en la web. */
+export async function fetchPremiumStatus(token: string): Promise<PremiumStatus> {
+  return apiFetch<PremiumStatus>('/payments/status', { token });
 }
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
