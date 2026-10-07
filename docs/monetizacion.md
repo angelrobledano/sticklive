@@ -274,7 +274,7 @@ de prueba es causa de baneo** — nunca definir los ids reales fuera de `product
 **Checklist antes de tráfico real** (bloqueos para activar banners y formatos
 Plan D en `production`):
 
-- [x] **Re-consentimiento en Ajustes** (Plan D Task 6, 2026-10-07): entrada de
+- [x] **Re-consentimiento en Ajustes** (Plan D Task 3, 2026-10-07): entrada de
   "privacidad de anuncios" que vuelve a abrir el formulario UMP
   (`manageAdsConsent`) — la policy de Google exige que el usuario pueda cambiar
   su consentimiento después de la primera vez.
@@ -292,7 +292,7 @@ Plan D en `production`):
   otorga el adfree elegido (acumulable) y un fallo no concede nada; 6) app
   open → solo arranque frío (nunca tras push, nunca en las 2 primeras
   sesiones, máx 2/hora y 20 min compartidos con el interstitial); 7) native
-  in-feed → item cada N en Directo/Clasificación, legible también en dark
+  in-feed → UN item nativo por pantalla, tras el item N en Directo/Clasificación (decisión v1: un solo native simultáneo; "cada N a lo largo de la lista" es iteración posterior), legible también en dark
   mode. Para forzar el formulario UMP (p. ej. simular EEA):
   `requestAdsConsent({ debugGeography, testDeviceIdentifiers })` —
   `consent.ts` acepta las opciones del SDK y no las cocina.
