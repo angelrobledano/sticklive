@@ -11,6 +11,8 @@ import { LocaleProvider } from '@/src/i18n/LocaleContext';
 import { ThemeProvider } from '@/src/theme/ThemeContext';
 import { ApiError } from '@/src/lib/api/client';
 import { capture, getPostHogClient } from '@/src/lib/analytics';
+import { markPushInteraction } from '@/src/lib/ads/session-context';
+import { useAppOpenAd } from '@/src/hooks/ads/useAppOpenAd';
 
 // Sentry (Task 5.1): init a nivel de módulo, ANTES de renderizar nada, y SOLO
 // si hay DSN (en desarrollo sin DSN no se inicializa y no hay overhead). El
@@ -61,6 +63,11 @@ Notifications.setNotificationHandler({
 function useNotificationDeepLink() {
   useEffect(() => {
     const openFrom = (data: unknown) => {
+      // Plan D (invariante 1, la ruta del gol): cualquier respuesta de
+      // notificación —en frío (getLastNotificationResponseAsync) o en caliente
+      // (el listener de abajo)— marca la interacción; durante los 60 s
+      // siguientes el presupuesto full-screen se considera rojo.
+      markPushInteraction();
       const payload = (data as { urlPath?: unknown; type?: unknown } | null | undefined) ?? {};
       const urlPath = payload.urlPath;
       if (typeof urlPath === 'string' && urlPath.startsWith('/')) {
@@ -85,6 +92,18 @@ function useNotificationDeepLink() {
   }, []);
 }
 
+/**
+ * App Open en frío (Plan D Task 4): gate SIN UI (el anuncio lo presenta el
+ * SDK nativo). Decide UNA vez por arranque con la config remota, el
+ * presupuesto full-screen compartido y la ruta del gol — detalles en el hook.
+ * Debe vivir DENTRO de QueryClientProvider (usa useAdsConfig) y bajo
+ * AuthProvider (usePremiumStatus): por eso es hermano del Stack.
+ */
+function AppOpenAdGate() {
+  useAppOpenAd();
+  return null;
+}
+
 function AppTree() {
   useNotificationDeepLink();
 
@@ -95,6 +114,7 @@ function AppTree() {
       <ThemeProvider>
         <LocaleProvider>
           <QueryClientProvider client={queryClient}>
+            <AppOpenAdGate />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="match/[id]" />
