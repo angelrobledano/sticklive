@@ -206,37 +206,46 @@ export function useAppOpenAd(): void {
             // presupuesto (compartido con el interstitial de Task 5): storage
             // FRESCO en la sección crítica, y el registro del show de este
             // intento ya es visible para el siguiente antes de que decida.
-            const shown = await runFullScreenShowAttempt(async (budget) => {
-              // Cinturón del invariante 1 EN el instante del show: un tap de
-              // push durante la carga deja la ventana de 60 s activa.
-              if (isPushInteractionActive(Date.now())) {
-                console.warn('[ads] app open listo pero interacción de push hace < 60 s: no se muestra');
-                return null;
-              }
-              if (
-                !canShowFullScreen({
-                  enabled: true,
-                  now: Date.now(),
-                  ...budget,
-                  sessionCount,
-                  fromPush: false,
-                })
-              ) {
-                console.warn('[ads] app open listo pero presupuesto agotado: no se muestra');
-                return null;
-              }
-              try {
-                // Doc v17: show() RECHAZA si no está cargado, ya se muestra o la
-                // plataforma declina — SIEMPRE .catch, con log explícito.
-                await currentAd.show();
-              } catch (error) {
-                console.warn('[ads] app open show rechazado', error);
-                return null;
-              }
-              // SOLO si llegó a mostrarse: consume el presupuesto compartido y
-              // persiste (best-effort; los fallos se loguean en fullscreen.ts).
-              return registerFullScreenShow(budget, Date.now());
-            });
+            // Simetría con el interstitial (review Task 5): el intento ya es
+            // defensivo por dentro (show con catch, storage best-effort que no
+            // lanza) — si algo inesperado lanza igualmente, se loguea con
+            // contexto y se limpia: sin CLOSED ni ERROR que lo hagan.
+            let shown = false;
+            try {
+              shown = await runFullScreenShowAttempt(async (budget) => {
+                // Cinturón del invariante 1 EN el instante del show: un tap de
+                // push durante la carga deja la ventana de 60 s activa.
+                if (isPushInteractionActive(Date.now())) {
+                  console.warn('[ads] app open listo pero interacción de push hace < 60 s: no se muestra');
+                  return null;
+                }
+                if (
+                  !canShowFullScreen({
+                    enabled: true,
+                    now: Date.now(),
+                    ...budget,
+                    sessionCount,
+                    fromPush: false,
+                  })
+                ) {
+                  console.warn('[ads] app open listo pero presupuesto agotado: no se muestra');
+                  return null;
+                }
+                try {
+                  // Doc v17: show() RECHAZA si no está cargado, ya se muestra o la
+                  // plataforma declina — SIEMPRE .catch, con log explícito.
+                  await currentAd.show();
+                } catch (error) {
+                  console.warn('[ads] app open show rechazado', error);
+                  return null;
+                }
+                // SOLO si llegó a mostrarse: consume el presupuesto compartido y
+                // persiste (best-effort; los fallos se loguean en fullscreen.ts).
+                return registerFullScreenShow(budget, Date.now());
+              });
+            } catch (error) {
+              console.warn('[ads] app open: intento de show falló en la cola del presupuesto', error);
+            }
             if (!shown) finish(); // descartado: sin CLOSED ni ERROR que limpien
           })();
         });

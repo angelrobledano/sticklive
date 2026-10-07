@@ -36,14 +36,16 @@ import { isEffectivelyLive } from '@/src/lib/time';
  *   3. Grace period: contador de sesiones del storage (≤ 2 sesiones bloquea).
  *   4. Premium siempre gana: preload solo con `premium === false` confirmado y
  *      RE-chequeo al salir (fail-closed con undefined); adfree recompensado
- *      también bloquea (capa del mismo guard de dinero).
+ *      también bloquea (capa del mismo guard de dinero) y TAMBIÉN gatea el
+ *      preload: sin UMP, sin initialize y sin petición de inventario.
  *
  * Cuándo SE PRECARGA (doc instalada: consentimiento ANTES de initialize, e
  * initialize antes de load): al montar, UNA petición por visita, solo si los
  * gates estáticos pasan — `interstitial.enabled` en la config remota, premium
- * confirmado como false, y estado del partido conocido y NO en vivo. Sin
- * estado conocido (query en vuelo) no se precarga: cuando llega, el efecto
- * re-evalúa (la petición es singleton por visita vía adRef).
+ * confirmado como false, SIN adfree recompensado activo, y estado del partido
+ * conocido y NO en vivo. Sin estado conocido (query en vuelo) no se precarga:
+ * cuando llega, el efecto re-evalúa (la petición es singleton por visita vía
+ * adRef).
  *
  * Cuándo SE MUESTRA — DECISIÓN beforeRemove vs cleanup de unmount: el hook
  * escucha `beforeRemove` de expo-router (pop/replace/reset = el usuario sale
@@ -57,7 +59,8 @@ import { isEffectivelyLive } from '@/src/lib/time';
  * vuelo o declive de plataforma — SIEMPRE con catch) y el anuncio se presenta
  * en la capa nativa, sobre la transición en curso. Sin beforeRemove (app
  * cerrada, pestañas — la ficha sigue montada al desenfocarse) no hay show: el
- * unmount puro del navigator no dispara este flujo y está bien así.
+ * teardown sin evento de navegación NO muestra, pero SÍ libera el anuncio
+ * precargado (cleanup unmount-only con flag de show en vuelo, review Task 5).
  *
  * Errores: log explícito en cada rama (nunca silencio) y NUNCA interrumpen la
  * salida del usuario: todo el flujo es fire-and-forget sin UI propia.
@@ -106,6 +109,12 @@ export function useInterstitialOnLeave(
   // anuncio no hay show, así que la salida ni consulta la config).
   const adRef = useRef<InterstitialAd | null>(null);
 
+  // true mientras el flujo de salida (beforeRemove) tiene un intento de show
+  // EN VUELO: el cleanup de unmount no debe liberar el anuncio entonces (el
+  // show en curso es dueño de su propia limpieza: release si no se mostró,
+  // CLOSED/ERROR si se mostró). Review Task 5 (fuga nativa).
+  const showInFlightRef = useRef(false);
+
   // Estado premium del render actual para re-chequearlo al salir (invariante 4:
   // el preload pudo ocurrir como anónimo y el estado pudo cambiar en la visita).
   const premiumRef = useRef(premium);
@@ -127,6 +136,10 @@ export function useInterstitialOnLeave(
     let cancelled = false;
     void (async () => {
       try {
+        // Invariante 4 — adfree recompensado (review Task 5) ANTES de tocar el
+        // SDK: sin UMP, sin initialize y sin petición de inventario — mismo
+        // orden que el app open (Task 4).
+        if (isAdfreeActive(Date.now(), await getAdfreeUntil())) return;
         const consent = await ensureAdsConsent();
         if (!consent.canRequestAds || cancelled || adRef.current) return;
         await ensureSdkInitialized();
@@ -181,24 +194,40 @@ export function useInterstitialOnLeave(
   useEffect(() => {
     return navigation.addListener('beforeRemove', () => {
       const ad = adRef.current;
-      // Gates baratos PRIMERO (sin storage ni SDK): el show nunca retrasa una
-      // salida que de todos modos no mostraría nada.
-      if (eligibleRef.current !== true) return;
-      // Re-chequeo con el RELOJ de la salida: un 'scheduled' cuyo saque pasó
-      // durante la visita ya es "en vivo" para isEffectivelyLive aunque las
-      // props no cambiaran (y con estado desconocido, eligibleRef sería null).
-      if (matchStatus === undefined || isEffectivelyLive(matchStatus, scheduledAt ?? null)) {
-        return;
-      }
-      if (premiumRef.current !== false) return; // invariante 4 (fail-closed)
-      if (!ad || !ad.loaded) return; // sin precarga o sin fill: nada que mostrar
-
+      // Liberación NULL-safe e IDEMPOTENTE (destroy() es no-op si ya está
+      // destruido): TODA rama que no muestre el anuncio debe liberar el
+      // precargado — la pantalla se va y no hay show futuro posible (review
+      // Task 5: sin esto, el registro nativo del SDK acumulaba un ad vivo por
+      // cada visita a ficha no-live hasta reiniciar la app).
       const release = () => {
+        if (!ad) return;
         ad.removeAllListeners();
         ad.destroy();
         if (adRef.current === ad) adRef.current = null;
       };
+      // Gates baratos PRIMERO (sin storage ni SDK): el show nunca retrasa una
+      // salida que de todos modos no mostraría nada.
+      if (eligibleRef.current !== true) {
+        release();
+        return;
+      }
+      // Re-chequeo con el RELOJ de la salida: un 'scheduled' cuyo saque pasó
+      // durante la visita ya es "en vivo" para isEffectivelyLive aunque las
+      // props no cambiaran (y con estado desconocido, eligibleRef sería null).
+      if (matchStatus === undefined || isEffectivelyLive(matchStatus, scheduledAt ?? null)) {
+        release();
+        return;
+      }
+      if (premiumRef.current !== false) {
+        release(); // invariante 4 (fail-closed)
+        return;
+      }
+      if (!ad || !ad.loaded) {
+        release(); // sin precarga o sin fill: nada que mostrar
+        return;
+      }
 
+      showInFlightRef.current = true;
       void (async () => {
         try {
           // Invariante 4 — adfree recompensado: minutos regalados sin anuncios.
@@ -247,8 +276,28 @@ export function useInterstitialOnLeave(
         } catch (error) {
           console.warn('[ads] interstitial al salir no disponible', error);
           release();
+        } finally {
+          showInFlightRef.current = false;
         }
       })();
     });
   }, [navigation, matchStatus, scheduledAt]);
+
+  // ── Teardown SIN beforeRemove (review Task 5) ────────────────────────────────
+  // Si la pantalla se desmonta sin evento de navegación (reset del root, hot
+  // reload), el precargado se libera AQUÍ — excepto con un show en vuelo (su
+  // dueño es el propio flujo: release si no se mostró, CLOSED/ERROR si se
+  // mostró). deps [] = SOLO unmount: los cambios de deps a mitad de visita no
+  // tocan el anuncio (lo gobierna beforeRemove).
+  useEffect(
+    () => () => {
+      if (showInFlightRef.current) return;
+      const ad = adRef.current;
+      if (!ad) return;
+      ad.removeAllListeners();
+      ad.destroy();
+      adRef.current = null;
+    },
+    [],
+  );
 }

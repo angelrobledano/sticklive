@@ -101,6 +101,29 @@ describe('isNonDefaultInitialSurface (hardening del app open: initial tardío / 
     expect(isNonDefaultInitialSurface(deepLink, '(tabs)')).toBe(true);
   });
 
+  it('estado raíz PLANO (tabs directas en el root, sin grupo contenedor) ⇒ false con initial idéntico', () => {
+    // Shape que verá producción si el root no envuelve la app en un grupo:
+    // { index, routes: ['(tabs)'] } SIN nivel intermedio '(root)'.
+    const flatInitial: NavStateFixture = {
+      index: 0,
+      routes: [{ key: 'tabs-key', name: '(tabs)', state: TABS_STATE }],
+    };
+    expect(isNonDefaultInitialSurface(structuredClone(flatInitial), '(tabs)')).toBe(false);
+    // Con ese initial, la comparación relativa también dice "no navegó".
+    expect(hasNavigatedBeyondInitial(structuredClone(flatInitial), flatInitial)).toBe(false);
+  });
+
+  it('estado raíz PLANO con deep link (ficha apilada junto a los tabs) ⇒ true', () => {
+    const flatDeepLink: NavStateFixture = {
+      index: 1,
+      routes: [
+        { key: 'tabs-key', name: '(tabs)', state: TABS_STATE },
+        { key: 'match-key', name: 'match/[id]' },
+      ],
+    };
+    expect(isNonDefaultInitialSurface(flatDeepLink, '(tabs)')).toBe(true);
+  });
+
   it('initial tardío tras cambiar de pestaña ⇒ true', () => {
     const switched = structuredClone(INITIAL);
     tabsOf(switched).index = 1;
