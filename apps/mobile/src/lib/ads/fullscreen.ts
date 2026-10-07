@@ -149,3 +149,44 @@ export async function setFullScreenBudget(state: FullScreenBudgetState): Promise
     console.warn('[ads] no se pudo guardar el presupuesto full-screen', error);
   }
 }
+
+// ── Cola del presupuesto (review Task 4: read-modify-write serializado) ─────
+
+/**
+ * Desde Task 5 hay DOS escritores del presupuesto (app open + interstitial).
+ * Sin serialización, dos intentos solapados leen el mismo storage, ambos ven
+ * el cap verde y ambos registran: el cap 2/hora y el mínimo de 20 min se
+ * rompen silenciosamente. Esta cola a nivel de módulo serializa el ciclo
+ * COMPLETO leer→decidir→mostrar→registrar→persistir: mientras un intento no
+ * termina (incluido el `show()` en vuelo), el siguiente espera y lee storage
+ * FRESCO — el presupuesto que el primero registró ya es visible para el
+ * segundo.
+ *
+ * Las funciones PURAS (`canShowFullScreen` / `registerFullScreenShow`) no
+ * pasan por aquí: la cola existe solo para el acceso al storage, y ambos
+ * formatos (useAppOpenAd, useInterstitialOnLeave) reutilizan ESTA MISMA
+ * rutina con el intento concreto de cada uno.
+ *
+ * Canal de errores: si `attempt` lanza, el rechazo llega AL LLAMADOR (que
+ * loguea con el contexto del formato); la cola solo se mantiene viva para que
+ * el siguiente intento no herede un rechazo ajeno.
+ */
+let budgetQueue: Promise<unknown> = Promise.resolve();
+
+export function runFullScreenShowAttempt(
+  attempt: (budget: FullScreenBudgetState) => Promise<FullScreenBudgetState | null>,
+): Promise<boolean> {
+  const attemptPromise = budgetQueue.then(async () => {
+    const budget = await getFullScreenBudget();
+    const next = await attempt(budget);
+    if (next !== null) await setFullScreenBudget(next);
+    return next !== null;
+  });
+  // El encadenado traga el fallo AQUÍ (no se loguea: lo loguea el llamador
+  // con contexto); sin esto, el siguiente `budgetQueue.then` no correría.
+  budgetQueue = attemptPromise.then(
+    () => undefined,
+    () => undefined,
+  );
+  return attemptPromise;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { hasNavigatedBeyondInitial } from './navigation-state.js';
+import { hasNavigatedBeyondInitial, isNonDefaultInitialSurface } from './navigation-state.js';
 
 // Shapes REALES de react-navigation v7 (reducidos a lo que la función lee):
 // { index, routes: [{ key, name, state? }] }. Los tabs pre-pueblan su estado
@@ -82,5 +82,41 @@ describe('hasNavigatedBeyondInitial (navegación real vs superficie inicial)', (
 
   it('ambos lados sin estado anidado ⇒ false (fondo idéntico, no es navegación)', () => {
     expect(hasNavigatedBeyondInitial(undefined, undefined)).toBe(false);
+  });
+});
+
+describe('isNonDefaultInitialSurface (hardening del app open: initial tardío / deep link)', () => {
+  // Un initial capturado TARDE (o tras un deep link en frío) que NO sea la
+  // superficie por defecto se trata como "ya navegó": la comparación relativa
+  // diría "no navegó" y el app open pisaría contenido ya visible (review Task 4).
+  it('superficie por defecto (tabs solas en el root, con sus 5 rutas pre-pobladas) ⇒ false', () => {
+    expect(isNonDefaultInitialSurface(INITIAL, '(tabs)')).toBe(false);
+  });
+
+  it('deep link / initial tardío con una ficha apilada sobre los tabs ⇒ true', () => {
+    const deepLink = structuredClone(INITIAL);
+    const appStack = appStackOf(deepLink);
+    appStack.routes.push({ key: 'match-key', name: 'match/[id]' });
+    appStack.index = 1;
+    expect(isNonDefaultInitialSurface(deepLink, '(tabs)')).toBe(true);
+  });
+
+  it('initial tardío tras cambiar de pestaña ⇒ true', () => {
+    const switched = structuredClone(INITIAL);
+    tabsOf(switched).index = 1;
+    expect(isNonDefaultInitialSurface(switched, '(tabs)')).toBe(true);
+  });
+
+  it('activa que no es la default y sin estado anidable ⇒ true (conservador)', () => {
+    expect(
+      isNonDefaultInitialSurface({ index: 0, routes: [{ key: 'm', name: 'match/[id]' }] }, '(tabs)'),
+    ).toBe(true);
+  });
+
+  it('shapes no reconocibles ⇒ true (ante la duda, no se muestra el app open)', () => {
+    expect(isNonDefaultInitialSurface(null, '(tabs)')).toBe(true);
+    expect(isNonDefaultInitialSurface('garbage', '(tabs)')).toBe(true);
+    expect(isNonDefaultInitialSurface({ index: 0 }, '(tabs)')).toBe(true); // sin routes
+    expect(isNonDefaultInitialSurface({ routes: [] }, '(tabs)')).toBe(true); // sin index válido
   });
 });

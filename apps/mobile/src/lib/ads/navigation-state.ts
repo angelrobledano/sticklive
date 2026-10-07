@@ -87,3 +87,40 @@ function navigatedFrom(state: unknown, initial: unknown): boolean {
 export function hasNavigatedBeyondInitial(state: unknown, initial: unknown): boolean {
   return navigatedFrom(state, initial);
 }
+
+/**
+ * ¿El estado INICIAL capturado NO es la superficie por defecto de la app?
+ * (Review Task 4, hardening del app open: si el initial se capturó TARDE o
+ * tras un deep link en frío, la comparación relativa diría "no navegó" y el
+ * app open pisaría contenido que el usuario ya está viendo — se neutraliza
+ * tratando ese initial como "ya navegó".)
+ *
+ * Superficie por defecto: la ruta `defaultRouteName` ('(tabs)' en esta app)
+ * activa, ÚNICA en su pila y con su navigator interno en el índice inicial —
+ * los tabs pre-pueblan SUS rutas hijas (eso no es navegación), pero su índice
+ * sí delata un cambio de pestaña previo a la captura. Cualquier hermana
+ * apilada sobre los tabs (deep link), otra ruta activa, o un shape no
+ * reconocible ⇒ true (conservador: ante la duda, el app open no se muestra).
+ */
+export function isNonDefaultInitialSurface(initial: unknown, defaultRouteName: string): boolean {
+  if (!isStateLike(initial)) return true;
+  const index = indexOf(initial);
+  if (index === null) return true;
+  const active = initial.routes[index] ?? null;
+  const name = routeNameOf(active);
+  if (name === null) return true;
+  if (name === defaultRouteName) {
+    // Es la default: superficie de arranque solo si (a) no hay nada más en su
+    // pila (un deep link deja hermanas apiladas junto a los tabs), (b) está en
+    // el índice 0 y (c) su navigator interno arranca en el índice 0 (un
+    // initial capturado tras cambiar de pestaña no es la superficie inicial).
+    if (initial.routes.length !== 1 || index !== 0) return true;
+    const inner = stateOf(active);
+    if (inner === undefined || inner === null || !isStateLike(inner)) return true;
+    const innerIndex = indexOf(inner);
+    return innerIndex === null || innerIndex !== 0;
+  }
+  // La activa no es la default: puede ser un grupo contenedor ('(root)') que
+  // envuelve la app — mirar dentro de su ruta activa.
+  return isNonDefaultInitialSurface(stateOf(active), defaultRouteName);
+}

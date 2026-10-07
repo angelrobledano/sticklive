@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * 1. Marca de interacción de push (la "ruta del gol", invariante 1): el punto
  *    de captura de taps de notificación de `app/_layout.tsx` (el
  *    `getLastNotificationResponseAsync` de arranque en frío y el listener de
- *    respuestas) marca el tap; `consumePushInteraction` responde true durante
+ *    respuestas) marca el tap; `isPushInteractionActive` responde true durante
  *    los 60 s siguientes y el presupuesto full-screen se considera rojo. Va en
  *    MEMORIA (60 s no deben sobrevivir un reinicio) y NO se consume al leer:
  *    la ventana ES el límite, y varios gates (app open + interstitial) pueden
@@ -37,9 +37,10 @@ export function markPushInteraction(now: number = Date.now()): void {
 /**
  * true si hubo un tap de push hace < 60 s (invariante 1: ni app open ni
  * interstitial — el gol puede llegar por esa ruta). Lectura PURA de la marca:
- * no la borra, la ventana limita su vigencia.
+ * no la borra, la ventana limita su vigencia. (Rename del review Task 4: no
+ * consume nada — el nombre anterior lo sugería y es falso.)
  */
-export function consumePushInteraction(now: number = Date.now()): boolean {
+export function isPushInteractionActive(now: number = Date.now()): boolean {
   return lastPushInteractionAt !== null && now - lastPushInteractionAt < PUSH_WINDOW_MS;
 }
 

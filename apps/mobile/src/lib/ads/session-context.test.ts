@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { consumePushInteraction, markPushInteraction } from './session-context.js';
+import { isPushInteractionActive, markPushInteraction } from './session-context.js';
 
 const NOW = new Date('2026-10-07T12:00:00Z').getTime();
 
@@ -17,24 +17,24 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 // La ventana de push vive en MEMORIA del módulo: los its de este describe se
 // ejecutan en orden de declaración y comparten estado a propósito (el primero
 // corre antes de ninguna marca; los siguientes re-marcan con su propio valor).
-describe('consumePushInteraction (ventana de 60 s, la ruta del gol)', () => {
+describe('isPushInteractionActive (ventana de 60 s, la ruta del gol)', () => {
   it('sin interacción marcada ⇒ false', () => {
-    expect(consumePushInteraction(NOW)).toBe(false);
+    expect(isPushInteractionActive(NOW)).toBe(false);
   });
 
   it('interacción hace < 60 s ⇒ true', () => {
     markPushInteraction(NOW - 30_000);
-    expect(consumePushInteraction(NOW)).toBe(true);
+    expect(isPushInteractionActive(NOW)).toBe(true);
   });
 
   it('interacción hace ≥ 60 s ⇒ false', () => {
     markPushInteraction(NOW - 61_000);
-    expect(consumePushInteraction(NOW)).toBe(false);
+    expect(isPushInteractionActive(NOW)).toBe(false);
   });
 
   it('exactamente en el límite (60 s) ⇒ false', () => {
     markPushInteraction(NOW - 60_000);
-    expect(consumePushInteraction(NOW)).toBe(false);
+    expect(isPushInteractionActive(NOW)).toBe(false);
   });
 });
 

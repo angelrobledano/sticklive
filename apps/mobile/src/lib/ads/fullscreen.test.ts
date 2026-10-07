@@ -4,11 +4,23 @@ import {
   canShowFullScreen,
   getFullScreenBudget,
   registerFullScreenShow,
+  runFullScreenShowAttempt,
   setFullScreenBudget,
 } from './fullscreen.js';
 
 const NOW = new Date('2026-10-07T12:00:00Z').getTime();
 const MIN = 60_000;
+
+// AsyncStorage es código NATIVO: en vitest (node) se mockea con un Map
+// (patrón del repo: adfree.test.ts). A nivel de módulo: lo comparten los tests
+// de storage y los de la cola serializada del presupuesto.
+const { storage } = vi.hoisted(() => ({ storage: new Map<string, string>() }));
+vi.mock('@react-native-async-storage/async-storage', () => ({
+  default: {
+    getItem: vi.fn(async (k: string) => storage.get(k) ?? null),
+    setItem: vi.fn(async (k: string, v: string) => void storage.set(k, v)),
+  },
+}));
 
 const base = {
   enabled: true,
@@ -72,16 +84,6 @@ describe('registerFullScreenShow', () => {
 });
 
 describe('storage (ads.fullscreen_state en AsyncStorage)', () => {
-  // AsyncStorage es código NATIVO: en vitest (node) se mockea con un Map
-  // (patrón del repo: adfree.test.ts).
-  const { storage } = vi.hoisted(() => ({ storage: new Map<string, string>() }));
-  vi.mock('@react-native-async-storage/async-storage', () => ({
-    default: {
-      getItem: vi.fn(async (k: string) => storage.get(k) ?? null),
-      setItem: vi.fn(async (k: string, v: string) => void storage.set(k, v)),
-    },
-  }));
-
   beforeEach(() => {
     storage.clear();
   });
@@ -118,5 +120,63 @@ describe('storage (ads.fullscreen_state en AsyncStorage)', () => {
     storage.set('ads.fullscreen_state', '{"lastShownAt":123,"showsThisHour":2.5,"hourBucket":"b"}');
     // Campo a campo: solo los valores válidos sobreviven.
     expect(await getFullScreenBudget()).toEqual({ lastShownAt: 123, showsThisHour: 0, hourBucket: 'b' });
+  });
+});
+
+describe('runFullScreenShowAttempt (cola serializada del presupuesto compartido)', () => {
+  // Dos escritores (app open Task 4 + interstitial Task 5): sin la cola, dos
+  // intentos solapados leen el mismo storage, ven el cap verde ambos y rompen
+  // el máximo de shows/hora y el mínimo entre shows.
+  beforeEach(() => {
+    storage.clear();
+  });
+
+  it('el segundo intento ve el show que registró el primero (no hay lost update)', async () => {
+    storage.set(
+      'ads.fullscreen_state',
+      JSON.stringify({ lastShownAt: NOW - 30 * MIN, showsThisHour: 1, hourBucket: '2026-10-07T12' }),
+    );
+    const order: string[] = [];
+    const p1 = runFullScreenShowAttempt(async (budget) => {
+      order.push('p1');
+      // Verde (1 show, hace 30 min): se muestra y se registra.
+      expect(canShowFullScreen({ ...base, ...budget })).toBe(true);
+      return registerFullScreenShow(budget, NOW);
+    });
+    const p2 = runFullScreenShowAttempt(async (budget) => {
+      order.push('p2');
+      // Lanza DESPUÉS de p1: lee el storage que p1 ya persistió (2 shows esta
+      // hora) y el presupuesto sale rojo.
+      return canShowFullScreen({ ...base, ...budget }) ? registerFullScreenShow(budget, NOW) : null;
+    });
+    const [shown1, shown2] = await Promise.all([p1, p2]);
+    expect(order).toEqual(['p1', 'p2']); // estrictamente en serie
+    expect(shown1).toBe(true);
+    expect(shown2).toBe(false);
+    expect(await getFullScreenBudget()).toEqual({
+      lastShownAt: NOW,
+      showsThisHour: 2,
+      hourBucket: '2026-10-07T12',
+    });
+  });
+
+  it('intento sin show (null) ⇒ no persiste nada', async () => {
+    const shown = await runFullScreenShowAttempt(async () => null);
+    expect(shown).toBe(false);
+    expect(storage.has('ads.fullscreen_state')).toBe(false);
+  });
+
+  it('un intento que lanza no rompe la cola: el rechazo llega al llamador y el siguiente corre', async () => {
+    const p1 = runFullScreenShowAttempt(async () => {
+      throw new Error('boom');
+    });
+    const p2 = runFullScreenShowAttempt(async (budget) => registerFullScreenShow(budget, NOW));
+    await expect(p1).rejects.toThrow('boom');
+    expect(await p2).toBe(true);
+    expect(await getFullScreenBudget()).toEqual({
+      lastShownAt: NOW,
+      showsThisHour: 1,
+      hourBucket: '2026-10-07T12',
+    });
   });
 });

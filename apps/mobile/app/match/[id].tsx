@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useMatchDetail } from '@/src/hooks/queries';
 import { useMatchLive } from '@/src/hooks/useMatchLive';
+import { useInterstitialOnLeave } from '@/src/hooks/ads/useInterstitialOnLeave';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { EventRow } from '@/src/components/match/EventRow';
 import { AdBanner } from '@/src/components/ads/AdBanner';
@@ -40,6 +41,11 @@ export default function MatchScreen() {
   // live.detail y query.data comparten la misma caché de QueryClient; el stream
   // es la fuente en caliente y la query el fallback en frío.
   const current = live.detail ?? query.data;
+
+  // Plan D Task 5: interstitial al SALIR de una ficha NO en vivo (el hook
+  // precarga y decide; en partido en directo o ruta de push NUNCA). Antes de
+  // cualquier return temprano: reglas de hooks.
+  useInterstitialOnLeave(current?.match.status, current?.match.scheduledAt);
 
   if (!current) {
     return query.isError ? (

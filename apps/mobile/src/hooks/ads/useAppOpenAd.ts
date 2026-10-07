@@ -11,12 +11,15 @@ import {
   canShowFullScreen,
   getFullScreenBudget,
   registerFullScreenShow,
-  setFullScreenBudget,
+  runFullScreenShowAttempt,
 } from '@/src/lib/ads/fullscreen';
-import { hasNavigatedBeyondInitial } from '@/src/lib/ads/navigation-state';
 import {
-  consumePushInteraction,
+  hasNavigatedBeyondInitial,
+  isNonDefaultInitialSurface,
+} from '@/src/lib/ads/navigation-state';
+import {
   incrementSessionCountOnce,
+  isPushInteractionActive,
   readSessionCount,
 } from '@/src/lib/ads/session-context';
 
@@ -27,7 +30,10 @@ import {
  *      (`getLastNotificationResponseAsync`, la misma respuesta que el listener
  *      de `_layout.tsx` marca) ni si hubo un tap caliente hace < 60 s.
  *   2. Presupuesto compartido: `canShowFullScreen` (máx 2/hora, 20 min entre
- *      shows) ANTES de pedir anuncio y RE-VERIFICADO en el momento del show.
+ *      shows) ANTES de pedir anuncio y RE-VERIFICADO en el momento del show
+ *      DENTRO de la cola serializada (`runFullScreenShowAttempt`: el
+ *      interstitial de Task 5 es el otro escritor — sin la cola, dos intentos
+ *      solapados leerían el mismo storage y romperían el cap).
  *   3. Grace period: contador de sesiones del storage (≤ 2 sesiones bloquea).
  *   4. Premium siempre gana: se espera al estado premium y solo `false`
  *      (anónimo o no-premium confirmado) continúa; adfree recompensado también
@@ -125,7 +131,7 @@ export function useAppOpenAd(): void {
           console.warn('[ads] app open omitido: arranque desde notificación (ruta del gol)');
           return;
         }
-        if (consumePushInteraction(Date.now())) {
+        if (isPushInteractionActive(Date.now())) {
           console.warn('[ads] app open omitido: interacción de push hace < 60 s');
           return;
         }
@@ -171,21 +177,21 @@ export function useAppOpenAd(): void {
           const currentAd = ad;
           if (cancelled || !currentAd) return;
           void (async () => {
-            // Cinturón del invariante 1 EN el instante del show: un tap de
-            // push durante la carga deja la ventana de 60 s activa.
-            if (consumePushInteraction(Date.now())) {
-              console.warn('[ads] app open listo pero interacción de push hace < 60 s: no se muestra');
-              finish();
-              return;
-            }
             // Doc instalada: si la app ya envió al usuario al contenido, NO
             // mostrar (nunca interrumpir navegación en curso). La comparación
             // es RELATIVA al estado inicial capturado en el arranque (los tabs
             // pre-pueblan sus rutas) y SIN initial capturado ⇒ fail-closed. Se
             // descarta sin consumir presupuesto (solo cuentan los shows).
+            //
+            // Hardening (review Task 4, issue 1): un initial capturado TARDE o
+            // por un deep link en frío NO es la superficie por defecto (los
+            // tabs solas en el root) — la comparación relativa diría "no
+            // navegó" y el app open pisaría contenido ya visible; se trata
+            // como "ya navegó".
             const initial = initialStateRef.current;
             if (
               initial === null ||
+              isNonDefaultInitialSurface(initial, '(tabs)') ||
               hasNavigatedBeyondInitial(navigationRef.current?.getRootState(), initial)
             ) {
               console.warn(
@@ -196,35 +202,42 @@ export function useAppOpenAd(): void {
               finish();
               return;
             }
-            // Re-verificación en el momento del show: el presupuesto es
-            // COMPARTIDO y pudo agotarse mientras cargaba el anuncio.
-            const current = await getFullScreenBudget();
-            if (
-              !canShowFullScreen({
-                enabled: true,
-                now: Date.now(),
-                ...current,
-                sessionCount,
-                fromPush: false,
-              })
-            ) {
-              console.warn('[ads] app open listo pero presupuesto agotado: no se muestra');
-              finish();
-              return;
-            }
-            try {
-              // Doc v17: show() RECHAZA si no está cargado, ya se muestra o la
-              // plataforma declina — SIEMPRE .catch, con log explícito.
-              await currentAd.show();
-            } catch (error) {
-              console.warn('[ads] app open show rechazado', error);
-              finish();
-              return;
-            }
-            // SOLO si llegó a mostrarse: consume el presupuesto compartido y
-            // persiste (best-effort; los fallos se loguean en fullscreen.ts).
-            const shown = registerFullScreenShow(current, Date.now());
-            await setFullScreenBudget(shown);
+            // Decisión + show + registro DENTRO de la cola serializada del
+            // presupuesto (compartido con el interstitial de Task 5): storage
+            // FRESCO en la sección crítica, y el registro del show de este
+            // intento ya es visible para el siguiente antes de que decida.
+            const shown = await runFullScreenShowAttempt(async (budget) => {
+              // Cinturón del invariante 1 EN el instante del show: un tap de
+              // push durante la carga deja la ventana de 60 s activa.
+              if (isPushInteractionActive(Date.now())) {
+                console.warn('[ads] app open listo pero interacción de push hace < 60 s: no se muestra');
+                return null;
+              }
+              if (
+                !canShowFullScreen({
+                  enabled: true,
+                  now: Date.now(),
+                  ...budget,
+                  sessionCount,
+                  fromPush: false,
+                })
+              ) {
+                console.warn('[ads] app open listo pero presupuesto agotado: no se muestra');
+                return null;
+              }
+              try {
+                // Doc v17: show() RECHAZA si no está cargado, ya se muestra o la
+                // plataforma declina — SIEMPRE .catch, con log explícito.
+                await currentAd.show();
+              } catch (error) {
+                console.warn('[ads] app open show rechazado', error);
+                return null;
+              }
+              // SOLO si llegó a mostrarse: consume el presupuesto compartido y
+              // persiste (best-effort; los fallos se loguean en fullscreen.ts).
+              return registerFullScreenShow(budget, Date.now());
+            });
+            if (!shown) finish(); // descartado: sin CLOSED ni ERROR que limpien
           })();
         });
         ad.addAdEventListener(AdEventType.ERROR, (error) => {
@@ -237,6 +250,10 @@ export function useAppOpenAd(): void {
             error.reason ?? error.code,
             error.message,
           );
+          // Review Task 4 (issue 2): el anuncio está muerto (load o show
+          // falló) — liberar instancia y listeners; nada más llegará a
+          // mostrarse y el flujo no tiene otro punto de limpieza.
+          finish();
         });
         ad.addAdEventListener(AdEventType.CLOSED, () => {
           if (cancelled) return;
