@@ -550,7 +550,8 @@
     "rewarded_cta": "Remover anúncios durante {n} min",
     "rewarded_desc": "Veja um anúncio curto e navegue pelo Stick Live sem publicidade durante {n} minutos. O tempo acumula a cada anúncio visto.",
     "rewarded_done": "Feito! Anúncios ocultos durante {n} minutos.",
-    "rewarded_error": "Não foi possível carregar o anúncio. Tente novamente em alguns segundos."
+    "rewarded_error": "Não foi possível carregar o anúncio. Tente novamente em alguns segundos.",
+    "rewarded_retry": "Toque para tentar novamente"
   },
   "errors": {
     "retry": "Tentar novamente",

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { extendAdfree, getAdfreeUntil, isAdfreeActive, setAdfreeUntil } from './adfree.js';
+import { extendAdfree, getAdfreeUntil, grantAdfreeReward, isAdfreeActive, setAdfreeUntil } from './adfree.js';
 
 const NOW = new Date('2026-10-07T12:00:00Z').getTime();
 const MIN = 60_000;
@@ -38,6 +38,28 @@ describe('extendAdfree (30 min desde la caducidad actual, no desde ahora)', () =
   });
   it('con adfree caducado: desde ahora', () => {
     expect(extendAdfree(NOW, NOW - 5 * MIN, 30)).toBe(NOW + 30 * MIN);
+  });
+});
+
+describe('grantAdfreeReward (contrato del reward: adfree_min × adfreeMinutes)', () => {
+  it('match ⇒ concede (extendAdfree desde la caducidad)', () => {
+    expect(grantAdfreeReward({ type: 'adfree_min', amount: 30 }, 30, null, NOW)).toBe(
+      NOW + 30 * MIN,
+    );
+    expect(
+      grantAdfreeReward({ type: 'adfree_min', amount: 30 }, 30, NOW + 10 * MIN, NOW),
+    ).toBe(NOW + 40 * MIN);
+  });
+
+  it('mismatch de type o amount ⇒ null (no se concede, regla de dinero)', () => {
+    expect(grantAdfreeReward({ type: 'coins', amount: 30 }, 30, null, NOW)).toBeNull();
+    expect(grantAdfreeReward({ type: 'adfree_min', amount: 50 }, 30, null, NOW)).toBeNull();
+    expect(grantAdfreeReward({ type: 'adfree_min', amount: 30 }, 60, null, NOW)).toBeNull();
+  });
+
+  it('reward null/undefined ⇒ null', () => {
+    expect(grantAdfreeReward(null, 30, null, NOW)).toBeNull();
+    expect(grantAdfreeReward(undefined, 30, null, NOW)).toBeNull();
   });
 });
 

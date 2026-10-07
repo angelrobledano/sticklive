@@ -45,6 +45,32 @@ export function extendAdfree(
 }
 
 /**
+ * Tipo del reward configurado en el panel de AdMob (contrato del API): el
+ * anuncio paga `adfree_min × adfreeMinutes` (30 por defecto). El valor del
+ * premio lo gobierna el API — lo que pague el anuncio se VERIFICA contra
+ * este contrato y cualquier desvío NO concede nada (regla de dinero: el
+ * contenido de un anuncio es input no confiable). Si ops cambia
+ * ADS_REWARDED_ADFREE_MINUTES, debe espejar el amount en AdMob.
+ */
+export const REWARD_TYPE = 'adfree_min';
+
+/**
+ * Verifica el contrato del reward y devuelve el nuevo adfree_until, o null
+ * si el anuncio no cumple lo configurado (mismatch de type/amount ⇒ no se
+ * concede). PURA y testeada: la concesión es la decisión de dinero, no un
+ * efecto del componente. `reward` puede llegar incompleto del SDK → null.
+ */
+export function grantAdfreeReward(
+  reward: { type: string; amount: number } | null | undefined,
+  adfreeMinutes: number,
+  currentUntil: number | null,
+  now: number,
+): number | null {
+  if (reward?.type !== REWARD_TYPE || reward?.amount !== adfreeMinutes) return null;
+  return extendAdfree(now, currentUntil, adfreeMinutes);
+}
+
+/**
  * Lee el adfree_until persistido. Parseo DEFENSIVO: cualquier basura en el
  * storage (no numérico, NaN, Infinity) ⇒ null — "los malos datos son peores
  * que no tener datos". Nunca lanza: el gating consulta esto en cualquier

@@ -74,6 +74,17 @@ describe('shouldShowAds', () => {
       shouldShowAds({ premium: false, consentGranted: true, unitId: 'u', adfreeUntil: undefined }),
     ).toBe(true);
   });
+
+  it('precedencia: premium gana aunque hubiera adfree vigente ⇒ false', () => {
+    expect(
+      shouldShowAds({
+        premium: true,
+        consentGranted: true,
+        unitId: 'u',
+        adfreeUntil: Date.now() + 60_000,
+      }),
+    ).toBe(false);
+  });
 });
 
 describe('fetchPremiumStatus', () => {

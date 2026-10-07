@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
 import mobileAds, {
   AdsConsent,
   BannerAd,
@@ -8,7 +7,7 @@ import mobileAds, {
   TestIds,
 } from 'react-native-google-mobile-ads';
 
-import { getAdfreeUntil } from '@/src/lib/ads/adfree';
+import { useAdfreeUntil } from '@/src/hooks/useAdfreeUntil';
 import { shouldShowAds } from '@/src/hooks/queries';
 import { usePremiumStatus } from '@/src/hooks/usePremiumStatus';
 import { canRequestAdsAfterConsent, requestAdsConsent } from '@/src/lib/ads/consent';
@@ -127,6 +126,18 @@ export function ensureSdkInitialized(): Promise<void> {
   return initPromise;
 }
 
+/**
+ * Descarta el resultado cacheado del consentimiento para que el PRÓXIMO
+ * ensureAdsConsent vuelva a ejecutar el flujo UMP. Solo para el REINTENTO
+ * explícito del usuario (RewardedCard): sin esto, un fail-closed cacheado
+ * haría el botón "Toca para reintentar" imposible de cumplir en toda la
+ * sesión. Seguro: si ya había consentimiento, gatherConsent resuelve sin
+ * formulario (la doc lo permite en cada arranque).
+ */
+export function resetAdsConsent(): void {
+  consentPromise = null;
+}
+
 // ── Gating combinado (premium ∧ consentimiento ∧ unit id ∧ init) ────────────
 
 /**
@@ -160,23 +171,9 @@ function useAdBannerGating(variant: AdBannerVariant): {
     };
   }, [premium]);
 
-  // Gate 3 (Plan D Task 2): ad-free recompensado. Se lee del storage al montar
-  // Y en cada foco: el rewarded se concede en la pantalla premium (otro punto
-  // del árbol) y las pantallas con banner permanecen montadas (tabs/stack),
-  // así que sin releer al volver, un banner ya visible seguiría mostrándose
-  // durante el adfree ganado.
-  const [adfreeUntil, setAdfreeUntil] = useState<number | null>(null);
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      void getAdfreeUntil().then((ts) => {
-        if (!cancelled) setAdfreeUntil(ts);
-      });
-      return () => {
-        cancelled = true;
-      };
-    }, []),
-  );
+  // Gate 3 (Plan D Task 2): ad-free recompensado. El hook lee del storage al
+  // montar Y en cada foco (compartido con el native in-feed de la Task 6).
+  const adfreeUntil = useAdfreeUntil();
 
   // Gate 4: unit id (dentro del guard puro testeado).
   const allowed = shouldShowAds({ premium, consentGranted, unitId, adfreeUntil });

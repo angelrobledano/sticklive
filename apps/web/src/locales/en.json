@@ -550,7 +550,8 @@
     "rewarded_cta": "Remove ads for {n} min",
     "rewarded_desc": "Watch a short ad and browse Stick Live ad-free for {n} minutes. Time stacks with every ad you watch.",
     "rewarded_done": "Done! Ads are hidden for {n} minutes.",
-    "rewarded_error": "The ad failed to load. Please try again in a few seconds."
+    "rewarded_error": "The ad failed to load. Please try again in a few seconds.",
+    "rewarded_retry": "Tap to try again"
   },
   "errors": {
     "retry": "Retry",

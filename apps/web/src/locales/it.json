@@ -550,7 +550,8 @@
     "rewarded_cta": "Rimuovi gli annunci per {n} min",
     "rewarded_desc": "Guarda un breve annuncio e naviga su Stick Live senza pubblicità per {n} minuti. Il tempo si accumula a ogni annuncio visto.",
     "rewarded_done": "Fatto! Annunci nascosti per {n} minuti.",
-    "rewarded_error": "Impossibile caricare l'annuncio. Riprova tra qualche secondo."
+    "rewarded_error": "Impossibile caricare l'annuncio. Riprova tra qualche secondo.",
+    "rewarded_retry": "Tocca per riprovare"
   },
   "errors": {
     "retry": "Riprova",
