@@ -370,3 +370,18 @@ export interface PremiumStatus {
   premiumUntil: string | null;
   premiumLifetime: boolean;
 }
+
+/**
+ * Plan D — verificado: `GET /ads/config` (apps/api/src/routes/ads-config.ts,
+ * `buildAdsConfig`). Config remota de formatos de anuncios, PÚBLICA (se pide
+ * sin sesión, vía `fetchAdsConfig`): qué formatos existen y sus caps. Todo
+ * nace `enabled: false` en el API (fail-safe — la activación es explícita por
+ * env + redeploy, la app la lee en runtime sin rebuild). Debe mantenerse
+ * IDÉNTICO al shape del API: un campo nuevo allí exige añadirlo aquí.
+ */
+export interface AdsConfig {
+  appOpen: { enabled: boolean; minIntervalHours: number };
+  interstitial: { enabled: boolean; minIntervalMinutes: number; maxPerHour: number };
+  rewarded: { enabled: boolean; adfreeMinutes: number };
+  nativeFeed: { enabled: boolean; everyNItems: number };
+}

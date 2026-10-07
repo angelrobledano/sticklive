@@ -32,6 +32,7 @@ import { pushRouter } from './routes/push.js';
 import { metaRouter } from './routes/meta.js';
 import { stripeRouter } from './routes/payments-stripe.js';
 import { statusRouter } from './routes/payments-status.js';
+import { adsConfigRouter } from './routes/ads-config.js';
 
 const app = new Hono();
 
@@ -102,6 +103,7 @@ app.get('/', (c) => {
       'GET /matches/current',
       'GET /matches/:id',
       'GET /matches/:id/stream',
+      'GET /ads/config',
       'GET /teams/:id',
       'GET /teams/:id/logo',
       'GET /players/:id',
@@ -128,6 +130,7 @@ app.route('/players',  playerPhotoRouter);   // /players/:id/photo — foto (pro
 app.route('/players',  playerDetailRouter);  // /players/:id
 app.route('/payments/stripe', stripeRouter);   // proveedor ACTIVO: checkout + webhook
 app.route('/payments/status', statusRouter);   // estado premium de la sesión (app móvil)
+app.route('/ads/config', adsConfigRouter);     // config remota de ads (pública, fail-safe: todo apagado por defecto)
 app.route('/auth', authRouter);                // magic links + favoritos en nube
 app.route('/admin', adminRouter);              // panel de admin (X-Admin-Token)
 app.route('/push', pushRouter);                // suscripciones Web Push

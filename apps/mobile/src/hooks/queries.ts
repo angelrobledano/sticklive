@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/src/lib/api/client';
 import type {
+  AdsConfig,
   CompetitionSummary,
   CompetitionsResponse,
   CurrentMatchesResponse,
@@ -29,6 +30,7 @@ export const qk = {
   team: (id: string) => ['teams', id] as const,
   player: (id: string) => ['players', id] as const,
   premium: ['premium'] as const,
+  adsConfig: ['adsConfig'] as const,
 };
 
 // ── Gating y selectores puros ────────────────────────────────────────────────
@@ -97,6 +99,14 @@ export async function fetchSearch(q: string): Promise<SearchResults> {
 /** Estado premium de la SESIÓN (Task 1): la compra es SOLO en la web. */
 export async function fetchPremiumStatus(token: string): Promise<PremiumStatus> {
   return apiFetch<PremiumStatus>('/payments/status', { token });
+}
+
+/**
+ * Config remota de ads (Plan D): PÚBLICA — sin token, responde igual con o
+ * sin sesión. La consumen los guards de cada formato (Tasks 2-6).
+ */
+export async function fetchAdsConfig(): Promise<AdsConfig> {
+  return apiFetch<AdsConfig>('/ads/config');
 }
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
