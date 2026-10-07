@@ -190,26 +190,37 @@ tráfico UE hasta que el CMP esté configurado y publicado en el panel.
 
 ## 6. AdMob — app móvil
 
-*Estado: **creados (2026-10-06)**, pendiente de que exista `apps/mobile` que los
-consuma (hitos M1+ del [spec de monetización](./superpowers/specs/2026-10-06-monetizacion-ads-premium-design.md)).
-Diseño de plazamientos y caps: §7–§8 del mismo spec.*
+*Estado: **v1 IMPLEMENTADO en la app (2026-10-07)** — UMP + banners adaptativos
+con gating premium fail-closed (plan
+[2026-10-07-app-premium-web-admob](./superpowers/plans/2026-10-07-app-premium-web-admob.md)).
+La compra es SOLO en la web: la app lee el premium de su sesión
+(`GET /payments/status`) y abre sticklive.eu en el navegador del sistema.
+Diseño de plazamientos y caps: §7–§8 del
+[spec de monetización](./superpowers/specs/2026-10-06-monetizacion-ads-premium-design.md).*
 
 > Los IDs de app y de bloque **no son secretos**: viajan horneados en el APK.
-> Igual que en web, van como variables `EXPO_PUBLIC_*` (build), nunca hardcode.
+> El **App ID** va horneado en `apps/mobile/app.config.ts` (config plugin,
+> Android — el alta iOS es pendiente) y los unit ids de banner viajan como
+> variables `EXPO_PUBLIC_*` de build, nunca hardcode en el repo.
 
-| Variable (`EXPO_PUBLIC_*`) | Bloque | Superficie | ID |
-|---|---|---|---|
-| `ADMOB_APP_ID` | App | manifest Android (`~`) | `ca-app-pub-2994866776026136~4595623578` |
-| `ADMOB_BANNER_LIST` | Banner | Pie de listas (Directo, Clasificación, Búsqueda, Favoritos) | `ca-app-pub-2994866776026136/4268320510` |
-| `ADMOB_BANNER_MATCH` | Banner | Ficha de partido finalizada/por jugar | `ca-app-pub-2994866776026136/2815638044` |
-| `ADMOB_NATIVE_FEED` | Nativo avanzado | In-feed cada 6–8 items | `ca-app-pub-2994866776026136/8343296898` |
-| `ADMOB_APP_OPEN` | Aplicación abierta | Arranque frío, nunca tras push de gol | `ca-app-pub-2994866776026136/7030215228` |
-| `ADMOB_INTERSTITIAL` | Intersticial | Al salir de ficha finalizada | `ca-app-pub-2994866776026136/8847613791` |
-| `ADMOB_REWARDED` | Vídeo con recompensa | 30 min sin ads (recompensa: `30` × `adfree_min`) | `ca-app-pub-2994866776026136/6371739675` |
+| Variable | Bloque | Superficie | ID | Estado |
+|---|---|---|---|---|
+| — (plugin, `app.config.ts`) | App | manifest Android (`~`) | `ca-app-pub-2994866776026136~4595623578` | v1 |
+| `EXPO_PUBLIC_ADMOB_BANNER_LIST` | Banner | Pie de listas (Directo, Clasificación, Búsqueda, Favoritos) | `ca-app-pub-2994866776026136/4268320510` | v1 |
+| `EXPO_PUBLIC_ADMOB_BANNER_MATCH` | Banner | Ficha de partido finalizada/por jugar | `ca-app-pub-2994866776026136/2815638044` | v1 |
+| — | Nativo avanzado | In-feed cada 6–8 items | `ca-app-pub-2994866776026136/8343296898` | Plan D |
+| — | Aplicación abierta | Arranque frío, nunca tras push de gol | `ca-app-pub-2994866776026136/7030215228` | Plan D |
+| — | Intersticial | Al salir de ficha finalizada | `ca-app-pub-2994866776026136/8847613791` | Plan D |
+| — | Vídeo con recompensa | 30 min sin ads (recompensa: `30` × `adfree_min`) | `ca-app-pub-2994866776026136/6371739675` | Plan D |
 
-**Perfiles EAS:** `development` y `preview` usan los **IDs de prueba de Google**
-(hacer clic en ads reales en builds de prueba es causa de baneo); los reales
-solo en `production`:
+Los cuatro formatos **Plan D** ya tienen su bloque AdMob creado (IDs en la
+tabla) y se activan cuando los banners den datos — junto con `GET /ads/config`.
+
+**Regla de IDs (v1, implementada en `AdBanner.tsx`):** en `__DEV__` SIEMPRE los
+IDs de prueba de Google (hardcodeados vía `TestIds.BANNER`); los reales SOLO se
+definen como variables en el perfil `production` de EAS. En dev/preview van
+vacías → fail-closed (sin banner). **Clicar en anuncios reales dentro de builds
+de prueba es causa de baneo** — nunca definir los ids reales fuera de `production`.
 
 | Formato | ID de prueba |
 |---|---|
@@ -218,6 +229,26 @@ solo en `production`:
 | Aplicación abierta | `ca-app-pub-3940256099942544/3419835294` |
 | Intersticial | `ca-app-pub-3940256099942544/1033173712` |
 | Recompensado | `ca-app-pub-3940256099942544/5224354917` |
+
+**Checklist antes de tráfico real** (bloqueos para activar los banners en
+`production`; nada de esto existe aún en el repo):
+
+- [ ] **Re-consentimiento en Ajustes**: entrada de "privacidad de anuncios"
+  que vuelva a abrir el formulario UMP — la policy de Google exige que el
+  usuario pueda cambiar su consentimiento después de la primera vez (hoy solo
+  se pide en el primer arranque).
+- [ ] **Proguard**: si algún día se activa `minifyEnabled` en Android, añadir
+  las reglas keep del SDK de consentimiento (`consent_sdk`/UMP:
+  `-keep class com.google.android.ump.** { *; }`) — el paquete no trae consumer
+  rules propios.
+- [ ] **Smoke en device con license testers** de AdMob — **PENDIENTE DE UN
+  HUMANO** (requiere development build; Expo Go no sirve para ads). Los 4
+  puntos: 1) sesión no premium → banners de TEST visibles tras el
+  consentimiento UMP; 2) cuenta premium → cero banner y cero petición a AdMob
+  (verificar en el log de Metro); 3) ficha EN VIVO → sin banner, finalizada →
+  banner; 4) sin consentimiento UMP → sin ads.
+- [ ] **Telemetría** de monetización (Plan D): evento `onPaid` en el servidor y
+  su explotación — sin datos de ingresos no se decide la iteración de formatos.
 
 **Pendiente fuera del repo:** solo vincular la app a su ficha de Play (cuando
 exista, tarea del release M5). El **mensaje GDPR/UMP** está creado y publicado

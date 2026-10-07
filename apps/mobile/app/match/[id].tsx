@@ -62,7 +62,7 @@ export default function MatchScreen() {
           title: `${m.homeTeam.shortName ?? m.homeTeam.name} - ${m.awayTeam.shortName ?? m.awayTeam.name}`,
         }}
       />
-      <ScrollView className="bg-rink-floor dark:bg-rink-floor-dark">
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} className="bg-rink-floor dark:bg-rink-floor-dark">
         {/* Marcador */}
         <View className="mx-3 mt-2 items-center rounded-xl bg-white p-4 dark:bg-slate-900">
           <Text className="text-xs uppercase text-slate-500">{m.competitionName}</Text>
