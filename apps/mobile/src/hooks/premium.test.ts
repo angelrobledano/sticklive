@@ -7,26 +7,72 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// El guard de ads es la regla de dinero: premium SIEMPRE gana; sin
-// consentimiento UMP no hay ads; sin unit id no hay ads (fail-closed).
+// El guard de ads es la regla de dinero: premium SIEMPRE gana; el ad-free
+// recompensado oculta los ads mientras esté vigente; sin consentimiento UMP
+// no hay ads; sin unit id no hay ads (fail-closed).
 describe('shouldShowAds', () => {
   it('premium gana siempre, haya o no consentimiento', () => {
-    expect(shouldShowAds({ premium: true, consentGranted: true, unitId: 'u' })).toBe(false);
-    expect(shouldShowAds({ premium: true, consentGranted: false, unitId: 'u' })).toBe(false);
+    expect(
+      shouldShowAds({ premium: true, consentGranted: true, unitId: 'u', adfreeUntil: null }),
+    ).toBe(false);
+    expect(
+      shouldShowAds({ premium: true, consentGranted: false, unitId: 'u', adfreeUntil: null }),
+    ).toBe(false);
   });
 
   it('sin premium: ads solo con consentimiento UMP Y unit id configurado', () => {
-    expect(shouldShowAds({ premium: false, consentGranted: true, unitId: 'u' })).toBe(true);
-    expect(shouldShowAds({ premium: false, consentGranted: false, unitId: 'u' })).toBe(false);
-    expect(shouldShowAds({ premium: false, consentGranted: true, unitId: '' })).toBe(false);
+    expect(
+      shouldShowAds({ premium: false, consentGranted: true, unitId: 'u', adfreeUntil: null }),
+    ).toBe(true);
+    expect(
+      shouldShowAds({ premium: false, consentGranted: false, unitId: 'u', adfreeUntil: null }),
+    ).toBe(false);
+    expect(
+      shouldShowAds({ premium: false, consentGranted: true, unitId: '', adfreeUntil: null }),
+    ).toBe(false);
   });
 
   it('premium desconocido (cargando/error) ⇒ fail-closed, nunca ads', () => {
-    expect(shouldShowAds({ premium: undefined, consentGranted: true, unitId: 'u' })).toBe(false);
+    expect(
+      shouldShowAds({ premium: undefined, consentGranted: true, unitId: 'u', adfreeUntil: null }),
+    ).toBe(false);
   });
 
   it('premium desconocido sin consentimiento ⇒ false', () => {
-    expect(shouldShowAds({ premium: undefined, consentGranted: false, unitId: 'u' })).toBe(false);
+    expect(
+      shouldShowAds({ premium: undefined, consentGranted: false, unitId: 'u', adfreeUntil: null }),
+    ).toBe(false);
+  });
+
+  it('adfree recompensado vigente ⇒ false aunque todo lo demás esté en verde', () => {
+    expect(
+      shouldShowAds({
+        premium: false,
+        consentGranted: true,
+        unitId: 'u',
+        adfreeUntil: Date.now() + 60_000,
+      }),
+    ).toBe(false);
+  });
+
+  it('adfree recompensado caducado ⇒ se vuelven a aplicar las demás capas', () => {
+    const caducado = Date.now() - 60_000;
+    expect(
+      shouldShowAds({ premium: false, consentGranted: true, unitId: 'u', adfreeUntil: caducado }),
+    ).toBe(true);
+    // Caducado NO salta las otras capas: sin consentimiento sigue sin ads.
+    expect(
+      shouldShowAds({ premium: false, consentGranted: false, unitId: 'u', adfreeUntil: caducado }),
+    ).toBe(false);
+  });
+
+  it('adfree ausente (null/undefined) ⇒ gating idéntico al de antes de la capa', () => {
+    expect(
+      shouldShowAds({ premium: false, consentGranted: true, unitId: 'u', adfreeUntil: null }),
+    ).toBe(true);
+    expect(
+      shouldShowAds({ premium: false, consentGranted: true, unitId: 'u', adfreeUntil: undefined }),
+    ).toBe(true);
   });
 });
 

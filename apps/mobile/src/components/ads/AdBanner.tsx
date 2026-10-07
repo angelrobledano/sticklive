@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import mobileAds, {
   AdsConsent,
   BannerAd,
@@ -7,6 +8,7 @@ import mobileAds, {
   TestIds,
 } from 'react-native-google-mobile-ads';
 
+import { getAdfreeUntil } from '@/src/lib/ads/adfree';
 import { shouldShowAds } from '@/src/hooks/queries';
 import { usePremiumStatus } from '@/src/hooks/usePremiumStatus';
 import { canRequestAdsAfterConsent, requestAdsConsent } from '@/src/lib/ads/consent';
@@ -17,6 +19,7 @@ import { canRequestAdsAfterConsent, requestAdsConsent } from '@/src/lib/ads/cons
  * Banner AdMob (paridad con apps/web/src/components/shared/AdBanner.tsx):
  *   • premium (o estado desconocido) → null ANTES de tocar el SDK: cero UMP,
  *     cero initialize, cero petición (spec §7).
+ *   • Ad-free recompensado vigente (rewarded, Plan D Task 2) → null.
  *   • Sin consentimiento UMP (o si falla su resolución) → null (fail-closed).
  *   • Sin unit id configurado (env vacía en build production) → null.
  *   • Con TODO abierto: etiqueta "PUBLICIDAD" (IAB/CNMC, igual que la web),
@@ -73,8 +76,12 @@ let consentPromise: Promise<{ canRequestAds: boolean }> | null = null;
  * (`getConsentInfo()`); si también falla, fail-closed. Cada degradación se
  * LOGUEA (nunca silencio). El resultado asentado (éxito o fail-closed) se
  * cachea: los siguientes banners montados reutilizan la misma promesa.
+ *
+ * EXPORTADO: RewardedCard (Plan D Task 2) comparte ESTE singleton — repetir
+ * gatherConsent por formato podría reabrir el formulario UMP, y el cacheo
+ * garantiza una sola decisión por arranque en toda la app.
  */
-function ensureAdsConsent(): Promise<{ canRequestAds: boolean }> {
+export function ensureAdsConsent(): Promise<{ canRequestAds: boolean }> {
   consentPromise ??= (async () => {
     try {
       return await requestAdsConsent();
@@ -103,8 +110,11 @@ let initPromise: Promise<void> | null = null;
  * (delayAppMeasurementInit: la medición de Google no arranca hasta aquí, así
  * que un premium nunca llega a este código). Si falla, el rechazo queda
  * cacheado: sin ads hasta el próximo arranque (fail-closed, log explícito).
+ *
+ * EXPORTADO: RewardedCard (Plan D Task 2) reutiliza la misma promesa —
+ * initialize duplicado sería petición de más para el mismo singleton.
  */
-function ensureSdkInitialized(): Promise<void> {
+export function ensureSdkInitialized(): Promise<void> {
   initPromise ??= mobileAds()
     .initialize()
     .then(
@@ -120,7 +130,7 @@ function ensureSdkInitialized(): Promise<void> {
 // ── Gating combinado (premium ∧ consentimiento ∧ unit id ∧ init) ────────────
 
 /**
- * Estados de los tres gates + init, en el orden de la doc: consentimiento
+ * Estados de los cuatro gates + init, en el orden de la doc: consentimiento
  * ANTES de initialize (en init pueden precargarse ads), e initialize ANTES de
  * montar el <BannerAd> que pediría un anuncio.
  */
@@ -150,8 +160,26 @@ function useAdBannerGating(variant: AdBannerVariant): {
     };
   }, [premium]);
 
-  // Gate 3: unit id (dentro del guard puro testeado en Task 1).
-  const allowed = shouldShowAds({ premium, consentGranted, unitId });
+  // Gate 3 (Plan D Task 2): ad-free recompensado. Se lee del storage al montar
+  // Y en cada foco: el rewarded se concede en la pantalla premium (otro punto
+  // del árbol) y las pantallas con banner permanecen montadas (tabs/stack),
+  // así que sin releer al volver, un banner ya visible seguiría mostrándose
+  // durante el adfree ganado.
+  const [adfreeUntil, setAdfreeUntil] = useState<number | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      void getAdfreeUntil().then((ts) => {
+        if (!cancelled) setAdfreeUntil(ts);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
+
+  // Gate 4: unit id (dentro del guard puro testeado).
+  const allowed = shouldShowAds({ premium, consentGranted, unitId, adfreeUntil });
 
   // Init del SDK: solo cuando TODO permite. El guard `allowed` del effect
   // evita llamar a initialize aunque el singleton exista (p. ej. otro banner

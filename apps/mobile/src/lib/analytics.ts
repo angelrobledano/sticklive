@@ -51,6 +51,11 @@ export interface AnalyticsEventProps {
   // a la web a comprar (paridad de nombres con los eventos del servidor).
   premium_viewed: { from_screen: string };
   premium_web_checkout_started: Record<string, never>;
+  // Plan D (Task 2): rewarded recompensado — concesión de adfree y sus fallos
+  // (reward no coincidente con el contrato AdMob, show rechazado, storage).
+  // Impresiones/clicks los mide AdMob; aquí solo el negocio del reward.
+  ads_rewarded_completed: { minutes: number };
+  ads_rewarded_failed: { reason: string };
 }
 
 let client: PostHog | null = null;

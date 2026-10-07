@@ -546,7 +546,11 @@
   },
   "ads": {
     "interstitial_title": "Publicité",
-    "close": "Fermer"
+    "close": "Fermer",
+    "rewarded_cta": "Supprimer les pubs pendant {n} min",
+    "rewarded_desc": "Regardez une courte publicité et naviguez sur Stick Live sans publicité pendant {n} minutes. Le temps s'accumule à chaque publicité visionnée.",
+    "rewarded_done": "C'est fait ! Publicités masquées pendant {n} minutes.",
+    "rewarded_error": "Impossible de charger la publicité. Veuillez réessayer dans quelques secondes."
   },
   "errors": {
     "retry": "Réessayer",

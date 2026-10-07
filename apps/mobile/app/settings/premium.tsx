@@ -3,6 +3,7 @@ import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
+import { RewardedCard } from '@/src/components/ads/RewardedCard';
 import { usePremiumStatus } from '@/src/hooks/usePremiumStatus';
 import { capture } from '@/src/lib/analytics';
 import { WEB_URL, buildWebPremiumUrl } from '@/src/lib/api/client';
@@ -115,6 +116,12 @@ export default function PremiumScreen() {
               ) : null}
             </View>
           )}
+
+          {/* Plan D Task 2 — ad-free recompensado: bajo los productos, SOLO
+              prospectos no premium. La tarjeta se auto-gatea además con la
+              config remota (config.rewarded.enabled): sin formato activado,
+              cero DOM. */}
+          <RewardedCard />
 
           {/* Secundario: revalida el estado (post-compra o tras un error). */}
           <Pressable

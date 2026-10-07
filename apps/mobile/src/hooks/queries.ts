@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/src/lib/api/client';
+import { isAdfreeActive } from '@/src/lib/ads/adfree';
 import type {
   AdsConfig,
   CompetitionSummary,
@@ -49,7 +50,9 @@ export const favoritesEnabled = (token: string | null | undefined): boolean => B
 
 /**
  * Gating de publicidad (regla de dinero, fail-closed): premium SIEMPRE gana;
- * sin consentimiento UMP no hay ads; sin unit id configurado no hay ads.
+ * el ad-free recompensado (rewarded, Plan D) oculta los ads mientras esté
+ * vigente; sin consentimiento UMP no hay ads; sin unit id configurado no hay
+ * ads.
  *
  * premium === undefined (cargando o error con sesión) ⇒ fail-closed: un
  * premium no debe ver ni un frame de banner mientras se resuelve el estado.
@@ -57,14 +60,21 @@ export const favoritesEnabled = (token: string | null | undefined): boolean => B
  * El hook de estado (usePremiumStatus, Task 2) debe devolver `undefined`
  * mientras carga o ante error CON sesión, y `false` solo sin sesión.
  *
+ * adfreeUntil (Plan D Task 2) aplica a CUALQUIER no-premium: llega aquí tras
+ * el check de premium, así que un premium nunca lo consulta (premium gana
+ * siempre). Valor basura ⇒ isAdfreeActive hace fail-closed (ads visibles).
+ *
  * Exportada para el test y para AdBanner (Task 4).
  */
 export function shouldShowAds(gate: {
   premium: boolean | undefined;
   consentGranted: boolean;
   unitId: string | null | undefined;
+  adfreeUntil: number | null | undefined;
 }): boolean {
   if (gate.premium !== false) return false;
+  // Ad-free recompensado (rewarded): minutos regalados sin anuncios.
+  if (isAdfreeActive(Date.now(), gate.adfreeUntil)) return false;
   if (!gate.consentGranted) return false;
   return Boolean(gate.unitId);
 }
@@ -110,6 +120,20 @@ export async function fetchAdsConfig(): Promise<AdsConfig> {
 }
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
+
+/**
+ * Config remota de ads como query (Plan D): pública, sin sesión y estable —
+ * staleTime largo (gobierna la EXISTENCIA de los formatos: cambia por
+ * redeploy del API, no en cada navegación). Sin datos (`undefined`) los
+ * consumidores fail-closed ocultan el formato (RewardedCard, native in-feed).
+ */
+export function useAdsConfig() {
+  return useQuery({
+    queryKey: qk.adsConfig,
+    queryFn: fetchAdsConfig,
+    staleTime: 15 * 60_000,
+  });
+}
 
 export function useCurrentMatches() {
   return useQuery({
