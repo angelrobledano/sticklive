@@ -32,7 +32,12 @@ export function usePremiumStatus(): UsePremiumStatusResult {
   const qc = useQueryClient();
 
   const query = useQuery({
-    queryKey: qk.premium,
+    // El token en la key: al cambiar de sesión (logout/login en caliente) la
+    // query pasa a `undefined` → shouldShowAds hace fail-closed → un premium
+    // que entra tras un anónimo no hereda ni un frame de actividad de ads.
+    // Aplanado ([...qk.premium, token]) para que las invalidaciones por
+    // prefijo qk.premium sigan funcionando.
+    queryKey: [...qk.premium, session?.token],
     queryFn: () => fetchPremiumStatus(session!.token),
     enabled: Boolean(session?.token),
     staleTime: 5 * 60_000,
