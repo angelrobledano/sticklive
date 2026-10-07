@@ -36,7 +36,24 @@ describe('buildAdsConfig', () => {
     });
     expect(cfg.appOpen.enabled).toBe(false);
     expect(cfg.nativeFeed.everyNItems).toBe(8);
+    expect(cfg.nativeFeed.enabled).toBe(false); // un typo en EVERY nunca activa el formato
     expect(cfg.rewarded.adfreeMinutes).toBe(30);
+  });
+
+  it('ADS_NATIVE_FEED_ENABLED=1 activa el formato aunque falte EVERY', () => {
+    const cfg = buildAdsConfig({ ADS_NATIVE_FEED_ENABLED: '1' });
+    expect(cfg.nativeFeed).toEqual({ enabled: true, everyNItems: 8 });
+  });
+
+  it('ENABLED=false explícito apaga nativeFeed aunque el EVERY sea válido', () => {
+    const cfg = buildAdsConfig({ ADS_NATIVE_FEED_ENABLED: 'false', ADS_NATIVE_FEED_EVERY: '6' });
+    expect(cfg.nativeFeed.enabled).toBe(false);
+    expect(cfg.nativeFeed.everyNItems).toBe(6);
+  });
+
+  it('ENABLED=basura apaga nativeFeed aunque el EVERY sea válido (fail-closed)', () => {
+    const cfg = buildAdsConfig({ ADS_NATIVE_FEED_ENABLED: 'quizas', ADS_NATIVE_FEED_EVERY: '6' });
+    expect(cfg.nativeFeed.enabled).toBe(false);
   });
 
   it('caps con env válido se overridean; cero y no-entero caen al default', () => {

@@ -44,9 +44,10 @@ export interface AdsConfig {
 
 /** Pura e importable: el test y el handler la comparten. */
 export function buildAdsConfig(env: Record<string, string | undefined>): AdsConfig {
-  // nativeFeed: definir un EVERY válido ES su activación explícita ("su env");
-  // ADS_NATIVE_FEED_ENABLED sirve además de interruptor convencional. Un EVERY
-  // basura NO activa (fail-safe) y cae al default.
+  // Activación de nativeFeed: el EVERY válido activa IMPLÍCITAMENTE, pero un
+  // ENABLED definido tiene la última palabra (fail-closed: 'false' o basura
+  // apagan aunque el EVERY sea válido). Un EVERY basura NO activa y cae al
+  // default.
   const everyNItems = parsePositiveIntOrNull(env['ADS_NATIVE_FEED_EVERY']);
   return {
     appOpen: {
@@ -63,7 +64,10 @@ export function buildAdsConfig(env: Record<string, string | undefined>): AdsConf
       adfreeMinutes: parsePositiveInt(env['ADS_REWARDED_ADFREE_MINUTES'], 30),
     },
     nativeFeed: {
-      enabled: parseBool(env['ADS_NATIVE_FEED_ENABLED']) || everyNItems !== null,
+      enabled:
+        env['ADS_NATIVE_FEED_ENABLED'] !== undefined
+          ? parseBool(env['ADS_NATIVE_FEED_ENABLED'])
+          : everyNItems !== null,
       everyNItems: everyNItems ?? 8,
     },
   };
