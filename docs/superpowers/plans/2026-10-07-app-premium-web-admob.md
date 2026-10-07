@@ -291,7 +291,7 @@ Crea `apps/mobile/app/settings/premium.tsx` siguiendo el patrón de las pantalla
 - Sin sesión → texto `premium.login_required` (la compra exige cuenta: así el pago en web queda ligado a la misma fila de usuario).
 - Premium → estado activo (`premium.status_active` + desc; badge dorado `bg-premium-gold` si existe en el tema, si no el granate).
 - No premium → dos filas de producto (Anual / Para siempre, solo informativas con precio visible en la web) + botón principal `premium.buy_on_web` que: captura `premium_web_checkout_started`, y `void Linking.openURL(buildWebPremiumUrl(WEB_URL, locale))` con `locale` de `useLocale()` (la compra vive en `/settings` — landing `/premium` pendiente en la web, ver Step 2).
-- Al volver del navegador el `useFocusEffect` del hook ya refresca.
+- Al volver del navegador, el listener de `AppState` ('active') del hook revalida — `useFocusEffect` solo cubre navegación in-app (volver del navegador del sistema no pasa por blur).
 - Al montar la pantalla: captura `premium_viewed`.
 
 En `app/(tabs)/settings.tsx` añade la fila de entrada (patrón de las filas existentes — icono Ionicons `star-outline`, navega a `/settings/premium`).

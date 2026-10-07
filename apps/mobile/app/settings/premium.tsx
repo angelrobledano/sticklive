@@ -28,10 +28,13 @@ export default function PremiumScreen() {
   const router = useRouter();
   const [openError, setOpenError] = useState(false);
 
-  // Funnel premium (Task 5.1): vista de la pantalla, una vez por montaje.
+  // Funnel premium (Task 5.1): la cima del funnel solo la cuentan PROSPECTOS —
+  // paridad con la web, donde el banner solo se renderiza (y solo emite) siendo
+  // no premium. Un premium que reabra la pantalla no infla `premium_viewed`.
+  // Se emite al resolver el estado (premium === false), no al montar en ciego.
   useEffect(() => {
-    capture('premium_viewed', {});
-  }, []);
+    if (premium === false) capture('premium_viewed', { from_screen: 'settings' });
+  }, [premium]);
 
   /** Única vía de compra: navegador del sistema, web, cuenta del usuario. */
   const handleBuyOnWeb = useCallback(() => {

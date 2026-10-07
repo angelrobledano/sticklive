@@ -1,5 +1,6 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
+import { AppState } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { fetchPremiumStatus, qk } from './queries';
@@ -20,9 +21,11 @@ export interface UsePremiumStatusResult {
 
 /**
  * Estado premium de la SESIÓN (GET /payments/status). enabled solo con sesión:
- * sin login no hay entitlement que consultar (el anónimo ve ads). Refresco
- * on-focus: al volver del navegador tras pagar en la web, el estado nuevo
- * llega sin reiniciar la app (la compra es SOLO en la web, spec §7).
+ * sin login no hay entitlement que consultar (el anónimo ve ads). Doble
+ * revalidación (la compra es SOLO en la web, spec §7):
+ *  · useFocusEffect — navegación entre pantallas/pestañas in-app.
+ *  · AppState 'active' — volver de segundo plano: del navegador del sistema
+ *    tras pagar NO se pasa por blur in-app, así que el foco no se dispara.
  */
 export function usePremiumStatus(): UsePremiumStatusResult {
   const { session } = useSession();
@@ -40,6 +43,17 @@ export function usePremiumStatus(): UsePremiumStatusResult {
       if (session?.token) void qc.invalidateQueries({ queryKey: qk.premium });
     }, [session?.token, qc])
   );
+
+  useEffect(() => {
+    if (!session?.token) return;
+    // Al volver de segundo plano (p. ej. del navegador tras pagar en la web),
+    // el estado premium puede haber cambiado: revalidar. useFocusEffect NO
+    // basta — volver del navegador no pasa por blur in-app.
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void qc.invalidateQueries({ queryKey: qk.premium });
+    });
+    return () => sub.remove();
+  }, [session?.token, qc]);
 
   return {
     premium: session?.token ? query.data?.premium : false,
