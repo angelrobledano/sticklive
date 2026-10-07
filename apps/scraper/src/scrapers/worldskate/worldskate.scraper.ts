@@ -51,7 +51,9 @@ const WORLDSKATE = {
   portalPrefix: 'worldskate',
   referer: 'https://wse.sidgad.com/',
 };
-const LOGO_BASE = 'https://www.sidgad.com/worldskate/images/logos_clubes/';
+// CDN válido para los escudos/banderas de worldskate: los ficheros nuevos
+// (WSG ASU26) NO existen bajo www.sidgad.com — solo en sidgad.cloud.
+const LOGO_BASE = 'https://sidgad.cloud/worldskate/images/logos_clubes/';
 const SCRAPER_KEY = 'worldskate_hockey';
 
 export interface WorldskateScraperConfig {
