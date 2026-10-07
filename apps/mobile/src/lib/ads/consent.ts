@@ -1,4 +1,7 @@
-import { AdsConsent } from 'react-native-google-mobile-ads';
+import {
+  AdsConsent,
+  AdsConsentPrivacyOptionsRequirementStatus,
+} from 'react-native-google-mobile-ads';
 
 /**
  * Consentimiento UMP (Google) — equivalente del CMP web (docs/monetizacion.md
@@ -49,4 +52,39 @@ export async function requestAdsConsent(
   await AdsConsent.gatherConsent(options);
   const info = await AdsConsent.getConsentInfo();
   return canRequestAdsAfterConsent(info);
+}
+
+/**
+ * Re-consentimiento desde Ajustes (Plan D Task 3, política pre-tráfico de
+ * Google): re-ejecuta el flujo UMP REAL — `requestAdsConsent`, nunca la
+ * promesa cacheada de AdBanner — y, si Google EXIGE un punto de gestión de
+ * opciones de privacidad (`privacyOptionsRequirementStatus REQUIRED`, EEA/UK),
+ * abre además el formulario de opciones de privacidad.
+ *
+ * ¿Por qué no basta `gatherConsent`? La doc: solo muestra formulario si es
+ * requerido (estado desconocido, consentimiento expirado o catálogo de
+ * proveedores cambiado). Con consentimiento ya OBTENIDO — el caso típico de
+ * quien abre esta pantalla — resuelve sin abrir nada, y el botón "gestionar
+ * opciones" no gestionaría nada. El formulario de opciones es el mecanismo
+ * que la UMP define para REABRIR la elección (la doc nativa de Google pide
+ * una entrada accesible — p. ej. Ajustes — para ese formulario).
+ *
+ * Tras el formulario se RELEE la decisión: el usuario pudo cambiarla ahí.
+ * El doble formulario solo ocurre si gatherConsent acabó de mostrar el
+ * formulario inicial (consentimiento expirado/cambiado) y las opciones
+ * siguen requeridas: el usuario pulsó "gestionar" de forma explícita.
+ *
+ * Los ERRORES se PROPAGAN (patrón del wrapper): la pantalla decide qué
+ * mostrar (estado visible + reintento).
+ */
+export async function manageAdsConsent(
+  options?: Parameters<typeof AdsConsent.gatherConsent>[0],
+): Promise<AdsConsentState> {
+  const state = await requestAdsConsent(options);
+  const info = await AdsConsent.getConsentInfo();
+  if (info.privacyOptionsRequirementStatus === AdsConsentPrivacyOptionsRequirementStatus.REQUIRED) {
+    await AdsConsent.showPrivacyOptionsForm();
+    return canRequestAdsAfterConsent(await AdsConsent.getConsentInfo());
+  }
+  return state;
 }

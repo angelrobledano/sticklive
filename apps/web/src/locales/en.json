@@ -551,7 +551,18 @@
     "rewarded_desc": "Watch a short ad and browse Stick Live ad-free for {n} minutes. Time stacks with every ad you watch.",
     "rewarded_done": "Done! Ads are hidden for {n} minutes.",
     "rewarded_error": "The ad failed to load. Please try again in a few seconds.",
-    "rewarded_retry": "Tap to try again"
+    "rewarded_retry": "Tap to try again",
+    "privacy_entry_title": "Ads & privacy",
+    "privacy_entry_desc": "Manage your ads consent",
+    "privacy_title": "Ads & privacy",
+    "privacy_desc": "Ads in this app are served according to the consent you gave in the Google form. You can change your choice at any time: we will open the Google form with your options again.",
+    "privacy_manage_cta": "Manage ad options",
+    "privacy_managing": "Opening the Google options…",
+    "privacy_result_ok": "Depending on your choice, ads may be shown in the app (personalized or limited, according to what you accepted).",
+    "privacy_result_ko": "With your current choice, no ads will be served, or they will be limited.",
+    "privacy_premium_note": "You have Premium: you won't see ads, but you can still manage your consent.",
+    "privacy_error": "Couldn't open consent management.",
+    "privacy_retry": "Tap to try again"
   },
   "errors": {
     "retry": "Retry",

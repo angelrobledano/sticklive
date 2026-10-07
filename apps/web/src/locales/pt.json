@@ -551,7 +551,18 @@
     "rewarded_desc": "Veja um anúncio curto e navegue pelo Stick Live sem publicidade durante {n} minutos. O tempo acumula a cada anúncio visto.",
     "rewarded_done": "Feito! Anúncios ocultos durante {n} minutos.",
     "rewarded_error": "Não foi possível carregar o anúncio. Tente novamente em alguns segundos.",
-    "rewarded_retry": "Toque para tentar novamente"
+    "rewarded_retry": "Toque para tentar novamente",
+    "privacy_entry_title": "Publicidade e privacidade",
+    "privacy_entry_desc": "Gerencie seu consentimento de anúncios",
+    "privacy_title": "Publicidade e privacidade",
+    "privacy_desc": "Os anúncios do app são exibidos de acordo com o consentimento dado no formulário do Google. Você pode alterar sua escolha a qualquer momento: abriremos novamente o formulário do Google com suas opções.",
+    "privacy_manage_cta": "Gerenciar opções de anúncios",
+    "privacy_managing": "Abrindo as opções do Google…",
+    "privacy_result_ok": "Dependendo da sua escolha, anúncios podem ser exibidos no app (personalizados ou limitados, conforme o que você aceitou).",
+    "privacy_result_ko": "Com a sua escolha atual, nenhum anúncio será exibido, ou serão exibidos de forma limitada.",
+    "privacy_premium_note": "Você tem Premium: não verá anúncios, mas ainda pode gerenciar seu consentimento.",
+    "privacy_error": "Não foi possível abrir o gerenciamento de consentimento.",
+    "privacy_retry": "Toque para tentar novamente"
   },
   "errors": {
     "retry": "Tentar novamente",

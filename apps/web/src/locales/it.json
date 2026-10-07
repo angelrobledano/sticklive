@@ -551,7 +551,18 @@
     "rewarded_desc": "Guarda un breve annuncio e naviga su Stick Live senza pubblicità per {n} minuti. Il tempo si accumula a ogni annuncio visto.",
     "rewarded_done": "Fatto! Annunci nascosti per {n} minuti.",
     "rewarded_error": "Impossibile caricare l'annuncio. Riprova tra qualche secondo.",
-    "rewarded_retry": "Tocca per riprovare"
+    "rewarded_retry": "Tocca per riprovare",
+    "privacy_entry_title": "Pubblicità e privacy",
+    "privacy_entry_desc": "Gestisci il tuo consenso per le pubblicità",
+    "privacy_title": "Pubblicità e privacy",
+    "privacy_desc": "Le pubblicità nell'app vengono mostrate in base al consenso dato nel modulo di Google. Puoi cambiare la tua scelta in qualsiasi momento: riapriremo il modulo di Google con le tue opzioni.",
+    "privacy_manage_cta": "Gestisci le opzioni delle pubblicità",
+    "privacy_managing": "Apertura delle opzioni di Google…",
+    "privacy_result_ok": "In base alla tua scelta, potrebbero essere mostrate pubblicità nell'app (personalizzate o limitate, a seconda di ciò che hai accettato).",
+    "privacy_result_ko": "Con la tua scelta attuale non verranno mostrate pubblicità, o solo in forma limitata.",
+    "privacy_premium_note": "Hai Premium: non vedrai pubblicità, ma puoi comunque gestire il tuo consenso.",
+    "privacy_error": "Impossibile aprire la gestione del consenso.",
+    "privacy_retry": "Tocca per riprovare"
   },
   "errors": {
     "retry": "Riprova",
