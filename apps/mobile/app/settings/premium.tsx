@@ -10,8 +10,9 @@ import { WEB_URL, buildWebPremiumUrl } from '@/src/lib/api/client';
 /**
  * Pantalla Premium (monetización, spec §7): lee el entitlement de la SESIÓN
  * (GET /payments/status vía usePremiumStatus) y la compra NUNCA ocurre en la
- * app — el botón principal abre sticklive.eu/{locale}/premium en el NAVEGADOR
- * DEL SISTEMA (Stripe ya funciona en la web) y, al volver, el refresco
+ * app — el botón principal abre sticklive.eu/{locale}/settings en el NAVEGADOR
+ * DEL SISTEMA (la compra vive en Ajustes de la web, PremiumBanner con Stripe;
+ * la landing /premium dedicada es mejora futura) y, al volver, el refresco
  * on-focus del hook recoge el estado nuevo. Cero SDK de pagos.
  *
  * Contrato del hook: `premium === undefined` con sesión = estado desconocido

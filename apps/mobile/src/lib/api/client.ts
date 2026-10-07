@@ -9,12 +9,12 @@ export const API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://10.0.2.2:30
 export const WEB_URL = process.env['EXPO_PUBLIC_WEB_URL'] ?? 'https://sticklive.eu';
 
 /**
- * Página premium de la web donde ocurre la compra (Stripe): la app NUNCA cobra
- * (spec §7) — solo abre el navegador del sistema. La locale va en la ruta para
- * aterrizar en el idioma del usuario; tolera barra final en la base.
+ * Página de la web donde ocurre la compra premium (Stripe): hoy vive en
+ * Ajustes (PremiumBanner). Una landing /premium dedicada es mejora futura
+ * de la web — no construir aquí una URL que aún no existe.
  */
 export function buildWebPremiumUrl(webBase: string, locale: string): string {
-  return `${webBase.replace(/\/$/, '')}/${locale}/premium`;
+  return `${webBase.replace(/\/$/, '')}/${locale}/settings`;
 }
 
 export class ApiError extends Error {

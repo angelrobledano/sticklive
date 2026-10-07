@@ -595,7 +595,7 @@
     "product_lifetime": "Pour toujours",
     "product_lifetime_desc": "Un seul paiement : sans publicité pour toujours.",
     "buy_on_web": "Acheter sur le site",
-    "buy_on_web_desc": "Ouvre sticklive.eu pour finaliser l'achat avec votre compte. Votre statut s'actualise à votre retour dans l'app.",
+    "buy_on_web_desc": "Ouvre sticklive.eu : connectez-vous avec le même compte Google et finalisez l'achat pour que Premium arrive dans l'app. Votre statut s'actualise à votre retour.",
     "loading": "Vérification de votre statut…",
     "login_required": "Connectez-vous pour voir et acheter Premium : l'avantage est lié à votre compte.",
     "login_cta": "Se connecter",

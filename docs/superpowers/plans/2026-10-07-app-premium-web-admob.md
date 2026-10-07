@@ -190,6 +190,30 @@ En `apps/mobile/src/lib/api/client.ts`, junto a `API_URL`:
 export const WEB_URL = process.env['EXPO_PUBLIC_WEB_URL'] ?? 'https://sticklive.eu';
 ```
 
+Y en el mismo fichero, la función pura que construye la URL de compra (testeada en `premium.test.ts`). **La compra vive en `/settings` — landing `/premium` pendiente en la web** (la web solo tiene `premium/success` y `premium/error`; el checkout es el PremiumBanner de Ajustes):
+
+```ts
+/**
+ * Página de la web donde ocurre la compra premium (Stripe): hoy vive en
+ * Ajustes (PremiumBanner). Una landing /premium dedicada es mejora futura
+ * de la web — no construir aquí una URL que aún no existe.
+ */
+export function buildWebPremiumUrl(webBase: string, locale: string): string {
+  return `${webBase.replace(/\/$/, '')}/${locale}/settings`;
+}
+```
+
+Con test puro en `apps/mobile/src/hooks/premium.test.ts`:
+
+```ts
+describe('buildWebPremiumUrl', () => {
+  it('construye {base}/{locale}/settings y tolera barra final', () => {
+    expect(buildWebPremiumUrl('https://sticklive.eu', 'es')).toBe('https://sticklive.eu/es/settings');
+    expect(buildWebPremiumUrl('https://sticklive.eu/', 'en')).toBe('https://sticklive.eu/en/settings');
+  });
+});
+```
+
 Crear `apps/mobile/src/hooks/usePremiumStatus.ts`:
 
 ```ts
@@ -266,7 +290,7 @@ Crea `apps/mobile/app/settings/premium.tsx` siguiendo el patrón de las pantalla
 - `usePremiumStatus()` + `useSession()`.
 - Sin sesión → texto `premium.login_required` (la compra exige cuenta: así el pago en web queda ligado a la misma fila de usuario).
 - Premium → estado activo (`premium.status_active` + desc; badge dorado `bg-premium-gold` si existe en el tema, si no el granate).
-- No premium → dos filas de producto (Anual / Para siempre, solo informativas con precio visible en la web) + botón principal `premium.buy_on_web` que: captura `premium_web_checkout_started`, y `void Linking.openURL(\`${WEB_URL}/${locale}/premium\`)` con `locale` de `useLocale()`.
+- No premium → dos filas de producto (Anual / Para siempre, solo informativas con precio visible en la web) + botón principal `premium.buy_on_web` que: captura `premium_web_checkout_started`, y `void Linking.openURL(buildWebPremiumUrl(WEB_URL, locale))` con `locale` de `useLocale()` (la compra vive en `/settings` — landing `/premium` pendiente en la web, ver Step 2).
 - Al volver del navegador el `useFocusEffect` del hook ya refresca.
 - Al montar la pantalla: captura `premium_viewed`.
 

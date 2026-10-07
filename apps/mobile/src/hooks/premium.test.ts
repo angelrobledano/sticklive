@@ -54,8 +54,8 @@ describe('fetchPremiumStatus', () => {
 // del sistema. Tolerar barra final evita dobles barras si EXPO_PUBLIC_WEB_URL
 // se configura con ella.
 describe('buildWebPremiumUrl', () => {
-  it('construye {base}/{locale}/premium y tolera barra final', () => {
-    expect(buildWebPremiumUrl('https://sticklive.eu', 'es')).toBe('https://sticklive.eu/es/premium');
-    expect(buildWebPremiumUrl('https://sticklive.eu/', 'en')).toBe('https://sticklive.eu/en/premium');
+  it('construye {base}/{locale}/settings y tolera barra final', () => {
+    expect(buildWebPremiumUrl('https://sticklive.eu', 'es')).toBe('https://sticklive.eu/es/settings');
+    expect(buildWebPremiumUrl('https://sticklive.eu/', 'en')).toBe('https://sticklive.eu/en/settings');
   });
 });
