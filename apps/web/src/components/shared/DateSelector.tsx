@@ -80,7 +80,7 @@ function DayChip({ dateKey, selected, outOfRange, onClick }: {
       title={outOfRange ? t('common.day_out_of_window') : undefined}
       onClick={() => onClick(dateKey)}
       className={`flex flex-col items-center shrink-0 rounded-xl px-3 py-1.5
-                  min-w-[52px] transition-all duration-150 select-none
+                  min-w-[52px] min-h-[44px] transition-all duration-150 select-none
                   ${outOfRange
                     ? 'opacity-30 cursor-not-allowed'
                     : isActive
@@ -153,10 +153,10 @@ export function DateSelector({ selected, onChange, availableFrom, availableTo }:
     [availableFrom, availableTo]);
 
   const arrowCls = (disabled: boolean) =>
-    `shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors
+    `shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-colors
      ${disabled
        ? 'opacity-30 cursor-not-allowed text-slate-300 dark:text-slate-600'
-       : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200'}`;
+       : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200'}`;
 
   return (
     <div className="relative border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">

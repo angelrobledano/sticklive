@@ -67,7 +67,7 @@ function MicroSeries({ serie, isCurrent, advanced, linkable, isFinal = false }: 
               {team.shortName ?? team.name.slice(0, 3).toUpperCase()}
             </span>
             {isChampion ? (
-              <TrophyIcon className="w-3 h-3 text-rink-passion dark:text-red-400 shrink-0" />
+              <TrophyIcon className="w-3 h-3 text-rink-passion dark:text-rink-accent shrink-0" />
             ) : qualified ? (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}
                    className="w-3 h-3 text-emerald-500 shrink-0">
@@ -137,7 +137,7 @@ export function PlayoffBracket({ matches, currentMatchId, linkable = false }: {
           {t('playoffs.bracket_title')}
         </span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-             className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${collapsed ? '' : 'rotate-180'}`}>
+             className={`w-4 h-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 ${collapsed ? '' : 'rotate-180'}`}>
           <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>

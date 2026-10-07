@@ -86,3 +86,28 @@ export function sourceByKey(key: string): SourceDef {
   if (!s) throw new Error(`Fuente desconocida: ${key}. Añádela en core/sources.ts`);
   return s;
 }
+
+export interface MatchSourceIds {
+  source: SourceDef;
+  /** Id de partido en la fuente (`idp`). */
+  idp: string;
+  /** Id de competición en la fuente (`idc`). */
+  idc: string;
+}
+
+/**
+ * Resuelve {fuente, idp, idc} de un partido a partir de sus refs, o `null` si
+ * el `source_ref` no es de ninguna fuente conocida (o no lleva idp). Es la
+ * puerta única para los flujos de fichas: cron-live y el barrido de
+ * fichas-pendientes comparten esta resolución multi-fuente.
+ */
+export function resolveMatchSourceIds(
+  sourceRef: string | null | undefined,
+  compRef: string | null | undefined,
+): MatchSourceIds | null {
+  const source = sourceForMatchRef(sourceRef);
+  if (!source) return null;
+  const idp = idpFromMatchRef(sourceRef!, source);
+  if (!idp) return null;
+  return { source, idp, idc: idcFromCompetitionRef(compRef, source) };
+}

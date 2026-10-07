@@ -159,7 +159,8 @@ export default async function RootLayout({ children, params }: Props) {
           {/* Pageviews de PostHog (no-op en desarrollo y sin consentimiento) */}
           <AnalyticsPageview />
 
-          {/* AdSense: script solo si está configurado, consentido y sin Premium */}
+          {/* AdSense: script si está configurado y sin Premium; el CMP de Google
+              (servido por este mismo tag) gestiona el consentimiento publicitario */}
           <AdsenseScript />
 
           {/* Intersticial no agresivo (desactivado por defecto, 1/sesión) */}

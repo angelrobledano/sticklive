@@ -53,18 +53,18 @@ export function StatsTab({ data }: { data: MatchDetail }) {
     if (match.status === 'scheduled') {
       return (
         <div className="card p-8 text-center opacity-60">
-          <p className="text-sm text-slate-400 dark:text-slate-600">{t('match_detail.stats_pending')}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('match_detail.stats_pending')}</p>
         </div>
       );
     }
     return (
       <div className="card p-8 flex justify-center">
-        <div className="inline-flex items-center gap-2.5 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-amber-500 shrink-0">
+        <div className="inline-flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0">
             <path d="M10.3 3.7L2.3 18a2 2 0 0 0 1.7 3h16a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0z" />
             <path d="M12 9v4M12 17h.01" strokeLinecap="round" />
           </svg>
-          <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Estadisticas de faltas y bola parada en proceso de computo.
           </span>
         </div>

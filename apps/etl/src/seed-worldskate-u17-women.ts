@@ -18,7 +18,7 @@ const log = createLogger({ service: 'seed-wse-w' });
 
 const SPORT_SLUG = 'hockey-patines';
 const SOURCE_SCRAPER_KEY = 'worldskate_hockey';
-const LOGO_BASE = 'https://www.sidgad.com/worldskate/images/logos_clubes/';
+const LOGO_BASE = 'https://sidgad.cloud/worldskate/images/logos_clubes/';
 
 const COMPETITION = {
   name: 'Campeonato de Europa Sub-17 Femenino',

@@ -39,7 +39,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
 const ES = {
   title: 'Política de privacidad',
-  updated: 'Última actualización: septiembre de 2026',
+  updated: 'Última actualización: octubre de 2026',
   sections: [
     {
       h: 'Quiénes somos',
@@ -51,11 +51,11 @@ const ES = {
     },
     {
       h: 'Para qué los usamos',
-      p: 'Para que la app funcione: sincronizar tus favoritos entre dispositivos, enviarte el enlace de acceso por email y las alertas de partidos que tú actives. También medimos el uso de la app de forma agregada para mejorarla.',
+      p: 'Para que la app funcione: sincronizar tus favoritos entre dispositivos, enviarte el enlace de acceso por email y las alertas de partidos que tú actives. También medimos el uso de la app de forma agregada para mejorarla. En la versión gratuita mostramos anuncios que ayudan a financiar el servicio; las cuentas con suscripción premium no ven anuncios.',
     },
     {
       h: 'Con quién los compartimos',
-      p: 'Con nadie para fines comerciales. Usamos proveedores técnicos que tratan datos por encargo: Hetzner (alojamiento, Alemania), Brevo (envío de emails de acceso, UE) y PostHog (analítica de producto, servidores en la UE). Si inicias sesión con Google, Google nos comunica únicamente tu email.',
+      p: 'No vendemos tus datos. Usamos proveedores técnicos que tratan datos por encargo: Hetzner (alojamiento, Alemania), Brevo (envío de emails de acceso, UE) y PostHog (analítica de producto, servidores en la UE). Cuando mostramos anuncios, Google (AdSense) y sus socios publicitarios tratan datos de uso y del dispositivo para servir y medir los anuncios. Si inicias sesión con Google, Google nos comunica únicamente tu email.',
     },
     {
       h: 'Cuánto tiempo',
@@ -67,14 +67,18 @@ const ES = {
     },
     {
       h: 'Cookies y almacenamiento local',
-      p: 'No usamos cookies publicitarias. Guardamos en tu navegador tus preferencias (idioma, tema, favoritos, configuración de alertas) y una cookie técnica de idioma. La analítica de producto (PostHog, servidores en la UE) solo se activa si aceptas el aviso de cookies: hasta entonces no se carga ni guarda nada. Si aceptas, PostHog usa almacenamiento propio (cookies y localStorage de primera parte) y, si inicias sesión, vincula tu email a esa analítica para medir el uso de forma agregada. Puedes rechazarla y la app sigue funcionando igual.',
+      p: 'Guardamos en tu navegador tus preferencias (idioma, tema, favoritos, configuración de alertas) y una cookie técnica de idioma. La analítica de producto (PostHog, servidores en la UE) solo se activa si aceptas el aviso de cookies: hasta entonces no se carga ni guarda nada. Si aceptas, PostHog usa almacenamiento propio (cookies y localStorage de primera parte) y, si inicias sesión, vincula tu email a esa analítica para medir el uso de forma agregada. Puedes rechazarla y la app sigue funcionando igual.',
+    },
+    {
+      h: 'Publicidad',
+      p: 'Para financiar la versión gratuita mostramos anuncios con Google AdSense. Google y sus socios publicitarios pueden usar cookies e identificadores del dispositivo para mostrar y medir los anuncios. En el Espacio Económico Europeo, Reino Unido y Suiza te pedimos consentimiento antes de servir anuncios personalizados, mediante el aviso certificado de Google (IAB TCF): puedes aceptar, rechazar o gestionar las opciones. Si rechazas, podemos seguir mostrando anuncios no personalizados y la app funciona igual. Las cuentas con suscripción premium no ven anuncios.',
     },
   ],
 };
 
 const EN = {
   title: 'Privacy policy',
-  updated: 'Last updated: September 2026',
+  updated: 'Last updated: October 2026',
   sections: [
     {
       h: 'Who we are',
@@ -86,11 +90,11 @@ const EN = {
     },
     {
       h: 'Why we use it',
-      p: 'To make the app work: syncing your favorites across devices, sending your sign-in link by email, and delivering the match alerts you choose. We also measure app usage in aggregate to improve it.',
+      p: 'To make the app work: syncing your favorites across devices, sending your sign-in link by email, and delivering the match alerts you choose. We also measure app usage in aggregate to improve it. On the free version we show ads that help fund the service; accounts with a premium subscription see no ads.',
     },
     {
       h: 'Who we share it with',
-      p: 'No one, for commercial purposes. We use technical processors: Hetzner (hosting, Germany), Brevo (sign-in emails, EU) and PostHog (product analytics, EU servers). If you sign in with Google, Google shares only your email with us.',
+      p: 'We do not sell your data. We use technical processors: Hetzner (hosting, Germany), Brevo (sign-in emails, EU) and PostHog (product analytics, EU servers). When we show ads, Google (AdSense) and its advertising partners process usage and device data to serve and measure ads. If you sign in with Google, Google shares only your email with us.',
     },
     {
       h: 'For how long',
@@ -102,7 +106,11 @@ const EN = {
     },
     {
       h: 'Cookies and local storage',
-      p: 'No advertising cookies. We store your preferences in your browser (language, theme, favorites, alert settings) plus a technical language cookie. Product analytics (PostHog, EU servers) only starts if you accept the cookie notice: until then it loads and stores nothing. If you accept, PostHog uses its own first-party storage (cookies and localStorage) and, when you sign in, links your email to that analytics to measure usage in aggregate. You can decline and the app keeps working the same.',
+      p: 'We store your preferences in your browser (language, theme, favorites, alert settings) plus a technical language cookie. Product analytics (PostHog, EU servers) only starts if you accept the cookie notice: until then it loads and stores nothing. If you accept, PostHog uses its own first-party storage (cookies and localStorage) and, when you sign in, links your email to that analytics to measure usage in aggregate. You can decline and the app keeps working the same.',
+    },
+    {
+      h: 'Advertising',
+      p: 'We show ads through Google AdSense to fund the free version. Google and its advertising partners may use cookies and device identifiers to serve and measure ads. In the European Economic Area, the United Kingdom and Switzerland we ask for your consent before serving personalised ads, through Google\'s certified notice (IAB TCF): you can accept, reject or manage the options. If you reject, we may still show non-personalised ads and the app keeps working the same. Accounts with a premium subscription see no ads.',
     },
   ],
 };

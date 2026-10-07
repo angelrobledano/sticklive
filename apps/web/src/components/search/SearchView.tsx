@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useT } from '@/lib/i18n';
 import { track, searchEventProps } from '@/lib/analytics';
@@ -53,7 +54,7 @@ function Section({ title, count, children }: {
     <section className="mb-3">
       <div className="flex items-center gap-2 px-1 pt-1 pb-1.5">
         <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300 flex-1">{title}</span>
-        <span className="text-[10px] text-slate-400 dark:text-slate-600 tabular-nums font-medium">{count}</span>
+        <span className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums font-medium">{count}</span>
       </div>
       <div>{children}</div>
     </section>
@@ -62,6 +63,7 @@ function Section({ title, count, children }: {
 
 export function SearchView({ initialQuery, results, error }: SearchViewProps) {
   const { t, locale } = useT();
+  const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
 
   const pending = normalizeSearchQuery(query) !== normalizeSearchQuery(initialQuery);
@@ -91,7 +93,7 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
         <form action={`/${locale}/search`} method="get" role="search">
           <div className="relative">
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-                 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none">
+                 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-400 pointer-events-none">
               <circle cx="11" cy="11" r="7" />
               <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
             </svg>
@@ -103,10 +105,10 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
               onChange={(e) => setQuery(e.target.value)}
               aria-label={tt(t, 'a11y.search_global', 'Buscar equipos, jugadores o competiciones')}
               placeholder={tt(t, 'search.placeholder', 'Buscar equipo, jugador o competición…')}
-              className="w-full h-10 pl-9 pr-10 rounded-xl border border-slate-200 dark:border-slate-700
+              className="w-full h-10 pl-9 pr-12 rounded-xl border border-slate-200 dark:border-slate-700
                          bg-slate-50 dark:bg-slate-900 text-[13px] text-slate-800 dark:text-slate-200
                          placeholder:text-slate-500 dark:placeholder:text-slate-400
-                         focus:outline-none focus:ring-2 focus:ring-rink-passion focus:bg-white dark:focus:bg-slate-900
+                         focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-rink-accent focus:bg-white dark:focus:bg-slate-900
                          transition-colors"
             />
             {query && (
@@ -114,7 +116,8 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
                 type="button"
                 onClick={() => setQuery('')}
                 aria-label={tt(t, 'search.clear', 'Limpiar búsqueda')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600
+                className="absolute right-0.5 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-11 h-11
+                           rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-600
                            dark:hover:text-slate-300 transition-colors"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
@@ -141,13 +144,22 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
               {tt(t, 'search.error', 'No se pudo completar la búsqueda. Inténtalo de nuevo.')}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{error}</p>
+            <button
+              type="button"
+              onClick={() => router.refresh()}
+              className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-xl
+                         bg-rink-passion text-white text-[13px] font-semibold hover:bg-rink-passion-light
+                         transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion
+                         dark:focus-visible:ring-rink-accent"
+            >
+              {tt(t, 'search.retry', 'Reintentar')}
+            </button>
           </div>
         ) : results && total === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-4">
             <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
-                   className="w-6 h-6 text-slate-400">
+                   className="w-6 h-6 text-slate-500 dark:text-slate-400">
                 <circle cx="11" cy="11" r="7" />
                 <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
               </svg>
@@ -161,7 +173,7 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
           </div>
         ) : results ? (
           <>
-            <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 px-1 pb-2 tabular-nums">
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 px-1 pb-2 tabular-nums">
               {tt(t, 'search.results_count', '{n} resultados', { n: total })}
             </p>
 

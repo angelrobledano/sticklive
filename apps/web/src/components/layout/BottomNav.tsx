@@ -109,7 +109,7 @@ export function BottomNav() {
                   className={`flex flex-col items-center justify-center h-full gap-0.5 text-xs
                               transition-colors duration-150
                               ${active
-                                ? 'text-rink-passion dark:text-red-500'
+                                ? 'text-rink-passion dark:text-rink-accent'
                                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 active:text-slate-800 dark:active:text-slate-200'
                               }`}
                 >

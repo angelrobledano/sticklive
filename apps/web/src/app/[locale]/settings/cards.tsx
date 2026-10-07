@@ -24,7 +24,7 @@ export function LanguageCard() {
         onChange={(e) => setLocale(e.target.value as Locale)}
         className="min-h-[44px] px-3 rounded-xl border border-slate-200 dark:border-slate-700
                    bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-200
-                   focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-red-400 cursor-pointer"
+                   focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-rink-accent cursor-pointer"
         aria-label={t('common.language')}
       >
         {SUPPORTED_LOCALES.map((l) => (
@@ -55,7 +55,7 @@ export function AccountCard() {
           <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('settings.account_synced')}</p>
         </div>
         <button onClick={logout}
-                className="text-xs font-medium text-slate-400 hover:text-red-500 transition-colors px-2 min-h-[44px]">
+                className="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-red-500 transition-colors px-2 min-h-[44px]">
           {t('settings.logout')}
         </button>
       </div>
@@ -101,6 +101,10 @@ export function FavoriteRow({ href, name, fallback, logoSrc, onRemove }: {
             <img
               src={logoSrc}
               alt={name}
+              width={32}
+              height={32}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-contain"
               onError={(e) => {
                 const el = e.currentTarget;
@@ -108,7 +112,7 @@ export function FavoriteRow({ href, name, fallback, logoSrc, onRemove }: {
                 if (el.nextElementSibling) (el.nextElementSibling as HTMLElement).style.display = 'block';
               }}
             />
-            <span style={{ display: 'none' }} className="text-[8px] font-bold text-slate-400 uppercase">
+            <span style={{ display: 'none' }} className="text-[8px] font-bold text-slate-500 dark:text-slate-400 uppercase">
               {fallback}
             </span>
           </>
@@ -124,11 +128,11 @@ export function FavoriteRow({ href, name, fallback, logoSrc, onRemove }: {
       </Link>
       <button
         onClick={onRemove}
-        className="shrink-0 p-1.5 min-h-[36px] rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        className="shrink-0 inline-flex items-center justify-center p-1.5 min-w-[44px] min-h-[44px] rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         aria-label="Dejar de seguir"
       >
         <svg viewBox="0 0 24 24" fill="currentColor" strokeWidth={2}
-             className="w-5 h-5 text-amber-400">
+             className="w-5 h-5 text-rink-passion">
           <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
         </svg>
       </button>

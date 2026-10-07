@@ -106,7 +106,7 @@ function StarIcon({ filled }: { filled: boolean }) {
       stroke="currentColor"
       strokeWidth={1.5}
       className={`w-[18px] h-[18px] transition-colors ${
-        filled ? 'text-amber-400' : 'text-slate-300 dark:text-slate-600'
+        filled ? 'text-rink-passion' : 'text-slate-300 dark:text-slate-600'
       }`}
     >
       <path
@@ -154,8 +154,11 @@ function CompetitionRow({
 }) {
   const { t } = useT();
 
-  // Avatar: bandera del país (imagen, multiplataforma) o iniciales
+  // Avatar: bandera del país (imagen, multiplataforma), globo para las
+  // competiciones del Mundo (country='W', sin bandera de un solo país) o
+  // iniciales como último recurso
   const hasFlag = !!comp.country && comp.country.length === 2;
+  const isWorld = comp.country === 'W';
   const initials = (comp.shortName ?? comp.name).slice(0, 2).toUpperCase();
 
   // Línea de metadatos
@@ -183,6 +186,8 @@ function CompetitionRow({
         >
           {hasFlag ? (
             <CountryFlag code={comp.country} className="w-full h-full object-cover" />
+          ) : isWorld ? (
+            <span className="text-base leading-none" role="img" aria-label="Mundo">🌍</span>
           ) : (
             <span className="text-[10px] font-black text-rink-passion leading-none">
               {initials}
@@ -559,7 +564,7 @@ export function CompetitionsList({
                      bg-rink-passion hover:bg-red-700 active:bg-red-900
                      text-white font-semibold text-sm
                      px-5 py-2.5 rounded-xl transition-colors
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent focus-visible:ring-offset-2"
         >
           {tt(t, 'errors.retry', 'Reintentar')}
         </button>
@@ -579,7 +584,7 @@ export function CompetitionsList({
         {/* Buscador */}
         <div className="relative mb-3">
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-               className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none">
+               className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-400 pointer-events-none">
             <circle cx="11" cy="11" r="7" />
             <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
           </svg>
@@ -592,14 +597,14 @@ export function CompetitionsList({
             className="w-full min-h-[44px] pl-9 pr-12 rounded-xl border border-slate-200 dark:border-slate-700
                        bg-slate-50 dark:bg-slate-900 text-[13px] text-slate-800 dark:text-slate-200
                        placeholder:text-slate-500 dark:placeholder:text-slate-500 dark:placeholder:text-slate-400
-                       focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-red-400 focus:bg-white dark:focus:bg-slate-900
+                       focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-rink-accent focus:bg-white dark:focus:bg-slate-900
                        transition-colors"
           />
           {query && (
             <button
               onClick={() => setQuery('')}
               className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center
-                         w-11 h-11 rounded-full text-slate-400 hover:text-slate-600
+                         w-11 h-11 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-600
                          dark:hover:text-slate-300 transition-colors"
               aria-label={tt(t, 'a11y.clear_search', 'Limpiar búsqueda')}
             >
@@ -638,7 +643,7 @@ export function CompetitionsList({
               >
                 {label}
                 {badge && (
-                  <span className="w-4 h-4 rounded-full bg-amber-600 text-slate-900 text-[10px] font-bold
+                  <span className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold
                                    flex items-center justify-center leading-none">
                     {badge}
                   </span>
@@ -670,7 +675,7 @@ export function CompetitionsList({
               <div className="flex flex-col items-center justify-center py-14 gap-3 text-center px-4">
                 <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
-                       className="w-6 h-6 text-slate-400">
+                       className="w-6 h-6 text-slate-500 dark:text-slate-400">
                     <circle cx="11" cy="11" r="7" />
                     <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
                   </svg>
@@ -711,7 +716,7 @@ export function CompetitionsList({
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
               <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
-                     className="w-6 h-6 text-slate-400">
+                     className="w-6 h-6 text-slate-500 dark:text-slate-400">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
                         strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -809,7 +814,7 @@ export function CompetitionsList({
           <nav aria-label={tt(t, 'a11y.competitions_index', 'Todas las competiciones')} className="pt-1">
             {indexGroups.international.length > 0 && (
               <div className="mb-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   {tt(t, 'competitions.international', 'Internacional')}
                 </p>
                 <ul className="flex flex-wrap gap-x-3 gap-y-0.5">
@@ -817,7 +822,7 @@ export function CompetitionsList({
                     <li key={c.id}>
                       <Link
                         href={`/competitions/${c.id}`}
-                        className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-red-400 hover:underline"
+                        className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-rink-accent hover:underline"
                       >
                         {clubName(competitionName(c.name, c.nameI18n, locale))}
                       </Link>
@@ -828,7 +833,7 @@ export function CompetitionsList({
             )}
             {indexGroups.byCountry.map(([code, comps]) => (
               <div key={code} className="mb-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   {code === 'ZZ' ? tt(t, 'competitions.unclassified', 'Sin clasificar') : countryDisplayName(code, locale)}
                 </p>
                 <ul className="flex flex-wrap gap-x-3 gap-y-0.5">
@@ -836,7 +841,7 @@ export function CompetitionsList({
                     <li key={c.id}>
                       <Link
                         href={`/competitions/${c.id}`}
-                        className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-red-400 hover:underline"
+                        className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-rink-accent hover:underline"
                       >
                         {clubName(competitionName(c.name, c.nameI18n, locale))}
                       </Link>

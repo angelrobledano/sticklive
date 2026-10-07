@@ -34,16 +34,41 @@
   .rink-empty-anim { animation: none !important; }
 }
 
-/* #364: reduce-motion global — desactiva pulsos, spinners y transiciones
-   decorativas para quien lo pide en su sistema. */
+/* Fundido sin desplazamiento para toasts/bottom sheets con reduce-motion */
+@keyframes reduceFadeIn {
+  from { opacity: 0; }
+}
+
+/* #364 / reduce-motion = menos MOVIMIENTO, no menos feedback (#437).
+   Se apagan bucles decorativos y entradas con desplazamiento, pero se
+   conservan las transiciones de color/opacidad y el pulso de gol: son
+   señales de estado, no movimiento. */
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+
+  /* Bucles de actividad e indicadores "en directo": el estado sigue
+     legible por color y etiqueta. */
+  .animate-pulse,
+  .animate-spin,
+  .animate-ping,
+  .animate-bounce {
+    animation: none !important;
+  }
+
+  /* Toasts y bottom sheets entran con fundido, sin deslizar. */
+  [class*="animate-[fadeIn"],
+  [class*="animate-[slideUp"] {
+    animation: reduceFadeIn 0.15s ease-out both !important;
+  }
+
+  /* Transiciones: se mantiene color/opacidad/sombra (feedback de estado);
+     se elimina el desplazamiento y el giro. */
   *,
   ::before,
   ::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+    transition-property: color, background-color, border-color,
+      outline-color, text-decoration-color, fill, stroke, opacity,
+      box-shadow !important;
   }
 }
 
@@ -59,7 +84,7 @@
 
 /* Pulso del marcador cuando cambia en directo ("una jugada, una vez").
    Vuelve solo al color base (sin fill-mode): no deja el marcador teñido.
-   reduce-motion lo neutraliza con la regla global de arriba. */
+   reduce-motion lo conserva: es una señal de color, no movimiento. */
 @keyframes scoreFlash {
   0%, 45% { color: var(--flash-accent); }
 }
@@ -96,6 +121,20 @@
     @apply bg-slate-50 text-slate-900 dark:bg-[#0b1220] dark:text-slate-50;
     /* Scroll suave, sin rebote en iOS */
     -webkit-overflow-scrolling: touch;
+    /* Cursor de texto con la identidad, no el del sistema */
+    caret-color: theme('colors.red.800');
+  }
+
+  .dark {
+    caret-color: theme('colors.red.400');
+  }
+
+  /* Selección de texto con la identidad, no con el azul del navegador */
+  ::selection {
+    background-color: rgb(153 27 27 / 0.20);
+  }
+  .dark ::selection {
+    background-color: rgb(248 113 113 / 0.30);
   }
 
   /* Dark premium: leve degradado de profundidad en lugar de negro plano */
@@ -142,25 +181,7 @@
     @apply bg-rink-passion text-white rounded-lg px-4 py-2 text-sm font-semibold
            hover:bg-rink-passion-light active:bg-rink-passion-dark
            transition-colors duration-150 focus-visible:outline-none
-           focus-visible:ring-2 focus-visible:ring-rink-passion-dark;
-  }
-
-  /* Badge de estado de partido */
-  .badge-live {
-    @apply inline-flex items-center gap-1 bg-red-600 text-white text-xs font-bold
-           px-2 py-0.5 rounded-full uppercase tracking-wide;
-  }
-
-  .badge-scheduled {
-    @apply inline-flex items-center bg-slate-200 dark:bg-slate-700
-           text-slate-600 dark:text-slate-300 text-xs font-medium
-           px-2 py-0.5 rounded-full;
-  }
-
-  .badge-finished {
-    @apply inline-flex items-center bg-slate-100 dark:bg-slate-800
-           text-slate-500 dark:text-slate-400 text-xs
-           px-2 py-0.5 rounded-full;
+           focus-visible:ring-2 focus-visible:ring-rink-passion-dark dark:focus-visible:ring-rink-accent;
   }
 }
 

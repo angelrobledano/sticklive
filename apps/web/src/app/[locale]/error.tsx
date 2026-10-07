@@ -95,8 +95,8 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm px-6 py-5 max-w-sm w-full space-y-3">
         {/* Badge de árbitro */}
         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full
-                        bg-amber-50 dark:bg-amber-900/20
-                        text-amber-700 dark:text-amber-400
+                        bg-rose-50 dark:bg-rose-900/20
+                        text-rose-700 dark:text-rose-400
                         text-xs font-semibold tracking-wide">
           <WhistleIcon />
           <span>{tt(t, 'errors.boundary_badge', 'PARTIDO DETENIDO')}</span>
@@ -117,7 +117,7 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
                          rounded-lg px-3 py-2 text-left break-all">
             {error.message}
             {error.digest && (
-              <span className="block mt-1 text-slate-400 dark:text-slate-600">
+              <span className="block mt-1 text-slate-500 dark:text-slate-400">
                 digest: {error.digest}
               </span>
             )}
@@ -133,7 +133,7 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
                    text-white font-semibold text-sm
                    px-5 py-2.5 rounded-xl
                    transition-colors duration-150
-                   focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+                   focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent focus-visible:ring-offset-2"
       >
         <RefreshIcon />
         {tt(t, 'errors.retry', 'Reintentar')}

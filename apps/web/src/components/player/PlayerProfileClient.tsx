@@ -132,7 +132,7 @@ function PlayerHeader({ data }: { data: PlayerDetail }) {
             <p className="text-sm text-slate-500 dark:text-slate-400">
               <CountryFlag code={player.nationality} className="inline-block w-4 h-auto rounded-[2px] mr-1.5 align-[-1px]" />
               {fmtDate(player.birthDate, locale)}
-              {age != null && <span className="ml-2 text-slate-300 dark:text-slate-600">({t('player.years_old', { n: age })})</span>}
+              {age != null && <span className="ml-2 text-slate-500 dark:text-slate-400">({t('player.years_old', { n: age })})</span>}
             </p>
           )}
           {!player.birthDate && player.nationality && (
@@ -153,9 +153,9 @@ function PlayerHeader({ data }: { data: PlayerDetail }) {
           <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700">
             {currentTeam.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={currentTeam.logoUrl} alt={currentTeam.name} className="w-full h-full object-contain" />
+              <img src={currentTeam.logoUrl} alt={currentTeam.name} width={32} height={32} decoding="async" className="w-full h-full object-contain" />
             ) : (
-              <span className="text-[8px] font-bold text-slate-400 uppercase">
+              <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400 uppercase">
                 {(currentTeam.shortName ?? currentTeam.name).slice(0, 2)}
               </span>
             )}
@@ -202,7 +202,7 @@ function StatsGrid({ data }: { data: PlayerDetail }) {
   if (!hasAnyData) {
     return (
       <div className="card p-6 text-center opacity-60">
-        <p className="text-sm text-slate-400 dark:text-slate-600">{t('player.no_season_stats')}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t('player.no_season_stats')}</p>
       </div>
     );
   }
@@ -246,9 +246,9 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
 
   if (rows.length === 0) {
     return (
-      <div className="card p-6 text-center opacity-60">
-        <p className="text-sm text-slate-400 dark:text-slate-600">{t('player.no_comp_records')}</p>
-        <p className="text-xs text-slate-300 dark:text-slate-700 mt-1">{t('player.comp_records_hint')}</p>
+      <div className="card p-6 text-center">
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t('player.no_comp_records')}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('player.comp_records_hint')}</p>
       </div>
     );
   }
@@ -292,7 +292,7 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
                   {r.competitionShort ?? r.competitionName}
                 </p>
                 {r.competitionShort && (
-                  <p className="text-[10px] text-slate-400 dark:text-slate-600 truncate">{r.competitionName}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{r.competitionName}</p>
                 )}
               </div>
 
@@ -301,7 +301,7 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
 
               {/* G */}
               <span className={`font-mono text-xs text-center tabular-nums font-bold ${
-                r.goals > 0 ? 'text-rink-passion' : 'text-slate-400 dark:text-slate-600'
+                r.goals > 0 ? 'text-rink-passion' : 'text-slate-500 dark:text-slate-400'
               }`}>
                 {r.goals > 0 ? r.goals : '—'}
               </span>
@@ -311,14 +311,14 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
 
               {/* Az */}
               <span className={`font-mono text-xs text-center tabular-nums font-semibold ${
-                r.blueCards > 0 ? 'text-blue-500 dark:text-blue-400' : 'text-slate-400 dark:text-slate-600'
+                r.blueCards > 0 ? 'text-blue-500 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'
               }`}>
                 {r.blueCards > 0 ? r.blueCards : '—'}
               </span>
 
               {/* Rj */}
               <span className={`font-mono text-xs text-center tabular-nums font-semibold ${
-                r.redCards > 0 ? 'text-red-500 dark:text-red-400' : 'text-slate-400 dark:text-slate-600'
+                r.redCards > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'
               }`}>
                 {r.redCards > 0 ? r.redCards : '—'}
               </span>
@@ -328,7 +328,7 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
 
               {/* PE */}
               <span className={`font-mono text-xs text-center tabular-nums ${
-                r.penaltiesTotal > 0 ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-slate-300 dark:text-slate-700'
+                r.penaltiesTotal > 0 ? 'text-slate-700 dark:text-slate-300 font-semibold' : 'text-slate-300 dark:text-slate-700'
               }`}>
                 {penStr}
               </span>
@@ -339,7 +339,7 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
 
       {/* Nota sobre columnas pendientes */}
       <div className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-        <p className="text-[10px] text-slate-300 dark:text-slate-700">
+        <p className="text-[10px] text-slate-500 dark:text-slate-400">
           {t('player.pending_note')}
         </p>
       </div>
@@ -354,9 +354,9 @@ function TeamCrest({ logoUrl, name }: { logoUrl: string | null; name: string }) 
     <div className="w-6 h-6 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700">
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl} alt={name} className="w-full h-full object-contain" />
+        <img src={logoUrl} alt={name} width={24} height={24} loading="lazy" decoding="async" className="w-full h-full object-contain" />
       ) : (
-        <span className="text-[7px] font-bold text-slate-400 uppercase">{name.slice(0, 2)}</span>
+        <span className="text-[7px] font-bold text-slate-500 dark:text-slate-400 uppercase">{name.slice(0, 2)}</span>
       )}
     </div>
   );
@@ -390,7 +390,7 @@ function CareerSection({ career }: { career: PlayerCareer }) {
 
             <Link
               href={`/competitions/${season.competitionId}?season=${season.seasonId}`}
-              className="inline-block max-w-full truncate text-[10px] font-semibold text-slate-400 dark:text-slate-500 hover:text-rink-passion dark:hover:text-rink-passion"
+              className="inline-block max-w-full truncate text-[10px] font-semibold text-slate-500 dark:text-slate-400 hover:text-rink-passion dark:hover:text-rink-passion"
             >
               {season.competitionShort ?? season.competitionName}
             </Link>

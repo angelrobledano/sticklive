@@ -44,7 +44,7 @@ function PenaltyShootout({ shootout, homeName, awayName }: {
   const Kick = ({ k, right }: { k: { player: string; scored: boolean }; right?: boolean }) => (
     <li className={`flex items-center gap-1.5 text-xs ${right ? 'flex-row-reverse text-right' : ''}`}>
       <span className={`shrink-0 w-4 h-4 inline-flex items-center justify-center rounded-full text-[10px] font-bold ${
-        k.scored ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
+        k.scored ? 'bg-emerald-700 text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
       }`}>
         {k.scored ? '✓' : '✗'}
       </span>
@@ -269,7 +269,7 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
                     ? 'text-rose-500'
                     : freshness.state === 'stale'
                       ? 'text-amber-500'
-                      : 'text-slate-400 dark:text-slate-500'
+                      : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
                 · {t(freshness.labelKey, { s: freshness.ageSeconds })}

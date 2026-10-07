@@ -38,8 +38,8 @@ function blend(fg: string, bg: string, alpha: number): string {
 }
 
 describe('contraste de badges y texto pequeño (#360)', () => {
-  it('badge "Mis Ligas": slate-900 sobre amber-600 ≥ 4,5:1', () => {
-    expect(contrast(colors.slate[900], colors.amber[600])).toBeGreaterThanOrEqual(4.5);
+  it('badge "Mis Ligas": slate-600 sobre slate-200 ≥ 4,5:1', () => {
+    expect(contrast(colors.slate[600], colors.slate[200])).toBeGreaterThanOrEqual(4.5);
   });
 
   it('texto atenuado: slate-500 sobre blanco ≥ 4,5:1', () => {

@@ -66,10 +66,10 @@ describe('selectGradaMatches — próximos y últimos de los seguidos', () => {
     expect(out.results.map((m) => m.id)).toEqual(['r2', 'r1']);
   });
 
-  it('cuenta un partido en juego como próximo aunque su día sea hoy', () => {
+  it('no cuenta un partido en juego como próximo (vive en la banda/tira)', () => {
     const matches = [match({ id: 'live', status: 'live', scheduledAt: '2026-06-20T18:00:00Z', competitionId: 'L1' })];
     const out = selectGradaMatches(matches, { teamIds: [], leagueIds: ['L1'], todayKey: TODAY });
-    expect(out.upcoming.map((m) => m.id)).toEqual(['live']);
+    expect(out.upcoming.map((m) => m.id)).toEqual([]);
   });
 
   it('excluye un partido scheduled de un día ya pasado (no es un próximo real)', () => {

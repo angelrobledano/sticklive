@@ -6,9 +6,10 @@
  *   • Anuncios apagados por defecto: sin `NEXT_PUBLIC_ADSENSE_CLIENT` no se
  *     renderiza nada (el placeholder solo aparece si `NEXT_PUBLIC_PREMIUM_ENABLED=1`).
  *   • Usuario Premium  → retorna null inmediatamente. Cero DOM, cero layout shift.
- *   • Usuario Free + AdSense configurado + consentimiento → `<ins>` real de
- *     AdSense, con etiqueta "PUBLICIDAD" (cumplimiento IAB/CNMC) y altura
- *     reservada para evitar CLS.
+ *   • Usuario Free + AdSense configurado → `<ins>` real de AdSense, con etiqueta
+ *     "PUBLICIDAD" (cumplimiento IAB/CNMC) y altura reservada para evitar CLS.
+ *     El consentimiento publicitario lo gobierna el CMP de Google (TCF) dentro
+ *     del propio tag (ver docs/monetizacion.md §4).
  *   • Durante hydratación (mounted=false) → retorna null para evitar mismatch.
  *
  * Zonas: home-top, home-inline, list-inline, match-summary, match-stats,
@@ -22,7 +23,6 @@ import {
   adsEnabled,
   adsenseConfig,
   loadAdsenseScript,
-  useAdConsent,
   type AdZone,
 } from '@/lib/ads';
 
@@ -127,7 +127,7 @@ function AdLabel({ label }: { label: string }) {
   return (
     <span
       className="absolute top-0.5 right-1.5 z-10
-                 text-[8px] font-semibold tracking-widest uppercase
+                 text-[9px] font-semibold tracking-widest uppercase
                  text-slate-300 dark:text-zinc-600
                  select-none pointer-events-none"
       aria-hidden="true"
@@ -245,16 +245,16 @@ function AdPlaceholder({ zone, className = '' }: AdBannerProps) {
 
 export function AdBanner({ zone, className = '' }: AdBannerProps) {
   const { isPremium, mounted } = usePremium();
-  const consentGranted = useAdConsent();
 
   const slot = ADS.slots[zone];
 
   // Durante SSR/hidratación y para usuarios Premium: sin DOM.
   if (!mounted || isPremium) return null;
 
-  // AdSense configurado: anuncio real solo con slot, consentimiento y sin premium.
+  // AdSense configurado: anuncio real solo con slot y sin premium. El
+  // consentimiento publicitario lo aplica el CMP de Google dentro del tag.
   if (ADS.client) {
-    if (slot && adsEnabled({ client: ADS.client, premium: isPremium, consentGranted })) {
+    if (slot && adsEnabled({ client: ADS.client, premium: isPremium })) {
       return <AdsenseUnit zone={zone} client={ADS.client} slot={slot} className={className} />;
     }
     return null;

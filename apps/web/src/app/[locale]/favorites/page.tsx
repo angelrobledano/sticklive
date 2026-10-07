@@ -159,7 +159,7 @@ function FavoritesInner() {
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4 pb-28">
       {onboarding ? (
         <Link href="/" onClick={() => track('onboarding_completed', { skipped: true, favorites_selected: favCount() })}
-              className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-rink-passion transition-colors">
+              className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-rink-passion transition-colors">
           {t('favorites.onboarding_skip')}
         </Link>
       ) : (
@@ -183,14 +183,14 @@ function FavoritesInner() {
           placeholder={t('favorites.search_placeholder')}
           className="w-full min-h-[48px] px-4 pr-12 rounded-xl border border-slate-200 dark:border-slate-700
                      bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
-                     placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-red-400"
+                     placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-rink-accent"
         />
         {query && (
           <button
             type="button"
             onClick={() => setQuery('')}
             className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center
-                       w-11 h-11 rounded-full text-slate-400 hover:text-slate-600
+                       w-11 h-11 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-600
                        dark:hover:text-slate-300 transition-colors"
             aria-label={tt(t, 'a11y.clear_search', 'Limpiar búsqueda')}
           >
@@ -225,7 +225,7 @@ function FavoritesInner() {
             className="mt-1 inline-flex items-center justify-center gap-1.5 px-5 min-h-[44px] rounded-xl
                        text-[13px] font-semibold bg-rink-passion text-white
                        hover:bg-rink-passion/90 transition-colors
-                       focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent focus-visible:ring-offset-2"
           >
             {tt(t, 'errors.retry', 'Reintentar')}
           </button>
@@ -234,7 +234,7 @@ function FavoritesInner() {
         <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-4">
           <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
-                 className="w-6 h-6 text-slate-400" aria-hidden="true">
+                 className="w-6 h-6 text-slate-500 dark:text-slate-400" aria-hidden="true">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
                     strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -279,7 +279,7 @@ function FavoritesInner() {
           )}
 
           {noMatches && query.trim().length > 0 && (
-            <p className="py-8 text-center text-sm text-slate-400 dark:text-slate-600">
+            <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
               {tt(t, 'favorites.no_results', 'Nada que coincida con «{q}»', { q: query })}
             </p>
           )}

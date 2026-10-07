@@ -94,7 +94,7 @@ function TeamBlock({
         // al partido, así la tarjeta conserva su comportamiento previo.
         <Link
           href={target.href}
-          className={`${row} pointer-events-auto rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion`}
+          className={`${row} pointer-events-auto rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent`}
         >
           {content}
         </Link>
@@ -148,11 +148,11 @@ function ScoreBlock({ match }: { match: Match }) {
           {score.away ?? 0}
         </span>
         {isHalftime ? (
-          <span className="inline-flex items-center gap-1 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+          <span className="inline-flex items-center gap-1 bg-amber-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
             {t('match_states.half_time')}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+          <span className="inline-flex items-center gap-1 bg-emerald-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" aria-hidden="true" />
             {t('match_states.in_play')}
           </span>
@@ -233,7 +233,7 @@ export function MatchCard({ match, isFavoriteTeam = false }: MatchCardProps) {
       <Link
         href={`/matches/${match.id}`}
         aria-label={tt(t, 'a11y.view_match', 'Ver partido: {home} - {away}', { home: homeName, away: awayName })}
-        className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion"
+        className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent"
       />
       <div className="pointer-events-none relative z-10 flex w-full items-center gap-2">
         <TeamBlock team={match.homeTeam} align="left" />

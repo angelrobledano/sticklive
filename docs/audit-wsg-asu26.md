@@ -131,3 +131,25 @@ la ventana por `seasons.end_date` (+3 días de margen) las dormirá tras el
 - Horas: 13:15 Asunción → 17:15Z (UTC-4 permanente, America/Asuncion).
 - Clasificación contrastada con la fuente (p. ej. Francia F: GF=0, GA=14 = 0-8 ESP + 0-6 ARG).
 - UI local: sección "🌍 Mundo" en el índice; ficha de competición con pestañas Clasificación/Jornadas/Playoffs; una tabla por grupo; chips "GRUPO A/B" en jornadas; cuadro con fases "POR DETERMINAR"; ficha de partido correcta.
+
+## H. Incidencias en producción (post-deploy, 6-7 oct 2026)
+
+1. **Plantillas incompletas** — 5 partidos jugados el 6/10 quedaron sin acta: el
+   barrido `fichas-pendientes` filtraba `fep_match_%` y las ediciones World
+   Skate no entraban en el modo multi. **Fix** (`d714328`): el barrido es
+   multi-fuente vía `resolveMatchSourceIds` (core/sources.ts) y añade las
+   ediciones World Skate en ventana. Tras el barrido: Femenino 14/14 y
+   Sub-19 10/10 partidos jugados con plantilla.
+2. **Escudos/banderas rotos** — el scraper construía las URLs de las
+   clasificaciones con `LOGO_BASE = www.sidgad.com`, dominio que da 404 para
+   los ficheros ASU26 (solo existen en `sidgad.cloud`). El standings loader
+   reescribía `teams.logo_url` en cada scrape y `download-logos` fallaba 23
+   veces. **Fix** (`769c7a0`): constante al CDN válido + migración 070
+   (`data_sources.logo_base`) + re-seed. Resultado: 23 descargas ok / 0 fallos,
+   los 36 endpoints `/teams/:id/logo` de las selecciones responden 200.
+3. **Fotos de jugadoras internacionales** — `update-player-photos` sondea el
+   CDN de la FEP con el id FEP; las internacionales que no compiten en la FEP
+   no tienen foto posible hoy (acta sin imgs, CDN worldskate 404 en todas las
+   rutas probadas, sin endpoint de perfil). Las que también juegan ligas FEP
+   sí obtienen foto. Queda abierta a que World Skate publique un patrón de
+   fotos — el cambio sería añadir candidatos en `player-photo-url.ts`.

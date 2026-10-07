@@ -9,23 +9,22 @@ import {
 } from './ads';
 
 describe('adsEnabled', () => {
-  it('solo habilita anuncios con cliente, sin premium y con consentimiento', () => {
-    expect(adsEnabled({ client: 'ca-pub-123', premium: false, consentGranted: true })).toBe(true);
+  // El consentimiento publicitario lo gobierna el CMP de Google (TCF) a través
+  // del propio tag de AdSense; por eso `adsEnabled` NO depende del
+  // consentimiento de analítica (ver docs/monetizacion.md §4).
+  it('habilita anuncios con cliente configurado y sin premium', () => {
+    expect(adsEnabled({ client: 'ca-pub-123', premium: false })).toBe(true);
   });
 
   it('nunca habilita para Premium', () => {
-    expect(adsEnabled({ client: 'ca-pub-123', premium: true, consentGranted: true })).toBe(false);
-  });
-
-  it('nunca habilita sin consentimiento', () => {
-    expect(adsEnabled({ client: 'ca-pub-123', premium: false, consentGranted: false })).toBe(false);
+    expect(adsEnabled({ client: 'ca-pub-123', premium: true })).toBe(false);
   });
 
   it('requiere un cliente configurado (no vacío)', () => {
-    expect(adsEnabled({ client: '', premium: false, consentGranted: true })).toBe(false);
-    expect(adsEnabled({ client: '   ', premium: false, consentGranted: true })).toBe(false);
-    expect(adsEnabled({ client: undefined, premium: false, consentGranted: true })).toBe(false);
-    expect(adsEnabled({ client: null, premium: false, consentGranted: true })).toBe(false);
+    expect(adsEnabled({ client: '', premium: false })).toBe(false);
+    expect(adsEnabled({ client: '   ', premium: false })).toBe(false);
+    expect(adsEnabled({ client: undefined, premium: false })).toBe(false);
+    expect(adsEnabled({ client: null, premium: false })).toBe(false);
   });
 });
 
@@ -58,7 +57,6 @@ describe('shouldShowInterstitial', () => {
   const base = {
     enabled: true,
     premium: false,
-    consentGranted: true,
     alreadyShownThisSession: false,
     lastShownAt: null as number | null,
     nowMs: 10_000_000,
@@ -68,10 +66,9 @@ describe('shouldShowInterstitial', () => {
     expect(shouldShowInterstitial(base)).toBe(true);
   });
 
-  it('no muestra si está desactivado, es Premium o falta consentimiento', () => {
+  it('no muestra si está desactivado o es Premium', () => {
     expect(shouldShowInterstitial({ ...base, enabled: false })).toBe(false);
     expect(shouldShowInterstitial({ ...base, premium: true })).toBe(false);
-    expect(shouldShowInterstitial({ ...base, consentGranted: false })).toBe(false);
   });
 
   it('limita a uno por sesión', () => {

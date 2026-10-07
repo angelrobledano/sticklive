@@ -42,13 +42,11 @@ function timeOf(m: Match): number {
 
 /**
  * ¿Es un partido "próximo" de la grada?
- *  - `live` siempre (se está jugando ahora).
  *  - `scheduled`/`postponed` si su día (Madrid) es hoy o posterior.
- *  - `finished` y `cancelled` nunca.
+ *  - `live`, `finished` y `cancelled` nunca: los directos viven en la banda/tira.
  */
 export function isUpcomingMatch(m: Match, todayKey: string): boolean {
-  if (m.status === 'finished' || m.status === 'cancelled') return false;
-  if (m.status === 'live') return true;
+  if (m.status === 'finished' || m.status === 'cancelled' || m.status === 'live') return false;
   const day = madridDateKey(m.scheduledAt ?? m.startedAt);
   // Sin fecha no lo mostramos como próximo (no sabemos cuándo es).
   if (!day) return false;

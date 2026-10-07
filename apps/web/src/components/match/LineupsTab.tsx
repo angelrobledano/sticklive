@@ -17,7 +17,7 @@ import { tt } from '@/components/search/translate';
 const BADGE_BASE = 'inline-flex items-center justify-center h-5 min-w-[22px] px-1.5 rounded text-[11px] font-bold leading-none';
 const BADGE_STYLES = {
   '5i': 'bg-rink-passion text-white',
-  'C':  'bg-amber-500 text-white',
+  'C':  'bg-slate-700 text-white',
   'P':  'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
 } as const;
 
@@ -73,8 +73,8 @@ function RinkChip({ p, accent }: { p: RinkPlayer; accent: boolean }) {
           {p.jerseyNumber ?? '–'}
         </span>
         {p.isCaptain && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white
-                           text-[8px] font-bold flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-700 text-white
+                           text-[9px] font-bold flex items-center justify-center">
             {tt(t, 'match_detail.badge_captain', 'C')}
           </span>
         )}
@@ -221,7 +221,7 @@ function StartingFiveRink({ home, away, homeName, awayName, matchId }: {
             disabled={sharing}
             aria-label={t('match_detail.share_lineup')}
             className="w-8 h-8 -my-1.5 rounded-full flex items-center justify-center
-                       text-slate-400 hover:text-rink-passion hover:bg-slate-100 dark:hover:bg-slate-800
+                       text-slate-500 dark:text-slate-400 hover:text-rink-passion hover:bg-slate-100 dark:hover:bg-slate-800
                        transition-colors disabled:opacity-40"
           >
             {sharing ? (
@@ -309,7 +309,7 @@ export function LineupsTab({ data }: { data: MatchDetail }) {
           <div className="flex items-center gap-2 mb-4">
             <TeamShield teamId={team.id} teamName={team.name} size={24} />
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{team.name}</h3>
-            <span className="ml-auto text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-wider">{label}</span>
+            <span className="ml-auto text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</span>
           </div>
 
           {/* Leyenda de badges */}
@@ -321,16 +321,16 @@ export function LineupsTab({ data }: { data: MatchDetail }) {
             ].map(({ code, badge, label: bl, color }) => (
               <div key={code} className="flex items-center gap-1">
                 <span className={`${BADGE_BASE} ${color}`}>{badge}</span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-600">{bl}</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">{bl}</span>
               </div>
             ))}
             <div className="flex items-center gap-1">
               <BallIcon size={9} />
-              <span className="text-[10px] text-slate-400 dark:text-slate-600">{t('hockey_stats.goals')}</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('hockey_stats.goals')}</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="text-[10px]">🅰</span>
-              <span className="text-[10px] text-slate-400 dark:text-slate-600">{t('hockey_stats.assists')}</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('hockey_stats.assists')}</span>
             </div>
           </div>
 

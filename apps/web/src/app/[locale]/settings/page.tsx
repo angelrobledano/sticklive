@@ -236,7 +236,7 @@ export default function SettingsPage() {
               className="self-start inline-flex items-center justify-center gap-1.5 px-4 min-h-[44px] rounded-xl
                          text-[13px] font-semibold bg-rink-passion text-white
                          hover:bg-rink-passion/90 transition-colors
-                         focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+                         focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent focus-visible:ring-offset-2"
             >
               {tt(t, 'errors.retry', 'Reintentar')}
             </button>
@@ -260,7 +260,7 @@ export default function SettingsPage() {
               />
             ))}
             <div className="py-2.5">
-              <p className="text-[11px] text-slate-300 dark:text-slate-700">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 {t('settings.fav_note', { n: myTeams.length })}
               </p>
             </div>
@@ -369,8 +369,8 @@ export default function SettingsPage() {
 
       {/* Pie */}
       <div className="text-center pb-4 space-y-1">
-        <p className="text-[11px] text-slate-300 dark:text-slate-700">{t('settings.footer')}</p>
-        <Link href="/privacy" className="inline-block text-[11px] text-slate-400 dark:text-slate-600 underline hover:text-rink-passion">
+        <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('settings.footer')}</p>
+        <Link href="/privacy" className="inline-block text-[11px] text-slate-500 dark:text-slate-400 underline hover:text-rink-passion">
           {t('settings.privacy_link')}
         </Link>
       </div>

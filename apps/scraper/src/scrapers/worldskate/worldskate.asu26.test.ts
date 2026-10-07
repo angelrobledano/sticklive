@@ -152,6 +152,9 @@ describe('parseWorldskateCalendar (estructura WSG ASU26)', () => {
     expect(espana?.groupName).toBe('A');
     expect(espana?.points).toBe(6);
     expect(espana?.played).toBe(2);
+    // La URL del escudo usa el CDN VÁLIDO (www.sidgad.com da 404 para los
+    // ficheros ASU26 y el standings loader la escribe en teams.logo_url).
+    expect(espana?.logoUrl).toBe('https://sidgad.cloud/worldskate/images/logos_clubes/8_2.png');
     const chile = out.standings.find((s) => s.teamRef === 'wse_1131');
     expect(chile?.groupName).toBe('B');
   });

@@ -21,6 +21,11 @@ const config: Config = {
           light:   colors.red[700],   // #b91c1c  (hover, botones secundarios)
           dark:    colors.red[900],   // #7f1d1d  (active, focus ring)
         },
+        // Acento de marca sobre superficie OSCURA (#364): red.800 se queda en
+        // ~2,1:1 sobre el fondo azul-noche, así que texto activo, iconos de
+        // identidad y anillos de foco suben a red.400 (≥3:1). Identidad, no
+        // color semántico de tarjeta/error (ese usa red directo).
+        'rink-accent': colors.red[400], // #f87171
         // Parqué claro — fondo principal en modo claro
         'rink-floor': {
           DEFAULT: colors.slate[50],  // #f8fafc

@@ -43,7 +43,8 @@ export default async function SearchPage({
     try {
       results = await searchAll(query);
     } catch (err) {
-      error = err instanceof Error ? err.message : 'API error';
+      console.error('[search] searchAll falló:', err);
+      error = 'search_failed';
     }
   }
 

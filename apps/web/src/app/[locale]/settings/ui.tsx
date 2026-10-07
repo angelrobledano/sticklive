@@ -26,7 +26,7 @@ export function Toggle({
       disabled={disabled}
       onClick={onChange}
       className={`relative w-12 h-7 rounded-full shrink-0 transition-all duration-200 ease-out
-                  focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion/60 focus-visible:ring-offset-2
+                  focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion/60 dark:focus-visible:ring-rink-accent/60 focus-visible:ring-offset-2
                   dark:focus-visible:ring-offset-slate-900 ${
         disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
       } ${

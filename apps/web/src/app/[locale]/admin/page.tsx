@@ -144,9 +144,9 @@ export default function AdminPage() {
             autoFocus
             className="w-full min-h-[44px] px-3 rounded-xl border border-slate-200 dark:border-slate-700
                        bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
-                       focus:outline-none focus:ring-2 focus:ring-rink-passion"
+                       focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-rink-accent"
           />
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
           <button type="submit" disabled={loading || !input.trim()} className="btn-primary w-full min-h-[44px] disabled:opacity-50">
             {loading ? 'Comprobando…' : 'Entrar'}
           </button>
@@ -164,7 +164,7 @@ export default function AdminPage() {
         </h1>
         <button
           onClick={() => { setData(null); setToken(''); try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* noop */ } }}
-          className="text-xs text-slate-400 hover:text-red-500 min-h-[44px] px-2"
+          className="text-xs text-slate-500 dark:text-slate-400 hover:text-red-500 min-h-[44px] px-2"
         >
           Cerrar sesión admin
         </button>
@@ -175,7 +175,7 @@ export default function AdminPage() {
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`text-xs font-semibold px-3 min-h-[36px] rounded-lg ${
+            className={`text-xs font-semibold px-3 min-h-[44px] rounded-lg ${
               tab === key
                 ? 'bg-rink-passion text-white'
                 : 'text-slate-500 hover:text-rink-passion'
@@ -186,7 +186,7 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
 
       {tab === 'users' && (
         <>
@@ -217,9 +217,9 @@ export default function AdminPage() {
               <tr key={u.id} className={u.status === 'disabled' ? 'opacity-50' : ''}>
                 <td className="px-4 py-2.5">
                   <p className="font-medium text-slate-800 dark:text-slate-200 truncate max-w-[220px]">
-                    {u.email ?? <span className="italic text-slate-400">anónimo</span>}
+                    {u.email ?? <span className="italic text-slate-500 dark:text-slate-400">anónimo</span>}
                   </p>
-                  <p className="text-[10px] font-mono text-slate-400 dark:text-slate-600 truncate max-w-[220px]">{u.deviceId}</p>
+                  <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate max-w-[220px]">{u.deviceId}</p>
                 </td>
                 <td className="text-center px-2 py-2.5 tabular-nums text-slate-600 dark:text-slate-400">{u.favorites}</td>
                 <td className="text-center px-2 py-2.5">
@@ -229,7 +229,7 @@ export default function AdminPage() {
                   <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                     u.status === 'active'
                       ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-                      : 'bg-red-50 dark:bg-red-900/20 text-red-500'
+                      : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
                   }`}>
                     {u.status === 'active' ? 'Activo' : 'Bloqueado'}
                   </span>
@@ -239,14 +239,14 @@ export default function AdminPage() {
                   <button
                     onClick={() => setStatus(u.id, u.status === 'active' ? 'disabled' : 'active')}
                     disabled={busy === u.id}
-                    className="text-xs font-semibold text-slate-500 hover:text-rink-passion px-2 min-h-[36px] disabled:opacity-40"
+                    className="text-xs font-semibold text-slate-500 hover:text-rink-passion px-2 min-h-[44px] disabled:opacity-40"
                   >
                     {u.status === 'active' ? 'Bloquear' : 'Reactivar'}
                   </button>
                   <button
                     onClick={() => remove(u.id)}
                     disabled={busy === u.id}
-                    className="text-xs font-semibold text-slate-400 hover:text-red-500 px-2 min-h-[36px] disabled:opacity-40"
+                    className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-red-500 px-2 min-h-[44px] disabled:opacity-40"
                   >
                     Borrar
                   </button>
@@ -254,7 +254,7 @@ export default function AdminPage() {
               </tr>
             ))}
             {data.users.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">Sin usuarios todavía</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">Sin usuarios todavía</td></tr>
             )}
           </tbody>
         </table>

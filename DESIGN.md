@@ -5,6 +5,7 @@ colors:
   rink-passion: "#991b1b"
   rink-passion-light: "#b91c1c"
   rink-passion-dark: "#7f1d1d"
+  rink-accent: "#f87171"
   surface-bg: "#f8fafc"
   surface-card: "#ffffff"
   surface-bg-dark: "#0b1220"
@@ -17,6 +18,8 @@ colors:
   border-dark: "#1e293b"
   live: "#10b981"
   halftime: "#f59e0b"
+  live-deep: "#047857"
+  halftime-deep: "#b45309"
   premium-gold: "#fbbf24"
   relegation: "#f97316"
   card-blue: "#3b82f6"
@@ -39,12 +42,36 @@ typography:
     fontWeight: 400
     lineHeight: 1.4
     letterSpacing: "normal"
+  body-sm:
+    fontFamily: "var(--font-inter), system-ui, sans-serif"
+    fontSize: "0.8125rem"
+    fontWeight: 500
+    lineHeight: 1.35
+    letterSpacing: "normal"
+  body-xs:
+    fontFamily: "var(--font-inter), system-ui, sans-serif"
+    fontSize: "0.75rem"
+    fontWeight: 500
+    lineHeight: 1.35
+    letterSpacing: "normal"
   label:
     fontFamily: "var(--font-inter), system-ui, sans-serif"
     fontSize: "0.6875rem"
     fontWeight: 700
     lineHeight: 1
     letterSpacing: "0.1em"
+  label-sm:
+    fontFamily: "var(--font-inter), system-ui, sans-serif"
+    fontSize: "0.625rem"
+    fontWeight: 700
+    lineHeight: 1
+    letterSpacing: "0.08em"
+  label-xs:
+    fontFamily: "var(--font-inter), system-ui, sans-serif"
+    fontSize: "0.5625rem"
+    fontWeight: 700
+    lineHeight: 1
+    letterSpacing: "0.08em"
 rounded:
   md: "8px"
   lg: "12px"
@@ -71,12 +98,12 @@ components:
     backgroundColor: "{colors.surface-card}"
     rounded: "{rounded.lg}"
   badge-live:
-    backgroundColor: "{colors.live}"
+    backgroundColor: "{colors.live-deep}"
     textColor: "{colors.text-inverse}"
     rounded: "{rounded.full}"
     padding: "2px 8px"
   badge-halftime:
-    backgroundColor: "{colors.halftime}"
+    backgroundColor: "{colors.halftime-deep}"
     textColor: "{colors.text-inverse}"
     rounded: "{rounded.full}"
     padding: "2px 8px"
@@ -107,6 +134,7 @@ Paleta sobria de grises azulados (slate) sobre la que el granate de identidad y 
 
 ### Primary
 - **Rink Passion / Granate de Pista** (#991b1b): la identidad del hockey sobre patines. Logotipo, sección activa de navegación, anillo de resaltado del equipo favorito, borde de zona de playoff, botón de acción. Hover sube a **Rink Passion Light** (#b91c1c), active baja a **Rink Passion Dark** (#7f1d1d), que también es el anillo de foco.
+- **Rink Accent / Acento en oscuro** (#f87171): el granate cuando el lienzo es oscuro. Sobre el azul-noche, Rink Passion se queda en ~2,1:1, así que el texto activo, los iconos de identidad y los anillos de foco (`dark:text-rink-accent`, `dark:ring-rink-accent`) suben a este paso para superar 3:1. Es identidad, no color semántico: el rojo de tarjeta/error/negativo es otro y no se toca.
 
 ### Secondary (estado en directo)
 - **Live / Esmeralda** (#10b981): único color de "en juego". Punto pulsante y etiqueta de directo en la ficha y en la tarjeta; también el diferencial de goles positivo y los penaltis marcados.
@@ -139,7 +167,9 @@ Paleta sobria de grises azulados (slate) sobre la que el granate de identidad y 
 - **Score** (mono, 700, hasta 3rem, `tracking-tighter`, `tabular-nums`): marcador principal en la ficha de partido. En tarjeta de lista baja a ~1.5rem.
 - **Display** (Inter, 700, ~1.125rem): marca "Stick Live", nombres de equipo en la ficha, títulos de bloque.
 - **Body** (Inter, 400–500, 0.875rem): texto general, nombres de equipo en listas, filas de ajuste.
-- **Label** (Inter, 700, 0.6875rem y menores —hasta 9px—, MAYÚSCULAS, `tracking-wide`/`tracking-widest`): encabezados de sección, cabeceras de tabla, badges de estado, metadatos.
+- **Body sm** (Inter, 400–500, 0.8125rem / 13px): metadatos de fila, subtítulos de tarjeta y texto secundario denso donde `body` no cabe.
+- **Body xs** (Inter, 400–600, 0.75rem / 12px, `text-xs`): el paso intermedio más usado — subtítulos, etiquetas de estado y metadatos compactos.
+- **Label** (Inter, 700, MAYÚSCULAS, `tracking-wide`/`tracking-widest`): encabezados de sección, cabeceras de tabla, badges y metadatos. Es una escalera de tres pasos deliberada — `label` 0.6875rem/11px (el paso por defecto), `label-sm` 0.625rem/10px (la micro-etiqueta dominante de la densidad de tabla) y `label-xs` 0.5625rem/9px (el suelo). Por debajo solo existe una excepción: las iniciales de los avatares de escudo sin logo (7–8px), que no son texto de interfaz.
 
 ### Named Rules
 **The Tabular Scoreboard Rule.** Cualquier número que pueda cambiar en vivo o alinearse en columna (marcador, reloj, clasificación, estadísticas) va en monoespaciado con `tabular-nums`. Las cifras nunca deben desplazar el layout al actualizarse.
@@ -157,7 +187,7 @@ Ritmo de espaciado sobre la escala de Tailwind; los gutters laterales viven en e
 El `<main>` conserva una medida de lectura de `max-w-5xl` para las superficies de contenido; la **portada** la levanta marcándose con `data-wide` en su raíz, que el contenedor reconoce (`lg:has-[[data-wide]]:max-w-none`). A partir de ahí la home compone su propia rejilla, con tope `lg:max-w-[2200px]` centrado:
 
 - **Barra de fecha** pegajosa (`sticky top-0`) a todo el ancho de la composición, con el carrusel centrado cuando cabe.
-- **Banda "En directo ahora"** (`lg+`): los partidos `live` del día en rejilla de 1 columna (lg) → 2 (xl) → 3 (≥1700px) → 4 (≥2000px). En `lg+` los directos se retiran de las listas por competición para no repetirse; en móvil la banda no se renderiza y el orden no cambia.
+- **Banda "En directo ahora"** (`lg+`): los partidos `live` del día en rejilla de 1 columna (lg) → 2 (xl) → 3 (≥1700px) → 4 (≥2000px). En **móvil** la banda se sustituye por una **tira compacta deslizable** (`LiveNowStrip`) justo encima de "Mi grada": mismo lenguaje (escudo + marcador mono + píldora en vivo) en chips de ~190px. En todos los breakpoints los directos se retiran de las listas (por competición y "Siguiendo") para no repetirse: viven solo en la banda o en la tira.
 - **Jornada en columnas**: las secciones por competición fluyen en masonry CSS (`xl:columns-2`, `min-[1800px]:columns-3`) con `break-inside-avoid`, de modo que una competición corta no deja un hueco vertical. El bloque "Siguiendo" usa la misma rejilla.
 - **Vista de próximos** (día seleccionado sin partidos): bandas verticales a todo el ancho, una por día (`lib/upcoming` agrupa día → competición → partidos). La cabecera del día (fecha bold + recuento + hairline) abre la banda y sus competiciones fluyen en masonry horizontal (`md:columns-2` → `min-[2000px]:columns-4`), así que un día corto es una banda corta, no una columna huérfana. En **móvil** cada grupo arranca plegado —caption + recuento + chevron— y se expande al toque (índice compacto del día); en escritorio siempre desplegado. El carril de contexto oculta su sección "Próximos" para no duplicar la vista.
 - **Carril de contexto** (`2xl+`, 360px): `Mi grada` (si sigues a alguien) y `Próximos` — solo días posteriores al seleccionado, porque los del día ya están en la lista —, `sticky` con scroll interno y barra temática (`.rail-scroll`).
@@ -191,8 +221,8 @@ Lenguaje de esquinas redondeadas medias y coherentes: tarjetas y chips de fecha 
 - **Pill de acción (ver vídeo):** variante `rounded-full` granate con icono, para acciones contextuales dentro de una tarjeta.
 
 ### Badges de estado
-- **Live:** `rounded-full`, fondo esmeralda, texto blanco, MAYÚSCULAS `tracking-wide`, con punto blanco `animate-pulse`.
-- **Halftime:** idéntico en ámbar, punto estático.
+- **Live:** `rounded-full`, fondo **esmeralda-700** (#047857, no el esmeralda brillante de los puntos), texto blanco, MAYÚSCULAS `tracking-wide`, con punto blanco `animate-pulse`. El escalón profundo es necesario para que el texto blanco de 10px supere 4,5:1.
+- **Halftime:** idéntico en **ámbar-700** (#b45309), punto estático.
 - **Scheduled / Finished:** píldoras neutras en slate (claro/oscuro), sin color de estado.
 
 ### Cards / Containers (`.card`)
@@ -203,7 +233,7 @@ Lenguaje de esquinas redondeadas medias y coherentes: tarjetas y chips de fecha 
 - **Internal Padding:** típicamente `px-3 py-2.5` (tarjeta de lista) a `px-4 pt-4 pb-5` (ficha).
 
 ### Banda de directo (Live Board)
-Tarjeta de partido `live` con jerarquía de marcador grande (mono `text-4xl` `tabular-nums`), anillo esmeralda tenue (`ring-1 ring-emerald-500/25`) y escudo + nombre oficial a ambos lados; una estrella granate marca los equipos seguidos. Solo existe para estados `live`/descanso, nunca para programados. Cuando el marcador cambia en vivo, el número hace un pulso breve hacia el acento esmeralda (`.score-flash`) que se apaga solo: es el momento firmado de la portada, y `reduce-motion` lo neutraliza.
+Tarjeta de partido `live` con jerarquía de marcador grande (mono `text-4xl` `tabular-nums`), anillo esmeralda tenue (`ring-1 ring-emerald-500/25`) y escudo + nombre oficial a ambos lados; una estrella granate marca los equipos seguidos. Solo existe para estados `live`/descanso, nunca para programados. Cuando el marcador cambia en vivo, el número hace un pulso breve hacia el acento esmeralda (`.score-flash`) que se apaga solo: es el momento firmado de la portada. `reduce-motion` lo conserva —es una señal de color, no movimiento— y solo apaga bucles y desplazamientos.
 
 ### Navigation
 - **Bottom Nav (móvil):** barra fija de 64px, 5 destinos ordenados por importancia — Partidos, Competiciones, Buscar, Favoritos, Ajustes (#414) —, iconos SVG de trazo cuyo grosor sube (1.8 → 2.5) y color pasa a granate en el activo; etiqueta de 11px que pasa a `font-semibold`.
@@ -231,6 +261,7 @@ Rejilla fija de columnas; zonas de clasificación señaladas con barra lateral d
 ### Don't:
 - **Don't** usar el granate como relleno decorativo: es identidad y señal, no fondo.
 - **Don't** pintar de verde/ámbar estados que no son "en vivo"/"descanso".
+- **Don't** usar ámbar para la estrella de favorito, insignias (capitán) o avisos de dato: la estrella de favorito es granate (`rink-passion`), el capitán es slate y los avisos de dato/error van a slate/rose. El ámbar queda para descanso/aplazado (y el Premium, en oro).
 - **Don't** introducir fuentes nuevas; Inter para interfaz y monoespaciada para cifras es el sistema.
 - **Don't** usar negro plano ni sombras duras en modo oscuro; la profundidad es tonal.
 - **Don't** dejar que las cifras desplacen el layout al actualizarse: siempre tabulares.

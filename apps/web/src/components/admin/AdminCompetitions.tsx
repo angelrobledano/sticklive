@@ -36,7 +36,7 @@ function QualityButton({
     <button
       disabled={busy}
       onClick={() => onSet(hidden ? 'ok' : 'en_revision')}
-      className={`text-[11px] font-semibold px-2 min-h-[32px] rounded-lg disabled:opacity-40 ${
+      className={`text-[11px] font-semibold px-2 min-h-[44px] rounded-lg disabled:opacity-40 ${
         hidden
           ? 'text-amber-700 bg-amber-100 dark:bg-amber-900/40 dark:text-amber-300'
           : 'text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400'
@@ -117,9 +117,9 @@ export function AdminCompetitions({ token, onError }: { token: string; onError: 
         placeholder="Buscar competición…"
         className="w-full min-h-[44px] px-3 rounded-xl border border-slate-200 dark:border-slate-700
                    bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
-                   focus:outline-none focus:ring-2 focus:ring-rink-passion"
+                   focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-rink-accent"
       />
-      {loading && <p className="text-sm text-slate-400">Cargando…</p>}
+      {loading && <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>}
 
       <div className="card divide-y divide-slate-100 dark:divide-slate-800/60">
         {filtered.map((c) => (
@@ -130,7 +130,7 @@ export function AdminCompetitions({ token, onError }: { token: string; onError: 
                 className="flex-1 text-left min-w-0"
               >
                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{c.name}</p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                   {c.slug}
                   {c.archived_at ? ' · archivada' : ''}
                   {` · ${Number(c.visible_season_count)}/${Number(c.season_count)} temporadas visibles`}
@@ -161,14 +161,14 @@ export function AdminCompetitions({ token, onError }: { token: string; onError: 
                   </div>
                 ))}
                 {(seasons[c.id] ?? []).length === 0 && (
-                  <p className="text-xs text-slate-400 pl-4">Sin temporadas</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 pl-4">Sin temporadas</p>
                 )}
               </div>
             )}
           </div>
         ))}
         {!loading && filtered.length === 0 && (
-          <p className="px-4 py-8 text-center text-sm text-slate-400">Sin competiciones</p>
+          <p className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">Sin competiciones</p>
         )}
       </div>
     </div>

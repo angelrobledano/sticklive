@@ -24,7 +24,7 @@ export default function LocaleNotFound() {
       {/* Icono: portería con balón fuera (404) */}
       <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
-             className="w-8 h-8 text-slate-400 dark:text-slate-500" aria-hidden="true">
+             className="w-8 h-8 text-slate-500 dark:text-slate-400" aria-hidden="true">
           <path d="M4 4h16v14H4z" strokeLinejoin="round" />
           <path d="M4 8h16M4 12h16M8 4v14M12 4v14M16 4v14" strokeWidth={0.7} />
           <circle cx="19" cy="19" r="3" className="text-rink-passion" />
@@ -47,7 +47,7 @@ export default function LocaleNotFound() {
           className="inline-flex items-center justify-center gap-1.5 px-5 min-h-[44px] rounded-xl
                      text-sm font-semibold bg-rink-passion text-white
                      hover:bg-red-700 active:bg-red-900 transition-colors
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent focus-visible:ring-offset-2"
         >
           {tt(t, 'errors.not_found_home', 'Volver al inicio')}
         </Link>
@@ -57,7 +57,7 @@ export default function LocaleNotFound() {
                      text-sm font-semibold text-slate-600 dark:text-slate-300
                      border border-slate-200 dark:border-slate-700
                      hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion focus-visible:ring-offset-2"
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent focus-visible:ring-offset-2"
         >
           {tt(t, 'errors.not_found_competitions', 'Ver competiciones')}
         </Link>
