@@ -116,6 +116,21 @@ export default function SettingsScreen() {
         )}
       </View>
 
+      {/* Premium (monetización): estado de la cuenta y compra SOLO en la web */}
+      <Pressable
+        onPress={() => router.push('/settings/premium')}
+        accessibilityRole="button"
+        className="mx-4 mt-3 flex-row items-center justify-between rounded-xl bg-white p-4 active:opacity-70 dark:bg-slate-900"
+      >
+        <View className="flex-1 pr-2">
+          <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            {t('premium.title')}
+          </Text>
+          <Text className="mt-0.5 text-sm text-slate-500">{t('premium.upgrade_desc')}</Text>
+        </View>
+        <Ionicons name="star-outline" size={20} color="#64748b" />
+      </Pressable>
+
       {/* Apariencia: sistema/claro/oscuro (persistencia en ThemeContext) */}
       <View className="mx-4 mt-3 rounded-xl bg-white p-4 dark:bg-slate-900">
         <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">

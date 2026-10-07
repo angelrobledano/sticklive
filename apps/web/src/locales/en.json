@@ -582,5 +582,24 @@
     "tab_all": "All",
     "no_fav_leagues_title": "You don't have favourite leagues yet",
     "no_fav_leagues_hint": "Tap the star on any competition to save it here."
+  },
+  "premium": {
+    "title": "Premium",
+    "status_active": "Subscription active",
+    "status_active_desc": "Thanks for supporting Stick Live: you browse ad-free.",
+    "status_lifetime": "Premium forever",
+    "upgrade_title": "Go Premium",
+    "upgrade_desc": "Remove ads and support live rink hockey.",
+    "product_annual": "Annual",
+    "product_annual_desc": "One year ad-free. Renews on the web.",
+    "product_lifetime": "Forever",
+    "product_lifetime_desc": "A single payment: ad-free forever.",
+    "buy_on_web": "Buy on the website",
+    "buy_on_web_desc": "Opens sticklive.eu to complete the purchase with your account. Your status refreshes when you return to the app.",
+    "loading": "Checking your status…",
+    "login_required": "Sign in to view and buy Premium: the benefit is tied to your account.",
+    "login_cta": "Sign in",
+    "open_failed": "The browser could not be opened. Please try again.",
+    "refresh": "Refresh"
   }
 }

@@ -101,6 +101,7 @@ function AppTree() {
               <Stack.Screen name="team/[id]" />
               <Stack.Screen name="player/[id]" />
               <Stack.Screen name="settings/notifications" />
+              <Stack.Screen name="settings/premium" />
             </Stack>
           </QueryClientProvider>
         </LocaleProvider>

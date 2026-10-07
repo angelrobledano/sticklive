@@ -46,6 +46,10 @@ export interface AnalyticsEventProps {
   push_registered: Record<string, never>;
   push_failed: { reason?: string };
   notification_opened: { notification_type: string };
+  // Monetización (Task 2): funnel premium de la app — vista de la pantalla y
+  // salida a la web a comprar (paridad de nombres con los eventos del servidor).
+  premium_viewed: Record<string, never>;
+  premium_web_checkout_started: Record<string, never>;
 }
 
 let client: PostHog | null = null;

@@ -582,5 +582,24 @@
     "tab_all": "Todas",
     "no_fav_leagues_title": "Todavía no tienes ligas favoritas",
     "no_fav_leagues_hint": "Pulsa la estrella en cualquier competición para guardarla aquí."
+  },
+  "premium": {
+    "title": "Premium",
+    "status_active": "Suscripción activa",
+    "status_active_desc": "Gracias por apoyar Stick Live: navegas sin anuncios.",
+    "status_lifetime": "Premium para siempre",
+    "upgrade_title": "Hazte Premium",
+    "upgrade_desc": "Elimina los anuncios y apoya el directo del hockey patines.",
+    "product_annual": "Anual",
+    "product_annual_desc": "Un año sin anuncios. Se renueva desde la web.",
+    "product_lifetime": "Para siempre",
+    "product_lifetime_desc": "Un solo pago: sin anuncios para siempre.",
+    "buy_on_web": "Comprar en la web",
+    "buy_on_web_desc": "Abre sticklive.eu para completar la compra con tu cuenta. Al volver a la app, tu estado se actualiza solo.",
+    "loading": "Comprobando tu estado…",
+    "login_required": "Inicia sesión para ver y comprar Premium: el beneficio va ligado a tu cuenta.",
+    "login_cta": "Iniciar sesión",
+    "open_failed": "No se pudo abrir el navegador. Inténtalo de nuevo.",
+    "refresh": "Actualizar"
   }
 }

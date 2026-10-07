@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { buildWebPremiumUrl } from '../lib/api/client';
 import { fetchPremiumStatus, shouldShowAds } from './queries';
 
 afterEach(() => {
@@ -46,5 +47,15 @@ describe('fetchPremiumStatus', () => {
     expect((init as { headers: Record<string, string> }).headers['Authorization']).toBe(
       'Bearer tok'
     );
+  });
+});
+
+// La compra es SOLO en la web (spec §7): esta URL es la que abre el navegador
+// del sistema. Tolerar barra final evita dobles barras si EXPO_PUBLIC_WEB_URL
+// se configura con ella.
+describe('buildWebPremiumUrl', () => {
+  it('construye {base}/{locale}/premium y tolera barra final', () => {
+    expect(buildWebPremiumUrl('https://sticklive.eu', 'es')).toBe('https://sticklive.eu/es/premium');
+    expect(buildWebPremiumUrl('https://sticklive.eu/', 'en')).toBe('https://sticklive.eu/en/premium');
   });
 });
