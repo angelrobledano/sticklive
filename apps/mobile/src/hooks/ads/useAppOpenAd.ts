@@ -4,6 +4,7 @@ import { useNavigationContainerRef } from 'expo-router';
 import { AdEventType, AppOpenAd, TestIds } from 'react-native-google-mobile-ads';
 
 import { ensureAdsConsent, ensureSdkInitialized } from '@/src/components/ads/AdBanner';
+import { capture } from '@/src/lib/analytics';
 import { useAdsConfig } from '@/src/hooks/queries';
 import { usePremiumStatus } from '@/src/hooks/usePremiumStatus';
 import { getAdfreeUntil, isAdfreeActive } from '@/src/lib/ads/adfree';
@@ -246,6 +247,9 @@ export function useAppOpenAd(): void {
             } catch (error) {
               console.warn('[ads] app open: intento de show falló en la cola del presupuesto', error);
             }
+            // Show CONFIRMADO (el intento solo devuelve true tras un show real
+            // que registró presupuesto): evento del catálogo (Task 7).
+            if (shown) capture('ads_app_open_shown');
             if (!shown) finish(); // descartado: sin CLOSED ni ERROR que limpien
           })();
         });

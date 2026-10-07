@@ -3,6 +3,7 @@ import { useNavigation } from 'expo-router';
 import { AdEventType, InterstitialAd, TestIds } from 'react-native-google-mobile-ads';
 
 import { ensureAdsConsent, ensureSdkInitialized } from '@/src/components/ads/AdBanner';
+import { capture } from '@/src/lib/analytics';
 import { useAdsConfig } from '@/src/hooks/queries';
 import { usePremiumStatus } from '@/src/hooks/usePremiumStatus';
 import { getAdfreeUntil, isAdfreeActive } from '@/src/lib/ads/adfree';
@@ -271,6 +272,7 @@ export function useInterstitialOnLeave(
             // SOLO si llegó a mostrarse: consume el presupuesto compartido.
             return registerFullScreenShow(budget, Date.now());
           });
+          if (shown) capture('ads_interstitial_shown'); // show confirmado (Task 7)
           if (!shown) release(); // descartado: no habrá CLOSED/ERROR que limpien
           // shown=true: el listener de CLOSED (preload) libera la instancia.
         } catch (error) {

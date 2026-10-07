@@ -190,9 +190,13 @@ tráfico UE hasta que el CMP esté configurado y publicado en el panel.
 
 ## 6. AdMob — app móvil
 
-*Estado: **v1 IMPLEMENTADO en la app (2026-10-07)** — UMP + banners adaptativos
-con gating premium fail-closed (plan
-[2026-10-07-app-premium-web-admob](./superpowers/plans/2026-10-07-app-premium-web-admob.md)).
+*Estado: **v1 + Plan D IMPLEMENTADO en la app (2026-10-07)** — UMP + banners
+adaptativos con gating premium fail-closed (plan
+[2026-10-07-app-premium-web-admob](./superpowers/plans/2026-10-07-app-premium-web-admob.md))
+y formatos completos con config remota (`GET /ads/config`): rewarded
+recompensado (adfree), app open, interstitial al salir de ficha no-live y
+native in-feed (plan
+[2026-10-07-app-ads-plan-d-formatos-config](./superpowers/plans/2026-10-07-app-ads-plan-d-formatos-config.md)).
 La compra es SOLO en la web: la app lee el premium de su sesión
 (`GET /payments/status`) y abre sticklive.eu en el navegador del sistema.
 Diseño de plazamientos y caps: §7–§8 del
@@ -213,8 +217,45 @@ Diseño de plazamientos y caps: §7–§8 del
 | — | Intersticial | Al salir de ficha finalizada | `ca-app-pub-2994866776026136/8847613791` | Plan D |
 | — | Vídeo con recompensa | 30 min sin ads (recompensa: `30` × `adfree_min`) | `ca-app-pub-2994866776026136/6371739675` | Plan D |
 
-Los cuatro formatos **Plan D** ya tienen su bloque AdMob creado (IDs en la
-tabla) y se activan cuando los banners den datos — junto con `GET /ads/config`.
+Los cuatro formatos **Plan D** tienen su bloque AdMob creado (IDs en la tabla)
+y están IMPLEMENTADOS en la app y en el API (`GET /ads/config`), pero nacen
+APAGADOS: la activación es por env (tabla abajo) y se decidirá cuando los
+banners den datos.
+
+**Envs de activación de los formatos Plan D** — dos capas, ambas necesarias:
+
+1. **Config remota (API)**: se definen en `/opt/sticklive/.env.prod` +
+   redespliegue del API. TODAS vacías por defecto = todos los formatos
+   apagados (`GET /ads/config` responde `enabled: false`; la app consulta la
+   config en runtime, sin rebuild). Parseo estricto: solo `1`/`true` exactos
+   activan — un typo NO activa nada.
+
+| Variable | Formato | Efecto |
+|---|---|---|
+| `ADS_APP_OPEN_ENABLED` | App open | `1`/`true` activa |
+| `ADS_INTERSTITIAL_ENABLED` | Interstitial | `1`/`true` activa |
+| `ADS_REWARDED_ENABLED` | Rewarded | `1`/`true` activa |
+| `ADS_REWARDED_ADFREE_MINUTES` | Rewarded | Minutos de adfree por reward (default 30) |
+| `ADS_NATIVE_FEED_ENABLED` | Native in-feed | `1`/`true` activa; `false` o basura apaga AUNQUE el EVERY sea válido |
+| `ADS_NATIVE_FEED_EVERY` | Native in-feed | Entero positivo: activa el formato IMPLÍCITAMENTE y fija la cadencia (default 8); un `ADS_NATIVE_FEED_ENABLED` definido tiene la última palabra |
+
+2. **Unit ids (build production de EAS, `EXPO_PUBLIC_*`)**: vacías =
+   fail-closed (formato activo en config pero sin bloque: no pide). Misma
+   regla que los banners: nunca definirlas fuera del perfil `production`.
+
+| Variable | Formato |
+|---|---|
+| `EXPO_PUBLIC_ADMOB_APP_OPEN` | App open |
+| `EXPO_PUBLIC_ADMOB_INTERSTITIAL` | Interstitial |
+| `EXPO_PUBLIC_ADMOB_REWARDED` | Rewarded |
+| `EXPO_PUBLIC_ADMOB_NATIVE_FEED` | Native in-feed |
+
+**Nota v1:** los caps que publica la config (`minIntervalHours` del app open,
+`minIntervalMinutes`/`maxPerHour` del interstitial) son INFORMATIVOS: la app
+gobierna el presupuesto compartido de pantalla completa con constantes
+idénticas (`MIN_FULL_SCREEN_INTERVAL_MS` = 20 min, `MAX_FULL_SCREEN_PER_HOUR` =
+2, grace period de 2 sesiones, en `apps/mobile/src/lib/ads/fullscreen.ts`).
+Cablear que la app respete los valores de la config es un follow-up.
 
 **Regla de IDs (v1, implementada en `AdBanner.tsx`):** en `__DEV__` SIEMPRE los
 IDs de prueba de Google (hardcodeados vía `TestIds.BANNER`); los reales SOLO se
@@ -230,23 +271,31 @@ de prueba es causa de baneo** — nunca definir los ids reales fuera de `product
 | Intersticial | `ca-app-pub-3940256099942544/1033173712` |
 | Recompensado | `ca-app-pub-3940256099942544/5224354917` |
 
-**Checklist antes de tráfico real** (bloqueos para activar los banners en
-`production`; nada de esto existe aún en el repo):
+**Checklist antes de tráfico real** (bloqueos para activar banners y formatos
+Plan D en `production`):
 
-- [ ] **Re-consentimiento en Ajustes**: entrada de "privacidad de anuncios"
-  que vuelva a abrir el formulario UMP — la policy de Google exige que el
-  usuario pueda cambiar su consentimiento después de la primera vez (hoy solo
-  se pide en el primer arranque).
+- [x] **Re-consentimiento en Ajustes** (Plan D Task 6, 2026-10-07): entrada de
+  "privacidad de anuncios" que vuelve a abrir el formulario UMP
+  (`manageAdsConsent`) — la policy de Google exige que el usuario pueda cambiar
+  su consentimiento después de la primera vez.
 - [ ] **Proguard**: si algún día se activa `minifyEnabled` en Android, añadir
   las reglas keep del SDK de consentimiento (`consent_sdk`/UMP:
   `-keep class com.google.android.ump.** { *; }`) — el paquete no trae consumer
   rules propios.
 - [ ] **Smoke en device con license testers** de AdMob — **PENDIENTE DE UN
-  HUMANO** (requiere development build; Expo Go no sirve para ads). Los 4
-  puntos: 1) sesión no premium → banners de TEST visibles tras el
-  consentimiento UMP; 2) cuenta premium → cero banner y cero petición a AdMob
-  (verificar en el log de Metro); 3) ficha EN VIVO → sin banner, finalizada →
-  banner; 4) sin consentimiento UMP → sin ads.
+  HUMANO** (requiere development build; Expo Go no sirve para ads). Cubre
+  banners Y los cuatro formatos Plan D: 1) sesión no premium → banners de TEST
+  visibles tras el consentimiento UMP; 2) cuenta premium → cero banner y cero
+  petición a AdMob (verificar en el log de Metro); 3) ficha EN VIVO → sin
+  banner ni interstitial, finalizada → banner y interstitial al salir; 4) sin
+  consentimiento UMP → sin ads de ningún formato; 5) rewarded → el "complete"
+  otorga el adfree elegido (acumulable) y un fallo no concede nada; 6) app
+  open → solo arranque frío (nunca tras push, nunca en las 2 primeras
+  sesiones, máx 2/hora y 20 min compartidos con el interstitial); 7) native
+  in-feed → item cada N en Directo/Clasificación, legible también en dark
+  mode. Para forzar el formulario UMP (p. ej. simular EEA):
+  `requestAdsConsent({ debugGeography, testDeviceIdentifiers })` —
+  `consent.ts` acepta las opciones del SDK y no las cocina.
 - [ ] **Telemetría** de monetización (Plan D): evento `onPaid` en el servidor y
   su explotación — sin datos de ingresos no se decide la iteración de formatos.
 

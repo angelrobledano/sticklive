@@ -1,6 +1,6 @@
 # Tracking de producto en PostHog — Stick Live
 
-*Documento vivo · mantener junto al código · última actualización: 24 de junio de 2026*
+*Documento vivo · mantener junto al código · última actualización: 8 de octubre de 2026*
 *Complementa el [Plan de medición](./ANALITICA_PLAN_MEDICION.md): aquel define el "qué medir y por qué"; este documenta el "qué está medido hoy y dónde verlo".*
 
 ---
@@ -77,6 +77,20 @@ Estado: **LIVE** = emitiéndose; los marcados **(F4)** se añadieron al instrume
 | `premium_viewed` **(F4)** | Ve el bloque premium (Ajustes) | `from_screen` | Top del funnel de ingresos |
 | `premium_checkout_started` | Inicia el pago | — | Mitad del funnel |
 | `premium_purchase_completed` / `premium_purchase_failed` **(F4)** | Página de éxito / error | `plan`, `reason` | Conversión / fricción de pago |
+
+### 3.4 Monetización de la app (AdMob / checkout en web)
+
+Eventos de la **app móvil** (catálogo tipado en
+`apps/mobile/src/lib/analytics.ts`). Las impresiones y clicks los mide AdMob;
+aquí solo el hecho de negocio.
+
+| Evento | Cuándo | Propiedades | Para qué |
+|---|---|---|---|
+| `ads_rewarded_completed` | El reward se concede (contrato AdMob cumplido) | `minutes` (adfree regalado) | Valor real del formato recompensado |
+| `ads_rewarded_failed` | El reward no se concede (reward no coincidente, show rechazado, storage) | `reason` | Fricción del formato recompensado |
+| `ads_app_open_shown` | App open mostrado de verdad (consumió el presupuesto compartido) | — | Presión publicitaria en el arranque |
+| `ads_interstitial_shown` | Interstitial mostrado al salir de ficha no-live | — | Presión publicitaria en la salida de ficha |
+| `premium_web_checkout_started` | La app abre sticklive.eu para pagar | — | Salida de la app al funnel de compra (web) |
 
 ---
 

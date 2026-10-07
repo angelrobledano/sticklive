@@ -159,7 +159,7 @@ export function NativeFeedAd() {
           </View>
           {/* Cuerpo — asset registrado. */}
           <NativeAsset assetType={NativeAssetType.BODY}>
-            <Text numberOfLines={3} className="mt-2 text-xs text-slate-500">
+            <Text numberOfLines={3} className="mt-2 text-xs text-slate-500 dark:text-slate-100">
               {nativeAd.body}
             </Text>
           </NativeAsset>

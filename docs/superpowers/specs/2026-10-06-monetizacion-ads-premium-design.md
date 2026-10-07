@@ -1,7 +1,7 @@
 # Diseño — Monetización: publicidad (AdSense web / AdMob app) y premium (Stripe, compra solo en web)
 
 Fecha: 2026-10-06
-Estado: En implementación. **Enmienda 2026-10-07 (§14): la compra es SOLO en la web (Stripe) — no hay Play Billing ni compra en la app.** Servidor (plan A, purgado a lo esencial) hecho; **App: premium por sesión + AdMob v1 implementados** (plan 2026-10-07-app-premium-web-admob.md, pendiente smoke en device y release). La app móvil base ya está implementada (plan 2026-10-05-app-movil.md).
+Estado: En implementación. **Enmienda 2026-10-07 (§14): la compra es SOLO en la web (Stripe) — no hay Play Billing ni compra en la app.** Servidor (plan A, purgado a lo esencial) hecho; **App: premium por sesión + AdMob v1 implementados** (plan 2026-10-07-app-premium-web-admob.md, pendiente smoke en device y release). **Plan D (formatos completos + `GET /ads/config`) implementado** (plan 2026-10-07-app-ads-plan-d-formatos-config.md), activación pendiente de datos de banners. La app móvil base ya está implementada (plan 2026-10-05-app-movil.md).
 
 ## 1. Contexto y objetivo
 

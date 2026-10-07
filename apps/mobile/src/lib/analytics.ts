@@ -56,6 +56,13 @@ export interface AnalyticsEventProps {
   // Impresiones/clicks los mide AdMob; aquí solo el negocio del reward.
   ads_rewarded_completed: { minutes: number };
   ads_rewarded_failed: { reason: string };
+  // Plan D (Task 7): full-screen MOSTRADO de verdad — el show pasó la cola
+  // serializada del presupuesto compartido (app open + interstitial). La
+  // impresión y el click los mide AdMob; aquí queda el hecho de negocio de
+  // que el show se produjo y consumió presupuesto (correlacionable con el
+  // cap 2/hora y con las impresiones reales de AdMob).
+  ads_app_open_shown: Record<string, never>;
+  ads_interstitial_shown: Record<string, never>;
 }
 
 let client: PostHog | null = null;
