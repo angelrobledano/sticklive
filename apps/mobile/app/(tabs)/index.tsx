@@ -1,9 +1,11 @@
 import { useEffect, useMemo } from 'react';
 import { FlatList, RefreshControl, Text, View } from 'react-native';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { useCurrentMatches } from '@/src/hooks/queries';
+import { useAdsConfig, useCurrentMatches } from '@/src/hooks/queries';
 import { MatchCard } from '@/src/components/match/MatchCard';
 import { AdBanner } from '@/src/components/ads/AdBanner';
+import { NativeFeedAd } from '@/src/components/ads/NativeFeedAd';
+import { insertNativeAdPositions } from '@/src/lib/ads/nativeFeed';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { capture } from '@/src/lib/analytics';
@@ -16,8 +18,20 @@ interface Section {
   matches: MatchSummary[];
 }
 
+/**
+ * Items de la FlatList (Plan D Task 6): la lista se aplana a nivel de
+ * partido para poder intercalar el native in-feed "cada N items de datos"
+ * (un punto de inserción v1, calculado con insertNativeAdPositions) — con
+ * secciones como celdas, el anuncio no podría caer en mitad de un día.
+ */
+type FeedItem =
+  | { kind: 'header'; key: string; title: string }
+  | { kind: 'match'; key: string; match: MatchSummary }
+  | { kind: 'ad'; key: string };
+
 export default function LiveScreen() {
   const { data, isPending, isError, refetch, isRefetching } = useCurrentMatches();
+  const { data: adsConfig } = useAdsConfig();
   const { t } = useLocale();
 
   // Analítica (Task 5.1): vista de la pestaña "En directo" (la home de la app).
@@ -48,6 +62,29 @@ export default function LiveScreen() {
     ];
   }, [data, t]);
 
+  // Native in-feed (Plan D Task 6): items sintéticos SOLO con la config
+  // cargada y el formato enabled (fail-safe: sin config ⇒ sin items). Un
+  // único punto de inserción (v1): tras el `everyNItems`-ésimo partido.
+  const everyNItems =
+    adsConfig?.nativeFeed.enabled === true ? adsConfig.nativeFeed.everyNItems : undefined;
+  const feed = useMemo<FeedItem[]>(() => {
+    const items: FeedItem[] = [];
+    for (const s of sections) {
+      items.push({ kind: 'header', key: `header:${s.key}`, title: s.title });
+      for (const m of s.matches) items.push({ kind: 'match', key: `match:${m.id}`, match: m });
+    }
+    const matchCount = items.reduce((n, it) => (it.kind === 'match' ? n + 1 : n), 0);
+    const [position] = insertNativeAdPositions(matchCount, everyNItems);
+    if (position === undefined) return items;
+    const out: FeedItem[] = [];
+    let seen = 0;
+    for (const it of items) {
+      out.push(it);
+      if (it.kind === 'match' && ++seen === position) out.push({ kind: 'ad', key: 'native-ad' });
+    }
+    return out;
+  }, [sections, everyNItems]);
+
   if (isPending) return <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark" />;
   // Con datos previos (fallo de refetch en segundo plano) se CONSERVA la lista:
   // el ErrorState solo sustituye la pantalla si no hay nada que mostrar.
@@ -57,15 +94,20 @@ export default function LiveScreen() {
     <FlatList
       className="bg-rink-floor dark:bg-rink-floor-dark"
       contentContainerStyle={{ flexGrow: 1 }}
-      data={sections}
-      keyExtractor={(s) => s.key}
+      data={feed}
+      keyExtractor={(item) => item.key}
       refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
-      renderItem={({ item }) => (
-        <View>
-          <Text className="px-4 pb-1 pt-3 text-xs font-bold uppercase text-slate-500">{item.title}</Text>
-          {item.matches.map((m) => <MatchCard key={m.id} match={m} />)}
-        </View>
-      )}
+      renderItem={({ item }) => {
+        if (item.kind === 'header') {
+          return (
+            <Text className="px-4 pb-1 pt-3 text-xs font-bold uppercase text-slate-500">
+              {item.title}
+            </Text>
+          );
+        }
+        if (item.kind === 'ad') return <NativeFeedAd />;
+        return <MatchCard match={item.match} />;
+      }}
       ListEmptyComponent={
         <EmptyState title={t('common.no_matches_today')} hint={t('common.no_matches_hint')} />
       }
