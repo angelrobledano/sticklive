@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseWorldskateCalendar } from './worldskate.scraper.js';
+import { parseMcIdpIndex } from './mc-idp.js';
 
 /**
  * Fixture mínimo con la estructura real del calendario sidgad de los World
@@ -174,6 +175,44 @@ describe('parseWorldskateCalendar (estructura WSG ASU26)', () => {
     expect(jugado.matches[0]!.homeScore).toBe(28);
     expect(jugado.matches[0]!.awayScore).toBe(0);
     expect(jugado.matches[0]!.sourceRef).toBeUndefined(); // sin idp → ref sintética del loader
+  });
+});
+
+describe('adopción del idp vía match center (partidos en directo con cronología desde el minuto uno)', () => {
+  // El 7/10 hay Colombia-India en DOS categorías (sub-19 09:15 y absoluta
+  // 15:30, mismo par de logos): la hora del mc desambigua. Sin mc, la fila
+  // nace sintética y su cronología no aparece hasta la adopción posterior.
+  const FIXTURE_MC = `
+<a href="#" class="id_fede_1 scorer_game scorer_game_final game_report game_mobile_link game_on_line club_19 club_33" idp="3259" idm='$idm'>
+  <div class="scorer_liga">WORLD U19 MEN</div>
+  <img src='https://sidgad.cloud/worldskate/images/logos_clubes/19_1.png' width='15'>
+  <img src='https://sidgad.cloud/worldskate/images/logos_clubes/33_1.png' width='15'>
+  <div class='scorer_bot_left'>07/10 09:15</div>
+</a>
+<a href="#" class="id_fede_1 scorer_game scorer_game_final game_report game_mobile_link game_on_line club_19 club_33" idp="3265" idm='$idm'>
+  <div class="scorer_liga">WORLD CHAMPIONSHIP WOMEN</div>
+  <img src='https://sidgad.cloud/worldskate/images/logos_clubes/19_1.png' width='15'>
+  <img src='https://sidgad.cloud/worldskate/images/logos_clubes/33_1.png' width='15'>
+  <div class='scorer_bot_left'>07/10 15:30</div>
+</a>`;
+  const CAL_COL_IND = `
+<div class="div_titulo_fase_idc">GROUP PHASE</div>
+<table class="tabla_standard table_content_fase content_fase_331">
+  <thead class="head_jornada"><th colspan="17"><div style="text-align:left;">7TH OCTOBER</div></th></thead>
+  <tbody>${MATCH(['1164', '1166'], ['19_1', '33_1'], ['COLOMBIA', 'INDIA'], '20261007', '09:15')}</tbody>
+</table>`;
+
+  it('fila sin idp → nace con source_ref real resuelto por el mc (logos+fecha+hora)', () => {
+    const out = parseWorldskateCalendar(CAL_COL_IND, CFG, new Date('2026-10-07T10:00:00Z'), parseMcIdpIndex(FIXTURE_MC));
+    expect(out.matches).toHaveLength(1);
+    expect(out.matches[0]!.homeTeamRef).toBe('wse_1164');
+    expect(out.matches[0]!.awayTeamRef).toBe('wse_1166');
+    expect(out.matches[0]!.sourceRef).toBe('wse_match_3259');
+  });
+
+  it('sin mc (fallo de red) → comportamiento de siempre: ref sintética', () => {
+    const out = parseWorldskateCalendar(CAL_COL_IND, CFG, new Date('2026-10-07T10:00:00Z'));
+    expect(out.matches[0]!.sourceRef).toBeUndefined();
   });
 });
 

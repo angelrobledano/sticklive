@@ -42,6 +42,7 @@ import { STALE_LIVE_HOURS } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { SidgadClient } from '../fep/sidgad-client.js';
 import { zonedToUtc } from '../../core/eu-timezone.js';
+import { emptyMcIdpIndex, gamedateToFechaDM, mcLookupIdp, parseMcIdpIndex, type McIdpIndex } from './mc-idp.js';
 
 const log = createLogger({ scraper: 'worldskate_hockey' });
 
@@ -96,7 +97,23 @@ export class WorldskateScraper {
         idc,
         site_lang: 'es',
       });
-      parsed = parseWorldskateCalendar(html, this.cfg);
+
+      // Índice idp del match center: sidgad publica el idp en el mc ANTES que
+      // en el calendario (el Colombia-India sub-19 del 7/10 estaba EN DIRECTO
+      // con su fila del calendario aún sin idp). Con el índice, los partidos
+      // nacen con source_ref real y el acta se pide desde el primer ciclo de
+      // directo. Fallo de red → índice vacío (degradación: refs sintéticas y
+      // recuperación por la vía de siempre).
+      let mcIndex: McIdpIndex = emptyMcIdpIndex();
+      try {
+        const mcHtml = await this.client.post('worldskate_mc_1.php', {});
+        mcIndex = parseMcIdpIndex(mcHtml);
+        log.debug({ idps: mcIndex.byDateTime.size }, 'Índice mc de worldskate obtenido');
+      } catch (err) {
+        log.warn({ err }, 'Match center no disponible — idp solo desde el calendario');
+      }
+
+      parsed = parseWorldskateCalendar(html, this.cfg, new Date(), mcIndex);
       log.info(
         { idc, matches: parsed.matches.length, standings: parsed.standings.length, rounds: parsed.rounds.length },
         'Scraping World Skate completado'
@@ -166,7 +183,8 @@ interface RoundMeta { name: string; number: number; type: RoundType; }
 export function parseWorldskateCalendar(
   html: string,
   cfg: WorldskateParseConfig,
-  scrapedAt: Date = new Date()
+  scrapedAt: Date = new Date(),
+  mcIndex: McIdpIndex = emptyMcIdpIndex()
 ): WorldskateParsed {
   const $ = cheerio.load(html);
 
@@ -214,7 +232,7 @@ export function parseWorldskateCalendar(
     const round = computeRound(section.phase, section.headText, dateToJornada, section.rows[0]?.attr('gamedate'));
     for (const $row of section.rows) {
       try {
-        const m = parseMatchRow($, $row, round, scrapedAt, cfg, { logoToRef, nameToRef, logoToGroup, nameToGroup });
+        const m = parseMatchRow($, $row, round, scrapedAt, cfg, { logoToRef, nameToRef, logoToGroup, nameToGroup }, mcIndex);
         if (m) matches.push(m);
         else sinEquipos++;
       } catch (err) {
@@ -300,7 +318,8 @@ function parseMatchRow(
   round: RoundMeta,
   scrapedAt: Date,
   cfg: WorldskateParseConfig,
-  maps: RefMaps
+  maps: RefMaps,
+  mcIndex: McIdpIndex
 ): ScrapedMatch | null {
   const classes = ($row.attr('class') ?? '').split(/\s+/);
   const teamClasses = classes.filter((c) => /^team_\d+$/.test(c));
@@ -349,7 +368,25 @@ function parseMatchRow(
 
   // idp (ficha/acta) desde el icono game_report o el enlace link_ficha_partido
   const $report = $row.find('i.game_report, a.link_ficha_partido, [idp]');
-  const idp = $report.attr('idp') ?? $report.attr('id')?.replace('fichapartido_', '');
+  let idp = $report.attr('idp') ?? $report.attr('id')?.replace('fichapartido_', '');
+
+  // Fallback mc (match center): sidgad publica el idp del partido en el mc
+  // ANTES que en el calendario — sin él, los partidos nacen con source_ref
+  // sintético y su cronología en directo no aparece hasta que la adopción
+  // posterior reescriba la ref (ventana de horas, caso Colombia-India sub-19
+  // del 7/10). Con el índice, nacen con source_ref real desde el primer
+  // scrape. Clave ambigua (dos categorías con los mismos países el mismo día
+  // y hora) → sin idp: el partido sigue sintético y se recupera por la
+  // adopción del calendario.
+  if (!idp) {
+    const fechaDM = gamedateToFechaDM($row.attr('gamedate'));
+    idp = mcLookupIdp(
+      mcIndex,
+      [homeLogo, awayLogo].filter((l): l is string => !!l),
+      fechaDM,
+      timeStr || null
+    );
+  }
   const sourceRef = idp ? `wse_match_${idp}` : undefined;
 
   // Enlace de vídeo (europe.worldskate.tv), si existe
