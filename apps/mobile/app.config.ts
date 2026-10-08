@@ -3,7 +3,7 @@ import { BRAND } from '@sports/brand';
 export default {
   expo: {
     name: 'Stick Live',
-    slug: 'stick-live',
+    slug: 'sticklive',
     scheme: 'sticklive',
     version: '1.0.0',
     orientation: 'portrait',
