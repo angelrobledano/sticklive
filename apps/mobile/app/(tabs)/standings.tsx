@@ -5,6 +5,7 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 import { useAdsConfig, useCompetitions, useStandings } from '@/src/hooks/queries';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
+import { BrandLoader } from '@/src/components/shared/BrandLoader';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { NativeFeedAd } from '@/src/components/ads/NativeFeedAd';
@@ -59,7 +60,11 @@ export default function StandingsScreen() {
   }, [standings.data, everyNItems]);
 
   if (competitions.isPending) {
-    return <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark" />;
+    return (
+      <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
+        <BrandLoader />
+      </View>
+    );
   }
   if (competitions.isError) {
     return (

@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { usePlayer } from '@/src/hooks/queries';
 import { ErrorState } from '@/src/components/shared/ErrorState';
+import { BrandLoader } from '@/src/components/shared/BrandLoader';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 
 /**
@@ -24,7 +25,9 @@ export default function PlayerScreen() {
         <ErrorState onRetry={() => void query.refetch()} />
       </View>
     ) : (
-      <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark" />
+      <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
+        <BrandLoader />
+      </View>
     );
   }
 

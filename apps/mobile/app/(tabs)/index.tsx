@@ -8,6 +8,7 @@ import { NativeFeedAd } from '@/src/components/ads/NativeFeedAd';
 import { insertNativeAdPositions } from '@/src/lib/ads/nativeFeed';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
+import { BrandLoader } from '@/src/components/shared/BrandLoader';
 import { capture } from '@/src/lib/analytics';
 import { formatDayKey, formatDayLabel, isEffectivelyLive } from '@/src/lib/time';
 import type { MatchSummary } from '@/src/lib/api/types';
@@ -85,7 +86,13 @@ export default function LiveScreen() {
     return out;
   }, [sections, everyNItems]);
 
-  if (isPending) return <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark" />;
+  if (isPending) {
+    return (
+      <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
+        <BrandLoader />
+      </View>
+    );
+  }
   // Con datos previos (fallo de refetch en segundo plano) se CONSERVA la lista:
   // el ErrorState solo sustituye la pantalla si no hay nada que mostrar.
   if (isError && !data) return <ErrorState onRetry={() => void refetch()} />;

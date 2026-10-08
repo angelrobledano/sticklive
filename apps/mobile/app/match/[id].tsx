@@ -6,6 +6,7 @@ import { useMatchDetail } from '@/src/hooks/queries';
 import { useMatchLive } from '@/src/hooks/useMatchLive';
 import { useInterstitialOnLeave } from '@/src/hooks/ads/useInterstitialOnLeave';
 import { ErrorState } from '@/src/components/shared/ErrorState';
+import { BrandLoader } from '@/src/components/shared/BrandLoader';
 import { EventRow } from '@/src/components/match/EventRow';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { capture } from '@/src/lib/analytics';
@@ -51,7 +52,9 @@ export default function MatchScreen() {
     return query.isError ? (
       <ErrorState onRetry={() => void query.refetch()} />
     ) : (
-      <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark" />
+      <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
+        <BrandLoader />
+      </View>
     );
   }
 

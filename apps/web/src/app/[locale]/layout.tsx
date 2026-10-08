@@ -101,7 +101,9 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
+    // Alineado con el theme_color del manifest (granate de marca) para que el
+    // marco de la app instalada y la barra del navegador no cambien.
+    { media: '(prefers-color-scheme: light)', color: BRAND.granate },
     { media: '(prefers-color-scheme: dark)',  color: BRAND.noche },
   ],
 };

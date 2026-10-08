@@ -1,3 +1,5 @@
+import { BrandLoader } from '@/components/shared/BrandLoader';
+
 // app/loading.tsx — Skeleton de la Home (DateSelector + MatchCards)
 // Next.js lo muestra automáticamente mientras page.tsx hace el fetch
 
@@ -51,26 +53,33 @@ function DateSelectorSkeleton() {
 
 export default function HomeLoading() {
   return (
-    <div className="animate-pulse px-0 pb-6 space-y-4 max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="px-4 pt-6 pb-2">
-        <div className="h-6 w-40 rounded-lg bg-slate-200 dark:bg-slate-700" />
-        <div className="mt-1 h-3.5 w-24 rounded bg-slate-200 dark:bg-slate-700" />
+    <div className="px-0 pb-6 max-w-2xl mx-auto">
+      {/* Marca de carga: la i con el punto animado */}
+      <div className="flex justify-center pt-6">
+        <BrandLoader size={44} />
       </div>
 
-      {/* Date selector */}
-      <DateSelectorSkeleton />
+      <div className="animate-pulse space-y-4 pt-2">
+        {/* Header */}
+        <div className="px-4 pt-2 pb-2">
+          <div className="h-6 w-40 rounded-lg bg-slate-200 dark:bg-slate-700" />
+          <div className="mt-1 h-3.5 w-24 rounded bg-slate-200 dark:bg-slate-700" />
+        </div>
 
-      {/* "Jornada X" label */}
-      <div className="px-4">
-        <div className="h-3 w-20 rounded bg-slate-200 dark:bg-slate-700" />
-      </div>
+        {/* Date selector */}
+        <DateSelectorSkeleton />
 
-      {/* Match cards */}
-      <div className="px-4 space-y-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <MatchCardSkeleton key={i} />
-        ))}
+        {/* "Jornada X" label */}
+        <div className="px-4">
+          <div className="h-3 w-20 rounded bg-slate-200 dark:bg-slate-700" />
+        </div>
+
+        {/* Match cards */}
+        <div className="px-4 space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <MatchCardSkeleton key={i} />
+          ))}
+        </div>
       </div>
     </div>
   );

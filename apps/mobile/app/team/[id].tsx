@@ -4,6 +4,7 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 import { useTeam } from '@/src/hooks/queries';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { ErrorState } from '@/src/components/shared/ErrorState';
+import { BrandLoader } from '@/src/components/shared/BrandLoader';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { formatDayLabel, formatKickoff, isEffectivelyLive } from '@/src/lib/time';
 
@@ -26,7 +27,9 @@ export default function TeamScreen() {
         <ErrorState onRetry={() => void query.refetch()} />
       </View>
     ) : (
-      <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark" />
+      <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
+        <BrandLoader />
+      </View>
     );
   }
 

@@ -9,6 +9,7 @@ import { PLACEHOLDER_KEY, resolveFavoriteName } from '@/src/lib/favorite-names';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
+import { BrandLoader } from '@/src/components/shared/BrandLoader';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { authErrorKey } from '@/src/lib/auth-errors';
@@ -106,7 +107,11 @@ export default function FavoritesScreen() {
 
   if (!ready) {
     // Evita el flash del CTA de login mientras se resuelve la sesión guardada.
-    return <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark" />;
+    return (
+      <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
+        <BrandLoader />
+      </View>
+    );
   }
 
   const favs = token ? server.data : local.data;

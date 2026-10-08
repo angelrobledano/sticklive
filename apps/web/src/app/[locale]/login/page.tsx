@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useT } from '@/lib/i18n';
 import { BackLink } from '@/components/shared/BackLink';
+import { BrandLoader } from '@/components/shared/BrandLoader';
 import { track } from '@/lib/analytics';
 import { tt } from '@/components/search/translate';
 import { loginErrorKey, LoginRequestError } from './errors';
@@ -201,7 +202,10 @@ function LoginInner() {
 
   if (status === 'verifying') {
     return (
-      <div className="card p-8 text-center">
+      <div className="card p-8 text-center space-y-3">
+        <div className="flex justify-center">
+          <BrandLoader size={48} />
+        </div>
         <p className="text-sm text-slate-500 dark:text-slate-400">{tt(t, 'auth.opening_account', 'Abriendo tu cuenta…')}</p>
       </div>
     );
