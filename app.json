@@ -1,0 +1,6 @@
+{
+  "expo": {},
+  "react-native-google-mobile-ads": {
+    "android_sdk": "classic"
+  }
+}

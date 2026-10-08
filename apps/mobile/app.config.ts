@@ -3,7 +3,7 @@ import { BRAND } from '@sports/brand';
 export default {
   expo: {
     name: 'Stick Live',
-    slug: 'stick-live',
+    slug: 'sticklive',
     scheme: 'sticklive',
     version: '1.0.0',
     orientation: 'portrait',
@@ -31,7 +31,6 @@ export default {
         // Iconos temáticos de Android 13+.
         monochromeImage: './assets/android-icon-monochrome.png',
       },
-      edgeToEdgeEnabled: true,
     },
     plugins: [
       'expo-router',
@@ -82,12 +81,15 @@ export default {
       ],
     ],
     experiments: { typedRoutes: true },
-    // OTA (Task 5.3): runtimeVersion derivada de `version` — cada release
-    // pública lleva runtime propia y `eas update` sólo toca JS compatible.
-    runtimeVersion: { policy: 'appVersion' },
-    updates: { url: 'https://u.expo.dev/<projectId>' },
+    // OTA (Task 5.3): runtime manual (el proyecto tiene directorio nativo para
+    // builds locales → EAS lo trata como bare y no admite políticas). Subir a
+    // mano SOLO cuando cambie código nativo; los updates JS viajan dentro.
+    runtimeVersion: '1.0.0',
+    updates: { url: 'https://u.expo.dev/cb441676-3b36-4fae-9ce6-2da8e9f918a3' },
     extra: {
-      eas: { projectId: '' }, // se rellena con `eas init` en M5 (push lo exige)
+      // `eas init --id cb441676-…` (la config es dinámica y el CLI no puede
+      // escribir app.config.ts: lo aplicado a mano).
+      eas: { projectId: 'cb441676-3b36-4fae-9ce6-2da8e9f918a3' },
       // DSN de la app móvil (env en build; vacío = Sentry.init no se llama).
       sentryDsn: process.env['EXPO_PUBLIC_SENTRY_DSN'] ?? '',
     },

@@ -30,6 +30,7 @@ COPY apps/scraper/package.json    apps/scraper/
 COPY packages/db/package.json     packages/db/
 COPY packages/logger/package.json packages/logger/
 COPY packages/shared-types/package.json packages/shared-types/
+COPY packages/brand/package.json  packages/brand/
 COPY packages/analytics/package.json    packages/analytics/
 
 RUN npm ci --no-audit --no-fund
