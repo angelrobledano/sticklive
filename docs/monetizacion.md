@@ -335,6 +335,29 @@ si no el anual.
 **Cambiar el precio:** una env en `/opt/sticklive/.env.prod` + recrear el API
 (`$DC up -d api`; no hace falta rebuild). Con `deploy.sh` también vale.
 
+### Activar la venta
+
+Checklist REAL (verificada) para pasar de "paywall oculto" a cobrar de verdad:
+
+1. **Claves Stripe live** en `.env.prod` (en el VPS): `STRIPE_SECRET_KEY` y
+   `STRIPE_WEBHOOK_SECRET`. **Nunca** en el repo ni en el chat. Sin
+   `STRIPE_SECRET_KEY`, el checkout responde **500** (`STRIPE_SECRET_KEY no
+   configurada`).
+2. **Webhook** en el dashboard de Stripe (Developers → Webhooks): endpoint
+   `https://sticklive.eu/api/payments/stripe/webhook`, evento
+   `checkout.session.completed`; copia su signing secret a `STRIPE_WEBHOOK_SECRET`.
+3. **Flags del paywall web** en `.env.prod`: `NEXT_PUBLIC_PREMIUM_ENABLED=1` (y
+   `NEXT_PUBLIC_PAYMENT_PROVIDER=stripe`) y **rebuild del web** — son variables de
+   **BUILD** (`NEXT_PUBLIC_*`): recrear el contenedor no basta, hay que
+   `--build` para hornearlas.
+4. **Precios** (si se cambian): `PREMIUM_PRICE_EUR_CENTS` / `PREMIUM_LIFETIME_PRICE_EUR_CENTS`
+   en `.env.prod` + recrear el API.
+5. **Verificación:** en `/settings`, click anual → 4,99 €, click lifetime → 29,99 €;
+   un pago real de prueba → badge de premium activo y sin ads.
+
+**Estado actual de producción:** sin las claves, el checkout responde 500; con
+`NEXT_PUBLIC_PREMIUM_ENABLED=0` el paywall ni se muestra (la app es gratis).
+
 ## 8. Referencias
 
 - `.env.prod.example` — plantilla de variables.

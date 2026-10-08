@@ -84,6 +84,9 @@ services:
         NEXT_PUBLIC_ADSENSE_SLOT_INTERSTITIAL: ${NEXT_PUBLIC_ADSENSE_SLOT_INTERSTITIAL:-}
         NEXT_PUBLIC_ADS_INTERSTITIAL: ${NEXT_PUBLIC_ADS_INTERSTITIAL:-0}
         NEXT_PUBLIC_ADS_LIST_EVERY: ${NEXT_PUBLIC_ADS_LIST_EVERY:-0}
+        # Paywall premium (build): 0 = oculto (la app es gratis); 'stripe' = proveedor.
+        NEXT_PUBLIC_PREMIUM_ENABLED: ${NEXT_PUBLIC_PREMIUM_ENABLED:-0}
+        NEXT_PUBLIC_PAYMENT_PROVIDER: ${NEXT_PUBLIC_PAYMENT_PROVIDER:-stripe}
         SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
     logging: *default-logging
     # Sin restart: es una tarea, no un servicio. `on-failure` la reintentaría en

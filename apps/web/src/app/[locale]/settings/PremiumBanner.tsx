@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useT } from '@/lib/i18n';
 import { usePremium } from '@/context/PremiumContext';
 import { track } from '@/lib/analytics';
@@ -80,6 +80,9 @@ export function PremiumBanner({ deviceId }: { deviceId: string }) {
   // veces (p. ej. anual y de por vida casi a la vez).
   const [loadingProduct, setLoadingProduct] = useState<CheckoutProduct | null>(null);
   const [error, setError]           = useState<string | null>(null);
+  // Guard anti-doble-cobro SÍNCRONO (ver handleCheckout): sobrevive al lag del
+  // render de `loadingProduct` y cubre dos pestañas sobre el mismo componente.
+  const inFlightRef = useRef(false);
 
   // Tope del funnel de conversión: el usuario ve el bloque premium.
   useEffect(() => { track('premium_viewed', { from_screen: 'settings' }); }, []);
@@ -89,81 +92,94 @@ export function PremiumBanner({ deviceId }: { deviceId: string }) {
    * 2. Redirige a la pasarela (Stripe) o inyecta el formulario firmado (Redsys).
    */
   const handleCheckout = useCallback(async (product: CheckoutProduct) => {
-    // Guard anti-doble-cobro: si ya hay un checkout en curso, se ignora.
-    if (loadingProduct || !deviceId) return;
+    // Guard anti-doble-cobro SÍNCRONO: `loadingProduct` es estado y solo cambia
+    // en el SIGUIENTE render, así que dos clics en el mismo tick —o dos pestañas
+    // sobre el mismo componente— podrían pasar el check de estado y abrir dos
+    // Checkouts. El ref se marca de forma síncrona ANTES de cualquier `await` y
+    // se limpia en el `finally`: complementa (no sustituye) el guard de estado.
+    if (inFlightRef.current || loadingProduct || !deviceId) return;
+    inFlightRef.current = true;
+
     track('premium_checkout_started', { product });
     setLoadingProduct(product);
     setError(null);
 
-    // ── Proveedor ACTIVO: Stripe (Redsys queda abajo por si se vuelve) ──────
-    if (PAYMENT_PROVIDER === 'stripe') {
-      try {
-        const res = await fetch(`${API_URL}/payments/stripe/checkout`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(buildCheckoutPayload(deviceId, product)),
-        });
-        // 409: el servidor (fuente de verdad) confirma que ya es premium. Se
-        // refleja en el estado global y Ajustes pinta el badge de premium activo.
-        if (res.status === 409) {
+    try {
+      // ── Proveedor ACTIVO: Stripe (Redsys queda abajo por si se vuelve) ────
+      if (PAYMENT_PROVIDER === 'stripe') {
+        try {
+          const res = await fetch(`${API_URL}/payments/stripe/checkout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(buildCheckoutPayload(deviceId, product)),
+          });
+          // 409: el servidor (fuente de verdad) confirma que ya es premium. Se
+          // refleja en el estado global y Ajustes pinta el badge de premium activo.
+          if (res.status === 409) {
+            setLoadingProduct(null);
+            setPremium(true);
+            return;
+          }
+          const body = await res.json() as { url?: string; error?: string };
+          if (!res.ok || !body.url) throw new Error(body.error ?? `HTTP ${res.status}`);
+          window.location.href = body.url; // → Stripe Checkout
+        } catch (err) {
+          // El código técnico queda en el log, nunca en pantalla (#review I2).
+          console.error('[premium] checkout', err instanceof Error ? err.message : err);
+          setError(t('settings.premium_error'));
           setLoadingProduct(null);
-          setPremium(true);
-          return;
         }
-        const body = await res.json() as { url?: string; error?: string };
-        if (!res.ok || !body.url) throw new Error(body.error ?? `HTTP ${res.status}`);
-        window.location.href = body.url; // → Stripe Checkout
+        return;
+      }
+
+      // ── Redsys (proveedor alternativo) ────────────────────────────────────
+      try {
+        const res = await fetch(`${API_URL}/payments/redsys/create-json`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ deviceId }),
+        });
+
+        if (!res.ok) {
+          const body = await res.json() as { error?: string };
+          throw new Error(body.error ?? `HTTP ${res.status}`);
+        }
+
+        const payload = await res.json() as RedsysPayload;
+
+        // Inyectar formulario invisible y hacer submit automático
+        const form = document.createElement('form');
+        form.method  = 'POST';
+        form.action  = REDSYS_URL;
+        form.style.display = 'none';
+
+        const fields: Array<[string, string]> = [
+          ['Ds_SignatureVersion',   payload.Ds_SignatureVersion],
+          ['Ds_MerchantParameters', payload.Ds_MerchantParameters],
+          ['Ds_Signature',          payload.Ds_Signature],
+        ];
+
+        for (const [name, value] of fields) {
+          const input   = document.createElement('input');
+          input.type    = 'hidden';
+          input.name    = name;
+          input.value   = value;
+          form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        // El navegador redirige — no hace falta limpiar el form
       } catch (err) {
-        // El código técnico queda en el log, nunca en pantalla (#review I2).
         console.error('[premium] checkout', err instanceof Error ? err.message : err);
         setError(t('settings.premium_error'));
         setLoadingProduct(null);
       }
-      return;
-    }
-
-    // ── Redsys (proveedor alternativo) ──────────────────────────────────────
-    try {
-      const res = await fetch(`${API_URL}/payments/redsys/create-json`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ deviceId }),
-      });
-
-      if (!res.ok) {
-        const body = await res.json() as { error?: string };
-        throw new Error(body.error ?? `HTTP ${res.status}`);
-      }
-
-      const payload = await res.json() as RedsysPayload;
-
-      // Inyectar formulario invisible y hacer submit automático
-      const form = document.createElement('form');
-      form.method  = 'POST';
-      form.action  = REDSYS_URL;
-      form.style.display = 'none';
-
-      const fields: Array<[string, string]> = [
-        ['Ds_SignatureVersion',   payload.Ds_SignatureVersion],
-        ['Ds_MerchantParameters', payload.Ds_MerchantParameters],
-        ['Ds_Signature',          payload.Ds_Signature],
-      ];
-
-      for (const [name, value] of fields) {
-        const input   = document.createElement('input');
-        input.type    = 'hidden';
-        input.name    = name;
-        input.value   = value;
-        form.appendChild(input);
-      }
-
-      document.body.appendChild(form);
-      form.submit();
-      // El navegador redirige — no hace falta limpiar el form
-    } catch (err) {
-      console.error('[premium] checkout', err instanceof Error ? err.message : err);
-      setError(t('settings.premium_error'));
-      setLoadingProduct(null);
+    } finally {
+      // Se limpia SIEMPRE: si la redirección a Checkout (o el submit de Redsys)
+      // no llega a producirse, el botón vuelve a estar operativo sin esperar a un
+      // re-render.
+      inFlightRef.current = false;
     }
   }, [deviceId, loadingProduct, setPremium, t]);
 

@@ -9,7 +9,7 @@ process.env['STRIPE_SECRET_KEY'] ??= 'sk_test_dummy';
 process.env['STRIPE_WEBHOOK_SECRET'] ??= 'whsec_test_dummy';
 
 const {
-  sessionsCreate, sessionsList, customersList, dbQuery,
+  sessionsCreate, sessionsList, sessionsRetrieve, customersList, dbQuery,
   txQuery, withTransaction, constructEventAsync, captureRouteError,
   loggerError, loggerInfo,
 } = vi.hoisted(() => {
@@ -17,6 +17,7 @@ const {
   return {
     sessionsCreate: vi.fn(),
     sessionsList: vi.fn(),
+    sessionsRetrieve: vi.fn(),
     customersList: vi.fn(),
     dbQuery: vi.fn(),
     txQuery,
@@ -34,7 +35,7 @@ const {
 
 vi.mock('stripe', () => ({
   default: class StripeMock {
-    checkout = { sessions: { create: sessionsCreate, list: sessionsList } };
+    checkout = { sessions: { create: sessionsCreate, list: sessionsList, retrieve: sessionsRetrieve } };
     customers = { create: vi.fn(), list: customersList };
     webhooks = { constructEventAsync };
   },
@@ -88,6 +89,7 @@ const webhook = (a: Hono) =>
 beforeEach(() => {
   sessionsCreate.mockReset();
   sessionsList.mockReset();
+  sessionsRetrieve.mockReset();
   customersList.mockReset();
   dbQuery.mockReset();
   txQuery.mockReset();
@@ -116,6 +118,55 @@ describe('GET /payments/stripe/session/:id — validación', () => {
   it('rechaza un id con prefijo correcto pero demasiado corto', async () => {
     const res = await app.request('/payments/stripe/session/cs_short');
     expect(res.status).toBe(400);
+  });
+});
+
+/**
+ * Fail-closed de `GET /session/:id` respecto al catálogo (misma política que el
+ * webhook): un `product` PRESENTE pero desconocido no concede premium aunque la
+ * sesión esté pagada. `undefined` (histórica) = anual por compat.
+ */
+describe('GET /payments/stripe/session/:id — fail-closed de producto', () => {
+  const sessionId = 'cs_test_1234567890abcdef';
+  const getSession = () => app.request(`/payments/stripe/session/${sessionId}`);
+
+  it('product presente pero desconocido: NO concede premium, loguea y alerta', async () => {
+    sessionsRetrieve.mockResolvedValueOnce({
+      payment_status: 'paid', status: 'complete',
+      metadata: { deviceId: 'dev-1', product: 'raro' },
+    });
+    dbQuery.mockResolvedValueOnce({ rows: [] }); // ni siquiera premium en BD
+
+    const res = await getSession();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ paid: true, premium: false, product: null });
+    expect(loggerError).toHaveBeenCalled();
+    expect(captureRouteError).toHaveBeenCalledTimes(1);
+  });
+
+  it("product válido ('lifetime') se refleja y concede premium", async () => {
+    sessionsRetrieve.mockResolvedValueOnce({
+      payment_status: 'paid', status: 'complete',
+      metadata: { deviceId: 'dev-1', product: 'lifetime' },
+    });
+    dbQuery.mockResolvedValueOnce({ rows: [] });
+
+    const res = await getSession();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ paid: true, premium: true, product: 'lifetime' });
+    expect(captureRouteError).not.toHaveBeenCalled();
+  });
+
+  it("product ausente (sesión histórica) → 'annual' y concede premium", async () => {
+    sessionsRetrieve.mockResolvedValueOnce({
+      payment_status: 'paid', status: 'complete',
+      metadata: { deviceId: 'dev-1' },
+    });
+    dbQuery.mockResolvedValueOnce({ rows: [] });
+
+    const res = await getSession();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ paid: true, premium: true, product: 'annual' });
   });
 });
 

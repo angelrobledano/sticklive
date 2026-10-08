@@ -88,10 +88,32 @@ stripeRouter.get('/session/:id', rateLimit(30, 60_000), async (c) => {
   try {
     const session = await stripe().checkout.sessions.retrieve(id);
     const paid = isPaidCheckoutSession(session);
+    const rawProduct = session.metadata?.['product'];
 
-    // Si el pago está confirmado, concedemos el entitlement aunque el webhook
-    // llegue con retraso. Si no, mandamos el estado autoritativo de la BD.
-    let premium = paid;
+    // Fail-closed respecto al catálogo (MISMA política que el webhook): un
+    // `product` PRESENTE pero desconocido NO concede premium aunque Stripe diga
+    // que la sesión está pagada. `undefined` (sesión histórica) sigue siendo
+    // anual por compatibilidad. El desconocido se marca como `product: null`
+    // (nunca se refleja el valor crudo como si fuera un producto válido).
+    let product: ProductId | null;
+    if (rawProduct === undefined) product = 'annual';
+    else if (isProductId(rawProduct)) product = rawProduct;
+    else {
+      product = null;
+      logger.error(
+        { sessionId: id, product: rawProduct },
+        '[stripe] producto desconocido en session: no se concede premium'
+      );
+      captureRouteError(
+        new Error(`[stripe] producto desconocido en session: ${String(rawProduct)}`),
+        'stripe] session unknown product'
+      );
+    }
+
+    // Si el pago está confirmado Y el producto pertenece al catálogo, concedemos
+    // el entitlement aunque el webhook llegue con retraso. Si no, mandamos el
+    // estado autoritativo de la BD.
+    let premium = paid && product !== null;
     let premiumUntil: string | null = null;
     const deviceId = session.metadata?.['deviceId'];
     if (deviceId) {
@@ -112,7 +134,7 @@ stripeRouter.get('/session/:id', rateLimit(30, 60_000), async (c) => {
       }
     }
 
-    return c.json({ paid, premium, premiumUntil, product: session.metadata?.['product'] ?? 'annual' });
+    return c.json({ paid, premium, premiumUntil, product });
   } catch (err) {
     // Sesión inexistente o error de Stripe: nunca conceder premium.
     const status = (err as { statusCode?: number }).statusCode;
