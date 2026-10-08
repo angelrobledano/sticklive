@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { headers } from 'next/headers';
+import { BRAND } from '@sports/brand';
 import {
   FALLBACK_LOCALE,
   LOCALE_COOKIE,
@@ -51,10 +52,10 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#0b1220',
-    // #363: alineado con el meta theme-color claro para que el marco de la app
-    // instalada coincida con el del navegador.
-    theme_color: '#f8fafc',
+    background_color: BRAND.noche,
+    // #363: el theme_color pasa a ser el granate de marca (barra de la app
+    // instalada), en lugar del fondo claro.
+    theme_color: BRAND.granate,
     lang: locale,
     categories: ['sports'],
     icons: [

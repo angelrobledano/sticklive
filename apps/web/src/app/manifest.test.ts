@@ -52,9 +52,9 @@ describe('manifest PWA — start_url, tema y atajos (#363)', () => {
     expect(m.display).toBe('standalone');
   });
 
-  it('theme_color alineado con el meta theme-color claro de layout.tsx', async () => {
+  it('theme_color con el granate de marca', async () => {
     const m = await manifest();
-    expect(m.theme_color).toBe('#f8fafc');
+    expect(m.theme_color).toBe('#9E1235');
   });
 
   it('shortcuts localizados a Favoritos y Competiciones (es)', async () => {
