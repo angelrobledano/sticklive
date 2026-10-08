@@ -1,5 +1,7 @@
 import type { Config } from 'tailwindcss';
 import colors from 'tailwindcss/colors';
+// Fuente única de los colores de marca (web y app comparten el paquete).
+import { BRAND } from '@sports/brand';
 
 const config: Config = {
   // Dark mode controlado por clase en <html>
@@ -17,15 +19,15 @@ const config: Config = {
       colors: {
         // Granate/burdeos intenso — identidad visual del hockey sobre patines
         'rink-passion': {
-          DEFAULT: colors.red[800],   // #991b1b
-          light:   colors.red[700],   // #b91c1c  (hover, botones secundarios)
-          dark:    colors.red[900],   // #7f1d1d  (active, focus ring)
+          DEFAULT: BRAND.granate,       // #9E1235 (docs/marca/identidad.md)
+          light:   BRAND.granateLight,  // #B91C1C  (hover, botones secundarios)
+          dark:    BRAND.granateDark,   // #7F1D1D  (active, focus ring)
         },
         // Acento de marca sobre superficie OSCURA (#364): red.800 se queda en
         // ~2,1:1 sobre el fondo azul-noche, así que texto activo, iconos de
         // identidad y anillos de foco suben a red.400 (≥3:1). Identidad, no
         // color semántico de tarjeta/error (ese usa red directo).
-        'rink-accent': colors.red[400], // #f87171
+        'rink-accent': BRAND.accent, // #F87171 sobre superficies oscuras
         // Parqué claro — fondo principal en modo claro
         'rink-floor': {
           DEFAULT: colors.slate[50],  // #f8fafc

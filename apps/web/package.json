@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@sentry/nextjs": "^10.67.0",
+    "@sports/brand": "*",
     "@sports/shared-types": "*",
     "next": "^16.2.10",
     "posthog-js": "^1.396.6",
