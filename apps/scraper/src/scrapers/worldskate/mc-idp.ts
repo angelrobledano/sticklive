@@ -171,7 +171,7 @@ export function parseMcStates(html: string): Map<string, McState> {
       : /\bscorer_game_pending\b/.test(cls) ? 'scheduled'
       : null;
     if (!status) continue;
-    const score = body.match(/scorer_score['"][^>]*>\s*(\d{1,3})\s*[:\-]\s*(\d{1,3})\s*</);
+    const score = body.match(/scorer_score['"][^>]*>\s*(\d{1,3})\s*[:-]\s*(\d{1,3})\s*</);
     const logo = (side: 'left' | 'right') =>
       body.match(new RegExp(`scorer_logo_${side}['"][^>]*>\\s*<img[^>]*logos_clubes/([^/'"?]+?)\\.png`))?.[1] ?? null;
     out.set(idp, {
