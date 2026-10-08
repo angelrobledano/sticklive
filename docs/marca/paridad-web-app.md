@@ -37,7 +37,7 @@ blanco, `accent` ≥3:1 sobre noche, `liveDeep`/`amberDeep` AA con blanco y
 |---|---|---|
 | Acento (rojos de marca) | `tailwind.config.ts`, `globals.css`, hover/active de marca en error/not-found/premium/MatchesView/CompetitionsList/PremiumBanner | `tailwind.config.ts`, `(tabs)/_layout.tsx`, `settings/notifications.tsx`, `FollowButton.tsx`, `src/lib/push.ts` |
 | Directo | badge verde + punto + «En directo» (mismo tratamiento en MatchHeader/MatchCard/MatchesView/LiveBoard/Knockout/Gameweeks) | badge verde + punto en MatchCard y `team/[id]` (hoy granate) |
-| Logotipo | cabecera `Sidebar.tsx` y `login/page.tsx` → lockup de la i | `assets/lock-on-*.png` en la cabecera de inicio |
+| Logotipo | cabecera `Sidebar.tsx` y `login/page.tsx` → lockup de la i (`public/brand/`) | no hay isotipo en pantalla: la cabecera es de texto, como las capturas de tienda (la marca en app vive en icono y splash) |
 | Modo oscuro | `themeColor` y `globals.css` a noche `#0B1220` | `rink-floor-dark` a noche + tema de navegación claro/oscuro |
 | Gol 🏑 | icono de gol de `icons.tsx` → stick+bola | `EventRow.tsx` y `team/[id].tsx` |
 | Push | `notification-copy.ts` `playerGoalAlert` 🏑 (sirve a web y nativo) | idem; **sin** `[Stick Live]` solo en el canal nativo (`push-dispatcher.ts`) |
@@ -69,7 +69,13 @@ la app (fase 7).
   el granate sobre oscuro es `accent`.
 - **Email** `mailer.ts`: entra como marca.
 - **Icono de gol web**: stick+bola de la marca (coherente con el estilo SVG).
-- **Logotipo en app**: se añade el lockup a la cabecera de inicio.
+- **Logotipo en app**: **no** se añade a la cabecera. Las capturas de tienda
+  muestran una cabecera de texto (no hay isotipo en pantalla), así que el
+  logotipo de la i se aplica solo en la web; en la app la marca vive en el
+  icono y el splash.
+- **Cabeceras de la app**: se activa la cabecera del `Stack` raíz (con botón de
+  volver) y se le pasa a expo-router un tema de navegación claro y otro oscuro.
+  Las pantallas de ajustes mueven su título a la cabecera.
 - **Sin footer nuevo** en la web (no existe hoy).
 - **Prefijo de push**: `stripBrand` en el borde de entrega nativo.
 - **DESIGN.md**: fuera de estas fases (paso 4 de `identidad.md`), pendiente.
