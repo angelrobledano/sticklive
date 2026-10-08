@@ -24,9 +24,11 @@ export function htmlCacheControlForPath(pathname) {
 const nextConfig = {
   // No revelar el framework en las respuestas (#307): quita `X-Powered-By`.
   poweredByHeader: false,
-  // `@sports/shared-types` exporta TS fuente (`main: ./src/index.ts`); Next debe
-  // transpilarlo al importarlo desde la web (#191, STALE_LIVE_HOURS).
-  transpilePackages: ['@sports/shared-types'],
+  // `@sports/shared-types` y `@sports/brand` exportan TS fuente
+  // (`main: ./src/index.ts`); Next debe transpilarlos al importarlos desde la
+  // web (#191, STALE_LIVE_HOURS). Sin transpile, el bundle externalizaría la
+  // dependencia y en runtime no habría TS que ejecutar.
+  transpilePackages: ['@sports/shared-types', '@sports/brand'],
   env: {
     NEXT_PUBLIC_API_URL:   process.env.NEXT_PUBLIC_API_URL   ?? 'http://localhost:3000',
     NEXT_PUBLIC_SEASON_ID: process.env.NEXT_PUBLIC_SEASON_ID ?? 'e6ab9d19-cc4b-4095-a9ce-4407a4000737',
