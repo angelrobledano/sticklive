@@ -11,8 +11,9 @@ Cómo añadir una competición nueva, fusionar liga + playoff, y los errores que
 
 - **`idc`**: identificador de competición en la fuente FEP (`sidgad`/`rfep`). Cada competición-temporada tiene el suyo. El histórico se importa por lista de `idc`.
 - **`temp_39`**: temporada actual 2025/26 en la fuente. `is_current` se marca cuando `comp.tempId === '39'`.
-- **Modelo de datos**: `competitions → seasons (is_current única por competición) → rounds (round_type: regular/playoff/cup/friendly) → matches`. La competición de un partido se deriva vía su `season`.
-- **Una competición = liga + playoff**: la OK Liga (masc. y fem.) es **una sola competición**; los partidos de playoff son `rounds` con `round_type='playoff'` dentro de la misma temporada. Las copas/campeonatos de España se modelan también como rondas de playoff. Una **Final Four** (Supercopa) se declara con `competition_sources.external_ids.format='final_four'`: sus rondas se crean como `round_type='playoff'` con numeración canónica **Semifinal=1 / Final=2** y la web la pinta como cuadro (Semifinal x2 → Final), nunca como liga.
+- **Modelo de datos** (desde la migración 072): `competitions → seasons (is_current única por competición) → phases (league | groups | knockout, ± colocación) → rounds (jornada, o fase eliminatoria con stage) → matches (series_game)`. La competición de un partido se deriva vía su `season`.
+- **El formato de una competición es la secuencia de sus fases, y lo publica la fuente.** La OK Liga (masc. y fem.) es **una sola competición** con tres fases: liga regular → Play Off por el título (cuartos/semis/final, series al mejor de N) → Play Off 9.º-10.º (colocación). Grupos + Final Four = fase `groups` → fase `knockout` que empieza en semis. Solo Final Four (Supercopa) = una fase `knockout` semis → final. Copa = una fase `knockout` desde cuartos. Todo sale del calendario de la fuente (bloques de fase y cabeceras de ronda), sin listas de `idc` ni casos por competición.
+- **`competition_sources.external_ids.format`** (`league` | `bracket` | `final_four`) ya no manda: es un **metadato de respaldo** que solo decide el tipo de una fase cuando la fuente no lo deja claro. Si una fase cae al fallback (liga por defecto), sale un aviso en Sentry: declarar `format` o revisar la fuente. Diseño y operativa: [superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md](./superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md) · [runbook-fases-y-directo.md](./runbook-fases-y-directo.md).
 
 ---
 
@@ -54,14 +55,16 @@ git pull
    - `--fichas` añade `fichas-pendientes` al bucle de scrape, para volcar actas (alineaciones + jugadores) de los partidos ya jugados.
    - `is_current` se pone solo si la temporada es la `39`.
 
-2. **Lanzar el pipeline** para crear rondas de playoff/copa y consolidar:
+2. **Lanzar el pipeline** para crear fases y rondas y consolidar:
 
    ```bash
-   $DC exec etl node dist/apps/etl/src/run-pipeline.js
+   # Primero en seco: imprime las fases que crearía, sin escribir.
+   $DC exec etl node dist/apps/etl/src/run-pipeline.js --entity=calendar --season-id=<SEASON_ID> --idc=<IDC_LIGA>,<IDC_PLAYOFF> --dry-run
+   $DC exec etl node dist/apps/etl/src/run-pipeline.js --entity=calendar --season-id=<SEASON_ID> --idc=<IDC_LIGA>,<IDC_PLAYOFF>
    ```
 
-   - `PLAYOFF_IDCS_PIPELINE = ['3481','3484']` → esas `idc` se tratan como rondas de playoff.
-   - Las `idc` de copa (CUP_IDCS) generan rondas de playoff cuyo número/nombre sale del `roundRef` del calendario. Con `format='bracket'` o `'final_four'` en `competition_sources.external_ids` se hace sin la lista hardcodeada; `final_four` usa Semifinal=1 / Final=2.
+   - Los `idc` de la competición (liga + playoff…) se cargan juntos: las fases se ordenan por fecha y cada una se tipifica por lo que publica la fuente (`league@source_rounds`, `knockout@source_rounds`, `knockout(colocación)@source_title`…).
+   - Las listas `PLAYOFF_IDCS_PIPELINE` / `CUP_IDCS` de `run-pipeline.ts` ya solo se usan para la clasificación y como metadato del modo manual; no deciden la estructura.
 
 3. **Verificar** en la web que aparecen los partidos, que el equipo compartido no se ha duplicado, y que la etiqueta de competición es correcta en la home.
 
@@ -167,7 +170,7 @@ Ajuste: `PARTITION_SEASONS_AHEAD` (defecto 2).
 - [ ] `git checkout --` de los scripts del server antes de `git pull`.
 - [ ] `FEP_SOURCE_ID` real resuelto (no placeholder).
 - [ ] `import-history --only-idc=… [--fichas]`.
-- [ ] `run-pipeline` para rondas de playoff/copa.
+- [ ] `run-pipeline --entity=calendar` (primero `--dry-run`) y comprobar las fases planificadas.
 - [ ] Migraciones aplicadas si se reconstruyó la BD.
 - [ ] Verificación en web: partidos visibles, equipo compartido no duplicado, etiqueta de competición correcta.
 - [ ] Scraping masivo: ciclo staging (sembrar → scrapear(staging) → validate-staging → promote-to-prod --commit), nunca directo a prod.

@@ -12,10 +12,11 @@
  * Por qué hizo falta lo segundo: el bucle de `etl-scheduler.sh` es SECUENCIAL, y
  * `cron-live` se queda dentro de su bucle activo mientras haya partidos en
  * juego (hasta 180 min). Con World Skate detrás de él en la lista, no le
- * llegaba el turno. Y como el estado `live` de WSE se infiere de la hora y sólo
- * dura 3 h, los partidos se quedaban colgados "EN JUEGO" — lo que a su vez
+ * llegaba el turno. Y como el estado `live` de WSE se infería entonces de la
+ * hora (3 h), los partidos se quedaban colgados "EN JUEGO" — lo que a su vez
  * mantenía a `cron-live` en el bucle e impedía la ejecución que lo habría
- * arreglado. Un círculo vicioso.
+ * arreglado. Un círculo vicioso. (Desde la migración 072 el estado sale del
+ * match center de la fuente — `playing`/`final`/`pending` —, no de la hora.)
  *
  * #294 — ediciones terminadas: sidgad retira la página del calendario poco
  * después de que acabe el torneo. Seguir pidiéndola da 404 cada ciclo (14 días

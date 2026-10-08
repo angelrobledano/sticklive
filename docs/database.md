@@ -1,6 +1,6 @@
 # Base de datos
 
-*PostgreSQL 16. Contrastado con `packages/db/migrations` (62 ficheros) y el runner actual. Arquitectura general en [architecture.md](./architecture.md).*
+*PostgreSQL 16 (la 072 exige ≥ 15: `UNIQUE NULLS NOT DISTINCT`). Contrastado con `packages/db/migrations` (71 ficheros) y el runner actual. Arquitectura general en [architecture.md](./architecture.md).*
 
 ## Rol de aplicación (mínimo privilegio, #298)
 
@@ -23,29 +23,32 @@
 - Cada fichero se ejecuta como una sola transacción: si falla, se revierte entero y el runner aborta (y el despliegue no arranca api/etl). Por eso `CREATE INDEX CONCURRENTLY` no puede ir en migraciones normales — para índices sobre tablas grandes hay un procedimiento sin lock: [runbook-indices-grandes.md](./runbook-indices-grandes.md).
 - El CI aplica **todas las migraciones desde cero** y las re-aplica (idempotencia) en cada push.
 - Convención operativa: si una migración reescribe datos existentes, `./deploy/backup-db.sh` antes (ver [DEPLOY.md](./DEPLOY.md)).
-- Últimas de peso: `043` LISTEN/NOTIFY del directo · `044–046` Entity Resolution (clubs/aliases/cola) · `047` particionado de `match_events` · `048` `import_batches` · `052` índices sobre tablas grandes.
+- Últimas de peso: `043` LISTEN/NOTIFY del directo · `044–046` Entity Resolution (clubs/aliases/cola) · `047` particionado de `match_events` · `048` `import_batches` · `052` índices sobre tablas grandes · `072` fases de competición (aditiva, con backfill `legacy` re-ejecutable `backfill_legacy_phases()`; operativa en [runbook-fases-y-directo.md](./runbook-fases-y-directo.md)).
 
 ## Modelo de datos (núcleo deportivo)
 
 ```text
 sports ──< competitions ──< competition_sources
                 │
-                └──< seasons ──< rounds
-                        │           │
-                        │           └──< matches >── season_teams >── teams >── clubs
-                        │                │                                    │
-                        └──< standings   ├──< match_events (particionada)     └── club_names · sponsors
-                                         └──< match_lineups
+                └──< seasons ──< phases ──< rounds
+                        │           │          │
+                        │           └──────────┴──< matches >── season_teams >── teams >── clubs
+                        │                            │                                    │
+                        └──< standings               ├──< match_events (particionada)     └── club_names · sponsors
+                                                     └──< match_lineups
 teams ──< team_aliases · source_entity_map · resolution_queue
 players ──< team_players
 ```
 
-- **`competitions` / `seasons` / `rounds`** — una competición agrupa temporadas; `is_current` es única por competición (constraint). `rounds` distingue `regular` / `playoff` / `cup` / `friendly`; liga y playoff comparten temporada, y las copas se modelan como rondas.
+- **`competitions` / `seasons`** — una competición agrupa temporadas; `is_current` es única por competición (constraint).
+- **`phases` (072)** — la ESTRUCTURA de una temporada: `Competition → Season → Phase → (Group) → Round → Match`. Cada fase tiene `kind` (`league` | `groups` | `knockout`), `is_placement` (no decide el título: 9.º-10.º, 5.º-8.º), `ordinal`, `name` y `resolved_by` (qué evidencia decidió el tipo: `source_rounds` / `source_title` > `declared` > `structural_rule` > `fallback`; `legacy` = backfill de 072). El "formato" de una competición no es un campo: es la secuencia de sus fases (liga + playoff, grupos + final four…). Identidad en la fuente: `(season_id, source_ref)` único (`fep_fase_3483`). Diseño: [superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md](./superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md).
+- **`rounds`** — jornada (fases `league`/`groups`) o fase eliminatoria (fases `knockout`, con `stage` canónico: `round_of_16 | quarters | semis | final | third_place | placement`). `round_type` (`regular` / `playoff` / `cup` / `friendly`) se conserva. Identidad: `UNIQUE NULLS NOT DISTINCT (season_id, phase_id, number, round_type)` — dos fases pueden tener su "ronda 1"; para rondas sin fase, la unicidad es la de antes.
 - **`teams` / `season_teams`** — un `team` es la sección de un club en una temporada (club × género × categoría × filial). La identidad estable vive en `clubs`; los nombres comerciales (patrocinio) en `club_names` con vigencia.
-- **`matches`** — `home_team_id` / `away_team_id` / `season_id` son `NOT NULL` con FK: **no pueden existir partidos huérfanos** a nivel de esquema. `status` con CHECK (`scheduled|live|finished|postponed|cancelled`), `scheduled_at` nullable (jornadas sin fecha de la fuente), `scheduled_at` en timestamptz UTC.
+- **`matches`** — `home_team_id` / `away_team_id` / `season_id` son `NOT NULL` con FK: **no pueden existir partidos huérfanos** a nivel de esquema. `status` con CHECK (`scheduled|live|finished|postponed|cancelled`), `scheduled_at` nullable (jornadas sin fecha de la fuente), `scheduled_at` en timestamptz UTC. `phase_id` (pertenencia aunque no tenga ronda) y `series_game` (nº de partido de la eliminatoria: "2 CUARTOS" → 2; ida = 1, vuelta = 2) desde 072.
+- **Estado del partido = lo que dice la fuente.** Solo una señal explícita lo cambia (feed en vivo, match center, acta, resultado publicado); una fuente que no informa del estado no lo toca (`status = COALESCE(nuevo, matches.status)`, regla `resolveStatusTransition` de `@sports/shared-types`). La hora programada **nunca** pone un partido en `live`.
 - **`match_events`** — **particionada por `match_date`** (denormalizado desde `scheduled_at`, NOT NULL). Partición centinela `match_events_undated` debe quedar siempre vacía (`partition-guard` la vigila a diario y alerta). Identidad de evento: `(match_id, source_ref, match_date)` único parcial, con `source_ref` derivada del contenido (periodo+crono+tipo+lado).
 - **`match_lineups`** — alineaciones por partido (dorsal, portero, 5 inicial, capitán, goles/asistencias).
-- **`standings`** — clasificación por temporada (y grupo); único `(season_id, team_id, COALESCE(group_name,''))` con backfill de NULLs.
+- **`standings`** — clasificación por temporada (y grupo); único `(season_id, team_id, COALESCE(group_name,''))` con backfill de NULLs. Todavía **no** está ligada a una fase: la API la atribuye a la primera liguilla por el título de la temporada (suficiente para liga + playoff y grupos + final four; dos liguillas seguidas necesitarían `standings.phase_id`).
 - **`competition_sources`** — configuración por fuente/competición (`idc`, portal, timezone). Es lo que itera el cron en producción: alta de liga = un INSERT.
 - **Entity Resolution** — `source_entity_map` (ID de fuente → club o equipo, FK polimórfica), `team_aliases` (nombre normalizado → team, índice GIN de trigramas), `resolution_queue` (cola HITL). `teams.source_ref`/`alt_source_refs` coexisten con el mapa.
 - **`players` / `team_players`** — jugadores y plantillas; las plantillas se reconstruyen desde las actas.
