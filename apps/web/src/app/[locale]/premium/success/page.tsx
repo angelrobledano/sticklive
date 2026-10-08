@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { usePremium } from '@/context/PremiumContext';
+import { useT } from '@/lib/i18n';
 import { trackOnce } from '@/lib/analytics';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
@@ -21,9 +22,13 @@ type Verification = 'verifying' | 'granted' | 'pending' | 'error';
  */
 function PremiumSuccessInner() {
   const { setPremium } = usePremium();
+  const { t } = useT();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const [state, setState] = useState<Verification>('verifying');
+  // Producto comprado, según el servidor: solo decide qué copy de estado se
+  // muestra ("anual" vs "para siempre"). Llegar aquí no concede nada.
+  const [product, setProduct] = useState<'annual' | 'lifetime'>('annual');
 
   useEffect(() => {
     // Sin session_id no hay nada verificable → no se concede premium.
@@ -35,12 +40,15 @@ function PremiumSuccessInner() {
     let cancelled = false;
     fetch(`${API_URL}/payments/stripe/session/${encodeURIComponent(sessionId)}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { premium?: boolean } | null) => {
+      .then((data: { premium?: boolean; product?: string } | null) => {
         if (cancelled) return;
         if (data?.premium) {
           // Pago confirmado por el servidor → mutación en caliente: todos los
           // <AdBanner> montados reciben el cambio sin recargar.
           setPremium(true);
+          // El API devuelve el producto de la sesión; solo cambia el copy de
+          // estado (anual vs para siempre), no el entitlement.
+          setProduct(data.product === 'lifetime' ? 'lifetime' : 'annual');
           // #247: la compra se cuenta UNA sola vez por session_id. Antes este
           // evento se re-emitía en cada montaje/recarga de /premium/success.
           trackOnce(`premium-completed:${sessionId}`, 'premium_purchase_completed', { plan: 'premium' });
@@ -99,6 +107,16 @@ function PremiumSuccessInner() {
           {message}
         </p>
       </div>
+
+      {/* Copy del producto comprado (anual vs para siempre), de las claves i18n
+          existentes. El entitlement es el mismo en ambos casos. */}
+      {state === 'granted' && (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100
+                         dark:bg-amber-900/30 px-3 py-1 text-xs font-bold uppercase
+                         tracking-widest text-amber-700 dark:text-amber-400">
+          {t(product === 'lifetime' ? 'premium.status_lifetime' : 'premium.status_active')}
+        </span>
+      )}
 
       <Link
         href={state === 'granted' ? '/' : '/settings'}
