@@ -15,6 +15,10 @@ export default {
           light:   BRAND.granateLight,  // #B91C1C
           dark:    BRAND.granateDark,   // #7F1D1D
         },
+        // Verde SOLO para «en directo» (Live-Only Color Rule): punto y estado.
+        'live': { DEFAULT: BRAND.live, deep: BRAND.liveDeep },
+        // Ámbar de descanso/avisos.
+        'halftime': { DEFAULT: BRAND.amber, deep: BRAND.amberDeep },
         'rink-floor': {
           DEFAULT: colors.slate[50],
           dark: colors.slate[950],

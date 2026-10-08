@@ -41,7 +41,8 @@ export function MatchCard({ match }: { match: MatchSummary }) {
           {match.status === 'finished' ? t('match_states.final') : match.isHalftime ? t('match_states.half_time') : ''}
         </Text>
         {live ? (
-          <View className="rounded-full bg-rink-passion px-2 py-0.5">
+          <View className="flex-row items-center gap-1 rounded-full bg-live-deep px-2 py-0.5">
+            <View className="h-1.5 w-1.5 rounded-full bg-white" />
             <Text className="text-[10px] font-bold text-white">{t('match_states.live')}</Text>
           </View>
         ) : null}

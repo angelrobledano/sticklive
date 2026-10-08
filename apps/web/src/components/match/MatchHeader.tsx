@@ -158,11 +158,11 @@ function LivePhase({ live }: { live: NonNullable<MatchDetail['match']['live']> }
     : null;
 
   return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
-      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-live-deep dark:text-live uppercase tracking-widest">
+      <span className="w-2 h-2 rounded-full bg-live animate-pulse" aria-hidden="true" />
       {t('match_states.live')}
       {periodLabel && (
-        <span className="ml-1.5 font-semibold normal-case tracking-normal tabular-nums text-emerald-600/90 dark:text-emerald-400/90">
+        <span className="ml-1.5 font-semibold normal-case tracking-normal tabular-nums text-live-deep/90 dark:text-live/90">
           {periodLabel}{mmss ? ` · ${mmss}` : ''}
         </span>
       )}
@@ -239,8 +239,8 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
             {match.live ? (
               <LivePhase live={match.live} />
             ) : (
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-live-deep dark:text-live uppercase tracking-widest">
+                <span className="w-2 h-2 rounded-full bg-live animate-pulse" aria-hidden="true" />
                 {t('match_states.live')}
               </span>
             )}

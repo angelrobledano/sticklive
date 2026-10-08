@@ -19,20 +19,12 @@ export function Sidebar() {
                       min-h-screen bg-white dark:bg-slate-900
                       border-r border-slate-200 dark:border-slate-800
                       sticky top-0">
-      {/* Logo / marca — Stick (bold acento) + Live (regular neutro) */}
+      {/* Logotipo de marca: lockup de la i (claro/oscuro). */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-200 dark:border-slate-800">
-        <span className="relative w-8 h-8 rounded-lg bg-rink-passion flex items-center justify-center">
-          {/* Isotipo: stick estilizado + punto de directo */}
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.2} className="w-5 h-5">
-            <path d="M7 3l7 12.5a3 3 0 0 1-2.6 4.5H8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400
-                           ring-2 ring-white dark:ring-slate-900 animate-pulse" aria-hidden="true" />
-        </span>
-        <span className="tracking-tight text-lg leading-none">
-          <span className="font-bold text-rink-passion">Stick</span>
-          <span className="font-normal text-slate-800 dark:text-slate-100"> Live</span>
-        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element -- SVG estático de marca, sin optimización */}
+        <img src="/brand/lock-on-light.svg" alt="Stick Live" className="h-8 w-auto dark:hidden" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- variante oscura del mismo lockup */}
+        <img src="/brand/lock-on-dark.svg" alt="" aria-hidden="true" className="hidden h-8 w-auto dark:block" />
       </div>
 
       {/* Navegación */}

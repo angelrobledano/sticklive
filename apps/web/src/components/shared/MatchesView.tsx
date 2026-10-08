@@ -229,10 +229,10 @@ function LiveNowBand({ matches, favorites, className = '', degraded }: {
     <section aria-label={t('common.live_now')} className={`px-4 pt-1 pb-4 ${className}`}>
       <div className="flex items-center gap-2 pb-3">
         <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
-          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-live opacity-60" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-live" />
         </span>
-        <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-live-deep dark:text-live">
           {t('common.live_now')}
         </h2>
         <span className="text-[11px] font-light text-slate-500 dark:text-slate-400 tabular-nums">
@@ -272,8 +272,8 @@ function LiveStripCard({ match, isFavoriteTeam }: { match: Match; isFavoriteTeam
     <Link
       href={`/matches/${match.id}`}
       aria-label={tt(t, 'a11y.view_match', 'Ver partido: {home} - {away}', { home: homeName, away: awayName })}
-      className="card relative flex w-[190px] shrink-0 flex-col gap-1.5 p-2.5 ring-1 ring-emerald-500/25
-                 hover:shadow-md dark:ring-emerald-400/25 focus:outline-none focus-visible:ring-2
+      className="card relative flex w-[190px] shrink-0 flex-col gap-1.5 p-2.5 ring-1 ring-live/25
+                 hover:shadow-md focus:outline-none focus-visible:ring-2
                  focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent"
     >
       <span className="flex h-4 items-center justify-between gap-1.5">
@@ -285,13 +285,13 @@ function LiveStripCard({ match, isFavoriteTeam }: { match: Match; isFavoriteTeam
           <span aria-hidden="true" />
         )}
         {isHalftime ? (
-          <span className="inline-flex shrink-0 items-center rounded-full bg-amber-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+          <span className="inline-flex shrink-0 items-center rounded-full bg-halftime-deep px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
             {t('match_states.half_time')}
           </span>
         ) : (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-live-deep px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
             <span className="h-1 w-1 rounded-full bg-white animate-pulse" aria-hidden="true" />
-            {t('match_states.in_play')}
+            {t('match_states.live')}
           </span>
         )}
       </span>
@@ -330,10 +330,10 @@ function LiveNowStrip({ matches, favorites, degraded }: { matches: Match[]; favo
     >
       <div className="flex items-center gap-2 px-4 pt-1 pb-2">
         <span className="relative flex h-2 w-2" aria-hidden="true">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-live opacity-60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-live" />
         </span>
-        <h2 className="text-[11px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+        <h2 className="text-[11px] font-bold uppercase tracking-widest text-live-deep dark:text-live">
           {t('common.live_now')}
         </h2>
         <span className="text-[11px] font-light text-slate-500 dark:text-slate-400 tabular-nums">{matches.length}</span>

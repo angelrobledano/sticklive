@@ -93,7 +93,7 @@ export function LiveBoard({ match, isFavoriteTeam = false }: LiveBoardProps) {
   return (
     <div
       className="card relative flex flex-col gap-3 overflow-hidden p-4 transition-shadow
-                 ring-1 ring-emerald-500/25 hover:shadow-md
+                 ring-1 ring-live/25 hover:shadow-md
                  dark:ring-emerald-400/25"
     >
       {/* Capa de fondo: toda la tarjeta abre el partido. Los enlaces de equipo
@@ -118,13 +118,13 @@ export function LiveBoard({ match, isFavoriteTeam = false }: LiveBoardProps) {
         </span>
 
         {isHalftime ? (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-halftime-deep px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
             {t('match_states.half_time')}
           </span>
         ) : (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-live-deep px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
             <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" aria-hidden="true" />
-            {t('match_states.in_play')}
+            {t('match_states.live')}
           </span>
         )}
       </div>

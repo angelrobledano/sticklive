@@ -71,7 +71,7 @@ function SeriesRow({ serie, teamId, timezone }: {
           </div>
         ) : (
           <div className="w-7 h-7 rounded-full shrink-0 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-            {isLive && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />}
+            {isLive && <span className="w-2 h-2 rounded-full bg-live animate-pulse" aria-hidden="true" />}
           </div>
         )}
 

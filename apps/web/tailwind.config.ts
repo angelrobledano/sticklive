@@ -28,6 +28,10 @@ const config: Config = {
         // identidad y anillos de foco suben a red.400 (≥3:1). Identidad, no
         // color semántico de tarjeta/error (ese usa red directo).
         'rink-accent': BRAND.accent, // #F87171 sobre superficies oscuras
+        // Verde SOLO para «en directo» (Live-Only Color Rule): punto y estado.
+        'live': { DEFAULT: BRAND.live, deep: BRAND.liveDeep },
+        // Ámbar de descanso/avisos.
+        'halftime': { DEFAULT: BRAND.amber, deep: BRAND.amberDeep },
         // Parqué claro — fondo principal en modo claro
         'rink-floor': {
           DEFAULT: colors.slate[50],  // #f8fafc

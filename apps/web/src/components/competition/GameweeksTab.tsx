@@ -130,8 +130,8 @@ function MatchCard({ match }: { match: SeasonMatch }) {
               {match.score.home ?? 0} – {match.score.away ?? 0}
             </span>
             {isLive && (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500 uppercase tracking-wide">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+              <span className="flex items-center gap-1 text-[10px] font-bold text-live uppercase tracking-wide">
+                <span className="w-1.5 h-1.5 rounded-full bg-live animate-pulse" aria-hidden="true" />
                 {t('match_states.live')}
               </span>
             )}

@@ -148,13 +148,13 @@ function ScoreBlock({ match }: { match: Match }) {
           {score.away ?? 0}
         </span>
         {isHalftime ? (
-          <span className="inline-flex items-center gap-1 bg-amber-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+          <span className="inline-flex items-center gap-1 bg-halftime-deep text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
             {t('match_states.half_time')}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 bg-emerald-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+          <span className="inline-flex items-center gap-1 bg-live-deep text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" aria-hidden="true" />
-            {t('match_states.in_play')}
+            {t('match_states.live')}
           </span>
         )}
       </div>

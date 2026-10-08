@@ -210,12 +210,11 @@ function LoginInner() {
   if (status === 'welcome') {
     return (
       <div className="card p-8 text-center space-y-4">
-        <div className="mx-auto w-14 h-14 rounded-2xl bg-rink-passion flex items-center justify-center relative">
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.2} className="w-7 h-7">
-            <path d="M7 3l7 12.5a3 3 0 0 1-2.6 4.5H8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400
-                           ring-2 ring-white dark:ring-slate-900 animate-pulse" aria-hidden="true" />
+        <div className="mx-auto flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element -- SVG estático de marca, sin optimización */}
+          <img src="/brand/lock-on-light.svg" alt="Stick Live" className="h-8 w-auto dark:hidden" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- variante oscura del mismo lockup */}
+          <img src="/brand/lock-on-dark.svg" alt="" aria-hidden="true" className="hidden h-8 w-auto dark:block" />
         </div>
         <div className="space-y-2">
           <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-50">
