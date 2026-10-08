@@ -561,7 +561,7 @@ export function CompetitionsList({
         <button
           onClick={() => router.refresh()}
           className="mt-1 inline-flex items-center gap-2
-                     bg-rink-passion hover:bg-red-700 active:bg-red-900
+                     bg-rink-passion hover:bg-rink-passion-light active:bg-rink-passion-dark
                      text-white font-semibold text-sm
                      px-5 py-2.5 rounded-xl transition-colors
                      focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent focus-visible:ring-offset-2"

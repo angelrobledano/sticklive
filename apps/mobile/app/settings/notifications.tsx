@@ -18,6 +18,7 @@ import {
   type PushPrefs,
 } from '@/src/lib/push';
 import { capture } from '@/src/lib/analytics';
+import { BRAND } from '@sports/brand';
 import type { NotificationPreset } from '@sports/shared-types';
 
 /**
@@ -132,7 +133,7 @@ function SettingRow({
         value={value}
         onValueChange={onChange}
         accessibilityLabel={label}
-        trackColor={{ false: scheme === 'dark' ? '#334155' : '#cbd5e1', true: '#991b1b' }}
+        trackColor={{ false: scheme === 'dark' ? '#334155' : '#cbd5e1', true: BRAND.granate }}
         thumbColor="#ffffff"
       />
     </View>

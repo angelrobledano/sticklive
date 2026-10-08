@@ -31,7 +31,7 @@ export function Toggle({
         disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
       } ${
         checked
-          ? 'bg-gradient-to-r from-rink-passion to-red-600 shadow-[inset_0_1px_2px_rgba(0,0,0,0.25)]'
+          ? 'bg-gradient-to-r from-rink-passion to-rink-passion-light shadow-[inset_0_1px_2px_rgba(0,0,0,0.25)]'
           : 'bg-slate-200 dark:bg-slate-700/80 shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]'
       }`}
     >

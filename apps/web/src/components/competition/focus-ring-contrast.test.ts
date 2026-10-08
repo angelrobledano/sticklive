@@ -1,14 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import colors from 'tailwindcss/colors';
+import { BRAND } from '@sports/brand';
 
 /**
  * WCAG 1.4.11 (contraste de elementos no textuales): un indicador de foco debe
  * alcanzar 3:1 contra las superficies adyacentes.
  *
- * En modo oscuro el anillo `ring-rink-passion` (red.800 = #991b1b) se queda en
- * ~2,1:1 sobre las superficies oscuras de la app — justo el valor medido en la
+ * En modo oscuro el anillo `ring-rink-passion` (granate #9E1235) se queda en
+ * ~2,3:1 sobre las superficies oscuras de la app — el valor medido en la
  * auditoría (#364). Por eso los inputs/selects usan `dark:focus:ring-rink-accent`.
- * Este test fija la decisión: si alguien cambia la paleta, salta.
+ * Este test fija la decisión sobre los tokens reales: si alguien toca la paleta,
+ * salta.
  */
 const DARK_SURFACES = [
   '#111a2e',        // .dark .card de globals.css
@@ -32,15 +34,15 @@ function contrast(a: string, b: string): number {
 }
 
 describe('anillo de foco en modo oscuro (#364)', () => {
-  it('rink-passion (red.800) no llega a 3:1 sobre fondo oscuro', () => {
+  it('rink-passion (granate) no llega a 3:1 sobre fondo oscuro', () => {
     for (const bg of DARK_SURFACES) {
-      expect(contrast(colors.red[800], bg)).toBeLessThan(3);
+      expect(contrast(BRAND.granate, bg)).toBeLessThan(3);
     }
   });
 
-  it('red.400 cumple el 3:1 mínimo sobre fondo oscuro', () => {
+  it('rink-accent (accent) cumple el 3:1 mínimo sobre fondo oscuro', () => {
     for (const bg of DARK_SURFACES) {
-      expect(contrast(colors.red[400], bg)).toBeGreaterThanOrEqual(3);
+      expect(contrast(BRAND.accent, bg)).toBeGreaterThanOrEqual(3);
     }
   });
 });

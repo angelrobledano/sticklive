@@ -99,7 +99,7 @@
   --color-text:      theme('colors.slate.900');
   --color-text-muted:theme('colors.slate.500');
   --color-border:    theme('colors.slate.200');
-  --color-accent:    theme('colors.red.800');
+  --color-accent:    theme('colors.rink-passion.DEFAULT');
   /* Acento del pulso de gol — oscurecido en claro para contraste ≥4.5:1 */
   --flash-accent:    theme('colors.emerald.600');
 }
@@ -110,7 +110,7 @@
   --color-text:      theme('colors.slate.50');
   --color-text-muted:theme('colors.slate.400');
   --color-border:    theme('colors.slate.800');
-  --color-accent:    theme('colors.red.700');
+  --color-accent:    theme('colors.rink-accent');
   --flash-accent:    theme('colors.emerald.400');
 }
 

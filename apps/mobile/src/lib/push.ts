@@ -7,6 +7,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import type { FavoriteKind, LocalFavorites } from '@/src/hooks/favorites';
 import { apiFetch } from '@/src/lib/api/client';
+import { BRAND } from '@sports/brand';
 import type { NotificationPreset } from '@sports/shared-types';
 
 /**
@@ -168,7 +169,7 @@ export async function registerForPushNotifications(): Promise<string> {
       name: 'En directo',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#991b1b',
+      lightColor: BRAND.granate,
     });
   }
 

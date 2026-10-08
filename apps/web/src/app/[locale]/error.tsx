@@ -129,7 +129,7 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
       <button
         onClick={reset}
         className="inline-flex items-center gap-2
-                   bg-rink-passion hover:bg-red-700 active:bg-red-900
+                   bg-rink-passion hover:bg-rink-passion-light active:bg-rink-passion-dark
                    text-white font-semibold text-sm
                    px-5 py-2.5 rounded-xl
                    transition-colors duration-150

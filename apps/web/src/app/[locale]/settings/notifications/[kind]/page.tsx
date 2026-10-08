@@ -41,7 +41,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () =
       className={`relative w-12 h-7 rounded-full shrink-0 transition-all duration-200 ease-out cursor-pointer
                   focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion/60 dark:focus-visible:ring-rink-accent/60 ${
         checked
-          ? 'bg-gradient-to-r from-rink-passion to-red-600 shadow-[inset_0_1px_2px_rgba(0,0,0,0.25)]'
+          ? 'bg-gradient-to-r from-rink-passion to-rink-passion-light shadow-[inset_0_1px_2px_rgba(0,0,0,0.25)]'
           : 'bg-slate-200 dark:bg-slate-700/80 shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)]'
       }`}
     >

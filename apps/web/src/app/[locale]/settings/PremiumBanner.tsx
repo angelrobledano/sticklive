@@ -89,7 +89,7 @@ export function PremiumBanner({ deviceId }: { deviceId: string }) {
   return (
     <div className="rounded-2xl overflow-hidden shadow-sm">
       {/* Fondo degradado granate → amarillo */}
-      <div className="bg-gradient-to-br from-rink-passion via-red-700 to-amber-600 p-5 space-y-3">
+      <div className="bg-gradient-to-br from-rink-passion via-rink-passion-light to-amber-600 p-5 space-y-3">
         {/* Badge */}
         <div className="flex items-center gap-2">
           <span className="text-amber-300">

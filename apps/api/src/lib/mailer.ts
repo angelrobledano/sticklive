@@ -21,6 +21,7 @@
  * Si algún día se añaden adjuntos por URL, releer esto antes.
  */
 import { createTransport, type Transporter } from 'nodemailer';
+import { BRAND } from '@sports/brand';
 
 const FROM = process.env['SMTP_FROM'] ?? 'Stick Live <no-reply@sticklive.eu>';
 
@@ -74,21 +75,21 @@ export async function sendMagicLink(to: string, link: string): Promise<void> {
     html: `
       <div style="font-family:system-ui,-apple-system,sans-serif;max-width:420px;margin:0 auto;padding:24px">
         <p style="font-size:20px;font-weight:800;margin:0 0 4px">
-          <span style="color:#9f1239">Stick</span> Live
+          <span style="color:${BRAND.granate}">Stick</span> Live
         </p>
         <p style="color:#334155;font-size:14px;line-height:1.5">
           Pulsa el botón para entrar. El enlace caduca en <strong>15 minutos</strong>.
         </p>
         <p style="margin:24px 0">
           <a href="${link}"
-             style="background:#9f1239;color:#fff;text-decoration:none;font-weight:700;
+             style="background:${BRAND.granate};color:#fff;text-decoration:none;font-weight:700;
                     padding:12px 24px;border-radius:12px;display:inline-block">
             Entrar en Stick Live
           </a>
         </p>
         <p style="color:#94a3b8;font-size:12px;line-height:1.5">
           Si el botón no funciona, copia este enlace:<br>
-          <a href="${link}" style="color:#9f1239;word-break:break-all">${link}</a>
+          <a href="${link}" style="color:${BRAND.granate};word-break:break-all">${link}</a>
         </p>
         <p style="color:#94a3b8;font-size:12px">
           Si no has pedido este acceso, ignora este mensaje.

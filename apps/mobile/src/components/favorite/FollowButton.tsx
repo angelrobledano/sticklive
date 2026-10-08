@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable } from 'react-native';
+import { BRAND } from '@sports/brand';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import {
@@ -12,7 +13,7 @@ import {
 } from '@/src/hooks/favorites';
 
 /** Mismos hex que el resto de la app (tab activo en (tabs)/_layout.tsx). */
-const RINK_PASSION = '#991b1b';
+const RINK_PASSION = BRAND.granate;
 const SLATE_500 = '#64748b';
 
 /**

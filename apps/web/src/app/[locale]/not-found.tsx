@@ -46,7 +46,7 @@ export default function LocaleNotFound() {
           href="/"
           className="inline-flex items-center justify-center gap-1.5 px-5 min-h-[44px] rounded-xl
                      text-sm font-semibold bg-rink-passion text-white
-                     hover:bg-red-700 active:bg-red-900 transition-colors
+                     hover:bg-rink-passion-light active:bg-rink-passion-dark transition-colors
                      focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent focus-visible:ring-offset-2"
         >
           {tt(t, 'errors.not_found_home', 'Volver al inicio')}

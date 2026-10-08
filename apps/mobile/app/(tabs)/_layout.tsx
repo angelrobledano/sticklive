@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
 
 const ICONS = {
@@ -17,7 +18,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: true,
         headerTitleStyle: { fontWeight: '700' },
-        tabBarActiveTintColor: '#991b1b', // rink-passion
+        tabBarActiveTintColor: BRAND.granate, // granate de marca
       }}
     >
       <Tabs.Screen name="index" options={{ title: t('nav.live'), tabBarIcon: ({ color, size }) => <Ionicons name={ICONS.index} color={color} size={size} /> }} />
