@@ -1,6 +1,7 @@
 import type { TeamSeasonInfo } from './api/types';
 import { gameWinnerId } from './playoff';
-import { playoffPhaseKey } from '@/components/competition/format';
+import { matchPhaseKey, playoffPhaseKey } from '@/components/competition/format';
+import { STAGE_ORDER, type KnockoutStage } from '@sports/shared-types';
 
 /**
  * Síntesis de la participación de un equipo en una competición ELIMINATORIA
@@ -18,9 +19,11 @@ import { playoffPhaseKey } from '@/components/competition/format';
  *  - Supercopa 2025/26: UNA única ronda "FINAL" para semis y final.
  *  - OK Liga Bronce Eliminatoria: ida/vuelta sin rondas.
  *  - Supercopa "Histórico": partidos sin fechas ni rondas.
- * Por eso la asignación de fases es conservadora: rondas reales > cadena de
+ * Por eso la asignación de fases es conservadora: fase EXPLÍCITA de la fuente
+ * (`stage`, la API la da desde la migración 072) > rondas reales > cadena de
  * avance por cronología > nombre de ronda, y si no hay estructura fiable se
- * devuelve `incomplete` (lista simple de partidos, sin fases inventadas).
+ * devuelve `incomplete` (lista simple de partidos, sin fases inventadas). Las
+ * deducciones solo actúan ya sobre temporadas heredadas sin `stage`.
  *
  * Funciones puras y testeadas (mismo patrón que `playoff.ts`).
  */
@@ -38,6 +41,8 @@ export interface KnockoutMatchInput {
   roundNumber?: number | null;
   roundName?: string | null;
   roundType?: string | null;
+  /** Fase eliminatoria EXPLÍCITA de la fuente (manda sobre cualquier deducción). */
+  stage?: string | null;
   winnerTeamId?: string | null;
   winType?: 'regular' | 'overtime' | 'penalties' | null;
 }
@@ -168,6 +173,12 @@ function seriesWinner(s: SeriesGroup): string | null {
 
 // ─── Asignación de fases ───────────────────────────────────────────────────
 
+/** Todas las eliminatorias traen su fase explícita de la fuente (sin colocación). */
+function hasExplicitStages(series: SeriesGroup[]): boolean {
+  return series.length > 0
+    && series.every((s) => s.games.every((g) => matchPhaseKey({ stage: g.stage }) !== null));
+}
+
 /** Fases canónicas por posición DESDE EL FINAL (0=final, 1=semis, …). */
 const PHASE_BY_RANK: Array<KnockoutPhaseKey | null> = [
   'final', 'semis', 'quarters', 'round_of_16',
@@ -206,6 +217,21 @@ export function knockoutPhaseLabel(
  */
 function assignPhases(series: SeriesGroup[]): PhasedSeries[] {
   if (series.length === 0) return [];
+
+  // 0) Fase EXPLÍCITA de la fuente en todas las eliminatorias: no se deduce
+  //    nada (ni rango por ronda ni cronología). Orden de juego y, a igualdad,
+  //    fecha.
+  if (hasExplicitStages(series)) {
+    const rank = (s: SeriesGroup) => STAGE_ORDER[s.games[0]!.stage as KnockoutStage] ?? 99;
+    return [...series]
+      .sort((a, b) => rank(a) - rank(b) || (a.firstDate ?? 0) - (b.firstDate ?? 0))
+      .map((s) => ({
+        serie: s,
+        phase: matchPhaseKey(s.games[0]!),
+        roundName: s.games[0]?.roundName ?? null,
+        roundNumber: s.games[0]?.roundNumber ?? null,
+      }));
+  }
 
   // 1) Rondas reales: agrupar por ronda y ordenar por número (o primera fecha).
   const roundGroups = new Map<string, SeriesGroup[]>();
@@ -405,7 +431,8 @@ export function buildKnockoutSummary(
   const hasRealRounds = new Set(
     allSeries.map((s) => s.games[0]?.roundId).filter((x): x is string => !!x),
   ).size >= 2;
-  const incomplete = !hasRealRounds && (!hasDates || !bracketLadderConsistent(allSeries));
+  const incomplete = !hasExplicitStages(allSeries)
+    && !hasRealRounds && (!hasDates || !bracketLadderConsistent(allSeries));
 
   const phaseByMatch = new Map<string, KnockoutPhaseView>();
   const phases: KnockoutPhaseView[] = [];

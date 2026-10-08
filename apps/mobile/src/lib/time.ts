@@ -1,4 +1,4 @@
-import { STALE_LIVE_HOURS } from '@sports/shared-types';
+import { matchDisplayState } from '@sports/shared-types';
 
 const MADRID = 'Europe/Madrid';
 
@@ -35,13 +35,27 @@ export function formatDayKey(iso: string | null): string {
 }
 
 /**
- * "En juego por reloj": misma regla que la web (MatchCard) y el API
- * (effective-status): un partido scheduled dentro de las STALE_LIVE_HOURS tras
- * el saque se pinta EN DIRECTO. Fuente única en @sports/shared-types.
+ * ¿El partido está EN DIRECTO? Solo si la fuente lo da en juego (estado
+ * explícito). La hora programada ya NO fabrica un directo: antes un `scheduled`
+ * con el saque pasado se pintaba "en vivo" 0-0 durante 5 h aunque no hubiera
+ * empezado (retrasos, aplazamientos). Misma regla que la API y la web
+ * (`matchDisplayState` en @sports/shared-types).
+ *
+ * `_scheduledAt` se conserva en la firma para no tocar los llamantes; no
+ * interviene en la decisión.
  */
-export function isEffectivelyLive(status: string, scheduledAt: string | null): boolean {
-  if (status === 'live' || status === 'halftime' || status === 'overtime' || status === 'penalty_shootout') return true;
-  if (status !== 'scheduled' || !scheduledAt) return false;
-  const elapsedHours = (Date.now() - new Date(scheduledAt).getTime()) / 3_600_000;
-  return elapsedHours >= 0 && elapsedHours < STALE_LIVE_HOURS;
+export function isEffectivelyLive(status: string, _scheduledAt?: string | null): boolean {
+  return status === 'live' || status === 'halftime' || status === 'overtime' || status === 'penalty_shootout';
+}
+
+/**
+ * Política de ANUNCIOS (no es el estado del partido): no se mete publicidad en
+ * un partido en juego NI en uno cuya hora ya llegó y la fuente aún no da en
+ * juego (puede estar empezando y el feed ir con retraso). Conserva la ventana
+ * de silencio que antes daba el "directo por reloj", sin pintar un directo
+ * falso: lo que se MUESTRA sigue siendo `isEffectivelyLive`.
+ */
+export function isAdQuietTime(status: string, scheduledAt: string | null | undefined, nowMs = Date.now()): boolean {
+  if (isEffectivelyLive(status)) return true;
+  return matchDisplayState(status, scheduledAt, nowMs) === 'awaiting_start';
 }

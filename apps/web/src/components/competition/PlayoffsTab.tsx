@@ -4,12 +4,13 @@ import { useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useT } from '@/lib/i18n';
-import type { SeasonMatch, SeasonRound, SeasonStandingRow } from '@/lib/api/client';
+import type { SeasonMatch, SeasonPhase, SeasonRound, SeasonStandingRow } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
 import { PlayoffBracket } from '@/components/match/PlayoffBracket';
 import { TrophyIcon } from '@/components/match/icons';
-import { KnockoutBracket } from './KnockoutBracket';
+import { KnockoutBracket, KnockoutMatchCard } from './KnockoutBracket';
+import { knockoutPhaseViews, type KnockoutPhaseView } from '@/lib/season-phases';
 import { FinalFourBracket } from './FinalFourBracket';
 import { buildSeries, gameWinnerId, groupByPhase, placementMatches, seriesWinnerId, type PlayoffSeries } from '@/lib/playoff';
 import { fmtDate, fmtTime } from './format';
@@ -183,9 +184,84 @@ function phaseFromSlug(s: string | null): PlayoffViewPhase | null {
   return (Object.keys(PHASE_SLUG) as PlayoffViewPhase[]).find((p) => PHASE_SLUG[p] === s) ?? null;
 }
 
-export function PlayoffsTab({ rounds = [], matches, format }: { standings?: SeasonStandingRow[]; rounds?: SeasonRound[]; matches: SeasonMatch[]; format?: string }) {
-  const { t } = useT();
+/**
+ * Pestaña Playoffs. Con la estructura de la fuente (`phases`), cada fase
+ * eliminatoria se pinta con el cuadro que le corresponde por su estructura
+ * (series al mejor de N, final four o cuadro), sin depender del formato
+ * declarado de la competición: así conviven clasificación de grupos y final
+ * four, o liga y playoff. Sin fases (payload antiguo o temporada heredada) se
+ * mantiene la presentación de siempre.
+ */
+export function PlayoffsTab({ rounds = [], matches, format, phases }: {
+  standings?: SeasonStandingRow[];
+  rounds?: SeasonRound[];
+  matches: SeasonMatch[];
+  format?: string;
+  phases?: SeasonPhase[];
+}) {
+  const views = useMemo(() => knockoutPhaseViews(phases, rounds, matches), [phases, rounds, matches]);
+  if (views && views.length > 0) return <PhasedPlayoffs views={views} />;
+  return <LegacyPlayoffs rounds={rounds} matches={matches} format={format} />;
+}
 
+function PhasedPlayoffs({ views }: { views: KnockoutPhaseView[] }) {
+  const { t } = useT();
+  // Playoff a series (OK Liga): la fase por el título y la de colocación
+  // (9.º-10.º) se navegan juntas, como siempre.
+  const series = views.filter((v) => v.layout === 'series');
+  const others = views.filter((v) => v.layout !== 'series');
+  const titleCount = views.filter((v) => !v.phase.isPlacement).length;
+
+  return (
+    <div className="space-y-6">
+      {series.length > 0 && <SeriesPlayoffs matches={series.flatMap((v) => v.matches)} />}
+      {others.map((v) => (
+        <section key={v.phase.id} className="space-y-3">
+          {(v.phase.isPlacement || titleCount > 1) && (
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">
+              {v.phase.isPlacement ? t('playoffs.other_places') : (v.phase.name ?? t('match_tabs.playoffs'))}
+              {v.phase.isPlacement && v.phase.name ? ` · ${v.phase.name}` : ''}
+            </h3>
+          )}
+          {v.layout === 'final_four'
+            ? <FinalFourBracket matches={v.matches} />
+            : v.phase.isPlacement
+              ? <PlacementList view={v} />
+              : <KnockoutBracket rounds={v.rounds} matches={v.matches} />}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/** Fase de colocación a partido único (p. ej. puestos 5.º-8.º): partidos por ronda. */
+function PlacementList({ view }: { view: KnockoutPhaseView }) {
+  const byRound = new Map<string, SeasonMatch[]>();
+  for (const m of view.matches) {
+    const k = m.roundId ?? '';
+    byRound.set(k, [...(byRound.get(k) ?? []), m]);
+  }
+  const order = view.rounds.slice().sort((a, b) => a.number - b.number);
+  const groups = [
+    ...order.filter((r) => byRound.has(r.id)).map((r) => ({ key: r.id, name: r.name, matches: byRound.get(r.id)! })),
+    ...(byRound.has('') ? [{ key: 'none', name: null, matches: byRound.get('')! }] : []),
+  ];
+  return (
+    <div className="space-y-3">
+      {groups.map((g) => (
+        <div key={g.key} className="space-y-1.5">
+          {g.name && <p className="px-1 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{g.name}</p>}
+          {g.matches
+            .slice()
+            .sort((a, b) => (a.scheduledAt ?? '').localeCompare(b.scheduledAt ?? ''))
+            .map((m) => <KnockoutMatchCard key={m.id} m={m} />)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LegacyPlayoffs({ rounds, matches, format }: { rounds: SeasonRound[]; matches: SeasonMatch[]; format?: string }) {
   // Eliminatoria con fases nombradas por la fuente (World Skate: Cuartos/Semis/
   // Final/3º-4º, a partido único). Se distingue del playoff de OK Liga (series
   // al mejor de N, fase derivada 1/2/3) porque trae roundNumber fuera de 1-3.
@@ -195,6 +271,33 @@ export function PlayoffsTab({ rounds = [], matches, format }: { standings?: Seas
     [matches],
   );
 
+  // Final Four (Supercopa): cuadro propio Semifinal x2 → Final. Se decide por
+  // el formato declarado en la competición, no por heurística de rondas.
+  if (format === 'final_four') {
+    return (
+      <div className="space-y-3">
+        <FinalFourBracket matches={matches} />
+      </div>
+    );
+  }
+
+  // Cuadro de eliminatorias: una competición DECLARADA como `bracket` (copas,
+  // eliminatorias) siempre se dibuja como cuadro; además, las ligas con una
+  // eliminatoria con fases de numeración alta (World Skate) también.
+  if (format === 'bracket' || isNamedKnockout) {
+    return (
+      <div className="space-y-3">
+        <KnockoutBracket rounds={rounds} matches={matches} />
+      </div>
+    );
+  }
+
+  return <SeriesPlayoffs matches={matches} />;
+}
+
+/** Playoff a series al mejor de N (OK Liga): cuadro general + fases navegables. */
+function SeriesPlayoffs({ matches }: { matches: SeasonMatch[] }) {
+  const { t } = useT();
   const sp = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -280,27 +383,6 @@ export function PlayoffsTab({ rounds = [], matches, format }: { standings?: Seas
     : phase === 'Cuartos' ? t('playoffs.quarters')
     : phase === 'Semis' ? t('playoffs.semis')
     : t('playoffs.final');
-
-  // Final Four (Supercopa): cuadro propio Semifinal x2 → Final. Se decide por
-  // el formato declarado en la competición, no por heurística de rondas.
-  if (format === 'final_four') {
-    return (
-      <div className="space-y-3">
-        <FinalFourBracket matches={matches} />
-      </div>
-    );
-  }
-
-  // Cuadro de eliminatorias: una competición DECLARADA como `bracket` (copas,
-  // eliminatorias) siempre se dibuja como cuadro; además, las ligas con una
-  // eliminatoria con fases de numeración alta (World Skate) también.
-  if (format === 'bracket' || isNamedKnockout) {
-    return (
-      <div className="space-y-3">
-        <KnockoutBracket rounds={rounds} matches={matches} />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-3">

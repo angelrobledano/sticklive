@@ -26,7 +26,7 @@ describe('buildSeasonStructure — casos A–F', () => {
     const p = phase({ kind: 'league' });
     const j1 = round(p.id, { number: 1 });
     const out = buildSeasonStructure({ phases: [p], rounds: [j1], matches: [match(j1, 'a', 'b', '2025-10-01')], hasStandings: true, declaredFormat: null });
-    expect(out.phases).toEqual([expect.objectContaining({ id: p.id, kind: 'league', hasStandings: true, stages: [] })]);
+    expect(out.phases).toEqual([expect.objectContaining({ id: p.id, kind: 'league', hasStandings: true, stages: [], fromSource: true })]);
     expect(out.competitionFormat).toBe('league');
     expect([...out.byMatch.values()][0]).toMatchObject({ phaseId: p.id, roundType: 'regular', stage: null });
   });
@@ -152,7 +152,7 @@ describe('buildSeasonStructure — datos históricos', () => {
     ];
     const out = buildSeasonStructure({ phases: [po], rounds: [r100], matches: ms, hasStandings: false, declaredFormat: null });
     expect(out.byMatch.get(ms[4]!.id)).toMatchObject({ stage: 'placement', roundNumber: 0, stageInferred: true });
-    expect(out.phases[0]).toMatchObject({ stages: ['quarters', 'semis', 'final', 'placement'], stagesInferred: true });
+    expect(out.phases[0]).toMatchObject({ stages: ['quarters', 'semis', 'final', 'placement'], stagesInferred: true, fromSource: false });
   });
 
   it('LEGADO con alguna ronda ya identificada o final four declarada: no se deduce nada', () => {

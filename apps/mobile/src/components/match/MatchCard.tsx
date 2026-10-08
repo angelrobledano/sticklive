@@ -9,8 +9,8 @@ import type { MatchSummary } from '@/src/lib/api/types';
 export function MatchCard({ match }: { match: MatchSummary }) {
   const router = useRouter();
   const { t } = useLocale();
-  // status crudo del listado (/current): el badge "en vivo por reloj" lo
-  // calcula la UI con STALE_LIVE_HOURS (misma regla que la web y el API).
+  // EN VIVO solo si la fuente lo da en juego (la hora no fabrica directos;
+  // misma regla que la web y el API).
   const live = isEffectivelyLive(match.status, match.scheduledAt);
   const showScore = live || match.status === 'finished';
 

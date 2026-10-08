@@ -66,6 +66,11 @@ export interface SeasonPhaseView {
   stages: KnockoutStage[];
   /** Alguna fase eliminatoria de esta fase es deducida (solo datos heredados). */
   stagesInferred: boolean;
+  /**
+   * La estructura viene de la fuente (false = fase heredada del backfill 072,
+   * aún sin re-scrapear: los clientes mantienen su presentación de siempre).
+   */
+  fromSource: boolean;
 }
 
 export interface MatchStructure {
@@ -247,6 +252,7 @@ export function buildSeasonStructure(input: SeasonStructureInput): SeasonStructu
       hasStandings: p.id === standingsPhase?.id,
       stages: [...stages].sort((a, b) => STAGE_ORDER[a] - STAGE_ORDER[b]),
       stagesInferred,
+      fromSource: !isLegacy(p),
     };
   });
 

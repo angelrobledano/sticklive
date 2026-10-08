@@ -21,9 +21,9 @@ import { KnockoutMatchCard } from './KnockoutBracket';
  * puesto, si la fuente lo trae, va bajo el cuadro. Todo cabe en un móvil sin
  * scroll horizontal.
  *
- * La fase se agrupa por el nombre de ronda de la fuente y, si no lo trae, por la
- * numeración canónica de la Final Four (semis=1, final=2) o por el tamaño de la
- * ronda.
+ * La fase es la EXPLÍCITA de la fuente (`stage`). En temporadas heredadas sin
+ * ella, se agrupa por el nombre de ronda y, si no lo trae, por la numeración
+ * canónica de la Final Four (semis=1, final=2) o por el tamaño de la ronda.
  */
 
 type Bucket = 'semis' | 'final' | 'third';
@@ -34,6 +34,14 @@ function phaseOfName(name: string | null): Bucket | null {
   if (/semi/.test(n)) return 'semis';
   if (/3.*4|tercer|bronce|small\s*final|3º|3rd|third/.test(n)) return 'third';
   if (/final/.test(n)) return 'final';
+  return null;
+}
+
+/** Fase EXPLÍCITA de la fuente (`stage`), si viene. */
+function phaseOfStage(stage: string | null | undefined): Bucket | null {
+  if (stage === 'semis') return 'semis';
+  if (stage === 'final') return 'final';
+  if (stage === 'third_place') return 'third';
   return null;
 }
 
@@ -128,7 +136,7 @@ export function FinalFourBracket({ matches }: { matches: SeasonMatch[] }) {
     const out: Record<Bucket, SeasonMatch[]> = { semis: [], final: [], third: [] };
     for (const group of groups.values()) {
       const first = group[0]!;
-      let bucket = phaseOfName(first.roundName);
+      let bucket = phaseOfStage(first.stage) ?? phaseOfName(first.roundName);
       if (!bucket) {
         if (first.roundNumber === 1) bucket = 'semis';
         else if (first.roundNumber === 2) bucket = 'final';

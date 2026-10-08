@@ -78,11 +78,22 @@ export function seriesWinnerId(serie: PlayoffSeries): string | null {
   return serie.winsA > serie.winsB ? serie.teamA.id : serie.teamB.id;
 }
 
-/** Reparte los partidos de playoff en fases según roundNumber (1=QF, 2=SF, 3=F). */
+const STAGE_BUCKET: Partial<Record<string, PlayoffPhase>> = { quarters: 'Cuartos', semis: 'Semis', final: 'Final' };
+
+/**
+ * Reparte los partidos de playoff en fases. Manda la fase EXPLÍCITA de la
+ * fuente (`stage`); sin ella (temporadas heredadas), el roundNumber legado
+ * (1=QF, 2=SF, 3=F, 0=colocación).
+ */
 export function groupByPhase(matches: SeasonMatch[]): Record<PlayoffPhase, SeasonMatch[]> {
   const buckets: Record<PlayoffPhase, SeasonMatch[]> = { Cuartos: [], Semis: [], Final: [] };
   for (const m of matches) {
     if (m.roundType !== 'playoff') continue;
+    if (m.stage) {
+      const b = STAGE_BUCKET[m.stage];
+      if (b) buckets[b].push(m);
+      continue; // colocación, 3.er puesto…: fuera de la escalera por el título
+    }
     const rn = m.roundNumber ?? 1;
     if (rn === 0) continue; // serie de colocación (9º–10º) — fuera del cuadro por el título
     buckets[rn >= 3 ? 'Final' : rn === 2 ? 'Semis' : 'Cuartos'].push(m);
@@ -97,7 +108,8 @@ export function groupByPhase(matches: SeasonMatch[]): Record<PlayoffPhase, Seaso
  * decide qué competición europea juega cada club.
  */
 export function placementMatches(matches: SeasonMatch[]): SeasonMatch[] {
-  return matches.filter((m) => m.roundType === 'playoff' && m.roundNumber === 0);
+  return matches.filter((m) =>
+    m.roundType === 'playoff' && (m.stage ? m.stage === 'placement' : m.roundNumber === 0));
 }
 
 /**

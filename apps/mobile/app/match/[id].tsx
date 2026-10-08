@@ -10,7 +10,7 @@ import { BrandLoader } from '@/src/components/shared/BrandLoader';
 import { EventRow } from '@/src/components/match/EventRow';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { capture } from '@/src/lib/analytics';
-import { isEffectivelyLive } from '@/src/lib/time';
+import { isAdQuietTime } from '@/src/lib/time';
 
 export default function MatchScreen() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -125,10 +125,10 @@ export default function MatchScreen() {
             ))}
           </View>
         </View>
-        {/* Banner solo si el partido NO está en vivo (spec §7: en vivo nada
-            toca la pantalla; `isEffectivelyLive` es la fuente única, igual
-            que la home). El DTO del detalle ya trae el estado EFECTIVO. */}
-        {!isEffectivelyLive(m.status, m.scheduledAt) ? <AdBanner variant="match" /> : null}
+        {/* Banner solo fuera de la ventana sin anuncios (spec §7: en vivo nada
+            toca la pantalla). `isAdQuietTime` incluye el arranque: la hora ya
+            llegó pero la fuente aún no lo da en juego. */}
+        {!isAdQuietTime(m.status, m.scheduledAt) ? <AdBanner variant="match" /> : null}
       </ScrollView>
     </>
   );

@@ -63,16 +63,16 @@ describe('classifyMatch', () => {
     expect(classifyMatch({ status: 'live', scheduledAt: '2026-06-16T22:00:00Z', startedAt: null }, now)).toBe('live');
   });
 
-  it('scheduled empezado hace <3h → en juego', () => {
-    expect(classifyMatch({ status: 'scheduled', scheduledAt: '2026-06-16T18:00:00Z', startedAt: null }, now)).toBe('live');
+  it('scheduled con la hora pasada NO es en juego (la hora no fabrica directos): pendiente', () => {
+    expect(classifyMatch({ status: 'scheduled', scheduledAt: '2026-06-16T18:00:00Z', startedAt: null }, now)).toBe('future');
   });
 
   it('scheduled aún por empezar → futuro', () => {
     expect(classifyMatch({ status: 'scheduled', scheduledAt: '2026-06-16T20:30:00Z', startedAt: null }, now)).toBe('future');
   });
 
-  it('#377(P3-8): a las 4 h sigue en juego (mismo umbral que la API, 5 h)', () => {
-    expect(classifyMatch({ status: 'scheduled', scheduledAt: '2026-06-16T14:30:00Z', startedAt: null }, now)).toBe('live');
+  it('a las 4 h sin señal de la fuente sigue pendiente, no en juego', () => {
+    expect(classifyMatch({ status: 'scheduled', scheduledAt: '2026-06-16T14:30:00Z', startedAt: null }, now)).toBe('future');
   });
 
   it('scheduled empezado hace >5h y nunca cerró → pasado (dato muerto)', () => {

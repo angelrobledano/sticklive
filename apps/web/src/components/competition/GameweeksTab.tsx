@@ -32,9 +32,22 @@ export interface NearestDay {
   journey: number | null;
 }
 
+/**
+ * Un partido de eliminatoria no está en ninguna JORNADA: su roundNumber legado
+ * (1=cuartos, 2=semis…) chocaría con las jornadas 1, 2… de la liga. Las
+ * eliminatorias se ven en la pestaña Playoffs (y aquí, por fecha o equipo).
+ */
+function isJornadaMatch(m: SeasonMatch): boolean {
+  return m.roundType !== 'playoff';
+}
+
 export function nearestMatchDay(matches: SeasonMatch[], todayKey: string): NearestDay | null {
-  let best: NearestDay | null = null;
+  let best: { day: string; m: SeasonMatch } | null = null;
   let bestRank = Infinity;
+  // Durante un playoff el día más cercano es de eliminatoria: la jornada a
+  // proponer es la del partido de liga más cercano (la última jugada).
+  let bestJornada: SeasonMatch | null = null;
+  let bestJornadaRank = Infinity;
   for (const m of matches) {
     const day = madridDay(m.scheduledAt, m.competitionTimezone);
     if (!day) continue;
@@ -43,10 +56,16 @@ export function nearestMatchDay(matches: SeasonMatch[], todayKey: string): Neare
     const rank = Math.abs(diff) * 2 + (diff < 0 ? 1 : 0);
     if (rank < bestRank) {
       bestRank = rank;
-      best = { day, journey: m.roundNumber };
+      best = { day, m };
+    }
+    if (isJornadaMatch(m) && rank < bestJornadaRank) {
+      bestJornadaRank = rank;
+      bestJornada = m;
     }
   }
-  return best;
+  if (!best) return null;
+  const journey = isJornadaMatch(best.m) ? best.m.roundNumber : (bestJornada?.roundNumber ?? null);
+  return { day: best.day, journey };
 }
 
 /**
@@ -428,14 +447,15 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
   const teamParam = sp.get('team_id');
   const filterParam = sp.get('filter');
 
-  // Rondas para el selector: regular por número, luego playoff/cup. Las rondas
-  // eliminatorias SIN partidos (WSG: cruces pendientes de publicar) no se
-  // ofrecen aquí — su lugar es la pestaña Playoffs ("por determinar").
+  // Rondas para el selector: jornadas por número (luego cup/friendly con
+  // partidos). Las rondas ELIMINATORIAS no se ofrecen aquí — su lugar es la
+  // pestaña Playoffs; su número (20=cuartos, 30=semis… o el legado 1/2/3)
+  // chocaba con las jornadas 20, 30… o 1, 2, 3 de la liga.
   const orderedRounds = useMemo(() => {
     const rank = (rt: string) => (rt === 'regular' ? 0 : 1);
     const hasMatches = (r: SeasonRound) => matches.some((m) => m.roundId === r.id);
     return [...rounds]
-      .filter((r) => r.roundType === 'regular' || hasMatches(r))
+      .filter((r) => r.roundType === 'regular' || (r.roundType !== 'playoff' && hasMatches(r)))
       .sort((a, b) => rank(a.roundType) - rank(b.roundType) || a.number - b.number);
   }, [rounds, matches]);
 
@@ -550,7 +570,7 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
         .sort((a, b) => (a.scheduledAt ?? '').localeCompare(b.scheduledAt ?? ''));
     }
     if (mode === 'round') {
-      return matches.filter((m) => (m.roundNumber ?? null) === activeJourney);
+      return matches.filter((m) => isJornadaMatch(m) && (m.roundNumber ?? null) === activeJourney);
     }
     return [];
   }, [matches, mode, activeTeam, activeDate, activeJourney]);

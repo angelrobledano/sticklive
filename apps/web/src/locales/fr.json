@@ -58,7 +58,9 @@
     "second_half": "2ème Période",
     "scheduled": "Programmé",
     "postponed": "Reporté",
-    "cancelled": "Annulé"
+    "cancelled": "Annulé",
+    "awaiting_start": "En attente",
+    "no_result": "Sans résultat"
   },
   "hockey_stats": {
     "goals": "Buts",
@@ -269,7 +271,8 @@
     "ot_short": "prol.",
     "third_place": "3e place",
     "tbd": "À déterminer",
-    "round_n": "Tour {n}"
+    "round_n": "Tour {n}",
+    "other_places": "Autres places"
   },
   "standings": {
     "team": "Équipe",

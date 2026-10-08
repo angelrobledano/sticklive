@@ -100,6 +100,22 @@ export function playoffPhaseKey(name: string | null, roundNumber: number | null)
   return null;
 }
 
+const PHASE_KEYS = new Set<PlayoffPhaseKey>(['round_of_16', 'quarters', 'semis', 'final', 'third_place']);
+
+/**
+ * Fase eliminatoria de un partido o ronda: la EXPLÍCITA de la fuente (`stage`)
+ * manda; solo si no viene (temporadas heredadas) se deduce del nombre/número.
+ * `placement` (colocación) no es una fase del cuadro por el título → null.
+ */
+export function matchPhaseKey(m: {
+  stage?: string | null;
+  roundName?: string | null;
+  roundNumber?: number | null;
+}): PlayoffPhaseKey | null {
+  if (m.stage) return PHASE_KEYS.has(m.stage as PlayoffPhaseKey) ? (m.stage as PlayoffPhaseKey) : null;
+  return playoffPhaseKey(m.roundName ?? null, m.roundNumber ?? null);
+}
+
 /** Etiqueta de fase traducida; cae al nombre propio si no es una fase conocida. */
 export function playoffPhaseLabel(
   name: string | null,

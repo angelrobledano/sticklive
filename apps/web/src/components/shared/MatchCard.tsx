@@ -9,7 +9,7 @@ import { tt } from '@/components/search/translate';
 import { useNow30s } from '@/lib/now-ticker';
 import { finalLabelKey, penaltyText } from '@/lib/match-result';
 import { APP_TZ } from '@/lib/match-time';
-import { STALE_LIVE_HOURS } from '@sports/shared-types';
+import { matchDisplayState, type MatchDisplayState } from '@sports/shared-types';
 
 
 interface MatchCardProps {
@@ -106,38 +106,29 @@ function TeamBlock({
 }
 
 /**
- * Decisión pura (testeable sin navegador): ¿un partido 'scheduled' debería
- * pintarse ya como 'live' porque su hora de inicio pasó? El reloj llega como
- * parámetro (`now` en ms). Solo se fuerza "en juego" dentro de la ventana
- * realista de partido (STALE_LIVE_HOURS, fuente única #191); más allá el dato
- * está desactualizado o el partido no se jugó: mostrar hora.
+ * Estado a pintar (testeable sin navegador). El EN DIRECTO sale solo del estado
+ * que da la fuente: un partido `scheduled` cuya hora ya pasó NO se pinta como
+ * live (antes se forzaba un 0-0 "En directo" que podía no estar ocurriendo:
+ * retrasos, aplazamientos, horas mal publicadas). La hora solo distingue
+ * "pendiente de inicio" de "sin resultado" (dato muerto) — regla única de
+ * `matchDisplayState` (@sports/shared-types), la misma que la API y la app.
  */
-export function isMatchOverdue(match: Match, now: number): boolean {
-  if (match.status !== 'scheduled') return false;
-  const startIso = match.scheduledAt ?? match.startedAt;
-  if (!startIso) return false;
-  const start = new Date(startIso).getTime();
-  return now > start && now - start < STALE_LIVE_HOURS * 3_600_000;
+export function matchCardState(match: Pick<Match, 'status' | 'scheduledAt' | 'startedAt'>, now: number): MatchDisplayState {
+  return matchDisplayState(match.status, match.scheduledAt ?? match.startedAt, now);
 }
 
-/**
- * Parche reactivo: devuelve true si el partido esta como 'scheduled'
- * pero la hora actual ya ha superado su hora de inicio.
- * Usa el reloj compartido de 30 s (una sola suscripción en toda la app, #366).
- */
-function useIsMatchOverdue(match: Match): boolean {
-  return isMatchOverdue(match, useNow30s());
+/** Reloj compartido de 30 s (una sola suscripción en toda la app, #366). */
+function useMatchCardState(match: Match): MatchDisplayState {
+  return matchCardState(match, useNow30s());
 }
 
 function ScoreBlock({ match }: { match: Match }) {
   const { t, locale } = useT();
   const { status, score, scheduledAt, startedAt } = match;
 
-  // Si scheduled pero ya paso la hora de inicio, forzar badge live en UI
-  const isOverdue = useIsMatchOverdue(match);
-  const effectiveStatus = isOverdue ? 'live' : status;
+  const display = useMatchCardState(match);
 
-  if (effectiveStatus === 'live') {
+  if (status === 'live') {
     // En descanso, badge ámbar estático "Descanso"; en juego, verde con pulso.
     const isHalftime = match.isHalftime === true;
     return (
@@ -203,12 +194,23 @@ function ScoreBlock({ match }: { match: Match }) {
     );
   }
 
-  // scheduled — mostrar hora
+  // scheduled — mostrar hora. Si ya pasó, se indica que la fuente aún no lo
+  // da en juego (o que no hay resultado), nunca un directo inventado.
   return (
     <div className="flex flex-col items-center gap-0.5 px-3 shrink-0">
       <span className="font-score text-lg font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
         {formatTime(startedAt ?? scheduledAt, match.competitionTimezone, locale)}
       </span>
+      {display === 'awaiting_start' && (
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          {tt(t, 'match_states.awaiting_start', 'Pendiente')}
+        </span>
+      )}
+      {display === 'overdue' && (
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          {tt(t, 'match_states.no_result', 'Sin resultado')}
+        </span>
+      )}
     </div>
   );
 }
