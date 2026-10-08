@@ -348,12 +348,14 @@ export async function loadMatches(
           );
           const prevStatus = prevRow.rows[0]?.status ?? null;
           if (isStatusRegression(prevStatus, input.status)) {
-            log.warn(
-              { item: itemLabel, sourceRef: input.sourceRef, from: prevStatus, to: input.status },
-              'Regresión de estado de partido (posible glitch o corrección de la fuente)'
-            );
-            Sentry.captureMessage('Regresión de estado de partido', {
+            // El from/to y la ref VAN EN EL MENSAJE: los extras de Sentry no se
+            // ven desde la API de búsqueda y los logs de docker rotan — con la
+            // ventana de directo WSG (7/10) los 114 eventos eran inanalizables.
+            const detalle = `Regresión de estado de partido: ${prevStatus ?? 'null'} → ${input.status} [${input.sourceRef}] (posible glitch o corrección de la fuente)`;
+            log.warn({ item: itemLabel, sourceRef: input.sourceRef, from: prevStatus, to: input.status }, detalle);
+            Sentry.captureMessage(detalle, {
               level: 'warning',
+              fingerprint: ['status-regression', input.sourceRef],
               extra: { sourceRef: input.sourceRef, from: prevStatus, to: input.status, seasonId: input.seasonId },
             });
           }

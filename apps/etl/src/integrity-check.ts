@@ -128,6 +128,10 @@ async function checkHomonimos(): Promise<CheckResult> {
 async function checkRefsCompartidas(): Promise<CheckResult> {
   // Solo equipos VIVOS (con season_teams en temporadas is_current): el legado
   // histórico tiene refs genuinamente compartidas por diseño (#193).
+  // La muestra necesita DOS niveles de agregación (nombres por ref → unión de
+  // refs): en una sola pasaba un string_agg dentro de otro string_agg y
+  // Postgres rechazaba el check entero ("aggregate function calls cannot be
+  // nested", NODE-API-BACKEND-C).
   const { rows } = await db.query<{ n: string; muestra: string | null }>(
     `WITH vivos AS (
        SELECT DISTINCT t.id, t.name, t.source_ref
@@ -135,12 +139,16 @@ async function checkRefsCompartidas(): Promise<CheckResult> {
          JOIN season_teams st ON st.team_id = t.id
          JOIN seasons s ON s.id = st.season_id AND s.is_current
         WHERE t.source_ref IS NOT NULL
+     ),
+     por_ref AS (
+       SELECT source_ref, string_agg(name, ' ⧸ ') AS nombres, count(*) AS n
+         FROM vivos
+        GROUP BY source_ref
+       HAVING count(*) > 1
      )
      SELECT count(*)::text AS n,
-            left(string_agg('ref ' || source_ref || ': ' || string_agg(name, ' ⧸ '), ' | '), 300) AS muestra
-       FROM vivos
-      GROUP BY source_ref
-     HAVING count(*) > 1`
+            left(string_agg('ref ' || source_ref || ': ' || nombres, ' | '), 300) AS muestra
+       FROM por_ref`
   );
   return { name: 'refs-compartidas', violations: Number(rows[0]!.n), detail: rows[0]!.muestra ?? undefined, threshold: threshold('REFS') };
 }
