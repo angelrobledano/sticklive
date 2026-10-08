@@ -8,17 +8,20 @@ import { API_URL, REDSYS_URL, PAYMENT_PROVIDER, type RedsysPayload } from './con
 import { buildCheckoutPayload, type CheckoutProduct } from './checkout';
 
 /**
- * Paywall de dos opciones: anual (renovable) y para siempre (pago único).
+ * Paywall de dos opciones: anual (un año) y para siempre (pago único).
  *
  * Los IMPORTES no se muestran aquí a propósito: el precio lo define el catálogo
  * del API (fuente única server-side) y lo presenta Stripe en el Checkout. Exponer
  * precios públicos en la web es follow-up; duplicarlos garantizaría drift.
  */
-function CheckoutOption({ title, description, cta, loading, highlight = false, onSelect }: {
+function CheckoutOption({ title, description, cta, loadingLabel, loading, disabled = false, highlight = false, onSelect }: {
   title: string;
   description: string;
   cta: string;
+  loadingLabel: string;
   loading: boolean;
+  /** Deshabilita el botón (p. ej. mientras OTRA opción está en curso) sin spinner. */
+  disabled?: boolean;
   highlight?: boolean;
   onSelect: () => void;
 }) {
@@ -34,7 +37,7 @@ function CheckoutOption({ title, description, cta, loading, highlight = false, o
 
       <button
         onClick={onSelect}
-        disabled={loading}
+        disabled={disabled || loading}
         aria-busy={loading || undefined}
         className={`shrink-0 flex items-center gap-1.5 font-bold text-sm
                     px-3.5 py-2.5 rounded-xl
@@ -54,11 +57,11 @@ function CheckoutOption({ title, description, cta, loading, highlight = false, o
                 : 'border-white/30 border-t-white'}`}
               aria-hidden="true"
             />
-            Conectando…
+            {loadingLabel}
           </>
         ) : (
           <>
-            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" focusable="false" className="w-4 h-4">
               <path d="M12 2L9 9 2 9l5.5 4-2 7L12 16l6.5 4-2-7L22 9l-7 0z" />
             </svg>
             {cta}
@@ -72,7 +75,9 @@ function CheckoutOption({ title, description, cta, loading, highlight = false, o
 export function PremiumBanner({ deviceId }: { deviceId: string }) {
   const { t } = useT();
   const { setPremium } = usePremium();
-  // Carga POR PRODUCTO: pedir el anual no bloquea la opción de por vida.
+  // Carga POR PRODUCTO: el spinner identifica qué producto se está pidiendo. El
+  // guard + `disabled` de AMBOS botones evitan abrir dos sesiones y cobrar dos
+  // veces (p. ej. anual y de por vida casi a la vez).
   const [loadingProduct, setLoadingProduct] = useState<CheckoutProduct | null>(null);
   const [error, setError]           = useState<string | null>(null);
 
@@ -84,7 +89,8 @@ export function PremiumBanner({ deviceId }: { deviceId: string }) {
    * 2. Redirige a la pasarela (Stripe) o inyecta el formulario firmado (Redsys).
    */
   const handleCheckout = useCallback(async (product: CheckoutProduct) => {
-    if (!deviceId) return;
+    // Guard anti-doble-cobro: si ya hay un checkout en curso, se ignora.
+    if (loadingProduct || !deviceId) return;
     track('premium_checkout_started', { product });
     setLoadingProduct(product);
     setError(null);
@@ -100,6 +106,7 @@ export function PremiumBanner({ deviceId }: { deviceId: string }) {
         // 409: el servidor (fuente de verdad) confirma que ya es premium. Se
         // refleja en el estado global y Ajustes pinta el badge de premium activo.
         if (res.status === 409) {
+          setLoadingProduct(null);
           setPremium(true);
           return;
         }
@@ -107,7 +114,9 @@ export function PremiumBanner({ deviceId }: { deviceId: string }) {
         if (!res.ok || !body.url) throw new Error(body.error ?? `HTTP ${res.status}`);
         window.location.href = body.url; // → Stripe Checkout
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error desconocido');
+        // El código técnico queda en el log, nunca en pantalla (#review I2).
+        console.error('[premium] checkout', err instanceof Error ? err.message : err);
+        setError(t('settings.premium_error'));
         setLoadingProduct(null);
       }
       return;
@@ -152,10 +161,11 @@ export function PremiumBanner({ deviceId }: { deviceId: string }) {
       form.submit();
       // El navegador redirige — no hace falta limpiar el form
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      console.error('[premium] checkout', err instanceof Error ? err.message : err);
+      setError(t('settings.premium_error'));
       setLoadingProduct(null);
     }
-  }, [deviceId, setPremium]);
+  }, [deviceId, loadingProduct, setPremium, t]);
 
   return (
     <div className="rounded-2xl overflow-hidden shadow-sm">
@@ -164,8 +174,8 @@ export function PremiumBanner({ deviceId }: { deviceId: string }) {
         {/* Badge */}
         <div className="flex items-center gap-2">
           <span className="text-amber-300">
-            {/* Corona */}
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+            {/* Corona (decorativa) */}
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false" className="w-5 h-5">
               <path d="M12 2L9 9 2 9l5.5 4-2 7L12 16l6.5 4-2-7L22 9l-7 0z" />
             </svg>
           </span>
@@ -185,6 +195,8 @@ export function PremiumBanner({ deviceId }: { deviceId: string }) {
               <svg
                 viewBox="0 0 20 20"
                 fill="currentColor"
+                aria-hidden="true"
+                focusable="false"
                 className="w-4 h-4 text-amber-300 shrink-0"
               >
                 <path
@@ -206,7 +218,9 @@ export function PremiumBanner({ deviceId }: { deviceId: string }) {
               title={t('premium.product_lifetime')}
               description={t('premium.product_lifetime_desc')}
               cta={t('settings.premium_cta_lifetime')}
+              loadingLabel={t('settings.premium_connecting')}
               loading={loadingProduct === 'lifetime'}
+              disabled={loadingProduct !== null}
               highlight
               onSelect={() => void handleCheckout('lifetime')}
             />
@@ -215,14 +229,16 @@ export function PremiumBanner({ deviceId }: { deviceId: string }) {
             title={t('premium.product_annual')}
             description={t('premium.product_annual_desc')}
             cta={t('settings.premium_cta')}
+            loadingLabel={t('settings.premium_connecting')}
             loading={loadingProduct === 'annual'}
+            disabled={loadingProduct !== null}
             onSelect={() => void handleCheckout('annual')}
           />
         </div>
 
-        {/* Error inline */}
+        {/* Error inline (anunciado a lectores de pantalla) */}
         {error && (
-          <p className="text-xs text-red-200 bg-red-900/30 rounded-lg px-3 py-2">
+          <p role="alert" className="text-xs text-red-200 bg-red-900/30 rounded-lg px-3 py-2">
             {error}
           </p>
         )}
