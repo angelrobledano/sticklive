@@ -81,9 +81,10 @@ export default {
       ],
     ],
     experiments: { typedRoutes: true },
-    // OTA (Task 5.3): runtimeVersion derivada de `version` — cada release
-    // pública lleva runtime propia y `eas update` sólo toca JS compatible.
-    runtimeVersion: { policy: 'appVersion' },
+    // OTA (Task 5.3): runtime manual (el proyecto tiene directorio nativo para
+    // builds locales → EAS lo trata como bare y no admite políticas). Subir a
+    // mano SOLO cuando cambie código nativo; los updates JS viajan dentro.
+    runtimeVersion: '1.0.0',
     updates: { url: 'https://u.expo.dev/cb441676-3b36-4fae-9ce6-2da8e9f918a3' },
     extra: {
       // `eas init --id cb441676-…` (la config es dinámica y el CLI no puede
