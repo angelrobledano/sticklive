@@ -3,13 +3,14 @@
 // ============================================================
 
 /**
- * Umbral de la ventana "en juego por reloj": horas tras el saque durante las
- * que un partido sin estado final se pinta EN DIRECTO. Fuente ÚNICA (#191) para
- * la API (`effective-status`), los scrapers (`inferStatus`) y la web
- * (`MatchCard`), que antes discreparon entre 3 h y 5 h. Alineada con el
- * `stale-live-watchdog` del ETL. La API puede sobreescribirla con el env
- * `STALE_LIVE_HOURS` (aquí se deja un valor plano para no exponer `process.env`
- * al bundle del navegador).
+ * Horas tras el inicio a partir de las cuales un partido que sigue `live` se
+ * considera atascado (el `stale-live-watchdog` del ETL lo cierra; allí es
+ * configurable con el env `STALE_LIVE_HOURS`).
+ *
+ * Ya NO define ninguna ventana "en juego por reloj": un partido solo está en
+ * directo si la fuente lo dice (ver `resolveStatusTransition` y
+ * `matchDisplayState` más abajo). La presentación de un `scheduled` con la hora
+ * pasada usa `OVERDUE_AFTER_HOURS`.
  */
 export const STALE_LIVE_HOURS = 5;
 

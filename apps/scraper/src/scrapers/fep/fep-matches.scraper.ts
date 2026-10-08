@@ -148,7 +148,7 @@ export class FepMatchesScraper extends FepBaseScraper<ScrapedMatch> {
     // (ficha resumen). Aqui solo podemos actualizar score y status.
     // Estado: desde la clase del elemento + texto del botón central
     const statusText = $el.find('.scorer_bot_center').text().trim();
-    const status = inferStatus(classes, statusText, scoreRaw);
+    const status = inferStatus(classes, statusText);
 
     // Fecha y hora: "23/05 12:30"
     const dateTimeText = $el.find('.scorer_bot_left').text().trim();
@@ -209,31 +209,34 @@ function parseScore(scoreRaw: string): { homeScore?: number; awayScore?: number 
 }
 
 /**
- * Infiere el estado del partido combinando:
- *  - clases CSS del elemento (scorer_game_final / scorer_game_pending)
- *  - texto del botón central (FINAL, PENDIENTE, número de cuarto…)
- *  - presencia de marcador
+ * Estado del partido en el feed de directo, SOLO desde señales explícitas:
+ *  1. clase CSS del bloque (scorer_game_final / _pending / _playing), que el
+ *     feed pone siempre;
+ *  2. texto del botón central (FINAL, PENDIENTE, "2 PARTE", DESCANSO…).
+ * Sin ninguna de las dos → `undefined` (sin señal: el ETL no toca el estado).
+ * Antes, un marcador con dígitos bastaba para declarar `live` y un texto
+ * vacío para declarar `scheduled`: dos inferencias que podían reabrir un
+ * partido terminado o devolver a "programado" uno en juego.
  */
-function inferStatus(
+export function inferStatus(
   classes: string[],
   statusText: string,
-  scoreRaw: string
-): MatchStatus {
+): MatchStatus | undefined {
   if (classes.includes('scorer_game_final')) return 'finished';
   if (classes.includes('scorer_game_pending')) return 'scheduled';
   // sidgad marca el directo con `scorer_game_playing` (no `scorer_game_live`).
   // Detectarlo por clase evita depender del marcador (al saque inicial puede
-  // venir vacío y se marcaría 'scheduled' por error).
+  // venir vacío).
   if (classes.includes('scorer_game_playing') || classes.includes('scorer_game_live')) return 'live';
 
-  const upper = statusText.toUpperCase();
-  if (upper === 'FINAL') return 'finished';
-  if (upper === 'PENDIENTE' || upper === '') return 'scheduled';
+  const upper = statusText.normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase().trim();
+  if (upper === 'FINAL' || upper === 'FINALIZADO') return 'finished';
+  if (upper === 'PENDIENTE') return 'scheduled';
+  // Periodo/estado de juego publicado por la fuente: "1 PARTE", "2 CUARTO",
+  // "DESCANSO", "EN DIRECTO", "PRORROGA", "PENALTIS".
+  if (/\b(PARTE|CUARTO|PERIODO|DESCANSO|DIRECTO|PRORROGA|PENALTIS|HALF|PERIOD|LIVE)\b/.test(upper)) return 'live';
 
-  // "1 CUARTO", "2 CUARTO", "DESCANSO", "EN DIRECTO", etc. → live
-  if (scoreRaw && /\d+\s*[:–-]\s*\d+/.test(scoreRaw)) return 'live';
-
-  return 'scheduled';
+  return undefined;
 }
 
 function parseDatetime(text: string): Date | undefined {
