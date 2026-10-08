@@ -151,6 +151,23 @@ describe('buildMatchDetail — paridad REST/SSE (#283)', () => {
     expect(match.live).toBeNull();
   });
 
+  it('saque PASADO sin señal de la fuente → sigue programado: la hora no hace LIVE', () => {
+    // Previsto hace 10 min (empieza tarde): ni la API ni el SSE lo dan en juego.
+    const { match } = buildMatchDetail(row({
+      status: 'scheduled',
+      scheduled_at: new Date(Date.now() - 10 * 60_000),
+      started_at: null,
+    }), [], []);
+    expect(match.status).toBe('scheduled');
+    expect(match.live).toBeNull();
+  });
+
+  it('LIVE de la fuente aunque la hora prevista sea futura (la fuente manda)', () => {
+    const { match } = buildMatchDetail(row({ status: 'live', scheduled_at: new Date(Date.now() + 3_600_000) }), [], []);
+    expect(match.status).toBe('live');
+    expect(match.live).not.toBeNull();
+  });
+
   it('los eventos conservan el clock y el jugador', () => {
     const { events } = buildMatchDetail(row(), [event()], []);
     expect(events).toHaveLength(1);

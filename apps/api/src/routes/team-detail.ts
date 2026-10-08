@@ -4,7 +4,14 @@ import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 import { captureRouteError } from '../lib/route-error.js';
 import { penaltyScoredSql } from '../lib/penalty-sql.js';
-import { normalizeCompetitionFormat, isKnockoutCompetitionFormat } from '../lib/competition-format.js';
+import { normalizeCompetitionFormat } from '../lib/competition-format.js';
+import {
+  buildSeasonStructure,
+  type SeasonStructure,
+  type StructureMatchRow,
+  type StructurePhaseRow,
+  type StructureRoundRow,
+} from '../lib/season-structure.js';
 import { orderClubTeams, sectionSuffix, type ClubTeamRow } from '../lib/team-section.js';
 
 export const teamDetailRouter = new Hono();
@@ -212,21 +219,47 @@ teamDetailRouter.get('/:id', async (c) => {
     // fases del cuadro — con sólo los partidos del equipo, la semifinal de un
     // equipo eliminado no se distingue de una final.
     let seasonInfo: SeasonInfoRow | null = null;
+    let structure: SeasonStructure | null = null;
     if (selectedSeasonId) {
-      const seasonInfoRes = await db.query<SeasonInfoRow>(`
-        SELECT c.id     AS competition_id,
-               c.slug   AS competition_slug,
-               c.name   AS competition_name,
-               c.short_name AS competition_short_name,
-               cs.external_ids->>'format' AS competition_format
-        FROM seasons se
-        JOIN competitions c ON c.id = se.competition_id
-        LEFT JOIN competition_sources cs ON cs.competition_id = c.id
-        WHERE se.id = $1
-      `, [selectedSeasonId]);
+      const [seasonInfoRes, phasesRes, roundsRes, structMatchesRes] = await Promise.all([
+        db.query<SeasonInfoRow>(`
+          SELECT c.id     AS competition_id,
+                 c.slug   AS competition_slug,
+                 c.name   AS competition_name,
+                 c.short_name AS competition_short_name,
+                 cs.external_ids->>'format' AS competition_format
+          FROM seasons se
+          JOIN competitions c ON c.id = se.competition_id
+          LEFT JOIN competition_sources cs ON cs.competition_id = c.id
+          WHERE se.id = $1
+        `, [selectedSeasonId]),
+        // Estructura de la temporada (fases → rondas → partidos), la misma que
+        // usa /seasons/:id/overview: de ella salen el formato y la fase
+        // eliminatoria de cada partido (sin deducirlas por nombre ni fechas).
+        db.query<StructurePhaseRow>(`
+          SELECT id, ordinal, kind, is_placement, name, resolved_by
+          FROM phases WHERE season_id = $1 ORDER BY ordinal, created_at
+        `, [selectedSeasonId]),
+        db.query<StructureRoundRow>(`
+          SELECT id, number, name, round_type, phase_id, stage
+          FROM rounds WHERE season_id = $1
+        `, [selectedSeasonId]),
+        db.query<StructureMatchRow>(`
+          SELECT id, round_id, phase_id, series_game, home_team_id, away_team_id, scheduled_at
+          FROM matches WHERE season_id = $1
+        `, [selectedSeasonId]),
+      ]);
       seasonInfo = seasonInfoRes.rows[0] ?? null;
+      structure = buildSeasonStructure({
+        phases: phasesRes.rows,
+        rounds: roundsRes.rows,
+        matches: structMatchesRes.rows,
+        hasStandings: false,
+        declaredFormat: seasonInfo?.competition_format ?? null,
+      });
     }
-    const isKnockoutComp = isKnockoutCompetitionFormat(seasonInfo?.competition_format);
+    const competitionFormat = structure?.competitionFormat ?? normalizeCompetitionFormat(seasonInfo?.competition_format);
+    const isKnockoutComp = competitionFormat !== 'league';
 
     // #333: partidos, plantilla, cuerpo técnico y stats sólo dependen del mismo
     // `currentSeasonIds` → un único Promise.all para los cuatro grupos (antes
@@ -534,34 +567,42 @@ teamDetailRouter.get('/:id', async (c) => {
     // Formato declarado de la competición de la temporada mostrada. En una
     // eliminatoria los partidos pueden venir sin ronda asignada (fuente que no
     // las publica): se marcan como 'playoff' igual que hace season-overview.
-    const serializeMatch = (m: MatchRow) => ({
-      id:          m.id,
-      status:      m.status,
-      competitionTimezone: m.competition_timezone,
-      scheduledAt: m.scheduled_at,
-      startedAt:   m.started_at,
-      finishedAt:  m.finished_at,
-      score:       { home: m.home_score, away: m.away_score },
-      venue:       m.venue_name ? { name: m.venue_name, city: m.venue_city } : null,
-      roundId:     m.round_id,
-      roundNumber: m.round_number,
-      roundName:   m.round_name,
-      roundType:   m.round_type ?? (isKnockoutComp ? 'playoff' : null),
-      winnerTeamId: m.winner_team_id,
-      winType:     m.win_type,
-      homeTeam: {
-        id:        m.home_team_id,
-        name:      m.home_team_name,
-        shortName: m.home_team_short_name,
-        logoUrl:   m.home_team_logo_url,
-      },
-      awayTeam: {
-        id:        m.away_team_id,
-        name:      m.away_team_name,
-        shortName: m.away_team_short_name,
-        logoUrl:   m.away_team_logo_url,
-      },
-    });
+    const serializeMatch = (m: MatchRow) => {
+      const st = structure?.byMatch.get(m.id);
+      return {
+        id:          m.id,
+        status:      m.status,
+        competitionTimezone: m.competition_timezone,
+        scheduledAt: m.scheduled_at,
+        startedAt:   m.started_at,
+        finishedAt:  m.finished_at,
+        score:       { home: m.home_score, away: m.away_score },
+        venue:       m.venue_name ? { name: m.venue_name, city: m.venue_city } : null,
+        roundId:     m.round_id,
+        // Legado (1=QF/2=SF/3=F/0=colocación en eliminatorias) desde la fase
+        // explícita; la web nueva lee `stage`.
+        roundNumber: st ? st.roundNumber : m.round_number,
+        roundName:   m.round_name,
+        roundType:   st?.roundType ?? m.round_type ?? (isKnockoutComp ? 'playoff' : null),
+        phaseId:     st?.phaseId ?? null,
+        stage:       st?.stage ?? null,
+        seriesGame:  st?.seriesGame ?? null,
+        winnerTeamId: m.winner_team_id,
+        winType:     m.win_type,
+        homeTeam: {
+          id:        m.home_team_id,
+          name:      m.home_team_name,
+          shortName: m.home_team_short_name,
+          logoUrl:   m.home_team_logo_url,
+        },
+        awayTeam: {
+          id:        m.away_team_id,
+          name:      m.away_team_name,
+          shortName: m.away_team_short_name,
+          logoUrl:   m.away_team_logo_url,
+        },
+      };
+    };
 
     const matches = matchRows.map(serializeMatch);
 
@@ -612,7 +653,8 @@ teamDetailRouter.get('/:id', async (c) => {
         competitionSlug:  seasonInfo.competition_slug,
         competitionName:  seasonInfo.competition_name,
         competitionShort: seasonInfo.competition_short_name,
-        competitionFormat: normalizeCompetitionFormat(seasonInfo.competition_format),
+        competitionFormat,
+        phases:           structure?.phases ?? [],
       } : null,
       // Cuadro completo de la temporada (lite) en competiciones eliminatorias:
       // sin él, la fase de una eliminatoria del equipo no es derivable.
