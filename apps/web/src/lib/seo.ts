@@ -31,7 +31,7 @@ export { isSupportedLocale } from '@/lib/locales';
 
 /** Imagen social por defecto (1200×630, < 300 KB) servida desde /public. */
 export const OG_IMAGE = {
-  path: '/og-image.png',
+  path: '/og-image-v2.png',
   width: 1200,
   height: 630,
   type: 'image/png',

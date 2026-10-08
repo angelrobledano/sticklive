@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { OG_BRAND, OgBrandStrip, OgLockup } from '@/lib/og-brand';
 import { getTeamDetail } from '@/lib/api/client';
 import { clubName } from '@/lib/names';
 
@@ -40,11 +41,10 @@ export default async function Image(props: { params: Promise<{ locale: string; i
     (
       <div style={{
         width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-        justifyContent: 'space-between', background: '#0b1220', color: '#f8fafc', padding: '60px 64px',
+        justifyContent: 'space-between', position: 'relative', background: OG_BRAND.night, color: OG_BRAND.text, padding: '60px 64px',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ display: 'flex', width: '14px', height: '14px', borderRadius: '9999px', background: '#dc2626' }} />
-          <div style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '2px' }}>STICK LIVE</div>
+        <div style={{ display: 'flex' }}>
+          <OgLockup />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '56px' }}>
@@ -67,11 +67,12 @@ export default async function Image(props: { params: Promise<{ locale: string; i
           ) : null}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: '780px' }}>
             <div style={{ fontSize: '76px', fontWeight: 800, lineHeight: 1.05 }}>{name}</div>
-            <div style={{ fontSize: '30px', color: '#94a3b8' }}>{subtitle}</div>
+            <div style={{ fontSize: '30px', color: OG_BRAND.muted }}>{subtitle}</div>
           </div>
         </div>
 
-        <div style={{ fontSize: '24px', color: '#94a3b8' }}>sticklive.eu</div>
+        <div style={{ fontSize: '24px', color: OG_BRAND.muted }}>sticklive.eu</div>
+        <OgBrandStrip />
       </div>
     ),
     { ...size },

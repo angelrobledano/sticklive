@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { getMatchDetail, type LineupPlayer } from '@/lib/api/client';
 import { teamTitleName } from '@/lib/names';
+import { OgLockup } from '@/lib/og-brand';
 import { localeLessUrl } from '@/lib/seo';
 
 // Imagen del 5 inicial sobre la pista, renderizada EN EL SERVIDOR (Satori/next/og).
@@ -112,9 +113,8 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
           height: 96, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 48px',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 14, height: 14, borderRadius: 9999, background: '#dc2626' }} />
-            <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: 2 }}>STICK LIVE</div>
+          <div style={{ display: 'flex' }}>
+            <OgLockup />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 22, fontSize: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

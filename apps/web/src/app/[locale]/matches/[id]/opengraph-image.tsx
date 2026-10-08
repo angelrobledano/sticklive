@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { OG_BRAND, OgBrandStrip, OgLockup } from '@/lib/og-brand';
 import { getMatchDetail } from '@/lib/api/client';
 import { teamTitleName } from '@/lib/names';
 
@@ -76,25 +77,36 @@ export default async function Image(props: { params: Promise<{ locale: string; i
     (
       <div style={{
         width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-        justifyContent: 'space-between', background: '#0b1220', color: '#f8fafc', padding: '60px 64px',
+        justifyContent: 'space-between', position: 'relative', background: OG_BRAND.night, color: OG_BRAND.text, padding: '60px 64px',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ display: 'flex', width: '14px', height: '14px', borderRadius: '9999px', background: '#dc2626' }} />
-          <div style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '2px' }}>STICK LIVE</div>
+        <div style={{ display: 'flex' }}>
+          <OgLockup />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {side(home, homeId)}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
             <div style={{ fontSize: '92px', fontWeight: 800 }}>{center}</div>
-            <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '2px', color: live ? '#34d399' : '#94a3b8' }}>
-              {statusLine}
-            </div>
+            {live ? (
+              // Directo: el punto verde de la marca, el mismo verde que el token live.
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 20px',
+                borderRadius: '9999px', background: 'rgba(16,185,129,0.16)',
+              }}>
+                <div style={{ display: 'flex', width: '14px', height: '14px', borderRadius: '9999px', background: OG_BRAND.live }} />
+                <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '2px', color: OG_BRAND.live }}>{statusLine}</div>
+              </div>
+            ) : (
+              <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '2px', color: OG_BRAND.muted }}>
+                {statusLine}
+              </div>
+            )}
           </div>
           {side(away, awayId)}
         </div>
 
-        <div style={{ fontSize: '24px', color: '#94a3b8' }}>sticklive.eu</div>
+        <div style={{ fontSize: '24px', color: OG_BRAND.muted }}>sticklive.eu</div>
+        <OgBrandStrip />
       </div>
     ),
     { ...size }

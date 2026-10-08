@@ -86,8 +86,8 @@ describe('socialMeta (#273, #274)', () => {
   it('sin imagen dinámica mantiene la imagen estática por defecto (sin regresión)', () => {
     const meta = socialMeta({ ...base });
     const ogImages = meta.openGraph?.images as Array<{ url: string }>;
-    expect(ogImages[0]?.url).toBe(`${SITE_URL}/og-image.png`);
-    expect(meta.twitter?.images).toEqual([`${SITE_URL}/og-image.png`]);
+    expect(ogImages[0]?.url).toBe(`${SITE_URL}/og-image-v2.png`);
+    expect(meta.twitter?.images).toEqual([`${SITE_URL}/og-image-v2.png`]);
   });
 
   // #278/#279: la imagen de competición lleva su propia ruta, pero el path de la
