@@ -91,7 +91,6 @@
   },
   "match_states": {
     "live": "En directo",
-    "in_play": "En juego",
     "final": "Final",
     "final_overtime": "Final (Prórroga)",
     "final_penalties": "Final (Penaltis)",

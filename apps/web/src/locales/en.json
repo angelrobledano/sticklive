@@ -77,7 +77,6 @@
   },
   "match_states": {
     "live": "Live",
-    "in_play": "Live",
     "final": "FT",
     "final_overtime": "FT (Overtime)",
     "final_penalties": "FT (Penalties)",

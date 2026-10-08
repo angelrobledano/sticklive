@@ -46,7 +46,6 @@
   },
   "match_states": {
     "live": "Em direto",
-    "in_play": "Em jogo",
     "final": "Fim",
     "final_overtime": "Fim (Prolongamento)",
     "final_penalties": "Fim (Grandes penalidades)",
