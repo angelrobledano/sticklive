@@ -42,9 +42,14 @@ async function crearUsuario(deviceId: string, premiumUntil: string | null = null
   );
   return r.rows[0]!.id;
 }
-const completedEvent = (id: string, userId: string, deviceId: string) => ({
+const completedEvent = (id: string, userId: string, deviceId: string, product?: string) => ({
   id, type: 'checkout.session.completed',
-  data: { object: { metadata: { userId, deviceId }, amount_total: 499 } },
+  data: {
+    object: {
+      metadata: { userId, deviceId, ...(product ? { product } : {}) },
+      amount_total: 499,
+    },
+  },
 });
 
 beforeAll(() => {
@@ -79,6 +84,37 @@ describe('webhook de Stripe', () => {
     const until = new Date(u.rows[0]!.premium_until!).getTime();
     const u_year = 365 * 24 * 3600_000;
     expect(until).toBeGreaterThan(Date.now() + u_year - 5 * 24 * 3600_000);
+  });
+
+  it('T-014: lifetime activa premium_lifetime y NO toca premium_until', async () => {
+    const previo = new Date(Date.now() + 10 * 24 * 3600_000).toISOString();
+    const userId = await crearUsuario('dev-lifetime', previo);
+    constructEventAsync.mockResolvedValueOnce(completedEvent('evt_life', userId, 'dev-lifetime', 'lifetime'));
+
+    const res = await webhook();
+    expect(res.status).toBe(200);
+
+    const u = await db.query<{ is_premium: boolean; premium_until: string | null; premium_lifetime: boolean }>(
+      `SELECT is_premium, premium_until, premium_lifetime FROM users WHERE id = $1`, [userId]
+    );
+    expect(u.rows[0]!.is_premium).toBe(true);
+    expect(u.rows[0]!.premium_lifetime).toBe(true);
+    // La compra de por vida no fabrica fecha: el premium_until previo queda igual.
+    expect(new Date(u.rows[0]!.premium_until!).toISOString()).toBe(previo);
+  });
+
+  it('T-015: lifetime sin premium previo deja premium_until NULL (canónico)', async () => {
+    const userId = await crearUsuario('dev-lifetime-null');
+    constructEventAsync.mockResolvedValueOnce(completedEvent('evt_life_null', userId, 'dev-lifetime-null', 'lifetime'));
+
+    const res = await webhook();
+    expect(res.status).toBe(200);
+
+    const u = await db.query<{ premium_until: string | null; premium_lifetime: boolean }>(
+      `SELECT premium_until, premium_lifetime FROM users WHERE id = $1`, [userId]
+    );
+    expect(u.rows[0]!.premium_lifetime).toBe(true);
+    expect(u.rows[0]!.premium_until).toBeNull();
   });
 
   it('T-010: es idempotente — un event.id repetido NO reactiva', async () => {

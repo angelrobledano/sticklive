@@ -19,7 +19,33 @@ import { isPremiumActive, isCheckoutSessionId, isPaidCheckoutSession, isUserPrem
 export const stripeRouter = new Hono();
 
 const PRICE_CENTS = Number(process.env['PREMIUM_PRICE_EUR_CENTS'] ?? 499);
+const LIFETIME_PRICE_CENTS = Number(process.env['PREMIUM_LIFETIME_PRICE_EUR_CENTS'] ?? 2999);
 const WEB_BASE = process.env['WEB_BASE_URL'] ?? 'http://localhost:3001';
+
+/**
+ * Catálogo de productos premium (una sola fuente): el precio y el copy de cada
+ * uno los usa el Checkout, y el `product` viaja en el metadata de la sesión
+ * para que el webhook sepa qué entitlement conceder. El anual es el histórico
+ * (`mode: 'payment'` + 1 año) y el de por vida un pago único sin fecha.
+ */
+const PRODUCTS = {
+  annual: {
+    amount: PRICE_CENTS,
+    name: 'Stick Live Premium — 1 año',
+    // #253: solo se anuncia el beneficio real. El resto del copy (i18n) se
+    // ajusta por separado; aquí no inventamos features.
+    description: 'Disfruta de Stick Live sin publicidad durante un año.',
+  },
+  lifetime: {
+    amount: LIFETIME_PRICE_CENTS,
+    name: 'Stick Live Premium — para siempre',
+    description: 'Un solo pago: Stick Live sin publicidad para siempre.',
+  },
+} as const;
+type ProductId = keyof typeof PRODUCTS;
+function isProductId(v: unknown): v is ProductId {
+  return v === 'annual' || v === 'lifetime';
+}
 
 let _stripe: Stripe | null = null;
 function stripe(): Stripe {
@@ -84,7 +110,7 @@ stripeRouter.get('/session/:id', rateLimit(30, 60_000), async (c) => {
       }
     }
 
-    return c.json({ paid, premium, premiumUntil });
+    return c.json({ paid, premium, premiumUntil, product: session.metadata?.['product'] ?? 'annual' });
   } catch (err) {
     // Sesión inexistente o error de Stripe: nunca conceder premium.
     const status = (err as { statusCode?: number }).statusCode;
@@ -96,8 +122,13 @@ stripeRouter.get('/session/:id', rateLimit(30, 60_000), async (c) => {
 
 stripeRouter.post('/checkout', rateLimit(10, 60_000), async (c) => {
   try {
-    const { deviceId } = await c.req.json<{ deviceId?: string }>();
+    const { deviceId, product } = await c.req.json<{ deviceId?: string; product?: string }>();
     if (!deviceId) return c.json({ error: 'missing_device_id' }, 400);
+    // Ausente = 'annual' (compatibilidad total con los callers actuales); un
+    // valor presente pero desconocido es un error de entrada, nunca un default.
+    const productId = product ?? 'annual';
+    if (!isProductId(productId)) return c.json({ error: 'unknown_product' }, 400);
+    const chosen = PRODUCTS[productId];
 
     // Asegurar que el usuario existe (misma semántica que Redsys)
     const userRes = await db.query<{ id: string; premium_until: string | null; premium_lifetime: boolean; stripe_customer_id: string | null }>(
@@ -137,16 +168,14 @@ stripeRouter.post('/checkout', rateLimit(10, 60_000), async (c) => {
         quantity: 1,
         price_data: {
           currency: 'eur',
-          unit_amount: PRICE_CENTS,
+          unit_amount: chosen.amount,
           product_data: {
-            name: 'Stick Live Premium — 1 año',
-            // #253: solo se anuncia el beneficio real. El resto del copy
-            // (i18n) se ajusta por separado; aquí no inventamos features.
-            description: 'Disfruta de Stick Live sin publicidad.',
+            name: chosen.name,
+            description: chosen.description,
           },
         },
       }],
-      metadata: { deviceId, userId: userRes.rows[0]!.id },
+      metadata: { deviceId, userId: userRes.rows[0]!.id, product: productId },
       // Stripe sustituye {CHECKOUT_SESSION_ID} por el id real. La página de
       // éxito lo usa para verificar el pago server-side antes de dar premium.
       success_url: `${WEB_BASE}/premium/success?provider=stripe&session_id={CHECKOUT_SESSION_ID}`,
@@ -195,6 +224,9 @@ stripeRouter.post('/restore', rateLimit(5, 3_600_000), async (c) => {
     const customers = await stripe().customers.list({ email, limit: 5 });
     let paidUntil: Date | null = null;
     let paidCustomerId: string | null = null;
+    // Una compra de por vida manda sobre cualquier anual: se restaura como
+    // lifetime (sin fecha) en vez de como caducidad.
+    let paidLifetime = false;
 
     for (const customer of customers.data) {
       const sessions = await stripe().checkout.sessions.list({
@@ -203,6 +235,11 @@ stripeRouter.post('/restore', rateLimit(5, 3_600_000), async (c) => {
       });
       for (const session of sessions.data) {
         if (!isPaidCheckoutSession(session)) continue;
+        if (session.metadata?.['product'] === 'lifetime') {
+          paidLifetime = true;
+          paidCustomerId = customer.id;
+          continue;
+        }
         // El entitlement es la compra ORIGINAL: última sesión pagada + 1 año
         // (el webhook ya extendió en su día desde la compra en el dispositivo
         // original; restaurar "ahora + 1 año" regalaría un año por reinstalar).
@@ -214,8 +251,24 @@ stripeRouter.post('/restore', rateLimit(5, 3_600_000), async (c) => {
       }
     }
 
-    if (!paidUntil || !paidCustomerId) {
+    if (!paidCustomerId || (!paidLifetime && !paidUntil)) {
       return c.json({ premium: false });
+    }
+
+    if (paidLifetime) {
+      // Pago único restaurado: lifetime sin fecha. No se toca premium_until.
+      await db.query(
+        `UPDATE users
+            SET stripe_customer_id = $2,
+                is_premium = TRUE,
+                premium_lifetime = TRUE,
+                updated_at = NOW()
+          WHERE id = $1`,
+        [user.id, paidCustomerId]
+      );
+      logger.info({ userId: user.id }, '[stripe] Premium lifetime restaurado (#251)');
+
+      return c.json({ premium: true, premiumUntil: null, premiumLifetime: true });
     }
 
     // Vincula el dispositivo nuevo al customer pagado y concede el entitlement
@@ -228,13 +281,14 @@ stripeRouter.post('/restore', rateLimit(5, 3_600_000), async (c) => {
               premium_until = GREATEST(COALESCE(premium_until, NOW()), $3::timestamptz),
               updated_at = NOW()
         WHERE id = $1`,
-      [user.id, paidCustomerId, paidUntil.toISOString()]
+      [user.id, paidCustomerId, paidUntil!.toISOString()]
     );
-    logger.info({ userId: user.id, paidUntil: paidUntil.toISOString() }, '[stripe] Premium restaurado (#251)');
+    logger.info({ userId: user.id, paidUntil: paidUntil!.toISOString() }, '[stripe] Premium restaurado (#251)');
 
     return c.json({
-      premium: isPremiumActive(paidUntil.toISOString()),
-      premiumUntil: paidUntil.toISOString(),
+      premium: isPremiumActive(paidUntil!.toISOString()),
+      premiumUntil: paidUntil!.toISOString(),
+      premiumLifetime: false,
     });
   } catch (err) {
     captureRouteError(err, 'stripe] restore error');
@@ -266,6 +320,7 @@ stripeRouter.post('/webhook', async (c) => {
   let premiumUserId: string | null = null;
   let analyticsDeviceId: string | undefined;
   let amountTotal = PRICE_CENTS;
+  let analyticsProduct = 'annual';
 
   await withTransaction(async (tx) => {
     const seen = await tx.query(
@@ -281,21 +336,36 @@ stripeRouter.post('/webhook', async (c) => {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       const userId = session.metadata?.['userId'];
+      const product = session.metadata?.['product'];
 
       if (userId) {
-        // Extiende desde la caducidad previa si aún está vigente (una renovación
-        // anticipada no debe perder los días que quedaban).
-        await tx.query(
-          `UPDATE users SET is_premium = TRUE,
-                            premium_until = GREATEST(COALESCE(premium_until, NOW()), NOW()) + INTERVAL '1 year',
-                            updated_at = NOW()
-           WHERE id = $1`,
-          [userId]
-        );
+        if (product === 'lifetime') {
+          // Pago único: lifetime sin fecha. NO se toca premium_until (la compra
+          // de por vida no fabrica ni pisa una caducidad).
+          await tx.query(
+            `UPDATE users SET is_premium = TRUE,
+                              premium_lifetime = TRUE,
+                              updated_at = NOW()
+             WHERE id = $1`,
+            [userId]
+          );
+        } else {
+          // Anual, incluida cualquier sesión histórica sin `product`.
+          // Extiende desde la caducidad previa si aún está vigente (una
+          // renovación anticipada no debe perder los días que quedaban).
+          await tx.query(
+            `UPDATE users SET is_premium = TRUE,
+                              premium_until = GREATEST(COALESCE(premium_until, NOW()), NOW()) + INTERVAL '1 year',
+                              updated_at = NOW()
+             WHERE id = $1`,
+            [userId]
+          );
+        }
         premiumUserId = userId;
         analyticsDeviceId = session.metadata?.['deviceId'];
-        amountTotal = session.amount_total ?? PRICE_CENTS;
-        logger.info({ userId }, '[stripe] Premium activado');
+        analyticsProduct = product ?? 'annual';
+        amountTotal = session.amount_total ?? (product === 'lifetime' ? LIFETIME_PRICE_CENTS : PRICE_CENTS);
+        logger.info({ userId, product: analyticsProduct }, '[stripe] Premium activado');
       }
     }
   });
@@ -310,7 +380,7 @@ stripeRouter.post('/webhook', async (c) => {
       analytics.capture({
         distinctId: analyticsDeviceId ?? premiumUserId,
         event: 'premium_purchased',
-        properties: { provider: 'stripe', amount_cents: amountTotal },
+        properties: { provider: 'stripe', amount_cents: amountTotal, product: analyticsProduct },
       });
       await analytics.flush();
     } catch { /* sin POSTHOG_API_KEY no bloqueamos el webhook */ }
