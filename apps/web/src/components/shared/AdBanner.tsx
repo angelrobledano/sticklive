@@ -186,6 +186,12 @@ function AdsenseUnit({ zone, client, slot, className }: {
 
   const config = ZONE_CONFIG[zone];
 
+  // Reserva por `min-height` (anti-CLS) SIN recortar: un bloque responsive puede
+  // medir más que la altura reservada, y recortar anuncios (`overflow-hidden` +
+  // altura fija) incumple la política de AdSense. El hueco mínimo se mantiene; el
+  // anuncio crece si le hace falta.
+  const reserve = config.height.replace(/^h-/, 'min-h-');
+
   return (
     <div
       role="complementary"
@@ -193,8 +199,8 @@ function AdsenseUnit({ zone, client, slot, className }: {
       // Best-effort: el iframe del anuncio no siempre propaga el click.
       onClick={() => track('ad_click', { zone })}
       className={`
-        relative w-full ${config.height}
-        overflow-hidden rounded-xl
+        relative w-full ${reserve}
+        rounded-xl
         ${className}
       `}
     >
