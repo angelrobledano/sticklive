@@ -1,9 +1,12 @@
 # Monetización — publicidad web (Google AdSense) y premium
 
-*Estado: **listo pero apagado**. La web solo carga anuncios si
-`NEXT_PUBLIC_ADSENSE_CLIENT` está definido; por defecto está vacío y no hay
-ninguna petición a Google. Issue de seguimiento: #382 (relacionadas: #250 CLS,
-#254 analítica de anuncios, #246 consentimiento).*
+*Estado: **ACTIVADO en producción el 2026-10-08** (client-only: el tag de AdSense
+ya se sirve con `ca-pub-2994866776026136`; sin bloques aún — las superficies se
+encienden en un segundo pase cuando existan los `SLOT_*`). Prerrequisitos ya
+resueltos: CMP de Google publicado (§4.1) y `ads.txt`/`app-ads.txt` servidos
+(§2). La web pasó de "Preparando" a la revisión de AdSense con este deploy.
+Issue de seguimiento: #382 (relacionadas: #250 CLS, #254 analítica de anuncios,
+#246 consentimiento).*
 
 AdMob **no aplica** a la web/PWA: es exclusivo de apps nativas. La red elegida es
 **Google AdSense** (mismo ecosistema, soporte web). En la **app móvil** sí se usa
@@ -106,9 +109,10 @@ analítica**, no publicidad: no es un CMP certificado. **No basta** para ads.
 
 ### 4.1 Decisión: CMP de Google con tres opciones (2026-10-06)
 
-*Estado: **decidido**, pendiente de configurar y publicar en el panel de
-AdSense. Lo aplica el coordinador en "Privacidad y mensajes"; esta guía no
-ejecuta pasos de panel.*
+*Estado: **publicado** (2026-10-07, AdSense → Privacidad y mensajes → Reglamentos
+europeos, apuntando a sticklive.eu, 32 idiomas). El mensaje se sirve a través del
+tag de AdSense cuando este esté activo (§2). El equivalente de la app (AdMob) está
+publicado desde el 2026-10-06.*
 
 **Proveedor:** el **CMP propio de Google** (Privacy & messaging / Funding
 Choices), certificado IAB TCF v2.2. No se adopta un CMP externo: añadiría
