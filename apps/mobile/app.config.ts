@@ -1,3 +1,5 @@
+import { BRAND } from '@sports/brand';
+
 export default {
   expo: {
     name: 'Stick Live',
@@ -9,25 +11,52 @@ export default {
     icon: './assets/icon.png',
     // SDK 57: los assets de la plantilla son splash-icon.png y android-icon-foreground.png
     // (el plan asumía splash.png / adaptive-icon.png de plantillas anteriores).
-    splash: { image: './assets/splash-icon.png', resizeMode: 'contain', backgroundColor: '#7f1d1d' },
-    ios: { bundleIdentifier: 'eu.sticklive.app', supportsTablet: false },
+    // El splash se configura abajo con el plugin expo-splash-screen (la clave
+    // `splash` heredada ya no se usa).
+    ios: {
+      bundleIdentifier: 'eu.sticklive.app',
+      supportsTablet: false,
+      // iOS 18+: el sistema elige la variante según el aspecto de la pantalla de inicio.
+      icon: {
+        light: './assets/icon.png',
+        dark: './assets/ios-icon-dark.png',
+        tinted: './assets/ios-icon-tinted.png',
+      },
+    },
     android: {
       package: 'eu.sticklive.app',
       adaptiveIcon: {
         foregroundImage: './assets/android-icon-foreground.png',
-        backgroundColor: '#7f1d1d',
+        backgroundColor: BRAND.granate,
+        // Iconos temáticos de Android 13+.
+        monochromeImage: './assets/android-icon-monochrome.png',
       },
       edgeToEdgeEnabled: true,
     },
     plugins: [
       'expo-router',
+      // Splash con el plugin recomendado (sustituye la clave `splash` heredada):
+      // i sobre granate en claro y sobre noche en oscuro.
+      [
+        'expo-splash-screen',
+        {
+          image: './assets/splash-icon.png',
+          imageWidth: 160,
+          backgroundColor: BRAND.granate,
+          dark: { image: './assets/splash-icon.png', backgroundColor: BRAND.noche },
+        },
+      ],
       'expo-status-bar',
       'expo-web-browser',
       'expo-secure-store',
-      // expo-notifications: color del aviso y canal por defecto de FCMv1 (el
-      // canal 'live' se crea en runtime al registrarse). Requiere recompilar la
-      // app nativa (CNG) para aplicar cambios.
-      ['expo-notifications', { color: '#991b1b', defaultChannel: 'live' }],
+      // expo-notifications: icono (blanco sobre transparente) y color del aviso
+      // en Android, y canal por defecto de FCMv1 (el canal 'live' se crea en
+      // runtime al registrarse). Requiere recompilar la app nativa (CNG) para
+      // aplicar cambios.
+      [
+        'expo-notifications',
+        { icon: './assets/notification-icon.png', color: BRAND.granate, defaultChannel: 'live' },
+      ],
       // Sentry (Task 5.1): plugin nativo (el init de JS vive en app/_layout.tsx).
       // Publicar source maps además requiere sentryCli authToken como secret de
       // EAS en build — paso de release (5.3/5.4), no de esta tarea.
