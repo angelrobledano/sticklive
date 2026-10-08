@@ -44,7 +44,9 @@ const PRODUCTS = {
 } as const;
 type ProductId = keyof typeof PRODUCTS;
 function isProductId(v: unknown): v is ProductId {
-  return v === 'annual' || v === 'lifetime';
+  // Derivado del propio catálogo: añadir un producto no puede dejarse la
+  // validación sin actualizar (evita drift).
+  return typeof v === 'string' && Object.hasOwn(PRODUCTS, v);
 }
 
 let _stripe: Stripe | null = null;
@@ -122,12 +124,16 @@ stripeRouter.get('/session/:id', rateLimit(30, 60_000), async (c) => {
 
 stripeRouter.post('/checkout', rateLimit(10, 60_000), async (c) => {
   try {
-    const { deviceId, product } = await c.req.json<{ deviceId?: string; product?: string }>();
+    const body = await c.req.json<{ deviceId?: string; product?: unknown }>();
+    const { deviceId } = body;
     if (!deviceId) return c.json({ error: 'missing_device_id' }, 400);
-    // Ausente = 'annual' (compatibilidad total con los callers actuales); un
-    // valor presente pero desconocido es un error de entrada, nunca un default.
-    const productId = product ?? 'annual';
-    if (!isProductId(productId)) return c.json({ error: 'unknown_product' }, 400);
+    // Ausente (`undefined`) = 'annual' (compatibilidad total con los callers
+    // actuales). Un valor PRESENTE que no esté en el catálogo —incluido `null` o
+    // un tipo equivocado— es un error de entrada, nunca un default silencioso.
+    let productId: ProductId;
+    if (body.product === undefined) productId = 'annual';
+    else if (isProductId(body.product)) productId = body.product;
+    else return c.json({ error: 'unknown_product' }, 400);
     const chosen = PRODUCTS[productId];
 
     // Asegurar que el usuario existe (misma semántica que Redsys)
@@ -240,6 +246,9 @@ stripeRouter.post('/restore', rateLimit(5, 3_600_000), async (c) => {
           paidCustomerId = customer.id;
           continue;
         }
+        // Si ya hay una compra de por vida, no la pisamos con una anual de otro
+        // customer con el mismo email: el lifetime manda también en el vínculo.
+        if (paidLifetime) continue;
         // El entitlement es la compra ORIGINAL: última sesión pagada + 1 año
         // (el webhook ya extendió en su día desde la compra en el dispositivo
         // original; restaurar "ahora + 1 año" regalaría un año por reinstalar).
@@ -321,6 +330,8 @@ stripeRouter.post('/webhook', async (c) => {
   let analyticsDeviceId: string | undefined;
   let amountTotal = PRICE_CENTS;
   let analyticsProduct = 'annual';
+  // Producto PRESENTE pero desconocido: fail-closed, no se acredita nada.
+  let unknownProduct: string | null = null;
 
   await withTransaction(async (tx) => {
     const seen = await tx.query(
@@ -336,41 +347,65 @@ stripeRouter.post('/webhook', async (c) => {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       const userId = session.metadata?.['userId'];
-      const product = session.metadata?.['product'];
+      const rawProduct = session.metadata?.['product'];
 
-      if (userId) {
-        if (product === 'lifetime') {
-          // Pago único: lifetime sin fecha. NO se toca premium_until (la compra
-          // de por vida no fabrica ni pisa una caducidad).
-          await tx.query(
-            `UPDATE users SET is_premium = TRUE,
-                              premium_lifetime = TRUE,
-                              updated_at = NOW()
-             WHERE id = $1`,
-            [userId]
-          );
-        } else {
-          // Anual, incluida cualquier sesión histórica sin `product`.
-          // Extiende desde la caducidad previa si aún está vigente (una
-          // renovación anticipada no debe perder los días que quedaban).
-          await tx.query(
-            `UPDATE users SET is_premium = TRUE,
-                              premium_until = GREATEST(COALESCE(premium_until, NOW()), NOW()) + INTERVAL '1 year',
-                              updated_at = NOW()
-             WHERE id = $1`,
-            [userId]
-          );
+      if (rawProduct !== undefined && !isProductId(rawProduct)) {
+        // Fail-closed: 'annual'/'lifetime' o ausente (sesiones históricas) sí
+        // conceden; cualquier otro valor PRESENTE no acredita NADA. Se alerta
+        // fuera de la transacción (abajo).
+        unknownProduct = String(rawProduct);
+      } else {
+        const product: ProductId = rawProduct === undefined ? 'annual' : rawProduct;
+
+        if (userId) {
+          if (product === 'lifetime') {
+            // Pago único: lifetime sin fecha. NO se toca premium_until (la compra
+            // de por vida no fabrica ni pisa una caducidad).
+            await tx.query(
+              `UPDATE users SET is_premium = TRUE,
+                                premium_lifetime = TRUE,
+                                updated_at = NOW()
+               WHERE id = $1`,
+              [userId]
+            );
+          } else {
+            // Anual, incluida cualquier sesión histórica sin `product`.
+            // Extiende desde la caducidad previa si aún está vigente (una
+            // renovación anticipada no debe perder los días que quedaban).
+            await tx.query(
+              `UPDATE users SET is_premium = TRUE,
+                                premium_until = GREATEST(COALESCE(premium_until, NOW()), NOW()) + INTERVAL '1 year',
+                                updated_at = NOW()
+               WHERE id = $1`,
+              [userId]
+            );
+          }
+          premiumUserId = userId;
+          analyticsDeviceId = session.metadata?.['deviceId'];
+          analyticsProduct = product;
+          amountTotal = session.amount_total ?? (product === 'lifetime' ? LIFETIME_PRICE_CENTS : PRICE_CENTS);
+          logger.info({ userId, product }, '[stripe] Premium activado');
         }
-        premiumUserId = userId;
-        analyticsDeviceId = session.metadata?.['deviceId'];
-        analyticsProduct = product ?? 'annual';
-        amountTotal = session.amount_total ?? (product === 'lifetime' ? LIFETIME_PRICE_CENTS : PRICE_CENTS);
-        logger.info({ userId, product: analyticsProduct }, '[stripe] Premium activado');
       }
     }
   });
 
   if (duplicate) return c.json({ received: true, duplicate: true });
+
+  if (unknownProduct !== null) {
+    // Se responde 200 (el evento queda marcado como procesado): reintentar no
+    // arreglaría el dato corrupto y un 4xx/5xx haría que Stripe reintentase en
+    // bucle. La anomalía se reporta a logs/Sentry.
+    logger.error(
+      { eventId: event.id, product: unknownProduct },
+      '[stripe] producto desconocido en checkout.session.completed: no se concede premium'
+    );
+    captureRouteError(
+      new Error(`[stripe] producto desconocido en webhook: ${unknownProduct}`),
+      'stripe] webhook unknown product'
+    );
+    return c.json({ received: true });
+  }
 
   // Analítica de servidor FUERA de la transacción: no debe bloquear ni revertir
   // el efecto del pago. Cierra el funnel premium_checkout_started → purchased.

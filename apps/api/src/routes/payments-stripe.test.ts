@@ -1,30 +1,57 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { Hono } from 'hono';
 
-// Dinero + validación de entrada: se mockean SOLO el SDK de Stripe y la BD; el
-// router es el real. `@sports/db` exige DATABASE_URL al importarse.
+// Dinero + validación de entrada: se mockean SOLO el SDK de Stripe, la BD y los
+// efectos colaterales (Sentry); el router es el real. `@sports/db` exige
+// DATABASE_URL al importarse.
 process.env['DATABASE_URL'] ??= 'postgres://localhost:5432/test';
 process.env['STRIPE_SECRET_KEY'] ??= 'sk_test_dummy';
+process.env['STRIPE_WEBHOOK_SECRET'] ??= 'whsec_test_dummy';
 
-const { sessionsCreate, sessionsList, customersList, dbQuery } = vi.hoisted(() => ({
-  sessionsCreate: vi.fn(),
-  sessionsList: vi.fn(),
-  customersList: vi.fn(),
-  dbQuery: vi.fn(),
-}));
+const {
+  sessionsCreate, sessionsList, customersList, dbQuery,
+  txQuery, withTransaction, constructEventAsync, captureRouteError,
+  loggerError, loggerInfo,
+} = vi.hoisted(() => {
+  const txQuery = vi.fn();
+  return {
+    sessionsCreate: vi.fn(),
+    sessionsList: vi.fn(),
+    customersList: vi.fn(),
+    dbQuery: vi.fn(),
+    txQuery,
+    // Ejecuta el callback real con un `tx` que registra el SQL, para poder
+    // asertar que un producto desconocido NO toca ninguna tabla de usuario.
+    withTransaction: vi.fn(
+      async (cb: (tx: { query: typeof txQuery }) => Promise<void>) => { await cb({ query: txQuery }); }
+    ),
+    constructEventAsync: vi.fn(),
+    captureRouteError: vi.fn(),
+    loggerError: vi.fn(),
+    loggerInfo: vi.fn(),
+  };
+});
 
 vi.mock('stripe', () => ({
   default: class StripeMock {
     checkout = { sessions: { create: sessionsCreate, list: sessionsList } };
     customers = { create: vi.fn(), list: customersList };
-    webhooks = { constructEventAsync: vi.fn() };
+    webhooks = { constructEventAsync };
   },
 }));
 
 vi.mock('@sports/db', () => ({
   db: { query: dbQuery },
-  withTransaction: vi.fn(),
+  withTransaction,
 }));
+
+vi.mock('@sports/logger', () => ({
+  logger: { error: loggerError, info: loggerInfo, warn: vi.fn(), debug: vi.fn() },
+}));
+
+// Sentry no debe salir disparado en los unit tests; verificamos que el camino
+// de producto desconocido ALERTA.
+vi.mock('../lib/route-error.js', () => ({ captureRouteError }));
 
 const { stripeRouter } = await import('./payments-stripe.js');
 
@@ -53,11 +80,21 @@ const checkout = (a: Hono, body: unknown) =>
     body: JSON.stringify(body),
   });
 
+const webhook = (a: Hono) =>
+  a.request('/payments/stripe/webhook', {
+    method: 'POST', body: '{}', headers: { 'stripe-signature': 'sig-de-prueba' },
+  });
+
 beforeEach(() => {
   sessionsCreate.mockReset();
   sessionsList.mockReset();
   customersList.mockReset();
   dbQuery.mockReset();
+  txQuery.mockReset();
+  constructEventAsync.mockReset();
+  captureRouteError.mockReset();
+  loggerError.mockReset();
+  loggerInfo.mockReset();
 });
 
 afterEach(() => {
@@ -173,6 +210,21 @@ describe('POST /payments/stripe/checkout — producto', () => {
     expect(sessionsCreate).not.toHaveBeenCalled();
   });
 
+  it('product no-string, en mayúsculas o null → 400 unknown_product', async () => {
+    // Solo `undefined` (ausente) es anual; `null` u otro tipo PRESENTE es un
+    // error de entrada, no un default silencioso.
+    for (const product of [123, 'Lifetime', null]) {
+      const { app: a, dbQuery } = await freshStripeApp({});
+      const res = await checkout(a, { deviceId: 'dev-1', product });
+      expect(res.status, `product=${JSON.stringify(product)}`).toBe(400);
+      expect(await res.json()).toMatchObject({ error: 'unknown_product' });
+      expect(dbQuery).not.toHaveBeenCalled();
+      expect(sessionsCreate).not.toHaveBeenCalled();
+      sessionsCreate.mockReset();
+      dbQuery.mockReset();
+    }
+  });
+
   it('el precio lifetime es configurable por env', async () => {
     const { app: a, dbQuery } = await freshStripeApp({ PREMIUM_LIFETIME_PRICE_EUR_CENTS: '1999' });
     dbQuery.mockResolvedValueOnce({ rows: [userRow] });
@@ -217,5 +269,95 @@ describe('POST /payments/stripe/restore — producto lifetime', () => {
     const update = dbQuery.mock.calls[1]![0] as string;
     expect(update).toContain('premium_lifetime = TRUE');
     expect(update).not.toContain('premium_until');
+  });
+
+  it('lifetime manda sobre un anual posterior (precedencia)', async () => {
+    const { app: a, dbQuery } = await freshStripeApp({});
+    dbQuery
+      .mockResolvedValueOnce({ rows: [{ id: 'u1', premium_until: null, premium_lifetime: false, stripe_customer_id: null }] })
+      .mockResolvedValueOnce({ rows: [] });
+    customersList.mockResolvedValueOnce({ data: [{ id: 'cus_1' }] });
+    sessionsList.mockResolvedValueOnce({
+      data: [
+        // Anual MÁS RECIENTE que el lifetime: aun así gana el lifetime.
+        { payment_status: 'paid', status: 'complete', created: 1_800_000_000, metadata: { product: 'annual' } },
+        { payment_status: 'paid', status: 'complete', created: 1_700_000_000, metadata: { product: 'lifetime' } },
+      ],
+    });
+
+    const res = await restore(a, { deviceId: 'dev-nuevo', email: 'a@b.es' });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ premium: true, premiumUntil: null, premiumLifetime: true });
+
+    const update = dbQuery.mock.calls[1]![0] as string;
+    expect(update).toContain('premium_lifetime = TRUE');
+    expect(update).not.toContain('premium_until');
+  });
+
+  it('con varios customers, el vínculo se queda con el de la compra lifetime', async () => {
+    const { app: a, dbQuery } = await freshStripeApp({});
+    dbQuery
+      .mockResolvedValueOnce({ rows: [{ id: 'u1', premium_until: null, premium_lifetime: false, stripe_customer_id: null }] })
+      .mockResolvedValueOnce({ rows: [] });
+    customersList.mockResolvedValueOnce({ data: [{ id: 'cus_life' }, { id: 'cus_anual' }] });
+    sessionsList
+      .mockResolvedValueOnce({
+        data: [{ payment_status: 'paid', status: 'complete', created: 1_700_000_000, metadata: { product: 'lifetime' } }],
+      })
+      .mockResolvedValueOnce({
+        data: [{ payment_status: 'paid', status: 'complete', created: 1_800_000_000, metadata: { product: 'annual' } }],
+      });
+
+    const res = await restore(a, { deviceId: 'dev-nuevo', email: 'a@b.es' });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ premium: true, premiumUntil: null, premiumLifetime: true });
+
+    const params = dbQuery.mock.calls[1]![1] as unknown[];
+    expect(params[1]).toBe('cus_life');
+  });
+});
+
+/**
+ * Fail-closed en el webhook: un `product` PRESENTE pero desconocido no debe
+ * conceder nada (ni fecha ni lifetime) y debe alertar. Un `product === undefined`
+ * (sesión histórica) sigue siendo anual.
+ */
+describe('POST /payments/stripe/webhook — producto desconocido', () => {
+  const eventoConProducto = (product: unknown) => ({
+    id: 'evt_raro', type: 'checkout.session.completed',
+    data: { object: { metadata: { userId: 'u1', deviceId: 'dev-1', product }, amount_total: 999 } },
+  });
+
+  it('no toca ninguna tabla de usuario y loguea el error', async () => {
+    const { app: a } = await freshStripeApp({});
+    txQuery.mockResolvedValueOnce({ rowCount: 1 }); // INSERT de idempotencia
+    constructEventAsync.mockResolvedValueOnce(eventoConProducto('raro'));
+
+    const res = await webhook(a);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ received: true });
+
+    // Solo pasa el INSERT de idempotencia: ningún UPDATE users.
+    const sqls = txQuery.mock.calls.map((c) => c[0] as string);
+    expect(sqls.some((s) => /UPDATE users/i.test(s))).toBe(false);
+    expect(captureRouteError).toHaveBeenCalledTimes(1);
+    expect(loggerError).toHaveBeenCalled();
+  });
+
+  it('product undefined (sesión histórica) sí concede el año', async () => {
+    const { app: a } = await freshStripeApp({});
+    txQuery.mockResolvedValueOnce({ rowCount: 1 });
+    txQuery.mockResolvedValueOnce({ rowCount: 1 });
+    constructEventAsync.mockResolvedValueOnce({
+      id: 'evt_hist', type: 'checkout.session.completed',
+      data: { object: { metadata: { userId: 'u1', deviceId: 'dev-1' }, amount_total: 499 } },
+    });
+
+    const res = await webhook(a);
+    expect(res.status).toBe(200);
+
+    const sqls = txQuery.mock.calls.map((c) => c[0] as string);
+    expect(sqls.some((s) => /UPDATE users/i.test(s))).toBe(true);
+    expect(captureRouteError).not.toHaveBeenCalled();
   });
 });

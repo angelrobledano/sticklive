@@ -47,7 +47,9 @@ const completedEvent = (id: string, userId: string, deviceId: string, product?: 
   data: {
     object: {
       metadata: { userId, deviceId, ...(product ? { product } : {}) },
-      amount_total: 499,
+      // Importe coherente con el producto: la analítica de servidor usa
+      // amount_total, así que el lifetime se factura a 2999.
+      amount_total: product === 'lifetime' ? 2999 : 499,
     },
   },
 });
@@ -114,6 +116,21 @@ describe('webhook de Stripe', () => {
       `SELECT premium_until, premium_lifetime FROM users WHERE id = $1`, [userId]
     );
     expect(u.rows[0]!.premium_lifetime).toBe(true);
+    expect(u.rows[0]!.premium_until).toBeNull();
+  });
+
+  it('T-016: product desconocido NO concede premium (fail-closed)', async () => {
+    const userId = await crearUsuario('dev-raro');
+    constructEventAsync.mockResolvedValueOnce(completedEvent('evt_raro', userId, 'dev-raro', 'raro'));
+
+    const res = await webhook();
+    expect(res.status).toBe(200); // 200: reintentar no arreglaría el dato
+
+    const u = await db.query<{ is_premium: boolean; premium_until: string | null; premium_lifetime: boolean }>(
+      `SELECT is_premium, premium_until, premium_lifetime FROM users WHERE id = $1`, [userId]
+    );
+    expect(u.rows[0]!.is_premium).toBe(false);
+    expect(u.rows[0]!.premium_lifetime).toBe(false);
     expect(u.rows[0]!.premium_until).toBeNull();
   });
 
