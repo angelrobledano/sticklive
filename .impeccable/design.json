@@ -26,7 +26,7 @@
       { "name": "state-transition", "value": "150ms ease (color)", "purpose": "Transición por defecto de color en enlaces, botones y navegación." },
       { "name": "toggle-move", "value": "200ms ease-out (transform)", "purpose": "Desplazamiento del pulgar del toggle." },
       { "name": "live-pulse", "value": "animate-pulse (Tailwind)", "purpose": "Punto de estado en directo y del isotipo." },
-      { "name": "rink-shot", "value": "@keyframes rinkShot/rinkStick/rinkGoalFlash/rinkNet", "purpose": "Animación del estado vacío: la bola cruza la pista, gol y celebración." }
+      { "name": "rink-shot", "value": "@keyframes rinkBall/rinkNetHit/rinkFlash/rinkDraw", "purpose": "Animación del estado vacío: la bola cruza la pista, gol y celebración." }
     ],
     "breakpoints": [
       { "name": "md", "value": "768px (bottom-nav móvil ↔ sidebar escritorio)" }
@@ -53,9 +53,9 @@
       "name": "Live Badge",
       "kind": "chip",
       "refersTo": "badge-live",
-      "description": "Estado en directo: esmeralda con punto pulsante. Solo existe con partido vivo.",
+      "description": "Estado en directo: esmeralda profunda (#047857) con punto blanco pulsante; el escalón profundo asegura AA con el texto blanco. Solo existe con partido vivo.",
       "html": "<span class=\"ds-badge-live\"><span class=\"ds-dot\"></span>En directo</span>",
-      "css": ".ds-badge-live{display:inline-flex;align-items:center;gap:4px;background:#10b981;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:9999px;font-family:var(--font-inter,system-ui,sans-serif)}.ds-dot{width:6px;height:6px;border-radius:9999px;background:#fff;animation:ds-pulse 1.5s ease-in-out infinite}@keyframes ds-pulse{50%{opacity:.4}}"
+      "css": ".ds-badge-live{display:inline-flex;align-items:center;gap:4px;background:#047857;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:9999px;font-family:var(--font-inter,system-ui,sans-serif)}.ds-dot{width:6px;height:6px;border-radius:9999px;background:#fff;animation:ds-pulse 1.5s ease-in-out infinite}@keyframes ds-pulse{50%{opacity:.4}}"
     },
     {
       "name": "iOS Toggle",
