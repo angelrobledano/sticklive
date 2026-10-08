@@ -178,14 +178,29 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
          -- Partidos en directo: siempre actualizar eventos
          m.status = 'live'
          OR (
-           -- Partidos recién terminados (3h) sin ningún evento persistido.
+           -- Partidos recién terminados (3h): sin acta o CON ACTA PARCIAL.
            -- Guardia: solo los jugados en las últimas 48h. Evita perseguir en
            -- bucle la ficha (404) de partidos viejos que la fuente sigue
            -- listando en el feed mc (p.ej. incomparecencias antiguas 0-10).
+           --
+           -- El acta parcial (wse_match_3248, 8/10: 0-6 con 0-2 en acta) se
+           -- capturó con el partido en curso y, al tener ya eventos, la rama
+           -- de abajo la excluía — los goles finales nunca se sincronizaban.
+           -- Ahora: si los goles del acta no cuadran con el marcador, se
+           -- re-pide la ficha hasta que cuadren (o se agoten las ventanas).
            m.status = 'finished'
            AND m.updated_at   > NOW() - INTERVAL '3 hours'
            AND m.scheduled_at > NOW() - INTERVAL '48 hours'
-           AND NOT EXISTS (SELECT 1 FROM match_events me WHERE me.match_id = m.id)
+           AND (
+             NOT EXISTS (SELECT 1 FROM match_events me WHERE me.match_id = m.id)
+             OR EXISTS (
+               SELECT 1 FROM match_events me
+                WHERE me.match_id = m.id
+                GROUP BY me.match_id
+               HAVING COUNT(*) FILTER (WHERE me.event_type='goal' AND me.team_id = m.home_team_id) <> m.home_score
+                   OR COUNT(*) FILTER (WHERE me.event_type='goal' AND me.team_id = m.away_team_id) <> m.away_score
+             )
+           )
          )
        )`,
     [seasonIds]
