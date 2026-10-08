@@ -28,6 +28,16 @@ export function branded(message: string): string {
   return `${BRAND_PREFIX} ${message}`;
 }
 
+/**
+ * Quita la firma de marca. Se usa SOLO en el canal nativo: el sistema ya
+ * muestra el nombre de la app junto al aviso, así que repetirlo en el título
+ * es ruido. El canal web (y la copia que comparten) conserva `branded()`.
+ */
+export function stripBrand(message: string): string {
+  if (!message.startsWith(BRAND_PREFIX)) return message;
+  return message.slice(BRAND_PREFIX.length).replace(/^\s+/, '');
+}
+
 export interface MatchRef {
   homeShort: string;
   awayShort: string;
@@ -95,10 +105,10 @@ export function jornadaEndAlert(roundName: string): string {
   return `La ${roundName} ha terminado. Consulta resultados y clasificación.`;
 }
 
-/** `⚽ ¡Gol de Pablo Álvarez! BAR 2 - 1 IHC (12')` */
+/** `🏑 ¡Gol de Pablo Álvarez! BAR 2 - 1 IHC (12')` */
 export function playerGoalAlert(playerName: string, m: MatchRef): string {
   const min = m.minute != null ? ` (${m.minute}')` : '';
-  return `⚽ ¡Gol de ${playerName}! ${m.homeShort} ${m.homeScore} - ${m.awayScore} ${m.awayShort}${min}`;
+  return `🏑 ¡Gol de ${playerName}! ${m.homeShort} ${m.homeScore} - ${m.awayScore} ${m.awayShort}${min}`;
 }
 
 /** Cuerpo de la notificación viva del partido: `[LIVE] BAR 3 - 1 IHC (Min. 34')` */

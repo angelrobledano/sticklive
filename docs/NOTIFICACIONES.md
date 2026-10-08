@@ -27,10 +27,14 @@ El emisor de directo (ETL) compara el estado de los partidos antes y después de
 
 Los avisos cubren **todas las competiciones que el cron de directo vigila** (no solo OK Liga); el gol, la roja y la fase se diffean sobre **todas las temporadas activas** a la vez.
 
-### Copys (con la marca `[Stick Live]` delante)
+### Copys (con la marca `[Stick Live]` delante en el canal web)
+
+El canal **nativo** (Expo Push) entrega el mismo título **sin** la firma
+`[Stick Live]`: el sistema ya muestra el nombre de la app junto al aviso
+(`stripBrand` en `toExpoMessage`).
 
 - Inicio: `[Stick Live] HCL – IHC ¡en juego!` · cuerpo `[LIVE] HCL 0 - 0 IHC`
-- **Gol**: `[Stick Live] ⚽ ¡Gol de Pascual! IHC 2 - 1 HCL (12')` · cuerpo `[LIVE] IHC 2 - 1 HCL`
+- **Gol**: `[Stick Live] 🏑 ¡Gol de Pascual! IHC 2 - 1 HCL (12')` · cuerpo `[LIVE] IHC 2 - 1 HCL`
 - **Descanso**: `[Stick Live] Descanso · IHC 2 - 1 HCL`
 - **2ª parte**: `[Stick Live] ¡Comienza la 2ª parte! IHC 2 - 1 HCL`
 - **Expulsión**: `[Stick Live] Tarjeta roja para {jugador} ({equipo}) al minuto 18'`

@@ -71,6 +71,14 @@ describe('toExpoMessage', () => {
     );
     expect(msg.data).toEqual({ type: 'jornada_start', urlPath: '/' });
   });
+
+  it('quita el prefijo [Stick Live] del título nativo (el sistema ya nombra la app)', () => {
+    const msg = toExpoMessage(
+      { expo_push_token: 'ExponentPushToken[abc]' },
+      { ...PAYLOAD, title: '[Stick Live] 🏑 ¡Gol de Jordi Puig!' },
+    );
+    expect(msg.title).toBe('🏑 ¡Gol de Jordi Puig!');
+  });
 });
 
 describe('chunkMessages', () => {

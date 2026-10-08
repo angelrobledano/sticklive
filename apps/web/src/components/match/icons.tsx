@@ -8,9 +8,12 @@ export function EventIcon({ type }: { type: MatchEventType | 'accumulated_foul' 
     case 'goal':
       return (
         <div className="w-7 h-7 rounded-full bg-slate-800 dark:bg-white flex items-center justify-center shrink-0">
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.5} className="w-4 h-4 dark:stroke-slate-900">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 3C12 3 9 7 9 12s3 9 3 9M12 3c0 0 3 4 3 9s-3 9-3 9M3 12h18" strokeWidth={1} />
+          {/* Stick + bola (marca la i), en lugar del balón de fútbol */}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
+               className="w-4 h-4 text-white dark:text-slate-900" aria-hidden="true">
+            <path d="M5 3l8 13.5" strokeLinecap="round" />
+            <path d="M13 16.5c1 1.8 2.8 2.6 4.6 2.1" strokeLinecap="round" />
+            <circle cx="18.2" cy="19" r="2.2" fill="currentColor" stroke="none" />
           </svg>
         </div>
       );

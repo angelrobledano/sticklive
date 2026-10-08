@@ -135,7 +135,7 @@ export default function TeamScreen() {
                   {p.isGoalkeeper ? <Text className="text-xs text-slate-500"> · {t('team.gk_short')}</Text> : null}
                 </Text>
                 {p.goals > 0 ? (
-                  <Text className="text-xs text-slate-500">{p.goals} ⚽</Text>
+                  <Text className="text-xs text-slate-500">{p.goals} 🏑</Text>
                 ) : null}
               </Pressable>
             ))}

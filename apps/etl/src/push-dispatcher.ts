@@ -783,7 +783,7 @@ export async function diffGoals(
     }
   }
 
-  log.info({ goals: fresh.length, sent, pruned }, '⚽ Push de gol (goleador+minuto)');
+  log.info({ goals: fresh.length, sent, pruned }, '🏑 Push de gol (goleador+minuto)');
 
   // Canal nativo (Task 4.3): misma segmentación (equipos/competición/goleador),
   // payload idéntico. ADITIVO.

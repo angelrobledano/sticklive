@@ -2,7 +2,7 @@ import { Text, View } from 'react-native';
 import type { MatchDetail } from '@/src/lib/api/types';
 
 const ICON: Record<string, string> = {
-  goal: '⚽',
+  goal: '🏑',
   penalty: '🥅',
   blue_card: '🟦',
   red_card: '🟥',

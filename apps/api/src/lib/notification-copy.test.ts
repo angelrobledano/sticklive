@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   isQuietHours, isMorningHours, madridDateKey, morningSummary, morningSummaryTag,
+  playerGoalAlert, stripBrand, BRAND_PREFIX,
   type MorningResult,
 } from './notification-copy.js';
 
@@ -70,5 +71,23 @@ describe('morningSummary — resumen matinal agrupado', () => {
 describe('morningSummaryTag', () => {
   it('es estable por día para que el push REEMPLACE en vez de apilar', () => {
     expect(morningSummaryTag('2026-09-29')).toBe('morning-2026-09-29');
+  });
+});
+
+describe('playerGoalAlert', () => {
+  it('usa el stick y la bola (🏑), no el balón de fútbol, y respeta el marcador', () => {
+    expect(
+      playerGoalAlert('Pablo Álvarez', { homeShort: 'BAR', awayShort: 'IHC', homeScore: 2, awayScore: 1, minute: 12 }),
+    ).toBe("🏑 ¡Gol de Pablo Álvarez! BAR 2 - 1 IHC (12')");
+  });
+});
+
+describe('stripBrand — firma fuera del canal nativo', () => {
+  it('quita el prefijo [Stick Live] y el espacio siguiente', () => {
+    expect(stripBrand(`${BRAND_PREFIX} ¡Gol de Jordi Puig!`)).toBe('¡Gol de Jordi Puig!');
+  });
+
+  it('no toca un mensaje que no lleva la firma', () => {
+    expect(stripBrand('⭐ Hoy hay partido')).toBe('⭐ Hoy hay partido');
   });
 });

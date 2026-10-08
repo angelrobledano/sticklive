@@ -13,6 +13,7 @@
  */
 import { db } from '@sports/db';
 import { createLogger } from '@sports/logger';
+import { stripBrand } from '../../api/src/lib/notification-copy.js';
 
 const log = createLogger({ service: 'push-expo' });
 const EXPO_API = 'https://exp.host/--/api/v2/push/send';
@@ -55,7 +56,9 @@ function toUrlPath(url: string): string {
 export function toExpoMessage(sub: { expo_push_token: string }, payload: ExpoPayload) {
   return {
     to: sub.expo_push_token,
-    title: payload.title,
+    // El aviso nativo va SIN la firma [Stick Live]: el sistema ya muestra el
+    // nombre de la app. El canal web conserva la firma (branded()).
+    title: stripBrand(payload.title),
     body: payload.body,
     channelId: 'live',
     sound: 'default',
