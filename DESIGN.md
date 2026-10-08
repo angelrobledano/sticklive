@@ -2,9 +2,9 @@
 name: Stick Live
 description: Marcador en directo de hockey sobre patines, mobile-first y denso, donde el color solo aparece cuando el partido está vivo.
 colors:
-  rink-passion: "#991b1b"
-  rink-passion-light: "#b91c1c"
-  rink-passion-dark: "#7f1d1d"
+  rink-passion: "#9E1235"
+  rink-passion-light: "#B91C1C"
+  rink-passion-dark: "#7F1D1D"
   rink-accent: "#f87171"
   surface-bg: "#f8fafc"
   surface-card: "#ffffff"
@@ -133,7 +133,7 @@ El modo oscuro no es un negativo del claro: es un modo "premium" pensado para el
 Paleta sobria de grises azulados (slate) sobre la que el granate de identidad y los acentos de estado aparecen con intención, nunca como relleno.
 
 ### Primary
-- **Rink Passion / Granate de Pista** (#991b1b): la identidad del hockey sobre patines. Logotipo, sección activa de navegación, anillo de resaltado del equipo favorito, borde de zona de playoff, botón de acción. Hover sube a **Rink Passion Light** (#b91c1c), active baja a **Rink Passion Dark** (#7f1d1d), que también es el anillo de foco.
+- **Rink Passion / Granate de Pista** (#9E1235): la identidad del hockey sobre patines. Logotipo, sección activa de navegación, anillo de resaltado del equipo favorito, borde de zona de playoff, botón de acción. Hover sube a **Rink Passion Light** (#B91C1C), active baja a **Rink Passion Dark** (#7F1D1D), que también es el anillo de foco.
 - **Rink Accent / Acento en oscuro** (#f87171): el granate cuando el lienzo es oscuro. Sobre el azul-noche, Rink Passion se queda en ~2,1:1, así que el texto activo, los iconos de identidad y los anillos de foco (`dark:text-rink-accent`, `dark:ring-rink-accent`) suben a este paso para superar 3:1. Es identidad, no color semántico: el rojo de tarjeta/error/negativo es otro y no se toca.
 
 ### Secondary (estado en directo)
@@ -216,8 +216,8 @@ Lenguaje de esquinas redondeadas medias y coherentes: tarjetas y chips de fecha 
 
 ### Buttons
 - **Shape:** esquinas medias (`rounded-lg`, 8px).
-- **Primary (`.btn-primary`):** fondo granate (#991b1b), texto blanco, `px-4 py-2`, `text-sm font-semibold`.
-- **Hover / Focus:** hover #b91c1c, active #7f1d1d, transición de color 150ms, anillo de foco `ring-2` en granate oscuro (`focus-visible`).
+- **Primary (`.btn-primary`):** fondo granate (#9E1235), texto blanco, `px-4 py-2`, `text-sm font-semibold`.
+- **Hover / Focus:** hover #B91C1C, active #7F1D1D, transición de color 150ms, anillo de foco `ring-2` en granate oscuro (`focus-visible`).
 - **Pill de acción (ver vídeo):** variante `rounded-full` granate con icono, para acciones contextuales dentro de una tarjeta.
 
 ### Badges de estado
