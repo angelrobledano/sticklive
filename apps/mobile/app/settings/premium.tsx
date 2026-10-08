@@ -54,10 +54,6 @@ export default function PremiumScreen() {
 
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 24 }} className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
-      <Text className="px-4 pt-4 text-2xl font-bold text-slate-900 dark:text-slate-100">
-        {t('premium.title')}
-      </Text>
-
       {sessionUnknown ? null : session ? (
         <>
           {premium === undefined ? (

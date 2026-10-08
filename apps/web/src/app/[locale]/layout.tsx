@@ -17,6 +17,7 @@ import { LocaleHint } from '@/components/layout/LocaleHint';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { SUPPORTED_LOCALES, isSupportedLocale, type Locale } from '@/lib/locales';
 import { localeAlternates, socialMeta, siteJsonLd, SITE_URL } from '@/lib/seo';
+import { BRAND } from '@sports/brand';
 import esDict from '@/locales/es.json';
 import enDict from '@/locales/en.json';
 import ptDict from '@/locales/pt.json';
@@ -101,7 +102,7 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
-    { media: '(prefers-color-scheme: dark)',  color: '#020617' },
+    { media: '(prefers-color-scheme: dark)',  color: BRAND.noche },
   ],
 };
 

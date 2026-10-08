@@ -1,4 +1,4 @@
-import { Stack, router } from 'expo-router';
+import { Stack, router, ThemeProvider as NavigationThemeProvider } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
@@ -6,9 +6,11 @@ import { PostHogProvider } from 'posthog-react-native';
 import '../global.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { useColorScheme } from 'nativewind';
 import { AuthProvider } from '@/src/context/AuthContext';
-import { LocaleProvider } from '@/src/i18n/LocaleContext';
+import { LocaleProvider, useLocale } from '@/src/i18n/LocaleContext';
 import { ThemeProvider } from '@/src/theme/ThemeContext';
+import { NAV_DARK, NAV_LIGHT } from '@/src/theme/navigation';
 import { ApiError } from '@/src/lib/api/client';
 import { capture, getPostHogClient } from '@/src/lib/analytics';
 import { markPushInteraction } from '@/src/lib/ads/session-context';
@@ -118,14 +120,7 @@ function AppTree() {
         <LocaleProvider>
           <QueryClientProvider client={queryClient}>
             <AppOpenAdGate />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="match/[id]" />
-              <Stack.Screen name="team/[id]" />
-              <Stack.Screen name="player/[id]" />
-              <Stack.Screen name="settings/notifications" />
-              <Stack.Screen name="settings/premium" />
-            </Stack>
+            <RootNavigator />
           </QueryClientProvider>
         </LocaleProvider>
       </ThemeProvider>
@@ -133,9 +128,34 @@ function AppTree() {
   );
 }
 
-// Con headerShown: false global, estos Stack.Screen son hoy inertes (el
-// options.title que fijan las pantallas no llega a pintarse); el comportamiento
-// real de los headers se decide en M5.
+/**
+ * Cabeceras activas: la ficha de partido, equipo y jugador ya definen su título
+ * (Stack.Screen options) y ahora reciben además el botón de volver; los ajustes
+ * fijan el suyo aquí, centralizado e internacionalizado. Las pestañas conservan
+ * su propia cabecera. El tema de navegación sigue el esquema real de la app
+ * (claro/oscuro manual de Ajustes incluido): sin él, cabecera y pestañas se
+ * quedan claras en oscuro.
+ */
+function RootNavigator() {
+  const { colorScheme } = useColorScheme();
+  const { t } = useLocale();
+  const navTheme = colorScheme === 'dark' ? NAV_DARK : NAV_LIGHT;
+
+  return (
+    <NavigationThemeProvider value={navTheme}>
+      <Stack screenOptions={{ headerShown: true, headerTitleStyle: { fontWeight: '700' } }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="match/[id]" />
+        <Stack.Screen name="team/[id]" />
+        <Stack.Screen name="player/[id]" />
+        <Stack.Screen name="settings/notifications" options={{ title: t('settings.notif_title') }} />
+        <Stack.Screen name="settings/premium" options={{ title: t('premium.title') }} />
+        <Stack.Screen name="settings/ads-privacy" options={{ title: t('ads.privacy_title') }} />
+      </Stack>
+    </NavigationThemeProvider>
+  );
+}
+
 function RootLayout() {
   return posthogClient ? (
     <PostHogProvider client={posthogClient} autocapture={false}>

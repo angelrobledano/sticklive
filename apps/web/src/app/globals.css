@@ -105,7 +105,7 @@
 }
 
 .dark {
-  --color-bg:        theme('colors.slate.950');
+  --color-bg:        theme('colors.rink-floor.dark');
   --color-bg-card:   theme('colors.slate.900');
   --color-text:      theme('colors.slate.50');
   --color-text-muted:theme('colors.slate.400');
@@ -118,7 +118,7 @@
 @layer base {
   html {
     /* Fondo parqué claro — oscuro en dark mode */
-    @apply bg-slate-50 text-slate-900 dark:bg-[#0b1220] dark:text-slate-50;
+    @apply bg-slate-50 text-slate-900 dark:bg-rink-floor-dark dark:text-slate-50;
     /* Scroll suave, sin rebote en iOS */
     -webkit-overflow-scrolling: touch;
     /* Cursor de texto con la identidad, no el del sistema */

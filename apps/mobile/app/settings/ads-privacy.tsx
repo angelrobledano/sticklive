@@ -61,10 +61,6 @@ export default function AdsPrivacyScreen() {
 
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 24 }} className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
-      <Text className="px-4 pt-4 text-2xl font-bold text-slate-900 dark:text-slate-100">
-        {t('ads.privacy_title')}
-      </Text>
-
       <View className="mx-4 mt-3 rounded-xl bg-white p-4 dark:bg-slate-900">
         <Text className="text-sm text-slate-500">{t('ads.privacy_desc')}</Text>
 

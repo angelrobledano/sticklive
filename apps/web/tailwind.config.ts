@@ -32,10 +32,10 @@ const config: Config = {
         'live': { DEFAULT: BRAND.live, deep: BRAND.liveDeep },
         // Ámbar de descanso/avisos.
         'halftime': { DEFAULT: BRAND.amber, deep: BRAND.amberDeep },
-        // Parqué claro — fondo principal en modo claro
+        // Parqué claro — fondo principal en modo claro; noche #0B1220 en oscuro
         'rink-floor': {
           DEFAULT: colors.slate[50],  // #f8fafc
-          dark:    colors.slate[950], // #020617  (fondo en dark mode)
+          dark:    BRAND.noche,       // #0B1220
         },
       },
 

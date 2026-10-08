@@ -21,7 +21,7 @@ export default {
         'halftime': { DEFAULT: BRAND.amber, deep: BRAND.amberDeep },
         'rink-floor': {
           DEFAULT: colors.slate[50],
-          dark: colors.slate[950],
+          dark: BRAND.noche, // #0B1220 (fondo noche de la marca)
         },
       },
     },
