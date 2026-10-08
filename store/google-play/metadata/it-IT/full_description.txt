@@ -1,0 +1,28 @@
+Stick Live è l'app per seguire l'hockey su pista in diretta. Il risultato si aggiorna da solo, senza ricaricare, e ti avvisa appena segna la tua squadra.
+
+IN DIRETTA
+• Le partite del giorno, con il risultato in tempo reale.
+• Se la connessione salta sugli spalti, l'app si riconnette da sola.
+
+SCHEDA PARTITA
+• Gol con marcatore e minuto, cartellini blu e rossi.
+• Formazioni con il quintetto iniziale di ogni squadra.
+
+AVVISI
+• Gol, inizio e fine delle partite che segui.
+• Per ogni squadra scegli: Tutto, Eventi chiave, Risultati o Silenzioso.
+• Silenzio di notte: le partite in tarda serata non ti svegliano e il risultato arriva al mattino.
+
+CLASSIFICHE E PREFERITI
+• La classifica di ogni campionato, giornata dopo giornata.
+• Segui squadre, campionati e giocatori per averli sempre a portata di mano.
+• Accedi per portare i tuoi preferiti su tutti i tuoi dispositivi.
+
+COMPETIZIONI
+L'OK Liga e l'OK Liga femminile spagnole, con altre competizioni aggiunte una alla volta. I dati provengono dalle fonti ufficiali: federazioni, leghe e referti delle partite.
+
+In spagnolo, inglese, francese, italiano e portoghese, con modalità scura.
+
+Stick Live è gratuita e si sostiene con la pubblicità.
+
+Stick Live è un progetto indipendente e non è affiliato alla Federazione Spagnola di Pattinaggio (RFEP), a World Skate né ai club.

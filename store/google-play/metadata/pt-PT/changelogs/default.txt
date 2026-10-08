@@ -1,0 +1,1 @@
+A primeira versão do Stick Live: jogos em direto, fichas com golos e alinhamentos, classificações, favoritos e alertas de golo.

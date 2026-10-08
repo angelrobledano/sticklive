@@ -1,0 +1,28 @@
+O Stick Live é a app para acompanhar o hóquei em patins em direto. O resultado atualiza-se sozinho, sem recarregar, e é avisado assim que a sua equipa marca.
+
+EM DIRETO
+• Os jogos do dia, com o resultado no momento.
+• Se a ligação falhar na bancada, a app volta a ligar-se sozinha.
+
+FICHA DE JOGO
+• Golos com marcador e minuto, cartões azuis e vermelhos.
+• Alinhamentos com o cinco inicial de cada equipa.
+
+ALERTAS
+• Golo, início e fim dos jogos que acompanha.
+• Para cada equipa, escolha: Tudo, Eventos-chave, Resultados ou Silencioso.
+• Silêncio à noite: os jogos tardios não o acordam e o resultado chega de manhã.
+
+CLASSIFICAÇÕES E FAVORITOS
+• A classificação de cada liga, jornada a jornada.
+• Siga equipas, ligas e jogadores para os ter sempre à mão.
+• Inicie sessão para levar os seus favoritos para todos os seus dispositivos.
+
+COMPETIÇÕES
+A OK Liga e a OK Liga Feminina espanholas, e mais competições que vamos juntando uma a uma. Os dados vêm das fontes oficiais: federações, ligas e boletins de jogo.
+
+Em espanhol, inglês, francês, italiano e português, com modo escuro.
+
+O Stick Live é gratuito e financia-se com publicidade.
+
+O Stick Live é um projeto independente e não está afiliado à Real Federação Espanhola de Patinagem (RFEP), à World Skate nem aos clubes.

@@ -1,0 +1,155 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "copyright": "2026 Ángel Robledano",
+    "categories": [
+      "SPORTS",
+      "NEWS"
+    ],
+    "info": {
+      "es-ES": {
+        "title": "Stick Live: Hockey Patines",
+        "subtitle": "Resultados y goles en directo",
+        "description": "Stick Live es la app para seguir el hockey sobre patines en directo. El marcador se actualiza solo, sin recargar, y te avisa en cuanto marca tu equipo.\n\nEN DIRECTO\n• Los partidos del día, con el resultado al momento.\n• Si la conexión falla en la grada, la app se reconecta sola.\n\nFICHA DE CADA PARTIDO\n• Goles con goleador y minuto, tarjetas azules y rojas.\n• Alineaciones con el cinco inicial de cada equipo.\n\nAVISOS\n• Gol, inicio y final de los partidos que sigues.\n• Para cada equipo eliges: Completo, Eventos clave, Resultados o Silencioso.\n• Silencio nocturno: los partidos tardíos no te despiertan y el resultado te llega por la mañana.\n\nCLASIFICACIONES Y FAVORITOS\n• La clasificación de cada liga, jornada a jornada.\n• Sigue equipos, ligas y jugadores para tenerlos siempre a mano.\n• Inicia sesión y lleva tus favoritos a todos tus dispositivos.\n\nCOMPETICIONES\nOK Liga y OK Liga Femenina, y más competiciones que vamos sumando una a una. Los datos salen de las fuentes oficiales: federaciones, ligas y actas de los partidos.\n\nEn español, inglés, francés, italiano y portugués, y con modo oscuro.\n\nStick Live es gratuita y se financia con publicidad.\n\nStick Live es un proyecto independiente y no está afiliado a la Real Federación Española de Patinaje, a World Skate ni a los clubes.",
+        "keywords": [
+          "ok liga",
+          "rink",
+          "marcador",
+          "clasificación",
+          "femenina",
+          "partidos",
+          "calendario",
+          "jornada",
+          "deporte",
+          "pista"
+        ],
+        "releaseNotes": "Primera versión de Stick Live: partidos en directo, fichas con goles y alineaciones, clasificaciones, favoritos y avisos de gol.",
+        "promoText": "Sigue la OK Liga y la OK Liga Femenina en directo y recibe el aviso de cada gol de tus equipos.",
+        "marketingUrl": "https://sticklive.eu",
+        "supportUrl": "https://sticklive.eu/es/privacy",
+        "privacyPolicyUrl": "https://sticklive.eu/es/privacy"
+      },
+      "en-US": {
+        "title": "Stick Live: Rink Hockey",
+        "subtitle": "Live scores and goal alerts",
+        "description": "Stick Live is the app for following rink hockey live. The score updates on its own, with no refreshing, and you get an alert as soon as your team scores.\n\nLIVE\n• Today's matches, with the score as it happens.\n• If the connection drops in the stands, the app reconnects on its own.\n\nMATCH PAGE\n• Goals with scorer and minute, blue and red cards.\n• Lineups with each team's starting five.\n\nALERTS\n• Goals, start and full time of the matches you follow.\n• For each team, choose: Everything, Key events, Results or Silent.\n• Silence at night: late games won't wake you, and the result arrives in the morning.\n\nSTANDINGS AND FAVORITES\n• Every league table, matchday by matchday.\n• Follow teams, leagues and players to keep them close at hand.\n• Sign in to take your favorites to all your devices.\n\nCOMPETITIONS\nSpain's OK Liga and OK Liga Femenina, with more competitions added one at a time. The data comes from official sources: federations, leagues and match reports.\n\nAvailable in Spanish, English, French, Italian and Portuguese, with dark mode.\n\nStick Live is free and supported by ads.\n\nStick Live is an independent project and is not affiliated with the Royal Spanish Skating Federation (RFEP), World Skate or any club.",
+        "keywords": [
+          "roller",
+          "quad",
+          "ok liga",
+          "standings",
+          "results",
+          "fixtures",
+          "spain",
+          "league",
+          "matches",
+          "sport",
+          "skates"
+        ],
+        "releaseNotes": "The first version of Stick Live: live matches, match pages with goals and lineups, standings, favorites and goal alerts.",
+        "promoText": "Follow Spain's OK Liga and OK Liga Femenina live and get an alert for every goal your teams score.",
+        "marketingUrl": "https://sticklive.eu",
+        "supportUrl": "https://sticklive.eu/en/privacy",
+        "privacyPolicyUrl": "https://sticklive.eu/en/privacy"
+      },
+      "fr-FR": {
+        "title": "Stick Live : Rink Hockey",
+        "subtitle": "Scores et buts en direct",
+        "description": "Stick Live est l'application pour suivre le rink hockey en direct. Le score se met à jour tout seul, sans recharger, et vous êtes averti dès que votre équipe marque.\n\nEN DIRECT\n• Les matchs du jour, avec le score en temps réel.\n• Si la connexion coupe dans les tribunes, l'application se reconnecte toute seule.\n\nFICHE DE MATCH\n• Buts avec buteur et minute, cartons bleus et rouges.\n• Compositions avec le cinq de départ de chaque équipe.\n\nALERTES\n• But, début et fin des matchs que vous suivez.\n• Pour chaque équipe, choisissez : Tout, Événements clés, Résultats ou Silencieux.\n• Silence la nuit : les matchs tardifs ne vous réveillent pas et le résultat arrive le matin.\n\nCLASSEMENTS ET FAVORIS\n• Le classement de chaque championnat, journée après journée.\n• Suivez équipes, championnats et joueurs pour les garder à portée de main.\n• Connectez-vous pour retrouver vos favoris sur tous vos appareils.\n\nCOMPÉTITIONS\nL'OK Liga et l'OK Liga féminine espagnoles, et d'autres compétitions ajoutées une à une. Les données proviennent des sources officielles : fédérations, ligues et feuilles de match.\n\nEn espagnol, anglais, français, italien et portugais, avec un mode sombre.\n\nStick Live est gratuite et financée par la publicité.\n\nStick Live est un projet indépendant, sans lien avec la Fédération royale espagnole de patinage (RFEP), World Skate ou les clubs.",
+        "keywords": [
+          "roller",
+          "ok liga",
+          "classement",
+          "résultats",
+          "match",
+          "espagne",
+          "championnat",
+          "patins",
+          "sport",
+          "ligue",
+          "calendrier"
+        ],
+        "releaseNotes": "Première version de Stick Live : matchs en direct, fiches avec buts et compositions, classements, favoris et alertes de but.",
+        "promoText": "Suivez en direct l'OK Liga et l'OK Liga féminine espagnoles et recevez une alerte à chaque but de vos équipes.",
+        "marketingUrl": "https://sticklive.eu",
+        "supportUrl": "https://sticklive.eu/en/privacy",
+        "privacyPolicyUrl": "https://sticklive.eu/en/privacy"
+      },
+      "it": {
+        "title": "Stick Live: Hockey su Pista",
+        "subtitle": "Risultati e gol in diretta",
+        "description": "Stick Live è l'app per seguire l'hockey su pista in diretta. Il risultato si aggiorna da solo, senza ricaricare, e ti avvisa appena segna la tua squadra.\n\nIN DIRETTA\n• Le partite del giorno, con il risultato in tempo reale.\n• Se la connessione salta sugli spalti, l'app si riconnette da sola.\n\nSCHEDA PARTITA\n• Gol con marcatore e minuto, cartellini blu e rossi.\n• Formazioni con il quintetto iniziale di ogni squadra.\n\nAVVISI\n• Gol, inizio e fine delle partite che segui.\n• Per ogni squadra scegli: Tutto, Eventi chiave, Risultati o Silenzioso.\n• Silenzio di notte: le partite in tarda serata non ti svegliano e il risultato arriva al mattino.\n\nCLASSIFICHE E PREFERITI\n• La classifica di ogni campionato, giornata dopo giornata.\n• Segui squadre, campionati e giocatori per averli sempre a portata di mano.\n• Accedi per portare i tuoi preferiti su tutti i tuoi dispositivi.\n\nCOMPETIZIONI\nL'OK Liga e l'OK Liga femminile spagnole, con altre competizioni aggiunte una alla volta. I dati provengono dalle fonti ufficiali: federazioni, leghe e referti delle partite.\n\nIn spagnolo, inglese, francese, italiano e portoghese, con modalità scura.\n\nStick Live è gratuita e si sostiene con la pubblicità.\n\nStick Live è un progetto indipendente e non è affiliato alla Federazione Spagnola di Pattinaggio (RFEP), a World Skate né ai club.",
+        "keywords": [
+          "rotelle",
+          "ok liga",
+          "classifica",
+          "partite",
+          "spagna",
+          "campionato",
+          "pattini",
+          "sport",
+          "lega",
+          "calendario"
+        ],
+        "releaseNotes": "La prima versione di Stick Live: partite in diretta, schede con gol e formazioni, classifiche, preferiti e avvisi di gol.",
+        "promoText": "Segui in diretta l'OK Liga e l'OK Liga femminile spagnole e ricevi un avviso per ogni gol delle tue squadre.",
+        "marketingUrl": "https://sticklive.eu",
+        "supportUrl": "https://sticklive.eu/en/privacy",
+        "privacyPolicyUrl": "https://sticklive.eu/en/privacy"
+      },
+      "pt-PT": {
+        "title": "Stick Live: Hóquei em Patins",
+        "subtitle": "Resultados e golos em direto",
+        "description": "O Stick Live é a app para acompanhar o hóquei em patins em direto. O resultado atualiza-se sozinho, sem recarregar, e é avisado assim que a sua equipa marca.\n\nEM DIRETO\n• Os jogos do dia, com o resultado no momento.\n• Se a ligação falhar na bancada, a app volta a ligar-se sozinha.\n\nFICHA DE JOGO\n• Golos com marcador e minuto, cartões azuis e vermelhos.\n• Alinhamentos com o cinco inicial de cada equipa.\n\nALERTAS\n• Golo, início e fim dos jogos que acompanha.\n• Para cada equipa, escolha: Tudo, Eventos-chave, Resultados ou Silencioso.\n• Silêncio à noite: os jogos tardios não o acordam e o resultado chega de manhã.\n\nCLASSIFICAÇÕES E FAVORITOS\n• A classificação de cada liga, jornada a jornada.\n• Siga equipas, ligas e jogadores para os ter sempre à mão.\n• Inicie sessão para levar os seus favoritos para todos os seus dispositivos.\n\nCOMPETIÇÕES\nA OK Liga e a OK Liga Feminina espanholas, e mais competições que vamos juntando uma a uma. Os dados vêm das fontes oficiais: federações, ligas e boletins de jogo.\n\nEm espanhol, inglês, francês, italiano e português, com modo escuro.\n\nO Stick Live é gratuito e financia-se com publicidade.\n\nO Stick Live é um projeto independente e não está afiliado à Real Federação Espanhola de Patinagem (RFEP), à World Skate nem aos clubes.",
+        "keywords": [
+          "ok liga",
+          "classificação",
+          "jogos",
+          "espanha",
+          "campeonato",
+          "rink",
+          "desporto",
+          "liga",
+          "calendário",
+          "marcador"
+        ],
+        "releaseNotes": "A primeira versão do Stick Live: jogos em direto, fichas com golos e alinhamentos, classificações, favoritos e alertas de golo.",
+        "promoText": "Acompanhe em direto a OK Liga e a OK Liga Feminina espanholas e receba um alerta a cada golo das suas equipas.",
+        "marketingUrl": "https://sticklive.eu",
+        "supportUrl": "https://sticklive.eu/en/privacy",
+        "privacyPolicyUrl": "https://sticklive.eu/en/privacy"
+      }
+    },
+    "advisory": {
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "gambling": false,
+      "unrestrictedWebAccess": false,
+      "kidsAgeBand": null,
+      "ageRatingOverride": "NONE",
+      "koreaAgeRatingOverride": "NONE"
+    },
+    "release": {
+      "automaticRelease": false,
+      "phasedRelease": true
+    },
+    "review": {
+      "firstName": "Ángel",
+      "lastName": "Robledano",
+      "email": "robledano@gmail.com",
+      "phone": "",
+      "demoRequired": false,
+      "notes": "Stick Live shows live rink hockey (roller hockey on quad skates) from Spain's official competitions: OK Liga and OK Liga Femenina.\n\nNo login is needed: every screen works without an account. Signing in is optional and only syncs favorites and alert settings across devices.\n\nHow to review:\n1. Live tab: today's matches and the next fixtures. Most matches are played on Saturdays and Sundays (Central European Time); during a match the score and events update on their own.\n2. Standings tab: choose a competition with the chips at the top, then tap a team to see its season calendar. Tap any finished match to open its match page with goals, cards and lineups.\n3. Favorites: tap the star on a team, league or player.\n4. Settings > Notifications: allow notifications and choose an alert level for each team. Goal alerts are sent during live matches.\n\nThe app is free and shows ads (Google AdMob). No digital goods are sold or promoted inside the app.\n\nThe data comes from public official sources (federation calendars and match reports). Stick Live is an independent project and is not affiliated with the federation or the clubs."
+    }
+  }
+}

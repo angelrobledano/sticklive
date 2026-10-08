@@ -1,0 +1,1 @@
+Live rink hockey scores, with an alert for every goal your team scores.
