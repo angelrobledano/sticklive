@@ -277,7 +277,14 @@ describe('desambiguación de colisiones de identidad (#375 P3-2)', () => {
 describe('parseLiveHeader', () => {
   it('lee periodo y crono de un acta en directo', () => {
     expect(parseLiveHeader(load('acta-live-p1')))
-      .toEqual({ period: 1, clockSeconds: 1246, isHalftime: false });
+      .toEqual({ period: 1, clockSeconds: 1246, isHalftime: false, ended: false });
+  });
+
+  it('señal EXPLÍCITA de fin: #game_period.periodo_fin ("FINALIZADO") en actas reales FEP y WSE', () => {
+    expect(parseLiveHeader(load('acta-finalizada'))?.ended).toBe(true);
+    expect(parseLiveHeader(load('acta-playoff'))?.ended).toBe(true);
+    expect(parseLiveHeader(load('acta-wse-finalizada'))?.ended).toBe(true);
+    expect(parseLiveHeader(load('acta-live-p2'))?.ended).toBe(false);
   });
 
   it('detecta el cambio de periodo', () => {

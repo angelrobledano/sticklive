@@ -177,6 +177,8 @@ export interface WorldskateRunResult {
   upserted: number;
   /** true = scrape OK en matches y standings. */
   ok: boolean;
+  /** `source_ref` que el match center da EN JUEGO en este scrape. */
+  liveRefs: string[];
 }
 
 /** Scrape + ETL de UNA competición. */
@@ -252,7 +254,10 @@ export async function runWorldskate(
       standingsFound: out.standings.data.length, standingsUpserted: sEtl.upserted },
     'World Skate ETL'
   );
-  return { upserted: mEtl.upserted, ok };
+  const liveRefs = out.matches.data
+    .filter((m) => m.status === 'live' && m.sourceRef)
+    .map((m) => m.sourceRef!);
+  return { upserted: mEtl.upserted, ok, liveRefs };
 }
 
 /**

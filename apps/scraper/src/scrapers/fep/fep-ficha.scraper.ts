@@ -67,6 +67,11 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
   private readonly source: SourceDef;
   /** Cliente HTTP del portal de esa fuente: reescribe `rfep_*` → `{portal}_*`. */
   private readonly client: SidgadClient;
+  /**
+   * Cabecera de directo del último acta leída (null si no tenía). El
+   * orquestador del directo usa `ended` como señal explícita de final.
+   */
+  public liveHeader: ReturnType<typeof parseLiveHeader> = null;
 
   constructor(config: FichaScraperConfig) {
     const source = config.source ?? sourceByKey('fep');
@@ -161,7 +166,8 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
             // Se persiste el RESTANTE + el instante de captura para que el cliente lo
             // haga correr localmente y resincronice en cada poll.
             const live = parseLiveHeader(html);
-            if (live) {
+            this.liveHeader = live;
+            if (live && !live.ended) {
               await db.query(
                 `UPDATE matches
                    SET live_period = $2, live_clock_seconds = $3,

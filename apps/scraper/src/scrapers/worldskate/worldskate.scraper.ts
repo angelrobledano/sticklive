@@ -37,12 +37,17 @@ import type { CheerioAPI, Cheerio } from 'cheerio';
 import type { Element } from 'domhandler';
 import type {
   ScrapedMatch, ScrapedRound, ScrapedStanding, ScrapeResult, MatchStatus, RoundType,
+  PlannedPhase, PlannedRound, RowAssignment, PhaseKind as StructurePhaseKind,
 } from '@sports/shared-types';
-import { STALE_LIVE_HOURS } from '@sports/shared-types';
+import { planSourceStructure } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { SidgadClient } from '../fep/sidgad-client.js';
+import { collectCalendarRows } from '../../core/sidgad-structure.js';
 import { zonedToUtc } from '../../core/eu-timezone.js';
-import { emptyMcIdpIndex, gamedateToFechaDM, mcLookupIdp, parseMcIdpIndex, type McIdpIndex } from './mc-idp.js';
+import {
+  emptyMcIdpIndex, gamedateToFechaDM, mcLookupIdp, parseMcIdpIndex, parseMcStates,
+  type McIdpIndex, type McState,
+} from './mc-idp.js';
 
 const log = createLogger({ scraper: 'worldskate_hockey' });
 
@@ -104,16 +109,22 @@ export class WorldskateScraper {
       // nacen con source_ref real y el acta se pide desde el primer ciclo de
       // directo. Fallo de red → índice vacío (degradación: refs sintéticas y
       // recuperación por la vía de siempre).
+      //
+      // El mc es además la ÚNICA señal explícita del directo (playing/final/
+      // pending + marcador en vivo): el calendario muestra "-" durante el
+      // partido. Sin mc, no se declara ningún partido en juego (nunca por reloj).
       let mcIndex: McIdpIndex = emptyMcIdpIndex();
+      let mcStates = new Map<string, McState>();
       try {
         const mcHtml = await this.client.post('worldskate_mc_1.php', {});
         mcIndex = parseMcIdpIndex(mcHtml);
-        log.debug({ idps: mcIndex.byDateTime.size }, 'Índice mc de worldskate obtenido');
+        mcStates = parseMcStates(mcHtml);
+        log.debug({ idps: mcIndex.byDateTime.size, states: mcStates.size }, 'Match center de worldskate obtenido');
       } catch (err) {
-        log.warn({ err }, 'Match center no disponible — idp solo desde el calendario');
+        log.warn({ err }, 'Match center no disponible — idp solo desde el calendario y sin directo este ciclo');
       }
 
-      parsed = parseWorldskateCalendar(html, this.cfg, new Date(), mcIndex);
+      parsed = parseWorldskateCalendar(html, this.cfg, new Date(), mcIndex, mcStates);
       log.info(
         { idc, matches: parsed.matches.length, standings: parsed.standings.length, rounds: parsed.rounds.length },
         'Scraping World Skate completado'
@@ -163,6 +174,32 @@ interface Section {
   rows: Array<Cheerio<Element>>;
 }
 
+/** Estructura planificada de una fila (fase + ronda + asignación). */
+interface StructureInfo {
+  phase: PlannedPhase;
+  round: PlannedRound | null;
+  assignment: RowAssignment;
+}
+
+/**
+ * Campos de fase para partidos y rondas. Sin plan (sección sin filas), se
+ * deriva del tipo de bloque de World Skate para no perder la estructura.
+ */
+function phaseFields(phase: PlannedPhase | null, wse: Phase) {
+  if (phase) {
+    return {
+      phaseRef: phase.ref, phaseName: phase.name, phaseKind: phase.kind,
+      phaseIsPlacement: phase.isPlacement, phaseOrdinal: phase.ordinal, phaseResolvedBy: phase.resolvedBy,
+    };
+  }
+  const kind: StructurePhaseKind = wse.kind === 'group' ? 'groups' : wse.kind === 'placement_legacy' ? 'league' : 'knockout';
+  return {
+    phaseKind: kind,
+    phaseIsPlacement: wse.kind === 'placement' || wse.kind === 'placement_legacy',
+    phaseName: wse.title || null,
+  };
+}
+
 /** Bloque de fase (div_titulo_fase_idc) ya clasificado. */
 interface Phase { kind: PhaseKind; title: string; }
 
@@ -184,9 +221,24 @@ export function parseWorldskateCalendar(
   html: string,
   cfg: WorldskateParseConfig,
   scrapedAt: Date = new Date(),
-  mcIndex: McIdpIndex = emptyMcIdpIndex()
+  mcIndex: McIdpIndex = emptyMcIdpIndex(),
+  mcStates: ReadonlyMap<string, McState> = new Map(),
 ): WorldskateParsed {
   const $ = cheerio.load(html);
+
+  // Estructura EXPLÍCITA de la fuente (fases + rondas), con el MISMO
+  // planificador que la FEP: tipo de fase, colocación, orden y fase
+  // eliminatoria canónica por fila (incluidas las filas sin equipos aún).
+  const calRows = collectCalendarRows($, 'wse');
+  const plan = planSourceStructure(calRows.map((r) => r.structure));
+  const phaseByRef = new Map(plan.phases.map((p) => [p.ref, p]));
+  const roundByKey = new Map(plan.phases.flatMap((p) => p.rounds.map((r) => [r.key, r] as const)));
+  const structureOf = new Map<Element, StructureInfo>();
+  calRows.forEach((r, i) => {
+    const a = plan.assignments[i]!;
+    const phase = phaseByRef.get(a.phaseRef);
+    if (phase) structureOf.set(r.row, { phase, round: roundByKey.get(a.roundKey) ?? null, assignment: a });
+  });
 
   const logoToRef = new Map<string, string>();
   const nameToRef = new Map<string, string>();
@@ -232,7 +284,8 @@ export function parseWorldskateCalendar(
     const round = computeRound(section.phase, section.headText, dateToJornada, section.rows[0]?.attr('gamedate'));
     for (const $row of section.rows) {
       try {
-        const m = parseMatchRow($, $row, round, scrapedAt, cfg, { logoToRef, nameToRef, logoToGroup, nameToGroup }, mcIndex);
+        const m = parseMatchRow($, $row, round, scrapedAt, cfg, { logoToRef, nameToRef, logoToGroup, nameToGroup }, mcIndex,
+          mcStates, structureOf.get($row.get(0)!) ?? null);
         if (m) matches.push(m);
         else sinEquipos++;
       } catch (err) {
@@ -246,7 +299,9 @@ export function parseWorldskateCalendar(
   for (const section of sections) {
     const round = computeRound(section.phase, section.headText, dateToJornada, section.rows[0]?.attr('gamedate'));
     if (round.number <= 0) continue;
-    const key = `${round.number}|${round.type}`;
+    const info = section.rows.length > 0 ? structureOf.get(section.rows[0]!.get(0)!) ?? null : null;
+    const phase = info?.phase ?? null;
+    const key = `${phase?.ref ?? '-'}|${round.number}|${round.type}`;
     if (!byKey.has(key)) {
       byKey.set(key, {
         seasonId: cfg.seasonId,
@@ -255,6 +310,8 @@ export function parseWorldskateCalendar(
         roundType: round.type,
         sourceId: cfg.sourceId,
         scrapedAt,
+        ...phaseFields(phase, section.phase),
+        stage: info?.round?.stage ?? null,
       });
     }
   }
@@ -266,7 +323,11 @@ export function parseWorldskateCalendar(
     );
   }
 
-  return { matches, standings, rounds: [...byKey.values()].sort((a, b) => a.number - b.number) };
+  // Rondas en el orden de su fase (las de la fase que decide el título antes
+  // que las de colocación) y, dentro de la fase, por número.
+  const rounds = [...byKey.values()].sort((a, b) =>
+    (a.phaseOrdinal ?? 0) - (b.phaseOrdinal ?? 0) || a.number - b.number);
+  return { matches, standings, rounds };
 }
 
 // ── Secciones ────────────────────────────────────────────────────
@@ -319,7 +380,9 @@ function parseMatchRow(
   scrapedAt: Date,
   cfg: WorldskateParseConfig,
   maps: RefMaps,
-  mcIndex: McIdpIndex
+  mcIndex: McIdpIndex,
+  mcStates: ReadonlyMap<string, McState> = new Map(),
+  structure: StructureInfo | null = null,
 ): ScrapedMatch | null {
   const classes = ($row.attr('class') ?? '').split(/\s+/);
   const teamClasses = classes.filter((c) => /^team_\d+$/.test(c));
@@ -346,9 +409,11 @@ function parseMatchRow(
   if (awayName) maps.nameToRef.set(normName(awayName), awayRef);
   if (awayLogo) maps.logoToRef.set(awayLogo, awayRef);
 
-  // Grupo de la fase de grupos: ambos equipos deben ser del MISMO grupo
-  // (en eliminatorias vienen de grupos distintos → NULL, que es lo correcto).
-  const groupName = resolveGroup(maps, homeName, homeLogo, awayName, awayLogo);
+  // Grupo SOLO en la fase de grupos: ambos equipos del MISMO grupo. En una
+  // eliminatoria no hay grupo (antes un cuarto de final heredaba el grupo de
+  // uno de sus equipos si el del otro no se resolvía).
+  const inGroupPhase = structure ? structure.phase.kind !== 'knockout' : round.type === 'regular';
+  const groupName = inGroupPhase ? resolveGroup(maps, homeName, homeLogo, awayName, awayLogo) : undefined;
 
   // Fecha (gamedate="20250719") + hora (primera celda HH:MM)
   const gamedate = parseGamedate($row.attr('gamedate'));
@@ -363,8 +428,7 @@ function parseMatchRow(
     const t = $(td).text().trim();
     return /^\d+\s*-\s*\d+$/.test(t) || /^-$/.test(t);
   }).first().text().trim();
-  const { homeScore, awayScore } = parseScore(scoreText);
-  const status = inferStatus(scoreText, scheduledAt);
+  let { homeScore, awayScore } = parseScore(scoreText);
 
   // idp (ficha/acta) desde el icono game_report o el enlace link_ficha_partido
   const $report = $row.find('i.game_report, a.link_ficha_partido, [idp]');
@@ -389,6 +453,21 @@ function parseMatchRow(
   }
   const sourceRef = idp ? `wse_match_${idp}` : undefined;
 
+  // Estado: resultado publicado en el calendario → finished; si no, lo que
+  // diga el match center (playing/final/pending). Nunca la hora.
+  const calendarFinished = homeScore !== undefined && awayScore !== undefined;
+  const mc = idp ? mcStates.get(idp) : undefined;
+  // Sin ninguna de las dos señales queda undefined: el loader conserva el estado.
+  const status: MatchStatus | undefined = calendarFinished ? 'finished' : mc?.status;
+  if (!calendarFinished && mc && mc.status !== 'scheduled' && mc.homeScore !== undefined && mc.awayScore !== undefined) {
+    // El mc pinta local a la izquierda; si sus logos vienen al revés que el
+    // calendario, se reorienta el marcador.
+    const bare = (l: string | undefined) => l?.replace(/\.png$/i, '');
+    const swapped = !!mc.leftLogo && !!mc.rightLogo && mc.leftLogo === bare(awayLogo) && mc.rightLogo === bare(homeLogo);
+    homeScore = swapped ? mc.awayScore : mc.homeScore;
+    awayScore = swapped ? mc.homeScore : mc.awayScore;
+  }
+
   // Enlace de vídeo (europe.worldskate.tv), si existe
   const videoUrl = $row.find('a.fa-video-camera').attr('href') || undefined;
 
@@ -408,6 +487,9 @@ function parseMatchRow(
     sourceId: cfg.sourceId,
     sourceRef,
     scrapedAt,
+    ...(structure ? phaseFields(structure.phase, { kind: 'group', title: '' }) : {}),
+    stage: structure?.round?.stage ?? null,
+    seriesGame: structure?.assignment.seriesGame ?? null,
   } as ScrapedMatch;
 }
 
@@ -541,16 +623,6 @@ function parseScore(t: string): { homeScore?: number; awayScore?: number } {
 function parseIntSafe(t: string): number | undefined {
   const n = parseInt(t.trim(), 10);
   return isNaN(n) ? undefined : n;
-}
-
-function inferStatus(scoreText: string, scheduledAt: Date | undefined): MatchStatus {
-  if (scoreText && /\d+\s*-\s*\d+/.test(scoreText)) return 'finished';
-  if (!scheduledAt) return 'scheduled';
-  const now = new Date();
-  if (scheduledAt > now) return 'scheduled';
-  const hoursSince = (now.getTime() - scheduledAt.getTime()) / 3_600_000;
-  if (hoursSince < STALE_LIVE_HOURS) return 'live';
-  return 'scheduled';
 }
 
 function combineDateTime(

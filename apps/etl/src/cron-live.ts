@@ -34,6 +34,7 @@ import { deriveMatchResults } from './derive-results.js';
 import { sweepStaleLive } from './stale-live-watchdog.js';
 import { MissingLiveTracker } from './missing-live.js';
 import { checkWindow } from './live-window.js';
+import { actaFinalCandidates, finalizeByActa, type EndedByActa } from './acta-final.js';
 import { touchAlive } from './heartbeat-file.js';
 import { ScrapeFailureTracker } from './scrape-health.js';
 import type { ScrapedMatch } from '@sports/shared-types';
@@ -155,14 +156,17 @@ async function resolveSeasonIds(): Promise<string[]> {
  * los partidos que están live o que terminaron recientemente sin tener eventos.
  * Opera sobre TODAS las temporadas activas.
  */
-async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
+async function runFichasForActiveMatches(seasonIds: string[]): Promise<EndedByActa[]> {
+  const ended: EndedByActa[] = [];
   const rows = await db.query<{
     id: string;
+    season_id: string;
+    status: string;
     source_ref: string;
     comp_ref: string | null;
     home_team_name: string | null;
   }>(
-    `SELECT m.id, m.source_ref, comp.source_ref AS comp_ref, ht.name AS home_team_name
+    `SELECT m.id, m.season_id, m.status, m.source_ref, comp.source_ref AS comp_ref, ht.name AS home_team_name
      FROM matches m
      JOIN seasons s ON s.id = m.season_id
      JOIN competitions comp ON comp.id = s.competition_id
@@ -206,7 +210,7 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
     [seasonIds]
   );
 
-  if (rows.rows.length === 0) return;
+  if (rows.rows.length === 0) return ended;
 
   log.info({ count: rows.rows.length, concurrency: FICHA_CONCURRENCY }, 'Procesando fichas para partidos activos/recientes');
 
@@ -241,11 +245,17 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<void> {
         matchId: match.id,
       });
       await scraper.run();
+      // Señal explícita de final en el acta (periodo_fin): se aplica después,
+      // con la guarda del feed en vivo (ver acta-final.ts).
+      if (match.status === 'live' && scraper.liveHeader?.ended) {
+        ended.push({ matchId: match.id, seasonId: match.season_id, sourceRef: match.source_ref });
+      }
       log.debug({ matchId: match.id, idp, idc, source: source.key }, 'Ficha procesada');
     } catch (err) {
       log.warn({ err, matchId: match.id, idp, idc, source: source.key }, 'Error en ficha — continuando con siguiente partido');
     }
   });
+  return ended;
 }
 
 /**
@@ -326,7 +336,7 @@ async function finalizeMissingFepLive(seasonIds: string[], feed: ScrapedMatch[])
  *
  * Devuelve cuántos partidos se actualizaron (0 si la fuente no dio nada).
  */
-async function runFepScores(seasonIds: string[]): Promise<number> {
+async function runFepScores(seasonIds: string[], playingNow: Set<string>): Promise<number> {
   // Temporadas FEP con actividad: de éstas hacemos snapshot→diff para el push.
   const activeSeasons = await activeFepSeasons(seasonIds);
 
@@ -375,6 +385,7 @@ async function runFepScores(seasonIds: string[]): Promise<number> {
   }
   // Ciclo con datos: la fuente responde, reseteamos el contador de fallos.
   consecutiveMcFailures = 0;
+  for (const m of result.data) if (m.status === 'live' && m.sourceRef) playingNow.add(m.sourceRef);
 
   const etl = await pipeline.runMatches(result);
 
@@ -411,7 +422,7 @@ async function runFepScores(seasonIds: string[]): Promise<number> {
  * que lo habría corregido. Metiéndolo aquí, además, el directo de World Skate
  * pasa de 5 minutos de resolución a 45 segundos.
  */
-async function runWorldskateScores(): Promise<void> {
+async function runWorldskateScores(playingNow: Set<string>): Promise<void> {
   const { active, dormant } = await resolveWorldskate();
   await reportDormantWorldskate(dormant);
 
@@ -421,8 +432,9 @@ async function runWorldskateScores(): Promise<void> {
     let ok = false;
     try {
       const r = await runWorldskate(ctx, (seasonId) =>
-        new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId, createRounds: true }));
+        new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId, createRounds: true, stampLiveTimes: true }));
       ok = r.ok;
+      for (const ref of r.liveRefs) playingNow.add(ref);
     } catch (err) {
       log.warn({ err, competition: ctx.name }, 'marcadores World Skate fallaron — sigue');
       noteWorldskateResult(ctx.name, ctx.idc, false);
@@ -437,21 +449,49 @@ async function runWorldskateScores(): Promise<void> {
 }
 
 /**
+ * live → finished por la señal explícita del acta (periodo_fin), salvo que un
+ * feed en vivo lo siga dando en juego en este mismo ciclo. Snapshot→diff por
+ * temporada para que el push de final salga igual que con el feed.
+ */
+async function finalizeEndedByActa(ended: EndedByActa[], playingNow: ReadonlySet<string>): Promise<void> {
+  const candidates = actaFinalCandidates(ended, playingNow);
+  if (candidates.length === 0) return;
+  const seasons = [...new Set(candidates.map((c) => c.seasonId))];
+  const prev = new Map<string, { matches: Awaited<ReturnType<typeof snapshotMatches>>; rounds: Awaited<ReturnType<typeof snapshotRounds>> }>();
+  if (pushEnabled) {
+    for (const sid of seasons) prev.set(sid, { matches: await snapshotMatches(sid), rounds: await snapshotRounds(sid) });
+  }
+  const done = await finalizeByActa(candidates);
+  if (done.length === 0) return;
+  log.info({ count: done.length, refs: done.map((d) => d.sourceRef) }, 'Partidos finalizados por el acta (señal explícita de la fuente)');
+  if (!pushEnabled) return;
+  for (const sid of new Set(done.map((d) => d.seasonId))) {
+    const p = prev.get(sid);
+    if (!p) continue;
+    try { await diffAndNotify(p.matches, p.rounds, sid); } catch (err) {
+      log.warn({ err, seasonId: sid }, 'push de final (acta) fallo — el ciclo sigue');
+    }
+  }
+}
+
+/**
  * Un ciclo completo: marcadores de TODAS las fuentes (FEP + World Skate) y,
  * después, actas y notificaciones. Cada fuente tiene su propio scraper y va
  * aislada: que una caiga no impide que las demás se actualicen.
  */
 async function runOneCycle(seasonIds: string[]): Promise<number> {
   let upserted = 0;
+  // Partidos que los feeds en vivo dan EN JUEGO en este ciclo (guarda del final por acta).
+  const playingNow = new Set<string>();
   try {
-    upserted = await runFepScores(seasonIds);
+    upserted = await runFepScores(seasonIds, playingNow);
   } catch (err) {
     // Que la FEP falle no debe impedir que se refresquen las actas del resto.
     log.warn({ err }, 'marcadores FEP fallaron — el ciclo sigue con las fichas');
   }
 
   try {
-    await runWorldskateScores();
+    await runWorldskateScores(playingNow);
   } catch (err) {
     log.warn({ err }, 'marcadores World Skate fallaron — el ciclo sigue');
   }
@@ -466,10 +506,15 @@ async function runOneCycle(seasonIds: string[]): Promise<number> {
   // así que snapshot ANTES y diff DESPUÉS (igual que goles).
   const prevPhase   = pushEnabled ? await snapshotExtraPhases(seasonIds) : new Map();
   const prevResults = pushEnabled ? await snapshotResults(seasonIds)     : new Map();
+  let endedByActa: EndedByActa[] = [];
   try {
-    await runFichasForActiveMatches(seasonIds);
+    endedByActa = await runFichasForActiveMatches(seasonIds);
   } catch (err) {
     log.warn({ err }, 'runFichasForActiveMatches fallo — ciclo de scores sigue OK');
+  }
+  // Final EXPLÍCITO por acta (con snapshot→diff para que salga el aviso de final).
+  try { await finalizeEndedByActa(endedByActa, playingNow); } catch (err) {
+    log.warn({ err }, 'final por acta falló — lo recogerá el feed/el vigilante');
   }
   try { await diffGoals(prevGoals, seasonIds); } catch (err) {
     log.warn({ err }, 'push de gol fallo — el ciclo sigue');
@@ -602,7 +647,8 @@ async function mainInner() {
     if (!status.hasLive && !status.hasUpcoming) {
       log.info({ cycle }, 'Todos los partidos finalizados — ciclo final de fichas y saliendo.');
       try {
-        await runFichasForActiveMatches(seasonIds);
+        const ended = await runFichasForActiveMatches(seasonIds);
+        await finalizeEndedByActa(ended, new Set());
       } catch (err) {
         log.warn({ err }, 'Ciclo final de fichas con error');
       }

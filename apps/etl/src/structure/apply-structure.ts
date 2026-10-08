@@ -9,7 +9,7 @@
  */
 import * as Sentry from '@sentry/node';
 import { createLogger } from '@sports/logger';
-import { ensurePhase, ensurePhaseRound } from '@sports/db';
+import { ensurePhase, ensurePhaseRound, pruneStaleRounds } from '@sports/db';
 import type { PhaseKind, ScrapedMatch, StructurePlan, StructureRow } from '@sports/shared-types';
 
 const log = createLogger({ module: 'structure' });
@@ -84,6 +84,18 @@ export async function applyStructurePlan(
 }
 
 /**
+ * Tras cargar los partidos con su nueva ronda: retira las rondas VACÍAS de esas
+ * fases que la fuente ya no publica (p. ej. la antigua ronda 100 "Playoff por
+ * el título" una vez sus partidos han pasado a cuartos/semis/final). Nunca
+ * toca una ronda con partidos.
+ */
+export async function pruneAfterLoad(seasonId: string, applied: AppliedStructure): Promise<number> {
+  const pruned = await pruneStaleRounds(seasonId, [...applied.phaseIdByRef.values()], [...applied.roundIdByKey.values()]);
+  if (pruned > 0) log.info({ seasonId, pruned }, 'Rondas vacías que la fuente ya no publica, retiradas');
+  return pruned;
+}
+
+/**
  * Asigna a cada partido scrapeado su fase, ronda y nº de partido de serie según
  * el plan. `rows[i]` debe corresponder a `plan.assignments[i]`.
  */
@@ -101,5 +113,6 @@ export function assignStructure(
     if (roundId) match.roundId = roundId;
     if (phaseId) match.phaseId = phaseId;
     if (a.seriesGame != null) match.seriesGame = a.seriesGame;
+    if (a.groupName && !match.groupName) match.groupName = a.groupName;
   });
 }

@@ -50,8 +50,10 @@ export async function ensurePhase(input: EnsurePhaseInput, client: Client = db):
   if (existing.rows[0]) return existing.rows[0].id;
 
   // Adopción de la fase legada equivalente (liga↔grupos cuentan como liguilla).
+  // Solo una fase que decide el título adopta: el backfill legado nunca creó
+  // fases de colocación, así que una de colocación siempre es nueva.
   const roundRobin = input.kind === 'league' || input.kind === 'groups';
-  const adopted = await client.query<{ id: string }>(
+  const adopted = input.isPlacement ? { rows: [] as Array<{ id: string }> } : await client.query<{ id: string }>(
     `UPDATE phases SET source_ref = $2, kind = $3, is_placement = $4, name = COALESCE($5, name),
                        ordinal = $6, resolved_by = $7, source_id = COALESCE($8, source_id)
       WHERE id = (
@@ -173,4 +175,30 @@ export async function getSeasonPhases(seasonId: string, client: Client = db): Pr
     [seasonId],
   );
   return res.rows;
+}
+
+/**
+ * Sincroniza la estructura con la fuente: borra las rondas VACÍAS (sin ningún
+ * partido) de las fases indicadas que la fuente ya no publica. Solo toca
+ * filas estructurales creadas por el scraper; un partido nunca pierde su ronda
+ * (el NOT EXISTS lo impide). Caso real: al pasar de la ronda canónica única de
+ * World Skate (74 "Puestos 5º-8º" compartida entre fases) a rondas por fase, la
+ * vieja quedaría como "por determinar" en una fase que no la tiene.
+ */
+export async function pruneStaleRounds(
+  seasonId: string,
+  phaseIds: string[],
+  keepRoundIds: string[],
+  client: Client = db,
+): Promise<number> {
+  if (phaseIds.length === 0) return 0;
+  const res = await client.query(
+    `DELETE FROM rounds r
+      WHERE r.season_id = $1
+        AND r.phase_id = ANY($2::uuid[])
+        AND NOT (r.id = ANY($3::uuid[]))
+        AND NOT EXISTS (SELECT 1 FROM matches m WHERE m.round_id = r.id)`,
+    [seasonId, phaseIds, keepRoundIds],
+  );
+  return res.rowCount ?? 0;
 }

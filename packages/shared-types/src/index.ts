@@ -614,6 +614,8 @@ export interface RowAssignment {
   phaseRef: string;
   roundKey: string;
   seriesGame: number | null;
+  /** Grupo de la fila (de la propia fila o del título "GRUPO A" de su bloque). */
+  groupName: string | null;
 }
 
 export interface StructurePlan {
@@ -644,7 +646,17 @@ function baseLabel(raw: string | null): string {
  * para cualquier formato: liga, liga+playoff, grupos, grupos+final four, final
  * four, eliminatoria.
  */
-export function planSourceStructure(rows: StructureRow[], opts: PlanOptions = {}): StructurePlan {
+export function planSourceStructure(input: StructureRow[], opts: PlanOptions = {}): StructurePlan {
+  // Bloques titulados "GRUPO A", "GRUPO B"… son grupos de UNA misma fase: se
+  // funden en la fase del primero y el grupo pasa a cada fila.
+  let groupsRef: string | null = null;
+  const rows = input.map((row) => {
+    const t = parsePhaseTitle(row.phaseTitle);
+    if (!t.groupName) return row;
+    groupsRef ??= row.phaseRef;
+    return { ...row, phaseRef: groupsRef, phaseTitle: null, groupName: row.groupName ?? t.groupName };
+  });
+
   // Agrupar por fase conservando el orden de aparición.
   const byPhase = new Map<string, { rows: Array<{ row: StructureRow; idx: number }> }>();
   rows.forEach((row, idx) => {
@@ -705,7 +717,7 @@ export function planSourceStructure(rows: StructureRow[], opts: PlanOptions = {}
             name: base || phaseName,
           });
         }
-        assignments[idx] = { phaseRef: ref, roundKey, seriesGame: game };
+        assignments[idx] = { phaseRef: ref, roundKey, seriesGame: game, groupName: row.groupName };
       });
     } else {
       // Liga / grupos: jornada explícita o, si la cabecera no la numera (fecha),
@@ -737,7 +749,7 @@ export function planSourceStructure(rows: StructureRow[], opts: PlanOptions = {}
             name: l.type === 'matchday' ? (row.roundLabel ?? '').replace(/\s+/g, ' ').trim() : null,
           });
         }
-        assignments[idx] = { phaseRef: ref, roundKey, seriesGame: null };
+        assignments[idx] = { phaseRef: ref, roundKey, seriesGame: null, groupName: row.groupName };
       });
     }
 

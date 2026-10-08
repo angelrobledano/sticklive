@@ -49,6 +49,13 @@ describe('checkWindow (#185)', () => {
     expect((await checkWindow([seasonId], 2)).hasUpcoming).toBe(true);
   });
 
+  test('partido que empieza TARDE: 45 min después de la hora prevista el bucle sigue vigilándolo', async () => {
+    // Sin LIVE por reloj, lo que mantiene el directo atento a un saque retrasado
+    // es la ventana: debe cubrir retrasos realistas, no solo el saque puntual.
+    await programadoEn(-45);
+    expect((await checkWindow([seasonId], 2)).hasUpcoming).toBe(true);
+  });
+
   test('T-031c el pasado lejano no cuenta como upcoming (queda como overdue)', async () => {
     await programadoEn(-6 * 60);
     const w = await checkWindow([seasonId], 2);

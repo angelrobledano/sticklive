@@ -27,7 +27,7 @@ import { downloadTeamLogos } from './team-logos.js';
 import { scrapeRunStatus } from './scrape-log-status.js';
 import { acquireEtlLock } from './etl-lock.js';
 import { planSourceStructure, type PhaseKind, type StructureRow, type ScrapedMatch } from '@sports/shared-types';
-import { applyStructurePlan, assignStructure, declaredKindFromFormat } from './structure/apply-structure.js';
+import { applyStructurePlan, assignStructure, declaredKindFromFormat, pruneAfterLoad, type AppliedStructure } from './structure/apply-structure.js';
 
 // Los scrapers viven en apps/scraper — importamos via ruta relativa (ts-node lo resuelve)
 import { FepCalendarScraper } from '../../scraper/src/scrapers/fep/fep-calendar.scraper.js';
@@ -181,6 +181,7 @@ async function processCalendar(
   for (const s of scraped) {
     for (const r of s.rows) rows.push({ structure: { ...r.structure, docIndex: rows.length }, match: r.match });
   }
+  let applied: AppliedStructure | null = null;
   if (rows.length > 0) {
     const plan = planSourceStructure(rows.map((r) => r.structure), { declaredKind });
     if (dryRun) {
@@ -188,7 +189,7 @@ async function processCalendar(
         '[dry-run] Estructura planificada (no se escribe)');
     } else {
       const sourceId = rows.find((r) => r.match)?.match?.sourceId ?? null;
-      const applied = await applyStructurePlan(seasonId, plan, sourceId);
+      applied = await applyStructurePlan(seasonId, plan, sourceId);
       assignStructure(rows, plan, applied);
     }
   }
@@ -200,6 +201,9 @@ async function processCalendar(
       log.info({ idc: s.idc, ...etl }, '✅ Partidos cargados');
     }
   }
+
+  // 4. Solo con TODOS los idc leídos bien: la estructura recibida es completa.
+  if (applied && scraped.every((s) => s.result.success)) await pruneAfterLoad(seasonId, applied);
 }
 
 /** Formato declarado de la competición de una temporada (modo manual `--idc`). */

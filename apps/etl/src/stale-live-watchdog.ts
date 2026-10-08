@@ -1,11 +1,14 @@
 /**
  * Red de seguridad contra partidos fantasma "EN JUEGO".
  *
- * El estado `live` de World Skate no lo dice la fuente: lo INFIERE
- * `inferStatus` en worldskate.scraper.ts a partir del reloj — si la hora de
- * inicio ya pasó y hace menos de 3 h, el partido está en juego. Esa heurística
- * sólo se cumple si alguien vuelve a scrapear; si el scraper se para, el
- * partido se queda en `live` para siempre y la portada miente.
+ * Desde la migración al estado explícito, `live` solo lo pone la fuente (feed
+ * en vivo de la FEP o match center de World Skate) y el final lo cierran el
+ * feed, el acta (`periodo_fin`) o el resultado del calendario. Pero si TODOS
+ * los procesos que lo refrescan se paran, un `live` se queda para siempre y la
+ * portada miente: esta red lo corrige.
+ *
+ * Historia: antes el `live` de World Skate se INFERÍA del reloj y solo se
+ * deshacía con otro scrape.
  *
  * Pasó el 20/07/2026 durante el Europeo Sub-17: ITA-FRA seguía "EN JUEGO"
  * cuatro horas después del inicio porque el scraper de World Skate iba detrás
@@ -50,7 +53,10 @@ export async function sweepStaleLive(seasonIds: string[]): Promise<StaleLiveMatc
       WHERE s.id = m.season_id
         AND m.season_id = ANY($1)
         AND m.status = 'live'
-        AND m.scheduled_at < NOW() - make_interval(hours => $2::int)
+        -- Desde el saque REAL (started_at, sellado al verlo en juego) y, si no
+        -- consta, desde la hora prevista: un partido que empezó tarde no es un
+        -- fantasma por mucho que su hora prevista quede lejos.
+        AND COALESCE(m.started_at, m.scheduled_at) < NOW() - make_interval(hours => $2::int)
       RETURNING m.id, m.scheduled_at::text AS scheduled_at, c.name AS competition`,
     [seasonIds, STALE_LIVE_HOURS]
   );

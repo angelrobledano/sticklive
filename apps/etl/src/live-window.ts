@@ -13,11 +13,13 @@ interface WindowStatus {
 }
 
 /**
- * Margen hacia ATRÁS de la ventana "upcoming" (#185). En el saque, la fuente aún
- * no ha marcado el partido `live`; sin este margen, deja de ser "upcoming" y el
- * bucle de 45 s se cortaba justo al empezar (los primeros datos tardaban ~5 min).
+ * Margen hacia ATRÁS de la ventana "upcoming" (#185). Un partido solo pasa a
+ * `live` cuando la FUENTE lo dice (nunca por la hora), así que un saque
+ * retrasado sigue `scheduled` un rato tras su hora prevista: la ventana debe
+ * cubrir retrasos realistas para que el bucle de 45 s esté activo cuando por fin
+ * empiece. 120 min ≥ retraso razonable; más allá lo recoge `hasOverdue`.
  */
-export const UPCOMING_LOOKBACK_MIN = Number(process.env['WINDOW_LOOKBACK_MINUTES'] ?? 15);
+export const UPCOMING_LOOKBACK_MIN = Number(process.env['WINDOW_LOOKBACK_MINUTES'] ?? 120);
 
 /**
  * Consulta rápida: ¿hay actividad en la ventana de tiempo?

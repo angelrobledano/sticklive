@@ -589,18 +589,26 @@ export interface LiveHeader {
   period: number | null;
   clockSeconds: number | null; // restante en el periodo en curso
   isHalftime: boolean;
+  /**
+   * El acta da el partido por TERMINADO: `#game_period` con clase
+   * `periodo_fin` ("FINALIZADO"), frente a `periodo_activo` en juego. Es la
+   * señal explícita de final (verificada en actas FEP, playoff y World Skate).
+   */
+  ended: boolean;
 }
 export function parseLiveHeader(html: string): LiveHeader | null {
   const $ = cheerio.load(html);
-  const phase = $('#game_period, .periodo_activo').first().text().trim().toUpperCase();
+  const $period = $('#game_period, .periodo_activo').first();
+  const phase = $period.text().trim().toUpperCase();
   const time  = $('#game_time').first().text().trim();
   if (!phase && !time) return null;
+  const ended = $period.hasClass('periodo_fin');
   const isHalftime = /(DESCANS|MEDIO|INTER)/.test(phase);
   const pm = phase.match(/(\d+)/);
   const period = pm ? parseInt(pm[1]!, 10) : null;
   const tm = time.match(/(\d{1,2}):(\d{2})/);
   const clockSeconds = tm ? parseInt(tm[1]!, 10) * 60 + parseInt(tm[2]!, 10) : null;
-  return { period, clockSeconds, isHalftime };
+  return { period, clockSeconds, isHalftime, ended };
 }
 
 /**

@@ -97,3 +97,64 @@ describe('helpers', () => {
     expect(gamedateToFechaDM('basura')).toBeNull();
   });
 });
+
+// ── Estado explícito del match center y colisiones entre categorías ─────────
+
+import { parseMcStates } from './mc-idp.js';
+
+/** Bloques reales del 8/10/2026 (WSG Asunción), recortados. */
+const DIRECTO = `
+<a href="#" class="id_fede_1 scorer_game scorer_game_playing game_report club_19 club_10" idp="3359" idc='$id_liga' idm='$idm'>
+  <div class="scorer_liga" style="display: none;">FINAL PHASE</div>
+  <div class='scorer_logo_left'><img src='https://sidgad.cloud/worldskate/images/logos_clubes/19_1.png' width='15'></div>
+  <div class='scorer_team_left'>COL</div>
+  <div class='scorer_score'>
+            1:11
+  </div>
+  <div class='scorer_team_right'>ITA</div>
+  <div class='scorer_logo_right'><img src='https://sidgad.cloud/worldskate/images/logos_clubes/10_1.png' width='15'></div>
+  <div class='scorer_bot_left'>08/10 12:30</div>
+  <div class='scorer_bot_center'>PERIOD 2</div>
+</a>
+<a href="#" class="id_fede_1 scorer_game scorer_game_final game_report club_25 club_12" idp="3273" idc='$id_liga' idm='$idm'>
+  <div class='scorer_logo_left'><img src='https://sidgad.cloud/worldskate/images/logos_clubes/25.png' width='15'></div>
+  <div class='scorer_score'>1:19</div>
+  <div class='scorer_logo_right'><img src='https://sidgad.cloud/worldskate/images/logos_clubes/12_1.png' width='15'></div>
+  <div class='scorer_bot_left'>08/10 11:00</div>
+  <div class='scorer_bot_center'>COMPLETED</div>
+</a>
+<div class="id_fede_1 scorer_game scorer_game_pending club_33 club_22" idp="3271" idc="329" idm="1">
+  <div class="scorer_liga" style="display: none;">WORLD CHAMPIONSHIP WOMEN</div>
+</div>
+`;
+
+describe('parseMcStates — el estado EXPLÍCITO de la fuente (no el reloj)', () => {
+  const states = parseMcStates(DIRECTO);
+
+  it('playing → live con marcador en vivo y logos de cada lado', () => {
+    expect(states.get('3359')).toEqual({ status: 'live', homeScore: 1, awayScore: 11, leftLogo: '19_1', rightLogo: '10_1' });
+  });
+
+  it('final → finished con su resultado', () => {
+    expect(states.get('3273')).toMatchObject({ status: 'finished', homeScore: 1, awayScore: 19 });
+  });
+
+  it('pending → scheduled (aunque no traiga marcador ni logos)', () => {
+    expect(states.get('3271')).toEqual({ status: 'scheduled', homeScore: undefined, awayScore: undefined, leftLogo: null, rightLogo: null });
+  });
+});
+
+describe('mcLookupIdp — no cruza categorías', () => {
+  it('una fila con hora NO se resuelve por la clave solo-fecha de un bloque con OTRA hora', () => {
+    // Bug real 8/10: el ITA-COL femenino (17:45, sin idp aún) se llevaba el idp
+    // del cuarto de final sub-19 COL-ITA (12:30) por compartir logos y día.
+    const index = parseMcIdpIndex(DIRECTO);
+    expect(mcLookupIdp(index, ['10_1', '19_1'], '08/10', '17:45')).toBeUndefined();
+    expect(mcLookupIdp(index, ['10_1', '19_1'], '08/10', '12:30')).toBe('3359');
+  });
+
+  it('sin hora en la fila, la clave solo-fecha sigue valiendo si es única', () => {
+    const index = parseMcIdpIndex(DIRECTO);
+    expect(mcLookupIdp(index, ['10_1', '19_1'], '08/10', null)).toBe('3359');
+  });
+});

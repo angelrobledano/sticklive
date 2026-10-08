@@ -1,5 +1,7 @@
 /**
- * Conversión hora local → UTC para zonas de la Unión Europea, sin dependencias.
+ * Conversión hora local → UTC. `zonedToUtc` usa la base de datos IANA del
+ * runtime para cualquier zona; `euZonedToUtc`/`winterOffsetOf` quedan como
+ * utilidades de la regla UE (sin dependencias) para quien pase un offset.
  *
  * Todas las zonas de la UE cambian el reloj a la vez (último domingo de marzo a
  * las 01:00 UTC → verano; último domingo de octubre a las 01:00 UTC → invierno).
@@ -63,26 +65,58 @@ export function euZonedToUtc(
   return isNaN(d.getTime()) ? new Date(NaN) : d;
 }
 
-/**
- * Zonas de offset FIJO (sin cambio de hora). Paraguay abolió el DST
- * (UTC-4 permanente desde 2024): es la sede de los World Skate Games
- * Asunción 2026, y la lógica UE le aplicaría CET (+1) por el fallback.
- */
-const FIXED_OFFSET: Record<string, number> = {
-  'America/Asuncion': -4,
-};
+const DEFAULT_ZONE = 'Europe/Madrid';
+const formatters = new Map<string, Intl.DateTimeFormat>();
 
-/** Atajo: convierte usando el nombre de la zona IANA. */
+/** Formateador por zona (lanza RangeError si la zona IANA no existe). */
+function formatterFor(timezone: string): Intl.DateTimeFormat {
+  let f = formatters.get(timezone);
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone, hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+    formatters.set(timezone, f);
+  }
+  return f;
+}
+
+/** Hora local de un instante en la zona, expresada como ms "UTC de pared". */
+function wallClockMs(timezone: string, utcMs: number): number {
+  const parts = formatterFor(timezone).formatToParts(new Date(utcMs));
+  const n = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
+  return Date.UTC(n('year'), n('month') - 1, n('day'), n('hour') % 24, n('minute'), n('second'));
+}
+
+function isValidZone(timezone: string): boolean {
+  try { formatterFor(timezone); return true; } catch { return false; }
+}
+
+/**
+ * Convierte una fecha/hora LOCAL de la zona IANA indicada a UTC, usando la base
+ * de datos de zonas del runtime (Intl/ICU). Vale para cualquier sede (Europa,
+ * Asunción, Brasil…) sin tablas a mano que se quedan viejas: Paraguay pasó a
+ * UTC-3 permanente en 2024 y la tabla fija lo seguía dando en UTC-4.
+ *
+ * Casos borde del cambio de hora (mismo contrato que la versión UE, #175):
+ *   - hora inexistente (salto de primavera): se interpreta con el offset de
+ *     verano;
+ *   - hora ambigua (vuelta de otoño): se elige la PRIMERA ocurrencia.
+ * Zona nula o desconocida → Europe/Madrid (la de la fuente por defecto).
+ */
 export function zonedToUtc(
   timezone: string | undefined | null,
   year: number, month: number, day: number, hour: number, min: number
 ): Date {
-  const fixed = timezone ? FIXED_OFFSET[timezone] : undefined;
-  if (fixed !== undefined) {
-    // Offset constante: hora local − offset = UTC, sin fronteras de DST.
-    const localApprox = Date.UTC(year, month, day, hour, min, 0);
-    const d = new Date(localApprox - fixed * 3_600_000);
-    return isNaN(d.getTime()) ? new Date(NaN) : d;
-  }
-  return euZonedToUtc(year, month, day, hour, min, winterOffsetOf(timezone));
+  const tz = timezone && isValidZone(timezone) ? timezone : DEFAULT_ZONE;
+  const local = Date.UTC(year, month, day, hour, min, 0);
+  if (Number.isNaN(local)) return new Date(NaN);
+  // Offsets alrededor del instante: antes y después de un posible cambio de hora.
+  const offsets = [...new Set([
+    wallClockMs(tz, local - 6 * 3_600_000) - (local - 6 * 3_600_000),
+    wallClockMs(tz, local + 6 * 3_600_000) - (local + 6 * 3_600_000),
+  ])];
+  const matches = offsets.map((o) => local - o).filter((t) => wallClockMs(tz, t) === local);
+  if (matches.length > 0) return new Date(Math.min(...matches));
+  return new Date(local - Math.max(...offsets));
 }

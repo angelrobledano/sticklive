@@ -14,8 +14,10 @@ import { planSourceStructure, type ScrapedMatch, type ScrapeResult, type Structu
 import { limpiar } from './support/db.js';
 import { crearDeporte, crearCompeticion, crearTemporada } from './support/factorias.js';
 import { loadMatches } from '../../apps/etl/src/loaders/match.loader.js';
-import { applyStructurePlan, assignStructure } from '../../apps/etl/src/structure/apply-structure.js';
+import { applyStructurePlan, assignStructure, pruneAfterLoad } from '../../apps/etl/src/structure/apply-structure.js';
+import { loadRounds } from '../../apps/etl/src/loaders/round.loader.js';
 import { MissingLiveTracker } from '../../apps/etl/src/missing-live.js';
+import { actaFinalCandidates, finalizeByActa } from '../../apps/etl/src/acta-final.js';
 
 let sportId: string;
 let seasonId: string;
@@ -59,7 +61,9 @@ async function cargarCalendario(rows: ReturnType<typeof calendario>, declaredKin
   const plan = planSourceStructure(rows.map((r) => r.structure), { declaredKind });
   const applied = await applyStructurePlan(seasonId, plan, sourceId);
   assignStructure(rows, plan, applied);
-  return loadMatches(result(rows.map((r) => r.match!)), sportId);
+  const loaded = await loadMatches(result(rows.map((r) => r.match!)), sportId);
+  const pruned = await pruneAfterLoad(seasonId, applied);
+  return { ...loaded, pruned };
 }
 
 async function estadoDe(idp: string): Promise<string> {
@@ -153,6 +157,51 @@ describe('estructura de la fuente → BD (mismo camino para cualquier formato)',
     ]));
     const m = await db.query(`SELECT m.phase_id, r.stage, m.series_game, m.status FROM matches m JOIN rounds r ON r.id = m.round_id WHERE m.source_ref = 'fep_match_201'`);
     expect(m.rows[0]).toEqual({ phase_id: legacy.rows[0]!.id, stage: 'quarters', series_game: 1, status: 'finished' });
+    // La ronda 100, ya vacía y ausente de la fuente, se retira; la de cuartos no.
+    const rondas = await db.query(`SELECT name FROM rounds WHERE season_id = $1 ORDER BY number`, [seasonId]);
+    expect(rondas.rows.map((r) => r.name)).toEqual(['CUARTOS']);
+  });
+
+  test('una ronda vacía que la fuente sigue publicando (cruce por decidir) NO se retira', async () => {
+    const rows = calendario([
+      ['fep_fase_3593', null, 'SEMIFINALES', '20261023', '1', '2', '601'],
+    ]);
+    // La final existe en la fuente sin equipos todavía: estructura sin partido.
+    rows.push({
+      structure: { phaseRef: 'fep_fase_3593', phaseTitle: null, roundLabel: 'FINAL', date: '20261025', homeRef: null, awayRef: null, groupName: null, docIndex: 9 },
+      match: null as unknown as ScrapedMatch,
+    });
+    const plan = planSourceStructure(rows.map((r) => r.structure));
+    const applied = await applyStructurePlan(seasonId, plan, sourceId);
+    assignStructure(rows, plan, applied);
+    await loadMatches(result([rows[0]!.match!]), sportId);
+    expect(await pruneAfterLoad(seasonId, applied)).toBe(0);
+    const r = await db.query(`SELECT stage FROM rounds WHERE season_id = $1 ORDER BY number`, [seasonId]);
+    expect(r.rows.map((x) => x.stage)).toEqual(['semis', 'final']);
+  });
+
+  test('World Skate: las rondas llegan con su fase y la ronda vieja compartida se retira al reestructurar', async () => {
+    const base = { seasonId, sourceId, scrapedAt: new Date() };
+    // Antes (modelo legado): una única ronda 74 sin fase.
+    await db.query(`INSERT INTO rounds (season_id, number, name, round_type) VALUES ($1, 74, 'Puestos 5º-8º', 'playoff')`, [seasonId]);
+    await db.query(`SELECT backfill_legacy_phases()`);
+    const out = await loadRounds({
+      success: true, errors: [], durationMs: 1, scraperKey: 'worldskate_hockey', entityType: 'round',
+      data: [
+        { ...base, number: 95, name: 'Semifinal', roundType: 'playoff', phaseRef: 'wse_fase_344', phaseName: 'FINAL PHASE', phaseKind: 'knockout', phaseIsPlacement: false, phaseOrdinal: 2, stage: 'semis' },
+        { ...base, number: 99, name: 'Final', roundType: 'playoff', phaseRef: 'wse_fase_344', phaseName: 'FINAL PHASE', phaseKind: 'knockout', phaseIsPlacement: false, phaseOrdinal: 2, stage: 'final' },
+        { ...base, number: 74, name: 'Puestos 5º-8º', roundType: 'playoff', phaseRef: 'wse_fase_345', phaseName: '5TH - 8TH PLACE', phaseKind: 'knockout', phaseIsPlacement: true, phaseOrdinal: 3, stage: 'placement' },
+      ],
+    });
+    expect(out.upserted).toBe(3);
+    const r = await db.query(
+      `SELECT p.name AS fase, p.is_placement, r.number, r.stage FROM rounds r JOIN phases p ON p.id = r.phase_id
+        WHERE r.season_id = $1 ORDER BY p.ordinal, r.number`, [seasonId]);
+    expect(r.rows).toEqual([
+      { fase: 'FINAL PHASE', is_placement: false, number: 95, stage: 'semis' },
+      { fase: 'FINAL PHASE', is_placement: false, number: 99, stage: 'final' },
+      { fase: '5TH - 8TH PLACE', is_placement: true, number: 74, stage: 'placement' },
+    ]);
   });
 });
 
@@ -210,6 +259,26 @@ describe('estado del partido a través del loader (directo)', () => {
     await loadMatches(result([scraped({ homeTeamRef: '1', awayTeamRef: '2', sourceRef: 'fep_match_504', status: 'live', scheduledAt: kickoff, homeScore: 2, awayScore: 0 })]), sportId);
     const m = await db.query(`SELECT status, home_score FROM matches WHERE source_ref = 'fep_match_504'`);
     expect(m.rows[0]).toEqual({ status: 'live', home_score: 2 });
+  });
+
+  test('partido que termina: el acta (periodo_fin) lo cierra; si el feed aún lo da en juego, espera', async () => {
+    const kickoff = await partido('506', 1.5);
+    await loadMatches(result([scraped({ homeTeamRef: '1', awayTeamRef: '2', sourceRef: 'fep_match_506', status: 'live', scheduledAt: kickoff, homeScore: 4, awayScore: 3 })]), sportId);
+    const { rows } = await db.query<{ id: string }>(`SELECT id FROM matches WHERE source_ref = 'fep_match_506'`);
+    const ended = [{ matchId: rows[0]!.id, seasonId, sourceRef: 'fep_match_506' }];
+
+    // El feed todavía lo lista en juego este ciclo → no se cierra.
+    expect(actaFinalCandidates(ended, new Set(['fep_match_506']))).toEqual([]);
+    expect(await estadoDe('506')).toBe('live');
+
+    // El feed ya no lo da en juego → el acta manda: finished con su marcador.
+    const done = await finalizeByActa(actaFinalCandidates(ended, new Set()));
+    expect(done.map((d) => d.sourceRef)).toEqual(['fep_match_506']);
+    const m = await db.query(`SELECT status, home_score, away_score, finished_at IS NOT NULL AS fin FROM matches WHERE source_ref = 'fep_match_506'`);
+    expect(m.rows[0]).toEqual({ status: 'finished', home_score: 4, away_score: 3, fin: true });
+
+    // Idempotente: repetir no hace nada.
+    expect(await finalizeByActa(ended)).toEqual([]);
   });
 
   test('partido histórico sin información de directo: el calendario lo da por terminado con su resultado', async () => {

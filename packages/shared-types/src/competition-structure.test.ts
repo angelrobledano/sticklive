@@ -276,6 +276,20 @@ describe('planSourceStructure — casos A–F', () => {
   });
 });
 
+describe('planSourceStructure — grupos publicados como bloques separados', () => {
+  it('"GRUPO A" y "GRUPO B" son la MISMA fase de grupos (el grupo va en cada partido)', () => {
+    const rows = [
+      row('wse_fase_251', 'GRUPO A', 'JORNADA 1', '20250701', 'ESP', 'ITA'),
+      row('wse_fase_252', 'GRUPO B', 'JORNADA 1', '20250701', 'POR', 'FRA'),
+      row('wse_fase_253', 'KNOCKOUT STAGE', 'SEMIS FINALS', '20250705', 'ESP', 'POR'),
+    ];
+    const plan = planSourceStructure(rows);
+    expect(plan.phases.map((p) => [p.ordinal, p.kind])).toEqual([[1, 'groups'], [2, 'knockout']]);
+    expect(plan.phases[0]!.rounds).toHaveLength(1);
+    expect(plan.assignments.map((a) => a.groupName)).toEqual(['A', 'B', null]);
+  });
+});
+
 describe('compatRoundNumber — campo legado roundNumber de la API', () => {
   it('mapea fases explícitas a la numeración que ya consumen web/app (1=QF, 2=SF, 3=F, 0=colocación)', () => {
     expect(compatRoundNumber('quarters', false)).toBe(1);
