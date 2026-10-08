@@ -309,7 +309,33 @@ exista, tarea del release M5). El **mensaje GDPR/UMP** está creado y publicado
 español por defecto + 4 adicionales, opciones de consentimiento por defecto,
 URL de privacidad de la web. El **app-ads.txt** ya está publicado (ver §2).
 
-## 7. Referencias
+## 7. Producto premium (Stripe): anual y "para siempre"
+
+**Dos productos, un solo entitlement** (`users`: `premium_until` para el anual,
+`premium_lifetime` para el pago único; el guard `isUserPremium` los une).
+
+| Producto | Precio | Env | Efecto en el webhook |
+|---|---|---|---|
+| Anual | 4,99 € (default) | `PREMIUM_PRICE_EUR_CENTS=499` | `premium_until = GREATEST(actual, NOW()) + 1 año` |
+| Para siempre | 29,99 € (default) | `PREMIUM_LIFETIME_PRICE_EUR_CENTS=2999` | `premium_lifetime = TRUE` (**nunca** toca `premium_until`) |
+
+**Flujo:** el paywall de la web (`/settings`, `PremiumBanner`) ofrece las dos
+opciones → `POST /payments/stripe/checkout {deviceId, product}` (`product`:
+`annual` | `lifetime`; ausente = `annual` por compatibilidad) → Stripe Checkout
+(precio inline, sin Product/Price en el panel) → webhook idempotente
+(`processed_stripe_events`) → entitlement. La app solo LEE el estado
+(`GET /payments/status`).
+
+**Fail-closed (dinero):** producto inválido en el checkout → `400
+unknown_product`; producto presente-pero-desconocido en el webhook → **no se
+concede nada** + error a Sentry (el evento se acusa con 200 para no provocar
+reintentos en bucle). `POST /restore` (por email) concede **lifetime si existe**,
+si no el anual.
+
+**Cambiar el precio:** una env en `/opt/sticklive/.env.prod` + recrear el API
+(`$DC up -d api`; no hace falta rebuild). Con `deploy.sh` también vale.
+
+## 8. Referencias
 
 - `.env.prod.example` — plantilla de variables.
 - `deploy/Caddyfile` — CSP en modo observación con hosts de AdSense.
