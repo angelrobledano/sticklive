@@ -1,22 +1,14 @@
 /**
- * Regresión de estado de un partido (#188).
+ * Regresión de estado de un partido (#188, #377/P3-9).
  *
- * `upsertMatch` aplica `status = EXCLUDED.status` sin condiciones (las
- * correcciones de la fuente son legítimas y no se bloquean), pero un glitch del
- * feed que devuelve `finished`/`live` a `scheduled` no dejaba rastro. Este
- * predicado puro decide cuándo avisar.
- *
- * #377(P3-9): se añade `finished→live`. Antes ni se registraba. No se bloquea
- * (podría ser una corrección legítima tras un final adelantado), pero interesa
- * verlo: un `live` tras `finished` reabre el directo y puede reenviar avisos.
+ * Las correcciones de la fuente se APLICAN (son legítimas), pero un retroceso
+ * (`finished`/`live` → `scheduled`, `finished` → `live`) reabre directos y puede
+ * reenviar avisos, así que se deja rastro. La regla vive en un único sitio:
+ * `resolveStatusTransition` de @sports/shared-types; esto es su atajo booleano.
  */
-const REGRESIONES_DE_ESTADO = new Set([
-  'finished>scheduled',
-  'live>scheduled',
-  'finished>live',
-]);
+import { resolveStatusTransition } from '@sports/shared-types';
 
-export function isStatusRegression(prev: string | null | undefined, next: string): boolean {
-  if (!prev) return false;
-  return REGRESIONES_DE_ESTADO.has(`${prev}>${next}`);
+export function isStatusRegression(prev: string | null | undefined, next: string | null | undefined): boolean {
+  if (!prev || !next) return false;
+  return resolveStatusTransition(prev, next).correction;
 }

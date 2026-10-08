@@ -11,18 +11,20 @@ export interface UpsertRoundInput {
 }
 
 /**
- * Upsert de ronda/jornada. Clave de conflicto: (season_id, number, round_type),
- * que es la UNIQUE de la tabla. Devuelve el id (UUID).
+ * Upsert de ronda/jornada SIN fase (camino legado). Clave de conflicto: la
+ * UNIQUE (season_id, phase_id, number, round_type) con phase_id NULL, que para
+ * estas filas equivale a la antigua (season_id, number, round_type). Devuelve
+ * el id (UUID).
  *
- * Usado por flujos que generan estructura de fases (p. ej. World Skate:
- * grupos, cuartos, semis, final). El flujo FEP no lo usa por ahora.
+ * Las cargas con estructura de la fuente usan `ensurePhase` +
+ * `ensurePhaseRound` (queries/phases.ts), que cuelgan la ronda de su fase.
  */
 export async function upsertRound(input: UpsertRoundInput): Promise<string> {
   const roundType: RoundType = input.roundType ?? 'regular';
   const res = await db.query<{ id: string }>(
     `INSERT INTO rounds (season_id, number, name, round_type, source_id, source_ref, scraped_at)
      VALUES ($1,$2,$3,$4,$5,$6,NOW())
-     ON CONFLICT (season_id, number, round_type) DO UPDATE SET
+     ON CONFLICT (season_id, phase_id, number, round_type) DO UPDATE SET
        name       = COALESCE(EXCLUDED.name, rounds.name),
        source_ref = COALESCE(EXCLUDED.source_ref, rounds.source_ref),
        updated_at = NOW()

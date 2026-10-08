@@ -105,3 +105,73 @@ describe('collectRoundRows — etiqueta multi-idioma', () => {
     expect(collectRoundRows($, table).map((r) => r.roundName)).toEqual(['Jornada 3']);
   });
 });
+
+// ── Estructura de fases y estado SIN reloj ─────────────────────────────────
+
+import { collectCalendarRows, statusFromCalendarScore } from './fep-calendar.scraper.js';
+
+/** Calendario de un idc con DOS fases (como el playoff 3481): título + content_fase_X. */
+const PLAYOFF_DOS_FASES = `
+<div class="div_titulo_fase_idc filter_fase_3483"><span class="lang_label lang_es">PLAY OFF OK LIGA</span></div>
+<table class="tabla_standard table_content_fase content_fase_3483">
+  <thead class="head_jornada"><tr><th>1 CUARTOS</th></tr></thead>
+  <tbody>
+    <tr class="team_3358 team_3387 team_class" gamedate="20260516"><td></td><td>16/05/2026</td><td>16:15</td></tr>
+  </tbody>
+  <thead class="head_jornada"><tr><th>1 FINAL</th></tr></thead>
+  <tbody>
+    <tr class="team_3373 team_3408 team_class" gamedate="20260612"><td></td><td>12/06/2026</td><td>20:15</td></tr>
+  </tbody>
+</table>
+<div class="div_titulo_fase_idc filter_fase_3482"><span class="lang_label lang_es">PLAY OFF 9 Y 10</span></div>
+<table class="tabla_standard table_content_fase content_fase_3482">
+  <thead class="head_jornada"><tr><th>PARTIDO 1</th></tr></thead>
+  <tbody>
+    <tr class="team_3363 team_3374 team_class" gamedate="20260516"><td></td><td>16/05/2026</td><td>20:00</td></tr>
+  </tbody>
+</table>`;
+
+/** Liga de un solo bloque sin título (content_fase = idc) y una final sin equipos aún. */
+const SIN_TITULO = `
+<table class="tabla_standard table_content_fase content_fase_3593">
+  <thead class="head_jornada"><tr><th>SEMIFINALES</th></tr></thead>
+  <tbody><tr class="team_3388 team_3349 team_class" gamedate="20261023"><td></td><td></td><td>18:45</td></tr></tbody>
+  <thead class="head_jornada"><tr><th>FINAL</th></tr></thead>
+  <tbody><tr class="team_ team_ team_class" gamedate="20261025"><td></td><td></td><td>11:45</td></tr></tbody>
+</table>`;
+
+describe('collectCalendarRows — fase explícita de la fuente por fila', () => {
+  it('cada fila lleva su bloque de fase (content_fase_X) y el título que lo precede', () => {
+    const $ = cheerio.load(PLAYOFF_DOS_FASES);
+    const rows = collectCalendarRows($, 'fep');
+    expect(rows.map((r) => [r.structure.phaseRef, r.structure.phaseTitle, r.structure.roundLabel, r.structure.date])).toEqual([
+      ['fep_fase_3483', 'PLAY OFF OK LIGA', '1 CUARTOS', '20260516'],
+      ['fep_fase_3483', 'PLAY OFF OK LIGA', '1 FINAL', '20260612'],
+      ['fep_fase_3482', 'PLAY OFF 9 Y 10', 'PARTIDO 1', '20260516'],
+    ]);
+    expect(rows.map((r) => r.structure.docIndex)).toEqual([0, 1, 2]);
+    expect(rows[0]!.structure.homeRef).toBe('3358');
+  });
+
+  it('sin título la fase no tiene nombre; las filas sin equipos también cuentan para la estructura', () => {
+    const $ = cheerio.load(SIN_TITULO);
+    const rows = collectCalendarRows($, 'fep');
+    expect(rows.map((r) => [r.structure.phaseRef, r.structure.phaseTitle, r.structure.roundLabel, r.structure.homeRef])).toEqual([
+      ['fep_fase_3593', null, 'SEMIFINALES', '3388'],
+      ['fep_fase_3593', null, 'FINAL', null],
+    ]);
+  });
+});
+
+describe('statusFromCalendarScore — el calendario NO sabe si un partido está en juego', () => {
+  it('resultado publicado → finished', () => {
+    expect(statusFromCalendarScore('1 - 4')).toBe('finished');
+    expect(statusFromCalendarScore('10-0')).toBe('finished');
+  });
+
+  it('sin resultado → sin señal (undefined), da igual la hora', () => {
+    expect(statusFromCalendarScore('')).toBeUndefined();
+    expect(statusFromCalendarScore('-')).toBeUndefined();
+    expect(statusFromCalendarScore('APLAZADO')).toBeUndefined();
+  });
+});

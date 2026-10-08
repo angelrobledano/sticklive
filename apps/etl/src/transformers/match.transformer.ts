@@ -29,9 +29,15 @@ const STATUS_MAP: Record<string, MatchStatus> = {
   canceled: 'cancelled',
 };
 
-export function normalizeStatus(raw: string | undefined): MatchStatus {
-  if (!raw) return 'scheduled';
-  return STATUS_MAP[raw.toLowerCase().trim()] ?? 'scheduled';
+/**
+ * Estado OBSERVADO en la fuente, o `undefined` si la fuente no dice nada
+ * reconocible. `undefined` no es "programado": significa "sin señal", y el
+ * loader conserva el estado actual (ver resolveStatusTransition en
+ * @sports/shared-types). Así una fila sin estado nunca pisa un directo.
+ */
+export function normalizeStatus(raw: string | undefined): MatchStatus | undefined {
+  if (!raw) return undefined;
+  return STATUS_MAP[raw.toLowerCase().trim()];
 }
 
 /**
@@ -57,6 +63,8 @@ const ScrapedMatchSchema = z.object({
   venueCity: z.string().optional(),
   videoUrl: z.string().optional(),
   groupName: z.string().min(1).max(20).optional(),
+  phaseId: z.string().optional(),
+  seriesGame: z.number().int().positive().nullable().optional(),
   sourceId: z.string(),
   sourceRef: z.string().optional(),
   sourceUrl: z.url().optional(),
@@ -116,7 +124,7 @@ export function transformMatch(raw: ScrapedMatch): MatchTransformResult {
   const status = normalizeStatus(data.status);
   if (data.status && !isKnownStatus(data.status)) {
     warnings.push(
-      `Estado desconocido de la fuente: "${data.status}" — interpretado como 'scheduled'. ` +
+      `Estado desconocido de la fuente: "${data.status}" — ignorado (sin señal de estado). ` +
       `Revisar el mapeo de STATUS_MAP (posible cambio de etiquetas de la fuente).`
     );
   }
@@ -135,6 +143,8 @@ export function transformMatch(raw: ScrapedMatch): MatchTransformResult {
       venueCity: data.venueCity,
       videoUrl: data.videoUrl,
       groupName: data.groupName,
+      phaseId: data.phaseId,
+      seriesGame: data.seriesGame ?? undefined,
       sourceId: data.sourceId,
       sourceRef,
       sourceUrl: data.sourceUrl,
