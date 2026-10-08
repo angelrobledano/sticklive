@@ -31,7 +31,6 @@ export default {
         // Iconos temáticos de Android 13+.
         monochromeImage: './assets/android-icon-monochrome.png',
       },
-      edgeToEdgeEnabled: true,
     },
     plugins: [
       'expo-router',
