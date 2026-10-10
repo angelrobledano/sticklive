@@ -27,6 +27,7 @@ import { downloadTeamLogos } from './team-logos.js';
 import { scrapeRunStatus } from './scrape-log-status.js';
 import { acquireEtlLock } from './etl-lock.js';
 import { planSourceStructure, type PhaseKind, type StructureRow, type ScrapedMatch } from '@sports/shared-types';
+import { reconcileSyntheticMatches } from '@sports/db';
 import { applyStructurePlan, assignStructure, declaredKindFromFormat, pruneAfterLoad, type AppliedStructure } from './structure/apply-structure.js';
 
 // Los scrapers viven en apps/scraper — importamos via ruta relativa (ts-node lo resuelve)
@@ -72,70 +73,6 @@ const COMPETITION_SOURCES_DRIVEN =
 // a decenas de ligas sin martillear sidgad (secuencial + pausa se quedaba corto).
 const SCRAPE_CONCURRENCY = Number(process.env['SCRAPE_CONCURRENCY'] ?? 4);
 
-/**
- * Elimina placeholders sintéticos obsoletos:
- *  1. El que ya tiene un partido real del mismo cruce y fecha (o sin fecha).
- *  2. Sintéticos DUPLICADOS del mismo cruce y día: la ref sintética incluye el
- *     `scheduledAt`, así que cuando la fuente publicó la hora del partido se creó
- *     una fila nueva (p. ej. 16:00) y quedó la vieja a medianoche (00:00). Gana el
- *     más reciente (o el que tiene hora frente al de medianoche).
- *  3. Sintéticos pasados (>6h) que nunca llegaron a partido real.
- * Misma lógica que cleanup-synthetic-dupes.ts, integrada en el pipeline.
- */
-async function reconcileSyntheticMatches(): Promise<number> {
-  const dupes = await db.query(
-    `DELETE FROM matches s
-     USING matches r
-     WHERE s.source_ref LIKE 'synthetic:%'
-       AND r.source_ref NOT LIKE 'synthetic:%'
-       AND r.season_id    = s.season_id
-       AND r.home_team_id = s.home_team_id
-       AND r.away_team_id = s.away_team_id
-       -- Comparar el DÍA en hora española: un placeholder a las 00:00 (Madrid)
-       -- y el partido real a las 20:30 caen en días UTC distintos y no casaban.
-       AND (
-         (r.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
-           = (s.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
-         -- Placeholder SIN fecha: se elimina solo si hay UN único partido real
-         -- del cruce (con dos mangas reales no sabemos a cuál corresponde).
-         OR (s.scheduled_at IS NULL AND (
-               SELECT count(*) FROM matches r2
-                WHERE r2.season_id = s.season_id AND r2.home_team_id = s.home_team_id
-                  AND r2.away_team_id = s.away_team_id AND r2.source_ref NOT LIKE 'synthetic:%') = 1)
-       )
-     RETURNING s.id`
-  );
-  const stale = await db.query(
-    `DELETE FROM matches
-     WHERE source_ref LIKE 'synthetic:%'
-       AND status = 'scheduled'
-       AND scheduled_at < NOW() - INTERVAL '6 hours'
-     RETURNING id`
-  );
-  // Sintéticos DUPLICADOS del mismo cruce y día (la ref incluye la hora, así que
-  // un cambio de hora de la fuente creaba una fila nueva y dejaba la vieja).
-  const synDupes = await db.query(
-    `DELETE FROM matches s
-     USING matches r
-     WHERE s.source_ref LIKE 'synthetic:%'
-       AND r.source_ref LIKE 'synthetic:%'
-       AND s.id <> r.id
-       AND r.season_id    = s.season_id
-       AND r.home_team_id = s.home_team_id
-       AND r.away_team_id = s.away_team_id
-       AND (r.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
-           = (s.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
-       AND (
-         -- el placeholder de medianoche (solo fecha) cede ante el que tiene hora
-         ((s.scheduled_at AT TIME ZONE 'Europe/Madrid')::time = TIME '00:00'
-          AND (r.scheduled_at AT TIME ZONE 'Europe/Madrid')::time <> TIME '00:00')
-         -- o cualquier sintético más reciente supera a uno más viejo
-         OR (r.scraped_at > s.scraped_at)
-       )
-     RETURNING s.id`
-  );
-  return (dupes.rowCount ?? 0) + (synDupes.rowCount ?? 0) + (stale.rowCount ?? 0);
-}
 
 /**
  * Scrapea el calendario de una competición (uno o varios idc: liga regular +

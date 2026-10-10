@@ -9,6 +9,7 @@ import { groupByPhase, placementMatches } from '@/lib/playoff';
 import { buildBracketRounds } from '@/lib/bracket';
 import { buildKnockoutSummary } from '@/lib/knockout';
 import { nearestMatchDay, pickDefaultFilter } from './GameweeksTab';
+import { knockoutPhaseViews } from '@/lib/season-phases';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: () => {}, push: () => {}, replace: () => {}, prefetch: () => {} }),
@@ -186,5 +187,47 @@ describe('Jornadas durante un playoff', () => {
     const today = '2026-05-16';
     expect(nearestMatchDay([...liga, qf], today)).toEqual({ day: '2026-05-16', journey: 30 });
     expect(pickDefaultFilter([], [...liga, qf], today)).toEqual({ journey: 30, date: null });
+  });
+});
+
+describe('caso real WSG femenino (10/10/2026): colocación dentro de la fase final', () => {
+  // La ronda antigua "Puestos 5.º-8.º" quedó colgando de FINAL PHASE con el
+  // FRA-CHI (5.º-6.º). El cuadro lo pintaba como la FINAL (en vez del ARG-ESP)
+  // y las semis del viernes salían con la fecha en que se marcaron terminadas.
+  const ff = phase({ kind: 'knockout', name: 'FINAL PHASE', stages: ['semis', 'final', 'third_place', 'placement'] });
+  const sf = round(ff, 'semis', 30, 'Semifinal');
+  const fin = round(ff, 'final', 40, 'Final');
+  const tp = round(ff, 'third_place', 50, '3º y 4º puesto');
+  const pl = round(ff, 'placement', 60, 'Puestos 5º-8º');
+  const t = (id: string, name: string) => ({ id, name, shortName: id.toUpperCase(), logoUrl: null });
+  const m = (r: SeasonRound, h: string, a: string, at: string, over: Partial<SeasonMatch> = {}) =>
+    match(ff, r, h, a, at.slice(0, 10), { scheduledAt: at, homeTeam: t(h, h), awayTeam: t(a, a), ...over });
+  const ms = [
+    m(sf, 'esp', 'por', '2026-10-09T18:00:00Z', { ...won(2, 1), finishedAt: '2026-10-10T17:45:51Z' }),
+    m(sf, 'arg', 'ita', '2026-10-09T20:30:00Z', { ...won(4, 0), finishedAt: '2026-10-10T17:45:51Z' }),
+    m(fin, 'arg', 'esp', '2026-10-10T23:00:00Z'),
+    m(tp, 'ita', 'por', '2026-10-10T20:30:00Z'),
+    m(pl, 'fra', 'chi', '2026-10-10T19:15:00Z'),
+  ];
+
+  it('la final es el partido de la fase "final" y la colocación va aparte', () => {
+    const views = knockoutPhaseViews([ff], [sf, fin, tp, pl], ms)!;
+    expect(views.map((v) => [v.phase.isPlacement, v.layout, v.matches.map((x) => x.homeTeam.id)])).toEqual([
+      [false, 'final_four', ['esp', 'arg', 'arg', 'ita']],
+      [true, 'bracket', ['fra']],
+    ]);
+  });
+
+  it('render: FINAL = ARG-ESP; FRA-CHI en "Otros puestos"; semis con la fecha en que se jugaron', () => {
+    const html = render(<PlayoffsTab rounds={[sf, fin, tp, pl]} matches={ms} format="league" phases={[ff]} />);
+    const finalCard = html.slice(html.indexOf('>Final<'));
+    expect(finalCard.indexOf('ARG')).toBeGreaterThan(-1);
+    expect(html.indexOf('FRA')).toBeGreaterThan(html.indexOf('Otros puestos'));
+    expect(html).toContain('vie, 9 oct');
+  });
+
+  it('FinalFourBracket nunca toma un partido de colocación como final', () => {
+    const html = render(<FinalFourBracket matches={[ms[0]!, ms[1]!, ms[4]!]} />);
+    expect(html).not.toContain('FRA');
   });
 });
