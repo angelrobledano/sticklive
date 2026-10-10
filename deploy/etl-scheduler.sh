@@ -138,8 +138,10 @@ while true; do
 
     # Chequeo de integridad de datos (#231): ventana de temporadas, coherencia
     # eventos↔marcador, standings↔partidos, homónimos en temporada, refs
-    # compartidas, partidos sin season_teams y ganadores imposibles. Solo lee y
-    # avisa a Sentry; nunca escribe.
+    # compartidas, partidos sin season_teams, ganadores imposibles y, desde la
+    # 072, estructura (fases en fallback / sin re-estructurar / partidos sin
+    # fase) y directo (programados vencidos, terminados sin marcador, live
+    # atascado). Solo lee y avisa a Sentry; nunca escribe.
     echo "[scheduler] integrity-check $(date -u +%T)"
     node dist/apps/etl/src/integrity-check.js \
       || echo "[scheduler] integrity-check fallo (seguimos)"

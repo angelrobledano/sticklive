@@ -54,6 +54,8 @@ Ambas son **la misma plataforma sidgad** servida como instancias distintas: el c
   - `scrape-health-watch` (diaria): scraper clave parado >26 h, `success` con 0 filas, o scraper esperado ausente.
   - `stale-live-watchdog` (en cada ciclo): partidos >5 h en `live` (contadas desde el saque real `started_at`, o la hora prevista si no consta) se degradan a `scheduled` y avisan.
   - `partition-guard` (diaria): crea particiones futuras y alerta si el centinela `match_events_undated` recibe filas.
+  - `integrity-check` (diaria): invariantes de datos (#231) y, desde la 072, estructura y directo: fases en fallback, temporadas en curso sin re-estructurar, partidos sin fase, programados vencidos (> 24 h), terminados sin marcador y directos atascados.
+- **Batería de casos reales** (`apps/scraper/casos-reales/`): páginas reales de la fuente con el formato que dicen sus normas; corre en `npm run test` y en CI. Cómo añadir casos: su README.
 - **Modo `refichas`**: re-procesa actas ya importadas para recuperar crono exacto o reprocesar con un parser mejorado, sin re-scrapear el calendario.
 
 ## Limitaciones y riesgos conocidos
