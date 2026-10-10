@@ -3,7 +3,7 @@ import { db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 import { captureRouteError } from '../lib/route-error.js';
-import { normalizeCompetitionFormat } from '../lib/competition-format.js';
+import { buildSeasonStructure, type StructurePhaseRow } from '../lib/season-structure.js';
 
 export const seasonOverviewRouter = new Hono();
 
@@ -53,6 +53,8 @@ interface RoundRow {
   number: number;
   name: string | null;
   round_type: string;
+  phase_id: string | null;
+  stage: string | null;
 }
 
 interface MatchRow {
@@ -67,6 +69,8 @@ interface MatchRow {
   win_type: string | null;
   venue_name: string | null;
   round_id: string | null;
+  phase_id: string | null;
+  series_game: number | null;
   round_number: number | null;
   round_name: string | null;
   round_type: string | null;
@@ -98,7 +102,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
     // (metadata, clasificación, jornadas, partidos). En serie sumaban cuatro
     // round-trips; en paralelo el payload tarda el máximo. Si la temporada no
     // existe, las demás devuelven vacío y se responde 404 igualmente.
-    const [seasonRes, standingsRes, roundsRes, matchesRes] = await Promise.all([
+    const [seasonRes, standingsRes, roundsRes, matchesRes, phasesRes] = await Promise.all([
       // 1) Season + competition info
       db.query<SeasonRow>(`
         SELECT s.id, s.name, s.slug AS season_slug, s.start_date, s.end_date,
@@ -149,14 +153,16 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         ORDER BY st.position NULLS LAST, st.points DESC, st.goal_diff DESC
       `, [seasonId]),
 
-      // 3) Rounds (para selector de jornadas)
+      // 3) Rounds (para selector de jornadas), en el orden de sus fases
       db.query<RoundRow>(`
-        SELECT id, number, name, round_type
-        FROM rounds
-        WHERE season_id = $1
+        SELECT r.id, r.number, r.name, r.round_type, r.phase_id, r.stage
+        FROM rounds r
+        LEFT JOIN phases p ON p.id = r.phase_id
+        WHERE r.season_id = $1
         ORDER BY
-          CASE round_type WHEN 'regular' THEN 0 WHEN 'playoff' THEN 1 ELSE 2 END,
-          number ASC
+          COALESCE(p.ordinal, 0),
+          CASE r.round_type WHEN 'regular' THEN 0 WHEN 'playoff' THEN 1 ELSE 2 END,
+          r.number ASC
       `, [seasonId]),
 
       // 4) Todos los partidos con equipos
@@ -164,7 +170,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         SELECT
           m.id, m.status, m.scheduled_at, m.started_at, m.finished_at,
           m.home_score, m.away_score, m.winner_team_id, m.win_type, m.venue_name, m.round_id,
-          m.group_name,
+          m.group_name, m.phase_id, m.series_game,
           r.number       AS round_number,
           r.name         AS round_name,
           r.round_type,
@@ -186,84 +192,31 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
           COALESCE(r.number, 0),
           m.scheduled_at ASC NULLS LAST
       `, [seasonId]),
+
+      // 5) Fases de la temporada (migración 072)
+      db.query<StructurePhaseRow>(`
+        SELECT id, ordinal, kind, is_placement, name, resolved_by
+        FROM phases
+        WHERE season_id = $1
+        ORDER BY ordinal, created_at
+      `, [seasonId]),
     ]);
 
     if (seasonRes.rows.length === 0) return c.json({ error: 'Season not found' }, 404);
     const s = seasonRes.rows[0]!;
 
-    // ── Fases derivadas de la fase de playoff ──────────────────────
-    // Modelo de fases: los partidos de playoff viven en la misma temporada
-    // que la liga, marcados con rounds.round_type='playoff' (la ronda de
-    // fase no distingue QF/SF/F). Derivamos la fase agrupando por
-    // eliminatoria (pareja de equipos) y ordenando las series por fecha:
-    // la última es la Final, las dos anteriores Semis, el resto Cuartos.
-    // roundNumber derivado: 1=QF, 2=SF, 3=F, 0=permanencia.
-    // (Legacy: competiciones-playoff puras sin rounds se siguen soportando.)
-    const isLegacyPlayoffComp = /play[- ]?off/i.test(s.competition_name);
-    const playoffRows = matchesRes.rows.filter(
-      (m) => m.round_type === 'playoff' || (isLegacyPlayoffComp && !m.round_id)
-    );
-
-    // Si la fuente ya distingue las fases eliminatorias con rondas propias
-    // (varias rounds de playoff distintas: Cuartos/Semis/Final/3º-4º — caso
-    // World Skate), respetamos su número/nombre real y NO derivamos. La
-    // derivación por cronología es solo para el playoff de OK Liga, que vive
-    // en una única ronda 'playoff' sin distinción de fase.
-    const distinctPlayoffRounds = new Set(
-      playoffRows.map((m) => m.round_id).filter((x): x is string => !!x)
-    );
-    // Final Four: sus rondas son la verdad aunque por ahora solo exista la de
-    // semifinales (la final no se publica hasta conocerse los finalistas). No
-    // derivar por cronología. Ver `format` en competition_sources.
-    const hasRealPhases = distinctPlayoffRounds.size > 1 || s.competition_format === 'final_four';
-
-    // Una competición `bracket`/`final_four` es de eliminatorias: sus partidos
-    // son de playoff aunque el scrape no les haya asignado una ronda (p. ej. una
-    // eliminatoria cuyos partidos vienen de otra fuente que su calendario).
-    const isKnockoutComp = s.competition_format === 'bracket' || s.competition_format === 'final_four';
-
-    const derivedRound = new Map<string, number>(); // matchId → roundNumber
-    if (playoffRows.length > 0 && !hasRealPhases) {
-      const seriesMap = new Map<string, { firstDate: number; matchIds: string[] }>();
-      for (const m of playoffRows) {
-        const key = [m.home_team_id, m.away_team_id].sort().join('|');
-        const date = m.scheduled_at ? new Date(m.scheduled_at).getTime() : Number.MAX_SAFE_INTEGER;
-        const entry = seriesMap.get(key) ?? { firstDate: date, matchIds: [] };
-        entry.firstDate = Math.min(entry.firstDate, date);
-        entry.matchIds.push(m.id);
-        seriesMap.set(key, entry);
-      }
-      const series = [...seriesMap.values()].sort((a, b) => a.firstDate - b.firstDate);
-      const n = series.length;
-      series.forEach((serie, idx) => {
-        // Última serie = Final (3), dos anteriores = Semis (2), resto = Cuartos (1)
-        const roundNumber = idx === n - 1 ? 3 : idx >= n - 3 ? 2 : 1;
-        for (const id of serie.matchIds) derivedRound.set(id, roundNumber);
-      });
-
-      // Serie de COLOCACIÓN 9º–10º (no es permanencia): el idc del playoff
-      // incluye también la eliminatoria entre el 9º y el 10º de la fase
-      // regular (p.ej. Alcoi-Rivas), que fija el orden final y decide la
-      // última plaza europea (WSE Cup). Detección: en un cuadro real cada
-      // serie de cuartos aporta un equipo a semis; la serie cuyos equipos no
-      // aparecen en fases posteriores es la de colocación → roundNumber 0
-      // (la web la muestra como fase propia "9º–10º", fuera del cuadro).
-      if (n > 4) {
-        const matchTeams = new Map(matchesRes.rows.map((m) => [m.id, [m.home_team_id, m.away_team_id]]));
-        const laterTeams = new Set<string>();
-        for (const [matchId, rn] of derivedRound) {
-          if (rn >= 2) for (const t of matchTeams.get(matchId) ?? []) laterTeams.add(t);
-        }
-        if (laterTeams.size > 0) {
-          for (const serie of series.slice(0, n - 3)) {
-            const teams = serie.matchIds.flatMap((id) => matchTeams.get(id) ?? []);
-            if (!teams.some((t) => laterTeams.has(t))) {
-              for (const id of serie.matchIds) derivedRound.set(id, 0);
-            }
-          }
-        }
-      }
-    }
+    // Estructura explícita (fases → rondas → partidos) guardada por el ETL desde
+    // la fuente. Los campos legados (roundNumber 1/2/3/0, roundType,
+    // competitionFormat) se calculan desde ella; ya no se deducen por el nombre
+    // de la competición ni por la cronología (salvo datos heredados, aislado y
+    // marcado con stageInferred — ver lib/season-structure).
+    const structure = buildSeasonStructure({
+      phases: phasesRes.rows,
+      rounds: roundsRes.rows,
+      matches: matchesRes.rows,
+      hasStandings: standingsRes.rows.length > 0,
+      declaredFormat: s.competition_format,
+    });
 
     return c.json({
       season: {
@@ -282,9 +235,14 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         competitionCountry:   s.competition_country,
         competitionRegion:    s.competition_region,
         competitionTimezone:  s.competition_timezone,
-        // Formato de competición (competition_sources): solo se reconocen los
-        // valores conocidos; cualquier otro cae a 'league'.
-        competitionFormat: normalizeCompetitionFormat(s.competition_format),
+        // Formato legado ('league' | 'bracket' | 'final_four') para clientes que
+        // aún no leen `phases`: derivado de las fases de la fuente.
+        competitionFormat: structure.competitionFormat,
+        // Secuencia de fases de la temporada (liga, grupos, eliminatoria,
+        // colocación…). Una competición puede tener varias: liga + playoff,
+        // grupos + final four… Cada una dice si lleva clasificación y qué
+        // fases eliminatorias (cuartos, semis, final…) contiene.
+        phases: structure.phases,
       },
       standings: standingsRes.rows.map((r) => ({
         id:                 r.id,
@@ -305,49 +263,59 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         form:               r.form ?? [],
         penalizationPoints: r.penalization_points ?? 0,
       })),
-      rounds: roundsRes.rows.map((r) => ({
+      rounds: roundsRes.rows.filter((r) => structure.visibleRoundIds.has(r.id)).map((r) => ({
         id:        r.id,
         number:    r.number,
         name:      r.name,
         roundType: r.round_type,
+        phaseId:   r.phase_id,
+        stage:     r.stage,
       })),
-      matches: matchesRes.rows.map((m) => ({
-        id:          m.id,
-        status:      m.status,
-        // Todos los partidos de la temporada son de la misma competición, así
-        // que comparten su TZ (columna 042). Se pone por partido para que los
-        // componentes lo consuman igual que en la home (patrón de #77).
-        competitionTimezone: s.competition_timezone,
-        scheduledAt: m.scheduled_at,
-        startedAt:   m.started_at,
-        finishedAt:  m.finished_at,
-        score:       { home: m.home_score, away: m.away_score },
-        winnerTeamId: m.winner_team_id,
-        winType:      m.win_type,
-        venueName:   m.venue_name,
-        roundId:     m.round_id,
-        // Grupo de la fase de grupos ("A", "B"...): NULL en eliminatorias y
-        // en competiciones sin grupos (ligas a partido único).
-        groupName:   m.group_name,
-        // Playoff OK Liga: manda la fase derivada (1=QF/2=SF/3=F/0=playout).
-        // Playoff con fases reales (World Skate): número real de la ronda.
-        // Liga: número de jornada.
-        roundNumber: derivedRound.get(m.id) ?? m.round_number,
-        roundName:   m.round_name,
-        roundType:   m.round_type ?? (derivedRound.has(m.id) || isKnockoutComp ? 'playoff' : 'regular'),
-        homeTeam: {
-          id:        m.home_team_id,
-          name:      m.home_team_name,
-          shortName: m.home_team_short_name,
-          logoUrl:   m.home_team_logo_url,
-        },
-        awayTeam: {
-          id:        m.away_team_id,
-          name:      m.away_team_name,
-          shortName: m.away_team_short_name,
-          logoUrl:   m.away_team_logo_url,
-        },
-      })),
+      matches: matchesRes.rows.map((m) => {
+        const st = structure.byMatch.get(m.id)!;
+        return {
+          id:          m.id,
+          status:      m.status,
+          // Todos los partidos de la temporada son de la misma competición, así
+          // que comparten su TZ (columna 042). Se pone por partido para que los
+          // componentes lo consuman igual que en la home (patrón de #77).
+          competitionTimezone: s.competition_timezone,
+          scheduledAt: m.scheduled_at,
+          startedAt:   m.started_at,
+          finishedAt:  m.finished_at,
+          score:       { home: m.home_score, away: m.away_score },
+          winnerTeamId: m.winner_team_id,
+          winType:      m.win_type,
+          venueName:   m.venue_name,
+          roundId:     m.round_id,
+          // Grupo de la fase de grupos ("A", "B"...): NULL en eliminatorias y
+          // en competiciones sin grupos (ligas a partido único).
+          groupName:   m.group_name,
+          // Estructura del partido: fase, fase eliminatoria explícita y nº de
+          // partido de la serie ("2 CUARTOS" → 2).
+          phaseId:     st.phaseId,
+          stage:       st.stage,
+          seriesGame:  st.seriesGame,
+          stageInferred: st.stageInferred,
+          // Legado: jornada en liga/grupos; 1=QF/2=SF/3=F/0=colocación en
+          // eliminatorias (desde `stage`).
+          roundNumber: st.roundNumber,
+          roundName:   m.round_name,
+          roundType:   st.roundType,
+          homeTeam: {
+            id:        m.home_team_id,
+            name:      m.home_team_name,
+            shortName: m.home_team_short_name,
+            logoUrl:   m.home_team_logo_url,
+          },
+          awayTeam: {
+            id:        m.away_team_id,
+            name:      m.away_team_name,
+            shortName: m.away_team_short_name,
+            logoUrl:   m.away_team_logo_url,
+          },
+        };
+      }),
     }, 200);
   } catch (err) {
     captureRouteError(err, 'season-overview] GET /:id/overview error');

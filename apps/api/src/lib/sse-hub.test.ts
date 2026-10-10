@@ -74,7 +74,7 @@ describe('applySnapshot', () => {
     expect(second.changed).toBe(true);
   });
 
-  it('el paso scheduled→live (effectiveStatus) cuenta como fase', () => {
+  it('el paso scheduled→live (estado de la fuente) cuenta como fase', () => {
     const first = applySnapshot(emptyHubState(), snap({ status: 'scheduled', events: 0 }));
     const second = applySnapshot(first.state, snap({ status: 'live', events: 0 }));
     expect(second.changed).toBe(true);

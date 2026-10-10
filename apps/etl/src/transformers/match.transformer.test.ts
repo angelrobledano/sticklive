@@ -15,16 +15,16 @@ function raw(over: Record<string, unknown> = {}): ScrapedMatch {
 }
 
 describe('normalizeStatus', () => {
-  it('undefined → scheduled', () => {
-    expect(normalizeStatus(undefined)).toBe('scheduled');
+  it('undefined → sin señal (undefined): la fuente no dice nada del estado', () => {
+    expect(normalizeStatus(undefined)).toBeUndefined();
   });
   it('mapea variantes de la fuente (case-insensitive, con espacios)', () => {
     expect(normalizeStatus('FINALIZADO')).toBe('finished');
     expect(normalizeStatus('  en juego ')).toBe('live');
     expect(normalizeStatus('postponed')).toBe('postponed');
   });
-  it('estado desconocido → scheduled (no rompe)', () => {
-    expect(normalizeStatus('xyz-desconocido')).toBe('scheduled');
+  it('estado desconocido → sin señal (no rompe y no inventa un estado)', () => {
+    expect(normalizeStatus('xyz-desconocido')).toBeUndefined();
   });
 });
 
@@ -77,9 +77,28 @@ describe('transformMatch', () => {
     expect(r.awayTeamRef).toBe('3358');
   });
 
-  it('#377(P3-13): una etiqueta desconocida se mapea a scheduled pero avisa', () => {
+  it('#377(P3-13): una etiqueta desconocida no es una señal de estado, pero avisa', () => {
     const r = transformMatch(raw({ sourceRef: 'fep_match_1', status: 'etiqueta-nueva' }));
-    expect(r.input.status).toBe('scheduled');
+    expect(r.input.status).toBeUndefined();
     expect(r.warnings.some((w) => w.includes('Estado desconocido'))).toBe(true);
+  });
+});
+
+describe('transformMatch — estructura de la fuente', () => {
+  it('propaga fase, ronda y nº de partido de serie ya resueltos por el ETL', () => {
+    const r = transformMatch(raw({
+      sourceRef: 'fep_match_9',
+      roundId: '11111111-1111-1111-1111-111111111111',
+      phaseId: '22222222-2222-2222-2222-222222222222',
+      seriesGame: 3,
+    }));
+    expect(r.input.roundId).toBe('11111111-1111-1111-1111-111111111111');
+    expect(r.input.phaseId).toBe('22222222-2222-2222-2222-222222222222');
+    expect(r.input.seriesGame).toBe(3);
+  });
+
+  it('una fila de calendario sin estado no lleva estado (no "scheduled" por defecto)', () => {
+    const r = transformMatch(raw({ sourceRef: 'fep_match_10' }));
+    expect(r.input.status).toBeUndefined();
   });
 });

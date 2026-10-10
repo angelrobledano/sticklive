@@ -36,6 +36,13 @@ export interface McIdpIndex {
   readonly byDateTime: ReadonlyMap<string, string>;
   /** Fallback `logos|DD/MM` → idp (solo si única para esa fecha). */
   readonly byDate: ReadonlyMap<string, string>;
+  /**
+   * Fallback `logos|DD/MM` SOLO de bloques sin hora. Una fila CON hora no puede
+   * casar con un bloque de otra hora: los logos son del país, compartidos entre
+   * categorías (bug real: el ITA-COL femenino de las 17:45 se llevó el idp del
+   * cuarto de final sub-19 COL-ITA de las 12:30, mismo día).
+   */
+  readonly byDateNoTime: ReadonlyMap<string, string>;
 }
 
 /** `19_1`, `33_1` → `19_1|33_1` (ordenado, sin duplicados ni extensión). */
@@ -88,29 +95,29 @@ function parseMcBlocks(html: string): McBlock[] {
 export function parseMcIdpIndex(html: string): McIdpIndex {
   const conHora = new Map<string, Set<string>>();
   const soloFecha = new Map<string, Set<string>>();
+  const soloFechaSinHora = new Map<string, Set<string>>();
+  const add = (m: Map<string, Set<string>>, k: string, idp: string) => {
+    if (!m.has(k)) m.set(k, new Set());
+    m.get(k)!.add(idp);
+  };
 
   for (const b of parseMcBlocks(html)) {
     if (!b.fechaDM) continue;
     const logoKey = mcLogoKey(b.logos);
-
-    const kDateTime = `${logoKey}|${b.fechaDM}${b.hora ? ` ${b.hora}` : ''}`;
-    if (!conHora.has(kDateTime)) conHora.set(kDateTime, new Set());
-    conHora.get(kDateTime)!.add(b.idp);
-
-    const kDate = `${logoKey}|${b.fechaDM}`;
-    if (!soloFecha.has(kDate)) soloFecha.set(kDate, new Set());
-    soloFecha.get(kDate)!.add(b.idp);
+    add(conHora, `${logoKey}|${b.fechaDM}${b.hora ? ` ${b.hora}` : ''}`, b.idp);
+    add(soloFecha, `${logoKey}|${b.fechaDM}`, b.idp);
+    if (!b.hora) add(soloFechaSinHora, `${logoKey}|${b.fechaDM}`, b.idp);
   }
 
   const unicas = (m: Map<string, Set<string>>) =>
     new Map([...m].filter(([, s]) => s.size === 1).map(([k, s]) => [k, [...s][0]!]));
 
-  return { byDateTime: unicas(conHora), byDate: unicas(soloFecha) };
+  return { byDateTime: unicas(conHora), byDate: unicas(soloFecha), byDateNoTime: unicas(soloFechaSinHora) };
 }
 
 /** Índice vacío (fallos de red → degradación al comportamiento de siempre). */
 export function emptyMcIdpIndex(): McIdpIndex {
-  return { byDateTime: new Map(), byDate: new Map() };
+  return { byDateTime: new Map(), byDate: new Map(), byDateNoTime: new Map() };
 }
 
 /**
@@ -126,8 +133,54 @@ export function mcLookupIdp(
   if (logos.length < 2 || !fechaDM) return undefined;
   const logoKey = mcLogoKey(logos);
   if (hora) {
-    const hit = index.byDateTime.get(`${logoKey}|${fechaDM} ${hora}`);
-    if (hit) return hit;
+    // Con hora: solo su clave exacta o un bloque que NO publique hora.
+    return index.byDateTime.get(`${logoKey}|${fechaDM} ${hora}`)
+      ?? index.byDateNoTime.get(`${logoKey}|${fechaDM}`);
   }
   return index.byDate.get(`${logoKey}|${fechaDM}`);
+}
+
+/** Estado EXPLÍCITO de un partido en el match center. */
+export interface McState {
+  status: 'live' | 'finished' | 'scheduled';
+  /** Marcador del bloque (izquierda = local según la fuente). */
+  homeScore: number | undefined;
+  awayScore: number | undefined;
+  /** Logo de cada lado, para verificar la orientación local/visitante. */
+  leftLogo: string | null;
+  rightLogo: string | null;
+}
+
+/**
+ * Estado de cada partido del match center por idp: `scorer_game_playing` →
+ * live, `scorer_game_final` → finished, `scorer_game_pending` → scheduled, más
+ * el marcador en vivo. Es la señal explícita del directo de World Skate (el
+ * calendario no lo dice: durante el partido muestra "-"). Pura.
+ */
+export function parseMcStates(html: string): Map<string, McState> {
+  const out = new Map<string, McState>();
+  const re = /<(a|div)\s([^>]*class="[^"]*scorer_game[^"]*"[^>]*)>([\s\S]*?)(?=<(?:a|div)\s[^>]*class="[^"]*scorer_game[\s"]|$)/g;
+  for (const m of html.matchAll(re)) {
+    const attrs = m[2]!;
+    const body = m[3]!;
+    const idp = attrs.match(/idp=["']?(\d{2,6})/)?.[1];
+    if (!idp) continue;
+    const cls = attrs.match(/class="([^"]*)"/)?.[1] ?? '';
+    const status = /\bscorer_game_final\b/.test(cls) ? 'finished'
+      : /\bscorer_game_(?:playing|live)\b/.test(cls) ? 'live'
+      : /\bscorer_game_pending\b/.test(cls) ? 'scheduled'
+      : null;
+    if (!status) continue;
+    const score = body.match(/scorer_score['"][^>]*>\s*(\d{1,3})\s*[:-]\s*(\d{1,3})\s*</);
+    const logo = (side: 'left' | 'right') =>
+      body.match(new RegExp(`scorer_logo_${side}['"][^>]*>\\s*<img[^>]*logos_clubes/([^/'"?]+?)\\.png`))?.[1] ?? null;
+    out.set(idp, {
+      status,
+      homeScore: score ? Number(score[1]) : undefined,
+      awayScore: score ? Number(score[2]) : undefined,
+      leftLogo: logo('left'),
+      rightLogo: logo('right'),
+    });
+  }
+  return out;
 }

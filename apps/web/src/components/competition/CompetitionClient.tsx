@@ -202,7 +202,12 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
       )}
       {currentTab === 'Playoffs'      && (
         <Suspense fallback={<div className="card h-40 animate-pulse" aria-hidden="true" />}>
-          <PlayoffsTab rounds={data.rounds} matches={data.matches} format={data.season.competitionFormat} />
+          <PlayoffsTab
+            rounds={data.rounds}
+            matches={data.matches}
+            format={data.season.competitionFormat}
+            phases={data.season.phases}
+          />
         </Suspense>
       )}
       {currentTab === 'Estadísticas'  && stats && <StatsLeadersTab stats={stats} />}

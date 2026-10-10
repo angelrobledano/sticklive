@@ -32,8 +32,8 @@ sidgad/FEP + wse.sidgad.com
 ## Flujo de datos (de la fuente al usuario)
 
 1. **Alta de competición** — `seed-fep-competition.ts` descubre equipos en la fuente y crea `competitions` + `seasons` (is_current) + `teams` + fila en `competition_sources`. El cron itera esa tabla; dar de alta una liga no requiere tocar código.
-2. **Calendario** (`--entity=calendar`, cada hora) — parsea el calendario de la fuente y hace upsert de partidos (identidad por `source_ref`).
-3. **Marcadores en directo** (`cron-live`, cada 5 min; bucle activo de 45 s mientras haya partidos en juego) — feed global de marcadores + feed propio de World Skate. Solo actualiza score/estado de partidos existentes.
+2. **Calendario** (`--entity=calendar`, cada hora) — parsea el calendario de la fuente con su **estructura explícita** (fases y cabeceras de ronda) y hace upsert de fases, rondas y partidos (identidad por `source_ref`). Ver modelo de fases en [database.md](./database.md).
+3. **Marcadores en directo** (`cron-live`, cada 5 min; bucle activo de 45 s mientras haya partidos en juego) — feed global de marcadores + match center de World Skate. Solo actualiza score/estado de partidos existentes, y el estado solo con señal explícita de la fuente (nunca por la hora).
 4. **Actas** (`fichas-pendientes`, diaria; y en cada ciclo de directo para los partidos en juego) — parsea alineaciones, eventos con instante de juego, cuerpo técnico y faltas. `replaceMatchEvents` sincroniza los eventos por `source_ref` derivada del contenido.
 5. **Resolución de entidades** — cada referencia de equipo se resuelve a UUID por el embudo: `source_entity_map` (ID de fuente) → `team_aliases` (nombre normalizado) → slug → fuzzy con bloqueo → cola HITL (`resolution_queue`, panel `/admin/resolucion`). Ver [RUNBOOK_ENTITY_RESOLUTION.md](./RUNBOOK_ENTITY_RESOLUTION.md).
 6. **Notificación de cambios** — triggers de la migración 043 emiten `pg_notify('match_update')` solo si cambia algo visible; el hub SSE de la API (un poller por partido con fan-out) refresca y emite a los clientes. El push-dispatcher del ETL compara el estado antes/después del ciclo y envía las Web Push que tocan.
@@ -66,7 +66,8 @@ Detalles de relaciones, constraints e índices: [database.md](./database.md).
 
 - **Emisión:** triggers en `matches`/`match_events` → `pg_notify` (debounce 250 ms en la API) → hub con un poller por partido → fan-out SSE. Poll de respaldo cada 60 s; keepalive 25 s; la conexión se corta a las 2 h con `event: timeout` para que el cliente reconecte. Límite global de conexiones (503 `too_many_connections`).
 - **Cliente:** el web reconecta y recibe snapshot completo al reconectar (sin duplicados: los eventos tienen identidad estable por contenido, no posición).
-- **Crono y estados:** el instante de juego (25:00 → minuto transcurrido), prórroga y penaltis se derivan del acta; el watchdog `stale-live-watchdog` degrada a `scheduled` los partidos zombi (>5 h en live).
+- **Crono y estados:** el instante de juego (25:00 → minuto transcurrido), prórroga y penaltis se derivan del acta; el watchdog `stale-live-watchdog` degrada a `scheduled` los partidos zombi (>5 h en live desde el saque real).
+- **Estado del partido, fuente única:** `@sports/shared-types` (`resolveStatusTransition`, `matchDisplayState`). LIVE solo si la fuente lo da en juego (feed FEP, match center World Skate, acta); final por feed, acta (`periodo_fin`) o resultado publicado. API, web y app no derivan `live` de la hora: un partido con la hora pasada y sin señal se muestra «Pendiente».
 
 ## Jobs (producción)
 
@@ -91,11 +92,13 @@ Detalles y comportamiento ante fallos: [operations.md](./operations.md).
 8. **Producción corre JS compilado** — `scripts/build-server.mjs` empaqueta con esbuild; la imagen no lleva ni `tsx` ni TypeScript y corre como usuario `node`. El servicio `migrate` aplica migraciones antes de arrancar api/etl.
 9. **Auth progresiva** — anónimo por `deviceId` → magic link (Brevo) o Google OAuth al querer sincronizar; favoritos con fusión y tombstones. Tokens hasheados con caducidad.
 10. **i18n propio** — diccionarios JSON por idioma bajo `app/[locale]/`, sin dependencia externa; rutas y sitemap multiidioma con hreflang.
+11. **La estructura de una competición la publica la fuente** (migración 072) — `Competition → Season → Phase → (Group) → Round → Match`; el "formato" es la secuencia de fases. Orden de evidencia: datos explícitos de la fuente > metadato declarado > regla determinista > fallback avisado. Ninguna capa deduce fases por el nombre de la competición ni por cronología (salvo datos heredados sin re-scrapear, marcados). Diseño en [superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md](./superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md).
 
 ## Limitaciones conocidas (decisiones honestas)
 
 - El lanzador de falta directa solo se conoce cuando marca → eficiencia FD solo a nivel de equipo.
 - No hay fotos del cuerpo técnico en la fuente → silueta.
-- El formato "al mejor de N" de las series de playoff no es inferible de la fuente → no se muestra (requeriría campo `best_of` curado).
+- El "al mejor de N" de una serie no viene como dato: se guarda el nº de partido de cada uno (`series_game`, de «2 CUARTOS») y la web distingue serie al mejor de N (la fuente publica el 3.er partido) de ida y vuelta (dos partidos, por goles). No se muestra el N.
+- La clasificación no está ligada a una fase (se atribuye a la primera liguilla de la temporada).
 - El histórico importado (v1) trae solo marcadores de 8.828 partidos: sin eventos ni fechas para la mayoría (recuperación en curso vía enrich-promote, ver [A5_ENRICH_PROMOTE.md](./A5_ENRICH_PROMOTE.md)).
-- Conversión de zonas horarias propia sin dependencias: correcta salvo la ventana 01:00–01:59 local del domingo de cambio a horario de verano (edge documentado, testeado como comportamiento actual).
+- Conversión de zonas horarias con `Intl` (base IANA del runtime, cualquier zona). La regla UE sin dependencias (`euZonedToUtc`) sigue disponible para quien pase un offset, con su edge documentado en la ventana 01:00–01:59 local del domingo del cambio de hora.

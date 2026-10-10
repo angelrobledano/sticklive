@@ -20,9 +20,13 @@ import { FepBaseScraper } from './fep-base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
 import { isByeTeamName } from './bye-team.js';
-import type { ScrapedMatch, MatchStatus } from '@sports/shared-types';
-import { STALE_LIVE_HOURS } from '@sports/shared-types';
+import type { ScrapedMatch, MatchStatus, StructureRow } from '@sports/shared-types';
 import { zonedToUtc } from '../../core/eu-timezone.js';
+import { collectCalendarRows } from '../../core/sidgad-structure.js';
+
+// La estructura del calendario (fases y cabeceras de ronda) es común a todos
+// los portales sidgad (FEP, World Skate, FECAPA…): vive en core/.
+export { collectRoundRows, collectCalendarRows, type CalendarRow } from '../../core/sidgad-structure.js';
 
 /** Zona por defecto si la competición no trae una (competitions.timezone). */
 const DEFAULT_TIMEZONE = 'Europe/Madrid';
@@ -51,36 +55,14 @@ export function extractTeamLogoUrls(
 }
 
 /**
- * Asocia cada fila de partido con el nombre de fase que la precede.
- *
- * La fuente agrupa por jornada/fase con VARIOS `<thead class="head_jornada">` +
- * su `<tbody>` dentro de la MISMA tabla (p. ej. la Final Four: "SEMIFINALES" y
- * "FINAL"). Coger el último thead etiquetaba TODAS las filas con la última fase
- * (las semifinales salían como "FINAL"). Función pura para poder testearla.
+ * Estado que se deduce del CALENDARIO: solo `finished` cuando hay resultado
+ * publicado. Sin resultado el calendario NO sabe si el partido está en juego,
+ * aplazado o por empezar, así que no emite señal (`undefined`) y el loader
+ * conserva el estado que haya puesto el feed en vivo. La hora prevista no se
+ * usa jamás para declarar un partido `live`.
  */
-export function collectRoundRows(
-  $: cheerio.CheerioAPI,
-  table: Element,
-): Array<{ roundName: string; row: Element }> {
-  const out: Array<{ roundName: string; row: Element }> = [];
-  let roundName = '';
-  $(table).children().each((_, el) => {
-    const tag = (el as Element).tagName;
-    if (tag === 'thead') {
-      if (!$(el).hasClass('head_jornada')) return;
-      // La fuente etiqueta la jornada en varios idiomas (`span.lang_it`,
-      // `span.lang_es`…) y `text()` los concatena ("Giornata Jornada 1"). Se
-      // quitan los NO activos para quedarnos con el del `site_lang` (es).
-      const $th = $(el);
-      if ($th.find('.lang_label').length > 0) $th.find('.lang_label').not('.lang_es').remove();
-      roundName = $th.text().replace(/\s+/g, ' ').trim();
-    } else if (tag === 'tbody') {
-      $(el).find('tr.team_class').each((_, row) => {
-        out.push({ roundName, row: row as Element });
-      });
-    }
-  });
-  return out;
+export function statusFromCalendarScore(scoreText: string): MatchStatus | undefined {
+  return /\d+\s*[-:]\s*\d+/.test(scoreText) ? 'finished' : undefined;
 }
 
 export interface CalendarScraperConfig {
@@ -91,11 +73,6 @@ export interface CalendarScraperConfig {
   /** Nombre de la competición (para logging) */
   competitionName?: string;
   /**
-   * UUID de la ronda de fase a asignar a todos los partidos (p. ej. la
-   * fase de playoff dentro de la temporada de liga). Sin indicar = regular.
-   */
-  roundId?: string;
-  /**
    * Zona IANA en la que la fuente publica las horas (competitions.timezone).
    * Sin indicar = Europe/Madrid (comportamiento histórico).
    */
@@ -104,6 +81,12 @@ export interface CalendarScraperConfig {
 
 export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
   private calendarConfig: CalendarScraperConfig;
+  /**
+   * Filas del último scrape con su estructura (incluidas las que no son partido
+   * todavía) y el partido que generó cada una, si alguno. El ETL planifica las
+   * fases con ellas (`planSourceStructure`).
+   */
+  public calendarRows: Array<{ structure: StructureRow; match: ScrapedMatch | null }> = [];
 
   constructor(config: CalendarScraperConfig) {
     super({
@@ -140,25 +123,30 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
     const matches: ScrapedMatch[] = [];
     const scrapedAt = new Date();
 
-    // Recorrer la tabla asociando cada fila con su fase (ver collectRoundRows).
-    $('table.tabla_standard').each((_, table) => {
-      for (const { roundName, row } of collectRoundRows($, table as Element)) {
-        const errors = this.parseErrors;
-        try {
-          const match = this.parseMatchRow($, $(row), {
-            idc,
-            seasonId,
-            roundName,
-            scrapedAt,
-          });
-          if (match) matches.push(match);
-        } catch (err) {
-          this.captureError(errors, err, {
-            entityRef: $(row).attr('class') ?? 'unknown',
-          });
+    // Recorrer el calendario asociando cada fila con su FASE explícita (bloque
+    // content_fase_X + título) y su cabecera de ronda (ver collectCalendarRows).
+    this.calendarRows = [];
+    for (const { structure, row } of collectCalendarRows($, 'fep')) {
+      let match: ScrapedMatch | null = null;
+      try {
+        match = this.parseMatchRow($, $(row), {
+          idc,
+          seasonId,
+          roundName: structure.roundLabel ?? '',
+          scrapedAt,
+        });
+        if (match) {
+          match.phaseRef = structure.phaseRef;
+          match.phaseName = structure.phaseTitle;
+          matches.push(match);
         }
+      } catch (err) {
+        this.captureError(this.parseErrors, err, {
+          entityRef: $(row).attr('class') ?? 'unknown',
+        });
       }
-    });
+      this.calendarRows.push({ structure, match });
+    }
 
     this.log.info({ idc, total: matches.length }, 'Partidos extraídos del calendario');
     return matches;
@@ -169,9 +157,10 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
     $row: cheerio.Cheerio<Element>,
     ctx: { idc: string; seasonId: string; roundName: string; scrapedAt: Date }
   ): ScrapedMatch | null {
-    // Extraer IDs de equipo desde las clases CSS: team_3408 team_3358
+    // Extraer IDs de equipo desde las clases CSS: team_3408 team_3358. Un cruce
+    // aún sin decidir trae `team_ team_` (sin id): no es un partido todavía.
     const classes = ($row.attr('class') ?? '').split(/\s+/);
-    const teamClasses = classes.filter((c) => c.startsWith('team_') && c !== 'team_class');
+    const teamClasses = classes.filter((c) => /^team_\d+$/.test(c));
     if (teamClasses.length < 2) return null;
 
     const homeTeamRef = teamClasses[0]!.replace('team_', '');
@@ -204,8 +193,8 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
     const scoreText = $row.find('.web_link_td').first().text().trim();
     const { homeScore, awayScore } = parseScore(scoreText);
 
-    // Estado del partido
-    const status = inferStatus(scoreText, scheduledAt);
+    // Estado: el calendario solo sabe si hay resultado (ver statusFromCalendarScore).
+    const status = statusFromCalendarScore(scoreText);
 
     // ID del partido (idp) desde el botón de ficha
     const $gameReport = $row.find('i.game_report, a.link_ficha_partido, [idp]');
@@ -231,7 +220,6 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
 
     return {
       seasonId: ctx.seasonId,
-      roundId: this.calendarConfig.roundId,
       roundRef: ctx.roundName || undefined, // nombre de ronda de la fuente (Final, Cuartos…)
       homeTeamRef,
       awayTeamRef,
@@ -293,18 +281,4 @@ function parseScore(scoreText: string): { homeScore?: number; awayScore?: number
     homeScore: parseInt(match[1]!, 10),
     awayScore: parseInt(match[2]!, 10),
   };
-}
-
-function inferStatus(
-  scoreText: string,
-  scheduledAt: Date | undefined
-): MatchStatus {
-  if (scoreText && /\d+\s*[-:]\s*\d+/.test(scoreText)) return 'finished';
-  if (!scheduledAt) return 'scheduled';
-  const now = new Date();
-  if (scheduledAt > now) return 'scheduled';
-  // Si la fecha ya paso pero no hay resultado, puede ser live o pendiente
-  const hoursSince = (now.getTime() - scheduledAt.getTime()) / 3_600_000;
-  if (hoursSince < STALE_LIVE_HOURS) return 'live';
-  return 'scheduled'; // datos aun no actualizados
 }

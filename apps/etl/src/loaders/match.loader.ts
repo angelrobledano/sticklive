@@ -7,8 +7,9 @@
  * 3. Procesar en batches para no sobrecargar la DB
  * 4. Usar transacciones por batch (no por partido individual — más eficiente)
  */
-import { upsertMatch, insertScrapeLog, getSeasonSignals, upsertRound, db, learnSourceClub } from '@sports/db';
+import { upsertMatch, insertScrapeLog, getSeasonSignals, upsertRound, db, learnSourceClub, ensurePhase, ensurePhaseRound } from '@sports/db';
 import type { ScrapedMatch, ScrapeResult } from '@sports/shared-types';
+import { resolveStatusTransition } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import * as Sentry from '@sentry/node';
 import { transformMatch } from '../transformers/match.transformer.js';
@@ -123,23 +124,57 @@ export async function loadMatches(
   const resolver = new RefResolver(sportId);
   const items = scrapeResult.data;
 
-  // Caché de rondas resueltas en esta ejecución: "season|number|type" → roundId.
+  // Caché de fases/rondas resueltas en esta ejecución.
+  const phaseCache = new Map<string, string>();
   const roundCache = new Map<string, string>();
-  async function resolveRound(raw: ScrapedMatch): Promise<string | undefined> {
+  /**
+   * Ronda (y fase) de un partido cuando la FUENTE emite estructura y el flag
+   * está activo (World Skate). Con fase explícita (`phaseRef`) la ronda cuelga
+   * de su fase (072); sin ella, camino legado por (temporada, número, tipo).
+   */
+  async function resolveRound(raw: ScrapedMatch): Promise<{ roundId: string; phaseId?: string } | undefined> {
     if (!options.createRounds || raw.roundNumber == null || !raw.seasonId) return undefined;
     const roundType = raw.roundType ?? 'regular';
-    const key = `${raw.seasonId}|${raw.roundNumber}|${roundType}`;
+    let phaseId: string | undefined;
+    if (raw.phaseRef && raw.phaseKind) {
+      const pKey = `${raw.seasonId}|${raw.phaseRef}`;
+      phaseId = phaseCache.get(pKey);
+      if (!phaseId) {
+        phaseId = await ensurePhase({
+          seasonId: raw.seasonId,
+          sourceRef: raw.phaseRef,
+          kind: raw.phaseKind,
+          isPlacement: raw.phaseIsPlacement ?? false,
+          name: raw.phaseName ?? null,
+          ordinal: raw.phaseOrdinal ?? 1,
+          resolvedBy: raw.phaseResolvedBy ?? 'source_rounds',
+          sourceId: raw.sourceId,
+        });
+        phaseCache.set(pKey, phaseId);
+      }
+    }
+    const key = `${raw.seasonId}|${phaseId ?? '-'}|${raw.roundNumber}|${roundType}`;
     const cached = roundCache.get(key);
-    if (cached) return cached;
-    const id = await upsertRound({
-      seasonId: raw.seasonId,
-      number: raw.roundNumber,
-      name: raw.roundRef,
-      roundType,
-      sourceId: raw.sourceId,
-    });
-    roundCache.set(key, id);
-    return id;
+    if (cached) return { roundId: cached, phaseId };
+    const roundId = phaseId
+      ? await ensurePhaseRound({
+          seasonId: raw.seasonId,
+          phaseId,
+          roundType: roundType === 'regular' ? 'regular' : 'playoff',
+          number: raw.roundNumber,
+          stage: raw.stage ?? null,
+          name: raw.roundRef ?? null,
+          sourceId: raw.sourceId,
+        })
+      : await upsertRound({
+          seasonId: raw.seasonId,
+          number: raw.roundNumber,
+          name: raw.roundRef,
+          roundType,
+          sourceId: raw.sourceId,
+        });
+    roundCache.set(key, roundId);
+    return { roundId, phaseId };
   }
 
   // Señales de dominio por temporada (género/categoría de la competición), para
@@ -194,8 +229,11 @@ export async function loadMatches(
         }
 
         // Ronda/fase (solo si la fuente emite estructura y el flag está activo)
-        const roundId = await resolveRound(raw);
-        if (roundId) input.roundId = roundId;
+        const resolvedRound = await resolveRound(raw);
+        if (resolvedRound) {
+          input.roundId = resolvedRound.roundId;
+          if (resolvedRound.phaseId) input.phaseId = resolvedRound.phaseId;
+        }
 
         let resolved = false;
         try {
@@ -331,7 +369,7 @@ export async function loadMatches(
           // #189: sella el instante de inicio/fin la PRIMERA vez que el partido
           // se ve en ese estado. El upsert usa COALESCE(matches.x, EXCLUDED.x)
           // para que los re-scrapes no lo pisen.
-          if (options.stampLiveTimes) {
+          if (options.stampLiveTimes && input.status) {
             const at = raw.scrapedAt ?? new Date();
             // #189 + #377(P3-11): sella inicio/fin la primera vez. En `finished`
             // sin inicio conocido se usa `scheduled_at` para no dejar NULL.
@@ -347,6 +385,10 @@ export async function loadMatches(
             `SELECT status FROM matches WHERE source_ref = $1 LIMIT 1`, [input.sourceRef]
           );
           const prevStatus = prevRow.rows[0]?.status ?? null;
+          // Única regla de transición (@sports/shared-types): sin observación de
+          // estado se conserva el actual; con observación, se aplica.
+          const transition = resolveStatusTransition(prevStatus, input.status);
+          if (input.status !== undefined) input.status = transition.status;
           if (isStatusRegression(prevStatus, input.status)) {
             // El from/to y la ref VAN EN EL MENSAJE: los extras de Sentry no se
             // ven desde la API de búsqueda y los logs de docker rotan — con la
@@ -423,7 +465,7 @@ export async function loadMatches(
                       AND COALESCE($2, home_score) = COALESCE($3, away_score)
                       AND win_type IS DISTINCT FROM 'penalties'
                      THEN NULL ELSE winner_team_id END,
-                   status     = $4,
+                   status     = COALESCE($4, status),
                    scraped_at = $5,
                    updated_at = NOW()
                WHERE source_ref = $1
@@ -432,7 +474,7 @@ export async function loadMatches(
                 input.sourceRef,
                 input.homeScore ?? null,
                 input.awayScore ?? null,
-                input.status,
+                input.status ?? null,
                 input.scrapedAt,
               ]
             );
@@ -513,11 +555,11 @@ export async function loadMatches(
                            AND COALESCE($2, home_score) = COALESCE($3, away_score)
                            AND win_type IS DISTINCT FROM 'penalties'
                           THEN NULL ELSE winner_team_id END,
-                        status     = $4,
+                        status     = COALESCE($4, status),
                         scraped_at = $5,
                         updated_at = NOW()
                   WHERE id = $1`,
-                [adoptedHit.id, input.homeScore ?? null, input.awayScore ?? null, input.status, input.scrapedAt],
+                [adoptedHit.id, input.homeScore ?? null, input.awayScore ?? null, input.status ?? null, input.scrapedAt],
               );
               log.info(
                 { sourceRef: input.sourceRef, competition: raw.competitionName, scheduledAt: input.scheduledAt },

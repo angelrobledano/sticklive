@@ -26,7 +26,8 @@ import { forEachLimited } from './concurrency.js';
 import { downloadTeamLogos } from './team-logos.js';
 import { scrapeRunStatus } from './scrape-log-status.js';
 import { acquireEtlLock } from './etl-lock.js';
-import { cupRoundNumber, finalFourRoundNumber, regularRoundNumber } from './cup-rounds.js';
+import { planSourceStructure, type PhaseKind, type StructureRow, type ScrapedMatch } from '@sports/shared-types';
+import { applyStructurePlan, assignStructure, declaredKindFromFormat, pruneAfterLoad, type AppliedStructure } from './structure/apply-structure.js';
 
 // Los scrapers viven en apps/scraper — importamos via ruta relativa (ts-node lo resuelve)
 import { FepCalendarScraper } from '../../scraper/src/scrapers/fep/fep-calendar.scraper.js';
@@ -46,20 +47,14 @@ const IDC_NAMES: Record<string, string> = {
   '3150': 'OK LIGA MASCULINA',
   '3481': 'PLAY OFFS OK LIGA',
 };
-// idcs que son fase de playoff (sus partidos van a la ronda de fase de su liga):
-//   3481 = playoff OK Liga (masc) · 3484 = playoff OK Liga Iberdrola (fem)
+// SOLO para el modo manual `--idc` (sin competition_sources) y para la
+// clasificación. La ESTRUCTURA del calendario (fases/rondas) ya no depende de
+// estas listas: la decide la fuente (ver processCalendar / planSourceStructure).
+//   · Playoff de las ligas de oro: no tienen clasificación propia (hide_clasif).
 const PLAYOFF_IDCS_PIPELINE = ['3481', '3484'];
-
-// idcs de copas/supercopas (formato eliminatoria): sus rondas se crean a partir
-// del nombre de la fuente (Octavos/Cuartos/Semis/Final) con round_type='playoff',
-// para que la web las pinte como bracket. No tocan la OK Liga ni el loader.
-// Copas/supercopas verificadas contra prod (28/07/2026): Rey 3258, Reina 3259,
-// Supercopas 3177/3178, SAR 3301/3302. Los 3260/3261 que había aquí eran idc
-// fantasma (no existen como competición) — eliminados.
+//   · Copas/supercopas: su clasificación vacía es lo esperado (#329), y en modo
+//     manual cuentan como metadato "eliminatoria" si la fuente no lo deja claro.
 const CUP_IDCS = new Set(['3258', '3259', '3177', '3178', '3301', '3302']);
-
-// Defaults del modo manual `--idc` (sin competition_sources). El modo driven toma
-// los playoff/copas y el formato de `competition_sources.external_ids` (#166).
 const LEGACY_PLAYOFF_IDCS = new Set(PLAYOFF_IDCS_PIPELINE);
 
 // ── Punto 10, Fase 2: scrape guiado por `competition_sources` ────────────────
@@ -76,26 +71,6 @@ const COMPETITION_SOURCES_DRIVEN =
 // Competiciones en paralelo en el modo multi. Un tope moderado escala el scrape
 // a decenas de ligas sin martillear sidgad (secuencial + pausa se quedaba corto).
 const SCRAPE_CONCURRENCY = Number(process.env['SCRAPE_CONCURRENCY'] ?? 4);
-
-/** Get-or-create de una ronda por (temporada, nombre); busca número libre. */
-async function getOrCreateRound(seasonId: string, name: string, number: number, type: string): Promise<string> {
-  const found = await db.query<{ id: string }>(
-    `SELECT id FROM rounds WHERE season_id = $1 AND round_type = $2 AND LOWER(name) = LOWER($3) LIMIT 1`,
-    [seasonId, type, name]
-  );
-  if (found.rows[0]) return found.rows[0].id;
-  let num = number;
-  for (let guard = 0; guard < 50; guard++) { // evita choque con UNIQUE(season,number,type)
-    const clash = await db.query(`SELECT 1 FROM rounds WHERE season_id = $1 AND number = $2 AND round_type = $3`, [seasonId, num, type]);
-    if (clash.rows.length === 0) break;
-    num++;
-  }
-  const ins = await db.query<{ id: string }>(
-    `INSERT INTO rounds (season_id, number, name, round_type) VALUES ($1, $2, $3, $4) RETURNING id`,
-    [seasonId, num, name, type]
-  );
-  return ins.rows[0]!.id;
-}
 
 /**
  * Elimina placeholders sintéticos obsoletos:
@@ -164,50 +139,30 @@ async function reconcileSyntheticMatches(): Promise<number> {
 
 /**
  * Scrapea el calendario de una competición (uno o varios idc: liga regular +
- * su playoff) hacia una temporada concreta. Extraído del `main` para poder
- * reutilizarlo tanto en el modo single (SEASON_ID/IDC del entorno) como en el
- * modo multi guiado por `competition_sources`.
+ * su playoff) hacia una temporada concreta y le aplica la ESTRUCTURA que publica
+ * la fuente: fases (bloques `content_fase_X` y su título) y rondas (cabeceras
+ * "JORNADA 5", "2 CUARTOS", "SEMIFINALES"…). Mismo camino para cualquier
+ * formato — liga, liga+playoff, grupos, final four, eliminatoria — sin listas de
+ * idc ni casos especiales (ver `planSourceStructure`).
+ *
+ * `declaredKind` es el metadato de `competition_sources` (nivel 2): solo decide
+ * cuando la fuente no deja claro el tipo de una fase.
  */
 async function processCalendar(
   seasonId: string,
   idcs: string[],
   pipeline: EtlPipeline,
   timezone?: string,
-  playoffIdcs: ReadonlySet<string> = LEGACY_PLAYOFF_IDCS,
-  cupIdcs: ReadonlySet<string> = CUP_IDCS,
-  cupFormat: 'bracket' | 'final_four' = 'bracket',
+  declaredKind: PhaseKind | null = null,
   dryRun = false,
 ): Promise<void> {
+  // 1. Scrape de TODOS los idc de la competición: la estructura se planifica
+  //    sobre el conjunto para ordenar sus fases (liga antes que playoff).
+  const scraped: Array<{ idc: string; result: Awaited<ReturnType<FepCalendarScraper['run']>>; rows: FepCalendarScraper['calendarRows'] }> = [];
   for (const calIdc of idcs) {
     const calName = IDC_NAMES[calIdc] ?? `idc ${calIdc}`;
     log.info({ idc: calIdc, competitionName: calName }, '→ Scrapeando calendario...');
-
-    // Los partidos del playoff (idc 3481/3484) van a la MISMA temporada que la
-    // liga, marcados con la ronda de fase playoff (modelo de fases).
-    let roundId: string | undefined;
-    if (playoffIdcs.has(calIdc)) {
-      const r = await db.query<{ id: string }>(
-        `SELECT id FROM rounds WHERE season_id = $1 AND round_type = 'playoff' AND number = 100`,
-        [seasonId]
-      );
-      roundId = r.rows[0]?.id;
-      if (!roundId) {
-        const ins = await db.query<{ id: string }>(
-          `INSERT INTO rounds (season_id, number, name, round_type)
-           VALUES ($1, 100, 'Playoff por el título', 'playoff') RETURNING id`,
-          [seasonId]
-        );
-        roundId = ins.rows[0]!.id;
-      }
-    }
-
-    const scraper = new FepCalendarScraper({
-      idc: calIdc,
-      seasonId,
-      competitionName: calName,
-      roundId,
-      timezone,
-    });
+    const scraper = new FepCalendarScraper({ idc: calIdc, seasonId, competitionName: calName, timezone });
     const result = await scraper.run();
     log.info({ idc: calIdc, found: result.data.length, errors: result.errors.length }, 'Calendario scrapeado');
 
@@ -218,48 +173,48 @@ async function processCalendar(
     if (!dryRun && (status !== 'success' || result.data.length === 0)) {
       await registrarRunSinLoader(result, status, 'match', calIdc);
     }
+    scraped.push({ idc: calIdc, result, rows: scraper.calendarRows });
+  }
 
-    // Copas: crear rondas por nombre (Octavos/Cuartos/Semis/Final) como
-    // 'playoff' y asignarlas a cada partido → la web las pinta como bracket.
-    // Final Four: numeración canónica Semifinal(1)/Final(2).
-    if (cupIdcs.has(calIdc)) {
-      const roundNumberOf = cupFormat === 'final_four' ? finalFourRoundNumber : cupRoundNumber;
-      const cache = new Map<string, string>();
-      for (const m of result.data) {
-        const rname = m.roundRef?.trim();
-        if (!rname) continue;
-        let rid = cache.get(rname.toLowerCase());
-        if (!rid) {
-          rid = await getOrCreateRound(seasonId, rname, roundNumberOf(rname), 'playoff');
-          cache.set(rname.toLowerCase(), rid);
-        }
-        m.roundId = rid;
-      }
-    } else if (!playoffIdcs.has(calIdc)) {
-      // Liga: crear la ronda REGULAR por jornada (la fuente trae el thead
-      // "JORNADA N" → `roundRef`) y asignarla al partido. Sin esto `rounds`
-      // queda vacío, `roundNumber` nulo y la web no puede filtrar por jornada
-      // (solo Fecha/Equipo), que es lo que hacía.
-      const cache = new Map<string, string>();
-      for (const m of result.data) {
-        const rname = m.roundRef?.trim();
-        if (!rname) continue;
-        let rid = cache.get(rname.toLowerCase());
-        if (!rid) {
-          const n = regularRoundNumber(rname);
-          if (n == null) continue;
-          rid = await getOrCreateRound(seasonId, rname, n, 'regular');
-          cache.set(rname.toLowerCase(), rid);
-        }
-        m.roundId = rid;
-      }
-    }
-
-    if (result.data.length > 0) {
-      const etl = await pipeline.runMatches(result);
-      log.info(etl, '✅ Partidos cargados');
+  // 2. Estructura explícita de la fuente → fases + rondas (+ nº de partido de serie).
+  const rows: Array<{ structure: StructureRow; match: ScrapedMatch | null }> = [];
+  for (const s of scraped) {
+    for (const r of s.rows) rows.push({ structure: { ...r.structure, docIndex: rows.length }, match: r.match });
+  }
+  let applied: AppliedStructure | null = null;
+  if (rows.length > 0) {
+    const plan = planSourceStructure(rows.map((r) => r.structure), { declaredKind });
+    if (dryRun) {
+      log.info({ phases: plan.phases.map((p) => ({ ref: p.ref, kind: p.kind, placement: p.isPlacement, by: p.resolvedBy, rounds: p.rounds.length })) },
+        '[dry-run] Estructura planificada (no se escribe)');
+    } else {
+      const sourceId = rows.find((r) => r.match)?.match?.sourceId ?? null;
+      applied = await applyStructurePlan(seasonId, plan, sourceId);
+      assignStructure(rows, plan, applied);
     }
   }
+
+  // 3. Carga de partidos, idc a idc.
+  for (const s of scraped) {
+    if (s.result.data.length > 0) {
+      const etl = await pipeline.runMatches(s.result);
+      log.info({ idc: s.idc, ...etl }, '✅ Partidos cargados');
+    }
+  }
+
+  // 4. Solo con TODOS los idc leídos bien: la estructura recibida es completa.
+  if (applied && scraped.every((s) => s.result.success)) await pruneAfterLoad(seasonId, applied);
+}
+
+/** Formato declarado de la competición de una temporada (modo manual `--idc`). */
+async function declaredFormatOfSeason(seasonId: string): Promise<string | null> {
+  const { rows } = await db.query<{ format: string | null }>(
+    `SELECT cs.external_ids->>'format' AS format
+       FROM seasons s JOIN competition_sources cs ON cs.competition_id = s.competition_id
+      WHERE s.id = $1 LIMIT 1`,
+    [seasonId],
+  );
+  return rows[0]?.format ?? null;
 }
 
 /**
@@ -369,8 +324,8 @@ async function runMultiCompetition(
       const isKnockout = item.format === 'bracket' || item.format === 'final_four';
       const cups = isKnockout ? new Set([item.primaryIdc]) : new Set<string>();
       if (entity === 'calendar') {
-        await processCalendar(item.seasonId, [item.primaryIdc, ...item.playoffIdcs], pipeline, item.timezone, playoff, cups,
-          item.format === 'final_four' ? 'final_four' : 'bracket', dryRun);
+        await processCalendar(item.seasonId, [item.primaryIdc, ...item.playoffIdcs], pipeline, item.timezone,
+          declaredKindFromFormat(item.format), dryRun);
       } else {
         await processStandings(item.primaryIdc, item.competitionName, pipeline, playoff, cups, dryRun);
       }
@@ -469,7 +424,11 @@ async function mainInner() {
 
   // ── Calendario ─────────────────────────────────────
   if (entity === 'calendar' || entity === 'all') {
-    await processCalendar(seasonId!, idcs, pipeline, undefined, undefined, undefined, 'bracket', dryRun);
+    // Metadato declarado de la competición (si lo hay) o, en su defecto, la
+    // lista legada de copas para ejecuciones manuales de esos idc.
+    const declared = declaredKindFromFormat(await declaredFormatOfSeason(seasonId!))
+      ?? (idcs.some((i) => CUP_IDCS.has(i)) ? 'knockout' : null);
+    await processCalendar(seasonId!, idcs, pipeline, undefined, declared, dryRun);
     // Reconciliación automática: si un placeholder sintético ya tiene su
     // partido real (con idp), eliminarlo para no duplicar en la web.
     const reconciled = await reconcileSyntheticMatches();

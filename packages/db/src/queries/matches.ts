@@ -9,6 +9,10 @@ export interface DbMatch {
   id: string;
   season_id: string;
   round_id: string | null;
+  /** Fase de la temporada (072). */
+  phase_id?: string | null;
+  /** Nº de partido dentro de la eliminatoria (072). */
+  series_game?: number | null;
   home_team_id: string;
   away_team_id: string;
   home_score: number | null;
@@ -39,7 +43,15 @@ export interface UpsertMatchInput {
   awayTeamId: string;
   homeScore?: number;
   awayScore?: number;
-  status: MatchStatus;
+  /**
+   * Estado OBSERVADO en la fuente. `undefined` = la fuente no dice nada del
+   * estado (p. ej. una fila de calendario sin resultado): en un alta el partido
+   * nace `scheduled` y en una actualización se CONSERVA el estado actual. Así una
+   * fuente que no sabe si el partido está en juego no puede pisar a la que sí lo
+   * sabe (feed en vivo). La transición la resuelve `resolveStatusTransition`
+   * (@sports/shared-types) en el loader.
+   */
+  status?: MatchStatus;
   scheduledAt?: Date;
   startedAt?: Date;
   finishedAt?: Date;
@@ -52,6 +64,10 @@ export interface UpsertMatchInput {
   notes?: string;
   /** Grupo de la fase de grupos ("A", "B"...). NULL = sin grupos (eliminatorias). */
   groupName?: string;
+  /** Fase de la temporada (migración 072). Se conserva si no viene. */
+  phaseId?: string;
+  /** Nº de partido dentro de la eliminatoria ("2 CUARTOS" → 2). */
+  seriesGame?: number;
   sourceId?: string;
   sourceRef: string;  // Obligatorio — es la clave de deduplicación
   sourceUrl?: string;
@@ -96,8 +112,9 @@ export async function upsertMatch(
         scheduled_at, started_at, finished_at,
         venue_name, venue_city, is_neutral, attendance, referee, notes,
         group_name,
-        source_id, source_ref, source_url, scraped_at, video_url, import_batch_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+        source_id, source_ref, source_url, scraped_at, video_url, import_batch_id,
+        phase_id, series_game)
+     VALUES ($1,$2,$3,$4,$5,$6,COALESCE($7::text, 'scheduled'),$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
      ON CONFLICT (source_ref) WHERE (source_ref IS NOT NULL) DO UPDATE SET
        ${enrichSet}home_score   = COALESCE(EXCLUDED.home_score,  matches.home_score),
        away_score   = COALESCE(EXCLUDED.away_score,  matches.away_score),
@@ -120,7 +137,9 @@ export async function upsertMatch(
             = COALESCE(EXCLUDED.away_score, matches.away_score)
           AND matches.win_type IS DISTINCT FROM 'penalties'
          THEN NULL ELSE matches.winner_team_id END,
-       status       = EXCLUDED.status,
+       -- Sin observación de estado ($7 NULL) se conserva el actual: el
+       -- calendario no puede deshacer un directo que solo conoce el feed.
+       status       = COALESCE($7::text, matches.status),
        scheduled_at = COALESCE(EXCLUDED.scheduled_at, matches.scheduled_at),
        -- started_at/finished_at se fijan UNA vez (#189): no se pisan en los
        -- re-scrapes (el loader los sella en la transición a live/finished).
@@ -130,6 +149,8 @@ export async function upsertMatch(
        video_url    = COALESCE(EXCLUDED.video_url,    matches.video_url),
        round_id     = COALESCE(EXCLUDED.round_id,     matches.round_id),
        group_name   = COALESCE(EXCLUDED.group_name,   matches.group_name),
+       phase_id     = COALESCE(EXCLUDED.phase_id,     matches.phase_id),
+       series_game  = COALESCE(EXCLUDED.series_game,  matches.series_game),
        attendance   = COALESCE(EXCLUDED.attendance,   matches.attendance),
        referee      = COALESCE(EXCLUDED.referee,      matches.referee),
        scraped_at   = EXCLUDED.scraped_at,
@@ -142,7 +163,7 @@ export async function upsertMatch(
       input.awayTeamId,
       input.homeScore ?? null,
       input.awayScore ?? null,
-      input.status,
+      input.status ?? null,
       input.scheduledAt ?? null,
       input.startedAt ?? null,
       input.finishedAt ?? null,
@@ -159,6 +180,8 @@ export async function upsertMatch(
       input.scrapedAt ?? null,
       input.videoUrl ?? null,
       input.importBatchId ?? null,
+      input.phaseId ?? null,
+      input.seriesGame ?? null,
     ]
   );
   return result.rows[0]!;

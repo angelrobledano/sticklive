@@ -4,6 +4,15 @@ Historial de hitos de producto y plataforma. El estado vivo está en [ESTADO_PRO
 
 ---
 
+## Octubre 2026 — Fases de competición y directo por señal explícita
+
+Diseño: [superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md](./superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md) · Operativa: [runbook-fases-y-directo.md](./runbook-fases-y-directo.md).
+
+- **Directo fiable.** Un partido solo está EN DIRECTO si la fuente lo dice (feed FEP, match center de World Skate, acta). Se eliminan los seis sitios que lo deducían de la hora (calendarios FEP y World Skate, API, `MatchCard`/`classifyMatch` de la web y la app): un partido con la hora pasada y sin señal se muestra «Pendiente». Regla de estado única (`resolveStatusTransition`): una fuente que no informa del estado no lo toca (el calendario ya no puede devolver a «programado» un partido en juego). Final por acta (`periodo_fin`) además del feed. La ventana del directo y el watchdog cuentan desde el saque real (partidos que empiezan tarde).
+- **World Skate (WSG Asunción).** Estado y marcador desde el match center; índice de `idp` con la hora (el ITA-COL femenino se llevaba el `idp` del cuarto de final sub-19); zona horaria con `Intl` — Asunción es UTC-3, no UTC-4 (todo el Mundial iba 1 h desplazado).
+- **Fases de competición (migración 072, aditiva).** `Competition → Season → Phase → (Group) → Round → Match`. El formato es la secuencia de fases y sale de la estructura que ya publica la fuente (bloques de fase, «2 CUARTOS», «SEMIFINALES»…), con un único plan para liga, liga + playoff, grupos, grupos + final four, final four y eliminatoria. Fuera la ronda fija 100 del playoff, las listas de `idc` y la deducción por nombre de competición o por cronología. Las temporadas existentes reciben fases `legacy` sin reinterpretar nada y se completan al re-scrapear.
+- **API y web.** `/seasons/:id/overview` y `/teams/:id` exponen `phases`, `stage` y `seriesGame` sin quitar campos. La web pinta cada fase eliminatoria con su cuadro (series al mejor de N, final four o cuadro): grupos + final four muestran clasificación **y** cuadro; la 2.ª semifinal ya no sale como «Final» durante las semis.
+
 ## Octubre 2026 — Supercopa como Final Four y arreglo de duplicados
 
 - **Modelo FINAL_FOUR.** La Supercopa de España (masc./fem.) se modela como torneo a 4 mediante `competition_sources.external_ids.format='final_four'`: sus rondas se crean como `round_type='playoff'` con numeración canónica Semifinal=1 / Final=2 (`run-pipeline` + `seed-fep-competition --format=`), y la API expone `competitionFormat` en la ficha de temporada. La web la pinta como cuadro **Semifinal x2 → Final → campeón** (`FinalFourBracket`) con pestaña "Final Four", sin Jornadas ni Clasificación (antes aparecía como liga).

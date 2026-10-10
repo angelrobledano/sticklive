@@ -1,4 +1,4 @@
-import { STALE_LIVE_HOURS } from '@sports/shared-types';
+import { matchDisplayState } from '@sports/shared-types';
 
 /**
  * match-time.ts — autoridad horaria ÚNICA de la app.
@@ -75,40 +75,20 @@ interface ClassifiableMatch {
 }
 
 /**
- * Ventana "en juego por reloj" (#377/P3-8): MISMO umbral que la API
- * (`effective-status`) y el `stale-live-watchdog` del ETL — `STALE_LIVE_HOURS`
- * de `@sports/shared-types` (fuente única #191). Antes aquí vivía un 3 h propio
- * que divergía del 5 h de la API: entre 3 y 5 h la API decía "live" y la web
- * "pasado".
- */
-const MATCH_WINDOW_MS = STALE_LIVE_HOURS * 3_600_000;
-
-/**
  * Clasifica un partido en pasado / en juego / futuro.
  *
- * Prioridad: estado real de la BD por encima de la heurística por hora. La
- * heurística solo actúa sobre 'scheduled' como parche mientras el scraper
- * estabiliza el paso a 'live'/'finished':
- *   - empezó hace < 5 h (STALE_LIVE_HOURS)  → en juego
- *   - empezó hace ≥ 5 h y sigue 'scheduled' → dato muerto, se trata como pasado
- *   - aún no ha empezado  → futuro
+ * "En juego" SOLO si la fuente lo da en juego (`status = 'live'`): la hora no
+ * fabrica directos (regla única `matchDisplayState` de @sports/shared-types,
+ * la misma que API, web y app). Un `scheduled` con la hora pasada sigue
+ * pendiente (futuro) hasta OVERDUE_AFTER_HOURS; después es un dato muerto
+ * (pasado). Aplazado/cancelado se listan en futuros con su aviso.
  */
 export function classifyMatch(
   match: ClassifiableMatch,
   now: Date = new Date(),
 ): TemporalBucket {
-  if (match.status === 'live') return 'live';
-  if (match.status === 'finished') return 'past';
-  // Aplazado/cancelado: no es un partido "jugado"; se lista en futuros con su aviso.
-  if (match.status === 'postponed' || match.status === 'cancelled') return 'future';
-
-  const startIso = match.startedAt ?? match.scheduledAt;
-  if (!startIso) return 'future';
-  const start = new Date(startIso).getTime();
-  if (Number.isNaN(start)) return 'future';
-
-  const elapsed = now.getTime() - start;
-  if (elapsed < 0) return 'future';
-  if (elapsed < MATCH_WINDOW_MS) return 'live';
-  return 'past';
+  const state = matchDisplayState(match.status, match.startedAt ?? match.scheduledAt, now.getTime());
+  if (state === 'live') return 'live';
+  if (state === 'finished' || state === 'overdue') return 'past';
+  return 'future';
 }

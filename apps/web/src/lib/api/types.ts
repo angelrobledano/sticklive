@@ -248,6 +248,8 @@ export interface TeamSeasonInfo {
   competitionName: string;
   competitionShort: string | null;
   competitionFormat: CompetitionFormat;
+  /** Fases de la temporada (ausente en payloads antiguos). */
+  phases?: SeasonPhase[];
 }
 
 export interface SeasonLeader {
@@ -416,11 +418,39 @@ export interface SeasonStandingRow {
   penalizationPoints: number;
 }
 
+/** Fase eliminatoria canónica (ronda de una fase `knockout`). */
+export type KnockoutStage = 'round_of_16' | 'quarters' | 'semis' | 'final' | 'third_place' | 'placement';
+
+/**
+ * Fase de una temporada (liga regular, grupos, playoff, final four,
+ * colocación…). La estructura de la competición es la SECUENCIA de sus fases;
+ * la publica la fuente y la guarda el ETL (migración 072).
+ */
+export interface SeasonPhase {
+  id: string;
+  ordinal: number;
+  kind: 'league' | 'groups' | 'knockout';
+  /** No decide el título (playoff 9.º-10.º, puestos 5.º-8.º…). */
+  isPlacement: boolean;
+  name: string | null;
+  /** La clasificación de la temporada pertenece a esta fase. */
+  hasStandings: boolean;
+  /** Fases eliminatorias presentes, en orden de juego (vacío en liga/grupos). */
+  stages: KnockoutStage[];
+  /** Alguna fase eliminatoria es deducida (solo temporadas heredadas). */
+  stagesInferred?: boolean;
+  /** Estructura publicada por la fuente (false = temporada heredada sin re-scrapear). */
+  fromSource?: boolean;
+}
+
 export interface SeasonRound {
   id: string;
   number: number;
   name: string | null;
   roundType: 'regular' | 'playoff' | 'cup' | 'friendly';
+  /** Fase a la que pertenece (API ≥ fases; ausente en payloads antiguos). */
+  phaseId?: string | null;
+  stage?: KnockoutStage | null;
 }
 
 export interface SeasonMatch {
@@ -442,6 +472,13 @@ export interface SeasonMatch {
   roundType: string;
   /** Grupo de la fase de grupos ("A", "B"...); null en eliminatorias/ligas. */
   groupName?: string | null;
+  /** Fase del partido y su fase eliminatoria EXPLÍCITA (de la fuente). */
+  phaseId?: string | null;
+  stage?: KnockoutStage | null;
+  /** Nº de partido dentro de la eliminatoria ("2 CUARTOS" → 2; ida=1, vuelta=2). */
+  seriesGame?: number | null;
+  /** La fase eliminatoria es deducida (solo temporadas heredadas). */
+  stageInferred?: boolean;
   homeTeam: TeamSummary;
   awayTeam: TeamSummary;
 }
@@ -468,11 +505,12 @@ export interface SeasonOverview {
     /** IANA TZ de la competición (migración 042). La web cae a Europe/Madrid. */
     competitionTimezone?: string | null;
     /**
-     * Formato de la competición (competition_sources.external_ids.format):
-     * 'league' | 'bracket' | 'final_four'. `final_four` = torneo a 4
-     * (Semifinal x2 → Final, partido único).
+     * Formato LEGADO derivado de las fases: 'league' | 'bracket' | 'final_four'.
+     * Lo nuevo es `phases`; este campo queda para payloads/clientes antiguos.
      */
     competitionFormat?: 'league' | 'bracket' | 'final_four';
+    /** Secuencia de fases de la temporada (ausente en payloads antiguos). */
+    phases?: SeasonPhase[];
   };
   standings: SeasonStandingRow[];
   rounds: SeasonRound[];

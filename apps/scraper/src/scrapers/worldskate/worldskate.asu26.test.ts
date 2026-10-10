@@ -122,8 +122,8 @@ describe('parseWorldskateCalendar (estructura WSG ASU26)', () => {
     expect(segundo!.roundNumber).toBe(2);
   });
 
-  it('convierte la hora local de Asunción (UTC-4 permanente) a UTC', () => {
-    expect(out.matches[0]!.scheduledAt).toBe('2026-10-12T19:30:00.000Z');
+  it('convierte la hora local de Asunción (UTC-3 permanente desde 2024, base IANA) a UTC', () => {
+    expect(out.matches[0]!.scheduledAt).toBe('2026-10-12T18:30:00.000Z');
   });
 
   it('etiqueta el grupo de la fase de grupos (ambos equipos del mismo grupo)', () => {
@@ -141,10 +141,12 @@ describe('parseWorldskateCalendar (estructura WSG ASU26)', () => {
     expect(rounds).toContain('98|playoff|3º y 4º puesto');
     expect(rounds).toContain('75|playoff|Puestos 5º-6º');
     expect(rounds).toContain('77|playoff|Puestos 7º-8º');
-    // La fase "5TH - 8TH POSITION" (cabecera en FINAL PHASE) y la fase
-    // "5TH - 8TH PLACE" (propia del femenino) caen en la MISMA ronda canónica.
-    expect(rounds).toContain('74|playoff|Puestos 5º-8º');
-    expect(rounds).toHaveLength(9);
+    // La ronda "5TH - 8TH POSITION" (cabecera dentro de FINAL PHASE) y la fase
+    // "5TH - 8TH PLACE" (propia del femenino) son FASES distintas: cada una
+    // tiene su ronda 74 (la identidad de ronda incluye la fase, migración 072).
+    expect(rounds.filter((r) => r === '74|playoff|Puestos 5º-8º')).toHaveLength(2);
+    expect(new Set(out.rounds.filter((r) => r.number === 74).map((r) => r.phaseRef)).size).toBe(2);
+    expect(rounds).toHaveLength(10);
   });
 
   it('clasifica los grupos desde el thead multilenguaje y resuelve refs por escudo', () => {
@@ -242,5 +244,75 @@ describe('normalizeRoundName (casos de fuente real)', () => {
     expect(roundFor('KNOCKOUT STAGE', 'FINAL')).toBe('Final');
     expect(roundFor('KNOCKOUT STAGE', 'SMALL FINAL')).toBe('3º y 4º puesto');
     expect(roundFor('5 TO 7', 'Jornada 1')).toBe('5 TO 7 · Jornada 1');
+  });
+});
+
+// ── Fases explícitas y estado del directo SIN reloj ────────────────────────
+
+import { parseMcStates } from './mc-idp.js';
+
+describe('estructura de fases de la fuente (mismo planificador que la FEP)', () => {
+  const out = parseWorldskateCalendar(FIXTURE, CFG, new Date('2026-10-06T12:00:00Z'));
+
+  it('los partidos de la fase de grupos llevan su fase (groups) y va antes que la fase final', () => {
+    expect(out.matches[0]).toMatchObject({ phaseKind: 'groups', phaseIsPlacement: false, stage: null });
+    expect(out.matches[0]!.phaseRef).toMatch(/^wse_fase_/);
+    const final = out.rounds.find((r) => r.name === 'Final')!;
+    expect(out.matches[0]!.phaseOrdinal!).toBeLessThan(final.phaseOrdinal!);
+  });
+
+  it('las rondas de la fase final son eliminatorias con su fase canónica', () => {
+    const r = (name: string) => out.rounds.find((x) => x.name === name)!;
+    expect(r('Cuartos de final')).toMatchObject({ phaseKind: 'knockout', stage: 'quarters', phaseIsPlacement: false });
+    expect(r('Semifinal')).toMatchObject({ stage: 'semis' });
+    expect(r('Final')).toMatchObject({ stage: 'final' });
+    expect(r('3º y 4º puesto')).toMatchObject({ stage: 'third_place' });
+    expect(r('Puestos 5º-6º')).toMatchObject({ stage: 'placement' });
+  });
+
+  it('la fase "5TH - 8TH PLACE" es de colocación', () => {
+    const fases = new Map(out.rounds.map((x) => [x.phaseRef, x]));
+    const colocacion = [...fases.values()].find((x) => x.phaseName === '5TH - 8TH PLACE');
+    expect(colocacion).toMatchObject({ phaseKind: 'knockout', phaseIsPlacement: true });
+  });
+});
+
+describe('estado del directo: lo dice el match center, no la hora', () => {
+  const CAL_SWT_FRA = `
+<div class="div_titulo_fase_idc">GROUP PHASE</div>
+<table class="tabla_standard table_content_fase content_fase_329">
+  <thead class="head_jornada"><th colspan="17"><div style="text-align:left;">8TH OCTUBER</div></th></thead>
+  <tbody>${MATCH(['1146', '1144'], ['13_1', '11_1'], ['SWTZERLAND', 'FRANCE'], '20261008', '13:15')}</tbody>
+</table>`;
+  const MC_PLAYING = `
+<a href="#" class="id_fede_1 scorer_game scorer_game_playing game_report club_13 club_11" idp="3270" idc='$id_liga' idm='$idm'>
+  <div class='scorer_logo_left'><img src='https://sidgad.cloud/worldskate/images/logos_clubes/13_1.png' width='15'></div>
+  <div class='scorer_score'>2:0</div>
+  <div class='scorer_logo_right'><img src='https://sidgad.cloud/worldskate/images/logos_clubes/11_1.png' width='15'></div>
+  <div class='scorer_bot_left'>08/10 13:15</div>
+  <div class='scorer_bot_center'>PERIOD 1</div>
+</a>`;
+
+  it('en juego según el mc → live con el marcador del mc (aunque el calendario diga "-")', () => {
+    const o = parseWorldskateCalendar(CAL_SWT_FRA, CFG, new Date('2026-10-08T16:44:00Z'), parseMcIdpIndex(MC_PLAYING), parseMcStates(MC_PLAYING));
+    expect(o.matches[0]).toMatchObject({ sourceRef: 'wse_match_3270', status: 'live', homeScore: 2, awayScore: 0 });
+  });
+
+  it('pasada la hora y sin señal del mc → SIN estado (no "live" por reloj)', () => {
+    const o = parseWorldskateCalendar(CAL_SWT_FRA, CFG, new Date('2026-10-08T17:30:00Z'));
+    expect(o.matches[0]!.status).toBeUndefined();
+  });
+
+  it('la hora de Asunción se convierte con su zona real (UTC-3)', () => {
+    const o = parseWorldskateCalendar(CAL_SWT_FRA, CFG, new Date('2026-10-08T12:00:00Z'));
+    expect(o.matches[0]!.scheduledAt).toBe('2026-10-08T16:15:00.000Z');
+  });
+
+  it('marcador del mc con local/visitante invertidos respecto al calendario → se reorienta', () => {
+    const mcInvertido = MC_PLAYING
+      .replace("logos_clubes/13_1.png' width='15'></div>\n  <div class='scorer_score'>2:0</div>\n  <div class='scorer_logo_right'><img src='https://sidgad.cloud/worldskate/images/logos_clubes/11_1.png",
+        "logos_clubes/11_1.png' width='15'></div>\n  <div class='scorer_score'>2:0</div>\n  <div class='scorer_logo_right'><img src='https://sidgad.cloud/worldskate/images/logos_clubes/13_1.png");
+    const o = parseWorldskateCalendar(CAL_SWT_FRA, CFG, new Date('2026-10-08T16:44:00Z'), parseMcIdpIndex(mcInvertido), parseMcStates(mcInvertido));
+    expect(o.matches[0]).toMatchObject({ status: 'live', homeScore: 0, awayScore: 2 });
   });
 });

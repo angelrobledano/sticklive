@@ -55,6 +55,16 @@ describe('sweepStaleLive', () => {
     expect(await estadoDe(p.matchId)).toBe('live');
   });
 
+  it('NO toca un partido que EMPEZÓ tarde: cuenta desde el saque real, no desde la hora prevista', async () => {
+    // Previsto hace 6 h pero la fuente lo dio en juego hace 1 h (retraso, hora
+    // mal publicada…): está en juego de verdad.
+    const p = await crearPartido({ status: 'live', horasDesdeInicio: 6 });
+    await db.query(`UPDATE matches SET started_at = NOW() - INTERVAL '1 hour' WHERE id = $1`, [p.matchId]);
+
+    expect(await sweepStaleLive([p.seasonId])).toHaveLength(0);
+    expect(await estadoDe(p.matchId)).toBe('live');
+  });
+
   it('no toca partidos que no están en live, por viejos que sean', async () => {
     const finalizado = await crearPartido({ status: 'finished', horasDesdeInicio: 200 });
     const programado = await crearPartido({ status: 'scheduled', horasDesdeInicio: 200 });

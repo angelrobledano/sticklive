@@ -17,7 +17,7 @@ import {
   isPushInteractionActive,
   readSessionCount,
 } from '@/src/lib/ads/session-context';
-import { isEffectivelyLive } from '@/src/lib/time';
+import { isAdQuietTime } from '@/src/lib/time';
 
 /**
  * Interstitial al SALIR de una ficha de partido NO en vivo (Plan D Task 5),
@@ -29,8 +29,9 @@ import { isEffectivelyLive } from '@/src/lib/time';
  *      del presupuesto, en el instante del show); y la regla local del
  *      formato: si el partido está EN VIVO (al conocerse su estado o al pasar
  *      a live durante la visita), NUNCA — la ficha en directo es la ruta del
- *      gol y ahí no toca pantalla completa (misma fuente única que el banner:
- *      `isEffectivelyLive`).
+ *      gol y ahí no toca pantalla completa (misma regla que el banner:
+ *      `isAdQuietTime` — en juego o en la ventana de inicio, sin pintar por
+ *      ello un directo que la fuente no ha dado).
  *   2. Presupuesto compartido: la decisión se toma DENTRO de la cola
  *      serializada (`runFullScreenShowAttempt`) con storage fresco, y SOLO se
  *      registra un show que llegó a producirse.
@@ -79,8 +80,8 @@ function resolveInterstitialUnitId(): string {
 }
 
 export function useInterstitialOnLeave(
-  // string (no MatchStatus): el DTO del DETALLE trae el estado EFECTIVO como
-  // string (types.ts:107-108) — el mismo tipo que pide isEffectivelyLive.
+  // string (no MatchStatus): el DTO del DETALLE trae el estado como string
+  // (types.ts) — el mismo tipo que pide isAdQuietTime.
   matchStatus: string | undefined,
   scheduledAt: string | null | undefined,
 ): void {
@@ -93,12 +94,12 @@ export function useInterstitialOnLeave(
   // true = el PRIMER estado conocido NO era en vivo. false = se vio en vivo
   // (al conocerse o al pasar a live durante la visita): bloqueado para siempre.
   const eligibleRef = useRef<boolean | null>(
-    matchStatus === undefined ? null : !isEffectivelyLive(matchStatus, scheduledAt ?? null),
+    matchStatus === undefined ? null : !isAdQuietTime(matchStatus, scheduledAt),
   );
 
   useEffect(() => {
     if (matchStatus === undefined) return; // aún sin dato: nada que capturar
-    if (isEffectivelyLive(matchStatus, scheduledAt ?? null)) {
+    if (isAdQuietTime(matchStatus, scheduledAt)) {
       eligibleRef.current = false; // en vivo al montar o al pasar a live: NUNCA
       return;
     }
@@ -130,7 +131,7 @@ export function useInterstitialOnLeave(
     if (!config?.interstitial.enabled) return; // la config gobierna la EXISTENCIA
     // Gate "no en vivo" del preload: solo con estado CONOCIDO y no-live. Con
     // estado desconocido se espera (el efecto re-evalúa al llegar el dato).
-    if (matchStatus === undefined || isEffectivelyLive(matchStatus, scheduledAt ?? null)) {
+    if (matchStatus === undefined || isAdQuietTime(matchStatus, scheduledAt)) {
       return;
     }
 
@@ -213,9 +214,10 @@ export function useInterstitialOnLeave(
         return;
       }
       // Re-chequeo con el RELOJ de la salida: un 'scheduled' cuyo saque pasó
-      // durante la visita ya es "en vivo" para isEffectivelyLive aunque las
-      // props no cambiaran (y con estado desconocido, eligibleRef sería null).
-      if (matchStatus === undefined || isEffectivelyLive(matchStatus, scheduledAt ?? null)) {
+      // durante la visita entra en la ventana sin anuncios (isAdQuietTime)
+      // aunque las props no cambiaran (y con estado desconocido, eligibleRef
+      // sería null).
+      if (matchStatus === undefined || isAdQuietTime(matchStatus, scheduledAt)) {
         release();
         return;
       }

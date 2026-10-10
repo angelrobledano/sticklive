@@ -58,7 +58,9 @@
     "second_half": "2° Tempo",
     "scheduled": "In programma",
     "postponed": "Rinviato",
-    "cancelled": "Annullato"
+    "cancelled": "Annullato",
+    "awaiting_start": "In attesa",
+    "no_result": "Nessun risultato"
   },
   "hockey_stats": {
     "goals": "Gol",
@@ -269,7 +271,8 @@
     "ot_short": "supp.",
     "third_place": "Finale 3º/4º posto",
     "tbd": "Da definire",
-    "round_n": "Turno {n}"
+    "round_n": "Turno {n}",
+    "other_places": "Altri piazzamenti"
   },
   "standings": {
     "team": "Squadra",

@@ -37,12 +37,18 @@ describe('zonedToUtc', () => {
   });
 });
 
-describe('zonedToUtc — zonas de offset fijo (fuera de la UE)', () => {
-  it('America/Asuncion: UTC-4 permanente, sin DST (Paraguay abolió el cambio de hora)', () => {
-    // Octubre (antiguo horario de verano paraguayo) sigue en -4: sede WSG Asunción 2026.
-    expect(zonedToUtc('America/Asuncion', 2026, 9, 12, 13, 15).toISOString()).toBe('2026-10-12T17:15:00.000Z');
-    // Y en el otro extremo del año, el mismo offset.
-    expect(zonedToUtc('America/Asuncion', 2026, 6, 15, 21, 0).toISOString()).toBe('2026-07-16T01:00:00.000Z');
+describe('zonedToUtc — cualquier zona IANA (base de datos de zonas, no tabla a mano)', () => {
+  it('America/Asuncion: UTC-3 permanente desde oct-2024 (tzdata 2024b+)', () => {
+    // WSG Asunción 2026: la fuente publica 13:15 locales y el match center ya
+    // lo daba EN JUEGO a las 16:15 UTC. Con el UTC-4 cableado salía a las 17:15.
+    expect(zonedToUtc('America/Asuncion', 2026, 9, 8, 13, 15).toISOString()).toBe('2026-10-08T16:15:00.000Z');
+    expect(zonedToUtc('America/Asuncion', 2026, 6, 15, 21, 0).toISOString()).toBe('2026-07-16T00:00:00.000Z');
+  });
+
+  it('otras zonas fuera de la UE y Roma (ligas italianas en hora local)', () => {
+    expect(zonedToUtc('America/Sao_Paulo', 2026, 9, 8, 20, 0).toISOString()).toBe('2026-10-08T23:00:00.000Z');
+    expect(zonedToUtc('Asia/Tokyo', 2026, 0, 15, 9, 0).toISOString()).toBe('2026-01-15T00:00:00.000Z');
+    expect(zonedToUtc('Europe/Rome', 2026, 6, 15, 21, 0).toISOString()).toBe('2026-07-15T19:00:00.000Z');
   });
 });
 

@@ -34,10 +34,9 @@ import type { MatchStatus } from '@sports/shared-types';
  * Diferencias NOTABLES con el detalle (`MatchDto`):
  * - `isHalftime` va A NIVEL RAÍZ (no hay sub-objeto `live`: ni `period` ni
  *   `clockSeconds`; esos sólo existen en el DTO del detalle, match-dto.ts:159).
- * - `status` es el crudo de la BD (para /current, siempre uno de
- *   'scheduled' | 'live' | 'finished', live.ts:235): NO pasa por
- *   `effectiveMatchStatus`; el badge "EN VIVO por reloj" lo calcula la UI con
- *   `STALE_LIVE_HOURS` (#150, como apps/api/src/lib/effective-status.ts y la web).
+ * - `status` es el de la BD (para /current, siempre uno de
+ *   'scheduled' | 'live' | 'finished', live.ts): solo la fuente pone un partido
+ *   en juego; la hora programada no fabrica directos (ni en la API ni en la UI).
  * - `scheduledAt`/`startedAt`: pg devuelve `Date` y `c.json()` lo serializa a
  *   string ISO (de ahí `string | null` y no `Date`).
  * Los partidos de `/seasons/:id/matches` vienen en OTRA forma (snake_case, sin
@@ -104,7 +103,7 @@ export interface MatchDetail {
     competitionName: string | null;
     competitionSlug: string | null;
     competitionTimezone: string | null;
-    /** Aquí SÍ es el estado efectivo (live adelantado, acotado por STALE_LIVE_HOURS; match-dto.ts:277). */
+    /** Estado de la BD (explícito de la fuente; sin "live" por reloj — match-dto.ts). */
     status: string;
     eventCoverage: string;
     scheduledAt: string | null;

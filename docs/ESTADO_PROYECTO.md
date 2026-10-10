@@ -2,6 +2,8 @@
 
 *Actualizado: 27 de septiembre de 2026 — EN PRODUCCIÓN: https://sticklive.eu*
 
+> **Octubre 2026 (rama `feat/fases-y-directo-explicito`, pendiente de despliegue):** el directo pasa a depender solo de la señal explícita de la fuente (fuera el "en vivo por reloj" de API, web y app) y las competiciones se modelan como **fases** que publica la fuente (liga, grupos, eliminatoria, colocación; migración 072 aditiva). Diseño en [superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md](./superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md); despliegue y re-scrape de temporadas heredadas en [runbook-fases-y-directo.md](./runbook-fases-y-directo.md).
+
 > **Septiembre 2026:** alta de la temporada **2026/27** con el seed genérico `seed-fep-competition` (embudo de identidad + cola HITL): 11 competiciones operando, incluidas OK Liga M/F, Plata N/S, Plata Femenina, Bronce N/S y Supercopas. Listado de la web filtrado a la temporada en curso. Endurecimiento post-auditoría Go/No-Go (27/09): hallazgos y plan en issues #147–#183 del repo.
 
 > **Agosto 2026:** completado el bloque **Entity Resolution** (Fases 0→3): modelo de clubes (identidad estable vs. secciones vs. nombres de patrocinio), embudo de resolución determinista → fuzzy con bloqueo → cola HITL, panel de moderación `/admin/resolucion` y auto-confirmación con señales. Migraciones 044–046, todo aditivo y desplegado. Detalle operativo en el [RUNBOOK_ENTITY_RESOLUTION.md](./RUNBOOK_ENTITY_RESOLUTION.md).
@@ -101,4 +103,4 @@ Esquema: competitions/seasons/rounds/teams/season_teams/matches/events/standings
 
 - El lanzador de falta directa solo se conoce cuando marca → eficiencia FD a nivel de equipo.
 - No existen fotos del cuerpo técnico en la fuente → silueta.
-- El formato de las series de playoff ("al mejor de N") no es inferible de la fuente → no se muestra; requeriría campo `best_of` curado.
+- El "al mejor de N" de una serie no viene como dato: se guarda el nº de partido de cada uno (`series_game`) y se distingue serie de ida/vuelta por lo que publica la fuente, pero el N no se muestra; requeriría campo `best_of` curado.

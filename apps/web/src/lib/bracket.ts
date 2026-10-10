@@ -20,7 +20,7 @@
  */
 import type { SeasonMatch } from '@/lib/api/client';
 import { gameWinnerId } from '@/lib/playoff';
-import { playoffPhaseKey, type PlayoffPhaseKey } from '@/components/competition/format';
+import { matchPhaseKey, playoffPhaseKey, type PlayoffPhaseKey } from '@/components/competition/format';
 
 export interface BracketRound {
   /** Fase canónica si se conoce; `null` = ronda no reconocida (usar `name`). */
@@ -103,12 +103,15 @@ function groupBySourceRound(pool: SeasonMatch[]): BracketRound[] {
   const rounds: BracketRound[] = [];
   for (const group of groups.values()) {
     const first = group[0]!;
-    // La fase se lee del NOMBRE; el número solo como último recurso. Así una
+    // La fase EXPLÍCITA de la fuente (`stage`) manda. Sin ella (datos
+    // heredados) se lee del NOMBRE; el número solo como último recurso. Así una
     // ronda sin nombre de fase ("Jornada 9", "Jornada 10") no se confunde con
     // una fase por su numeración (playoffPhaseKey mapea rn>=3 a 'final').
-    const key = first.roundName
-      ? playoffPhaseKey(first.roundName, null)
-      : playoffPhaseKey(null, first.roundNumber);
+    const key = first.stage
+      ? matchPhaseKey(first)
+      : first.roundName
+        ? playoffPhaseKey(first.roundName, null)
+        : playoffPhaseKey(null, first.roundNumber);
     rounds.push({ key, name: first.roundName, roundNumber: first.roundNumber, matches: group.sort(byDate) });
   }
   return rounds;
@@ -120,7 +123,7 @@ function deriveByAdvancement(pool: SeasonMatch[]): BracketRound[] {
   if (ties.length < 2) return [];
 
   const isThird = (t: Tie) =>
-    t.legs.some((l) => playoffPhaseKey(l.roundName, l.roundNumber) === 'third_place');
+    t.legs.some((l) => matchPhaseKey(l) === 'third_place');
   const main = ties.filter((t) => !isThird(t));
   const thirds = ties.filter(isThird);
   if (main.length < 2) return [];
@@ -190,7 +193,10 @@ export function buildBracketRounds(matches: SeasonMatch[]): BracketRound[] {
 
   const byName = groupBySourceRound(pool);
   const recognized = byName.filter((r) => r.key !== null);
-  if (recognized.length >= 2) {
+  // Con la fase explícita de la fuente basta una ronda (p. ej. solo se han
+  // jugado los cuartos): no hay nada que deducir del cuadro.
+  const explicit = pool.every((m) => matchPhaseKey({ stage: m.stage }) !== null);
+  if (explicit || recognized.length >= 2) {
     return [...byName].sort(
       (a, b) =>
         (a.key ? PHASE_ORDER[a.key] : 99) - (b.key ? PHASE_ORDER[b.key] : 99) ||

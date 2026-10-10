@@ -34,13 +34,30 @@ Rate limit de lectura: **120/min por IP** en `GET /competitions`, `/search`,
 `/seasons/:id/standings`, `/matches/:id`, `/matches/live`, `/matches/current`,
 `/teams/:id`, `/players/:id` y `/meta/sitemap`.
 
+### `/seasons/:id/overview` — estructura de la temporada (072)
+
+Además de lo de siempre, expone la estructura **explícita** que guardó el ETL desde la fuente
+(`apps/api/src/lib/season-structure.ts`; `/teams/:id` usa la misma función):
+
+- `season.phases[]`: `{ id, ordinal, kind: 'league'|'groups'|'knockout', isPlacement, name,
+  hasStandings, stages: ['quarters','semis','final'…], stagesInferred, fromSource }`. `fromSource=false`
+  = fase heredada del backfill, aún sin re-scrapear (los clientes mantienen la presentación de antes).
+- `rounds[]`: `phaseId`, `stage`. No se exponen las rondas heredadas vacías.
+- `matches[]`: `phaseId`, `stage`, `seriesGame` (nº de partido de la serie) y `stageInferred`.
+- Campos **legados** (se mantienen para clientes antiguos), ahora calculados desde la fase explícita:
+  `roundNumber` (jornada; en eliminatorias 1 = cuartos, 2 = semis, 3 = final, 0 = colocación),
+  `roundType` y `season.competitionFormat` (`league` | `bracket` | `final_four`, derivado de las fases;
+  en temporadas solo heredadas, el declarado). Ya no se deduce nada del nombre de la competición ni por
+  cronología, salvo el playoff heredado en una única ronda (deducción de siempre, marcada `stageInferred`).
+
 ### `/matches/live` — estado real (#190)
 
 Endpoint público razonable (PWA / cliente de API), pero **hoy no lo llama nadie
 dentro del proyecto**:
 
-- La web usa `GET /matches/current` (hook `useLiveScores`, con badge live por
-  reloj en `MatchCard`) para la home.
+- La web usa `GET /matches/current` (hook `useLiveScores`) para la home. Desde
+  el 08/10/2026 ningún endpoint ni cliente pinta `live` por la hora: el estado
+  es el de la BD, que solo cambia con una señal explícita de la fuente.
 - La ficha de partido usa `GET /matches/:id` + `GET /matches/:id/stream` (SSE).
 - `getLiveMatches()` en `apps/web/src/lib/api/client.ts` está definido pero sin
   llamadas.

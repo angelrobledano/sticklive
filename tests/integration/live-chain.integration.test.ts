@@ -1,5 +1,8 @@
 /**
- * Cadena live E2E (#186): scheduled → (feed mc) live → gol → NOTIFY → effectiveStatus.
+ * Cadena live E2E (#186): scheduled → (feed mc) live → gol → NOTIFY → estado expuesto.
+ *
+ * La hora NUNCA hace LIVE: el estado expuesto es el de la BD, que solo pasa a
+ * `live` con la señal explícita del feed (resolveStatusTransition).
  *
  * Cada eslabón estaba testado por separado; esto los une y verifica la secuencia
  * real del directo contra Postgres (incluido el NOTIFY de la migración 043).
@@ -8,7 +11,7 @@ import { describe, test, expect, beforeAll, beforeEach, afterAll } from 'vitest'
 import { db, closeDb, listenForNotifications, replaceMatchEvents, upsertMatch, type NotificationListener } from '@sports/db';
 import { limpiar } from './support/db.js';
 import { crearPartido, crearFuente, type EscenarioPartido } from './support/factorias.js';
-import { effectiveMatchStatus } from '../../apps/api/src/lib/effective-status.js';
+import { matchDisplayState } from '@sports/shared-types';
 
 const SOURCE_REF = 'm-chain-1';
 
@@ -45,12 +48,12 @@ afterAll(async () => {
 });
 
 describe('cadena live E2E (#186)', () => {
-  test('T-033 scheduled → live (feed) → gol (NOTIFY) → effectiveStatus live', async () => {
-    // 1) Partido scheduled cuya hora acaba de pasar (saque hace 2 s). La UI ya lo
-    //    pinta EN DIRECTO por reloj, aunque en BD siga 'scheduled'.
+  test('T-033 scheduled → live (feed) → gol (NOTIFY) → estado expuesto live', async () => {
+    // 1) Partido scheduled cuya hora acaba de pasar (saque hace 2 s). Sin señal
+    //    de la fuente NO está en directo: se muestra "pendiente de inicio".
     const kickoff = new Date(Date.now() - 2_000);
     await db.query(`UPDATE matches SET scheduled_at = $2 WHERE id = $1`, [escenario.matchId, kickoff]);
-    expect(effectiveMatchStatus('scheduled', kickoff)).toBe('live');
+    expect(matchDisplayState('scheduled', kickoff, Date.now())).toBe('awaiting_start');
 
     const antes = (await db.query<{ status: string }>(
       `SELECT status FROM matches WHERE id = $1`, [escenario.matchId])).rows[0]!;
@@ -81,6 +84,6 @@ describe('cadena live E2E (#186)', () => {
     // 4) El estado expuesto sigue siendo EN DIRECTO.
     const fila = (await db.query<{ status: string; scheduled_at: Date }>(
       `SELECT status, scheduled_at FROM matches WHERE id = $1`, [escenario.matchId])).rows[0]!;
-    expect(effectiveMatchStatus(fila.status, fila.scheduled_at)).toBe('live');
+    expect(matchDisplayState(fila.status, fila.scheduled_at, Date.now())).toBe('live');
   });
 });

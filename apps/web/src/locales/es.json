@@ -103,7 +103,9 @@
     "second_half": "2ª Parte",
     "scheduled": "Programado",
     "postponed": "Aplazado",
-    "cancelled": "Cancelado"
+    "cancelled": "Cancelado",
+    "awaiting_start": "Pendiente",
+    "no_result": "Sin resultado"
   },
   "hockey_stats": {
     "goals": "Goles",
@@ -314,7 +316,8 @@
     "ot_short": "pr.",
     "third_place": "3.er y 4.º puesto",
     "tbd": "Por determinar",
-    "round_n": "Ronda {n}"
+    "round_n": "Ronda {n}",
+    "other_places": "Otros puestos"
   },
   "standings": {
     "team": "Equipo",

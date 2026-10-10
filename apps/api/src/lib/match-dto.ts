@@ -10,7 +10,7 @@
  *
  * Sin I/O ni relojes: se puede testear aislada (ver `match-dto.test.ts`).
  */
-import { effectiveMatchStatus } from './effective-status.js';
+import { isLiveStatus } from '@sports/shared-types';
 
 export interface PenaltyShootout {
   home: { player: string; scored: boolean }[];
@@ -272,9 +272,10 @@ export function buildMatchDetail(
 ): MatchDto {
   const homeTeamId = row.home_team_id;
 
-  // Estado expuesto: adelanta a `live` con el lag de la fuente, pero acotado
-  // por STALE_LIVE_HOURS para no pintar fantasmas EN VIVO (#150).
-  const effectiveStatus = effectiveMatchStatus(row.status, row.scheduled_at);
+  // Estado expuesto = el de la BD, que solo pone `live` con señal explícita de
+  // la fuente. La API ya no "adelanta" a live por la hora (#150 quedó resuelto
+  // de raíz): un partido que empieza tarde no se pinta EN VIVO antes de tiempo.
+  const status = row.status;
 
   const events = buildMatchEvents(eventRows, homeTeamId);
   const lineups = buildLineups(lineupRows);
@@ -288,7 +289,7 @@ export function buildMatchDetail(
     competitionName: row.competition_name,
     competitionSlug: row.competition_slug,
     competitionTimezone: row.competition_timezone,
-    status:      effectiveStatus,
+    status,
     eventCoverage: row.event_coverage,
     scheduledAt: toIso(row.scheduled_at),
     startedAt:   toIso(row.started_at),
@@ -306,7 +307,7 @@ export function buildMatchDetail(
     referee:     row.referee,
     sourceRef:   row.source_ref,
     videoUrl:    row.video_url,
-    live: (effectiveStatus === 'live')
+    live: isLiveStatus(status)
       ? {
           period:       row.live_period,
           clockSeconds: row.live_clock_seconds,
