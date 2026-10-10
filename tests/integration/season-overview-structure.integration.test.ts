@@ -105,7 +105,7 @@ describe('overview: casos A–F desde el mismo modelo', () => {
   test('A — liga regular', async () => {
     await cargar(calendario([
       ['fep_fase_1', null, 'JORNADA 1', '20251001', '1', '2', '1'],
-      ['fep_fase_1', null, 'JORNADA 2', '20251008', '2', '1', '2'],
+      ['fep_fase_1', null, 'JORNADA 2', '20251008', '2', '3', '2'],
     ]));
     await clasificacion('1', '2');
     const o = await overview();
@@ -119,6 +119,7 @@ describe('overview: casos A–F desde el mismo modelo', () => {
   test('B — liga + playoff (QF→SF→F, series) + colocación 9.º-10.º', async () => {
     await cargar(calendario([
       ['fep_fase_3150', null, 'JORNADA 1', '20251001', '1', '2', '101'],
+      ['fep_fase_3150', null, 'JORNADA 1', '20251001', '3', '4', '102'],
       ['fep_fase_3483', 'PLAY OFF OK LIGA', '1 CUARTOS', '20260516', '1', '8', '201'],
       ['fep_fase_3483', 'PLAY OFF OK LIGA', '2 CUARTOS', '20260523', '8', '1', '202'],
       ['fep_fase_3483', 'PLAY OFF OK LIGA', '1 SEMIFINALES', '20260529', '1', '4', '203'],
@@ -212,7 +213,7 @@ describe('overview: temporada heredada → re-scrape', () => {
     const j1 = await ronda(1, 'JORNADA 1', 'regular');
     const r100 = await ronda(100, 'Playoff por el título', 'playoff');
     const legado: Array<[string, string, string, string, string]> = [
-      ['101', '1', '2', '2025-10-01', j1],
+      ['101', '1', '2', '2025-10-01', j1], ['102', '3', '4', '2025-10-01', j1],
       ['201', '1', '8', '2026-05-16', r100], ['202', '2', '7', '2026-05-16', r100],
       ['203', '3', '6', '2026-05-17', r100], ['204', '4', '5', '2026-05-17', r100],
       ['205', '1', '4', '2026-05-29', r100], ['206', '2', '3', '2026-05-30', r100],
@@ -235,6 +236,7 @@ describe('overview: temporada heredada → re-scrape', () => {
     // Re-scrape de la fuente con su estructura explícita.
     await cargar(calendario([
       ['fep_fase_3150', null, 'JORNADA 1', '20251001', '1', '2', '101'],
+      ['fep_fase_3150', null, 'JORNADA 1', '20251001', '3', '4', '102'],
       ['fep_fase_3483', 'PLAY OFF OK LIGA', '1 CUARTOS', '20260516', '1', '8', '201'],
       ['fep_fase_3483', 'PLAY OFF OK LIGA', '1 CUARTOS', '20260516', '2', '7', '202'],
       ['fep_fase_3483', 'PLAY OFF OK LIGA', '1 CUARTOS', '20260517', '3', '6', '203'],

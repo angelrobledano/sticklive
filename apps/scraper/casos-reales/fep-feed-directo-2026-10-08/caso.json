@@ -1,0 +1,10 @@
+{
+  "descripcion": "Feed de directo FEP (rfep_mc_1.php) del jueves 8/10/2026 a las 16:46",
+  "fuente": "https://www.server2.sidgad.es/rfep/rfep_mc_1.php",
+  "capturado": "2026-10-08T14:46:00.000Z",
+  "tipo": "feed-fep",
+  "fichero": "fep_mc.html",
+  "debeContener": [
+    "fep_match_35364"
+  ]
+}

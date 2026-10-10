@@ -1,0 +1,45 @@
+{
+  "formato": "eliminatoria[cuartos,semis,final]",
+  "fases": [
+    {
+      "orden": 1,
+      "ref": "fep_fase_3258",
+      "nombre": null,
+      "tipo": "knockout",
+      "colocacion": false,
+      "evidencia": "source_rounds",
+      "rondas": [
+        {
+          "numero": 20,
+          "fase": "quarters",
+          "nombre": "CUARTOS DE FINAL",
+          "tipo": "playoff",
+          "filas": 4
+        },
+        {
+          "numero": 30,
+          "fase": "semis",
+          "nombre": "SEMIFINALES",
+          "tipo": "playoff",
+          "filas": 2
+        },
+        {
+          "numero": 40,
+          "fase": "final",
+          "nombre": "FINAL",
+          "tipo": "playoff",
+          "filas": 1
+        }
+      ]
+    }
+  ],
+  "filas": [
+    "20260319 | CUARTOS DE FINAL → F1 R20/cuartos | 3359-3332",
+    "20260319 | CUARTOS DE FINAL → F1 R20/cuartos | 3358-3387",
+    "20260320 | CUARTOS DE FINAL → F1 R20/cuartos | 3408-3412",
+    "20260320 | CUARTOS DE FINAL → F1 R20/cuartos | 3373-3363",
+    "20260321 | SEMIFINALES → F1 R30/semis | 3359-3358",
+    "20260321 | SEMIFINALES → F1 R30/semis | 3408-3373",
+    "20260322 | FINAL → F1 R40/final | 3359-3373"
+  ]
+}

@@ -86,7 +86,7 @@ describe('estructura de la fuente → BD (mismo camino para cualquier formato)',
   test('liga + playoff (series al mejor de N) + playoff de colocación, idempotente', async () => {
     const rows = calendario([
       ['fep_fase_3150', null, 'JORNADA 1', '20251001', '1', '2', '101'],
-      ['fep_fase_3150', null, 'JORNADA 2', '20251008', '2', '1', '102'],
+      ['fep_fase_3150', null, 'JORNADA 2', '20251008', '2', '3', '102'],
       ['fep_fase_3483', 'PLAY OFF OK LIGA', '1 CUARTOS', '20260516', '1', '8', '201'],
       ['fep_fase_3483', 'PLAY OFF OK LIGA', '2 CUARTOS', '20260523', '8', '1', '202'],
       ['fep_fase_3483', 'PLAY OFF OK LIGA', '1 SEMIFINALES', '20260529', '1', '4', '203'],
@@ -123,6 +123,7 @@ describe('estructura de la fuente → BD (mismo camino para cualquier formato)',
     const antes = await db.query(`SELECT id FROM rounds ORDER BY id`);
     await cargarCalendario(calendario([
       ['fep_fase_3150', null, 'JORNADA 1', '20251001', '1', '2', '101'],
+      ['fep_fase_3150', null, 'JORNADA 2', '20251008', '2', '3', '102'],
       ['fep_fase_3483', 'PLAY OFF OK LIGA', '1 CUARTOS', '20260516', '1', '8', '201'],
     ]));
     const despues = await db.query(`SELECT id FROM rounds ORDER BY id`);

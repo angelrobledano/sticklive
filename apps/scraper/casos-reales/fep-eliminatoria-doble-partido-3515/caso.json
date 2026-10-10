@@ -1,0 +1,16 @@
+{
+  "descripcion": "Eliminatoria a doble partido 2025/26 (idc 3515, Manlleu - Capital del Vi): la fuente rotula ida y vuelta como \"J 1\" / \"J 2\"",
+  "fuente": "https://www.hockeypatines.fep.es (rfep_cal_idc_3515_1.php)",
+  "capturado": "2026-10-08T14:46:00.000Z",
+  "tipo": "calendario",
+  "portal": "fep",
+  "ficheros": [
+    "fcal_3515.html"
+  ],
+  "formato": "eliminatoria·ida-vuelta",
+  "normas": "Bases RFEP: eliminatoria a doble partido (ida y vuelta)",
+  "debeContener": [
+    "Jornada 1 → F1 R90 P1",
+    "Jornada 2 → F1 R90 P2"
+  ]
+}

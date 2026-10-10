@@ -175,3 +175,17 @@ describe('statusFromCalendarScore — el calendario NO sabe si un partido está 
     expect(statusFromCalendarScore('APLAZADO')).toBeUndefined();
   });
 });
+
+describe('collectRoundRows — filas de nota de la fuente', () => {
+  it('la nota bajo un partido ("resultado 10-0 por resolución disciplinaria") no es un partido', () => {
+    const html = `<table class="tabla_standard content_fase_3483">
+      <thead class="head_jornada"><tr><th>1 CUARTOS</th></tr></thead>
+      <tbody>
+        <tr class="team_3359 team_3332 team_class" gamedate="20260516"><td>16/05/2026</td><td>19:30</td><td>CALAFELL</td><td>REUS</td></tr>
+        <tr class="team_3359 team_3332 team_class" gamedate="20260516"><td colspan="18">resultado 10-0 por resolución disciplinaria</td></tr>
+      </tbody></table>`;
+    const $ = cheerio.load(html);
+    const rows = collectRoundRows($, $('table').get(0) as Element);
+    expect(rows).toHaveLength(1);
+  });
+});

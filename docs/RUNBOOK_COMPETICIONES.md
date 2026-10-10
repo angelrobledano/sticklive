@@ -171,6 +171,7 @@ Ajuste: `PARTITION_SEASONS_AHEAD` (defecto 2).
 - [ ] `FEP_SOURCE_ID` real resuelto (no placeholder).
 - [ ] `import-history --only-idc=… [--fichas]`.
 - [ ] `run-pipeline --entity=calendar` (primero `--dry-run`) y comprobar las fases planificadas.
+- [ ] Si su formato es nuevo para la plataforma: capturarla como caso real (`apps/scraper/casos-reales/README.md`) con el formato de sus normas.
 - [ ] Migraciones aplicadas si se reconstruyó la BD.
 - [ ] Verificación en web: partidos visibles, equipo compartido no duplicado, etiqueta de competición correcta.
 - [ ] Scraping masivo: ciclo staging (sembrar → scrapear(staging) → validate-staging → promote-to-prod --commit), nunca directo a prod.

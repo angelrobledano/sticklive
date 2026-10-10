@@ -558,6 +558,12 @@ export function resolvePhaseKind(e: PhaseEvidence): { kind: PhaseKind; resolvedB
   const informative = e.labels.filter((l) => l.type !== 'unlabelled');
   // 1. Rondas de la fuente: una sola fase eliminatoria lo decide; si todas son jornadas, liguilla.
   if (informative.some((l) => l.type === 'stage')) return { kind: 'knockout', resolvedBy: 'source_rounds' };
+  // Regla determinista que prevalece sobre la etiqueta: una "liga" de solo dos
+  // equipos no existe — es una eliminatoria a doble partido que la fuente
+  // rotula "Jornada 1" / "Jornada 2" (caso real idc 3515/3516).
+  if (e.distinctTeams === 2 && informative.length > 0 && informative.every((l) => l.type === 'matchday')) {
+    return { kind: 'knockout', resolvedBy: 'structural_rule' };
+  }
   if (informative.length > 0 && informative.every((l) => l.type === 'matchday')) {
     return { kind: e.hasGroups || e.title.kindHint === 'groups' ? 'groups' : 'league', resolvedBy: 'source_rounds' };
   }
@@ -702,7 +708,7 @@ export function planSourceStructure(input: StructureRow[], opts: PlanOptions = {
           : (title.isPlacement ? 'placement' : null);
         const game = label.type === 'stage' ? label.game
           : label.type === 'game' ? label.game
-          : label.type === 'ordinal' ? label.number
+          : label.type === 'ordinal' || label.type === 'matchday' ? label.number
           : null;
         const base = label.type === 'stage' ? baseLabel(row.roundLabel) : '';
         const roundKey = `${ref}|ko|${stage ?? 'none'}|${norm(base)}`;

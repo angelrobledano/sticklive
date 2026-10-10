@@ -266,6 +266,28 @@ describe('planSourceStructure — casos A–F', () => {
     expect(ruled.phases[0]).toMatchObject({ kind: 'knockout', resolvedBy: 'structural_rule' });
   });
 
+  it('eliminatoria a doble partido rotulada como JORNADAS (caso real idc 3515/3516): sigue siendo eliminatoria', () => {
+    // La fuente rotula la ida y la vuelta "Jornada 1" / "Jornada 2". Una
+    // "liga" de solo dos equipos no existe: es una eliminatoria a doble
+    // partido, y el nº de jornada es el nº de partido de la serie.
+    const rows = [
+      row('fep_fase_3515', null, 'Jornada 1', '20260530', 'MAN', 'CPV'),
+      row('fep_fase_3515', null, 'Jornada 2', '20260628', 'CPV', 'MAN'),
+    ];
+    const plan = planSourceStructure(rows);
+    expect(plan.phases[0]).toMatchObject({ kind: 'knockout', resolvedBy: 'structural_rule' });
+    expect(plan.assignments.map((a) => a.seriesGame)).toEqual([1, 2]);
+    expect(plan.phases[0]!.rounds).toHaveLength(1);
+    expect(resolvePhaseKind({
+      labels: [parseRoundLabel('Jornada 1'), parseRoundLabel('Jornada 2')],
+      title: parsePhaseTitle(null), hasGroups: false, distinctTeams: 2,
+    })).toEqual({ kind: 'knockout', resolvedBy: 'structural_rule' });
+    // Con más equipos, las jornadas siguen siendo liga.
+    expect(resolvePhaseKind({
+      labels: [parseRoundLabel('Jornada 1')], title: parsePhaseTitle(null), hasGroups: false, distinctTeams: 4,
+    })).toEqual({ kind: 'league', resolvedBy: 'source_rounds' });
+  });
+
   it('filas sin equipos (cruces aún sin publicar) también aportan estructura', () => {
     const rows: StructureRow[] = [
       row('fep_fase_3593', null, 'SEMIFINALES', '20261023', 'VIL', 'PAL'),

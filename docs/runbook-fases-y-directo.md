@@ -164,6 +164,15 @@ por acta (`periodo_fin`) en el siguiente ciclo en que el partido entre en la ven
 
 ## 5. Qué esperar y cómo diagnosticar
 
+Dos redes vigilan esto de forma continua:
+
+- **Batería de casos reales** (`apps/scraper/casos-reales/`, en `npm run test` y en CI): páginas
+  guardadas de la fuente con el formato que dicen sus normas. Prueba el código antes de desplegar.
+- **Chequeo diario de integridad** (`integrity-check`, checks 8-13 en `integrity-structure.ts`):
+  avisa en Sentry de fases en fallback, temporadas en curso sin re-estructurar, partidos sin fase,
+  programados con la hora vencida hace más de 24 h, terminados sin marcador y directos atascados.
+  Mide el dato real de producción.
+
 | Síntoma | Causa probable | Dónde mirar |
 |---|---|---|
 | Un partido no aparece en directo aunque ya es la hora | La fuente aún no lo da en juego (feed/mc). La web muestra «Pendiente». **Es lo correcto.** | Feed `rfep_mc_1.php` / `worldskate_mc_1.php` |

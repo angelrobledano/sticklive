@@ -1,0 +1,20 @@
+{
+  "descripcion": "OK Liga masculina 2025/26: liga regular (idc 3150) + Play Off por el título y Play Off 9.º-10.º (idc 3481)",
+  "fuente": "https://www.hockeypatines.fep.es (rfep_cal_idc_3150_1.php)",
+  "capturado": "2026-10-08T14:46:00.000Z",
+  "tipo": "calendario",
+  "portal": "fep",
+  "ficheros": [
+    "fcal_3150.html",
+    "fcal_3481.html"
+  ],
+  "formato": "liga → eliminatoria[cuartos,semis,final]·series → colocacion",
+  "normas": "Bases RFEP: liga regular; Play Off por el título (cuartos al mejor de 3, semis y final al mejor de 5); Play Off 9.º-10.º al mejor de 3",
+  "debeContener": [
+    "3 CUARTOS → F2 R20/cuartos P3",
+    "PARTIDO 2 → F3 R60/colocacion P2"
+  ],
+  "noDebeContener": [
+    "R100"
+  ]
+}

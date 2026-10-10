@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/node';
 import { pathToFileURL } from 'node:url';
 import { createLogger } from '@sports/logger';
 import { db, closeDb } from '@sports/db';
+import { STRUCTURE_CHECKS } from './integrity-structure.js';
 
 /**
  * Chequeo diario de integridad de datos (#231, complementa a #193 y #148).
@@ -28,6 +29,9 @@ import { db, closeDb } from '@sports/db';
  *      ficha "sin partidos" de Plata.
  *   7. GANADOR IMPOSIBLE (#326): winner con marcador empatado sin tanda. Con el
  *      CHECK de la 059 debería ser 0 siempre; si no lo es, alguien saltó la BD.
+ *   8-13. ESTRUCTURA Y DIRECTO (072): fases en fallback, temporadas en curso sin
+ *      re-estructurar, partidos sin fase, programados vencidos, terminados sin
+ *      marcador y directos atascados. Ver integrity-structure.ts.
  *
  * Cada check tiene umbral por env (0 por defecto): se alerta si violaciones >
  * umbral. Salida: una línea por check con su número, y exit code SIEMPRE 0
@@ -35,7 +39,8 @@ import { db, closeDb } from '@sports/db';
  *
  * Uso:  node dist/apps/etl/src/integrity-check.js
  * Env:  INTEGRITY_THRESHOLD_VENTANA / _MARCADOR / _STANDINGS / _HOMONIMOS /
- *       _REFS / _SEASON_TEAMS / _WINNER (violaciones toleradas, defecto 0)
+ *       _REFS / _SEASON_TEAMS / _WINNER / _FALLBACK / _SIN_ADOPTAR / _SIN_FASE /
+ *       _VENCIDOS / _SIN_MARCADOR / _LIVE (violaciones toleradas, defecto 0)
  */
 
 const log = createLogger({ service: 'integrity-check' });
@@ -194,6 +199,7 @@ async function main(): Promise<void> {
   const results = await Promise.all([
     checkVentana(), checkMarcador(), checkStandings(), checkHomonimos(),
     checkRefsCompartidas(), checkSeasonTeams(), checkWinner(),
+    ...STRUCTURE_CHECKS.map((c) => c()),
   ]);
 
   let alerts = 0;

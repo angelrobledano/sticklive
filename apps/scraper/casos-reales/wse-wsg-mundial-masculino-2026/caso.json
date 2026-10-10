@@ -1,0 +1,11 @@
+{
+  "descripcion": "World Skate Games Asunción 2026 — Mundial masculino (idc 325): grupos A/B + fase final",
+  "fuente": "https://rinkhockey.worldskate.org/league/325 + worldskate_mc_1.php del mismo instante",
+  "capturado": "2026-10-08T14:46:00.000Z",
+  "tipo": "worldskate",
+  "calendario": "cal_325.html",
+  "matchCenter": "wse_mc.html",
+  "zona": "America/Asuncion",
+  "formato": "grupos → eliminatoria[cuartos,semis,final,tercer_puesto,colocacion]",
+  "normas": "World Skate: grupos A/B → fase final (cuartos, semis, oro, bronce y puestos 5.º-8.º en el mismo bloque)"
+}

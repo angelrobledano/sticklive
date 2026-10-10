@@ -1,0 +1,14 @@
+{
+  "descripcion": "World Skate Games Asunción 2026 — Mundial sub-19 masculino (idc 331): grupos A/B + fase final (con partidos en juego)",
+  "fuente": "https://rinkhockey.worldskate.org/league/331 + worldskate_mc_1.php del mismo instante",
+  "capturado": "2026-10-08T14:46:00.000Z",
+  "tipo": "worldskate",
+  "calendario": "cal_331.html",
+  "matchCenter": "wse_mc.html",
+  "zona": "America/Asuncion",
+  "formato": "grupos → eliminatoria[cuartos,semis,final,tercer_puesto,colocacion]",
+  "normas": "World Skate: grupos A/B → fase final (cuartos, semis, oro, bronce y puestos 5.º-8.º en el mismo bloque)",
+  "debeContener": [
+    "2026-10-08T15:30:00.000Z | wse_1164-wse_1163 | wse_match_3359 | live 1-11 | F2 Cuartos de final/cuartos"
+  ]
+}

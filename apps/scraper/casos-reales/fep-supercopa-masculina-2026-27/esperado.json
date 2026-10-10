@@ -1,0 +1,34 @@
+{
+  "formato": "eliminatoria[semis,final]",
+  "fases": [
+    {
+      "orden": 1,
+      "ref": "fep_fase_3592",
+      "nombre": null,
+      "tipo": "knockout",
+      "colocacion": false,
+      "evidencia": "source_rounds",
+      "rondas": [
+        {
+          "numero": 30,
+          "fase": "semis",
+          "nombre": "SEMIFINALES",
+          "tipo": "playoff",
+          "filas": 2
+        },
+        {
+          "numero": 40,
+          "fase": "final",
+          "nombre": "FINAL",
+          "tipo": "playoff",
+          "filas": 1
+        }
+      ]
+    }
+  ],
+  "filas": [
+    "20261024 | SEMIFINALES → F1 R30/semis | 3741-3688",
+    "20261024 | SEMIFINALES → F1 R30/semis | 3696-3690",
+    "20261025 | FINAL → F1 R40/final | ¿-¿"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "descripcion": "Supercopa femenina 2026/27 (idc 3593): final four con la final aún sin finalistas",
+  "fuente": "https://www.hockeypatines.fep.es (rfep_cal_idc_3593_1.php)",
+  "capturado": "2026-10-08T14:46:00.000Z",
+  "tipo": "calendario",
+  "portal": "fep",
+  "ficheros": [
+    "fcal_3593.html"
+  ],
+  "formato": "eliminatoria[semis,final]",
+  "normas": "Bases RFEP: final four (semifinales y final a partido único)"
+}

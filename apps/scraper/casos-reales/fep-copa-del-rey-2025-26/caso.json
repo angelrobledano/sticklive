@@ -1,0 +1,12 @@
+{
+  "descripcion": "Copa del Rey 2025/26 (idc 3258): final eight a partido único",
+  "fuente": "https://www.hockeypatines.fep.es (rfep_cal_idc_3258_1.php)",
+  "capturado": "2026-10-08T14:46:00.000Z",
+  "tipo": "calendario",
+  "portal": "fep",
+  "ficheros": [
+    "fcal_3258.html"
+  ],
+  "formato": "eliminatoria[cuartos,semis,final]",
+  "normas": "Bases RFEP: final eight a partido único"
+}

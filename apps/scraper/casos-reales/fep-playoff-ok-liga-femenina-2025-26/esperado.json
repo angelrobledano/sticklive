@@ -1,0 +1,38 @@
+{
+  "formato": "eliminatoria[semis,final]·series",
+  "fases": [
+    {
+      "orden": 1,
+      "ref": "fep_fase_3484",
+      "nombre": null,
+      "tipo": "knockout",
+      "colocacion": false,
+      "evidencia": "source_rounds",
+      "rondas": [
+        {
+          "numero": 30,
+          "fase": "semis",
+          "nombre": "SEMIFINALES",
+          "tipo": "playoff",
+          "filas": 5
+        },
+        {
+          "numero": 40,
+          "fase": "final",
+          "nombre": "FINAL",
+          "tipo": "playoff",
+          "filas": 2
+        }
+      ]
+    }
+  ],
+  "filas": [
+    "20260523 | 1 SEMIFINALES → F1 R30/semis P1 | 3416-3390",
+    "20260524 | 1 SEMIFINALES → F1 R30/semis P1 | 3388-3349",
+    "20260530 | 2 SEMIFINALES → F1 R30/semis P2 | 3349-3388",
+    "20260530 | 2 SEMIFINALES → F1 R30/semis P2 | 3390-3416",
+    "20260602 | 3 SEMIFINALES → F1 R30/semis P3 | 3416-3390",
+    "20260606 | 1 FINAL → F1 R40/final P1 | 3388-3416",
+    "20260614 | 2 FINAL → F1 R40/final P2 | 3416-3388"
+  ]
+}
