@@ -25,7 +25,7 @@
  * como `skipped` en `scrape_logs` (para no confundir al vigilante con una
  * fuente parada) y se avisa UNA vez.
  */
-import { db, insertScrapeLog } from '@sports/db';
+import { db, insertScrapeLog, reconcileSyntheticMatches } from '@sports/db';
 import * as Sentry from '@sentry/node';
 import { createLogger } from '@sports/logger';
 import { WorldskateScraper } from './worldskate.scraper.js';
@@ -247,12 +247,21 @@ export async function runWorldskate(
   const rEtl = out.rounds.success ? await pipeline.runRounds(out.rounds) : { upserted: 0 };
   const mEtl = out.matches.success   ? await pipeline.runMatches(out.matches)     : { upserted: 0 };
   const sEtl = out.standings.success ? await pipeline.runStandings(out.standings) : { upserted: 0 };
+  // Placeholders sintéticos que ya sobran en esta temporada: su ref incluye la
+  // hora, así que un cambio de hora de la fuente (o la corrección de la zona
+  // horaria de Asunción, UTC-4 → UTC-3) deja el viejo al lado del nuevo y el
+  // cuadro enseña el partido dos veces (caso real WSG femenino, 10/10/2026).
+  let reconciled = 0;
+  if (out.matches.success) {
+    try { reconciled = await reconcileSyntheticMatches(ctx.seasonId); }
+    catch (err) { log.warn({ err, competition: ctx.name }, 'Reconciliación de sintéticos falló — el ciclo sigue'); }
+  }
 
   log.info(
     { competition: ctx.name, idc: ctx.idc, ok,
       roundsUpserted: rEtl.upserted,
       matchesFound: out.matches.data.length, matchesUpserted: mEtl.upserted,
-      standingsFound: out.standings.data.length, standingsUpserted: sEtl.upserted },
+      standingsFound: out.standings.data.length, standingsUpserted: sEtl.upserted, reconciled },
     'World Skate ETL'
   );
   const liveRefs = out.matches.data

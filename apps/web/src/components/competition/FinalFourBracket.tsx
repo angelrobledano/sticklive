@@ -136,6 +136,8 @@ export function FinalFourBracket({ matches }: { matches: SeasonMatch[] }) {
     const out: Record<Bucket, SeasonMatch[]> = { semis: [], final: [], third: [] };
     for (const group of groups.values()) {
       const first = group[0]!;
+      // Fase explícita que no es del cuadro (colocación): fuera, sin adivinar.
+      if (first.stage && !phaseOfStage(first.stage)) continue;
       let bucket = phaseOfStage(first.stage) ?? phaseOfName(first.roundName);
       if (!bucket) {
         if (first.roundNumber === 1) bucket = 'semis';

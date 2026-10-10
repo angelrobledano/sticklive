@@ -45,15 +45,35 @@ export function knockoutPhaseViews(
   const knockout = phases.filter((p) => p.kind === 'knockout');
   if (knockout.some((p) => p.fromSource === false)) return null;
 
-  const views = knockout
-    .slice()
-    .sort((a, b) => Number(a.isPlacement) - Number(b.isPlacement) || a.ordinal - b.ordinal)
-    .map((phase) => ({
-      phase,
-      matches: matches.filter((m) => m.phaseId === phase.id),
-      rounds: rounds.filter((r) => r.phaseId === phase.id),
-      layout: 'bracket' as KnockoutLayout,
-    }));
+  const views: KnockoutPhaseView[] = [];
+  for (const phase of knockout) {
+    const own = matches.filter((m) => m.phaseId === phase.id);
+    const ownRounds = rounds.filter((r) => r.phaseId === phase.id);
+    if (phase.isPlacement) {
+      views.push({ phase, matches: own, rounds: ownRounds, layout: 'bracket' });
+      continue;
+    }
+    // Una fase por el título puede traer rondas de COLOCACIÓN dentro (5.º-8.º en
+    // la fase final de World Skate, o una ronda heredada). Nunca entran en el
+    // cuadro por el título: van a su propia vista de colocación.
+    const isPl = (s: string | null | undefined) => s === 'placement';
+    views.push({
+      phase: { ...phase, stages: phase.stages.filter((s) => !isPl(s)) },
+      matches: own.filter((m) => !isPl(m.stage)),
+      rounds: ownRounds.filter((r) => !isPl(r.stage)),
+      layout: 'bracket',
+    });
+    const plMatches = own.filter((m) => isPl(m.stage));
+    if (plMatches.length > 0) {
+      views.push({
+        phase: { ...phase, id: `${phase.id}:colocacion`, isPlacement: true, name: null, stages: ['placement'] },
+        matches: plMatches,
+        rounds: ownRounds.filter((r) => isPl(r.stage)),
+        layout: 'bracket',
+      });
+    }
+  }
+  views.sort((a, b) => Number(a.phase.isPlacement) - Number(b.phase.isPlacement) || a.phase.ordinal - b.phase.ordinal);
   // Una fase de colocación (9.º-10.º, 5.º-8.º) se presenta como la del título:
   // en un playoff a series, es una serie más; si no, partidos del cuadro.
   const titleLayout = views.find((v) => !v.phase.isPlacement);

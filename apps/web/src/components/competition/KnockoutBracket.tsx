@@ -71,7 +71,7 @@ export function KnockoutMatchCard({ m, label, showFinishedLabel = true }: { m: S
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isLive ? 'text-emerald-500' : 'text-slate-500 dark:text-slate-400'}`}>
           {isLive ? `🟢 ${t('playoffs.live')}`
             : isFinished
-              ? `${showFinishedLabel ? `${t('match_states.final')} · ` : ''}${fmtDate(m.finishedAt ?? m.scheduledAt, m.competitionTimezone, locale)}`
+              ? `${showFinishedLabel ? `${t('match_states.final')} · ` : ''}${fmtDate(m.scheduledAt ?? m.finishedAt, m.competitionTimezone, locale)}`
               : `${fmtDate(m.scheduledAt, m.competitionTimezone, locale)} · ${fmtTime(m.scheduledAt, m.competitionTimezone, locale)}`}
         </span>
       </div>

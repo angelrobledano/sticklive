@@ -1,0 +1,16 @@
+{
+  "descripcion": "World Skate Games Asunción 2026 — Mundial femenino (idc 329) el día de las finales: semis jugadas, oro ARG-ESP, bronce ITA-POR y bloques de puestos 5.º-8.º y 9.º-11.º",
+  "fuente": "https://rinkhockey.worldskate.org/league/329 + worldskate_mc_1.php del mismo instante",
+  "capturado": "2026-10-10T17:51:00.000Z",
+  "tipo": "worldskate",
+  "calendario": "cal_329.html",
+  "matchCenter": "wse_mc.html",
+  "zona": "America/Asuncion",
+  "formato": "grupos → eliminatoria[semis,final,tercer_puesto] → colocacion → colocacion",
+  "normas": "World Skate: grupos A/B → fase final sin cuartos (semis, oro, bronce) + puestos 5.º-8.º + puestos 9.º-11.º",
+  "debeContener": [
+    "2026-10-10T23:00:00.000Z | wse_1140-wse_1138",
+    "/final",
+    "2026-10-09T18:00:00.000Z | wse_1138-wse_1139"
+  ]
+}

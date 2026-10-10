@@ -1,0 +1,166 @@
+{
+  "formato": "grupos → eliminatoria[semis,final,tercer_puesto] → colocacion → colocacion",
+  "fases": [
+    {
+      "orden": 1,
+      "ref": "wse_fase_329",
+      "nombre": "GROUP PHASE",
+      "tipo": "groups",
+      "colocacion": false,
+      "evidencia": "source_title",
+      "rondas": [
+        {
+          "numero": 1,
+          "fase": null,
+          "nombre": null,
+          "tipo": "regular",
+          "filas": 5
+        },
+        {
+          "numero": 2,
+          "fase": null,
+          "nombre": null,
+          "tipo": "regular",
+          "filas": 5
+        },
+        {
+          "numero": 3,
+          "fase": null,
+          "nombre": null,
+          "tipo": "regular",
+          "filas": 5
+        },
+        {
+          "numero": 4,
+          "fase": null,
+          "nombre": null,
+          "tipo": "regular",
+          "filas": 5
+        },
+        {
+          "numero": 5,
+          "fase": null,
+          "nombre": null,
+          "tipo": "regular",
+          "filas": 5
+        }
+      ]
+    },
+    {
+      "orden": 2,
+      "ref": "wse_fase_344",
+      "nombre": "FINAL PHASE",
+      "tipo": "knockout",
+      "colocacion": false,
+      "evidencia": "source_rounds",
+      "rondas": [
+        {
+          "numero": 30,
+          "fase": "semis",
+          "nombre": "SEMIFINALS",
+          "tipo": "playoff",
+          "filas": 2
+        },
+        {
+          "numero": 40,
+          "fase": "final",
+          "nombre": "GOLD MEDAL",
+          "tipo": "playoff",
+          "filas": 1
+        },
+        {
+          "numero": 50,
+          "fase": "third_place",
+          "nombre": "BRONZE MEDAL",
+          "tipo": "playoff",
+          "filas": 1
+        }
+      ]
+    },
+    {
+      "orden": 3,
+      "ref": "wse_fase_345",
+      "nombre": "5TH - 8TH PLACE",
+      "tipo": "knockout",
+      "colocacion": true,
+      "evidencia": "source_rounds",
+      "rondas": [
+        {
+          "numero": 60,
+          "fase": "placement",
+          "nombre": "5TH - 8TH POSITION",
+          "tipo": "playoff",
+          "filas": 2
+        },
+        {
+          "numero": 61,
+          "fase": "placement",
+          "nombre": "5TH - 6TH POSITION",
+          "tipo": "playoff",
+          "filas": 1
+        },
+        {
+          "numero": 62,
+          "fase": "placement",
+          "nombre": "7TH - 8TH POSITION",
+          "tipo": "playoff",
+          "filas": 1
+        }
+      ]
+    },
+    {
+      "orden": 4,
+      "ref": "wse_fase_348",
+      "nombre": "9TH - 11ST PLACE",
+      "tipo": "knockout",
+      "colocacion": true,
+      "evidencia": "source_title",
+      "rondas": [
+        {
+          "numero": 60,
+          "fase": "placement",
+          "nombre": "9TH - 11ST PLACE",
+          "tipo": "playoff",
+          "filas": 2
+        }
+      ]
+    }
+  ],
+  "partidos": [
+    "2026-10-04T14:00:00.000Z | wse_1139-wse_1145 | wse_match_3163 | finished 28-0 | F1 Jornada 1 GB",
+    "2026-10-04T16:15:00.000Z | wse_1141-wse_1147 | wse_match_3236 | finished 13-1 | F1 Jornada 1 GB",
+    "2026-10-04T18:30:00.000Z | wse_1143-wse_1148 | wse_match_3237 | finished 4-1 | F1 Jornada 1 GB",
+    "2026-10-04T20:45:00.000Z | wse_1138-wse_1144 | wse_match_3241 | finished 8-0 | F1 Jornada 1 GA",
+    "2026-10-04T23:00:00.000Z | wse_1140-wse_1146 | wse_match_3251 | finished 5-1 | F1 Jornada 1 GA",
+    "2026-10-05T17:00:00.000Z | wse_1145-wse_1141 | wse_match_3238 | finished 0-21 | F1 Jornada 2 GB",
+    "2026-10-05T19:00:00.000Z | wse_1144-wse_1140 | wse_match_3242 | finished 0-6 | F1 Jornada 2 GA",
+    "2026-10-05T21:00:00.000Z | wse_1142-wse_1138 | wse_match_3252 | finished 2-3 | F1 Jornada 2 GA",
+    "2026-10-05T23:00:00.000Z | wse_1139-wse_1143 | wse_match_3240 | finished 5-0 | F1 Jornada 2 GB",
+    "2026-10-06T01:00:00.000Z | wse_1148-wse_1147 | wse_match_3239 | finished 4-8 | F1 Jornada 2 GB",
+    "2026-10-06T17:00:00.000Z | wse_1139-wse_1141 | wse_match_3246 | finished 1-4 | F1 Jornada 3 GB",
+    "2026-10-06T19:00:00.000Z | wse_1145-wse_1148 | wse_match_3255 | finished 3-13 | F1 Jornada 3 GB",
+    "2026-10-06T21:00:00.000Z | wse_1147-wse_1143 | wse_match_3253 | finished 1-4 | F1 Jornada 3 GB",
+    "2026-10-06T23:00:00.000Z | wse_1138-wse_1140 | wse_match_3245 | finished 7-1 | F1 Jornada 3 GA",
+    "2026-10-07T01:00:00.000Z | wse_1146-wse_1142 | wse_match_3244 | finished 0-7 | F1 Jornada 3 GA",
+    "2026-10-07T16:15:00.000Z | wse_1147-wse_1139 | wse_match_3249 | finished 1-16 | F1 Jornada 4 GB",
+    "2026-10-07T18:30:00.000Z | wse_1143-wse_1145 | wse_match_3254 | finished 9-0 | F1 Jornada 4 GB",
+    "2026-10-07T20:45:00.000Z | wse_1141-wse_1148 | wse_match_3250 | finished 21-0 | F1 Jornada 4 GB",
+    "2026-10-07T23:00:00.000Z | wse_1146-wse_1138 | wse_match_3248 | finished 0-6 | F1 Jornada 4 GA",
+    "2026-10-08T01:00:00.000Z | wse_1142-wse_1144 | wse_match_3247 | finished 4-2 | F1 Jornada 4 GA",
+    "2026-10-08T14:00:00.000Z | wse_1148-wse_1139 | wse_match_3273 | finished 1-19 | F1 Jornada 5 GB",
+    "2026-10-08T16:15:00.000Z | wse_1146-wse_1144 | wse_match_3270 | finished 3-3 | F1 Jornada 5 GA",
+    "2026-10-08T18:30:00.000Z | wse_1145-wse_1147 | wse_match_3271 | finished 1-11 | F1 Jornada 5 GB",
+    "2026-10-08T20:45:00.000Z | wse_1141-wse_1143 | wse_match_3272 | finished 1-0 | F1 Jornada 5 GB",
+    "2026-10-08T23:00:00.000Z | wse_1140-wse_1142 | wse_match_3269 | finished 4-0 | F1 Jornada 5 GA",
+    "2026-10-09T13:00:00.000Z | wse_1146-wse_1145 | wse_match_3420 | finished 21-0 | F4 Jornada 6/colocacion",
+    "2026-10-09T15:30:00.000Z | wse_1143-wse_1144 | wse_match_3377 | finished 0-1 | F3 Puestos 5º-8º/colocacion",
+    "2026-10-09T18:00:00.000Z | wse_1138-wse_1139 | wse_match_3370 | finished 2-1 | F2 Semifinal/semis",
+    "2026-10-09T20:30:00.000Z | wse_1140-wse_1141 | wse_match_3369 | finished 4-0 | F2 Semifinal/semis",
+    "2026-10-09T23:00:00.000Z | wse_1147-wse_1142 | wse_match_3378 | finished 2-14 | F3 Puestos 5º-8º/colocacion",
+    "2026-10-10T13:45:00.000Z | wse_1146-wse_1148 | wse_match_3421 | finished 15-1 | F4 Jornada 7/colocacion",
+    "2026-10-10T16:00:00.000Z | wse_1143-wse_1147 | wse_match_3423 | finished 3-2 | F3 Puestos 5º-8º/colocacion",
+    "2026-10-10T18:15:00.000Z | wse_1144-wse_1142 | sin-idp | sin-estado · | F3 Puestos 5º-8º/colocacion",
+    "2026-10-10T20:30:00.000Z | wse_1141-wse_1139 | sin-idp | sin-estado · | F2 3º y 4º puesto/tercer_puesto",
+    "2026-10-10T23:00:00.000Z | wse_1140-wse_1138 | sin-idp | sin-estado · | F2 Final/final"
+  ]
+}
