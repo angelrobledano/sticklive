@@ -1,0 +1,14 @@
+{
+  "descripcion": "World Skate Games Asunción 2026 — Mundial femenino (idc 329): grupos A/B + fase final + puestos 5.º-8.º",
+  "fuente": "https://rinkhockey.worldskate.org/league/329 + worldskate_mc_1.php del mismo instante",
+  "capturado": "2026-10-08T14:46:00.000Z",
+  "tipo": "worldskate",
+  "calendario": "cal_329.html",
+  "matchCenter": "wse_mc.html",
+  "zona": "America/Asuncion",
+  "formato": "grupos → eliminatoria[semis,final,tercer_puesto] → colocacion",
+  "normas": "World Skate: grupos A/B → fase final sin cuartos (semis, oro, bronce) + bloque de puestos 5.º-8.º",
+  "noDebeContener": [
+    "wse_match_3359"
+  ]
+}

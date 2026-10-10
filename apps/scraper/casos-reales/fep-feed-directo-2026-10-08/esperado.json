@@ -1,0 +1,37 @@
+{
+  "estados": {
+    "scheduled": 30
+  },
+  "partidos": [
+    "fep_match_34814 | fep_club_746-fep_club_144 | scheduled · | 2026-10-11T11:30:00.000Z",
+    "fep_match_34815 | fep_club_521-fep_club_737 | scheduled · | 2026-10-10T18:00:00.000Z",
+    "fep_match_34816 | fep_club_126-fep_club_88 | scheduled · | 2026-10-10T18:00:00.000Z",
+    "fep_match_34817 | fep_club_575-fep_club_134 | scheduled · | 2026-10-11T11:00:00.000Z",
+    "fep_match_34819 | fep_club_129-fep_club_94 | scheduled · | 2026-10-10T16:30:00.000Z",
+    "fep_match_34820 | fep_club_731-fep_club_136 | scheduled · | 2026-10-10T17:30:00.000Z",
+    "fep_match_34996 | fep_club_737-fep_club_123 | scheduled · | 2026-10-10T18:00:00.000Z",
+    "fep_match_34998 | fep_club_133-fep_club_323 | scheduled · | 2026-10-10T18:00:00.000Z",
+    "fep_match_34999 | fep_club_776-fep_club_473 | scheduled · | 2026-10-10T18:30:00.000Z",
+    "fep_match_35000 | fep_club_125-fep_club_331 | scheduled · | 2026-10-10T17:00:00.000Z",
+    "fep_match_35001 | fep_club_144-fep_club_96 | scheduled · | 2026-10-10T18:00:00.000Z",
+    "fep_match_35002 | fep_club_114-fep_club_44 | scheduled · | 2026-10-10T15:00:00.000Z",
+    "fep_match_35178 | fep_club_472-fep_club_109 | scheduled · | 2026-10-10T16:30:00.000Z",
+    "fep_match_35179 | fep_club_147-fep_club_134 | scheduled · | 2026-10-11T10:00:00.000Z",
+    "fep_match_35180 | fep_club_436-fep_club_108 | scheduled · | 2026-10-11T09:00:00.000Z",
+    "fep_match_35182 | fep_club_79-fep_club_94 | scheduled · | 2026-10-10T16:00:00.000Z",
+    "fep_match_35183 | fep_club_66-fep_club_729 | scheduled · | 2026-10-11T10:30:00.000Z",
+    "fep_match_35184 | fep_club_275-fep_club_88 | scheduled · | 2026-10-10T17:00:00.000Z",
+    "fep_match_35360 | fep_club_93-fep_club_102 | scheduled · | 2026-10-10T17:45:00.000Z",
+    "fep_match_35361 | fep_club_82-fep_club_126 | scheduled · | 2026-10-10T18:00:00.000Z",
+    "fep_match_35363 | fep_club_87-fep_club_435 | scheduled · | 2026-10-10T17:30:00.000Z",
+    "fep_match_35364 | fep_club_534-fep_club_117 | scheduled · | 2026-10-10T11:00:00.000Z",
+    "fep_match_35365 | fep_club_572-fep_club_116 | scheduled · | 2026-10-10T18:00:00.000Z",
+    "fep_match_35542 | fep_club_574-fep_club_98 | scheduled · | 2026-10-10T15:30:00.000Z",
+    "fep_match_35543 | fep_club_76-fep_club_79 | scheduled · | 2026-10-10T15:00:00.000Z",
+    "fep_match_35544 | fep_club_69-fep_club_999 | scheduled · | 2026-10-10T18:30:00.000Z",
+    "fep_match_35545 | fep_club_77-fep_club_482 | scheduled · | 2026-10-10T18:00:00.000Z",
+    "fep_match_35546 | fep_club_85-fep_club_738 | scheduled · | 2026-10-10T18:00:00.000Z",
+    "fep_match_35547 | fep_club_460-fep_club_86 | scheduled · | 2026-10-10T18:00:00.000Z",
+    "fep_match_35548 | fep_club_226-fep_club_71 | scheduled · | 2026-10-10T18:00:00.000Z"
+  ]
+}

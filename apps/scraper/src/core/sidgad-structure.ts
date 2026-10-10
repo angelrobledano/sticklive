@@ -38,6 +38,11 @@ export function collectRoundRows(
       roundName = $th.text().replace(/\s+/g, ' ').trim();
     } else if (tag === 'tbody') {
       $(el).find('tr.team_class').each((_, row) => {
+        // Fila de NOTA de la fuente bajo un partido ("resultado 10-0 por
+        // resolución disciplinaria"): lleva las clases team_X del cruce pero
+        // es una sola celda a todo lo ancho. No es un partido (caso real 3481).
+        const cells = $(row).children('td');
+        if (cells.length === 1 && cells.first().attr('colspan')) return;
         out.push({ roundName, row: row as Element });
       });
     }

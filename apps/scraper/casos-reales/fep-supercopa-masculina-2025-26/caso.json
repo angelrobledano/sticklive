@@ -1,0 +1,12 @@
+{
+  "descripcion": "Supercopa de España masculina 2025/26 (idc 3177): final four",
+  "fuente": "https://www.hockeypatines.fep.es (rfep_cal_idc_3177_1.php)",
+  "capturado": "2026-10-08T14:46:00.000Z",
+  "tipo": "calendario",
+  "portal": "fep",
+  "ficheros": [
+    "fcal_3177.html"
+  ],
+  "formato": "eliminatoria[semis,final]",
+  "normas": "Bases RFEP: final four (semifinales y final a partido único)"
+}

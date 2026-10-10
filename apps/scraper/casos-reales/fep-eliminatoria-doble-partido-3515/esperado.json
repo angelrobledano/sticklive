@@ -1,0 +1,26 @@
+{
+  "formato": "eliminatoria·ida-vuelta",
+  "fases": [
+    {
+      "orden": 1,
+      "ref": "fep_fase_3515",
+      "nombre": null,
+      "tipo": "knockout",
+      "colocacion": false,
+      "evidencia": "structural_rule",
+      "rondas": [
+        {
+          "numero": 90,
+          "fase": null,
+          "nombre": null,
+          "tipo": "playoff",
+          "filas": 2
+        }
+      ]
+    }
+  ],
+  "filas": [
+    "20260530 | Jornada 1 → F1 R90 P1 | 3415-3344",
+    "20260628 | Jornada 2 → F1 R90 P2 | 3344-3415"
+  ]
+}

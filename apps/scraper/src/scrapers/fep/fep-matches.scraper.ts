@@ -73,10 +73,10 @@ export class FepMatchesScraper extends FepBaseScraper<ScrapedMatch> {
     return this.parseMatches(html);
   }
 
-  private parseMatches(html: string): ScrapedMatch[] {
+  /** Parser puro del feed (público para la batería de casos reales). */
+  parseMatches(html: string, scrapedAt: Date = new Date()): ScrapedMatch[] {
     const $ = cheerio.load(html);
     const matches: ScrapedMatch[] = [];
-    const scrapedAt = new Date();
 
     // Seleccionar tanto <a> como <div> con clase scorer_game
     $('a.scorer_game, div.scorer_game').each((_, el) => {

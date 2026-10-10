@@ -1,0 +1,12 @@
+{
+  "descripcion": "Play Off OK Liga femenina 2025/26 (idc 3484): semifinales y final al mejor de 5",
+  "fuente": "https://www.hockeypatines.fep.es (rfep_cal_idc_3484_1.php)",
+  "capturado": "2026-10-08T14:46:00.000Z",
+  "tipo": "calendario",
+  "portal": "fep",
+  "ficheros": [
+    "fcal_3484.html"
+  ],
+  "formato": "eliminatoria[semis,final]·series",
+  "normas": "Bases RFEP: semifinales y final al mejor de 5"
+}

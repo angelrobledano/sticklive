@@ -1,0 +1,113 @@
+{
+  "formato": "grupos → eliminatoria[cuartos,semis,final,tercer_puesto,colocacion]",
+  "fases": [
+    {
+      "orden": 1,
+      "ref": "wse_fase_331",
+      "nombre": "GROUP PHASE",
+      "tipo": "groups",
+      "colocacion": false,
+      "evidencia": "source_title",
+      "rondas": [
+        {
+          "numero": 1,
+          "fase": null,
+          "nombre": null,
+          "tipo": "regular",
+          "filas": 4
+        },
+        {
+          "numero": 2,
+          "fase": null,
+          "nombre": null,
+          "tipo": "regular",
+          "filas": 4
+        },
+        {
+          "numero": 3,
+          "fase": null,
+          "nombre": null,
+          "tipo": "regular",
+          "filas": 4
+        }
+      ]
+    },
+    {
+      "orden": 2,
+      "ref": "wse_fase_343",
+      "nombre": "FINAL PHASE",
+      "tipo": "knockout",
+      "colocacion": false,
+      "evidencia": "source_rounds",
+      "rondas": [
+        {
+          "numero": 20,
+          "fase": "quarters",
+          "nombre": "QUARTERFINALS",
+          "tipo": "playoff",
+          "filas": 4
+        },
+        {
+          "numero": 30,
+          "fase": "semis",
+          "nombre": "SEMIFINALS",
+          "tipo": "playoff",
+          "filas": 2
+        },
+        {
+          "numero": 40,
+          "fase": "final",
+          "nombre": "GOLD MEDAL",
+          "tipo": "playoff",
+          "filas": 1
+        },
+        {
+          "numero": 50,
+          "fase": "third_place",
+          "nombre": "BRONCE MEDAL",
+          "tipo": "playoff",
+          "filas": 1
+        },
+        {
+          "numero": 60,
+          "fase": "placement",
+          "nombre": "5TH - 8TH POSITION",
+          "tipo": "playoff",
+          "filas": 2
+        },
+        {
+          "numero": 61,
+          "fase": "placement",
+          "nombre": "5TH - 6TH POSITION",
+          "tipo": "playoff",
+          "filas": 1
+        },
+        {
+          "numero": 62,
+          "fase": "placement",
+          "nombre": "7TH - 8TH POSITION",
+          "tipo": "playoff",
+          "filas": 1
+        }
+      ]
+    }
+  ],
+  "partidos": [
+    "2026-10-04T16:15:00.000Z | wse_1165-wse_1161 | wse_match_3257 | finished 3-7 | F1 Jornada 1 GA",
+    "2026-10-04T18:30:00.000Z | wse_1159-wse_1163 | wse_match_3258 | finished 4-1 | F1 Jornada 1 GA",
+    "2026-10-04T20:45:00.000Z | wse_1160-wse_1164 | wse_match_3256 | finished 11-1 | F1 Jornada 1 GB",
+    "2026-10-04T23:00:00.000Z | wse_1166-wse_1162 | wse_match_3208 | finished 0-19 | F1 Jornada 1 GB",
+    "2026-10-05T11:00:00.000Z | wse_1163-wse_1165 | wse_match_3260 | finished 7-0 | F1 Jornada 2 GA",
+    "2026-10-05T13:00:00.000Z | wse_1162-wse_1160 | wse_match_3213 | finished 1-3 | F1 Jornada 2 GB",
+    "2026-10-05T15:00:00.000Z | wse_1161-wse_1159 | wse_match_3261 | finished 1-6 | F1 Jornada 2 GA",
+    "2026-10-06T11:00:00.000Z | wse_1164-wse_1162 | wse_match_3218 | finished 3-7 | F1 Jornada 3 GB",
+    "2026-10-06T13:00:00.000Z | wse_1163-wse_1161 | wse_match_3262 | finished 2-2 | F1 Jornada 3 GA",
+    "2026-10-06T15:00:00.000Z | wse_1160-wse_1166 | wse_match_3263 | finished 16-0 | F1 Jornada 3 GB",
+    "2026-10-07T12:15:00.000Z | wse_1164-wse_1166 | wse_match_3259 | finished 10-3 | F1 Jornada 2 GB",
+    "2026-10-07T14:15:00.000Z | wse_1159-wse_1165 | wse_match_3264 | finished 7-1 | F1 Jornada 3 GA",
+    "2026-10-08T15:30:00.000Z | wse_1164-wse_1163 | wse_match_3359 | live 1-11 | F2 Cuartos de final/cuartos",
+    "2026-10-08T18:00:00.000Z | wse_1162-wse_1161 | sin-idp | sin-estado · | F2 Cuartos de final/cuartos",
+    "2026-10-08T20:30:00.000Z | wse_1160-wse_1165 | sin-idp | sin-estado · | F2 Cuartos de final/cuartos",
+    "2026-10-08T23:00:00.000Z | wse_1159-wse_1166 | sin-idp | sin-estado · | F2 Cuartos de final/cuartos"
+  ]
+}
