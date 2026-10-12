@@ -27,6 +27,29 @@ export function localeAlternates(locale: Locale, path = ''): Metadata['alternate
 
 export { isSupportedLocale } from '@/lib/locales';
 
+/**
+ * Metadata de una página privada: descarta el canonical que hereda del layout
+ * `[locale]` y la marca como no indexable.
+ *
+ * El layout `[locale]` declara el canonical de la portada y las páginas que no
+ * declaran el suyo lo heredan: sin esto, /es/login se anunciaba a sí misma como
+ * `canonical=https://sticklive.eu/es` y Google la trataba como una alternativa
+ * de la home.
+ *
+ * `alternates` va deliberadamente vacío (y no con un canonical propio) porque
+ * un layout cubre varias hojas de su rama (p. ej. /premium/success y
+ * /premium/error): un canonical fijo mentiría sobre la otra. Son páginas
+ * privadas y `noindex`: no hay URL que consolidar. Estas páginas son
+ * componentes de cliente, así que la metadata vive en el `layout.tsx` del
+ * segmento (un page de cliente no puede exportarla).
+ */
+export function privateMetadata(): Metadata {
+  return {
+    alternates: {},
+    robots: { index: false, follow: false },
+  };
+}
+
 // ─── Open Graph / Twitter ──────────────────────────────────────────────────────
 
 /** Imagen social por defecto (1200×630, < 300 KB) servida desde /public. */

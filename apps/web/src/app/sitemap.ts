@@ -1,27 +1,20 @@
 import type { MetadataRoute } from 'next';
 import { SUPPORTED_LOCALES } from '@/lib/locales';
 import { SITE_URL } from '@/lib/seo';
-import { sitemapEntries, sitemapSectionIds, type SitemapIds } from '@/lib/sitemap';
-
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
-
-async function fetchIds(): Promise<SitemapIds> {
-  try {
-    const res = await fetch(`${API_URL}/meta/sitemap`, { next: { revalidate: 3600 } });
-    if (res.ok) return (await res.json()) as SitemapIds;
-  } catch {
-    /* sitemap mínimo si la API no responde */
-  }
-  return { competitions: [], teams: [], players: [], matches: [] };
-}
+import { sitemapEntries, sitemapSectionIds } from '@/lib/sitemap';
+import { fetchSitemapIds } from '@/lib/sitemap-source';
 
 /**
  * Sitemap por secciones/trozos (#169): evita que un solo fichero supere el
- * límite de 50.000 URLs de Google cuando crezcan jugadores/partidos. Next
- * publica un índice y un fichero por id.
+ * límite de 50.000 URLs de Google cuando crezcan jugadores/partidos.
+ *
+ * OJO: con `generateSitemaps` Next **no genera ningún índice**. Publica una
+ * sola ruta dinámica `/sitemap/<id>.xml`, así que `/sitemap.xml` devuelve 404.
+ * El índice que declara estas secciones lo sirve `app/sitemap-index.xml/route.ts`
+ * y es la URL que anuncia `robots.ts`.
  */
 export async function generateSitemaps(): Promise<Array<{ id: string }>> {
-  return sitemapSectionIds(await fetchIds()).map((id) => ({ id }));
+  return sitemapSectionIds(await fetchSitemapIds()).map((id) => ({ id }));
 }
 
 /**
@@ -33,7 +26,7 @@ export async function generateSitemaps(): Promise<Array<{ id: string }>> {
  */
 export default async function sitemap(props: { id: string | Promise<string> }): Promise<MetadataRoute.Sitemap> {
   const id = await props.id;
-  const ids = await fetchIds();
+  const ids = await fetchSitemapIds();
   // #337: el lastmod sale de los datos de cada entidad (updatedAt/finishedAt/
   // scheduledAt), no de `new Date()`. Si una entrada no trae fecha, se omite el
   // lastModified en vez de firmar todas las URLs con el mismo timestamp falso.

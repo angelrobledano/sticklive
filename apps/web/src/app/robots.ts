@@ -11,6 +11,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/*/admin', '/*/login', '/*/settings', '/*/favorites', '/*/premium/'],
       },
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    // Índice propio: con `generateSitemaps()` Next no publica `/sitemap.xml`.
+    sitemap: `${SITE_URL}/sitemap-index.xml`,
   };
 }

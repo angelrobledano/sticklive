@@ -122,3 +122,21 @@ export function sitemapEntries(section: string, ids: SitemapIds): SitemapEntry[]
     return entry;
   });
 }
+
+/**
+ * Índice de sitemaps (`sitemapindex`) que declara todas las secciones.
+ *
+ * Con `generateSitemaps()` Next 16 publica cada sección en `/sitemap/<id>.xml`
+ * y **no genera ningún índice** (las mapea a `/sitemap/[__metadata_id__]`), así
+ * que un `/sitemap.xml` a secas devuelve 404. Sin este índice, Google no
+ * descubre ninguna sección y el `Sitemap:` de `robots.txt` apunta a un 404.
+ *
+ * Los ids vienen de `sitemapSectionIds` (constantes propias: `core` y
+ * `<tipo>-<trozo>`), no de datos de usuario, así que no hay nada que escapar.
+ */
+export function sitemapIndexXml(sectionIds: string[], siteUrl: string): string {
+  const entries = sectionIds
+    .map((id) => `  <sitemap><loc>${siteUrl}/sitemap/${id}.xml</loc></sitemap>`)
+    .join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}\n</sitemapindex>\n`;
+}

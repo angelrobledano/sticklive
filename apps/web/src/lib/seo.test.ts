@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   socialMeta, socialImageVersion, socialImageUrl, localeLessUrl, SITE_URL,
-  siteJsonLd, competitionJsonLd, competitionsListJsonLd,
+  siteJsonLd, competitionJsonLd, competitionsListJsonLd, privateMetadata,
 } from './seo';
 
 /**
@@ -225,5 +225,20 @@ describe('competitionsListJsonLd (#349)', () => {
 
   it('con lista vacía devuelve un ItemList sin elementos', () => {
     expect(competitionsListJsonLd([])['itemListElement']).toEqual([]);
+  });
+});
+
+// El layout `[locale]` define el canonical de la portada y las páginas que no
+// definen el suyo lo heredaban: /es/login declaraba ser https://sticklive.eu/es
+// y Google la trataba como alternativa de la home.
+describe('privateMetadata', () => {
+  it('no declara canonical, para descartar el de la portada heredado', () => {
+    const meta = privateMetadata();
+    expect(meta.alternates).toEqual({});
+    expect(meta.alternates?.canonical).toBeUndefined();
+  });
+
+  it('marca la página como no indexable', () => {
+    expect(privateMetadata().robots).toEqual({ index: false, follow: false });
   });
 });

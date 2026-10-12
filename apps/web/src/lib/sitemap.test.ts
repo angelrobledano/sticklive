@@ -4,6 +4,7 @@ import {
   sitemapEntries,
   sitemapLastModified,
   sitemapItemId,
+  sitemapIndexXml,
   SITEMAP_SECTION_SIZE,
   type SitemapIds,
 } from './sitemap';
@@ -122,5 +123,29 @@ describe('sitemapEntries con lastmod (#337)', () => {
     expect(sitemapEntries('teams-0', ids({ teams: ['t1'] }))).toEqual([
       { path: '/teams/t1', priority: 0.7, changeFrequency: 'daily' },
     ]);
+  });
+});
+
+// Next 16 no genera índice con `generateSitemaps()`: publica cada sección en
+// `/sitemap/<id>.xml` y nada más. Sin índice propio, el `Sitemap:` de
+// `robots.txt` apuntaba a un `/sitemap.xml` que devuelve 404 y Google no veía
+// ninguna sección (las 14.050 URLs del sitemap quedaban invisibles).
+describe('sitemapIndexXml', () => {
+  it('declara cada sección con su URL absoluta', () => {
+    const xml = sitemapIndexXml(['core', 'teams-0'], 'https://sticklive.eu');
+    expect(xml).toContain('<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+    expect(xml).toContain('<loc>https://sticklive.eu/sitemap/core.xml</loc>');
+    expect(xml).toContain('<loc>https://sticklive.eu/sitemap/teams-0.xml</loc>');
+  });
+
+  it('es un XML bien formado (declaración y cierre)', () => {
+    const xml = sitemapIndexXml(sitemapSectionIds(ids()), 'https://sticklive.eu');
+    expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
+    expect(xml.trimEnd().endsWith('</sitemapindex>')).toBe(true);
+  });
+
+  it('emite un <sitemap> por sección: siempre al menos core', () => {
+    const xml = sitemapIndexXml(sitemapSectionIds(ids({ teams: ['t1'] })), 'https://sticklive.eu');
+    expect((xml.match(/<sitemap>/g) ?? []).length).toBe(2);
   });
 });
