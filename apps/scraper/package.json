@@ -19,7 +19,7 @@
     "@sports/shared-types": "*",
     "@sports/etl": "*",
     "@sports/db": "*",
-    "playwright": "^1.61.1",
+    "playwright": "^1.64.0",
     "cheerio": "^1.0.0"
   },
   "devDependencies": {
