@@ -9,7 +9,8 @@
 #     un build anterior a `main` sin que nadie lo notara.
 #   · El build de las imágenes puede llenar el disco del VPS de 4 GB ("no space
 #     left on device"): este script comprueba el espacio ANTES y libera caché de
-#     build si hace falta.
+#     build si hace falta; como último recurso purga los tags de releases
+#     antiguas (conserva `:current` y `:previous`, ver prune-release-images.sh).
 #   · Tras desplegar, comprueba la versión viva (smoke), no solo que los
 #     contenedores estén "up".
 #
@@ -84,7 +85,7 @@ FREE="$(free_gb)"
 log "espacio libre: ${FREE} GB (mínimo exigido ${MIN_FREE_GB} GB)"
 if [ "$FREE" -lt "$MIN_FREE_GB" ]; then
   if [ "$DRY_RUN" -eq 1 ]; then
-    warn "espacio por debajo del mínimo; en un deploy real se liberaría caché de build"
+    warn "espacio por debajo del mínimo; en un deploy real se liberaría caché de build y releases antiguas"
   else
     warn "espacio bajo → liberando caché de build (docker builder prune -f)"
     docker builder prune -f >/dev/null || warn "docker builder prune falló"
@@ -95,6 +96,12 @@ if [ "$FREE" -lt "$MIN_FREE_GB" ]; then
       docker image prune -f >/dev/null || true
       FREE="$(free_gb)"
       log "espacio libre tras purgar imágenes: ${FREE} GB"
+    fi
+    if [ "$FREE" -lt "$MIN_FREE_GB" ] && [ -x "$SCRIPT_DIR/prune-release-images.sh" ]; then
+      warn "sigue por debajo; purgando releases antiguas (conserva :current y :previous)"
+      "$SCRIPT_DIR/prune-release-images.sh" >/dev/null 2>&1 || warn "la purga de releases falló"
+      FREE="$(free_gb)"
+      log "espacio libre tras purgar releases: ${FREE} GB"
     fi
     [ "$FREE" -lt "$MIN_FREE_GB" ] && die "espacio insuficiente (${FREE} GB < ${MIN_FREE_GB} GB). Revisa 'docker system df' y 'df -h'."
   fi

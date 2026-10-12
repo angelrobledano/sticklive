@@ -149,6 +149,13 @@ como `<proyecto>-<svc>:<release>`, moviendo la anterior a `:previous` y dejando
 la actual en `:current` (p. ej. `sticklive-api:previous`). Así `previous` es
 siempre la release **anterior** a la que corre.
 
+Desde el 10/10/2026, tras etiquetar, `tag-release.sh` **purga los tags de
+releases anteriores** (`deploy/prune-release-images.sh`): conserva `:current`,
+`:previous` y los tags de release que apunten a esas mismas imágenes, y retira
+el resto. Sin esta purga cada deploy añadía 4 imágenes nuevas y 10 releases
+llegaron a ocupar 19 GB. El preflight de `deploy.sh` también usa esa purga como
+último recurso antes de abortar por espacio libre insuficiente.
+
 ### Rollback de app (rápido, sin rebuild)
 
 Si el fallo es de código y el esquema **no** cambió, vuelve a la imagen anterior

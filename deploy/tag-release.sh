@@ -9,6 +9,8 @@
 #   1. Crea un tag de git `vYYYYMMDD-<sha>` en el commit desplegado.
 #   2. Para cada servicio retiene su imagen como `:<release>` y `:current`, y
 #      mueve la `:current` anterior a `:previous` (rollback en segundos).
+#   3. Purga los tags de releases anteriores (prune-release-images.sh):
+#      conservarlas todas llenó el disco del VPS (19 GB de imágenes).
 #
 # Uso (como root, DESPUÉS de un deploy verificado):
 #   /opt/sticklive/deploy/tag-release.sh
@@ -108,5 +110,16 @@ for svc in $SERVICES; do
   docker tag "$img_id" "$repo:current"
   log "  $repo:$REL y $repo:current listos"
 done
+
+# ── 3. Purga de releases antiguas ────────────────────────────────────────────
+# Conserva `:current` y `:previous` (y los tags de release que apunten a esas
+# mismas imágenes); el resto de tags `vYYYYMMDD-<sha>` se retira. Best-effort:
+# un fallo aquí NO invalida la release recién etiquetada.
+if [ -x "$SCRIPT_DIR/prune-release-images.sh" ]; then
+  log "purgando releases antiguas (deploy/prune-release-images.sh)"
+  "$SCRIPT_DIR/prune-release-images.sh" || warn "la purga de releases falló (no bloqueante)"
+else
+  warn "no encuentro prune-release-images.sh; no se purgan releases antiguas"
+fi
 
 log "etiquetado $REL completado"
