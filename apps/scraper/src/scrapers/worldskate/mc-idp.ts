@@ -155,7 +155,8 @@ export interface McState {
  * Estado de cada partido del match center por idp: `scorer_game_playing` →
  * live, `scorer_game_final` → finished, `scorer_game_pending` → scheduled, más
  * el marcador en vivo. Es la señal explícita del directo de World Skate (el
- * calendario no lo dice: durante el partido muestra "-"). Pura.
+ * calendario no lo dice: muestra "-" al empezar y, desde el descanso, el
+ * marcador PARCIAL, que no es un final). Pura.
  */
 export function parseMcStates(html: string): Map<string, McState> {
   const out = new Map<string, McState>();

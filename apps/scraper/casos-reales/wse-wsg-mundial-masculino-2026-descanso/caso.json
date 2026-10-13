@@ -1,0 +1,17 @@
+{
+  "descripcion": "World Skate Games Asunción 2026 — Mundial masculino (idc 325) con FRA-CHI en la 2.ª parte: el calendario ya publica el marcador parcial (5 - 2) y el match center sigue en PERIOD 2",
+  "fuente": "https://rinkhockey.worldskate.org/league/325 + worldskate_mc_1.php del mismo instante",
+  "capturado": "2026-10-13T17:22:00.000Z",
+  "tipo": "worldskate",
+  "calendario": "cal_325.html",
+  "matchCenter": "wse_mc.html",
+  "zona": "America/Asuncion",
+  "formato": "grupos → eliminatoria[cuartos,semis,final,tercer_puesto,colocacion]",
+  "normas": "World Skate: grupos A/B → fase final (cuartos, semis, oro, bronce y puestos 5.º-8.º en el mismo bloque)",
+  "debeContener": [
+    "wse_match_3150 | live 5-2"
+  ],
+  "noDebeContener": [
+    "wse_match_3150 | finished"
+  ]
+}

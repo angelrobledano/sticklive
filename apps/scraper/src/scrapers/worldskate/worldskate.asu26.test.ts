@@ -298,6 +298,22 @@ describe('estado del directo: lo dice el match center, no la hora', () => {
     expect(o.matches[0]).toMatchObject({ sourceRef: 'wse_match_3270', status: 'live', homeScore: 2, awayScore: 0 });
   });
 
+  // Caso real (FRA-CHI y ESP-ITA, Mundial masculino 12-13/10/2026): a partir del
+  // descanso el calendario publica el marcador PARCIAL ("5 - 2") mientras el mc
+  // sigue en "PERIOD 2". Se daban por terminados en el descanso.
+  it('el calendario con marcador parcial NO cierra un partido que el mc da en juego', () => {
+    const cal = CAL_SWT_FRA.replace(' - </td>', '1 - 0</td>');
+    const o = parseWorldskateCalendar(cal, CFG, new Date('2026-10-08T17:00:00Z'), parseMcIdpIndex(MC_PLAYING), parseMcStates(MC_PLAYING));
+    expect(o.matches[0]).toMatchObject({ sourceRef: 'wse_match_3270', status: 'live', homeScore: 2, awayScore: 0 });
+  });
+
+  it('marcador en el calendario y el mc ya en final → finished', () => {
+    const mcFinal = MC_PLAYING.replace('scorer_game_playing', 'scorer_game_final');
+    const cal = CAL_SWT_FRA.replace(' - </td>', '3 - 1</td>');
+    const o = parseWorldskateCalendar(cal, CFG, new Date('2026-10-08T18:00:00Z'), parseMcIdpIndex(mcFinal), parseMcStates(mcFinal));
+    expect(o.matches[0]).toMatchObject({ status: 'finished', homeScore: 3, awayScore: 1 });
+  });
+
   it('pasada la hora y sin señal del mc → SIN estado (no "live" por reloj)', () => {
     const o = parseWorldskateCalendar(CAL_SWT_FRA, CFG, new Date('2026-10-08T17:30:00Z'));
     expect(o.matches[0]!.status).toBeUndefined();

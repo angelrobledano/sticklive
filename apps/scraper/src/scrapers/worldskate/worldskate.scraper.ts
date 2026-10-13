@@ -453,10 +453,13 @@ function parseMatchRow(
   }
   const sourceRef = idp ? `wse_match_${idp}` : undefined;
 
-  // Estado: resultado publicado en el calendario → finished; si no, lo que
-  // diga el match center (playing/final/pending). Nunca la hora.
-  const calendarFinished = homeScore !== undefined && awayScore !== undefined;
+  // Estado: si el match center lo da EN JUEGO, manda él (desde el descanso el
+  // calendario publica el marcador PARCIAL, caso ESP-ITA/FRA-CHI 12-13/10/2026).
+  // Si no, marcador en el calendario → finished, y sin él lo que diga el mc
+  // (final/pending). Nunca la hora.
   const mc = idp ? mcStates.get(idp) : undefined;
+  const mcLive = mc?.status === 'live';
+  const calendarFinished = !mcLive && homeScore !== undefined && awayScore !== undefined;
   // Sin ninguna de las dos señales queda undefined: el loader conserva el estado.
   const status: MatchStatus | undefined = calendarFinished ? 'finished' : mc?.status;
   if (!calendarFinished && mc && mc.status !== 'scheduled' && mc.homeScore !== undefined && mc.awayScore !== undefined) {
