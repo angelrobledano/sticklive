@@ -29,11 +29,16 @@ describe('reconcileSyntheticMatches', () => {
     const otra = await crearTemporada(await crearCompeticion(sport));
     const [arg, esp] = await Promise.all([crearEquipo(sport, 'ARG'), crearEquipo(sport, 'ESP')]);
 
-    // Final ARG-ESP: 20:00 en Asunción. Vieja con UTC-4 (00:00Z), nueva con UTC-3 (23:00Z).
-    const vieja = await sintetico(fem, arg, esp, '2026-10-11T00:00:00Z', '2026-10-09T12:00:00Z');
-    const nueva = await sintetico(fem, arg, esp, '2026-10-10T23:00:00Z', '2026-10-10T17:45:00Z');
-    const otraVieja = await sintetico(otra, arg, esp, '2026-10-11T00:00:00Z', '2026-10-09T12:00:00Z');
-    await sintetico(otra, arg, esp, '2026-10-10T23:00:00Z', '2026-10-10T17:45:00Z');
+    // Final ARG-ESP: la vieja (UTC-4) una hora más tarde que la nueva (UTC-3).
+    // Fechas FUTURAS: los sintéticos de hace más de 6 h los borra la limpieza
+    // de caducados y el test dependería del día en que se ejecute.
+    const dia = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
+    const [h20, h21] = [`${dia}T20:00:00Z`, `${dia}T21:00:00Z`]; // mismo día en Madrid
+    const [antes, ahora] = [new Date(Date.now() - 86_400_000).toISOString(), new Date().toISOString()];
+    const vieja = await sintetico(fem, arg, esp, h21, antes);
+    const nueva = await sintetico(fem, arg, esp, h20, ahora);
+    const otraVieja = await sintetico(otra, arg, esp, h21, antes);
+    await sintetico(otra, arg, esp, h20, ahora);
 
     expect(await reconcileSyntheticMatches(fem)).toBe(1);
     const quedan = await db.query<{ id: string }>(`SELECT id FROM matches WHERE season_id = $1`, [fem]);
