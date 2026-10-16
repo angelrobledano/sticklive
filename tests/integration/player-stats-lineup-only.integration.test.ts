@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Ficha de jugador que JUGÓ pero no marcó.
  *
  * `statsByCompetition` se construía desde `match_events`, así que un jugador
@@ -29,6 +29,11 @@ async function get(path: string) {
 async function jugadorQueJugoSinEventos() {
   const sportId = await crearDeporte();
   const seasonId = await crearTemporada(await crearCompeticion(sportId));
+  // La ficha agrupa por la temporada MÁS RECIENTE con actividad
+  // (`MAX(s.start_date)`): las factorías de test no ponen fecha de temporada y,
+  // sin ella, el JOIN `s.start_date = a.inicio` nunca casa (`start_date` NULL).
+  // En producción todas las temporadas la tienen.
+  await db.query(`UPDATE seasons SET start_date = DATE '2026-09-01' WHERE id = $1`, [seasonId]);
   const { homeTeamId, matchId } = await crearPartido({ seasonId });
 
   const { rows } = await db.query<{ id: string }>(
@@ -70,9 +75,13 @@ describe('ficha de jugador con alineación y sin eventos', () => {
 
   it('con un gol sigue contando partido y gol (sin regresión)', async () => {
     const { playerId, matchId, homeTeamId } = await jugadorQueJugoSinEventos();
+    // `match_events` está particionada por `match_date`: el test debe rellenarla
+    // como hacen el ETL y el resto de tests de integración.
     await db.query(
-      `INSERT INTO match_events (match_id, team_id, player_id, event_type, minute, period)
-       VALUES ($1, $2, $3, 'goal', 5, 1)`,
+      `INSERT INTO match_events (match_id, team_id, player_id, event_type, minute, period, match_date)
+       VALUES ($1, $2, $3, 'goal', 5, 1,
+               (SELECT COALESCE(scheduled_at::date, finished_at::date, DATE '1900-01-01')
+                  FROM matches WHERE id = $1))`,
       [matchId, homeTeamId, playerId]
     );
 
