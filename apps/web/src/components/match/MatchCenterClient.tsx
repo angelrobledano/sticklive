@@ -550,22 +550,30 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
         ))}
       </div>
 
-      {/* Contenido */}
-      <div
-        role="tabpanel"
-        id={`match-panel-${visibleTabs.indexOf(safeActiveTab)}`}
-        aria-labelledby={`match-tab-${visibleTabs.indexOf(safeActiveTab)}`}
-      >
-        {safeActiveTab === 'Resumen' && (
-          <>
-            <TimelineTab data={data} />
-            {/* Anuncio al FINAL del resumen (no en medio del marcador/timeline) */}
-            <AdBanner zone="match-summary" className="mt-4" />
-          </>
-        )}
-        {safeActiveTab === 'Alineaciones' && <LineupsTab    data={data} />}
-        {safeActiveTab === 'Estadísticas' && <StatsTab      data={data} />}
-      </div>
+      {/* Contenido. SEO (GSC 16-oct-2026): TODOS los paneles van en el DOM y los
+          inactivos se ocultan con `hidden` (además, es el patrón ARIA correcto
+          de pestañas). Montarlos condicionalmente dejaba alineaciones y
+          estadísticas fuera del HTML, y Googlebot no pulsa pestañas. El
+          anuncio sí queda condicional: no queremos anuncios ocultos. */}
+      {visibleTabs.map((tab, i) => (
+        <div
+          key={tab}
+          role="tabpanel"
+          id={`match-panel-${i}`}
+          aria-labelledby={`match-tab-${i}`}
+          hidden={safeActiveTab !== tab}
+        >
+          {tab === 'Resumen' && (
+            <>
+              <TimelineTab data={data} />
+              {/* Anuncio al FINAL del resumen (no en medio del marcador/timeline) */}
+              {safeActiveTab === 'Resumen' && <AdBanner zone="match-summary" className="mt-4" />}
+            </>
+          )}
+          {tab === 'Alineaciones'  && <LineupsTab data={data} />}
+          {tab === 'Estadísticas'  && <StatsTab   data={data} />}
+        </div>
+      ))}
     </div>
   );
 }

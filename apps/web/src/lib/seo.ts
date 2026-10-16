@@ -50,6 +50,21 @@ export function privateMetadata(): Metadata {
   };
 }
 
+/**
+ * Ruta canónica de la ficha de competición.
+ *
+ * Por retrocompatibilidad el `[id]` de `/competitions/[id]` puede ser el id de
+ * una TEMPORADA (enlaces antiguos): la ficha se sirve igual, así que quedaban
+ * dos URLs con el mismo contenido y cada una declarándose canónica de sí misma
+ * → "Duplicada: Google ha elegido una versión canónica diferente a la del
+ * usuario" en Search Console. Cuando el id pedido no es el de la competición,
+ * la canónica es la de la competición.
+ */
+export function competitionCanonicalPath(requestedId: string, competitionId?: string | null): string {
+  const id = competitionId && competitionId !== requestedId ? competitionId : requestedId;
+  return `/competitions/${id}`;
+}
+
 // ─── Open Graph / Twitter ──────────────────────────────────────────────────────
 
 /** Imagen social por defecto (1200×630, < 300 KB) servida desde /public. */

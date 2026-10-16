@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   socialMeta, socialImageVersion, socialImageUrl, localeLessUrl, SITE_URL,
   siteJsonLd, competitionJsonLd, competitionsListJsonLd, privateMetadata,
+  competitionCanonicalPath,
 } from './seo';
 
 /**
@@ -240,5 +241,24 @@ describe('privateMetadata', () => {
 
   it('marca la página como no indexable', () => {
     expect(privateMetadata().robots).toEqual({ index: false, follow: false });
+  });
+});
+
+// GSC (16-oct-2026), fila "Duplicada: Google ha elegido una versión canónica
+// diferente a la del usuario": `/competitions/<idDeTemporada>` (retrocompat)
+// servía el mismo contenido que `/competitions/<idDeCompetición>` y ambas se
+// declaraban canónicas de sí mismas.
+describe('competitionCanonicalPath', () => {
+  it('con un id de competición devuelve la misma ruta', () => {
+    expect(competitionCanonicalPath('c1', 'c1')).toBe('/competitions/c1');
+  });
+
+  it('con un id de temporada apunta a la competición', () => {
+    expect(competitionCanonicalPath('season-1', 'c1')).toBe('/competitions/c1');
+  });
+
+  it('sin competitionId en el payload conserva la ruta pedida', () => {
+    expect(competitionCanonicalPath('season-1', null)).toBe('/competitions/season-1');
+    expect(competitionCanonicalPath('season-1', undefined)).toBe('/competitions/season-1');
   });
 });

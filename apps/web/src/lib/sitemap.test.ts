@@ -5,6 +5,7 @@ import {
   sitemapLastModified,
   sitemapItemId,
   sitemapIndexXml,
+  sitemapLanguages,
   SITEMAP_SECTION_SIZE,
   type SitemapIds,
 } from './sitemap';
@@ -36,10 +37,11 @@ describe('sitemapSectionIds', () => {
 });
 
 describe('sitemapEntries', () => {
-  it('core son la home y el listado de competiciones', () => {
+  it('core son la home, el listado de competiciones y la privacidad', () => {
     expect(sitemapEntries('core', ids())).toEqual([
       { path: '', priority: 1.0, changeFrequency: 'hourly' },
       { path: '/competitions', priority: 0.9, changeFrequency: 'daily' },
+      { path: '/privacy', priority: 0.3, changeFrequency: 'weekly' },
     ]);
   });
 
@@ -147,5 +149,22 @@ describe('sitemapIndexXml', () => {
   it('emite un <sitemap> por sección: siempre al menos core', () => {
     const xml = sitemapIndexXml(sitemapSectionIds(ids({ teams: ['t1'] })), 'https://sticklive.eu');
     expect((xml.match(/<sitemap>/g) ?? []).length).toBe(2);
+  });
+});
+
+// El HTML declara `x-default` (localeAlternates) pero el sitemap no lo repetía:
+// dos señales hreflang distintas para la misma página. Deben coincidir.
+describe('sitemapLanguages', () => {
+  it('emite un hreflang por idioma más x-default → inglés', () => {
+    expect(sitemapLanguages('/teams/t1', 'https://sticklive.eu', ['es', 'en', 'pt'])).toEqual({
+      es: 'https://sticklive.eu/es/teams/t1',
+      en: 'https://sticklive.eu/en/teams/t1',
+      pt: 'https://sticklive.eu/pt/teams/t1',
+      'x-default': 'https://sticklive.eu/en/teams/t1',
+    });
+  });
+
+  it('en la raíz no genera doble barra', () => {
+    expect(sitemapLanguages('', 'https://sticklive.eu', ['es'])['es']).toBe('https://sticklive.eu/es');
   });
 });

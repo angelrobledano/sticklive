@@ -840,10 +840,17 @@ export function TeamCenterClient({ data }: { data: TeamDetailView }) {
         ))}
       </div>
 
-      {activeTab === 'Resumen'      && <SummaryTab    data={data} />}
-      {activeTab === 'Calendario'   && <CalendarTab   data={data} />}
-      {activeTab === 'Plantilla'    && <SquadTab      data={data} />}
-      {activeTab === 'Estadísticas' && <TeamStatsTab  data={data} />}
+      {/* SEO (GSC 16-oct-2026): los CUATRO paneles van SIEMPRE en el DOM.
+          Googlebot no pulsa pestañas: con el montaje condicional
+          (`activeTab === 'X' && <Tab/>`) solo existía el panel activo y las
+          fichas de equipo quedaban en ~134 palabras, sin plantilla (12
+          jugadores), ni calendario (20 partidos), ni estadísticas — datos que
+          ya vienen en las props. Los inactivos se ocultan con `hidden`, que los
+          saca del pintado y del árbol de accesibilidad sin desmontarlos. */}
+      <div hidden={activeTab !== 'Resumen'}>      <SummaryTab   data={data} /></div>
+      <div hidden={activeTab !== 'Calendario'}>   <CalendarTab  data={data} /></div>
+      <div hidden={activeTab !== 'Plantilla'}>    <SquadTab     data={data} /></div>
+      <div hidden={activeTab !== 'Estadísticas'}> <TeamStatsTab data={data} /></div>
     </div>
   );
 }

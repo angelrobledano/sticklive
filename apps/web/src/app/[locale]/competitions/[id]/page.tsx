@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
-import { localeAlternates, socialMeta, isSupportedLocale, competitionJsonLd, SITE_URL } from '@/lib/seo';
+import { notFound, permanentRedirect } from 'next/navigation';
+import { localeAlternates, socialMeta, isSupportedLocale, competitionJsonLd, competitionCanonicalPath, SITE_URL } from '@/lib/seo';
 import {
   getSeasonOverview,
   getCompetitionSeasons,
@@ -37,7 +37,9 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const searchParams = await props.searchParams;
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   const requested = searchParams.season;
-  const alternates = localeAlternates(locale, `/competitions/${params.id}`);
+  // Si el id no es el de la competición (retrocompat: id de temporada), la
+  // canónica es la de la competición; el fallback, la ruta pedida.
+  const fallbackAlternates = localeAlternates(locale, `/competitions/${params.id}`);
   try {
     const seasons = await getCompetitionSeasons(params.id);
     // La temporada efectiva es la misma que sirve el cuerpo (#279): si el enlace
@@ -46,8 +48,10 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       (requested && seasons.find((s) => s.id === requested)) ||
       seasons.find((s) => s.isCurrent) ||
       seasons[0];
-    if (!season) return { alternates };
+    if (!season) return { alternates: fallbackAlternates };
     const overview = await getSeasonOverview(season.id);
+    const canonical = competitionCanonicalPath(params.id, overview.season.competitionId);
+    const alternates = localeAlternates(locale, canonical);
     const name = `${overview.season.competitionName} ${season.name ?? ''}`.trim();
     const title = `${name} | Stick Live`;
     const description = (DESC[locale] ?? DESC['en'])!(name);
@@ -55,8 +59,8 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     // verdad (la misma que sirve el cuerpo). Un `?season=` inválido cae a la
     // temporada en curso y no debe quedar en la URL compartida.
     const path = requested && season.id === requested
-      ? `/competitions/${params.id}?season=${requested}`
-      : `/competitions/${params.id}`;
+      ? `${canonical}?season=${requested}`
+      : canonical;
     return {
       title,
       description,
@@ -64,7 +68,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       ...socialMeta({ locale, path, title: name, description, dynamicImage: true }),
     };
   } catch {
-    return { alternates };
+    return { alternates: fallbackAlternates };
   }
 }
 
@@ -110,6 +114,16 @@ export default async function CompetitionPage(props: Props) {
 
   // #349: structured data de la competición (liga) y su temporada.
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
+
+  // Retrocompatibilidad: si el id pedido era el de una TEMPORADA, la URL buena
+  // es la de su competición (y el `competitionId` que recibe el cliente tiene
+  // que ser el de la competición, no el de la temporada). 308 para consolidar:
+  // sin esto había dos URLs con el mismo contenido, ambas auto-canónicas.
+  const canonicalId = data.season.competitionId;
+  if (canonicalId && canonicalId !== params.id) {
+    permanentRedirect(`/${locale}/competitions/${canonicalId}?season=${seasonId}`);
+  }
+
   const competitionLd = competitionJsonLd({
     leagueName: data.season.competitionName,
     leagueUrl: `${SITE_URL}/${locale}/competitions/${params.id}`,

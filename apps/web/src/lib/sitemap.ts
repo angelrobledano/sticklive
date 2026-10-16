@@ -99,6 +99,8 @@ export function sitemapEntries(section: string, ids: SitemapIds): SitemapEntry[]
     return [
       { path: '', priority: 1.0, changeFrequency: 'hourly' },
       { path: '/competitions', priority: 0.9, changeFrequency: 'daily' },
+      // Página pública indexable que faltaba en el sitemap.
+      { path: '/privacy', priority: 0.3, changeFrequency: 'weekly' },
     ];
   }
 
@@ -139,4 +141,22 @@ export function sitemapIndexXml(sectionIds: string[], siteUrl: string): string {
     .map((id) => `  <sitemap><loc>${siteUrl}/sitemap/${id}.xml</loc></sitemap>`)
     .join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}\n</sitemapindex>\n`;
+}
+
+/**
+ * Bloque `hreflang` de una URL del sitemap.
+ *
+ * Debe coincidir con el que sirve el propio HTML (`localeAlternates`): Google
+ * contrasta las dos fuentes y un `x-default` que solo apareciera en una de
+ * ellas es una señal contradictoria.
+ */
+export function sitemapLanguages(
+  path: string,
+  siteUrl: string,
+  locales: readonly string[],
+): Record<string, string> {
+  const languages: Record<string, string> = {};
+  for (const locale of locales) languages[locale] = `${siteUrl}/${locale}${path}`;
+  languages['x-default'] = `${siteUrl}/en${path}`;
+  return languages;
 }

@@ -50,11 +50,21 @@ sticklive.eu {
 	handle_path /api/* {
 		reverse_proxy api:3000 {
 			flush_interval -1
+			# Un deploy recrea el contenedor y, mientras, el DNS interno de Docker
+			# puede no resolver `api`/`web`: Caddy devolvía 5xx. Los logs del VPS lo
+			# muestran con Googlebot ("dial tcp: lookup web: i/o timeout", incluso
+			# en /robots.txt — un 5xx ahí hace que Google pause el rastreo).
+			# Reintentar el upstream cubre la ventana del reinicio.
+			lb_try_duration 15s
+			lb_try_interval 250ms
 		}
 	}
 
 	handle {
-		reverse_proxy web:3001
+		reverse_proxy web:3001 {
+			lb_try_duration 15s
+			lb_try_interval 250ms
+		}
 	}
 }
 
@@ -62,4 +72,12 @@ sticklive.eu {
 # borde con un 301.
 www.sticklive.eu {
 	redir https://sticklive.eu{uri} permanent
+}
+
+# OpenOutbound (revelatu): motor de outreach, proxy al contenedor de la red
+# compartida. Estaba aplicado a mano en el VPS y sin commitear: al pasar a git,
+# un 'git pull' lo habria borrado y Caddy (que recarga al cambiar el fichero)
+# habria dejado de servir ese site.
+outbound.revelatu.com {
+	reverse_proxy openoutbound:7331
 }

@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { SUPPORTED_LOCALES } from '@/lib/locales';
 import { SITE_URL } from '@/lib/seo';
-import { sitemapEntries, sitemapSectionIds } from '@/lib/sitemap';
+import { sitemapEntries, sitemapLanguages, sitemapSectionIds } from '@/lib/sitemap';
 import { fetchSitemapIds } from '@/lib/sitemap-source';
 
 /**
@@ -36,11 +36,8 @@ export default async function sitemap(props: { id: string | Promise<string> }): 
       ...(lastModified ? { lastModified } : {}),
       changeFrequency,
       priority,
-      alternates: {
-        languages: Object.fromEntries(
-          SUPPORTED_LOCALES.map((l) => [l, `${SITE_URL}/${l}${path}`])
-        ),
-      },
+      // Mismo bloque hreflang que sirve el HTML, `x-default` incluido.
+      alternates: { languages: sitemapLanguages(path, SITE_URL, SUPPORTED_LOCALES) },
     }))
   );
 }
