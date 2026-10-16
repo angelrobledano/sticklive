@@ -25,6 +25,14 @@ describe('withLocaleHref', () => {
     expect(withLocaleHref('https://sticklive.eu/es', 'es')).toBe('https://sticklive.eu/es');
     expect(withLocaleHref('#main', 'es')).toBe('#main');
   });
+
+  it('deja fuera lo que no son rutas de la app (API, assets, ficheros)', () => {
+    expect(withLocaleHref('/api/health', 'es')).toBe('/api/health');
+    expect(withLocaleHref('/monitoring', 'es')).toBe('/monitoring');
+    expect(withLocaleHref('/brand/lock-on-light.svg', 'es')).toBe('/brand/lock-on-light.svg');
+    expect(withLocaleHref('/offline.html', 'es')).toBe('/offline.html');
+    expect(withLocaleHref('/ads.txt', 'es')).toBe('/ads.txt');
+  });
 });
 
 describe('findUnprefixedEntityLinks', () => {

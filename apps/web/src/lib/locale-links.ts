@@ -11,14 +11,25 @@ import { SUPPORTED_LOCALES, type Locale } from '@/lib/locales';
 export const ENTITY_ROUTE_SEGMENTS = ['competitions', 'teams', 'players', 'matches'] as const;
 
 /**
- * Antepone el locale a una ruta interna.
+ * Rutas de la app que viven bajo `/[locale]/…`. Solo a estas se les antepone el
+ * idioma: `/api/…`, `/monitoring`, assets (`/brand/…`) o ficheros
+ * (`/offline.html`, `/ads.txt`) se quedan como están.
+ */
+export const APP_ROUTE_SEGMENTS = [
+  ...ENTITY_ROUTE_SEGMENTS,
+  'search', 'favorites', 'settings', 'privacy', 'login', 'premium', 'admin',
+] as const;
+
+/**
+ * Antepone el locale a una ruta interna de la app.
  *
- * No toca rutas ya localizadas (`/es/...`), ni rutas no internas, ni el vacío.
- * La raíz no duplica la barra: `/` → `/es`.
+ * No toca rutas ya localizadas (`/es/...`), ni rutas que no sean de la app, ni
+ * URLs absolutas ni anclas. La raíz no duplica la barra: `/` → `/es`.
  */
 export function withLocaleHref(path: string, locale: Locale): string {
   if (!path.startsWith('/')) return path;
-  const first = path.split('/')[1] ?? '';
+  const [first = ''] = path.slice(1).split(/[/?#]/, 1);
+  if (first !== '' && !(APP_ROUTE_SEGMENTS as readonly string[]).includes(first)) return path;
   if (first !== '' && (SUPPORTED_LOCALES as readonly string[]).includes(first)) return path;
   return `/${locale}${path === '/' ? '' : path}`;
 }
