@@ -118,6 +118,13 @@ playerDetailRouter.get('/:id', async (c) => {
       //     SOLÉ: ~8 PJ por eventos vs 19 actas). Asistencias desde
       //     match_lineups.assists (migración 009), que la ficha mostraba como
       //     "—". La heurística de penalti marcado es la COMPARTIDA (#218).
+      //
+      //     Las filas se emiten por COMPETICIÓN CON ACTIVIDAD (alineación o
+      //     evento), no por evento: antes, un jugador que JUGÓ pero no marcó ni
+      //     vio tarjeta no tenía ninguna fila → `seasonTotals.pj = 0` → la web
+      //     pintaba "Sin estadísticas en la temporada actual" y su ficha era una
+      //     página fina (345 de los 1.667 jugadores del sitemap, ~21%: medido en
+      //     producción el 16-oct-2026).
       db.query<CompStatsRow>(`
       WITH actividad AS (
         SELECT c.id AS competition_id, MAX(s.start_date) AS inicio
@@ -154,32 +161,43 @@ playerDetailRouter.get('/:id', async (c) => {
           JOIN competitions c ON c.id = x.competition_id
           LEFT JOIN match_lineups ml ON ml.match_id = x.match_id AND ml.player_id = $1
          GROUP BY c.id
+      ),
+      eventos AS (
+        SELECT c.id AS competition_id,
+               COUNT(*) FILTER (WHERE me.event_type = 'goal')       AS goals,
+               COUNT(*) FILTER (WHERE me.event_type = 'blue_card')  AS blue_cards,
+               COUNT(*) FILTER (WHERE me.event_type = 'red_card')   AS red_cards,
+               COUNT(*) FILTER (WHERE me.event_type = 'penalty')    AS penalties_total,
+               COUNT(*) FILTER (
+                 WHERE me.event_type = 'penalty'
+                   AND ${penaltyScoredSql('me')}
+               )                                                    AS penalties_scored
+          FROM match_events me
+          JOIN matches m      ON m.id  = me.match_id
+          JOIN seasons s      ON s.id  = m.season_id
+          JOIN competitions c ON c.id  = s.competition_id
+          JOIN actividad a    ON a.competition_id = c.id AND s.start_date = a.inicio
+         WHERE me.player_id = $1
+           AND s.data_quality = 'ok'
+           AND c.data_quality = 'ok'
+         GROUP BY c.id
       )
       SELECT
         c.id                AS competition_id,
         c.name              AS competition_name,
         c.short_name        AS competition_short,
-        COALESCE(p.pj, COUNT(DISTINCT me.match_id)::text)  AS pj,
-        COALESCE(p.assists, '0')                             AS assists,
-        COUNT(*) FILTER (WHERE me.event_type = 'goal')                       AS goals,
-        COUNT(*) FILTER (WHERE me.event_type = 'blue_card')                  AS blue_cards,
-        COUNT(*) FILTER (WHERE me.event_type = 'red_card')                   AS red_cards,
-        COUNT(*) FILTER (WHERE me.event_type = 'penalty')                    AS penalties_total,
-        COUNT(*) FILTER (
-          WHERE me.event_type = 'penalty'
-            AND ${penaltyScoredSql('me')}
-        )                                                                     AS penalties_scored
-      FROM match_events me
-      JOIN matches m    ON m.id  = me.match_id
-      JOIN seasons s    ON s.id  = m.season_id
-      JOIN competitions c ON c.id = s.competition_id
-      JOIN actividad a  ON a.competition_id = c.id AND s.start_date = a.inicio
+        COALESCE(p.pj, '0')                AS pj,
+        COALESCE(p.assists, '0')           AS assists,
+        COALESCE(e.goals, 0)               AS goals,
+        COALESCE(e.blue_cards, 0)          AS blue_cards,
+        COALESCE(e.red_cards, 0)           AS red_cards,
+        COALESCE(e.penalties_total, 0)     AS penalties_total,
+        COALESCE(e.penalties_scored, 0)    AS penalties_scored
+      FROM competitions c
       LEFT JOIN pj_real p ON p.competition_id = c.id
-      WHERE me.player_id = $1
-        AND s.data_quality = 'ok'
-        AND c.data_quality = 'ok'
-      GROUP BY c.id, c.name, c.short_name, p.pj, p.assists
-      ORDER BY goals DESC, pj DESC
+      LEFT JOIN eventos e ON e.competition_id = c.id
+     WHERE p.competition_id IS NOT NULL OR e.competition_id IS NOT NULL
+     ORDER BY goals DESC, pj DESC
     `, [id]),
 
       // 4) Carrera (#217): equipos por temporada desde DOS fuentes. La
