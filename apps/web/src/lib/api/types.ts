@@ -56,6 +56,8 @@ export interface Match {
   competitionSlug?: string | null;
   /** IANA TZ de la competición (ver migración 042). La web cae a Europe/Madrid. */
   competitionTimezone?: string | null;
+  /** País de la competición (ISO alpha-2, 'W' = mundial). Solo en /matches/current y /live. */
+  competitionCountry?: string | null;
   status: MatchStatus;
   /** Solo en directo: true durante el descanso (para badge "Descanso" en listas). */
   isHalftime?: boolean;

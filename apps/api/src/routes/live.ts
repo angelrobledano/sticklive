@@ -62,6 +62,8 @@ interface LiveMatchRow {
   competition_name: string | null;
   competition_slug: string | null;
   competition_timezone: string | null;
+  /** ISO 3166-1 alpha-2 o 'W' (mundial): icono de la tarjeta de la home. */
+  competition_country: string | null;
   // equipo local
   home_team_id: string;
   home_team_name: string;
@@ -83,6 +85,7 @@ function mapLiveRow(row: LiveMatchRow) {
     competitionName: row.competition_name,
     competitionSlug: row.competition_slug,
     competitionTimezone: row.competition_timezone,
+    competitionCountry:  row.competition_country,
     status:      row.status,
     isHalftime:  row.live_is_halftime ?? false,
     winType:      row.win_type,
@@ -140,6 +143,7 @@ liveRouter.get('/live', async (c) => {
         comp.name       AS competition_name,
         comp.slug       AS competition_slug,
         comp.timezone   AS competition_timezone,
+        comp.country    AS competition_country,
         -- equipo local
         ht.id           AS home_team_id,
         ht.name         AS home_team_name,
@@ -225,6 +229,7 @@ liveRouter.get('/current', async (c) => {
         comp.id AS competition_id, comp.name AS competition_name,
         comp.slug AS competition_slug,
         comp.timezone AS competition_timezone,
+        comp.country AS competition_country,
         ht.id AS home_team_id, ht.name AS home_team_name,
         ht.short_name AS home_team_short_name, ht.logo_url AS home_team_logo_url,
         at.id AS away_team_id, at.name AS away_team_name,
