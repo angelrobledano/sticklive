@@ -15,9 +15,8 @@ import { fmtDate, fmtTime } from './format';
  * fuente (Copa del Rey: todo "FINAL"). Las rondas se derivan en `lib/bracket`
  * (por nombre de fase o por el grafo de avance).
  *
- * Escritorio: columnas con conectores (el ganador de cada cruce alimenta el
- * siguiente). Móvil: las rondas se apilan con un conector hacia abajo, sin
- * scroll horizontal. Comparte el lenguaje visual del cuadro de Final Four.
+ * Columnas con conectores (el ganador de cada cruce alimenta el siguiente) en
+ * todos los anchos. En móvil, scroll lateral si las rondas no caben. Comparte el lenguaje visual del cuadro de Final Four.
  */
 
 /** Tarjeta de un partido a partido único (bracket/copa/final four). */
@@ -163,14 +162,17 @@ export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound
 
   const base = bracket[0]!.matches.length;
   const columns: string[] = [];
-  bracket.forEach((_, i) => { if (i > 0) columns.push('20px'); columns.push('minmax(0,1fr)'); });
+  bracket.forEach((_, i) => { if (i > 0) columns.push('20px'); columns.push('minmax(150px,1fr)'); });
 
   return (
     <div className="space-y-3">
-      {/* Escritorio: cuadro horizontal con conectores */}
-      <div className="hidden md:block mx-auto w-full max-w-3xl">
+      {/* Cuadro horizontal con conectores en todos los anchos (como la app
+          de FotMob): en móvil, columnas de ancho mínimo y scroll lateral si no
+          caben, en vez de rondas apiladas que se leían como una lista. */}
+      <div className="-mx-4 overflow-x-auto px-4 pb-1 md:mx-auto md:w-full md:max-w-3xl md:overflow-visible md:px-0"
+           data-bracket="tree">
         <div
-          className="grid"
+          className="grid min-w-max md:min-w-0"
           style={{ gridTemplateColumns: columns.join(' '), gridTemplateRows: `auto repeat(${base}, minmax(0, 1fr))` }}
         >
           {/* Cabecera de cada ronda encima de su columna */}
@@ -227,26 +229,6 @@ export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound
             );
           })}
         </div>
-      </div>
-
-      {/* Móvil: rondas apiladas con conector hacia abajo */}
-      <div className="md:hidden space-y-2">
-        {bracket.map((r, ri) => (
-          <div key={ri} className="space-y-2">
-            <h3 className={HEADING}>{labelOf(r, ri)}</h3>
-            <div className="space-y-2">
-              {r.matches.map((m) => <KnockoutMatchCard key={m.id} m={m} showFinishedLabel={false} />)}
-            </div>
-            {ri < bracket.length - 1 && (
-              <div className="flex justify-center py-0.5" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-                     className="h-4 w-4 text-slate-300 dark:text-slate-600">
-                  <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-            )}
-          </div>
-        ))}
       </div>
 
       {thirdBlock}
