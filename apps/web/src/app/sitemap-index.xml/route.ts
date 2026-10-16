@@ -1,6 +1,6 @@
 import { SITE_URL } from '@/lib/seo';
 import { sitemapIndexXml, sitemapSectionIds } from '@/lib/sitemap';
-import { fetchSitemapIds } from '@/lib/sitemap-source';
+import { fetchSitemapIdsStrict } from '@/lib/sitemap-source';
 
 /**
  * Índice de sitemaps (`sitemapindex`).
@@ -14,7 +14,17 @@ import { fetchSitemapIds } from '@/lib/sitemap-source';
  * sitemap, así que índice y ficheros no pueden divergir.
  */
 export async function GET(): Promise<Response> {
-  const ids = await fetchSitemapIds();
+  let ids;
+  try {
+    ids = await fetchSitemapIdsStrict();
+  } catch {
+    // F1-8: nunca un índice degradado (antes salía solo `core` y se cacheaba
+    // una hora). Con un 503 Google reintenta y conserva la última versión.
+    return new Response('Sitemap temporalmente no disponible', {
+      status: 503,
+      headers: { 'Retry-After': '600', 'Cache-Control': 'no-store' },
+    });
+  }
   return new Response(sitemapIndexXml(sitemapSectionIds(ids), SITE_URL), {
     headers: {
       // Mismo Content-Type que usa Next para los sitemaps.

@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { SUPPORTED_LOCALES } from '@/lib/locales';
 import { SITE_URL } from '@/lib/seo';
 import { sitemapEntries, sitemapLanguages, sitemapSectionIds } from '@/lib/sitemap';
-import { fetchSitemapIds } from '@/lib/sitemap-source';
+import { fetchSitemapIds, fetchSitemapIdsStrict } from '@/lib/sitemap-source';
 
 /**
  * Sitemap por secciones/trozos (#169): evita que un solo fichero supere el
@@ -26,7 +26,11 @@ export async function generateSitemaps(): Promise<Array<{ id: string }>> {
  */
 export default async function sitemap(props: { id: string | Promise<string> }): Promise<MetadataRoute.Sitemap> {
   const id = await props.id;
-  const ids = await fetchSitemapIds();
+  // `core` no depende de la API. Las secciones de entidad usan la fuente
+  // estricta (F1-8): si la API falla, la respuesta es 5xx y no una lista vacía.
+  const ids = id === 'core'
+    ? { competitions: [], teams: [], players: [], matches: [] }
+    : await fetchSitemapIdsStrict();
   // #337: el lastmod sale de los datos de cada entidad (updatedAt/finishedAt/
   // scheduledAt), no de `new Date()`. Si una entrada no trae fecha, se omite el
   // lastModified en vez de firmar todas las URLs con el mismo timestamp falso.

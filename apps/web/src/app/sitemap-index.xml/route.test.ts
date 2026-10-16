@@ -38,13 +38,21 @@ describe('GET /sitemap-index.xml', () => {
     expect(xml).not.toContain('players-0');
   });
 
-  it('si la API no responde degrada a core en vez de romper el índice', async () => {
+  it('si la API no responde: 503 con Retry-After, nunca un índice degradado (F1-8)', async () => {
+    // Antes degradaba a `core` y se cacheaba una hora: Google leía un sitemap de
+    // 15 URLs en vez de 15.000 (SEO-07 de docs/AUDITORIA_SEO_2026-10-16.md).
+    // Con un 5xx Google reintenta y conserva la última versión buena.
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('ECONNREFUSED'); }));
 
     const res = await GET();
-    const xml = await res.text();
-    expect(res.status).toBe(200);
-    expect((xml.match(/<sitemap>/g) ?? []).length).toBe(1);
-    expect(xml).toContain(`<loc>${SITE_URL}/sitemap/core.xml</loc>`);
+    expect(res.status).toBe(503);
+    expect(res.headers.get('retry-after')).toBeTruthy();
+    expect(res.headers.get('cache-control')).toContain('no-store');
+  });
+
+  it('si la API responde con error: también 503', async () => {
+    stubApi({ error: 'Database error' }, false);
+    const res = await GET();
+    expect(res.status).toBe(503);
   });
 });
