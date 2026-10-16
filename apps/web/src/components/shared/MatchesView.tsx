@@ -18,6 +18,7 @@ import { track } from '@/lib/analytics';
 import { madridDateKey, madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
 import { buildDayView, nextMatchday, daysWithMatches, type DayFilter, type DayView } from '@/lib/day-view';
 import { tt } from '@/components/search/translate';
+import { clubName } from '@/lib/names';
 
 /** Config AdSense (env inyectado en build). */
 const ADS = adsenseConfig();
@@ -105,13 +106,11 @@ function EmptyRinkScene() {
 }
 
 /** Estrella de onboarding (contorno). */
-function OnboardingIcon({ size }: { size: 'sm' | 'md' }) {
-  const box = size === 'md' ? 'w-12 h-12' : 'w-10 h-10';
-  const icon = size === 'md' ? 'w-6 h-6' : 'w-5 h-5';
+function OnboardingIcon() {
   return (
-    <div className={`${box} rounded-2xl bg-rink-passion/10 flex items-center justify-center shrink-0`}>
+    <div className="w-10 h-10 rounded-2xl bg-rink-passion/10 flex items-center justify-center shrink-0">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
-           className={`${icon} text-rink-passion`} aria-hidden="true">
+           className="w-5 h-5 text-rink-passion" aria-hidden="true">
         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
               strokeLinejoin="round" />
       </svg>
@@ -142,7 +141,7 @@ function DesktopAside({ matches, favorites, leagues, todayKey, className = '' }:
           <Link href="/competitions"
                 className="card p-4 flex items-center gap-3 transition-colors
                            hover:border-slate-300 dark:hover:border-slate-600">
-            <OnboardingIcon size="sm" />
+            <OnboardingIcon />
             <div className="min-w-0">
               <p className="text-sm font-bold text-slate-900 dark:text-slate-50">{t('favorites.onboarding_title')}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug mt-0.5">
@@ -160,15 +159,15 @@ function DesktopAside({ matches, favorites, leagues, todayKey, className = '' }:
 function FavoritesOnboarding({ className = '' }: { className?: string }) {
   const { t } = useT();
   return (
-    <div className={`card p-4 flex items-center gap-4 ${className}`}>
-      <OnboardingIcon size="md" />
+    <div className={`card flex items-center gap-3 px-3 py-2.5 ${className}`}>
+      <OnboardingIcon />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-slate-900 dark:text-slate-50">{t('favorites.onboarding_title')}</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5">
+        <p className="text-[13px] font-bold text-slate-900 dark:text-slate-50">{t('favorites.onboarding_title')}</p>
+        <p className="mt-0.5 text-xs leading-snug text-slate-500 dark:text-slate-400">
           {t('favorites.onboarding_body')}
         </p>
         <Link href="/competitions"
-              className="inline-flex min-h-[44px] items-center text-xs font-semibold text-rink-passion hover:underline">
+              className="inline-flex min-h-[36px] items-center text-xs font-semibold text-rink-passion hover:underline dark:text-rink-accent">
           {t('favorites.onboarding_cta')} →
         </Link>
       </div>
@@ -218,7 +217,7 @@ function DayCards({ view, followedTeamIds, showDate = false, afterFirst, listAd 
         >
           {view.myTeams.map((m) => (
             <MatchRow key={m.id} match={m} followedTeamIds={followedTeamIds} showDate={showDate}
-                      caption={m.competitionName ?? null} />
+                      caption={m.competitionName ? clubName(m.competitionName) : null} />
           ))}
         </MatchGroupCard>
       ),
@@ -230,7 +229,7 @@ function DayCards({ view, followedTeamIds, showDate = false, afterFirst, listAd 
       rows: block.matches.length,
       node: (
         <MatchGroupCard
-          title={block.name ?? other}
+          title={block.name ? clubName(block.name) : other}
           href={block.id ? `/competitions/${block.id}` : null}
           icon={<CompetitionIcon country={block.country} name={block.name} />}
           count={block.matches.length}
@@ -294,7 +293,7 @@ function EmptyDay({ isToday, isPast, outOfWindow, next, followedTeamIds, onGoTo 
 
   return (
     <div>
-      <div className="flex flex-col items-center gap-1 px-6 pt-4 pb-6 text-center">
+      <div className="flex flex-col items-center gap-1 px-6 pb-5 text-center">
         <EmptyRinkScene />
         <p className="text-base font-bold text-slate-800 dark:text-slate-100">{message}</p>
       </div>

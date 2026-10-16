@@ -83,7 +83,7 @@ function DayChip({ dateKey, selected, outOfRange, marked = false, onClick }: {
       disabled={outOfRange}
       title={outOfRange ? t('common.day_out_of_window') : undefined}
       onClick={() => onClick(dateKey)}
-      className={`flex flex-col items-center shrink-0 rounded-xl px-3 pt-1.5 pb-1
+      className={`relative flex flex-col items-center shrink-0 rounded-xl px-3 pt-1.5 pb-2.5
                   min-w-[52px] min-h-[44px] transition-all duration-150 select-none
                   ${outOfRange
                     ? 'opacity-30 cursor-not-allowed'
@@ -119,7 +119,7 @@ function DayChip({ dateKey, selected, outOfRange, marked = false, onClick }: {
       <span
         aria-hidden="true"
         data-marked={marked ? 'true' : undefined}
-        className={`mt-1 h-1 w-1 rounded-full ${marked
+        className={`absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full ${marked
           ? isActive ? 'bg-rink-passion dark:bg-rink-accent' : 'bg-slate-400 dark:bg-slate-500'
           : 'bg-transparent'}`}
       />
@@ -145,15 +145,18 @@ export function DateSelector({ selected, onChange, availableFrom, availableTo, m
   useEffect(() => { setStartOverride(null); }, [selected]);
   const window7 = computeDateWindow(dateKeys, selected, startOverride);
 
-  // Centrar el elemento activo al montar (carrusel móvil)
+  // Centrar el elemento activo (carrusel móvil): al montar sin animación y, si
+  // el día cambia desde fuera (día guardado, "Ver el miércoles 21"), con ella.
+  const centered = useRef(false);
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
     const active = container.querySelector('[data-active="true"]') as HTMLElement | null;
     if (active) {
-      active.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'center' });
+      active.scrollIntoView({ behavior: centered.current ? 'smooth' : 'instant', block: 'nearest', inline: 'center' });
+      centered.current = true;
     }
-  }, []);
+  }, [selected]);
 
   const handleClick = useCallback((key: string) => {
     onChange(key);

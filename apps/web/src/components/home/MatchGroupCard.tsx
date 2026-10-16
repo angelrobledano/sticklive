@@ -70,7 +70,7 @@ export function MatchGroupCard({
   const { t } = useT();
   const [open, setOpen] = useState(true);
   const bodyId = useId();
-  const titleCls = 'block truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100';
+  const titleCls = 'line-clamp-2 break-words text-[13px] font-semibold leading-snug text-slate-800 dark:text-slate-100';
 
   return (
     <section className="card overflow-hidden" data-followed={followed ? 'true' : undefined}>
