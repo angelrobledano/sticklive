@@ -4,6 +4,7 @@
  */
 import type { SeasonOverview, SeasonRound } from '@/lib/api/client';
 import { APP_TZ } from '@/lib/match-time';
+import { isKnockoutStage, stageLabel } from '@/lib/stage-label';
 
 /**
  * Hora/fecha de un partido en la zona de SU competición (columna 042). Cae a
@@ -69,6 +70,12 @@ export function dayPillLabel(d: string, locale = 'es'): string {
  */
 export function roundLabel(r: SeasonRound, t: (key: string, vars?: Record<string, string | number>) => string): string {
   if (r.roundType === 'regular') return t('fixtures.matchday', { n: r.number });
+  // Ronda eliminatoria con fase de la fuente (spec 2026-10-16): «Cuartos de
+  // final», «Semifinales», «Final», «3.er y 4.º puesto» traducidos; la
+  // colocación lleva el nombre de la fuente («Puestos 5º-8º»).
+  if (isKnockoutStage(r.stage)) {
+    return stageLabel(r.stage, t) ?? r.name ?? t('playoffs.other_places');
+  }
   return r.name ? `Playoffs · ${r.name}` : `Playoffs ${r.number}`;
 }
 

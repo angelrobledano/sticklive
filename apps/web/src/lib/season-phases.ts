@@ -85,3 +85,39 @@ export function knockoutPhaseViews(
   }
   return views;
 }
+
+/**
+ * ¿La fase final ya manda en la competición? (spec 2026-10-16). Sí cuando hay
+ * partidos eliminatorios y, o bien alguno ya se ha jugado o se está jugando, o
+ * bien la liga/fase de grupos está cerrada (todo terminado o cancelado). Con la
+ * fase regular aún viva y los cruces solo publicados, todavía no.
+ */
+export function finalPhaseStarted(matches: Pick<SeasonMatch, 'roundType' | 'status'>[]): boolean {
+  const knockout = matches.filter((m) => m.roundType === 'playoff');
+  if (knockout.length === 0) return false;
+  if (knockout.some((m) => m.status === 'live' || m.status === 'finished')) return true;
+  return matches
+    .filter((m) => m.roundType !== 'playoff')
+    .every((m) => m.status === 'finished' || m.status === 'cancelled');
+}
+
+/**
+ * Clave i18n del nombre de la pestaña del cuadro: «Playoffs» para series al
+ * mejor de N (OK Liga), «Final Four» para un torneo a cuatro y «Eliminatorias»
+ * para el resto de cuadros (partido único o ida y vuelta, como un Mundial).
+ * Sin fases de la fuente (temporada heredada): «Playoffs», como siempre.
+ */
+export function knockoutTabLabelKey(
+  format: string | null | undefined,
+  phases: SeasonPhase[] | undefined,
+  rounds: SeasonRound[],
+  matches: SeasonMatch[],
+): string {
+  if (format === 'final_four') return 'playoffs.final_four';
+  const views = knockoutPhaseViews(phases, rounds, matches);
+  const title = views?.find((v) => !v.phase.isPlacement);
+  if (!title) return 'match_tabs.playoffs';
+  if (title.layout === 'series') return 'match_tabs.playoffs';
+  if (title.layout === 'final_four') return 'playoffs.final_four';
+  return 'match_tabs.knockout';
+}

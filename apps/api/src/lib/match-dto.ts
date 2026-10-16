@@ -59,6 +59,31 @@ export interface MatchDtoRow {
   live_clock_seconds: number | null;
   live_clock_at: Date | string | null;
   live_is_halftime: boolean;
+  // Ronda y fase (spec 2026-10-16). Opcionales: filas sin ronda o consultas
+  // antiguas no las traen.
+  round_name?: string | null;
+  round_number?: number | null;
+  round_type?: string | null;
+  round_stage?: string | null;
+  group_name?: string | null;
+  series_game?: number | null;
+  phase_kind?: string | null;
+}
+
+/** Ronda del partido para la ficha: «Semifinal», «Grupo A · Jornada 2»… */
+export interface MatchDtoRound {
+  name: string | null;
+  number: number | null;
+  /** regular | playoff | cup | friendly */
+  type: string | null;
+  /** Fase eliminatoria explícita de la fuente (quarters, semis, final…). */
+  stage: string | null;
+  /** Grupo en la fase de grupos ("A", "B"…). */
+  groupName: string | null;
+  /** Nº de partido de la serie ("2 CUARTOS" → 2). */
+  seriesGame: number | null;
+  /** league | groups | knockout */
+  phaseKind: string | null;
 }
 
 /** Fila de evento (match_events + jugador). */
@@ -157,12 +182,28 @@ export interface MatchDto {
     sourceRef: string | null;
     videoUrl: string | null;
     live: { period: number | null; clockSeconds: number | null; clockAt: string | null; isHalftime: boolean } | null;
+    /** Ronda y fase del partido, o null si no pertenece a ninguna ronda. */
+    round: MatchDtoRound | null;
     homeTeam: { id: string; name: string; shortName: string | null; logoUrl: string | null };
     awayTeam: { id: string; name: string; shortName: string | null; logoUrl: string | null };
   };
   events: MatchDtoEvent[];
   stats: MatchDtoStats;
   lineups: { home: MatchDtoLineup[]; away: MatchDtoLineup[] };
+}
+
+/** Ronda del partido o null si la fila no trae ninguna (partido suelto). */
+export function buildMatchRound(row: MatchDtoRow): MatchDtoRound | null {
+  if (row.round_name == null && row.round_number == null && row.round_type == null) return null;
+  return {
+    name:       row.round_name ?? null,
+    number:     row.round_number ?? null,
+    type:       row.round_type ?? null,
+    stage:      row.round_stage ?? null,
+    groupName:  row.group_name ?? null,
+    seriesGame: row.series_game ?? null,
+    phaseKind:  row.phase_kind ?? null,
+  };
 }
 
 /** Normaliza a ISO cualquier timestamp que Postgres devuelva como Date o string. */
@@ -315,6 +356,7 @@ export function buildMatchDetail(
           isHalftime:   row.live_is_halftime,
         }
       : null,
+    round: buildMatchRound(row),
     homeTeam: {
       id:        row.home_team_id,
       name:      row.home_team_name,

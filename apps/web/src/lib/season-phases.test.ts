@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { SeasonMatch, SeasonPhase, SeasonRound, KnockoutStage } from '@/lib/api/client';
-import { knockoutPhaseViews, knockoutLayout } from './season-phases';
+import { knockoutPhaseViews, knockoutLayout, finalPhaseStarted, knockoutTabLabelKey } from './season-phases';
 
 let n = 0;
 function phase(over: Partial<SeasonPhase> & Pick<SeasonPhase, 'kind'>): SeasonPhase {
@@ -70,5 +70,54 @@ describe('knockoutPhaseViews', () => {
 
   it('sin fases eliminatorias → lista vacía', () => {
     expect(knockoutPhaseViews([phase({ kind: 'league' })], [], [])).toEqual([]);
+  });
+});
+
+describe('finalPhaseStarted — la fase final ya manda en la competición', () => {
+  const liga = () => phase({ kind: 'league', hasStandings: true });
+  const reg = (status: string): SeasonMatch => ({ ...match(liga(), null), roundType: 'regular', status });
+  const ko = (status: string): SeasonMatch => {
+    const p = phase({ kind: 'knockout', stages: ['quarters', 'semis', 'final'] });
+    return { ...match(p, 'quarters'), status };
+  };
+
+  it('liga sin eliminatorias → no', () => {
+    expect(finalPhaseStarted([reg('finished'), reg('scheduled')])).toBe(false);
+  });
+
+  it('cruces publicados pero la liga/grupos aún abiertos y nada jugado → no', () => {
+    expect(finalPhaseStarted([reg('finished'), reg('scheduled'), ko('scheduled')])).toBe(false);
+  });
+
+  it('liga/grupos cerrados (terminados o cancelados) y cruces programados → sí', () => {
+    expect(finalPhaseStarted([reg('finished'), reg('cancelled'), ko('scheduled')])).toBe(true);
+  });
+
+  it('una eliminatoria en juego o terminada → sí (aunque quede un partido de grupos colgado)', () => {
+    expect(finalPhaseStarted([reg('scheduled'), ko('live')])).toBe(true);
+    expect(finalPhaseStarted([reg('postponed'), ko('finished')])).toBe(true);
+  });
+});
+
+describe('knockoutTabLabelKey — el nombre de la pestaña según cómo se juega', () => {
+  it('series al mejor de N (OK Liga) → Playoffs', () => {
+    const p = phase({ kind: 'knockout', stages: ['quarters', 'semis', 'final'] });
+    expect(knockoutTabLabelKey('league', [p], [], [match(p, 'quarters', 1), match(p, 'quarters', 3)])).toBe('match_tabs.playoffs');
+  });
+
+  it('partido único con cuartos (Mundial) → Eliminatorias', () => {
+    const g = phase({ kind: 'groups', hasStandings: true });
+    const p = phase({ kind: 'knockout', stages: ['quarters', 'semis', 'final', 'third_place', 'placement'] });
+    expect(knockoutTabLabelKey('league', [g, p], [], [match(p, 'quarters'), match(p, 'placement')])).toBe('match_tabs.knockout');
+  });
+
+  it('final four (declarada o por estructura) → Final Four', () => {
+    expect(knockoutTabLabelKey('final_four', undefined, [], [])).toBe('playoffs.final_four');
+    const p = phase({ kind: 'knockout', stages: ['semis', 'final'] });
+    expect(knockoutTabLabelKey('league', [p], [], [match(p, 'semis')])).toBe('playoffs.final_four');
+  });
+
+  it('temporada heredada sin fases de la fuente → Playoffs (como siempre)', () => {
+    expect(knockoutTabLabelKey('league', undefined, [], [])).toBe('match_tabs.playoffs');
   });
 });

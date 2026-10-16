@@ -39,6 +39,7 @@
     "standing": "Classificação",
     "fixtures": "Jornadas",
     "playoffs": "Playoffs",
+    "knockout": "Eliminatórias",
     "stats": "Estatísticas",
     "summary": "Resumo",
     "events": "Eventos",
@@ -272,7 +273,15 @@
     "third_place": "3.º e 4.º lugar",
     "tbd": "Por decidir",
     "round_n": "Ronda {n}",
-    "other_places": "Outras posições"
+    "other_places": "Outras posições",
+    "stage_round_of_16": "Oitavos de final",
+    "stage_quarters": "Quartos de final",
+    "stage_semis": "Meias-finais",
+    "stage_semi_one": "Meia-final",
+    "stage_final": "Final",
+    "group_stage": "Fase de grupos",
+    "group_n": "Grupo {g}",
+    "game_n": "Jogo {n}"
   },
   "standings": {
     "team": "Equipa",
