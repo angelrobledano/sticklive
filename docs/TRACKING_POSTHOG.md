@@ -47,6 +47,8 @@ Estado: **LIVE** = emitiéndose; los marcados **(F4)** se añadieron al instrume
 | `share` | Al compartir (Web Share/copiar) | `kind`, `title` | Viralidad |
 | `lineup_shared` **(F4)** | Al compartir la imagen de alineación | `match_id`, `outcome` (shared/download/failed) | Viralidad de la feature estrella |
 | `fixtures_filter_applied` **(F4)** | Al usar la toolbar de jornadas | `filter_type` (round/date/team), `value` | Usabilidad del filtro |
+| `home_filter_changed` | Al tocar un chip de la home (En directo / Siguiendo) | `filter` (all/live/following) | ¿Se usa el filtro del directo? Base para decidir si gana protagonismo |
+| `home_next_matchday_opened` | Día vacío → botón «Ver el {día}» | `days_ahead` | ¿La próxima jornada resuelve el día vacío? |
 
 ### 3.2 Notificaciones (push)
 

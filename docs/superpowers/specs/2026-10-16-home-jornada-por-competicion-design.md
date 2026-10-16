@@ -1,7 +1,7 @@
 # Home: la jornada del día, agrupada por competición (referencia FotMob)
 
 - **Fecha:** 2026-10-16
-- **Estado:** diseño aprobado por producto (Ángel, 16/10), web primero
+- **Estado:** implementado en web (rama `feat/home-por-competicion`). App Android pendiente (fase 2)
 - **Ámbito:** `apps/web` (home, favoritos, selector de días, i18n), `apps/api`
   (`GET /matches/current`, campo aditivo). La app Android (Expo) queda para una
   segunda fase con la misma lógica.
