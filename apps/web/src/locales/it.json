@@ -622,5 +622,15 @@
     "login_cta": "Accedi",
     "open_failed": "Impossibile aprire il browser. Riprova.",
     "refresh": "Aggiorna"
+  },
+  "home": {
+    "filters": "Filtra le partite",
+    "filter_live": "In diretta",
+    "filter_following": "Seguiti",
+    "next_matchday": "Prossima giornata: {day}",
+    "go_to_day": "Vai a {day}",
+    "collapse": "Comprimi {name}",
+    "expand": "Espandi {name}",
+    "no_matches_past": "Nessuna partita in questo giorno"
   }
 }

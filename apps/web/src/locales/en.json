@@ -622,5 +622,15 @@
     "login_cta": "Sign in",
     "open_failed": "The browser could not be opened. Please try again.",
     "refresh": "Refresh"
+  },
+  "home": {
+    "filters": "Filter matches",
+    "filter_live": "Live",
+    "filter_following": "Following",
+    "next_matchday": "Next matchday: {day}",
+    "go_to_day": "Go to {day}",
+    "collapse": "Collapse {name}",
+    "expand": "Expand {name}",
+    "no_matches_past": "There were no matches on this day"
   }
 }
