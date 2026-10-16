@@ -51,12 +51,22 @@ matchDetailRouter.get('/:id', async (c) => {
           comp.id         AS competition_id,
           comp.name       AS competition_name,
           comp.slug       AS competition_slug,
-          comp.timezone   AS competition_timezone
+          comp.timezone   AS competition_timezone,
+          -- Ronda y fase del partido (spec 2026-10-16)
+          r.name          AS round_name,
+          r.number        AS round_number,
+          r.round_type    AS round_type,
+          r.stage         AS round_stage,
+          m.group_name,
+          m.series_game,
+          ph.kind         AS phase_kind
         FROM matches m
         LEFT JOIN teams ht ON ht.id = m.home_team_id
         LEFT JOIN teams at ON at.id = m.away_team_id
         LEFT JOIN seasons s        ON s.id = m.season_id
         LEFT JOIN competitions comp ON comp.id = s.competition_id
+        LEFT JOIN rounds r         ON r.id = m.round_id
+        LEFT JOIN phases ph        ON ph.id = COALESCE(m.phase_id, r.phase_id)
         WHERE m.id = $1
           AND s.data_quality = 'ok'
           AND comp.data_quality = 'ok'

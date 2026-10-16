@@ -13,6 +13,7 @@ import { teamTitleName } from '@/lib/names';
 import { formatTime, formatDate, eventSurname, fmtEventClock } from './format';
 import { freshnessState, connectionState, CONNECTION_LABEL, type ConnectionState } from './timeline-model';
 import { BallIcon } from './icons';
+import { matchRoundLabel } from '@/lib/stage-label';
 
 function TeamCrest({ team }: {
   team: { id: string; name: string; shortName: string | null; logoUrl: string | null };
@@ -183,6 +184,9 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
   const isLive = match.status === 'live';
   const isFinished = match.status === 'finished';
   const showScore = isLive || isFinished;
+  // Fase en que se juega (spec 2026-10-16): «Semifinal», «Fase de grupos ·
+  // Grupo A · Jornada 2»… null si el partido no tiene ronda.
+  const roundText = matchRoundLabel(match.round, t);
 
   // #284: reloj de 1 s para el indicador de frescura. `now` arranca en null para
   // que el HTML del servidor y la primera hidratación coincidan (sin el texto).
@@ -213,8 +217,9 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
       {/* #348: la ficha (la página más numerosa del sitio) no tenía headings.
           h1 sr-only: estructura semántica sin alterar el diseño visual. */}
       <h1 className="sr-only">
-        {`${teamTitleName(ht.name, ht.shortName)} ${showScore ? `${match.score.home ?? 0}-${match.score.away ?? 0}` : 'vs'} ${teamTitleName(at.name, at.shortName)}`}
-        {match.competitionName ? ` — ${match.competitionName}` : ''}
+        {`${teamTitleName(ht.name, ht.shortName)} ${showScore ? `${match.score.home ?? 0}-${match.score.away ?? 0}` : 'vs'} ${teamTitleName(at.name, at.shortName)}`
+          + (match.competitionName ? ` — ${match.competitionName}` : '')
+          + (roundText ? ` · ${roundText}` : '')}
       </h1>
       <ShareButton
         kind="match"
@@ -230,6 +235,10 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
           >
             {match.competitionName}
           </Link>
+          {roundText && (
+            <p data-round-label="true"
+               className="mt-0.5 text-xs font-semibold text-slate-700 dark:text-slate-200">{roundText}</p>
+          )}
         </div>
       )}
       {/* Estado */}

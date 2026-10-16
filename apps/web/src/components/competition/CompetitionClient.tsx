@@ -13,6 +13,7 @@ import { StatsLeadersTab } from './StatsLeadersTab';
 import { tt } from '@/components/search/translate';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { clubName } from '@/lib/names';
+import { finalPhaseStarted, knockoutTabLabelKey } from '@/lib/season-phases';
 
 // ─── Componente principal ───
 
@@ -105,6 +106,12 @@ export function competitionVisibleTabs(
   if (stats && (stats.topScorers.length > 0 || stats.topAssists.length > 0 || stats.topCards.length > 0)) {
     tabs.push('Estadísticas');
   }
+  // Spec 2026-10-16 (referencia FotMob): en cuanto la fase final manda, el
+  // cuadro es lo primero que se ve al entrar en la competición. Antes, el
+  // usuario aterrizaba en una clasificación de grupos ya cerrada.
+  if (tabs.length > 1 && tabs.includes('Playoffs') && finalPhaseStarted(data.matches)) {
+    return ['Playoffs', ...tabs.filter((t) => t !== 'Playoffs')];
+  }
   return tabs.length > 0 ? tabs : ['Clasificación'];
 }
 
@@ -117,10 +124,15 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
   // Pestañas según los datos: una eliminatoria pura (playoff) no tiene
   // clasificación, y una liga sin fase final no necesita pestaña Playoffs.
   // Una Final Four (Supercopa) es un cuadro: sin Clasificación ni Jornadas.
-  const isFinalFour = data.season.competitionFormat === 'final_four';
   const visibleTabs = useMemo<MainTab[]>(
     () => competitionVisibleTabs(data, stats, data.season.competitionFormat),
     [data, stats],
+  );
+  // Nombre del cuadro según cómo se juega: Playoffs (series), Final Four o
+  // Eliminatorias (partido único, como un Mundial).
+  const knockoutTabKey = useMemo(
+    () => knockoutTabLabelKey(data.season.competitionFormat, data.season.phases, data.rounds, data.matches),
+    [data],
   );
 
   const { t } = useT();
@@ -184,7 +196,7 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
                 : 'border-transparent font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 active:bg-slate-50 dark:active:bg-slate-800/60 active:text-slate-900 dark:active:text-slate-100'
             }`}
           >
-            {isFinalFour && tab === 'Playoffs' ? t('playoffs.final_four') : t(MAIN_TAB_KEYS[tab])}
+            {tab === 'Playoffs' ? tt(t, knockoutTabKey, 'Playoffs') : t(MAIN_TAB_KEYS[tab])}
           </button>
         ))}
       </div>

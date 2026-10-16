@@ -18,6 +18,7 @@ import type {
   GetMatchesFilters,
   MatchDetail,
   MatchLiveState,
+  MatchRound,
   MatchEvent,
   MatchStats,
   MatchLineups,
@@ -294,6 +295,7 @@ interface RawMatchDetail {
     sourceRef: string | null;
     videoUrl?: string | null;
     live?: MatchLiveState | null;
+    round?: MatchRound | null;
     homeTeam: TeamSummary;
     awayTeam: TeamSummary;
   };
@@ -334,6 +336,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
       sourceRef:   raw.match.sourceRef,
       videoUrl:    raw.match.videoUrl ?? null,
       live:        raw.match.live ?? null,
+      round:       raw.match.round ?? null,
     },
     events: raw.events,
     stats:  raw.stats,
