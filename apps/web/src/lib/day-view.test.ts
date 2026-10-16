@@ -1,0 +1,236 @@
+import { describe, it, expect } from 'vitest';
+import { buildDayView, nextMatchday, daysWithMatches, type DayViewMatch } from './day-view';
+
+/**
+ * Fixtures TZ-seguros: las horas UTC elegidas caen siempre en el mismo día de
+ * Madrid (10:00-20:00 UTC), así que las claves de día no dependen del horario
+ * de verano. Equipos 'h*'/'a*'; competiciones por id.
+ */
+const COMPS: Record<string, { name: string; slug: string | null; country: string | null }> = {
+  mundial: { name: 'Mundial Masculino', slug: 'mundial-masculino-worldskate', country: 'W' },
+  okliga: { name: 'OK Liga', slug: 'ok-liga-masculina', country: 'ES' },
+  plata: { name: 'OK Liga Plata Sur', slug: 'ok-liga-plata-sur', country: 'ES' },
+  zeta: { name: 'Zeta Cup', slug: null, country: 'PT' },
+  alfa: { name: 'Alfa Cup', slug: null, country: 'IT' },
+};
+
+function M(
+  id: string,
+  iso: string | null,
+  comp: keyof typeof COMPS | null,
+  extra: Partial<DayViewMatch> = {},
+): DayViewMatch {
+  const c = comp ? COMPS[comp] : null;
+  return {
+    id,
+    status: 'scheduled',
+    scheduledAt: iso,
+    startedAt: null,
+    homeTeamId: `h-${id}`,
+    awayTeamId: `a-${id}`,
+    competitionId: comp,
+    competitionName: c?.name ?? null,
+    competitionSlug: c?.slug ?? null,
+    competitionCountry: c?.country ?? null,
+    ...extra,
+  };
+}
+
+const DAY = '2026-10-16';
+
+describe('buildDayView', () => {
+  it('solo incluye los partidos del día elegido (clave de Madrid)', () => {
+    const view = buildDayView(
+      [
+        M('hoy', '2026-10-16T15:00:00Z', 'okliga'),
+        M('ayer', '2026-10-15T15:00:00Z', 'okliga'),
+        M('manana', '2026-10-17T15:00:00Z', 'okliga'),
+        M('sin-fecha', null, 'okliga'),
+      ],
+      { dayKey: DAY },
+    );
+    expect(view.total).toBe(1);
+    expect(view.competitions.flatMap((c) => c.matches.map((m) => m.id))).toEqual(['hoy']);
+  });
+
+  it('un partido de madrugada en Madrid cuenta para ese día, no para el anterior', () => {
+    // 23:00 UTC del 16 = 01:00 del 17 en Madrid (CEST, UTC+2)
+    const view = buildDayView([M('noche', '2026-10-16T23:00:00Z', 'mundial')], { dayKey: DAY });
+    expect(view.total).toBe(0);
+    const next = buildDayView([M('noche', '2026-10-16T23:00:00Z', 'mundial')], { dayKey: '2026-10-17' });
+    expect(next.total).toBe(1);
+  });
+
+  it('los partidos de equipos seguidos van a "myTeams" y no se repiten en su competición', () => {
+    const view = buildDayView(
+      [
+        M('mio', '2026-10-16T15:00:00Z', 'okliga', { homeTeamId: 'barca' }),
+        M('otro', '2026-10-16T16:00:00Z', 'okliga'),
+      ],
+      { dayKey: DAY, teamIds: ['barca'] },
+    );
+    expect(view.myTeams.map((m) => m.id)).toEqual(['mio']);
+    expect(view.competitions).toHaveLength(1);
+    expect(view.competitions[0]!.matches.map((m) => m.id)).toEqual(['otro']);
+  });
+
+  it('un equipo seguido como visitante también cuenta', () => {
+    const view = buildDayView(
+      [M('mio', '2026-10-16T15:00:00Z', 'okliga', { awayTeamId: 'barca' })],
+      { dayKey: DAY, teamIds: ['barca'] },
+    );
+    expect(view.myTeams.map((m) => m.id)).toEqual(['mio']);
+    expect(view.competitions).toHaveLength(0);
+  });
+
+  it('ordena bloques: seguidas primero, luego importancia y luego nombre', () => {
+    const view = buildDayView(
+      [
+        M('z', '2026-10-16T15:00:00Z', 'zeta'),
+        M('p', '2026-10-16T15:00:00Z', 'plata'),
+        M('a', '2026-10-16T15:00:00Z', 'alfa'),
+        M('m', '2026-10-16T15:00:00Z', 'mundial'),
+        M('o', '2026-10-16T15:00:00Z', 'okliga'),
+      ],
+      { dayKey: DAY, leagueIds: ['plata'], locale: 'es' },
+    );
+    expect(view.competitions.map((c) => c.id)).toEqual(['plata', 'mundial', 'okliga', 'alfa', 'zeta']);
+    expect(view.competitions[0]!.followed).toBe(true);
+    expect(view.competitions[1]!.followed).toBe(false);
+  });
+
+  it('dentro de cada bloque ordena por hora y copia los datos de la competición', () => {
+    const view = buildDayView(
+      [
+        M('tarde', '2026-10-16T19:00:00Z', 'mundial'),
+        M('pronto', '2026-10-16T10:00:00Z', 'mundial'),
+        M('medio', '2026-10-16T14:45:00Z', 'mundial'),
+      ],
+      { dayKey: DAY },
+    );
+    const block = view.competitions[0]!;
+    expect(block.matches.map((m) => m.id)).toEqual(['pronto', 'medio', 'tarde']);
+    expect(block).toMatchObject({
+      key: 'mundial',
+      id: 'mundial',
+      name: 'Mundial Masculino',
+      slug: 'mundial-masculino-worldskate',
+      country: 'W',
+    });
+  });
+
+  it('los directos se quedan en su bloque y no reordenan nada', () => {
+    const view = buildDayView(
+      [
+        M('fin', '2026-10-16T10:00:00Z', 'okliga', { status: 'finished' }),
+        M('vivo', '2026-10-16T15:00:00Z', 'okliga', { status: 'live' }),
+        M('luego', '2026-10-16T19:00:00Z', 'okliga'),
+      ],
+      { dayKey: DAY },
+    );
+    expect(view.competitions[0]!.matches.map((m) => m.id)).toEqual(['fin', 'vivo', 'luego']);
+    expect(view.liveCount).toBe(1);
+  });
+
+  it('partidos sin competición caen en un bloque propio con nombre nulo, al final', () => {
+    const view = buildDayView(
+      [M('suelto', '2026-10-16T15:00:00Z', null), M('o', '2026-10-16T15:00:00Z', 'okliga')],
+      { dayKey: DAY },
+    );
+    expect(view.competitions.map((c) => c.name)).toEqual(['OK Liga', null]);
+  });
+
+  it('filtro "live": solo partidos en juego, también en myTeams', () => {
+    const view = buildDayView(
+      [
+        M('vivo', '2026-10-16T15:00:00Z', 'okliga', { status: 'live' }),
+        M('mio-vivo', '2026-10-16T15:00:00Z', 'plata', { status: 'live', homeTeamId: 'barca' }),
+        M('mio-luego', '2026-10-16T19:00:00Z', 'plata', { homeTeamId: 'barca' }),
+        M('luego', '2026-10-16T19:00:00Z', 'mundial'),
+      ],
+      { dayKey: DAY, teamIds: ['barca'], filter: 'live' },
+    );
+    expect(view.filter).toBe('live');
+    expect(view.myTeams.map((m) => m.id)).toEqual(['mio-vivo']);
+    expect(view.competitions.flatMap((c) => c.matches.map((m) => m.id))).toEqual(['vivo']);
+  });
+
+  it('filtro "following": equipos y ligas seguidos, nada más', () => {
+    const view = buildDayView(
+      [
+        M('mio', '2026-10-16T15:00:00Z', 'mundial', { homeTeamId: 'esp' }),
+        M('liga', '2026-10-16T15:00:00Z', 'plata'),
+        M('resto', '2026-10-16T15:00:00Z', 'okliga'),
+      ],
+      { dayKey: DAY, teamIds: ['esp'], leagueIds: ['plata'], filter: 'following' },
+    );
+    expect(view.myTeams.map((m) => m.id)).toEqual(['mio']);
+    expect(view.competitions.map((c) => c.id)).toEqual(['plata']);
+  });
+
+  it('un filtro sin coincidencias cae a "all" (p. ej. acabó el último directo)', () => {
+    const view = buildDayView(
+      [M('fin', '2026-10-16T10:00:00Z', 'okliga', { status: 'finished' })],
+      { dayKey: DAY, filter: 'live' },
+    );
+    expect(view.filter).toBe('all');
+    expect(view.total).toBe(1);
+    expect(view.competitions[0]!.matches).toHaveLength(1);
+  });
+
+  it('los contadores se calculan sobre el día sin filtrar', () => {
+    const view = buildDayView(
+      [
+        M('vivo', '2026-10-16T15:00:00Z', 'okliga', { status: 'live' }),
+        M('mio', '2026-10-16T16:00:00Z', 'okliga', { homeTeamId: 'barca' }),
+        M('liga', '2026-10-16T17:00:00Z', 'plata'),
+        M('otro-dia', '2026-10-17T15:00:00Z', 'plata', { status: 'live' }),
+      ],
+      { dayKey: DAY, teamIds: ['barca'], leagueIds: ['plata'], filter: 'live' },
+    );
+    expect(view.total).toBe(3);
+    expect(view.liveCount).toBe(1);
+    expect(view.followingCount).toBe(2);
+  });
+});
+
+describe('nextMatchday', () => {
+  it('devuelve el primer día POSTERIOR con partidos, agrupado igual que el día', () => {
+    const next = nextMatchday(
+      [
+        M('antes', '2026-10-15T15:00:00Z', 'okliga'),
+        M('mismo', '2026-10-19T15:00:00Z', 'okliga'),
+        M('lejos', '2026-10-24T15:00:00Z', 'plata'),
+        M('cerca', '2026-10-21T15:00:00Z', 'plata'),
+      ],
+      '2026-10-19',
+    );
+    expect(next?.dayKey).toBe('2026-10-21');
+    expect(next?.competitions.flatMap((c) => c.matches.map((m) => m.id))).toEqual(['cerca']);
+    expect(next?.filter).toBe('all');
+  });
+
+  it('respeta los favoritos al agrupar la próxima jornada', () => {
+    const next = nextMatchday(
+      [M('mio', '2026-10-21T15:00:00Z', 'plata', { homeTeamId: 'barca' })],
+      '2026-10-19',
+      { teamIds: ['barca'] },
+    );
+    expect(next?.myTeams.map((m) => m.id)).toEqual(['mio']);
+  });
+
+  it('null si no hay nada después', () => {
+    expect(nextMatchday([M('antes', '2026-10-15T15:00:00Z', 'okliga')], '2026-10-19')).toBeNull();
+  });
+});
+
+describe('daysWithMatches', () => {
+  it('claves de día de Madrid de los partidos con fecha', () => {
+    const days = daysWithMatches([
+      M('a', '2026-10-16T15:00:00Z', 'okliga'),
+      M('b', '2026-10-16T23:00:00Z', 'okliga'), // 01:00 del 17 en Madrid
+      M('c', null, 'okliga'),
+    ]);
+    expect([...days].sort()).toEqual(['2026-10-16', '2026-10-17']);
+  });
+});
