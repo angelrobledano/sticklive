@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
   photoCandidates, idNumFromSourceRef, resolvePlayerPhoto, resolvePlayerPhotoIfNeeded,
-  PHOTO_CDN, MAX_PHOTO_INDEX,
+  photoAreaForTeamRefs, PHOTO_CDNS, MAX_PHOTO_INDEX,
 } from './player-photo-url.js';
+
+const RFEP = PHOTO_CDNS.rfep;
+const WSE = PHOTO_CDNS.worldskate;
 
 /**
  * Bug de cobertura: las fotos que el CDN sirve como `{id}.jpg` (sin `_n`) no se
@@ -21,49 +24,105 @@ describe('idNumFromSourceRef', () => {
   });
 });
 
+describe('photoAreaForTeamRefs', () => {
+  it('los equipos `wse_*` son del portal World Skate', () => {
+    expect(photoAreaForTeamRefs(['wse_1130'])).toBe('worldskate');
+  });
+
+  it('los equipos de la FEP (clubes) son del portal rfep', () => {
+    expect(photoAreaForTeamRefs(['fep_3408'])).toBe('rfep');
+  });
+
+  it('sin equipos o con refs desconocidas → rfep (comportamiento previo)', () => {
+    expect(photoAreaForTeamRefs([])).toBe('rfep');
+    expect(photoAreaForTeamRefs(['otro'])).toBe('rfep');
+  });
+
+  it('basta un equipo de World Skate para elegir ese portal', () => {
+    expect(photoAreaForTeamRefs(['fep_1', 'wse_2'])).toBe('worldskate');
+  });
+});
+
 describe('photoCandidates', () => {
-  it('prefiere las variantes _n de mayor a menor y termina con {id}.jpg', () => {
-    expect(photoCandidates('7455')).toEqual([
-      `${PHOTO_CDN}/7455_6.jpg`, `${PHOTO_CDN}/7455_5.jpg`, `${PHOTO_CDN}/7455_4.jpg`,
-      `${PHOTO_CDN}/7455_3.jpg`, `${PHOTO_CDN}/7455_2.jpg`, `${PHOTO_CDN}/7455_1.jpg`,
-      `${PHOTO_CDN}/7455.jpg`,
+  it('prefiere las variantes _n de mayor a menor y termina con {id}.jpg (portal FEP)', () => {
+    expect(photoCandidates('7455', 'rfep')).toEqual([
+      `${RFEP}/7455_6.jpg`, `${RFEP}/7455_5.jpg`, `${RFEP}/7455_4.jpg`,
+      `${RFEP}/7455_3.jpg`, `${RFEP}/7455_2.jpg`, `${RFEP}/7455_1.jpg`,
+      `${RFEP}/7455.jpg`,
     ]);
-    expect(photoCandidates('x')).toHaveLength(MAX_PHOTO_INDEX + 1);
+    expect(photoCandidates('x', 'rfep')).toHaveLength(MAX_PHOTO_INDEX + 1);
+  });
+
+  it('usa la carpeta del portal World Skate para las selecciones', () => {
+    expect(photoCandidates('89', 'worldskate')).toEqual([
+      `${WSE}/89_6.jpg`, `${WSE}/89_5.jpg`, `${WSE}/89_4.jpg`,
+      `${WSE}/89_3.jpg`, `${WSE}/89_2.jpg`, `${WSE}/89_1.jpg`,
+      `${WSE}/89.jpg`,
+    ]);
   });
 });
 
 describe('resolvePlayerPhoto', () => {
   it('recupera la foto que solo existe como {id}.jpg (el caso roto)', async () => {
-    const existing = new Set([`${PHOTO_CDN}/19297.jpg`]);
-    expect(await resolvePlayerPhoto('19297', async (u) => existing.has(u))).toBe(`${PHOTO_CDN}/19297.jpg`);
+    const existing = new Set([`${RFEP}/19297.jpg`]);
+    expect(await resolvePlayerPhoto('19297', 'rfep', async (u) => existing.has(u))).toBe(`${RFEP}/19297.jpg`);
   });
 
   it('prefiere una variante _n sobre {id}.jpg cuando ambas existen', async () => {
-    const existing = new Set([`${PHOTO_CDN}/7455_1.jpg`, `${PHOTO_CDN}/7455.jpg`]);
-    expect(await resolvePlayerPhoto('7455', async (u) => existing.has(u))).toBe(`${PHOTO_CDN}/7455_1.jpg`);
+    const existing = new Set([`${RFEP}/7455_1.jpg`, `${RFEP}/7455.jpg`]);
+    expect(await resolvePlayerPhoto('7455', 'rfep', async (u) => existing.has(u))).toBe(`${RFEP}/7455_1.jpg`);
   });
 
   it('devuelve null cuando no existe ninguna (jugador sin foto)', async () => {
-    expect(await resolvePlayerPhoto('999', async () => false)).toBeNull();
+    expect(await resolvePlayerPhoto('999', 'rfep', async () => false)).toBeNull();
+  });
+
+  it('solo sondea la carpeta del portal pedido: una ficha en la OTRA carpeta NO cuenta', async () => {
+    // Bug reportado: el id 89 existe en el portal FEP (otro jugador). Para el
+    // jugador de World Skate eso no es su foto.
+    const existing = new Set([`${RFEP}/89.jpg`]);
+    const probed: string[] = [];
+    const got = await resolvePlayerPhoto('89', 'worldskate', async (u) => {
+      probed.push(u);
+      return existing.has(u);
+    });
+    expect(got).toBeNull();
+    expect(probed.length).toBe(MAX_PHOTO_INDEX + 1);
+    expect(probed.every((u) => u.startsWith(WSE))).toBe(true);
   });
 });
 
 describe('resolvePlayerPhotoIfNeeded (pasada rápida)', () => {
-  it('conserva la URL guardada si sigue existiendo (una sola comprobación)', async () => {
-    const stored = `${PHOTO_CDN}/7455_1.jpg`;
+  it('conserva la URL guardada si es del portal e id correctos y sigue existiendo', async () => {
+    const stored = `${RFEP}/7455_1.jpg`;
     const calls: string[] = [];
     const exists = async (u: string) => { calls.push(u); return u === stored; };
-    expect(await resolvePlayerPhotoIfNeeded('7455', stored, exists)).toBe(stored);
+    expect(await resolvePlayerPhotoIfNeeded('7455', 'rfep', stored, exists)).toBe(stored);
     expect(calls).toEqual([stored]);
   });
 
   it('si la guardada ya no existe, resuelve de cero (recupera {id}.jpg)', async () => {
-    const existing = new Set([`${PHOTO_CDN}/19297.jpg`]);
-    const got = await resolvePlayerPhotoIfNeeded('19297', `${PHOTO_CDN}/19297_1.jpg`, async (u) => existing.has(u));
-    expect(got).toBe(`${PHOTO_CDN}/19297.jpg`);
+    const existing = new Set([`${RFEP}/19297.jpg`]);
+    const got = await resolvePlayerPhotoIfNeeded('19297', 'rfep', `${RFEP}/19297_1.jpg`, async (u) => existing.has(u));
+    expect(got).toBe(`${RFEP}/19297.jpg`);
   });
 
   it('sin URL guardada, resuelve de cero', async () => {
-    expect(await resolvePlayerPhotoIfNeeded('999', null, async () => false)).toBeNull();
+    expect(await resolvePlayerPhotoIfNeeded('999', 'rfep', null, async () => false)).toBeNull();
+  });
+
+  it('corrige una URL guardada del portal EQUIVOCADO (colisión de id entre portales)', async () => {
+    // Caso real: la ficha de España tenía guardada `/rfep/images/fichas/89.jpg`
+    // (la foto de otro jugador en el portal FEP) existiendo la de World Skate.
+    const existing = new Set([`${RFEP}/89.jpg`, `${WSE}/89.jpg`]);
+    const got = await resolvePlayerPhotoIfNeeded('89', 'worldskate', `${RFEP}/89.jpg`, async (u) => existing.has(u));
+    expect(got).toBe(`${WSE}/89.jpg`);
+  });
+
+  it('corrige una URL guardada de OTRO id (foto antigua que no se autocorregía)', async () => {
+    // Caso real: `fep_player_7733` guardaba `fichas/28150_1.jpg`.
+    const existing = new Set([`${RFEP}/28150_1.jpg`, `${RFEP}/7733.jpg`]);
+    const got = await resolvePlayerPhotoIfNeeded('7733', 'rfep', `${RFEP}/28150_1.jpg`, async (u) => existing.has(u));
+    expect(got).toBe(`${RFEP}/7733.jpg`);
   });
 });

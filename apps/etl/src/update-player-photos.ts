@@ -2,21 +2,26 @@
  * Repara `players.photo_url`: la deja apuntando a la foto que REALMENTE existe
  * en el CDN, o a NULL si el jugador no tiene ninguna.
  *
- * Antes solo sondeaba `{id}_{1..6}.jpg` y no limpiaba nunca, así que:
- *   · las fotos servidas como `{id}.jpg` (sin `_n`) quedaban en un `{id}_1.jpg`
- *     muerto → 404 → silueta en la web (≈29 % de la muestra auditada);
- *   · un jugador sin foto conservaba una URL inventada por el scraper.
+ * El CDN está partido POR PORTAL (`/rfep/images/fichas` para clubes FEP,
+ * `/worldskate/images/fichas` para selecciones) y los ids de cada portal son
+ * espacios DISTINTOS: el mismo jugador tiene un id en cada uno (Marc Grau es
+ * 4646 en el portal FEP y 192 en World Skate). El portal de cada jugador sale
+ * de la ref de sus equipos (`wse_*` → World Skate; resto → rfep). Sondear el
+ * portal equivocado no da un 404 limpio: cuando el número colisiona devuelve la
+ * foto de OTRO jugador (la ficha de España mostraba caras de jugadores de club).
  *
- * Ahora usa `player-photo-url.ts` (candidatos `{id}_{6..1}.jpg` + `{id}.jpg`) y
- * escribe el resultado verificado, incluido NULL. Pasada RÁPIDA: si la URL
- * guardada sigue existiendo, no re-sondea candidatos. Con concurrencia acotada
- * para poder programarlo a diario sin martillear el CDN.
+ * La pasada RÁPIDA solo conserva la URL guardada si es candidata del jugador en
+ * su portal; una URL de otro portal/id se re-resuelve (antes quedaba fijada).
  *
  * Uso: node dist/apps/etl/src/update-player-photos.js   (o tsx en local)
  */
 import { db, closeDb } from '@sports/db';
 import { forEachLimited } from './concurrency.js';
-import { idNumFromSourceRef, resolvePlayerPhotoIfNeeded } from './player-photo-url.js';
+import {
+  idNumFromSourceRef,
+  photoAreaForTeamRefs,
+  resolvePlayerPhotoIfNeeded,
+} from './player-photo-url.js';
 
 const CONCURRENCY = Number(process.env['PLAYER_PHOTO_CONCURRENCY'] ?? 8);
 
@@ -41,8 +46,20 @@ async function exists(url: string): Promise<boolean> {
 }
 
 void (async () => {
-  const { rows } = await db.query<{ id: string; source_ref: string; photo_url: string | null }>(
-    `SELECT id, source_ref, photo_url FROM players WHERE source_ref LIKE 'fep_player_%'`
+  // Portal por jugador desde la ref de sus equipos (`wse_*` → World Skate).
+  const { rows } = await db.query<{
+    id: string;
+    source_ref: string;
+    photo_url: string | null;
+    team_refs: string[] | null;
+  }>(
+    `SELECT p.id, p.source_ref, p.photo_url,
+            array_agg(DISTINCT t.source_ref) AS team_refs
+       FROM players p
+       LEFT JOIN team_players tp ON tp.player_id = p.id
+       LEFT JOIN teams t ON t.id = tp.team_id
+      WHERE p.source_ref LIKE 'fep_player_%'
+      GROUP BY p.id, p.source_ref, p.photo_url`
   );
   console.log(`${rows.length} jugadores a comprobar (concurrencia ${CONCURRENCY})\n`);
 
@@ -52,17 +69,19 @@ void (async () => {
     const idNum = idNumFromSourceRef(p.source_ref);
     if (!idNum) { skipped++; return; }
 
+    const area = photoAreaForTeamRefs(p.team_refs ?? []);
+
     try {
-      const best = await resolvePlayerPhotoIfNeeded(idNum, p.photo_url, exists);
+      const best = await resolvePlayerPhotoIfNeeded(idNum, area, p.photo_url, exists);
       if (best === p.photo_url) { unchanged++; return; }
 
       await db.query(`UPDATE players SET photo_url = $2, updated_at = NOW() WHERE id = $1`, [p.id, best]);
       if (best) {
         updated++;
-        console.log(`  ✅ ${idNum} → ${best.split('/').pop()}`);
+        console.log(`  ✅ ${idNum} [${area}] → ${best.split('/').pop()}`);
       } else {
         cleared++;
-        console.log(`  ∅ ${idNum} — sin foto en el CDN; photo_url limpiado`);
+        console.log(`  ∅ ${idNum} [${area}] — sin foto en el CDN; photo_url limpiado`);
       }
     } catch (e) {
       failed++;

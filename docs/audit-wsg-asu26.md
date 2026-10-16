@@ -147,9 +147,17 @@ la ventana por `seasons.end_date` (+3 días de margen) las dormirá tras el
    veces. **Fix** (`769c7a0`): constante al CDN válido + migración 070
    (`data_sources.logo_base`) + re-seed. Resultado: 23 descargas ok / 0 fallos,
    los 36 endpoints `/teams/:id/logo` de las selecciones responden 200.
-3. **Fotos de jugadoras internacionales** — `update-player-photos` sondea el
-   CDN de la FEP con el id FEP; las internacionales que no compiten en la FEP
-   no tienen foto posible hoy (acta sin imgs, CDN worldskate 404 en todas las
-   rutas probadas, sin endpoint de perfil). Las que también juegan ligas FEP
-   sí obtienen foto. Queda abierta a que World Skate publique un patrón de
-   fotos — el cambio sería añadir candidatos en `player-photo-url.ts`.
+3. **Fotos de internacionales** — `update-player-photos` sondearía SOLO el CDN
+   del portal FEP (`/rfep/images/fichas`) con el id del acta. Pero las actas de
+   World Skate traen un `id_player` de un espacio de ids DISTINTO: el mismo
+   jugador tiene otro id en cada portal (Marc Grau Tallada es 4646 en el portal
+   FEP —Barça— y 192 en World Skate). Con la carpeta equivocada la foto o no
+   existía (404 → silueta) o era la de OTRO jugador cuando el número colisionaba
+   (los avatares de la selección mostraban caras de jugadores de club).
+   **Fix**: la resolución es por portal (`photoAreaForTeamRefs`: equipos `wse_*`
+   → `/worldskate/images/fichas`; resto → `/rfep/images/fichas`; ver
+   `player-photo-url.ts`) y la pasada rápida solo conserva la URL guardada si es
+   candidata del jugador en SU portal. El CDN de World Skate SÍ publica las
+   fichas: `/worldskate/images/fichas/{id}.jpg` (con variantes `_n`), retratos
+   oficiales de las selecciones —la nota anterior decía «404 en todas las
+   rutas» porque se probaba con el id/carpeta equivocados.
