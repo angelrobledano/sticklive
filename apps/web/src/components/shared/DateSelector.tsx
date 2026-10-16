@@ -53,16 +53,20 @@ interface DateSelectorProps {
   availableFrom?: string | null;
   /** Último día con datos cargados. */
   availableTo?: string | null;
+  /** Días con algún partido: llevan un punto bajo el número. */
+  markedDays?: ReadonlySet<string>;
 }
 
 /**
  * Chip de día — compartido por el carrusel (móvil) y la tira paginada
  * (escritorio): mismo lenguaje visual, dos chasis de interacción.
  */
-function DayChip({ dateKey, selected, outOfRange, onClick }: {
+function DayChip({ dateKey, selected, outOfRange, marked = false, onClick }: {
   dateKey: string;
   selected: string;
   outOfRange: boolean;
+  /** El día tiene partidos (punto bajo el número). */
+  marked?: boolean;
   onClick: (key: string) => void;
 }) {
   const { t, locale } = useT();
@@ -79,7 +83,7 @@ function DayChip({ dateKey, selected, outOfRange, onClick }: {
       disabled={outOfRange}
       title={outOfRange ? t('common.day_out_of_window') : undefined}
       onClick={() => onClick(dateKey)}
-      className={`flex flex-col items-center shrink-0 rounded-xl px-3 py-1.5
+      className={`flex flex-col items-center shrink-0 rounded-xl px-3 pt-1.5 pb-1
                   min-w-[52px] min-h-[44px] transition-all duration-150 select-none
                   ${outOfRange
                     ? 'opacity-30 cursor-not-allowed'
@@ -112,6 +116,13 @@ function DayChip({ dateKey, selected, outOfRange, onClick }: {
           </span>
         </>
       )}
+      <span
+        aria-hidden="true"
+        data-marked={marked ? 'true' : undefined}
+        className={`mt-1 h-1 w-1 rounded-full ${marked
+          ? isActive ? 'bg-rink-passion dark:bg-rink-accent' : 'bg-slate-400 dark:bg-slate-500'
+          : 'bg-transparent'}`}
+      />
     </button>
   );
 }
@@ -123,7 +134,7 @@ function DayChip({ dateKey, selected, outOfRange, onClick }: {
  *    navegación por teclado y flechas, sin una baranda de chips a todo el ancho.
  * La lógica de paginación vive en `lib/date-window` (pura, testeada).
  */
-export function DateSelector({ selected, onChange, availableFrom, availableTo }: DateSelectorProps) {
+export function DateSelector({ selected, onChange, availableFrom, availableTo, markedDays }: DateSelectorProps) {
   const { t } = useT();
   const dateKeys = buildDateKeys(7, 14);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -168,12 +179,13 @@ export function DateSelector({ selected, onChange, availableFrom, availableTo }:
                         bg-gradient-to-l from-white dark:from-slate-900 to-transparent" />
         <div
           ref={scrollRef}
-          className="flex gap-1.5 overflow-x-auto py-2.5 px-4 scrollbar-none"
+          className="flex gap-1.5 overflow-x-auto py-1.5 px-4 scrollbar-none"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {dateKeys.map((key) => (
             <DayChip key={key} dateKey={key} selected={selected}
-                     outOfRange={isOutOfRange(key)} onClick={handleClick} />
+                     outOfRange={isOutOfRange(key)} marked={!!markedDays?.has(key)}
+                   onClick={handleClick} />
           ))}
         </div>
       </div>
@@ -194,7 +206,8 @@ export function DateSelector({ selected, onChange, availableFrom, availableTo }:
         </button>
         {window7.keys.map((key) => (
           <DayChip key={key} dateKey={key} selected={selected}
-                   outOfRange={isOutOfRange(key)} onClick={handleClick} />
+                   outOfRange={isOutOfRange(key)} marked={!!markedDays?.has(key)}
+                   onClick={handleClick} />
         ))}
         <button
           type="button"

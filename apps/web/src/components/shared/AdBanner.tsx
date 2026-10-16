@@ -47,11 +47,18 @@ const ZONE_CONFIG: Record<AdZone, {
   label: string;
   /** Clases del contenedor interno del placeholder */
   inner: string;
+  /**
+   * `data-ad-format` de AdSense. 'auto' por defecto. 'horizontal' en la home
+   * (spec 2026-10-16): un bloque 'auto' en móvil crecía a cientos de px y
+   * dejaba la jornada fuera del primer pantallazo.
+   */
+  format?: 'auto' | 'horizontal';
 }> = {
   'home-top': {
     height: 'h-[50px]',
     label:  'PUBLICIDAD',
     inner:  'flex items-center justify-center gap-3',
+    format: 'horizontal',
   },
   'home-inline': {
     height: 'h-[100px]',
@@ -211,7 +218,7 @@ function AdsenseUnit({ zone, client, slot, className }: {
         style={{ display: 'block' }}
         data-ad-client={client}
         data-ad-slot={slot}
-        data-ad-format="auto"
+        data-ad-format={config.format ?? 'auto'}
         data-full-width-responsive="true"
       />
     </div>
