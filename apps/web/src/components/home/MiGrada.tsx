@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import type { Match } from '@/lib/api/client';
 import { MatchRow } from '@/components/home/MatchRow';
 import { MatchGroupCard, FollowStar } from '@/components/home/MatchGroupCard';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useT } from '@/lib/i18n';
 import type { SeasonLeader, SeasonStats } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';

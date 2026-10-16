@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useSearchParams } from 'next/navigation';
 import { useFavorites } from '@/hooks/useFavorites';
 import { TeamShield } from '@/components/shared/TeamShield';

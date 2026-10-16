@@ -2,9 +2,10 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useAuth } from '@/hooks/useAuth';
 import { useT } from '@/lib/i18n';
+import { withLocaleHref } from '@/lib/locale-links';
 import { BackLink } from '@/components/shared/BackLink';
 import { BrandLoader } from '@/components/shared/BrandLoader';
 import { track } from '@/lib/analytics';
@@ -35,7 +36,7 @@ function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
   const { login } = useAuth();
-  const { t } = useT();
+  const { t, locale } = useT();
 
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<Status>('idle');
@@ -98,7 +99,7 @@ function LoginInner() {
           (merged?.teams?.length ?? teams.length) +
           (merged?.leagues?.length ?? leagues.length) +
           ((merged as { players?: string[] } | null)?.players?.length ?? players.length);
-        if (favCount > 0) router.replace('/');
+        if (favCount > 0) router.replace(withLocaleHref('/', locale));
         else setStatus('welcome');
       })
       .catch((err: Error) => {
@@ -170,7 +171,7 @@ function LoginInner() {
           (merged?.teams?.length ?? teams.length) +
           (merged?.leagues?.length ?? leagues.length) +
           (merged?.players?.length ?? players.length);
-        if (favCount > 0) router.replace('/');
+        if (favCount > 0) router.replace(withLocaleHref('/', locale));
         else setStatus('welcome');
       })
       .catch(() => setStatus('welcome'));

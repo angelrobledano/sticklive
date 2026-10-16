@@ -98,8 +98,8 @@ describe('KnockoutSeasonSummary — render SSR', () => {
     expect(html).toContain('Competición eliminatoria');
     expect(html).toContain('Supercopa · 2025/26');
     // Síntesis enlazada: los partidos del equipo enlazan a su ficha
-    expect(html).toContain('href="/matches/s2"');
-    expect(html).toContain('href="/matches/s3"');
+    expect(html).toContain('href="/es/matches/s2"');
+    expect(html).toContain('href="/es/matches/s3"');
     // Nunca el mensaje que motivó el cambio
     expect(html).not.toContain('Sin datos de clasificación');
   });

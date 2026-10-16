@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useCallback, Fragment } from 'react';
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';

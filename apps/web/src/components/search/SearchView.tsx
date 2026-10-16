@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useT } from '@/lib/i18n';
 import { track, searchEventProps } from '@/lib/analytics';
 import { clubName, competitionName, playerDisplayName } from '@/lib/names';

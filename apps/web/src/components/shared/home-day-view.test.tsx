@@ -105,6 +105,6 @@ describe('MatchesView (home por competición)', () => {
   it('día vacío sin nada después: aviso y enlace a competiciones', () => {
     const html = render([match('plata', 'OK Liga Plata Sur', 'ok-liga-plata-sur', '2026-10-14T18:30:00Z')]);
     expect(html).toContain('No hay próximos partidos programados');
-    expect(html).toContain('href="/competitions"');
+    expect(html).toContain('href="/es/competitions"');
   });
 });

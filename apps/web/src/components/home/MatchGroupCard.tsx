@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState, type ReactNode } from 'react';
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { CountryFlag } from '@/components/shared/CountryFlag';
 import { useT } from '@/lib/i18n';
 import { tt } from '@/components/search/translate';

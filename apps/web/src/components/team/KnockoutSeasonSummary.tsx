@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { Fragment, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { TeamDetail, TeamMatchSummary } from '@/lib/api/client';
@@ -223,7 +223,9 @@ export function KnockoutSeasonSummary({ data, summary, renderMatch }: {
           </p>
         </div>
         {data.selectedSeasonId && (
-          <Link href={`/competitions/${data.selectedSeasonId}`}
+          <Link href={data.season?.competitionId
+                  ? `/competitions/${data.season.competitionId}?season=${data.selectedSeasonId}`
+                  : `/competitions/${data.selectedSeasonId}`}
                 className="text-xs font-medium text-rink-passion hover:underline shrink-0">
             {t('team.view_competition')} →
           </Link>

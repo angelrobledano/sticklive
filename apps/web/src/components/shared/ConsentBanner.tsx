@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useT } from '@/lib/i18n';
 import { CONSENT_KEY, emitConsentChange, readConsent, writeConsent, type ConsentState } from '@/lib/consent';
 

@@ -72,16 +72,16 @@ describe('MatchCard — grafo de enlaces en HTML SSR (#339)', () => {
 
   it('emite enlaces server-side a ambos equipos y al partido', () => {
     const html = render(match());
-    expect(html).toContain('href="/teams/h"');
-    expect(html).toContain('href="/teams/a"');
-    expect(html).toContain('href="/matches/m1"');
+    expect(html).toContain('href="/es/teams/h"');
+    expect(html).toContain('href="/es/teams/a"');
+    expect(html).toContain('href="/es/matches/m1"');
     expect(html).not.toContain('/teams/undefined');
   });
 
   it('no enlaza un equipo ausente pero conserva el enlace al partido', () => {
     const html = render(match({ awayTeam: undefined, awayTeamId: 'a' }));
-    expect(html).toContain('href="/teams/h"');
-    expect(html).not.toContain('href="/teams/a"');
-    expect(html).toContain('href="/matches/m1"');
+    expect(html).toContain('href="/es/teams/h"');
+    expect(html).not.toContain('href="/es/teams/a"');
+    expect(html).toContain('href="/es/matches/m1"');
   });
 });

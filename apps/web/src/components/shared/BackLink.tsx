@@ -1,7 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useT } from '@/lib/i18n';
+import { useLocale, useT } from '@/lib/i18n';
+import { withLocaleHref } from '@/lib/locale-links';
 import { shouldReturnToHistory } from '@/lib/back-link';
 
 /**
@@ -14,12 +15,13 @@ import { shouldReturnToHistory } from '@/lib/back-link';
 export function BackLink({ href = '/' }: { href?: string }) {
   const { t } = useT();
   const router = useRouter();
+  const locale = useLocale();
 
   const onBack = () => {
     if (typeof window !== 'undefined' && shouldReturnToHistory(document.referrer, window.location.origin)) {
       router.back();
     } else {
-      router.push(href);
+      router.push(withLocaleHref(href, locale));
     }
   };
 

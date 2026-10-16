@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { PurchaseFailedTracker } from '@/components/shared/PurchaseFailedTracker';
 
 interface Props {

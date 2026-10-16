@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import type { SeasonMatch } from '@/lib/api/client';
 import {
   PLAYOFF_PHASES,

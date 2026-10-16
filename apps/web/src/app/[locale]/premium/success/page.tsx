@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useSearchParams } from 'next/navigation';
 import { usePremium } from '@/context/PremiumContext';
 import { useT } from '@/lib/i18n';

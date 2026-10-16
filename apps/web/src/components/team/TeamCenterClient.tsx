@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useRouter } from 'next/navigation';
 import type { TeamDetail, TeamMatchSummary, SquadPlayer, TeamSeason } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
@@ -11,7 +11,8 @@ import { playerDisplayName, toTitleCase, clubName } from '@/lib/names';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
 import { ShareButton } from '@/components/shared/ShareButton';
-import { useT } from '@/lib/i18n';
+import { useLocale, useT } from '@/lib/i18n';
+import { withLocaleHref } from '@/lib/locale-links';
 import { APP_TZ } from '@/lib/match-time';
 import { isKnockoutSeason, buildKnockoutSummary, knockoutPhaseLabel } from '@/lib/knockout';
 import { KnockoutSeasonSummary } from './KnockoutSeasonSummary';
@@ -129,6 +130,7 @@ function TeamHeader({ data }: { data: TeamDetailView }) {
   const { team, standing } = data;
   const { t } = useT();
   const router = useRouter();
+  const locale = useLocale();
   const seasons = data.seasons ?? [];
   const form = standing?.form?.slice(-5) ?? [];
   // #196: dos secciones del mismo club comparten nombre canónico; el badge las
@@ -157,7 +159,7 @@ function TeamHeader({ data }: { data: TeamDetailView }) {
           )}
           {standing && (
             <Link
-              href={`/competitions/${standing.seasonId}`}
+              href={`/competitions/${standing.competitionId}?season=${standing.seasonId}`}
               className="inline-block mt-1 text-xs font-medium text-rink-passion hover:underline"
             >
               {standing.competitionShort ?? standing.competitionName}
@@ -175,7 +177,7 @@ function TeamHeader({ data }: { data: TeamDetailView }) {
                 // devolver al usuario a la pestaña Resumen.
                 const params = new URLSearchParams(window.location.search);
                 params.set('season', e.target.value);
-                router.push(`/teams/${team.id}?${params.toString()}`);
+                router.push(withLocaleHref(`/teams/${team.id}?${params.toString()}`, locale));
               }}
               className="block max-w-full mt-1 text-xs font-light text-slate-500 dark:text-slate-400
                          bg-transparent border-0 rounded-md px-1 py-0 pr-6 cursor-pointer appearance-auto
@@ -368,7 +370,7 @@ function SummaryTab({ data }: { data: TeamDetail }) {
               {standing.competitionName}
             </h3>
             <Link
-              href={`/competitions/${standing.seasonId}`}
+              href={`/competitions/${standing.competitionId}?season=${standing.seasonId}`}
               className="text-xs font-medium text-rink-passion hover:underline"
             >
               {t('team.view_full_table')} →

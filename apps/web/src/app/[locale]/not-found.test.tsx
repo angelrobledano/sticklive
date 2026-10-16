@@ -46,8 +46,8 @@ describe('not-found localizado (#336)', () => {
     expect(html).toContain('Cuerpo en español');
     expect(html).toContain('Volver al inicio');
     expect(html).toContain('Ver competiciones');
-    expect(html).toContain('href="/"');
-    expect(html).toContain('href="/competitions"');
+    expect(html).toContain('href="/es"');
+    expect(html).toContain('href="/es/competitions"');
   });
 
   it('usa el idioma del locale (no texto fijo en español)', () => {

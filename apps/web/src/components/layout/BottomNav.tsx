@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { usePathname } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import { NavigationProgress } from '@/components/layout/NavigationProgress';

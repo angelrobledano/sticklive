@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
+import { withLocaleHref } from '@/lib/locale-links';
 import type { SeasonOverview, CompetitionSeason } from '@/lib/api/client';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
@@ -51,7 +52,7 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
           <select
             ref={selectRef}
             value={season.id}
-            onChange={(e) => { wasFocused.current = true; router.push(`/competitions/${competitionId}?season=${e.target.value}`); }}
+            onChange={(e) => { wasFocused.current = true; router.push(withLocaleHref(`/competitions/${competitionId}?season=${e.target.value}`, locale)); }}
             className="mt-0.5 -ml-1 text-xs font-light text-slate-500 dark:text-slate-400 bg-transparent
                        border-0 rounded-md px-1 py-0 pr-6 cursor-pointer appearance-auto
                        hover:text-slate-600 dark:hover:text-slate-300

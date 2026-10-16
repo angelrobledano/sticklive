@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useCallback, Suspense, useRef } from 'react';
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import type { SeasonOverview, CompetitionSeason, SeasonStats } from '@/lib/api/client';

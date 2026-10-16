@@ -63,7 +63,7 @@ describe('MatchRow', () => {
 
   it('enlaza al partido con una etiqueta accesible que incluye el estado', () => {
     const html = render(<MatchRow match={match()} />);
-    expect(html).toContain('href="/matches/m1"');
+    expect(html).toContain('href="/es/matches/m1"');
     expect(html).toContain('aria-label="Ver partido: Italia - Chile, 16:45"');
     const live = render(<MatchRow match={match({ status: 'live', score: { home: 2, away: 1 } })} />);
     expect(live).toContain('aria-label="Ver partido: Italia - Chile, 2–1, En directo"');
@@ -145,16 +145,16 @@ describe('MatchGroupCard', () => {
 
   it('cabecera con título enlazado, recuento y filas desplegadas', () => {
     const html = card();
-    expect(html).toContain('href="/competitions/c1"');
+    expect(html).toContain('href="/es/competitions/c1"');
     expect(html).toContain('Mundial Masculino — World Skate');
     expect(html).toContain('5 partidos');
     expect(html).toContain('aria-expanded="true"');
-    expect(html).toContain('href="/matches/m1"');
+    expect(html).toContain('href="/es/matches/m1"');
   });
 
   it('sin href el título no es enlace', () => {
     const html = card({ href: null });
-    expect(html).not.toContain('href="/competitions/c1"');
+    expect(html).not.toContain('href="/es/competitions/c1"');
   });
 
   it('marca las competiciones seguidas', () => {
@@ -196,11 +196,11 @@ describe('MiGrada (fuera de la home, con fecha en cada fila)', () => {
         showManage={false}
       />,
     );
-    expect(html).toContain('href="/matches/prox"');
-    expect(html).toContain('href="/matches/res"');
-    expect(html).not.toContain('href="/matches/ajeno"');
+    expect(html).toContain('href="/es/matches/prox"');
+    expect(html).toContain('href="/es/matches/res"');
+    expect(html).not.toContain('href="/es/matches/ajeno"');
     expect(html).toContain('sáb 17');
     expect(html).toContain('Final · jue 15');
-    expect(html).not.toContain('href="/favorites"');
+    expect(html).not.toContain('href="/es/favorites"');
   });
 });

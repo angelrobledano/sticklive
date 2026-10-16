@@ -11,7 +11,7 @@ import { MatchGroupCard, CompetitionIcon, FollowStar } from '@/components/home/M
 import { DayChips } from '@/components/home/DayChips';
 import { AdBanner } from '@/components/shared/AdBanner';
 import { adsenseConfig, listAdInsertIndex } from '@/lib/ads';
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';

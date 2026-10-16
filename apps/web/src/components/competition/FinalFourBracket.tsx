@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useMemo } from 'react';
 import type { SeasonMatch, TeamSummary } from '@/lib/api/client';
 import { useT } from '@/lib/i18n';

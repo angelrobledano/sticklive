@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useFavorites, getFavNames } from '@/hooks/useFavorites';
 import { useT } from '@/lib/i18n';
 import { tt } from '@/components/search/translate';
