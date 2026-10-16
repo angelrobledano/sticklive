@@ -2,7 +2,8 @@
 
 **Fecha:** 16/10/2026 · **Alcance:** web pública `sticklive.eu` (Next.js, `apps/web`), API pública que la alimenta (`apps/api`, servida en `/api/*`), esquema y ETL en lo que afecta a lo que se publica e indexa.
 **Método:** lectura del código en `main` (commit `263d445`, contrastado con `267c165`, que no toca SEO), rastreo real de producción el 16/10/2026 entre las 17:15 y las 18:10 (hora de Madrid) con user-agent de Googlebot, volcado completo del sitemap, descarga de la API pública para las 3.001 entidades del sitemap y Lighthouse de laboratorio en cuatro páginas.
-**Limitaciones:** no he tenido acceso a Search Console ni a la base de datos de producción. Ninguna cifra de tráfico, indexación o error de Search Console de este documento es real: donde hace falta, se indica qué exportación necesito (§12). Las métricas de rendimiento son de laboratorio (Lighthouse móvil simulado), no de usuarios reales.
+**Actualización (16/10/2026, 20:00):** consultado Search Console (propiedad de dominio `sticklive.eu`) en modo solo lectura. Los datos reales están en §1b y han cambiado la prioridad del plan: el problema número uno ya no es el volumen indexable sino que **Google no ve el canonical** de las fichas (SEO-02).
+**Limitaciones:** sin acceso a la base de datos de producción. Las métricas de rendimiento son de laboratorio (Lighthouse móvil simulado): Search Console no tiene datos de Core Web Vitals por falta de tráfico.
 **Esta fase no cambia código ni datos.** Todo lo que aparece como "solución" es una propuesta pendiente de aprobación.
 
 Convención de cada hallazgo: severidad (Crítica, Alta, Media, Baja) y confianza (Alta = verificado en producción o en el código, Media = evidencia parcial, Baja = hipótesis que hay que validar).
@@ -11,19 +12,80 @@ Convención de cada hallazgo: severidad (Crítica, Alta, Media, Baja) y confianz
 
 ## 1. Resumen ejecutivo
 
-La base técnica está mejor que la media de un proyecto de este tamaño: SSR real en todas las fichas, 404 correctos para entidades inexistentes, canonical y hreflang en cada página indexable, sitemap índice segmentado con `lastmod` de datos, robots coherente, JSON-LD escapado contra XSS y una regla de calidad (`data_quality`) que ya filtra el sitemap. No hay nada roto que esté impidiendo indexar el sitio.
+La base técnica está mejor que la media de un proyecto de este tamaño: SSR real en todas las fichas, 404 correctos para entidades inexistentes, canonical y hreflang declarados en cada página indexable, sitemap índice segmentado, robots coherente, JSON-LD escapado contra XSS y una regla de calidad (`data_quality`) que ya filtra el sitemap.
 
-El problema no es técnico sino de **qué se publica como indexable**. De las 15.115 URLs del sitemap, el 55 % (8.335) son fichas de jugador de unas 85 palabras, el 85 % de las fichas de partido son partidos que aún no se han jugado (457 de ellos a más de 90 días vista) y 62 de los 346 equipos no tienen ni partidos ni plantilla. Todo ello multiplicado por cinco idiomas cuyo contenido principal es el mismo (similitud del 96 % entre `/es` y `/it` en una ficha de competición). Para un dominio de cuatro meses, sin autoridad, eso es exactamente el patrón que Google trata como contenido escalado de poco valor y que lleva a "Rastreada, actualmente sin indexar" a escala, arrastrando también a las páginas buenas (competiciones y partidos con acta).
+**Pero Search Console demuestra que hay dos fallos técnicos que sí están rompiendo la indexación** (§1b). Cuando una ficha se sirve sin caché, Next emite el `<title>`, el canonical y el hreflang fuera del `<head>`, Google los ignora ("canónica declarada por el usuario: ninguna") y elige como canónica la URL sin idioma, que es una redirección temporal. Resultado: el 32 % de la muestra de páginas indexadas son URLs sin idioma que redirigen, las versiones `/en` salen como "duplicadas sin canónica" y `/es` es solo el 9 % de lo indexado aunque España da el 61 % de las impresiones. Y el 51 % de todas las peticiones de Googlebot en 90 días son redirecciones temporales provocadas por los enlaces internos sin idioma.
+
+Después de eso, el problema es de **qué se publica como indexable**. De las 15.115 URLs del sitemap, el 55 % (8.335) son fichas de jugador de unas 85 palabras, el 85 % de las fichas de partido son partidos que aún no se han jugado (457 de ellos a más de 90 días vista) y 62 de los 346 equipos no tienen ni partidos ni plantilla. Todo ello multiplicado por cinco idiomas cuyo contenido principal es el mismo (similitud del 96 % entre `/es` y `/it` en una ficha de competición). Para un dominio de cuatro meses, sin autoridad, eso es exactamente el patrón que Google trata como contenido escalado de poco valor y que lleva a "Rastreada, actualmente sin indexar" a escala, arrastrando también a las páginas buenas (competiciones y partidos con acta).
 
 Riesgos principales, por orden:
 
-1. **Volumen indexable desproporcionado frente al contenido real** (jugadores, equipos vacíos, partidos lejanos, 5 idiomas). Riesgo de calidad algorítmica a nivel de sitio. Severidad alta, confianza media (el diagnóstico estructural es firme, el impacto real hay que confirmarlo con Search Console).
+0. **Google no ve el canonical ni el hreflang de las fichas** y canoniza sobre URLs sin idioma que redirigen. Verificado en Search Console y reproducido en producción (12 de 12 fichas en frío con la metadata fuera del `<head>`). Severidad crítica, confianza alta. Es lo primero que hay que arreglar y es un cambio pequeño.
+1. **Volumen indexable desproporcionado frente al contenido real** (jugadores, equipos vacíos, partidos lejanos, 5 idiomas). Riesgo de calidad algorítmica a nivel de sitio. Severidad alta, confianza media. Search Console matiza el diagnóstico: Google solo conoce unas 2.650 de las 15.115 URLs del sitemap y "Rastreada, actualmente sin indexar" afecta a 247, sobre todo partidos y jugadores. El cuello de botella hoy es de descubrimiento y canonicalización, el de calidad llegará en cuanto se arregle lo primero.
 2. **Fichas de jugadores menores de edad indexadas con nombre completo y foto**: 82 jugadores con el Mundial Sub-19 en su historial y ninguno con fecha de nacimiento para saber quién es menor. Es un riesgo legal antes que SEO. Severidad crítica, confianza alta en el hecho, la valoración legal no me corresponde.
-3. **Los enlaces internos no llevan idioma** y pasan por una redirección 307 que a Googlebot siempre le manda a `/en`. Los idiomas `es`, `pt`, `fr` e `it` solo se descubren por sitemap y hreflang. Severidad alta, confianza alta.
-4. **Las bajas y fusiones de entidades no dejan rastro**: fusionar equipos, separar filiales o re-crear una competición desde cero produce 404 sin redirección, y el `lastmod` del sitemap se reescribe en cada pasada del ETL (4.865 de 4.940 URLs de partido con el mismo `lastmod`, el de la última hora). Severidad alta, confianza alta.
+3. **Los enlaces internos no llevan idioma** y pasan por una redirección 307 que a Googlebot siempre le manda a `/en`. Los idiomas `es`, `pt`, `fr` e `it` solo se descubren por sitemap y hreflang. Search Console: el 51 % de las 31.500 peticiones de rastreo de 90 días son redirecciones temporales. Severidad alta, confianza alta.
+4. **Las bajas y fusiones de entidades no dejan rastro**: fusionar equipos, separar filiales o re-crear una competición desde cero produce 404 sin redirección, y el `lastmod` del sitemap se reescribe en cada pasada del ETL (4.865 de 4.940 URLs de partido con el mismo `lastmod`, el de la última hora). Search Console: la segunda página con más clics del sitio (`/en/matches/d87e7dfc-…`, 9 clics) es hoy un 404, igual que otras 8 URLs de partido con impresiones. Severidad alta, confianza alta.
 5. **Títulos y nombres poco fiables**: nombres de la fuente en mayúsculas, normalizaciones erróneas ("C.e. Noia Freixenet"), nombres de jugador con el orden roto ("Luis Cortes García José"), selecciones nacionales con el mismo título para cinco equipos distintos ("Italia") y partidos de ida y vuelta o de distintas competiciones con títulos idénticos (77 partidos). Severidad media, confianza alta.
 
-Recomendación, en una frase: **primero reducir y sanear lo que se declara indexable y arreglar los enlaces internos, después mejorar titles, OG y datos estructurados, y dejar quieta la estructura de URLs hasta tener datos de Search Console.** El detalle de qué tocar y qué no está en §15.
+Recomendación, en una frase: **primero reducir y sanear lo que se declara indexable y arreglar los enlaces internos, después mejorar titles, OG y datos estructurados, y dejar quieta la estructura de URLs.** Antes que todo eso, servir la metadata en el `<head>` (F1-0). El detalle de qué tocar y qué no está en §18.
+
+---
+
+## 1b. Lo que dice Search Console (consultado el 16/10/2026)
+
+Periodo disponible: 10/06/2026 a 14/10/2026. Prácticamente todo el tráfico se concentra desde finales de septiembre (Mundial de los WSG Asunción 2026).
+
+**Rendimiento.** 59 clics, 636 impresiones, CTR 9,3 %, posición media 8,9. Por país: España 42 clics y 390 impresiones, Portugal 9 y 40, Francia 1 y 29, Italia 1 y 9, Argentina 0 y 20, India 0 y 16, Chile 0 y 16. Por dispositivo: móvil 42 y 465, ordenador 17 y 158. Core Web Vitals: sin datos (tráfico insuficiente).
+
+**Consultas visibles (31).** La que más: "resultados mundial hockey patines masculino 2026" (3 clics, 21 impresiones). Marca: "sticklive" en posición 7 y "stick live" en 3,8, sin clics. Hay demanda por nombre de jugador ("joel mila", "florencia felamini", "eloi cervera", "blai roca", "marc rouze", "fernando barea", "poletti"), por partido de selecciones ("chile vs angola", "austria vs india", "suiza - portugal") y por liga ("ok plata sur", "ok liga plata", "ok liga plata femenina").
+
+**Páginas con impresiones (163 URLs).**
+
+| Agrupación | URLs | Clics | Impresiones |
+|---|---:|---:|---:|
+| Competiciones | 33 | 41 | 390 |
+| Partidos | 41 | 13 | 97 |
+| Jugadores | 64 | 6 | 108 |
+| Equipos | 21 | 1 | 25 |
+| Home | 3 | 0 | 26 |
+| Idioma `es` | 28 | 35 | 359 |
+| Idioma `en` | 48 | 12 | 104 |
+| `pt` / `fr` / `it` | 18 | 5 | 38 |
+| **Sin idioma (URL que redirige con 307)** | **69** | **9** | **146** |
+| Host `www` | 18 | 2 | 56 |
+
+La página con más clics (31 de 59) es `/es/competitions/0ffb4a72-…`, una URL antigua por id de temporada (Mundial Masculino), que hoy redirige con 308 a la competición. 9 URLs con impresiones devuelven ahora 404, todas de partido, entre ellas la segunda página del sitio (`/en/matches/d87e7dfc-…`, 9 clics).
+
+**Indexación.** 2.084 indexadas y 570 no indexadas. Google conoce unas 2.650 URLs frente a las 15.115 del sitemap.
+
+| Motivo de no indexación | Páginas | Qué hay dentro |
+|---|---:|---|
+| Rastreada: actualmente sin indexar | 247 | 110 partidos, 83 jugadores, 25 equipos, 23 imágenes OG/Twitter, 4 competiciones. 72 sin idioma, 91 en `en` |
+| Página alternativa con etiqueta canónica adecuada | 189 | 186 son `www.sticklive.eu/en/…` (rastreadas cuando `www` servía contenido). Correcto |
+| Página con redirección | 92 | Todas sin idioma (24 en `www`). Esperado |
+| Duplicada: el usuario no ha indicado ninguna versión canónica | 32 | **Todas en `/en/…`**, entre ellas competiciones con tráfico. Validación iniciada por alguien |
+| No se ha encontrado (404) | 5 | |
+| Excluida por `noindex` | 4 | |
+| Duplicada: Google ha elegido otra canónica | 1 | |
+
+Muestra de 1.000 indexadas (el máximo que da la herramienta): 322 sin idioma (32 %), 88 en `www` (9 %), `en` 374, `es` 94, `pt` 85, `fr` 72, `it` 53. Por tipo: partidos 521, jugadores 227, equipos 218, competiciones 31.
+
+**Inspección de URL.**
+- `/es/competitions/0ffb4a72-…`: indexada, último rastreo 9/10, **canónica declarada por el usuario: ninguna**. El HTML rastreado que guarda Google cierra el `<head>` sin `<title>` ni `<link rel="canonical">`.
+- `/en/competitions/0ffb4a72-…`: no indexada, "Duplicada sin canónica", canónica declarada ninguna, **canónica elegida por Google: `https://sticklive.eu/competitions/0ffb4a72-…`** (la URL sin idioma que redirige con 307).
+
+**Sitemaps.** `/sitemap-index.xml` enviado y leído el 16/10, correcto, aún sin páginas descubiertas. Sigue dado de alta `/sitemap.xml` (11/06), que devuelve 404 y figura como "No se ha podido obtener".
+
+**Estadísticas de rastreo (90 días).** 31.500 peticiones, tiempo medio de respuesta 217 ms. Por respuesta: redirección temporal 51 %, 200 49 %, 404, 5xx, 301 y 304 por debajo del 1 %. Por host: `sticklive.eu` 27.087, `www.sticklive.eu` 4.387. Por robot: ordenador 66 %, smartphone 15 %.
+
+**Mejoras.** Eventos: 3 elementos no válidos por falta de `location` (lo previsto en §11) y avisos por falta de `endDate`, `offers`, `image`, `description`, `performer` y `organizer`.
+
+**Lectura.**
+1. La causa raíz del desorden de canónicas es SEO-02 (metadata fuera del `<head>`) combinada con SEO-01 (enlaces sin idioma que redirigen con 307). Con una redirección temporal Google puede quedarse la URL de origen como canónica, y sin canonical propio en el `<head>` no hay nada que la contradiga.
+2. España es el mercado (61 % de impresiones), pero `/es` es la versión menos indexada. Arreglar 1 debería mover a `/es` las impresiones que hoy van a URLs sin idioma y a `/en`.
+3. Hay demanda real de jugadores por nombre. Confirma que no hay que desindexarlos en bloque, sino aplicar el umbral de §6 (y la decisión sobre menores).
+4. Ya se están perdiendo URLs con tráfico por bajas sin redirección (DQ-02).
+5. Con 59 clics no hay base estadística para decidir idiomas ni CTR. Esas decisiones siguen esperando (§17).
 
 ---
 
@@ -95,14 +157,14 @@ Lo que el encargo da por posible y **no existe**: página de club, página de te
 - **Solución:** un helper de enlace que antepone el locale activo (o un `LocaleLink` que envuelva `next/link`) y sustituir los `href` absolutos internos. Mantener el middleware para URLs sin prefijo que vengan de fuera (compartidas, imagen de alineación, push).
 - **Validación:** test que renderiza las fichas y falla si aparece un `href="/(competitions|teams|players|matches)/` sin prefijo. En producción, `grep -c 'href="/es/'` > 0 y `grep -c 'href="/competitions/'` = 0 en `/es/competitions`. En Search Console, Estadísticas de rastreo → por respuesta: baja de las 307.
 
-### SEO-02 · Metadatos que a veces llegan fuera del `<head>` (metadata en streaming)
-- **Problema:** Next 16 emite el `<title>`, el canonical y el hreflang en el `<body>` cuando `generateMetadata` tarda, salvo para los bots de su lista de "HTML limitado" (que no incluye a Googlebot).
-- **Evidencia:** 2 de 100 páginas rastreadas con UA de Googlebot (`/es/teams/10328c24-…` y `/es/teams/6da64b08-…`) tenían el `<title>` en la posición 108.562 y el `</head>` en la 2.470. Repetida la petición con la caché caliente, ya salía en el `<head>`.
-- **Afecta a:** cualquier ficha con API lenta (las de jugador tardan ~1,3 s en la API).
-- **Impacto:** Google documenta que solo acepta `rel=canonical` en el `<head>`. React lo recoloca al hidratar, así que tras el renderizado JS suele quedar bien, pero se depende de la segunda fase de indexación y aparecen señales distintas entre HTML inicial y renderizado.
-- **Severidad:** Media · **Confianza:** Media (observado, intermitente).
-- **Solución:** `htmlLimitedBots` en `next.config.mjs` con una expresión que incluya `Googlebot|Bingbot|…` además de los que ya trae Next, para que a los rastreadores se les sirva la metadata bloqueante.
-- **Validación:** script que pide 50 fichas frías con UA de Googlebot y comprueba que `<title>`, canonical y hreflang están antes de `</head>` en el 100 %.
+### SEO-02 · Metadatos fuera del `<head>` en cuanto la ficha no está en caché (metadata en streaming)
+- **Problema:** Next 16 emite el `<title>`, el canonical y el hreflang en el `<body>` cuando `generateMetadata` no ha resuelto al enviar la cabecera del documento, salvo para los bots de su lista de "HTML limitado", que no incluye a Googlebot. En las fichas eso pasa siempre que la caché de datos está fría, que es justo lo que se encuentra Googlebot.
+- **Evidencia:** 12 de 12 fichas de jugador pedidas en frío (6 con UA de Chrome y 6 con UA de Googlebot) tenían el canonical fuera del `<head>`, y 12 de 12 lo tenían dentro al repetir la petición. Con el UA de Googlebot para smartphone, en frío, competición, equipo, jugador y partido lo sirven fuera (por ejemplo, `</head>` en el carácter 1.438 y `<title>` en el 45.123). La home lo sirve dentro. Search Console confirma el efecto: canónica declarada "ninguna" y HTML rastreado sin `<title>` ni canonical en el `<head>` (§1b). En el primer rastreo de esta auditoría solo lo vi en 2 de 100 páginas porque las pedí con la caché ya caliente.
+- **Afecta a:** competiciones, equipos, jugadores y partidos en todos los idiomas.
+- **Impacto:** Google solo acepta `rel=canonical` en el `<head>`. Sin canonical, con hreflang ignorado y con enlaces internos que redirigen con 307, Google elige como canónica la URL sin idioma, marca `/en` como duplicada y apenas indexa `/es`.
+- **Severidad:** Crítica · **Confianza:** Alta.
+- **Solución:** desactivar la metadata en streaming para rastreadores con `htmlLimitedBots` en `next.config.mjs` (una expresión que incluya `Googlebot`, `Google-InspectionTool`, `Bingbot` y los que ya trae Next). Valorar servirla bloqueante a todos los agentes: cuesta algo de TTFB en frío pero elimina el problema de raíz. Después, pedir la validación de "Duplicada sin canónica" en Search Console.
+- **Validación:** script que pide 50 fichas frías (ids no visitados en la última hora) con el UA de Googlebot para smartphone y comprueba que `<title>`, canonical y hreflang están antes de `</head>` en el 100 %. En Search Console, la inspección de `/es/competitions/{id}` debe mostrar la canónica declarada y el motivo "Duplicada sin canónica" debe vaciarse.
 
 ### SEO-03 · Un parámetro inválido provoca un 500
 - **Problema:** `/es/teams/{uuid}?season=zzz` devuelve 500. La API responde 400 (`season must be a UUID`) y la página lo trata como caída.
@@ -473,13 +535,14 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 ### Fase 0 · Línea base (antes de tocar nada)
 | ID | Prio | Tarea | Problema | Solución | Dep. | Esf. | Riesgo regresión | Criterio de aceptación | Medición | Resp. |
 |---|---|---|---|---|---|---|---|---|---|---|
-| F0-1 | P0 | Exportar Search Console | Sin datos reales no se puede priorizar lo que ya está indexado | Exportaciones 1-10 de §12 | — | S | Nulo | Ficheros guardados con fecha | Línea base de §16 | P |
+| F0-1 | P0 | ~~Exportar Search Console~~ **Hecho el 16/10 (§1b)** | Sin datos reales no se puede priorizar lo que ya está indexado | Consulta de rendimiento, indexación, sitemaps, rastreo, mejoras e inspección de URL | — | S | Nulo | Línea base en §1b y §16 | — | P |
 | F0-2 | P0 | Decisión legal sobre jugadores y menores | DQ-05, §13 | Decidir qué se publica, qué se indexa y si se muestran fotos | — | S (decisión) | — | Decisión escrita en `docs/` | — | P |
 | F0-3 | P0 | Script de rastreo reproducible | Sin forma de comparar antes y después | Convertir el rastreo de este informe en `scripts/seo-crawl` (muestra por tipo, campos de §4) | — | M | Nulo | Genera un JSON comparable entre ejecuciones | Diferencias entre ejecuciones | T |
 
 ### Fase 1 · Errores críticos de indexación y calidad del dato
 | ID | Prio | Tarea | Evidencia | Solución | Dep. | Esf. | Riesgo | Aceptación | Medición | Resp. |
 |---|---|---|---|---|---|---|---|---|---|---|
+| F1-0 | P0 | Metadata en el `<head>` para rastreadores | SEO-02, §1b | `htmlLimitedBots` (o metadata bloqueante para todos) + validación en Search Console | — | S | Bajo | 50/50 fichas frías con canonical en `<head>` con UA de Googlebot smartphone | Inspección de URL y motivo "Duplicada sin canónica" | T |
 | F1-1 | P0 | Enlaces internos con idioma | SEO-01 | `LocaleLink` y sustitución de `href` | — | M | Medio (navegación) | 0 enlaces internos sin prefijo en el HTML de las fichas, test en CI | 307 en Estadísticas de rastreo | T |
 | F1-2 | P0 | Ocultar jugadores menores o sin decisión | F0-2, DQ-05 | Según la decisión: `noindex`, fuera del sitemap, sin foto ni `Person` | F0-2 | S-M | Bajo | Ningún jugador de categorías de formación en el sitemap ni indexable | Conteo en sitemap | T |
 | F1-3 | P1 | Función única de elegibilidad | SEO-09, §6 | `pageEligibility()` usada por página y por `/meta/sitemap` | — | M | Medio | Tests por tipo con los casos de §8.3 | URLs por sección en el sitemap | T |
@@ -496,7 +559,9 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 | ID | Prio | Tarea | Evidencia | Solución | Dep. | Esf. | Riesgo | Aceptación | Medición | Resp. |
 |---|---|---|---|---|---|---|---|---|---|---|
 | F2-1 | P1 | `lastmod` real | SEO-08 | `updated_at` solo con cambios, o `lastmod` calculado | — | M | Bajo | Dos pasadas sin cambios no mueven `lastmod` | Distribución de `lastmod` | T |
-| F2-2 | P2 | Metadata bloqueante para rastreadores | SEO-02 | `htmlLimitedBots` | — | S | Bajo | 50/50 fichas frías con metadata en `<head>` | Script F0-3 | T |
+| F2-2 | — | (Adelantada a F1-0) | | | | | | | | |
+| F2-6 | P3 | Quitar `/sitemap.xml` de Search Console | §1b | Eliminar el sitemap antiguo que da 404 | — | S | Nulo | Solo queda el índice | Informe de sitemaps | P |
+| F2-7 | P2 | Redirigir los partidos con tráfico que hoy son 404 | §1b, DQ-02 | Identificar a qué partido actual corresponde cada uno (si existe) y 301 vía `entity_redirects` | F1-7 | S | Bajo | Las 9 URLs de §1b responden 301 o 410 | Informe de páginas 404 | T |
 | F2-3 | P2 | Secciones de sitemap por estado de partido | §7 | `matches-recent`, `matches-upcoming` | F1-3 | S | Bajo | Secciones visibles en Search Console | Informe de sitemaps | T |
 | F2-4 | P3 | UUID en minúsculas | SEO-04 | 301 en middleware | — | S | Bajo | Mayúsculas → 301 | — | T |
 | F2-5 | P3 | Quitar `changefreq` y `priority` | §7 | — | — | S | Nulo | — | — | T |
@@ -536,7 +601,7 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 Los controles de §15, la rutina de §12.3 y una revisión trimestral de la matriz de indexación con datos de Search Console.
 
 ### Resumen por naturaleza
-- **Quick wins (≤ 1 día cada uno, bajo riesgo):** F1-8, F1-9, F1-10, F2-2, F2-4, F2-5, F3-1, F3-7, F5-3.
+- **Quick wins (≤ 1 día cada uno, bajo riesgo):** F1-0, F1-8, F1-9, F1-10, F2-2, F2-4, F2-5, F3-1, F3-7, F5-3.
 - **Cambios estructurales:** F1-1, F1-3 a F1-7, F1-11, F2-1, F3-2, F3-3, F4-x.
 - **Requieren Search Console antes:** F1-5 (`noindex`), cualquier decisión de idiomas (SEO-14), cambio de URLs (§7), F5-2.
 
@@ -568,18 +633,19 @@ Los controles de §15, la rutina de §12.3 y una revisión trimestral de la matr
 
 | Métrica | Fuente | Línea base | Objetivo a 12 semanas |
 |---|---|---|---|
+| Canónica declarada visible para Google | Inspección de URL | Ninguna en las fichas inspeccionadas | La propia URL en el 100 % |
 | URLs en sitemap | Este informe | 15.115 | 4.000-5.000, todas elegibles |
-| URLs indexadas por tipo e idioma | Search Console (F0-1) | Pendiente | Ratio indexadas/enviadas > 80 % en competiciones, partidos jugados y equipos |
-| Clics e impresiones por tipo | Search Console | Pendiente | Crecimiento en competiciones y partidos |
-| CTR medio de fichas de partido | Search Console | Pendiente | Mejora tras F3-3 |
-| Respuestas 307 y 5xx en rastreo | Estadísticas de rastreo | Pendiente | 307 internas ≈ 0, 5xx < 0,1 % |
+| URLs indexadas por tipo e idioma | Search Console | 2.084 indexadas. En la muestra de 1.000: 32 % sin idioma, 9 % `www`, `es` 9 % | Ratio indexadas/enviadas > 80 % en competiciones, partidos jugados y equipos |
+| Clics e impresiones por tipo | Search Console | 59 clics y 636 impresiones (10/06-14/10). Competiciones 41/390, partidos 13/97, jugadores 6/108, equipos 1/25 | Crecimiento en competiciones y partidos |
+| CTR medio de fichas de partido | Search Console | 13,4 % (13/97), muestra muy pequeña | Mejora tras F3-3 |
+| Respuestas 307 y 5xx en rastreo | Estadísticas de rastreo | 51 % redirecciones temporales, 5xx < 1 % | 307 internas ≈ 0, 5xx < 0,1 % |
 | Enlaces internos sin idioma | Script | 100 % | 0 % |
 | Títulos duplicados en el sitemap | Script | 77 partidos + selecciones y clubes duplicados | 0 |
 | Equipos vacíos en sitemap | API | 62 | 0 |
 | `lastmod` movidos sin cambios | Sitemap | 98 % de partidos en la última hora | < 5 % |
 | OG de partido con escudos | Revisión | 0 % | 100 % con escudo o iniciales |
 | LCP / TBT laboratorio home | Lighthouse | 5,2 s / 2,45 s | < 3 s / < 600 ms |
-| CWV de campo | Search Console | Pendiente | LCP < 2,5 s, INP < 200 ms, CLS < 0,1 |
+| CWV de campo | Search Console | Sin datos (tráfico insuficiente) | LCP < 2,5 s, INP < 200 ms, CLS < 0,1 |
 
 ---
 
@@ -594,7 +660,7 @@ Decisiones de producto (tuyas):
 6. **Ventana de partidos próximos en el sitemap**: propongo 14 días.
 
 Datos que necesito:
-1. Las exportaciones de Search Console de §12.1.
+1. Search Console ya está consultado (§1b). Quedan dos cosas: saber quién inició la validación de "Duplicada sin canónica" y, dentro de 4 semanas, repetir la extracción para medir el efecto de F1-0 y F1-1.
 2. Confirmación de qué competiciones tienen categorías de formación o jugadores menores.
 3. Si hay acuerdo, permiso o condiciones conocidas con la RFEP, World Skate o sidgad sobre la reutilización de datos e imágenes.
 4. Si alguna URL anterior al reset del 16/06 tenía enlaces externos que te importen.
@@ -603,9 +669,9 @@ Datos que necesito:
 
 ## 18. Recomendación final
 
-**Qué solucionar primero:** la decisión sobre jugadores y menores (F0-2) y la exportación de Search Console (F0-1), que son una tarde. Después, en este orden, enlaces internos con idioma (F1-1), la función única de elegibilidad con el sitemap filtrado (F1-3 y F1-4), los quick wins técnicos (sitemap que no se degrada, 500 por parámetro, metadata de error) y los escudos de la OG (F3-1), que es lo que más se ve al compartir.
+**Qué solucionar primero:** la metadata en el `<head>` para rastreadores (F1-0), que es un cambio de configuración y hoy es lo que más daño hace. En paralelo, la decisión sobre jugadores y menores (F0-2). Después, en este orden, enlaces internos con idioma (F1-1), la función única de elegibilidad con el sitemap filtrado (F1-3 y F1-4), los quick wins técnicos (sitemap que no se degrada, 500 por parámetro, metadata de error) y los escudos de la OG (F3-1), que es lo que más se ve al compartir.
 
-**Qué no tocar todavía:** la estructura de URLs (slugs), los idiomas publicados, el `noindex` masivo (primero sitemap, luego observar, luego `noindex` con revisión de las URLs que ya tengan tráfico) y la creación de páginas nuevas (clubes, temporadas, jornadas). Ninguna de esas decisiones se puede tomar bien sin datos de Search Console y cualquiera de ellas es cara de deshacer.
+**Qué no tocar todavía:** la estructura de URLs (slugs), los idiomas publicados, el `noindex` masivo (primero sitemap, luego observar, luego `noindex` con revisión de las URLs que ya tengan tráfico) y la creación de páginas nuevas (clubes, temporadas, jornadas). Con 59 clics en cuatro meses no hay datos suficientes para tomarlas bien, y cualquiera de ellas es cara de deshacer.
 
 **Riesgos más importantes:** la exposición de datos de menores, que es un riesgo legal antes que SEO. La señal de calidad del sitio entero lastrada por miles de páginas flojas multiplicadas por cinco idiomas. Y la falta de memoria de bajas y fusiones, que hace que cada limpieza de datos se convierta en un puñado de 404 y que el `lastmod` deje de significar nada.
 
