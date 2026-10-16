@@ -522,6 +522,9 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
         <div className="mx-auto grid max-w-[760px] items-start gap-6
                         2xl:max-w-[1150px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+            {/* Contexto para lectores de pantalla: de qué día son las tarjetas
+                (cada tarjeta es un h3). */}
+            <h2 className="sr-only">{longDayLabel(selectedDate, locale, true)}</h2>
             <DayChips
               liveCount={view.liveCount}
               followingCount={view.followingCount}
