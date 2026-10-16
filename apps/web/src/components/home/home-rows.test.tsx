@@ -179,3 +179,28 @@ describe('CompetitionIcon', () => {
     expect(render(<CompetitionIcon country={null} name="OK Liga" />)).toContain('>OK<');
   });
 });
+
+describe('MiGrada (fuera de la home, con fecha en cada fila)', () => {
+  it('pinta próximos y resultados de lo que sigues con su fecha corta', async () => {
+    const { MiGrada } = await import('./MiGrada');
+    const html = render(
+      <MiGrada
+        matches={[
+          match({ id: 'prox', scheduledAt: '2026-10-17T15:00:00Z', homeTeamId: 'esp' }),
+          match({ id: 'res', status: 'finished', score: { home: 3, away: 0 }, scheduledAt: '2026-10-15T17:30:00Z', homeTeamId: 'esp' }),
+          match({ id: 'ajeno', scheduledAt: '2026-10-17T15:00:00Z' }),
+        ]}
+        teamIds={['esp']}
+        leagueIds={[]}
+        todayKey="2026-10-16"
+        showManage={false}
+      />,
+    );
+    expect(html).toContain('href="/matches/prox"');
+    expect(html).toContain('href="/matches/res"');
+    expect(html).not.toContain('href="/matches/ajeno"');
+    expect(html).toContain('sáb 17');
+    expect(html).toContain('Final · jue 15');
+    expect(html).not.toContain('href="/favorites"');
+  });
+});

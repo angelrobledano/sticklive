@@ -11,6 +11,9 @@ import { tt } from '@/components/search/translate';
 import { track } from '@/lib/analytics';
 import { BackLink } from '@/components/shared/BackLink';
 import { selectSeasonCandidates, mergeStandingTeams, filterFavorites, type RawStandingRow } from '@/lib/favorites-catalog';
+import { getCurrentMatchesFresh, type Match } from '@/lib/api/client';
+import { MiGrada } from '@/components/home/MiGrada';
+import { madridTodayKey } from '@/lib/match-time';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 const SEASON_ID = process.env['NEXT_PUBLIC_SEASON_ID'] ?? '';
@@ -99,6 +102,20 @@ function FavoritesInner() {
     return () => clearTimeout(t);
   }, [toast]);
 
+  // Mi grada (spec 2026-10-16): próximos y últimos resultados de lo que sigues.
+  // Sale de la home y vive aquí. Es un extra: si la carga falla, no se pinta y
+  // la gestión de favoritos sigue funcionando igual.
+  const followsTeamsOrLeagues = mounted && (favorites.length > 0 || favLeagues.length > 0);
+  const [gradaMatches, setGradaMatches] = useState<Match[]>([]);
+  useEffect(() => {
+    if (!followsTeamsOrLeagues) return;
+    let cancelled = false;
+    getCurrentMatchesFresh()
+      .then((ms) => { if (!cancelled) setGradaMatches(ms); })
+      .catch((err: unknown) => { console.warn('[favoritos] Mi grada no disponible', err); });
+    return () => { cancelled = true; };
+  }, [followsTeamsOrLeagues]);
+
   const filteredTeams = useMemo(() => filterFavorites(teams, query), [teams, query]);
   const filteredLeagues = useMemo(() => filterFavorites(leagues, query), [leagues, query]);
 
@@ -172,6 +189,16 @@ function FavoritesInner() {
           {t('favorites.manage_help')}
         </p>
       </div>
+
+      {!onboarding && followsTeamsOrLeagues && gradaMatches.length > 0 && (
+        <MiGrada
+          matches={gradaMatches}
+          teamIds={favorites}
+          leagueIds={favLeagues}
+          todayKey={madridTodayKey()}
+          showManage={false}
+        />
+      )}
 
       {/* Buscador — X propia (la nativa de type=search está oculta en la app) */}
       <div className="relative">
