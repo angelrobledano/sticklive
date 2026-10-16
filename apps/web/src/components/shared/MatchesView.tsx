@@ -1,27 +1,24 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect, useCallback, Fragment } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback, Fragment, type ReactNode } from 'react';
 import type { Match } from '@/lib/api/client';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useLiveScores } from '@/hooks/useLiveScores';
 import { DateSelector } from '@/components/shared/DateSelector';
-import { MatchCard } from '@/components/shared/MatchCard';
-import { TeamShield } from '@/components/shared/TeamShield';
-import { UpcomingGroup } from '@/components/shared/UpcomingGroup';
 import { MiGrada } from '@/components/home/MiGrada';
-import { LiveBoard } from '@/components/home/LiveBoard';
+import { MatchRow } from '@/components/home/MatchRow';
+import { MatchGroupCard, CompetitionIcon, FollowStar } from '@/components/home/MatchGroupCard';
+import { DayChips } from '@/components/home/DayChips';
 import { AdBanner } from '@/components/shared/AdBanner';
 import { adsenseConfig, listAdInsertIndex } from '@/lib/ads';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
+import { track } from '@/lib/analytics';
 import { madridDateKey, madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
-import { groupUpcomingByDay } from '@/lib/upcoming';
-import { importanceRank } from '@/lib/competition-importance';
+import { buildDayView, nextMatchday, daysWithMatches, type DayFilter, type DayView } from '@/lib/day-view';
 import { tt } from '@/components/search/translate';
-
-/** Nº de partidos favoritos visibles antes de colapsar el resto */
-const FAV_PREVIEW = 3;
+import { clubName } from '@/lib/names';
 
 /** Config AdSense (env inyectado en build). */
 const ADS = adsenseConfig();
@@ -39,14 +36,6 @@ export interface LiveScoreChange {
 
 function teamLabel(team: Match['homeTeam']): string {
   return team?.shortName ?? team?.name ?? '';
-}
-
-/** Instante del partido (o 0 si falta / es inválido) para ordenar establemente. */
-function timeOf(m: Match): number {
-  const iso = m.scheduledAt ?? m.startedAt;
-  if (!iso) return 0;
-  const t = Date.parse(iso);
-  return Number.isFinite(t) ? t : 0;
 }
 
 /**
@@ -80,8 +69,7 @@ export function diffLiveScores(prev: Match[], next: Match[]): LiveScoreChange[] 
 /**
  * Escena del estado vacío — "una jugada, una vez": la bola entra en la portería
  * UNA sola vez al montar (la red vibra y se enciende el esmeralda ~300 ms) y la
- * escena queda en calma. Sin bucle perpetuo: no hay partido en juego, así que no
- * hay movimiento continuo. Reutiliza los @keyframes rink* de globals.css, que
+ * escena queda en calma. Reutiliza los @keyframes rink* de globals.css, que
  * respetan reduce-motion (dejan la escena estática). Decorativa: aria-hidden.
  */
 function EmptyRinkScene() {
@@ -91,12 +79,10 @@ function EmptyRinkScene() {
   });
   return (
     <div aria-hidden="true" className="relative mx-auto mb-2 h-20 w-64 select-none">
-      {/* Línea de pista (se "dibuja" una vez) */}
       <span
         className="rink-empty-anim absolute inset-x-4 bottom-6 h-px origin-left bg-slate-300 dark:bg-slate-600"
         style={once('rinkDraw', '0.9s')}
       />
-      {/* Portería (marco + red ligera), apoyada en la línea */}
       <svg viewBox="0 0 54 40"
            className="rink-empty-anim absolute bottom-6 right-3 h-10 w-14 text-slate-500 dark:text-slate-400"
            style={once('rinkNetHit', '1.8s')}
@@ -105,12 +91,10 @@ function EmptyRinkScene() {
         <path d="M2 14h50M2 26h50" strokeWidth={0.5} />
         <path d="M18 2v36M36 2v36" strokeWidth={0.5} />
       </svg>
-      {/* Bola (apoyada en la línea) */}
       <span
         className="rink-empty-anim absolute bottom-6 left-10 h-3 w-3 rounded-full bg-rink-passion shadow-[0_1px_2px_rgba(0,0,0,0.25)]"
         style={once('rinkBall', '1.8s', 'cubic-bezier(0.16,1,0.3,1)')}
       />
-      {/* Destello de gol (invisible salvo el instante del gol) */}
       <svg viewBox="0 0 24 24"
            className="rink-empty-anim absolute bottom-12 right-8 h-5 w-5 text-emerald-500 opacity-0"
            style={once('rinkFlash', '1.8s')}
@@ -121,82 +105,43 @@ function EmptyRinkScene() {
   );
 }
 
+/** Estrella de onboarding (contorno). */
+function OnboardingIcon() {
+  return (
+    <div className="w-10 h-10 rounded-2xl bg-rink-passion/10 flex items-center justify-center shrink-0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
+           className="w-5 h-5 text-rink-passion" aria-hidden="true">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+              strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+
 /**
- * Carril de contexto en escritorio (xl+): "Mi grada" (si sigues a alguien),
- * próximos partidos y, si no sigues a nadie, una llamada a explorar
- * competiciones. Reutiliza datos ya calculados, sin peticiones nuevas.
- * Se mantiene pegado con scroll interno para no empujar la página.
+ * Carril de contexto en escritorio muy ancho (2xl+): "Mi grada" si sigues a
+ * alguien (próximos y últimos resultados, con fecha) o una llamada a explorar
+ * competiciones si no. Sin "Próximos": el día vacío ya los muestra.
  */
-function DesktopAside({
-  matches, hasFavorites, favorites, leagues, todayKey, selectedDate, showUpcoming = true, className = '',
-}: {
+function DesktopAside({ matches, favorites, leagues, todayKey, className = '' }: {
   matches: Match[];
-  hasFavorites: boolean;
   favorites: string[];
   leagues: string[];
   todayKey: string;
-  selectedDate: string;
-  /** false cuando los próximos ya se muestran en la vista principal (#414). */
-  showUpcoming?: boolean;
   className?: string;
 }) {
   const { t } = useT();
-  // Próximos = días POSTERIORES al que se está viendo. Los partidos del día
-  // seleccionado ya están en la lista principal; repetirlos aquí sería ruido.
-  const upcoming = useMemo(() => {
-    return matches
-      .filter((m) => {
-        const k = madridDateKey(m.scheduledAt);
-        return !!k && k > selectedDate;
-      })
-      .sort((a, b) => ((a.scheduledAt ?? '') < (b.scheduledAt ?? '') ? -1 : 1))
-      .slice(0, 5);
-  }, [matches, selectedDate]);
-
+  const follows = favorites.length > 0 || leagues.length > 0;
   return (
     <aside className={`shrink-0 ${className}`}>
-      <div className="rail-scroll sticky top-[76px] flex max-h-[calc(100vh-92px)]
-                      flex-col gap-5 overflow-y-auto pb-1">
-        {/* "Mi grada" sube al carril en escritorio (en móvil vive en el flujo).
-            -mx-4 neutraliza su padding para alinear con el resto del carril. */}
-        {hasFavorites && (
-          <div className="-mx-4">
-            <MiGrada matches={matches} teamIds={favorites} leagueIds={leagues} todayKey={todayKey} />
-          </div>
-        )}
-
-        {showUpcoming && upcoming.length > 0 && (
-          <section>
-            <div className="flex items-center justify-between px-1 pb-2">
-              <span className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                {t('common.upcoming')}
-              </span>
-              <span className="text-[11px] font-light text-slate-500 dark:text-slate-400 tabular-nums">
-                {upcoming.length}
-              </span>
-            </div>
-            <ul className="space-y-2">
-              {upcoming.map((m) => (
-                <li key={m.id}>
-                  <CompetitionCaption name={m.competitionName} id={m.competitionId} />
-                  <MatchCard match={m} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {!hasFavorites && (
+      <div className="rail-scroll sticky top-[76px] flex max-h-[calc(100vh-92px)] flex-col gap-4 overflow-y-auto pb-1">
+        {follows ? (
+          <MiGrada matches={matches} teamIds={favorites} leagueIds={leagues} todayKey={todayKey} />
+        ) : (
           <Link href="/competitions"
                 className="card p-4 flex items-center gap-3 transition-colors
                            hover:border-slate-300 dark:hover:border-slate-600">
-            <div className="w-10 h-10 rounded-2xl bg-rink-passion/10 flex items-center justify-center shrink-0">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
-                   className="w-5 h-5 text-rink-passion">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                      strokeLinejoin="round" />
-              </svg>
-            </div>
+            <OnboardingIcon />
             <div className="min-w-0">
               <p className="text-sm font-bold text-slate-900 dark:text-slate-50">{t('favorites.onboarding_title')}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug mt-0.5">
@@ -210,200 +155,19 @@ function DesktopAside({
   );
 }
 
-/**
- * Banda "En directo ahora" — solo escritorio (en móvil la cubre LiveNowStrip).
- * Destaca los partidos en juego del día con jerarquía de marcador grande;
- * refuerza la promesa visual del producto (si la pantalla está verde, algo está
- * pasando ahora). Los directos se retiran de las listas en todos los breakpoints.
- */
-function LiveNowBand({ matches, favorites, className = '', degraded }: {
-  matches: Match[];
-  favorites: string[];
-  className?: string;
-  degraded: boolean;
-}) {
-  const { t } = useT();
-  const favSet = useMemo(() => new Set(favorites), [favorites]);
-
-  return (
-    <section aria-label={t('common.live_now')} className={`px-4 pt-1 pb-4 ${className}`}>
-      <div className="flex items-center gap-2 pb-3">
-        <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-live opacity-60" />
-          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-live" />
-        </span>
-        <h2 className="text-xs font-bold uppercase tracking-widest text-live-deep dark:text-live">
-          {t('common.live_now')}
-        </h2>
-        <span className="text-[11px] font-light text-slate-500 dark:text-slate-400 tabular-nums">
-          {matches.length}
-        </span>
-        {degraded && (
-          <span className="text-[11px] font-medium text-rose-500 dark:text-rose-400" role="status" aria-live="polite">
-            · {tt(t, 'match_states.live_reconnecting', 'Reconectando…')}
-          </span>
-        )}
-      </div>
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 min-[1700px]:grid-cols-3 min-[2000px]:grid-cols-4">
-        {matches.map((m) => (
-          <LiveBoard
-            key={m.id}
-            match={m}
-            isFavoriteTeam={favSet.has(m.homeTeamId) || favSet.has(m.awayTeamId)}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/**
- * Tira "En directo ahora" — solo móvil. La banda de escritorio (LiveNowBand) no
- * se renderiza aquí, así que esta tira compacta y deslizable cubre el "qué se
- * juega ahora" en la grada. Los directos se retiran de las listas en todos los
- * breakpoints para no repetirlos.
- */
-function LiveStripCard({ match, isFavoriteTeam }: { match: Match; isFavoriteTeam: boolean }) {
-  const { t } = useT();
-  const homeName = match.homeTeam?.shortName ?? match.homeTeam?.name ?? match.homeTeamId;
-  const awayName = match.awayTeam?.shortName ?? match.awayTeam?.name ?? match.awayTeamId;
-  const isHalftime = match.isHalftime === true;
-  return (
-    <Link
-      href={`/matches/${match.id}`}
-      aria-label={tt(t, 'a11y.view_match', 'Ver partido: {home} - {away}', { home: homeName, away: awayName })}
-      className="card relative flex w-[190px] shrink-0 flex-col gap-1.5 p-2.5 ring-1 ring-live/25
-                 hover:shadow-md focus:outline-none focus-visible:ring-2
-                 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent"
-    >
-      <span className="flex h-4 items-center justify-between gap-1.5">
-        {isFavoriteTeam ? (
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-3 w-3 shrink-0 text-rink-passion">
-            <path d="M12 2l3.09 6.26L22 9.27l-4.91 4.79 1.16 6.94L12 17.77l-6.25 3.23 1.16-6.94L2 9.27l6.91-1.01L12 2z" />
-          </svg>
-        ) : (
-          <span aria-hidden="true" />
-        )}
-        {isHalftime ? (
-          <span className="inline-flex shrink-0 items-center rounded-full bg-halftime-deep px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
-            {t('match_states.half_time')}
-          </span>
-        ) : (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-live-deep px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
-            <span className="h-1 w-1 rounded-full bg-white animate-pulse" aria-hidden="true" />
-            {t('match_states.live')}
-          </span>
-        )}
-      </span>
-      <span className="flex items-center justify-between gap-2">
-        <span className="flex min-w-0 flex-col gap-1">
-          <span className="flex min-w-0 items-center gap-1.5">
-            <TeamShield teamId={match.homeTeam?.id ?? ''} teamName={match.homeTeam?.name ?? homeName} size={18} className="shrink-0" />
-            <span className="truncate text-[11px] font-semibold text-slate-800 dark:text-slate-100">{homeName}</span>
-          </span>
-          <span className="flex min-w-0 items-center gap-1.5">
-            <TeamShield teamId={match.awayTeam?.id ?? ''} teamName={match.awayTeam?.name ?? awayName} size={18} className="shrink-0" />
-            <span className="truncate text-[11px] font-semibold text-slate-800 dark:text-slate-100">{awayName}</span>
-          </span>
-        </span>
-        <span className="flex shrink-0 flex-col items-end gap-1 font-score text-base font-extrabold leading-none tracking-tighter tabular-nums text-slate-900 dark:text-slate-50">
-          <span>{match.score.home ?? 0}</span>
-          <span>{match.score.away ?? 0}</span>
-        </span>
-      </span>
-    </Link>
-  );
-}
-
-function LiveNowStrip({ matches, favorites, degraded }: { matches: Match[]; favorites: string[]; degraded: boolean }) {
-  const { t } = useT();
-  const favSet = useMemo(() => new Set(favorites), [favorites]);
-  if (matches.length === 0) return null;
-  return (
-    // El swipe horizontal de la tira no debe cambiar el día: cortamos la
-    // propagación de los eventos táctiles hacia el contenedor que hace el swipe.
-    <section
-      aria-label={t('common.live_now')}
-      className="lg:hidden pb-3"
-      onTouchStart={(e) => e.stopPropagation()}
-      onTouchEnd={(e) => e.stopPropagation()}
-    >
-      <div className="flex items-center gap-2 px-4 pt-1 pb-2">
-        <span className="relative flex h-2 w-2" aria-hidden="true">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-live opacity-60" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-live" />
-        </span>
-        <h2 className="text-[11px] font-bold uppercase tracking-widest text-live-deep dark:text-live">
-          {t('common.live_now')}
-        </h2>
-        <span className="text-[11px] font-light text-slate-500 dark:text-slate-400 tabular-nums">{matches.length}</span>
-        {degraded && (
-          <span className="text-[11px] font-medium text-rose-500 dark:text-rose-400 truncate" role="status" aria-live="polite">
-            · {tt(t, 'match_states.live_reconnecting', 'Reconectando…')}
-          </span>
-        )}
-      </div>
-      <ul className="flex gap-2 overflow-x-auto scrollbar-none px-4 pb-1">
-        {matches.map((m) => (
-          <li key={m.id} className="shrink-0">
-            <LiveStripCard match={m} isFavoriteTeam={favSet.has(m.homeTeamId) || favSet.has(m.awayTeamId)} />
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-interface MatchesViewProps {
-  matches: Match[];
-}
-
-function SectionHeader({ label, count }: { label: string; count: number }) {
+/** Onboarding de favoritos: motivador, nunca antes de los partidos. */
+function FavoritesOnboarding({ className = '' }: { className?: string }) {
   const { t } = useT();
   return (
-    <div className="flex items-center justify-between px-4 pt-5 pb-2">
-      <span className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-        {label}
-      </span>
-      <span className="text-[11px] font-light text-slate-500 dark:text-slate-400 tabular-nums">
-        {count} {count === 1 ? t('common.match_lc') : t('common.matches_lc')}
-      </span>
-    </div>
-  );
-}
-
-/** Etiqueta de competición sobre un partido (en listas con competiciones mezcladas). */
-function CompetitionCaption({ name, id }: { name?: string | null; id?: string | null }) {
-  if (!name) return null;
-  const className = 'text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1 pb-0.5';
-  return id ? (
-    <Link href={`/competitions/${id}`} className={`${className} inline-block hover:text-rink-passion transition-colors`}>
-      {name}
-    </Link>
-  ) : (
-    <p className={className}>{name}</p>
-  );
-}
-
-/** Estado vacío de favoritos — onboarding motivador, no una sección en blanco */
-function FavoritesOnboarding() {
-  const { t } = useT();
-  return (
-    <div className="mx-4 mt-4 card p-5 flex items-center gap-4">
-      <div className="w-12 h-12 rounded-2xl bg-rink-passion/10 flex items-center justify-center shrink-0">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
-             className="w-6 h-6 text-rink-passion">
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                strokeLinejoin="round" />
-        </svg>
-      </div>
+    <div className={`card flex items-center gap-3 px-3 py-2.5 ${className}`}>
+      <OnboardingIcon />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-slate-900 dark:text-slate-50">{t('favorites.onboarding_title')}</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5">
+        <p className="text-[13px] font-bold text-slate-900 dark:text-slate-50">{t('favorites.onboarding_title')}</p>
+        <p className="mt-0.5 text-xs leading-snug text-slate-500 dark:text-slate-400">
           {t('favorites.onboarding_body')}
         </p>
         <Link href="/competitions"
-              className="inline-block mt-2 text-xs font-semibold text-rink-passion hover:underline">
+              className="inline-flex min-h-[36px] items-center text-xs font-semibold text-rink-passion hover:underline dark:text-rink-accent">
           {t('favorites.onboarding_cta')} →
         </Link>
       </div>
@@ -411,99 +175,163 @@ function FavoritesOnboarding() {
   );
 }
 
-/** Fecha "22 de junio de 2026" (capitalizada) en el idioma activo. */
-function formatDateHeader(dateKey: string, locale: string): string {
-  const s = new Date(`${dateKey}T12:00:00`).toLocaleDateString(locale, {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  });
-  return s.charAt(0).toUpperCase() + s.slice(1);
+/** "miércoles 21 de octubre" en el idioma activo, sin comas. */
+function longDayLabel(dateKey: string, locale: string, withMonth: boolean): string {
+  const s = new Date(`${dateKey}T12:00:00`).toLocaleDateString(locale, withMonth
+    ? { weekday: 'long', day: 'numeric', month: 'long' }
+    : { weekday: 'long', day: 'numeric' });
+  return s.replace(/,/g, '').replace(/\s+/g, ' ').trim();
 }
 
 /**
- * Estado vacío de la home: mensaje claro ("No hay partidos para hoy") y, debajo,
- * los PRÓXIMOS partidos agrupados por día y DENTRO de cada día por competición
- * (#414: la lista plana con etiquetas flotantes se leía como una sopa de filas
- * estiradas). Mismo lenguaje de secciones que la jornada de la portada.
+ * Las tarjetas de una jornada: "Siguiendo" (tus equipos) y una por competición.
+ * `afterFirst` se intercala tras la primera tarjeta (publicidad y onboarding:
+ * nunca antes del primer partido). `listAd` inserta el banner entre resultados.
  */
-function UpcomingMatches({ matches, selectedDate, todayKey, outOfWindow = false }: {
-  matches: Match[];
-  selectedDate: string;
-  todayKey: string;
-  outOfWindow?: boolean;
+function DayCards({ view, followedTeamIds, showDate = false, afterFirst, listAd = false }: {
+  view: DayView<Match>;
+  followedTeamIds: ReadonlySet<string>;
+  showDate?: boolean;
+  afterFirst?: ReactNode;
+  listAd?: boolean;
 }) {
-  const { t, locale } = useT();
-  const isToday = selectedDate === todayKey;
-  // En días anteriores a hoy NO mostramos "próximos": ver partidos/resultados
-  // posteriores a un día ya pasado confunde. Solo el mensaje de "no hay partidos".
-  const isPast = selectedDate < todayKey;
+  const { t } = useT();
+  const other = tt(t, 'common.other_competitions', 'Otras competiciones');
 
-  const groups = useMemo(
-    () => groupUpcomingByDay(matches, selectedDate, locale),
-    [matches, selectedDate, locale],
-  );
-  const visibleGroups = isPast ? [] : groups;
+  const cards: { key: string; rows: number; node: ReactNode }[] = [];
+  if (view.myTeams.length > 0) {
+    cards.push({
+      key: '__following__',
+      rows: view.myTeams.length,
+      node: (
+        <MatchGroupCard
+          title={t('favorites.following_section')}
+          icon={<span className="flex h-5 w-5 items-center justify-center"><FollowStar /></span>}
+          count={view.myTeams.length}
+          action={
+            <Link href="/favorites"
+                  className="shrink-0 px-1 py-2 text-[11px] font-semibold text-rink-passion hover:underline dark:text-rink-accent">
+              {t('favorites.manage')}
+            </Link>
+          }
+        >
+          {view.myTeams.map((m) => (
+            <MatchRow key={m.id} match={m} followedTeamIds={followedTeamIds} showDate={showDate}
+                      caption={m.competitionName ? clubName(m.competitionName) : null} />
+          ))}
+        </MatchGroupCard>
+      ),
+    });
+  }
+  for (const block of view.competitions) {
+    cards.push({
+      key: block.key || '__other__',
+      rows: block.matches.length,
+      node: (
+        <MatchGroupCard
+          title={block.name ? clubName(block.name) : other}
+          href={block.id ? `/competitions/${block.id}` : null}
+          icon={<CompetitionIcon country={block.country} name={block.name} />}
+          count={block.matches.length}
+          followed={block.followed}
+        >
+          {block.matches.map((m) => (
+            <MatchRow key={m.id} match={m} followedTeamIds={followedTeamIds} showDate={showDate} />
+          ))}
+        </MatchGroupCard>
+      ),
+    });
+  }
+
+  // Banner entre resultados: tras la tarjeta en la que se cruza el umbral de
+  // filas. Nunca tras la primera (ahí ya va home-top) ni tras la última.
+  let adAfter = -1;
+  if (listAd) {
+    const adIndex = listAdInsertIndex(cards.reduce((n, c) => n + c.rows, 0), ADS.listEvery);
+    if (adIndex >= 0) {
+      let cumulative = 0;
+      for (let i = 0; i < cards.length; i++) {
+        cumulative += cards[i]!.rows;
+        if (cumulative >= adIndex) { adAfter = Math.max(i, 1); break; }
+      }
+      if (adAfter >= cards.length - 1) adAfter = -1;
+    }
+  }
 
   return (
-    <div>
-      <div className={`flex flex-col items-center text-center pt-8 px-8 gap-1 ${isPast ? 'pb-12' : 'pb-2'}`}>
-        <EmptyRinkScene />
-        <p className="text-base font-bold text-slate-800 dark:text-slate-100">
-          {outOfWindow
-            ? t('common.day_out_of_window')
-            : isToday ? t('common.no_matches_today') : t('common.no_matches_this_day')}
-        </p>
-        {!isPast && !outOfWindow && visibleGroups.length > 0 && (
-          <p className="text-xs text-slate-500 dark:text-slate-400">{t('common.upcoming_intro')}</p>
-        )}
-      </div>
-
-      {isPast ? null : visibleGroups.length === 0 ? (
-        <p className="text-center text-xs text-slate-500 dark:text-slate-400 px-8 pb-12">
-          {t('common.no_upcoming')}
-        </p>
-      ) : (
-        /*
-          Banda por día a todo el ancho: cabecera con hairline + competiciones
-          del día en masonry horizontal (misma mecánica que la jornada). Así el
-          ancho siempre se usa — un día de 1 partido es una banda corta, no una
-          columna huérfana flotando en blanco (#414).
-        */
-        <div className="pb-6">
-          {visibleGroups.map((day) => (
-            <section key={day.dateKey} className="min-w-0">
-              <div className="mx-4 flex items-baseline justify-between border-b border-slate-100
-                              pt-5 pb-2 dark:border-slate-800">
-                <h2 className="text-sm font-bold text-slate-900 dark:text-slate-50">
-                  {formatDateHeader(day.dateKey, locale)}
-                </h2>
-                <span className="text-[11px] font-light text-slate-500 dark:text-slate-400 tabular-nums shrink-0 ml-3">
-                  {day.total} {day.total === 1 ? t('common.match_lc') : t('common.matches_lc')}
-                </span>
-              </div>
-              <div className="px-4 pt-3 pb-1 columns-1 md:columns-2 gap-5
-                              min-[1500px]:columns-3 min-[2000px]:columns-4">
-                {day.competitions.map((comp) => (
-                  <UpcomingGroup
-                    key={comp.id ?? comp.name ?? 'other'}
-                    name={comp.name}
-                    id={comp.id}
-                    matches={comp.matches}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
+    <div className="space-y-3">
+      {cards.map((c, i) => (
+        <Fragment key={c.key}>
+          {c.node}
+          {i === 0 && afterFirst}
+          {i === adAfter && <AdBanner zone="list-inline" />}
+        </Fragment>
+      ))}
     </div>
   );
 }
 
 /**
- * #346: estado de error de carga de la home. Antes era un bloque inline sin
- * botón de reintento y con copy fijo en español (para las 5 locales). Ahora el
- * mensaje sale del i18n del locale activo y `router.refresh()` revalida el
- * Server Component, que vuelve a llamar a la API (reintento real).
+ * Día sin partidos: mensaje claro y, si el día es hoy o futuro, SOLO la
+ * próxima jornada agrupada por competición (desplegada, con fecha en cada
+ * fila) y un botón para ir a ese día.
+ */
+function EmptyDay({ isToday, isPast, outOfWindow, next, followedTeamIds, onGoTo }: {
+  isToday: boolean;
+  isPast: boolean;
+  outOfWindow: boolean;
+  next: DayView<Match> | null;
+  followedTeamIds: ReadonlySet<string>;
+  onGoTo: (dayKey: string) => void;
+}) {
+  const { t, locale } = useT();
+  const message = outOfWindow
+    ? t('common.day_out_of_window')
+    : isToday ? t('common.no_matches_today')
+    : isPast ? tt(t, 'home.no_matches_past', 'No hubo partidos este día')
+    : t('common.no_matches_this_day');
+
+  return (
+    <div>
+      <div className="flex flex-col items-center gap-1 px-6 pb-5 text-center">
+        <EmptyRinkScene />
+        <p className="text-base font-bold text-slate-800 dark:text-slate-100">{message}</p>
+      </div>
+
+      {!isPast && !outOfWindow && (next ? (
+        <section aria-labelledby="next-matchday">
+          <h2 id="next-matchday" className="px-1 pb-2 text-sm font-bold text-slate-900 dark:text-slate-50">
+            {tt(t, 'home.next_matchday', 'Próxima jornada: {day}', { day: longDayLabel(next.dayKey, locale, true) })}
+          </h2>
+          <DayCards view={next} followedTeamIds={followedTeamIds} showDate />
+          <button
+            type="button"
+            onClick={() => onGoTo(next.dayKey)}
+            className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200
+                       bg-white text-sm font-semibold text-rink-passion transition-colors hover:bg-slate-50
+                       dark:border-slate-700 dark:bg-slate-900 dark:text-rink-accent dark:hover:bg-slate-800
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent"
+          >
+            {tt(t, 'home.go_to_day', 'Ver el {day}', { day: longDayLabel(next.dayKey, locale, false) })}
+            <span aria-hidden="true">→</span>
+          </button>
+        </section>
+      ) : (
+        <p className="px-6 pb-10 text-center text-xs text-slate-500 dark:text-slate-400">
+          {t('common.no_upcoming')}{' · '}
+          <Link href="/competitions" className="font-semibold text-rink-passion hover:underline dark:text-rink-accent">
+            {t('favorites.onboarding_cta')}
+          </Link>
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * #346: estado de error de carga de la home. El mensaje sale del i18n del
+ * locale activo y `router.refresh()` revalida el Server Component, que vuelve
+ * a llamar a la API (reintento real).
  */
 export function HomeLoadError() {
   const { t } = useT();
@@ -539,6 +367,16 @@ export function HomeLoadError() {
   );
 }
 
+interface MatchesViewProps {
+  matches: Match[];
+}
+
+/**
+ * Home (spec 2026-10-16, referencia FotMob): la jornada del día elegido en una
+ * tarjeta por competición, con "Siguiendo" arriba y filtros En directo /
+ * Siguiendo. Un día vacío enseña la próxima jornada. Lo personal que no es del
+ * día (Mi grada) vive en Favoritos y en el carril de escritorio.
+ */
 export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
   // Refresco en vivo: mientras haya partidos en juego, la lista se sincroniza con
   // el resultado real sondeando /current sin caché (la home es SSR y, si no, el
@@ -566,8 +404,18 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
     setSelectedDateState(key);
     try { sessionStorage.setItem('rink-selected-date', key); } catch { /* noop */ }
   }, []);
-  const [showAllFavs, setShowAllFavs] = useState(false);
-  const { favorites, leagues, isFavorite } = useFavorites();
+
+  // El filtro pertenece al día en que se eligió: al cambiar de día vuelve a
+  // "todos" sin efectos ni renders extra.
+  const [filterState, setFilterState] = useState<{ day: string; filter: DayFilter }>({ day: todayKey, filter: 'all' });
+  const requestedFilter: DayFilter = filterState.day === selectedDate ? filterState.filter : 'all';
+  const onFilterChange = useCallback((filter: DayFilter) => {
+    setFilterState({ day: selectedDate, filter });
+    track('home_filter_changed', { filter });
+  }, [selectedDate]);
+
+  const { favorites, leagues } = useFavorites();
+  const followedTeamIds = useMemo(() => new Set(favorites), [favorites]);
   const { t, locale } = useT();
 
   // ── Swipe horizontal: día anterior / siguiente ─────────────────────────────
@@ -595,76 +443,18 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
     shiftDay(dx < 0 ? 1 : -1); // izquierda = siguiente día (como pasar página)
   };
 
-  // Filtrar por fecha seleccionada
-  const dayMatches = useMemo(
-    () => matches.filter((m) => madridDateKey(m.scheduledAt) === selectedDate),
-    [matches, selectedDate]
+  const view = useMemo(
+    () => buildDayView(matches, { dayKey: selectedDate, teamIds: favorites, leagueIds: leagues, filter: requestedFilter, locale }),
+    [matches, selectedDate, favorites, leagues, requestedFilter, locale],
   );
-
-  // Separar favoritos del resto. Los directos se excluyen aquí: viven en la
-  // banda (escritorio) o en la tira (móvil), nunca duplicados en las listas.
-  const { favMatches, restMatches } = useMemo(() => {
-    const notLive = (m: Match) => m.status !== 'live';
-    if (favorites.length === 0) {
-      return { favMatches: [] as Match[], restMatches: dayMatches.filter(notLive) };
-    }
-    const fav: Match[] = [];
-    const rest: Match[] = [];
-    for (const m of dayMatches) {
-      if (!notLive(m)) continue;
-      if (isFavorite(m.homeTeamId) || isFavorite(m.awayTeamId)) {
-        fav.push(m);
-      } else {
-        rest.push(m);
-      }
-    }
-    return { favMatches: fav, restMatches: rest };
-  }, [dayMatches, favorites, isFavorite]);
-
-  // Los no-favoritos se agrupan POR COMPETICIÓN (antes había una cabecera fija
-  // "OK Liga Masculina" que etiquetaba mal los partidos de otras competiciones)
-  // y los bloques se ordenan por IMPORTANCIA, el mismo criterio que el listado
-  // de competiciones. Una competición sin partidos ese día no tiene bloque.
-  const restByCompetition = useMemo(() => {
-    const map = new Map<string, Match[]>();
-    for (const m of restMatches) {
-      const key = m.competitionName ?? tt(t, 'common.other_competitions', 'Otras competiciones');
-      const arr = map.get(key);
-      if (arr) arr.push(m); else map.set(key, [m]);
-    }
-    return [...map.entries()].sort(([aName, aMs], [bName, bMs]) => {
-      const d = importanceRank(aMs[0]?.competitionSlug) - importanceRank(bMs[0]?.competitionSlug);
-      return d !== 0 ? d : aName.localeCompare(bName, locale);
-    });
-  }, [restMatches, locale, t]);
-
-  const hasBothSections = favMatches.length > 0 && restMatches.length > 0;
-
-  // Partidos en directo del día seleccionado: se destacan en la banda
-  // (escritorio) o en la tira (móvil) y se retiran de las listas en todos los
-  // breakpoints para no repetirlos.
-  const liveMatches = useMemo(
-    () => dayMatches.filter((m) => m.status === 'live').sort((a, b) => timeOf(a) - timeOf(b)),
-    [dayMatches]
+  const isPast = selectedDate < todayKey;
+  const next = useMemo(
+    () => (view.total === 0 && !isPast
+      ? nextMatchday(matches, selectedDate, { teamIds: favorites, leagueIds: leagues, locale })
+      : null),
+    [view.total, isPast, matches, selectedDate, favorites, leagues, locale],
   );
-
-  // Banner in-list "entre resultados": posición sobre la lista del día (no
-  // favoritos) y sección tras la que cae. -1 si no procede (pocos partidos).
-  const adIndex = useMemo(
-    () => listAdInsertIndex(restMatches.length, ADS.listEvery),
-    [restMatches.length],
-  );
-  const adSectionIndex = useMemo(() => {
-    if (adIndex < 0) return -1;
-    let cumulative = 0;
-    for (let i = 0; i < restByCompetition.length; i++) {
-      const group = restByCompetition[i];
-      if (!group) continue;
-      cumulative += group[1].length;
-      if (cumulative >= adIndex) return i;
-    }
-    return -1;
-  }, [restByCompetition, adIndex]);
+  const markedDays = useMemo(() => daysWithMatches(matches), [matches]);
 
   // Rango de días con datos cargados (#365): acota el DateSelector para no
   // ofrecer días que la ventana del API no cubre y que saldrían vacíos.
@@ -677,8 +467,14 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
       if (from === null || k < from) from = k;
       if (to === null || k > to) to = k;
     }
+    // Hoy siempre está dentro: si todos los partidos cargados son futuros (o
+    // pasados), los días entre hoy y ellos son días vacíos de verdad, no días
+    // fuera de la ventana (si no, "hoy" salía bloqueado en el selector y el día
+    // vacío no podía enseñar la próxima jornada).
+    if (from !== null && from > todayKey) from = todayKey;
+    if (to !== null && to < todayKey) to = todayKey;
     return { from, to };
-  }, [matches]);
+  }, [matches, todayKey]);
   const outOfWindow = (!!windowRange.from && selectedDate < windowRange.from)
     || (!!windowRange.to && selectedDate > windowRange.to);
 
@@ -699,6 +495,8 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
     }).join(' · '));
   }, [matches, t]);
 
+  const followsSomething = favorites.length > 0 || leagues.length > 0;
+
   return (
     <div data-wide className="flex flex-col min-h-screen lg:mx-auto lg:w-full lg:max-w-[2200px]">
       {/* Encabezado principal de la home (oculto visualmente, para lectores y SEO) */}
@@ -716,137 +514,62 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
           onChange={setSelectedDate}
           availableFrom={windowRange.from}
           availableTo={windowRange.to}
+          markedDays={markedDays}
         />
       </div>
 
-      {/*
-        Banner home-top: justo bajo el DateSelector sticky.
-        Al ser un cliente Premium, AdBanner devuelve null y el layout
-        se estira limpiamente sin hueco.
-        z-index inferior al DateSelector para no taparlo al hacer scroll.
-      */}
-      <AdBanner zone="home-top" className="z-20" />
-
-      {/*
-        Composición de escritorio (lg+): barra de fecha → banda "En directo
-        ahora" → jornada en rejilla por competición → carril de contexto.
-        El móvil conserva su columna única: la misma estructura, sin rejilla.
-      */}
-      <div className="w-full flex-1 lg:px-6 lg:pt-4 lg:pb-10">
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)] lg:items-start lg:gap-6
-                        2xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="w-full flex-1 px-3 pt-3 pb-10 sm:px-4 lg:px-6 lg:pt-5">
+        <div className="mx-auto grid max-w-[760px] items-start gap-6
+                        2xl:max-w-[1150px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        {/* #263 "Mi grada": feed agregado de equipos/ligas seguidos (próximos +
-            últimos), independiente del día seleccionado. En móvil va en el
-            flujo; en escritorio sube al carril de contexto. */}
-        {/* Tira EN DIRECTO — solo móvil (en escritorio manda la banda) */}
-        <LiveNowStrip matches={liveMatches} favorites={favorites} degraded={degraded} />
+            {/* Contexto para lectores de pantalla: de qué día son las tarjetas
+                (cada tarjeta es un h3). */}
+            <h2 className="sr-only">{longDayLabel(selectedDate, locale, true)}</h2>
+            <DayChips
+              liveCount={view.liveCount}
+              followingCount={view.followingCount}
+              filter={view.filter}
+              onChange={onFilterChange}
+              degraded={degraded}
+            />
 
-        <div className="lg:hidden">
-          <MiGrada matches={matches} teamIds={favorites} leagueIds={leagues} todayKey={todayKey} />
-        </div>
-
-        {/* Banda EN DIRECTO — solo escritorio */}
-        {liveMatches.length > 0 && (
-          <LiveNowBand matches={liveMatches} favorites={favorites} className="hidden lg:block" degraded={degraded} />
-        )}
-
-        {dayMatches.length === 0 ? (
-          <UpcomingMatches
-            matches={matches}
-            selectedDate={selectedDate}
-            todayKey={todayKey}
-            outOfWindow={outOfWindow}
-          />
-        ) : (
-          <>
-            {/* Onboarding de favoritos: solo si el usuario no sigue a nadie */}
-            {favorites.length === 0 && <FavoritesOnboarding />}
-
-            {/* Bloque "Siguiendo" — tus equipos de hoy. Los directos viven en
-                la banda/tira, no aquí. */}
-            {favMatches.length > 0 && (
-              <section>
-                <div className="flex items-center justify-between pr-4">
-                  <SectionHeader label={`⭐ ${t('favorites.following_section')}`} count={favMatches.length} />
-                  <Link href="/favorites"
-                        className="text-[11px] font-semibold text-rink-passion hover:underline shrink-0 min-h-[44px] inline-flex items-center">
-                    {t('favorites.manage')}
-                  </Link>
-                </div>
-                <ul className="px-4 grid grid-cols-1 gap-2 xl:grid-cols-2 xl:gap-x-6 min-[1800px]:grid-cols-3">
-                  {(showAllFavs ? favMatches : favMatches.slice(0, FAV_PREVIEW)).map((m) => (
-                    <li key={m.id}>
-                      <CompetitionCaption name={m.competitionName} id={m.competitionId} />
-                      <MatchCard match={m} isFavoriteTeam />
-                    </li>
-                  ))}
-                </ul>
-                {favMatches.length > FAV_PREVIEW && (
-                  <button
-                    onClick={() => setShowAllFavs((v) => !v)}
-                    className="mx-4 mt-2 w-[calc(100%-2rem)] py-2.5 min-h-[44px] text-xs font-semibold
-                               text-rink-passion rounded-xl border border-slate-200 dark:border-slate-800
-                               hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                  >
-                    {showAllFavs
-                      ? t('favorites.show_less')
-                      : t('favorites.show_other_matches', { n: favMatches.length - FAV_PREVIEW })}
-                  </button>
-                )}
-              </section>
+            {view.total === 0 ? (
+              <EmptyDay
+                isToday={selectedDate === todayKey}
+                isPast={isPast}
+                outOfWindow={outOfWindow}
+                next={next}
+                followedTeamIds={followedTeamIds}
+                onGoTo={(key) => {
+                  track('home_next_matchday_opened', { days_ahead: dayDiff(key, selectedDate) });
+                  setSelectedDate(key);
+                  window.scrollTo({ top: 0 });
+                }}
+              />
+            ) : (
+              <DayCards
+                view={view}
+                followedTeamIds={followedTeamIds}
+                listAd
+                afterFirst={
+                  <>
+                    {/* Publicidad y onboarding, nunca antes del primer partido.
+                        Si AdBanner no procede (Premium/sin config) no deja hueco. */}
+                    <AdBanner zone="home-top" />
+                    {!followsSomething && <FavoritesOnboarding className="2xl:hidden" />}
+                  </>
+                }
+              />
             )}
-
-            {/*
-              Banner home-inline: se inyecta entre la sección de favoritos y la
-              sección principal de partidos, solo cuando ambas existen.
-              Para usuarios Free aparece como tarjeta nativa (FotMob-style).
-              Para usuarios Premium: null, ambas secciones se unen sin separación.
-            */}
-            {hasBothSections && (
-              <AdBanner zone="home-inline" className="my-1" />
-            )}
-
-            {/* Bloque principal — una sección por competición. En pantallas
-                anchas se reparte en 2–3 columnas equilibradas (masonry CSS)
-                para que toda la jornada entre sin huecos ni scroll. */}
-            <div className="xl:columns-2 xl:gap-6 min-[1800px]:columns-3">
-              {restByCompetition.map(([comp, ms], i) => (
-                <Fragment key={comp}>
-                  <section className="break-inside-avoid">
-                    <SectionHeader label={comp} count={ms.length} />
-                    <ul className="px-4 space-y-2 pb-4">
-                      {ms.map((m) => (
-                        <li key={m.id}>
-                          <MatchCard match={m} />
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                  {/* Banner entre resultados (solo si hay suficientes partidos).
-                      Si AdBanner no procede (Premium/sin config) no deja hueco. */}
-                  {i === adSectionIndex && (
-                    <AdBanner zone="list-inline" className="my-2 break-inside-avoid" />
-                  )}
-                </Fragment>
-              ))}
-            </div>
-          </>
-        )}
           </div>
 
-          {/* Carril de contexto — solo en pantallas muy anchas. Sin la sección
-              "Próximos" cuando la vista principal ya muestra los próximos
-              (día vacío): serían las mismas tarjetas dos veces (#414). */}
+          {/* Carril de contexto — solo en pantallas muy anchas. */}
           <DesktopAside
             className="hidden 2xl:block"
             matches={matches}
-            hasFavorites={favorites.length > 0}
             favorites={favorites}
             leagues={leagues}
             todayKey={todayKey}
-            selectedDate={selectedDate}
-            showUpcoming={dayMatches.length > 0}
           />
         </div>
       </div>

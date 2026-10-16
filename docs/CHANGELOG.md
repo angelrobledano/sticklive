@@ -4,6 +4,16 @@ Historial de hitos de producto y plataforma. El estado vivo está en [ESTADO_PRO
 
 ---
 
+## Octubre 2026 — Home: la jornada del día por competición (referencia FotMob)
+
+Diseño: [superpowers/specs/2026-10-16-home-jornada-por-competicion-design.md](./superpowers/specs/2026-10-16-home-jornada-por-competicion-design.md).
+
+- **La home es la jornada del día elegido.** Una tarjeta por competición (bandera o mundo, nombre, recuento, plegable) con filas compactas: local · hora o marcador · visitante. Arriba, «Siguiendo» con los partidos de tus equipos. Orden: competiciones seguidas, importancia, nombre. Los directos se quedan en su tarjeta y los chips «En directo» y «Siguiendo» filtran.
+- **Fuera de la jornada** la tira y la banda de directos y «Mi grada», que mezclaba partidos de otros días sin fecha y se leía como partidos de hoy. Mi grada pasa a Favoritos y al carril de escritorio, con fecha en cada fila.
+- **Día vacío:** solo la próxima jornada, desplegada, con botón para ir a ese día.
+- **Publicidad y onboarding** siempre tras la primera tarjeta (`home-top` en formato horizontal). Escritorio en una columna central en lugar del masonry.
+- **API:** `/matches/current` y `/matches/live` añaden `competitionCountry` (aditivo).
+
 ## Octubre 2026 — Fases de competición y directo por señal explícita
 
 Diseño: [superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md](./superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md) · Operativa: [runbook-fases-y-directo.md](./runbook-fases-y-directo.md).

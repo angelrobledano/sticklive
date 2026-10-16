@@ -622,5 +622,15 @@
     "login_cta": "Se connecter",
     "open_failed": "Impossible d'ouvrir le navigateur. Veuillez réessayer.",
     "refresh": "Actualiser"
+  },
+  "home": {
+    "filters": "Filtrer les matchs",
+    "filter_live": "En direct",
+    "filter_following": "Suivis",
+    "next_matchday": "Prochaine journée : {day}",
+    "go_to_day": "Voir {day}",
+    "collapse": "Replier {name}",
+    "expand": "Déplier {name}",
+    "no_matches_past": "Aucun match ce jour-là"
   }
 }

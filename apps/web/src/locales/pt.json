@@ -622,5 +622,15 @@
     "login_cta": "Iniciar sessão",
     "open_failed": "Não foi possível abrir o navegador. Tenta novamente.",
     "refresh": "Atualizar"
+  },
+  "home": {
+    "filters": "Filtrar jogos",
+    "filter_live": "Ao vivo",
+    "filter_following": "A seguir",
+    "next_matchday": "Próxima jornada: {day}",
+    "go_to_day": "Ver {day}",
+    "collapse": "Recolher {name}",
+    "expand": "Expandir {name}",
+    "no_matches_past": "Não houve jogos neste dia"
   }
 }

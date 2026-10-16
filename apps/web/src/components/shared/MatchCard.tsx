@@ -22,7 +22,7 @@ interface MatchCardProps {
  * Europe/Madrid cuando no viene, que es como la fuente publica hoy → cero
  * cambio para las ligas actuales.
  */
-function formatTime(iso: string | null, tz?: string | null, locale = 'es'): string {
+export function formatTime(iso: string | null, tz?: string | null, locale = 'es'): string {
   if (!iso) return '--:--';
   // Ciclo horario forzado a 23 (0-23): con locale 'en' el defecto es 12h AM/PM,
   // impropio de un producto europeo (#413). Válido en todos los locales.
