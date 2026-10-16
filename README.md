@@ -125,5 +125,6 @@ La referencia es **`.env.example`** (desarrollo) y **`.env.prod.example`** (prod
 | [docs/RUNBOOK_ENTITY_RESOLUTION.md](docs/RUNBOOK_ENTITY_RESOLUTION.md) | Entity Resolution as-built |
 | [docs/NOTIFICACIONES.md](docs/NOTIFICACIONES.md) | Cuándo y cómo se envían los push |
 | [docs/TRACKING_POSTHOG.md](docs/TRACKING_POSTHOG.md) | Qué se mide y dónde verlo |
+| [docs/AUDITORIA_SEO_2026-10-16.md](docs/AUDITORIA_SEO_2026-10-16.md) | Auditoría SEO y calidad de datos: diagnóstico, matriz de indexación y plan por fases |
 | [docs/app.md](docs/app.md) | App móvil Android (Expo): sesión, push, i18n, EAS y checklist de release |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | Historial de hitos |
