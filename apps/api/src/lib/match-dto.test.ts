@@ -263,3 +263,28 @@ describe('buildMatchDetail — stats completas (#283)', () => {
     });
   });
 });
+
+describe('buildMatchDetail — ronda y fase del partido (spec 2026-10-16)', () => {
+  it('una semifinal expone su ronda con la fase de la fuente', () => {
+    const dto = buildMatchDetail(row({
+      round_name: 'Semifinal', round_number: 95, round_type: 'playoff', round_stage: 'semis',
+      group_name: null, series_game: null, phase_kind: 'knockout',
+    }), [], []);
+    expect(dto.match.round).toEqual({
+      name: 'Semifinal', number: 95, type: 'playoff', stage: 'semis',
+      groupName: null, seriesGame: null, phaseKind: 'knockout',
+    });
+  });
+
+  it('un partido de grupos lleva su grupo y su jornada', () => {
+    const dto = buildMatchDetail(row({
+      round_name: 'Jornada 2', round_number: 2, round_type: 'regular', round_stage: null,
+      group_name: 'A', series_game: null, phase_kind: 'groups',
+    }), [], []);
+    expect(dto.match.round).toMatchObject({ type: 'regular', number: 2, groupName: 'A', phaseKind: 'groups' });
+  });
+
+  it('sin ronda (partido suelto o fila antigua) → round null', () => {
+    expect(buildMatchDetail(row(), [], []).match.round).toBeNull();
+  });
+});

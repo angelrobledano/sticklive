@@ -184,8 +184,27 @@ export interface MatchLiveState {
   isHalftime: boolean;          // true durante el descanso
 }
 
+/**
+ * Ronda y fase de un partido (`match.round` de `GET /matches/:id`, spec
+ * 2026-10-16): la ficha pinta «Semifinal», «Fase de grupos · Grupo A ·
+ * Jornada 2»… null si el partido no pertenece a ninguna ronda.
+ */
+export interface MatchRound {
+  name: string | null;
+  number: number | null;
+  /** regular | playoff | cup | friendly */
+  type: string | null;
+  /** Fase eliminatoria explícita de la fuente (quarters, semis, final…). */
+  stage: string | null;
+  groupName: string | null;
+  /** Nº de partido de la serie ("2 CUARTOS" → 2). */
+  seriesGame: number | null;
+  /** league | groups | knockout */
+  phaseKind: string | null;
+}
+
 export interface MatchDetail {
-  match: Match & { referee: string | null; live?: MatchLiveState | null };
+  match: Match & { referee: string | null; live?: MatchLiveState | null; round?: MatchRound | null };
   events: MatchEvent[];
   stats: MatchStats;
   lineups: MatchLineups;

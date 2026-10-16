@@ -7,20 +7,12 @@
  * (migración 072). Sin `stage` se usa el nombre de la ronda tal cual: aquí no
  * se deduce nada del nombre ni del número. Funciones puras.
  */
-import type { KnockoutStage } from '@/lib/api/client';
+import type { KnockoutStage, MatchRound } from '@/lib/api/client';
 
 type T = (key: string, vars?: Record<string, string | number>) => string;
 
 /** Lo que la ficha del partido sabe de su ronda (`match.round` de la API). */
-export interface MatchRoundInfo {
-  name: string | null;
-  number: number | null;
-  type: string | null;
-  stage: string | null;
-  groupName: string | null;
-  seriesGame: number | null;
-  phaseKind: string | null;
-}
+export type MatchRoundInfo = MatchRound;
 
 const STAGES = new Set<KnockoutStage>(['round_of_16', 'quarters', 'semis', 'final', 'third_place', 'placement']);
 
