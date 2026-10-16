@@ -4,7 +4,7 @@ import { getMatchDetail, isApiNotFound } from '@/lib/api/client';
 import { MatchCenterClient } from '@/components/match/MatchCenterClient';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
-import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL, metadataOnError } from '@/lib/seo';
 import { teamTitleName } from '@/lib/names';
 
 interface Props {
@@ -40,8 +40,8 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       alternates,
       ...socialMeta({ locale, path: `/matches/${params.id}`, title: ogTitle, description, dynamicImage: true }),
     };
-  } catch {
-    return { alternates };
+  } catch (err) {
+    return metadataOnError(err, alternates);
   }
 }
 

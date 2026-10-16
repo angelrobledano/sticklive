@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { localeAlternates, socialMeta, isSupportedLocale, competitionJsonLd, competitionCanonicalPath, SITE_URL } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale, competitionJsonLd, competitionCanonicalPath, SITE_URL, metadataOnError } from '@/lib/seo';
 import {
   getSeasonOverview,
   getCompetitionSeasons,
@@ -67,8 +67,8 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       alternates,
       ...socialMeta({ locale, path, title: name, description, dynamicImage: true }),
     };
-  } catch {
-    return { alternates: fallbackAlternates };
+  } catch (err) {
+    return metadataOnError(err, fallbackAlternates);
   }
 }
 

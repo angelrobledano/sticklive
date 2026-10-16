@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { SUPPORTED_LOCALES, type Locale } from '@/lib/locales';
+import { isApiNotFound } from '@/lib/api/core';
 
 /** Base pública del sitio — configúrala en producción (sin barra final) */
 export const SITE_URL =
@@ -48,6 +49,24 @@ export function privateMetadata(): Metadata {
     alternates: {},
     robots: { index: false, follow: false },
   };
+}
+
+/**
+ * Metadata de una ficha cuando la API falla al generarla (SEO-06, F1-10).
+ *
+ * Antes el `catch` devolvía solo `alternates` y la ficha heredaba el título y
+ * la descripción de la home. Ahora:
+ * - 404 real de la API: la ficha no existe (la página responde 404 con
+ *   `notFound()`), metadata mínima y `noindex`.
+ * - Cualquier otro fallo se propaga: la respuesta es 5xx y Google reintenta en
+ *   vez de indexar un 200 con metadata ajena o de desindexar una ficha buena
+ *   por un fallo temporal.
+ */
+export function metadataOnError(err: unknown, alternates: Metadata['alternates']): Metadata {
+  if (isApiNotFound(err)) {
+    return { alternates, robots: { index: false, follow: false } };
+  }
+  throw err;
 }
 
 /**
