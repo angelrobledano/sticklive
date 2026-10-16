@@ -20,10 +20,32 @@ export function htmlCacheControlForPath(pathname) {
     : null;
 }
 
+/**
+ * Bots a los que se sirve la metadata BLOQUEANTE (nunca en streaming) — F1-0.
+ *
+ * Next emite `<title>`, canonical y hreflang DESPUÉS de `</head>` cuando
+ * `generateMetadata` tarda (la ficha de jugador consulta ~1,3 s de API). Google
+ * solo acepta `rel=canonical` dentro del `<head>`, así que esas fichas salían en
+ * Search Console como «Duplicada: el usuario no ha indicado ninguna versión
+ * canónica» (32 URLs, todas `/en/…`) y Google elegía como canónica la URL sin
+ * idioma que redirige con 307. Ver §1b de `docs/AUDITORIA_SEO_2026-10-16.md`.
+ *
+ * La lista por defecto de Next NO incluye `Googlebot` (`next/dist/shared/lib/
+ * router/utils/html-bots.js`: `[\w-]+-Google|Google-[\w-]+|…` captura
+ * Mediapartners-Google o Google-InspectionTool, pero no «Googlebot»), así que
+ * replicamos la lista entera —fijar esta opción la sustituye— y añadimos
+ * `Googlebot`. A las personas se les sigue sirviendo en streaming: el TTFB no
+ * cambia.
+ */
+export const HTML_LIMITED_BOTS =
+  /[\w-]+-Google|Google-[\w-]+|Googlebot|Chrome-Lighthouse|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight/i;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // No revelar el framework en las respuestas (#307): quita `X-Powered-By`.
   poweredByHeader: false,
+  // Metadata bloqueante para rastreadores (ver `HTML_LIMITED_BOTS`).
+  htmlLimitedBots: HTML_LIMITED_BOTS,
   // `@sports/shared-types` y `@sports/brand` exportan TS fuente
   // (`main: ./src/index.ts`); Next debe transpilarlos al importarlos desde la
   // web (#191, STALE_LIVE_HOURS). Sin transpile, el bundle externalizaría la
