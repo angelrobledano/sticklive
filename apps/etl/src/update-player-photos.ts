@@ -51,10 +51,10 @@ void (async () => {
     id: string;
     source_ref: string;
     photo_url: string | null;
-    team_refs: string[] | null;
+    team_refs: (string | null)[] | null;
   }>(
     `SELECT p.id, p.source_ref, p.photo_url,
-            array_agg(DISTINCT t.source_ref) AS team_refs
+            array_agg(DISTINCT t.source_ref) FILTER (WHERE t.source_ref IS NOT NULL) AS team_refs
        FROM players p
        LEFT JOIN team_players tp ON tp.player_id = p.id
        LEFT JOIN teams t ON t.id = tp.team_id
@@ -69,9 +69,8 @@ void (async () => {
     const idNum = idNumFromSourceRef(p.source_ref);
     if (!idNum) { skipped++; return; }
 
-    const area = photoAreaForTeamRefs(p.team_refs ?? []);
-
     try {
+      const area = photoAreaForTeamRefs(p.team_refs ?? []);
       const best = await resolvePlayerPhotoIfNeeded(idNum, area, p.photo_url, exists);
       if (best === p.photo_url) { unchanged++; return; }
 

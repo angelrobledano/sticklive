@@ -33,8 +33,14 @@ export const MAX_PHOTO_INDEX = 6;
 
 /**
  * Candidatos de foto para un `idNum` en el portal `area`, en orden de
- * preferencia: primero las variantes `{id}_{n}.jpg` de MAYOR a menor (la de
- * índice más alto es la más reciente) y, como último recurso, `{id}.jpg`.
+ * preferencia: primero las variantes `{id}_{n}.jpg` de MAYOR a menor y, como
+ * último recurso, `{id}.jpg`.
+ *
+ * Criterio: dentro de un portal el `idNum` identifica al jugador, así que TODAS
+ * sus fichas son suyas (verificado: en World Skate el id 89 tiene `89.jpg` —con
+ * la camiseta de la selección— y `89_1.jpg` —con la del club—, el mismo
+ * jugador). La preferencia por la variante `_n` replica la convención ya
+ * validada en el portal FEP (el índice mayor es la subida más reciente).
  */
 export function photoCandidates(idNum: string, area: PhotoArea): string[] {
   const base = PHOTO_CDNS[area];
@@ -50,11 +56,14 @@ export function photoCandidates(idNum: string, area: PhotoArea): string[] {
  * el resto (FEP/clubes) son del portal rfep.
  *
  * Los equipos de selección son la única fuente de jugadores `fep_player_*` cuyo
- * id pertenece al portal World Skate. Sin equipos no hay señal → rfep
- * (comportamiento previo).
+ * id pertenece al portal World Skate. Tolera refs nulas (`teams.source_ref` es
+ * nullable) y sin equipos → rfep (comportamiento previo).
+ *
+ * LÍMITE: si un jugador de World Skate no tiene fila en `team_players` se
+ * clasifica como rfep y podría mostrar la foto homónima del portal FEP.
  */
-export function photoAreaForTeamRefs(teamRefs: readonly string[]): PhotoArea {
-  return teamRefs.some((ref) => ref.startsWith('wse_')) ? 'worldskate' : 'rfep';
+export function photoAreaForTeamRefs(teamRefs: readonly (string | null | undefined)[]): PhotoArea {
+  return teamRefs.some((ref) => ref?.startsWith('wse_') === true) ? 'worldskate' : 'rfep';
 }
 
 /**

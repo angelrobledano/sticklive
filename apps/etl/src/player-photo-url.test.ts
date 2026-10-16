@@ -41,6 +41,12 @@ describe('photoAreaForTeamRefs', () => {
   it('basta un equipo de World Skate para elegir ese portal', () => {
     expect(photoAreaForTeamRefs(['fep_1', 'wse_2'])).toBe('worldskate');
   });
+
+  it('tolera refs nulas (equipo sin source_ref, o jugador sin equipo en team_players)', () => {
+    expect(photoAreaForTeamRefs([null])).toBe('rfep');
+    expect(photoAreaForTeamRefs([null, 'wse_2'])).toBe('worldskate');
+    expect(photoAreaForTeamRefs([undefined])).toBe('rfep');
+  });
 });
 
 describe('photoCandidates', () => {
@@ -71,6 +77,11 @@ describe('resolvePlayerPhoto', () => {
   it('prefiere una variante _n sobre {id}.jpg cuando ambas existen', async () => {
     const existing = new Set([`${RFEP}/7455_1.jpg`, `${RFEP}/7455.jpg`]);
     expect(await resolvePlayerPhoto('7455', 'rfep', async (u) => existing.has(u))).toBe(`${RFEP}/7455_1.jpg`);
+  });
+
+  it('en World Skate con `{id}.jpg` y `{id}_1.jpg` presentes elige la variante (ambas son del jugador)', async () => {
+    const existing = new Set([`${WSE}/89.jpg`, `${WSE}/89_1.jpg`]);
+    expect(await resolvePlayerPhoto('89', 'worldskate', async (u) => existing.has(u))).toBe(`${WSE}/89_1.jpg`);
   });
 
   it('devuelve null cuando no existe ninguna (jugador sin foto)', async () => {
