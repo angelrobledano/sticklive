@@ -532,6 +532,22 @@ Procedimiento si Search Console notifica algo: (1) leer el aviso completo y las 
 
 Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, M 4-16 h, L > 16 h.
 
+### Estado de ejecución (17/10/2026)
+
+| Tarea | Estado | Commit |
+|---|---|---|
+| F0-1 | Hecho (§1b) | f8aa3a2 |
+| F1-0 metadata en el `<head>` para rastreadores | Hecho y desplegado (verificado en frío con el UA de Googlebot smartphone) | da36688 |
+| F1-1 enlaces internos con idioma + guardia de CI | Hecho, pendiente de desplegar | 72bd8b1, e370834, 0c3409a |
+| F1-8 sitemap 503 si falla la API | Hecho, pendiente de desplegar. Falta la alerta por caída > 20 % | a93747e |
+| F1-9 `?season=` inválido ya no da 500 | Hecho, pendiente de desplegar | 884fb7b |
+| F1-10 metadata de error sin heredar la home | Hecho, pendiente de desplegar | 47d3391 |
+| F0-2 / F1-2 jugadores menores | Bloqueado: decisión de producto y legal | — |
+| F1-3 / F1-4 elegibilidad y sitemap filtrado | Siguiente. Necesita confirmar el umbral de jugadores (§17) | — |
+| F1-6, F1-7, F1-11 | Pendientes. F1-7 lleva migración (`entity_redirects`) | — |
+
+Tras desplegar F1-1: en Search Console, pedir la validación de "Duplicada: el usuario no ha indicado ninguna versión canónica" y revisar en 2-4 semanas el porcentaje de redirecciones en Estadísticas de rastreo.
+
 ### Fase 0 · Línea base (antes de tocar nada)
 | ID | Prio | Tarea | Problema | Solución | Dep. | Esf. | Riesgo regresión | Criterio de aceptación | Medición | Resp. |
 |---|---|---|---|---|---|---|---|---|---|---|
