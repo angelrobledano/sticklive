@@ -4,6 +4,14 @@ Historial de hitos de producto y plataforma. El estado vivo está en [ESTADO_PRO
 
 ---
 
+## Octubre 2026 — Competición con eliminatorias y fase en la ficha (referencia FotMob)
+
+Diseño: [superpowers/specs/2026-10-16-competicion-eliminatorias-design.md](./superpowers/specs/2026-10-16-competicion-eliminatorias-design.md).
+
+- **El cuadro primero en fase final.** Cuando ya se juega la fase final (o la liga/grupos están cerrados), la pestaña del cuadro pasa a ser la primera y la que se abre por defecto. Se llama **Eliminatorias** en un cuadro a partido único (Mundial), **Playoffs** en series al mejor de N (OK Liga) y **Final Four** en un torneo a cuatro.
+- **Jornadas con cuartos, semis y final.** El selector incluye las rondas eliminatorias con fase de la fuente, por fecha detrás de las jornadas, y abre en la ronda en curso. Se eligen por id (`?round=`), así que `?journey=` no cambia.
+- **Fase en la ficha del partido**: «Semifinal», «Final», «3.er y 4.º puesto», «Fase de grupos · Grupo A · Jornada 2», «Jornada 12». API: `match.round` en `GET /matches/:id` y en el SSE (aditivo).
+
 ## Octubre 2026 — Home: la jornada del día por competición (referencia FotMob)
 
 Diseño: [superpowers/specs/2026-10-16-home-jornada-por-competicion-design.md](./superpowers/specs/2026-10-16-home-jornada-por-competicion-design.md).

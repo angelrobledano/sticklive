@@ -1,7 +1,7 @@
 # Competición: el cuadro primero, eliminatorias en Jornadas y fase en la ficha
 
 - **Fecha:** 2026-10-16
-- **Estado:** diseño aprobado por producto (Ángel, 16/10)
+- **Estado:** implementado (rama `feat/competicion-eliminatorias`)
 - **Ámbito:** `apps/web` (página de competición, Jornadas, ficha del partido) y
   `apps/api` (`GET /matches/:id` y snapshot del SSE, campo aditivo).
 - **Origen:** «cuando una competición pase de liguilla a playoff, mostrar ya el
