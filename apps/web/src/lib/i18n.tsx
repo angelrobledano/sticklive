@@ -112,3 +112,15 @@ export function I18nProvider({ children, initialLocale, dict, referenceDict }: {
 export function useT() {
   return useContext(I18nContext);
 }
+
+/**
+ * Locale activo (el de la URL) en componentes de cliente.
+ *
+ * Para construir enlaces internos con el prefijo de idioma hay `LocaleLink`
+ * (`components/shared/LocaleLink`): los `href` sin prefijo pasan por el
+ * middleware (307) y, para Googlebot, siempre acaban en `/en` — ver SEO-01 de
+ * `docs/AUDITORIA_SEO_2026-10-16.md`.
+ */
+export function useLocale(): Locale {
+  return useContext(I18nContext).locale;
+}
