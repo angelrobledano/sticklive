@@ -6,6 +6,7 @@
  * tipos y helpers para no romper los imports existentes de `@/lib/api/client`.
  */
 import { apiFetch } from './core';
+import { isUuid } from '@/lib/uuid';
 import type {
   Match,
   MatchScore,
@@ -371,7 +372,9 @@ export async function getSeasonStats(seasonId: string): Promise<SeasonStats> {
 // ─── Team detail ───
 
 export async function getTeamDetail(teamId: string, seasonId?: string | null): Promise<TeamDetail> {
-  const qs = seasonId ? `?season=${encodeURIComponent(seasonId)}` : '';
+  // Un `?season=` que no es UUID se ignora: la API responde 400 y la ficha
+  // acababa en 500 (SEO-03). Se sirve la temporada por defecto.
+  const qs = isUuid(seasonId) ? `?season=${encodeURIComponent(seasonId)}` : '';
   return apiFetch<TeamDetail>(`/teams/${teamId}${qs}`, {
     next: { revalidate: 120, tags: [`team-${teamId}`] },
   });
