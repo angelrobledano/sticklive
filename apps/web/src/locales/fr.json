@@ -632,5 +632,17 @@
     "collapse": "Replier {name}",
     "expand": "Déplier {name}",
     "no_matches_past": "Aucun match ce jour-là"
+  },
+  "install": {
+    "title": "Les buts, dès qu'ils tombent",
+    "body_android": "Installez Stick Live : ouvrez les matchs en direct en un geste et recevez une alerte à chaque but de vos équipes. Gratuit, sans passer par le store.",
+    "body_ios": "Ajoutez Stick Live à votre écran d'accueil : ouvrez les matchs en direct en un geste et, sur iPhone, c'est le seul moyen de recevoir l'alerte de chaque but.",
+    "cta": "Installer",
+    "later": "Plus tard",
+    "close": "Fermer",
+    "ios_steps_title": "Installez-la en deux gestes",
+    "ios_step1": "Touchez le bouton Partager (le carré avec la flèche vers le haut).",
+    "ios_step2": "Choisissez « Sur l'écran d'accueil » puis « Ajouter ».",
+    "aria": "Installer Stick Live"
   }
 }

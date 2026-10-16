@@ -632,5 +632,17 @@
     "collapse": "Collapse {name}",
     "expand": "Expand {name}",
     "no_matches_past": "There were no matches on this day"
+  },
+  "install": {
+    "title": "Goals, the moment they happen",
+    "body_android": "Install Stick Live: open live matches in one tap and get an alert for every goal your teams score. Free, no app store needed.",
+    "body_ios": "Add Stick Live to your home screen: open live matches in one tap and, on iPhone, it's the only way to get an alert for every goal.",
+    "cta": "Install",
+    "later": "Not now",
+    "close": "Close",
+    "ios_steps_title": "Install it in two taps",
+    "ios_step1": "Tap the Share button (the square with the arrow pointing up).",
+    "ios_step2": "Choose “Add to Home Screen” and tap “Add”.",
+    "aria": "Install Stick Live"
   }
 }

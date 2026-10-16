@@ -27,6 +27,20 @@ export function pwaPlatform(): 'ios' | 'android' | 'desktop' {
 }
 
 let deferred: BeforeInstallPromptEvent | null = null;
+
+/** Desde dónde se pidió instalar (para atribuir `app_installed`). */
+export type InstallSource = 'banner' | 'settings';
+const SOURCE_KEY = 'sl-install-source';
+
+function rememberSource(source: InstallSource): void {
+  try { sessionStorage.setItem(SOURCE_KEY, source); } catch { /* noop */ }
+}
+function lastSource(): InstallSource | 'browser' {
+  try {
+    const v = sessionStorage.getItem(SOURCE_KEY);
+    return v === 'banner' || v === 'settings' ? v : 'browser';
+  } catch { return 'browser'; }
+}
 let inited = false;
 
 export function initPwa(): void {
@@ -46,7 +60,9 @@ export function initPwa(): void {
 
   window.addEventListener('appinstalled', () => {
     deferred = null;
-    track('app_installed', { platform: pwaPlatform() });
+    // `source`: banner / settings, o 'browser' si instaló desde el menú del
+    // navegador sin pasar por nuestros botones.
+    track('app_installed', { platform: pwaPlatform(), source: lastSource() });
     setPersonProps({ pwa_installed: true });
     window.dispatchEvent(new Event('pwa-installed'));
   });
@@ -58,12 +74,16 @@ export function canInstall(): boolean {
 }
 
 /** Lanza el diálogo nativo de instalación. Devuelve el resultado. */
-export async function promptInstall(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
+export async function promptInstall(source: InstallSource = 'settings'): Promise<'accepted' | 'dismissed' | 'unavailable'> {
   if (!deferred) return 'unavailable';
-  track('app_install_prompt_shown', { platform: pwaPlatform() });
+  const platform = pwaPlatform();
+  rememberSource(source);
+  track('app_install_prompt_shown', { platform, source });
   await deferred.prompt();
   let outcome: 'accepted' | 'dismissed' = 'dismissed';
   try { outcome = (await deferred.userChoice).outcome; } catch { /* noop */ }
+  // Resultado del diálogo nativo: la conversión real del botón «Instalar».
+  track('app_install_prompt_result', { platform, source, outcome });
   deferred = null;
   return outcome;
 }

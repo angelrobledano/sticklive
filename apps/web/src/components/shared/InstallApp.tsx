@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/i18n';
 import { isIOS, isStandalone } from '@/lib/push';
-import { canInstall, promptInstall } from '@/lib/pwa';
+import { canInstall, promptInstall, pwaPlatform } from '@/lib/pwa';
+import { track } from '@/lib/analytics';
 
 /**
  * Tarjeta "Instalar app". Usa el diálogo nativo en Chrome/Edge/Android; en
@@ -38,7 +39,8 @@ export function InstallApp() {
   if (!hasPrompt && !ios) return null;
 
   const onClick = async () => {
-    if (hasPrompt) await promptInstall();
+    track('install_cta_clicked', { platform: pwaPlatform(), source: 'settings', mode: hasPrompt ? 'native' : 'ios_steps' });
+    if (hasPrompt) await promptInstall('settings');
     else setShowHelp((v) => !v);
   };
 

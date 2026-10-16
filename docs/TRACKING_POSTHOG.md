@@ -73,8 +73,14 @@ Estado: **LIVE** = emitiéndose; los marcados **(F4)** se añadieron al instrume
 | `login_completed` | Al verificarse la sesión | `method` (real) | Conversión a cuenta |
 | `login_failed` **(F4)** | Verificación falla (link caducado / OAuth) | `method`, `reason` | Tasa de error del login |
 | `logout` | Al cerrar sesión | — | Salud de cuenta |
-| `app_install_prompt_shown` **(F4)** | Prompt nativo de instalación (Android) | `platform` | Top del funnel PWA |
-| `app_installed` **(F4)** | Instalación confirmada | `platform` | Adopción PWA; impacto en retención |
+| `install_banner_shown` | Aviso inferior de instalar la PWA visible (1 vez por sesión). Solo móvil, tras 2 páginas vistas y con el aviso de cookies contestado | `platform` (ios/android), `mode` (native/ios_steps), `page` | Top del embudo de instalación |
+| `install_cta_clicked` | Toca «Instalar» (aviso inferior o Ajustes) | `platform`, `source` (banner/settings), `mode`, `page` | CTR del aviso: clicks / shown |
+| `install_ios_steps_shown` | iPhone: se despliegan los pasos Compartir → Añadir a inicio | `platform`, `page` | En iOS no hay evento de instalación: este es el último paso medible |
+| `install_banner_dismissed` | «Ahora no» o cerrar (lo silencia 14 días) | `platform`, `mode`, `step` (banner/ios_steps), `page` | Rechazo del aviso |
+| `app_install_prompt_shown` **(F4)** | Se abre el diálogo nativo (Android/Chrome) | `platform`, `source` | Mitad del embudo |
+| `app_install_prompt_result` | El usuario contesta el diálogo nativo | `platform`, `source`, `outcome` (accepted/dismissed) | Conversión del botón |
+| `app_installed` **(F4)** | Instalación confirmada (`appinstalled`) | `platform`, `source` (banner/settings/browser) | Adopción PWA atribuida al botón |
+| `app_opened_standalone` | Sesión abierta desde la app instalada (1 vez por sesión) | `platform` | Uso real de la PWA instalada (incluido iPhone, donde no hay `appinstalled`) |
 | `onboarding_started` / `onboarding_completed` **(F4)** | Selección inicial de favoritos | `entry`, `favorites_selected`, `skipped` | Activación guiada |
 | `premium_viewed` **(F4)** | Ve el bloque premium (Ajustes) | `from_screen` | Top del funnel de ingresos |
 | `premium_checkout_started` | Inicia el pago | — | Mitad del funnel |
@@ -100,7 +106,7 @@ aquí solo el hecho de negocio.
 
 1. **Activación del nuevo usuario** — `match_view → favorite_added → push_subscribed → app_installed`. El peldaño que más pierde es la prioridad de producto.
 2. **Login por método** — `login_started → login_completed`, desglosado por `method`, con `login_failed` como fuga. Responde "¿convierte mejor Google o el magic link, y dónde falla?".
-3. **Instalación PWA** — `app_install_prompt_shown → app_installed` por `platform` (hoy sobre todo Android; iOS es manual sin evento del navegador).
+3. **Instalación PWA** — `install_banner_shown → install_cta_clicked → app_install_prompt_result (accepted) → app_installed` por `platform` y `source`. En iPhone el último paso medible es `install_ios_steps_shown` y el uso real se ve con `app_opened_standalone`.
 4. **Re-engagement por push** — `notification_sent → notification_opened → live_match_followed`: el bucle completo de notificación a valor.
 5. **Conversión premium** — `premium_viewed → premium_checkout_started → premium_purchase_completed`, con `premium_purchase_failed` como fuga. Listo para cuando se active el cobro.
 
