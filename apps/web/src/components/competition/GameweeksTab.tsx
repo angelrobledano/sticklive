@@ -13,6 +13,10 @@ import { clubName } from '@/lib/names';
 import { tt } from '@/components/search/translate';
 import { fmtTime, madridDay, dayPillLabel, roundLabel } from './format';
 import { dayDiff, madridTodayKey } from '@/lib/match-time';
+import {
+  selectableRounds, roundSelection, roundSelectionKey, parseRoundSelection,
+  matchesOfSelection, defaultRoundSelection, type RoundSelection,
+} from './round-selection';
 
 /** Config AdSense (env inyectado en build). */
 const ADS = adsenseConfig();
@@ -108,13 +112,13 @@ export type FixturesFilterMode = 'date' | 'round' | 'team';
  */
 export function fixturesFilterMode(
   filterParam: string | null | undefined,
-  values: { journey: number | null; date: string | null; team: string | null },
+  values: { journey: number | null; date: string | null; team: string | null; round?: string | null },
   fallback: FixturesFilterMode,
 ): FixturesFilterMode {
   if (filterParam === 'date' || filterParam === 'round' || filterParam === 'team') return filterParam;
   if (values.team) return 'team';
   if (values.date) return 'date';
-  if (values.journey != null) return 'round';
+  if (values.journey != null || values.round) return 'round';
   return fallback;
 }
 
@@ -319,8 +323,9 @@ function StepArrow({ dir, ...rest }: { dir: 'prev' | 'next' } & React.ButtonHTML
 
 function RoundPicker({ rounds, value, onChange, onPrev, onNext }: {
   rounds: SeasonRound[];
-  value: number | null;
-  onChange: (n: number) => void;
+  /** Clave de la selección activa (`roundSelectionKey`). */
+  value: string | null;
+  onChange: (r: SeasonRound) => void;
   onPrev?: () => void;
   onNext?: () => void;
 }) {
@@ -331,15 +336,18 @@ function RoundPicker({ rounds, value, onChange, onPrev, onNext }: {
                  aria-label={tt(t, 'fixtures.prev_round', 'Jornada anterior')} />
       <div className="relative flex-1 min-w-0">
         <select
-          value={value != null ? String(value) : ''}
-          onChange={(e) => { if (e.target.value) onChange(Number(e.target.value)); }}
+          value={value ?? ''}
+          onChange={(e) => {
+            const r = rounds.find((x) => roundSelectionKey(roundSelection(x)) === e.target.value);
+            if (r) onChange(r);
+          }}
           aria-label={tt(t, 'fixtures.by_round', 'Filtrar por jornada')}
           className="w-full min-h-[44px] pl-3 pr-8 rounded-xl border border-slate-200 dark:border-slate-700
                      bg-white dark:bg-slate-900 text-sm font-medium text-slate-700 dark:text-slate-200
                      focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-rink-accent cursor-pointer appearance-none"
         >
           {rounds.map((r) => (
-            <option key={r.id} value={r.number}>{roundLabel(r, t)}</option>
+            <option key={r.id} value={roundSelectionKey(roundSelection(r))}>{roundLabel(r, t)}</option>
           ))}
         </select>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
@@ -446,18 +454,14 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
   const dateParam = sp.get('date');
   const teamParam = sp.get('team_id');
   const filterParam = sp.get('filter');
+  const roundParam = sp.get('round');
 
-  // Rondas para el selector: jornadas por número (luego cup/friendly con
-  // partidos). Las rondas ELIMINATORIAS no se ofrecen aquí — su lugar es la
-  // pestaña Playoffs; su número (20=cuartos, 30=semis… o el legado 1/2/3)
-  // chocaba con las jornadas 20, 30… o 1, 2, 3 de la liga.
-  const orderedRounds = useMemo(() => {
-    const rank = (rt: string) => (rt === 'regular' ? 0 : 1);
-    const hasMatches = (r: SeasonRound) => matches.some((m) => m.roundId === r.id);
-    return [...rounds]
-      .filter((r) => r.roundType === 'regular' || (r.roundType !== 'playoff' && hasMatches(r)))
-      .sort((a, b) => rank(a.roundType) - rank(b.roundType) || a.number - b.number);
-  }, [rounds, matches]);
+  // Rondas para el selector (spec 2026-10-16): jornadas por número, copa o
+  // amistoso con partidos y, detrás, las ELIMINATORIAS con fase de la fuente
+  // (cuartos, semis, 3.º y 4.º, final, colocación). Una eliminatoria se elige
+  // por el id de su ronda (`?round=`): su número legado chocaba con las
+  // jornadas. Las eliminatorias heredadas sin fase siguen fuera.
+  const orderedRounds = useMemo(() => selectableRounds(rounds, matches), [rounds, matches]);
 
   // Equipos participantes (de los partidos), únicos y ordenados por nombre.
   const teams = useMemo(() => {
@@ -500,7 +504,7 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
 
   const requestedMode = fixturesFilterMode(
     filterParam,
-    { journey: parsedJourney, date: dateParam, team: teamParam },
+    { journey: parsedJourney, date: dateParam, team: teamParam, round: roundParam },
     // Por defecto, Jornada (si está disponible): es la dimensión natural de la
     // pestaña. Si la temporada no tiene `rounds`, el guard de abajo cae al
     // primer modo disponible (p. ej. Fecha).
@@ -511,9 +515,16 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
   // Valor activo por modo: el de la URL o, si no, el más cercano a hoy para que
   // cambiar de modo siempre muestre contenido.
   const activeDate = mode === 'date' ? (dateParam ?? fallback.date ?? nearest?.day ?? null) : null;
-  const activeJourney = mode === 'round'
-    ? (parsedJourney ?? fallback.journey ?? nearest?.journey ?? orderedRounds[0]?.number ?? null)
-    : null;
+  const requestedRound = useMemo(
+    () => parseRoundSelection(journeyParam, roundParam, orderedRounds),
+    [journeyParam, roundParam, orderedRounds],
+  );
+  const defaultRound = useMemo(
+    () => defaultRoundSelection(orderedRounds, matches, todayKey),
+    [orderedRounds, matches, todayKey],
+  );
+  const activeRound: RoundSelection | null = mode === 'round' ? (requestedRound ?? defaultRound) : null;
+  const activeRoundKey = activeRound ? roundSelectionKey(activeRound) : null;
   const activeTeam = mode === 'team' ? selectedTeam : null;
 
   const navigate = useCallback((mutate: (p: URLSearchParams) => void) => {
@@ -526,32 +537,38 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
   /** Cambiar de modo conserva sólo el valor del modo nuevo (con exclusión mutua). */
   const selectMode = useCallback((next: FixturesFilterMode) => {
     navigate((p) => {
-      p.delete('journey'); p.delete('date'); p.delete('team_id');
+      p.delete('journey'); p.delete('round'); p.delete('date'); p.delete('team_id');
       p.set('filter', next);
       if (next === 'round') {
-        const n = parsedJourney ?? fallback.journey ?? nearest?.journey ?? orderedRounds[0]?.number;
-        if (n != null) p.set('journey', String(n));
+        const sel = requestedRound ?? defaultRound;
+        if (sel?.kind === 'journey') p.set('journey', String(sel.n));
+        if (sel?.kind === 'round') p.set('round', sel.id);
       } else if (next === 'date') {
         const d = dateParam ?? fallback.date ?? nearest?.day;
         if (d) p.set('date', d);
       }
     });
     track('fixtures_filter_applied', { filter_type: next, value: '' });
-  }, [navigate, parsedJourney, fallback, nearest, orderedRounds, dateParam]);
+  }, [navigate, requestedRound, defaultRound, fallback, nearest, dateParam]);
 
-  const selectJourney = useCallback((n: number) => {
-    navigate((p) => { p.delete('date'); p.delete('team_id'); p.set('filter', 'round'); p.set('journey', String(n)); });
-    track('fixtures_filter_applied', { filter_type: 'round', value: String(n) });
+  const selectRound = useCallback((r: SeasonRound) => {
+    const sel = roundSelection(r);
+    navigate((p) => {
+      p.delete('date'); p.delete('team_id'); p.delete('journey'); p.delete('round');
+      p.set('filter', 'round');
+      if (sel.kind === 'journey') p.set('journey', String(sel.n)); else p.set('round', sel.id);
+    });
+    track('fixtures_filter_applied', { filter_type: 'round', value: sel.kind === 'journey' ? String(sel.n) : (r.stage ?? r.id) });
   }, [navigate]);
 
   const selectDate = useCallback((d: string) => {
-    navigate((p) => { p.delete('journey'); p.delete('team_id'); p.set('filter', 'date'); p.set('date', d); });
+    navigate((p) => { p.delete('journey'); p.delete('round'); p.delete('team_id'); p.set('filter', 'date'); p.set('date', d); });
     track('fixtures_filter_applied', { filter_type: 'date', value: d });
   }, [navigate]);
 
   const selectTeam = useCallback((id: string | null) => {
     navigate((p) => {
-      p.delete('journey'); p.delete('date'); p.set('filter', 'team');
+      p.delete('journey'); p.delete('round'); p.delete('date'); p.set('filter', 'team');
       if (id) p.set('team_id', id); else p.delete('team_id');
     });
     track('fixtures_filter_applied', { filter_type: 'team', value: id ?? '' });
@@ -569,11 +586,12 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
         .filter((m) => madridDay(m.scheduledAt, m.competitionTimezone) === activeDate)
         .sort((a, b) => (a.scheduledAt ?? '').localeCompare(b.scheduledAt ?? ''));
     }
-    if (mode === 'round') {
-      return matches.filter((m) => isJornadaMatch(m) && (m.roundNumber ?? null) === activeJourney);
+    if (mode === 'round' && activeRound) {
+      return matchesOfSelection(matches, activeRound)
+        .sort((a, b) => (a.scheduledAt ?? '').localeCompare(b.scheduledAt ?? ''));
     }
     return [];
-  }, [matches, mode, activeTeam, activeDate, activeJourney]);
+  }, [matches, mode, activeTeam, activeDate, activeRound]);
 
   // Banner "entre resultados" en la lista plana (jornada/fecha). -1 si no procede.
   const adIndex = useMemo(
@@ -581,7 +599,9 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
     [filtered.length],
   );
 
-  const roundIdx = activeJourney != null ? orderedRounds.findIndex((r) => r.number === activeJourney) : -1;
+  const roundIdx = activeRoundKey != null
+    ? orderedRounds.findIndex((r) => roundSelectionKey(roundSelection(r)) === activeRoundKey)
+    : -1;
   const prevRound = roundIdx > 0 ? orderedRounds[roundIdx - 1] : undefined;
   const nextRound = roundIdx >= 0 && roundIdx < orderedRounds.length - 1 ? orderedRounds[roundIdx + 1] : undefined;
 
@@ -594,10 +614,10 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
         {mode === 'round' && orderedRounds.length > 0 && (
           <RoundPicker
             rounds={orderedRounds}
-            value={activeJourney}
-            onChange={selectJourney}
-            onPrev={prevRound ? () => selectJourney(prevRound.number) : undefined}
-            onNext={nextRound ? () => selectJourney(nextRound.number) : undefined}
+            value={activeRoundKey}
+            onChange={selectRound}
+            onPrev={prevRound ? () => selectRound(prevRound) : undefined}
+            onNext={nextRound ? () => selectRound(nextRound) : undefined}
           />
         )}
 

@@ -41,6 +41,18 @@ describe('roundLabel', () => {
     const r = ronda({ number: 101, name: null, roundType: 'playoff' });
     expect(roundLabel(r, fakeT)).toBe('Playoffs 101');
   });
+
+  it('eliminatoria con fase de la fuente: nombre de la fase traducido, sin «Playoffs ·»', () => {
+    expect(roundLabel(ronda({ number: 95, name: 'Semifinal', roundType: 'playoff', stage: 'semis' }), fakeT))
+      .toBe('playoffs.stage_semis');
+    expect(roundLabel(ronda({ number: 98, name: '3º y 4º puesto', roundType: 'playoff', stage: 'third_place' }), fakeT))
+      .toBe('playoffs.third_place');
+  });
+
+  it('colocación: el nombre de la fuente («Puestos 5º-8º»)', () => {
+    expect(roundLabel(ronda({ number: 74, name: 'Puestos 5º-8º', roundType: 'playoff', stage: 'placement' }), fakeT))
+      .toBe('Puestos 5º-8º');
+  });
 });
 
 describe('playoffPhaseKey', () => {
