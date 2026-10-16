@@ -641,5 +641,17 @@
     "collapse": "Comprimi {name}",
     "expand": "Espandi {name}",
     "no_matches_past": "Nessuna partita in questo giorno"
+  },
+  "install": {
+    "title": "I gol, appena succedono",
+    "body_android": "Installa Stick Live: apri le dirette con un tocco e ricevi un avviso a ogni gol delle tue squadre. Gratis e senza passare dallo store.",
+    "body_ios": "Aggiungi Stick Live alla schermata Home: apri le dirette con un tocco e, su iPhone, è l'unico modo per ricevere l'avviso di ogni gol.",
+    "cta": "Installa",
+    "later": "Non ora",
+    "close": "Chiudi",
+    "ios_steps_title": "Installala in due tocchi",
+    "ios_step1": "Tocca il pulsante Condividi (il quadrato con la freccia verso l'alto).",
+    "ios_step2": "Scegli «Aggiungi a schermata Home» e tocca «Aggiungi».",
+    "aria": "Installa Stick Live"
   }
 }

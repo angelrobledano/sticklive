@@ -641,5 +641,17 @@
     "collapse": "Plegar {name}",
     "expand": "Desplegar {name}",
     "no_matches_past": "No hubo partidos este día"
+  },
+  "install": {
+    "title": "Los goles, en cuanto pasan",
+    "body_android": "Instala Stick Live: abre los directos en un toque y recibe un aviso con cada gol de tus equipos. Gratis y sin pasar por la tienda.",
+    "body_ios": "Añade Stick Live a tu pantalla de inicio: abre los directos en un toque y, en iPhone, es la única forma de recibir el aviso de cada gol.",
+    "cta": "Instalar",
+    "later": "Ahora no",
+    "close": "Cerrar",
+    "ios_steps_title": "Instálala en dos toques",
+    "ios_step1": "Toca el botón Compartir (el cuadrado con la flecha hacia arriba).",
+    "ios_step2": "Elige «Añadir a pantalla de inicio» y toca «Añadir».",
+    "aria": "Instalar Stick Live"
   }
 }
