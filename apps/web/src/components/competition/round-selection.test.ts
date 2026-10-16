@@ -122,6 +122,12 @@ describe('defaultRoundSelection', () => {
     expect(defaultRoundSelection(sel, MATCHES, '2026-10-16')).toEqual({ kind: 'round', id: 'sf' });
   });
 
+  it('mismo día que unos cuartos ya jugados (madrugada): manda la ronda pendiente', () => {
+    const qfLate = match({ roundId: 'qf', roundNumber: 1, roundType: 'playoff', stage: 'quarters', scheduledAt: iso('2026-10-16'), status: 'finished' });
+    const sel = selectableRounds(ROUNDS, [...MATCHES, qfLate]);
+    expect(defaultRoundSelection(sel, [qfLate, ...MATCHES], '2026-10-16')).toEqual({ kind: 'round', id: 'sf' });
+  });
+
   it('en la fase de grupos abre en la jornada más cercana', () => {
     const sel = selectableRounds(ROUNDS, MATCHES);
     expect(defaultRoundSelection(sel, MATCHES, '2026-10-13')).toEqual({ kind: 'journey', n: 2 });

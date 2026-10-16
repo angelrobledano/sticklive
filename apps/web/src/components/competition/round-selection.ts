@@ -111,7 +111,8 @@ function selectionOfMatch(m: SeasonMatch, selectable: SeasonRound[]): { sel: Rou
 
 /**
  * Ronda que abre por defecto: la del partido más cercano a hoy (a igual
- * distancia, el futuro y, después, la que va antes en el selector). Durante la
+ * distancia, el futuro, después la que tiene partidos por jugar y, por último,
+ * la que va antes en el selector). Durante la
  * fase final es la eliminatoria en curso. Sin fechas, la primera ronda con
  * partidos; sin nada, la primera ronda (o `null` si no hay).
  */
@@ -120,7 +121,7 @@ export function defaultRoundSelection(
   matches: SeasonMatch[],
   todayKey: string,
 ): RoundSelection | null {
-  let best: { sel: RoundSelection; rank: number; idx: number } | null = null;
+  let best: { sel: RoundSelection; rank: number; done: boolean; idx: number } | null = null;
   for (const m of matches) {
     const day = madridDay(m.scheduledAt, m.competitionTimezone);
     if (!day) continue;
@@ -128,9 +129,14 @@ export function defaultRoundSelection(
     if (!own) continue;
     const diff = dayDiff(day, todayKey);
     const rank = Math.abs(diff) * 2 + (diff < 0 ? 1 : 0);
-    if (!best || rank < best.rank || (rank === best.rank && own.idx < best.idx)) {
-      best = { sel: own.sel, rank, idx: own.idx };
-    }
+    // A igual día, manda la ronda con partidos por jugar: unos cuartos de
+    // madrugada ya terminados no tapan la semifinal de esa misma noche.
+    const done = m.status === 'finished';
+    const better = !best
+      || rank < best.rank
+      || (rank === best.rank && best.done && !done)
+      || (rank === best.rank && best.done === done && own.idx < best.idx);
+    if (better) best = { sel: own.sel, rank, done, idx: own.idx };
   }
   if (best) return best.sel;
   for (const m of matches) {
