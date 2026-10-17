@@ -44,6 +44,7 @@ import { createLogger } from '@sports/logger';
 import { SidgadClient } from '../fep/sidgad-client.js';
 import { collectCalendarRows } from '../../core/sidgad-structure.js';
 import { zonedToUtc } from '../../core/eu-timezone.js';
+import { fixYearTypos } from './year-typo.js';
 import {
   emptyMcIdpIndex, gamedateToFechaDM, mcLookupIdp, parseMcIdpIndex, parseMcStates,
   type McIdpIndex, type McState,
@@ -327,6 +328,15 @@ export function parseWorldskateCalendar(
   // que las de colocación) y, dentro de la fase, por número.
   const rounds = [...byKey.values()].sort((a, b) =>
     (a.phaseOrdinal ?? 0) - (b.phaseOrdinal ?? 0) || a.number - b.number);
+
+  // Erratas de año de la fuente (final del WSG ASU26 publicada en 2027): sin
+  // corregir, el loader la rechaza por caer fuera de la temporada y la final
+  // no llega al cuadro. Solo se corrige si con ±1 año encaja en el calendario.
+  const fixed = fixYearTypos(matches.map((m) => m.scheduledAt));
+  for (const f of fixed.corrected) {
+    matches[f.index]!.scheduledAt = f.to;
+    log.warn({ from: f.from, to: f.to, sourceRef: matches[f.index]!.sourceRef }, 'Fecha con errata de año en la fuente — corregida');
+  }
   return { matches, standings, rounds };
 }
 
