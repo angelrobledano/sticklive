@@ -5,7 +5,9 @@ import { captureRouteError } from '../lib/route-error.js';
 
 /**
  * GET /meta/sitemap — ids para construir el sitemap de la web.
- * Acotado: jugadores con actividad y partidos recientes/próximos.
+ * Criterios de elegibilidad (F1-3/F1-4 de docs/AUDITORIA_SEO_2026-10-16.md):
+ * competiciones visibles con partidos, equipos con partidos en temporadas
+ * visibles, jugadores de competiciones `top_tier` y partidos de -60/+14 días.
  */
 export const metaRouter = new Hono();
 
@@ -27,20 +29,52 @@ metaRouter.get('/sitemap', async (c) => {
                 AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s.id)
            )
       `),
-      db.query<{ id: string; updated_at: Date }>(`SELECT id, updated_at FROM teams`),
-      // Solo jugadores con presencia en alineaciones (los demás no tienen ficha útil)
+      // F1-4: solo equipos con algún partido en una temporada visible. Los que
+      // no tienen ninguno (selecciones autonómicas sin datos, residuos de
+      // resolución de entidades) son fichas vacías: siguen accesibles por URL,
+      // pero no se declaran.
       db.query<{ id: string; updated_at: Date }>(`
-        SELECT DISTINCT p.id, p.updated_at FROM players p
-        JOIN match_lineups ml ON ml.player_id = p.id
-        LIMIT 10000
+        SELECT t.id, t.updated_at
+          FROM teams t
+         WHERE EXISTS (
+           SELECT 1 FROM matches m
+             JOIN seasons s      ON s.id = m.season_id
+             JOIN competitions c ON c.id = s.competition_id
+            WHERE (m.home_team_id = t.id OR m.away_team_id = t.id)
+              AND s.data_quality = 'ok'
+              AND c.data_quality = 'ok'
+         )
       `),
-      // Partidos: últimos 60 días + próximos (las fichas viejas entran por los equipos)
+      // F1-4: jugadores con alineación en una competición de máxima categoría
+      // (`competitions.top_tier`, migración 074 — decisión de producto del
+      // 17/10/2026). Orden determinista para que el LIMIT no publique un
+      // conjunto distinto en cada generación.
+      db.query<{ id: string; updated_at: Date }>(`
+        SELECT p.id, p.updated_at
+          FROM players p
+         WHERE EXISTS (
+           SELECT 1 FROM match_lineups ml
+             JOIN matches m      ON m.id = ml.match_id
+             JOIN seasons s      ON s.id = m.season_id
+             JOIN competitions c ON c.id = s.competition_id
+            WHERE ml.player_id = p.id
+              AND c.top_tier
+              AND s.data_quality = 'ok'
+              AND c.data_quality = 'ok'
+         )
+         ORDER BY p.id
+         LIMIT 10000
+      `),
+      // F1-4: partidos de los últimos 60 días y de los próximos 14. Los que están
+      // a meses vista solo tienen equipos y hora: entran en el sitemap cuando se
+      // acercan (las fichas viejas siguen enlazadas desde equipos y competición).
       db.query<{ id: string; updated_at: Date; finished_at: Date | null; scheduled_at: Date | null }>(`
         SELECT m.id, m.updated_at, m.finished_at, m.scheduled_at
           FROM matches m
           JOIN seasons s      ON s.id = m.season_id
           JOIN competitions c ON c.id = s.competition_id
          WHERE m.scheduled_at > NOW() - INTERVAL '60 days'
+           AND m.scheduled_at < NOW() + INTERVAL '14 days'
            AND s.data_quality = 'ok'
            AND c.data_quality = 'ok'
          ORDER BY m.scheduled_at DESC
