@@ -7,6 +7,7 @@ import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
 import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL, metadataOnError } from '@/lib/seo';
 import { clubName, playerDisplayName } from '@/lib/names';
+import { teamHistory } from '@/lib/team-histories';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
@@ -65,6 +66,10 @@ export default async function TeamDetailPage(props: Props) {
     location: data.team.city ? { '@type': 'Place', name: data.team.city } : undefined,
   };
 
+  // Historia y palmarés editorial del club (ver `lib/team-histories`): texto
+  // propio y verificado al final de la ficha, server-rendered.
+  const history = teamHistory(params.id);
+
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
       <JsonLd data={jsonLd} />
@@ -89,6 +94,25 @@ export default async function TeamDetailPage(props: Props) {
             ))}
           </ul>
         </nav>
+      )}
+
+      {history && (
+        <section className="card p-5 space-y-3" aria-labelledby="team-history">
+          <h2 id="team-history" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            Historia y palmarés
+          </h2>
+          <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">{history.history}</p>
+          {history.honours.length > 0 && (
+            <ul className="list-disc pl-5 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+              {history.honours.map((honour) => (
+                <li key={honour}>{honour}</li>
+              ))}
+            </ul>
+          )}
+          <p className="text-[11px] text-slate-400 dark:text-slate-500">
+            Fuentes: {history.sources.join(' · ')} · actualizado el {history.updatedAt}
+          </p>
+        </section>
       )}
     </div>
   );
