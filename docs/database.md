@@ -1,6 +1,6 @@
 # Base de datos
 
-*PostgreSQL 16 (la 072 exige ≥ 15: `UNIQUE NULLS NOT DISTINCT`). Contrastado con `packages/db/migrations` (71 ficheros) y el runner actual. Arquitectura general en [architecture.md](./architecture.md).*
+*PostgreSQL 16 (la 072 exige ≥ 15: `UNIQUE NULLS NOT DISTINCT`). Contrastado con `packages/db/migrations` (73 ficheros) y el runner actual. Arquitectura general en [architecture.md](./architecture.md).*
 
 ## Rol de aplicación (mínimo privilegio, #298)
 
@@ -62,6 +62,12 @@ players ──< team_players
 - El **emisor de push** (`apps/etl/src/push-dispatcher.ts`) también filtra por visibilidad: nunca notifica partidos, jornadas ni eventos (gol/tarjeta/falta/prórroga/final) de temporadas o competiciones ocultas.
 - Curación: panel `/admin` → pestaña «Competiciones», o los endpoints `PATCH /admin/competitions/:id/quality` y `PATCH /admin/seasons/:id/quality` (cabecera `X-Admin-Token`, body `{ dataQuality }`).
 - Límite: las páginas web cacheadas por ISR pueden tardar hasta ~5 min en reflejar el cambio (la API responde 404 al instante).
+
+## Bajas, fusiones y SEO (migraciones 073 y 074)
+
+- **`entity_redirects` (073)**: `(entity_type, old_id) → new_id` para fichas públicas (`competition`, `team`, `player`, `match`). `new_id` NULL = baja sin sustituto. Un trigger `AFTER DELETE` en las cuatro tablas registra todo borrado aunque el código no lo sepa. Quien conoce al sustituto lo apunta con `recordEntityRedirect` (`mergeCompetitions`, `merge-canonical-competitions.ts`, la reversión de `split-filial-teams.ts` y `reconcileSyntheticMatches`, que redirige el placeholder sintético al partido real). `GET /redirects/:type/:id` sigue la cadena y la web responde 308 al sustituto o 404. `TRUNCATE` no dispara el trigger: un reset completo no deja rastro.
+- **`competitions.top_tier` (074)**: competición de máxima categoría. Sus jugadores son los únicos que se declaran en el sitemap. Para una liga nueva de primera división basta con `UPDATE competitions SET top_tier = TRUE WHERE slug = '…'`.
+- Detalle y motivo: [AUDITORIA_SEO_2026-10-16.md](./AUDITORIA_SEO_2026-10-16.md) (F1-3, F1-4 y F1-7).
 
 ## Cuenta y producto
 

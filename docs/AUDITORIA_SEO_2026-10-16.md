@@ -542,9 +542,11 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 | F1-8 sitemap 503 si falla la API | Hecho, pendiente de desplegar. Falta la alerta por caída > 20 % | a93747e |
 | F1-9 `?season=` inválido ya no da 500 | Hecho, pendiente de desplegar | 884fb7b |
 | F1-10 metadata de error sin heredar la home | Hecho, pendiente de desplegar | 47d3391 |
-| F0-2 / F1-2 jugadores menores | Bloqueado: decisión de producto y legal | — |
-| F1-3 / F1-4 elegibilidad y sitemap filtrado | Siguiente. Necesita confirmar el umbral de jugadores (§17) | — |
-| F1-6, F1-7, F1-11 | Pendientes. F1-7 lleva migración (`entity_redirects`) | — |
+| F0-2 / F1-2 jugadores menores | Decidido (17/10): se publican nombre y foto porque las fuentes los exponen. Retirada a petición del interesado | — |
+| F1-3 / F1-4 elegibilidad y sitemap filtrado | Hecho, pendiente de desplegar. Jugadores de competiciones `top_tier` (migración 074), equipos con partidos, partidos de -60/+14 días | 84f8e4c |
+| F1-7 bajas y fusiones con 308 | Hecho, pendiente de desplegar (migración 073). Baja sin sustituto = 404, no 410 | 5d48dc3 |
+| F1-5 `noindex` de lo no elegible | Pendiente: 2 semanas después de desplegar F1-4, revisando antes las URLs con tráfico | — |
+| F1-6, F1-11 | Pendientes | — |
 
 Tras desplegar F1-1: en Search Console, pedir la validación de "Duplicada: el usuario no ha indicado ninguna versión canónica" y revisar en 2-4 semanas el porcentaje de redirecciones en Estadísticas de rastreo.
 
