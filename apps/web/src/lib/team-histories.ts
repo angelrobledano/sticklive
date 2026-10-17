@@ -24,7 +24,7 @@ export interface TeamHistory {
   updatedAt: string;
 }
 
-const UPDATED = '2026-10-17';
+const UPDATED = '2026-10-18';
 
 const WIKIDATA = 'Wikidata';
 
@@ -32,9 +32,9 @@ export const TEAM_HISTORIES: Readonly<Record<string, TeamHistory>> = {
   // AMETLLER ORIGEN CP VILAFRANCA
   'd6c282b2-1da8-4f0d-a3c1-89ab096a2291': {
     history:
-      'El Club Patí Vilafranca se fundó en 1970 en Vilafranca del Penedès (Alt Penedès) y compite en la OK Liga Masculina.',
+      'El Club Patí Vilafranca, fundado en 1970, es la referencia del hockey sobre patines en Vilafranca del Penedès (Alt Penedès) y compite en la OK Liga Masculina. El club ha crecido desde unos inicios humildes hasta consolidarse como una entidad deportiva de proyección en Cataluña.',
     honours: [],
-    sources: [`${WIKIDATA} Q10991231`, 'cpvilafranca.cat'],
+    sources: [`${WIKIDATA} Q10991231`, 'cpvilafranca.cat (Historia del club)'],
     updatedAt: UPDATED,
   },
 
@@ -50,9 +50,16 @@ export const TEAM_HISTORIES: Readonly<Record<string, TeamHistory>> = {
   // CALAFELL LA MENORQUINA
   '18452f1b-b8d2-4eae-8f3c-b0df1e03e94b': {
     history:
-      'El Club Patí Calafell se fundó en 1952 en Calafell (Baix Penedès) y disputa la OK Liga Masculina.',
-    honours: [],
-    sources: [`${WIKIDATA} Q14517078`, 'cpcalafell.cat'],
+      'El Club Patí Calafell se fundó en 1952 en Calafell (Baix Penedès) y disputa la OK Liga Masculina. En la última década ha ganado la World Skate Europe Cup y varias Ligas Catalanas.',
+    honours: [
+      '1 World Skate Europe Cup (2021-22)',
+      '3 Ligas Catalanas (2022-23, 2024-25 y 2025-26)',
+      '1 Liga Nacional Catalana (2008-09)',
+      '1 Copa del Príncipe (2009-10)',
+      '1 Liga de Primera División (2017-18)',
+      '1 Copa SAR Princesa de Asturias (2017-18)',
+    ],
+    sources: [`${WIKIDATA} Q14517078`, 'Wikipedia (es): Club Patí Calafell'],
     updatedAt: UPDATED,
   },
 
@@ -76,8 +83,8 @@ export const TEAM_HISTORIES: Readonly<Record<string, TeamHistory>> = {
   'f67b2d80-127d-41cc-a7f8-f5b4dd821621': {
     history:
       'El FC Barcelona compite en la OK Liga Masculina con su sección de hoquei patines, una de las más laureadas del hockey sobre patines europeo.',
-    honours: [],
-    sources: ['fcbarcelona.es (sección de hoquei patines)'],
+    honours: ['52 títulos internacionales, entre ellos 22 Copas de Europa y 7 Copas Intercontinentales'],
+    sources: ['Wikipedia (es): Fútbol Club Barcelona (hockey sobre patines)', 'fcbarcelona.es (sección de hoquei patines)'],
     updatedAt: UPDATED,
   },
 
@@ -145,9 +152,18 @@ export const TEAM_HISTORIES: Readonly<Record<string, TeamHistory>> = {
   // CE NOIA FREIXENET
   '34a37372-b4e2-4f40-8b53-cf26d519e29b': {
     history:
-      'El Club Esportiu Noia se fundó en 1951 en Sant Sadurní d’Anoia (Alt Penedès) y en 2026 celebró su 75.º aniversario.',
-    honours: [],
-    sources: ['cenoia.com (El Club)'],
+      'El Club Esportiu Noia se fundó en 1951 en Sant Sadurní d’Anoia (Alt Penedès) y en 2026 celebró su 75.º aniversario. Su mejor época llegó a finales de los ochenta, con la Liga y la Copa de Europa.',
+    honours: [
+      '1 OK Liga (1987-88)',
+      '1 Copa de Europa (1988-89)',
+      '1 Recopa de Europa (1987-88)',
+      '2 Copas Continentales (1988-89 y 2014-15)',
+      '2 Copas de la CERS (1997-98 y 2013-14)',
+      '2 Copas del Rey (1998 y 2008)',
+      '2 Ligas Catalanas (1989-90 y 2023-24)',
+      '1 Copa Federación (2001-02)',
+    ],
+    sources: ['Wikipedia (es): Club Esportiu Noia', 'cenoia.com (El Club)'],
     updatedAt: UPDATED,
   },
 
