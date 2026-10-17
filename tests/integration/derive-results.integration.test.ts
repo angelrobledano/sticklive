@@ -194,4 +194,29 @@ describe('coherencia del ganador con el marcador (#326)', () => {
     expect(r.win_type).toBeNull();
     expect(r.winner_team_id).toBeNull();
   });
+
+  it('T-045: tanda registrada en el acta SIN eventos de fase extra (WSG ESP-ARG 2-2, pen. 1-2): penaltis y gana quien más marca', async () => {
+    // World Skate: el acta trae la tanda (home_pen/away_pen + penalty_shootout)
+    // pero ningún evento con periodo ≥3. Antes derive-results lo veía como un
+    // empate sin fase extra y BORRABA el win_type/winner que puso el acta.
+    const e = await escenario();
+    const m = await partido(e, { hs: 2, as: 2, winner: e.away, winType: 'penalties' });
+    await db.query(`UPDATE matches SET home_pen = 1, away_pen = 2 WHERE id = $1`, [m]);
+    await db.query(`UPDATE matches SET updated_at = NOW() WHERE id = $1`, [m]);
+    await replaceMatchEvents(m, [gol(e.home, 1), gol(e.home, 2), gol(e.away, 1), gol(e.away, 2)]);
+    await deriveMatchResults([e.seasonId]);
+    const r = await leer(m);
+    expect(r.win_type).toBe('penalties');
+    expect(r.winner_team_id).toBe(e.away);
+  });
+
+  it('T-046: tanda registrada sin ganador previo: se deriva de home_pen/away_pen', async () => {
+    const e = await escenario();
+    const m = await partido(e, { hs: 3, as: 3 });
+    await db.query(`UPDATE matches SET home_pen = 4, away_pen = 2 WHERE id = $1`, [m]);
+    await deriveMatchResults([e.seasonId]);
+    const r = await leer(m);
+    expect(r.win_type).toBe('penalties');
+    expect(r.winner_team_id).toBe(e.home);
+  });
 });
