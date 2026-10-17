@@ -546,7 +546,8 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 | F1-3 / F1-4 elegibilidad y sitemap filtrado | Hecho, pendiente de desplegar. Jugadores de competiciones `top_tier` (migración 074), equipos con partidos, partidos de -60/+14 días | 84f8e4c |
 | F1-7 bajas y fusiones con 308 | Hecho, pendiente de desplegar (migración 073). Baja sin sustituto = 404, no 410 | 5d48dc3 |
 | F1-5 `noindex` de lo no elegible | Pendiente: 2 semanas después de desplegar F1-4, revisando antes las URLs con tráfico | — |
-| F1-6, F1-11 | Pendientes | — |
+| F1-6 ocultar por calidad sin desindexar | Hecho, pendiente de desplegar (migración 075). Desviación de §5.3: en vez de servir la última versión con aviso, la ficha responde 5xx las primeras 72 h y 404 después (el producto sigue sin mostrar datos en revisión). Next responde 500, no 503 | ver commit F1-6 |
+| F1-11 | Pendiente: limpieza de equipos duplicados, necesita revisión manual | — |
 
 Tras desplegar F1-1: en Search Console, pedir la validación de "Duplicada: el usuario no ha indicado ninguna versión canónica" y revisar en 2-4 semanas el porcentaje de redirecciones en Estadísticas de rastreo.
 

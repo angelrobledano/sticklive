@@ -19,7 +19,35 @@ const SEGMENT: Record<RedirectEntityType, string> = {
   match: 'matches',
 };
 
-/** Responde 308 al sustituto si existe y 404 en cualquier otro caso. Nunca vuelve. */
+/**
+ * Periodo de gracia de una ficha oculta por calidad (F1-6, §5.3 de la
+ * auditoría SEO). Una revisión corta no debe costar la indexación: durante
+ * estas horas se responde 5xx (Google reintenta y conserva la URL). Pasado el
+ * plazo, 404 como antes.
+ */
+export const HIDDEN_GRACE_HOURS = 72;
+
+/**
+ * La ficha existe pero está oculta por una revisión de calidad reciente. Se
+ * lanza para que la respuesta sea 5xx (error boundary) y no 404.
+ */
+export class TemporarilyHiddenError extends Error {
+  constructor(type: RedirectEntityType, id: string) {
+    super(`${type} ${id} oculto temporalmente por revisión de datos`);
+    this.name = 'TemporarilyHiddenError';
+  }
+}
+
+function withinGrace(since: string | null, now = Date.now()): boolean {
+  if (!since) return false;
+  const t = Date.parse(since);
+  return Number.isFinite(t) && now - t < HIDDEN_GRACE_HOURS * 3600_000;
+}
+
+/**
+ * Responde 308 al sustituto si existe, 5xx si la ficha está oculta por una
+ * revisión reciente y 404 en cualquier otro caso. Nunca vuelve.
+ */
 export async function redirectOrNotFound(
   type: RedirectEntityType,
   id: string,
@@ -33,6 +61,9 @@ export async function redirectOrNotFound(
   }
   if (resolution?.status === 'moved' && resolution.newId) {
     permanentRedirect(`/${locale}/${SEGMENT[type]}/${resolution.newId}`);
+  }
+  if (resolution?.status === 'hidden' && withinGrace(resolution.since)) {
+    throw new TemporarilyHiddenError(type, id);
   }
   notFound();
 }

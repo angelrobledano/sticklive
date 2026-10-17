@@ -399,7 +399,10 @@ export async function getPlayerDetail(playerId: string): Promise<PlayerDetail> {
 // ─── Redirecciones de fichas que ya no existen (F1-7) ───
 
 export type EntityRedirectType = 'competition' | 'team' | 'player' | 'match';
-export type EntityRedirect = { status: 'moved'; newId: string } | { status: 'gone' };
+export type EntityRedirect =
+  | { status: 'moved'; newId: string }
+  | { status: 'gone' }
+  | { status: 'hidden'; since: string | null };
 
 /**
  * A dónde va una ficha borrada o fusionada (`GET /redirects/:type/:id`).

@@ -1,6 +1,6 @@
 # Base de datos
 
-*PostgreSQL 16 (la 072 exige ≥ 15: `UNIQUE NULLS NOT DISTINCT`). Contrastado con `packages/db/migrations` (73 ficheros) y el runner actual. Arquitectura general en [architecture.md](./architecture.md).*
+*PostgreSQL 16 (la 072 exige ≥ 15: `UNIQUE NULLS NOT DISTINCT`). Contrastado con `packages/db/migrations` (74 ficheros) y el runner actual. Arquitectura general en [architecture.md](./architecture.md).*
 
 ## Rol de aplicación (mínimo privilegio, #298)
 
@@ -62,6 +62,7 @@ players ──< team_players
 - El **emisor de push** (`apps/etl/src/push-dispatcher.ts`) también filtra por visibilidad: nunca notifica partidos, jornadas ni eventos (gol/tarjeta/falta/prórroga/final) de temporadas o competiciones ocultas.
 - Curación: panel `/admin` → pestaña «Competiciones», o los endpoints `PATCH /admin/competitions/:id/quality` y `PATCH /admin/seasons/:id/quality` (cabecera `X-Admin-Token`, body `{ dataQuality }`).
 - Límite: las páginas web cacheadas por ISR pueden tardar hasta ~5 min en reflejar el cambio (la API responde 404 al instante).
+- **Periodo de gracia para Google (075, F1-6)**: `data_quality_changed_at` en competiciones y temporadas lo fija un trigger al cambiar `data_quality`. Durante las primeras 72 h de una ocultación, la ficha de la competición o del partido responde 5xx en vez de 404 (Google reintenta y no desindexa una revisión corta). Pasado el plazo, o si se ocultó antes de la 075 (fecha NULL), 404 como siempre. Para el usuario la ficha sigue sin datos en ambos casos.
 
 ## Bajas, fusiones y SEO (migraciones 073 y 074)
 

@@ -28,7 +28,7 @@
 | GET | `/players/:id` | Ficha de jugador |
 | GET | `/players/:id/photo` | Foto (proxy del CDN) |
 | GET | `/meta/sitemap` | IDs para el sitemap dinámico de la web: competiciones visibles con partidos, equipos con partidos en temporadas visibles, jugadores de competiciones `top_tier` y partidos de los últimos 60 días y los próximos 14 |
-| GET | `/redirects/:type/:id` | Ficha que ya no existe (`type` = competition, team, player o match): `{ status: 'moved', newId }`, `{ status: 'gone' }` o 404 si el id no consta. 400 si el tipo o el id no son válidos |
+| GET | `/redirects/:type/:id` | Ficha que ya no existe (`type` = competition, team, player o match): `{ status: 'moved', newId }`, `{ status: 'gone' }`, `{ status: 'hidden', since }` si existe pero está oculta por calidad (partidos y competiciones, F1-6) o 404 si el id no consta. 400 si el tipo o el id no son válidos |
 
 Rate limit de lectura: **120/min por IP** en `GET /competitions`, `/search`,
 `/seasons/:id/overview`, `/seasons/:id/stats`, `/seasons/:id/matches`,

@@ -10,6 +10,8 @@ import { captureRouteError } from '../lib/route-error.js';
  * La web lo consulta solo cuando la ficha da 404:
  *  · 200 `{ status: 'moved', newId }` → la web responde 308 al sustituto.
  *  · 200 `{ status: 'gone' }`         → existió y no tiene sustituto: 404.
+ *  · 200 `{ status: 'hidden', since }` → existe pero está oculta por calidad
+ *    (F1-6): la web responde 5xx durante el periodo de gracia y 404 después.
  *  · 404                              → no consta (id que nunca existió).
  */
 export const redirectsRouter = new Hono();

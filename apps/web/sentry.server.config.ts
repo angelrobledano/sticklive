@@ -16,4 +16,9 @@ Sentry.init({
   // Enable sending user PII (Personally Identifiable Information)
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
+
+  // F1-6: una ficha oculta por una revisión de datos reciente responde 5xx a
+  // propósito (TemporarilyHiddenError, lib/entity-redirect.ts) para que Google
+  // no la desindexe. No es un fallo: no debe llegar a Sentry.
+  ignoreErrors: [/oculto temporalmente por revisión de datos/],
 });

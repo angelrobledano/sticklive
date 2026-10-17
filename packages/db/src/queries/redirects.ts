@@ -46,6 +46,7 @@ export async function recordEntityRedirect(
 export type EntityRedirectResolution =
   | { status: 'moved'; newId: string }
   | { status: 'gone' }
+  | { status: 'hidden'; since: string | null }
   | null;
 
 /**
@@ -53,6 +54,8 @@ export type EntityRedirectResolution =
  *  · `null`  → no hay registro: el id nunca existió (o se borró antes de la 073).
  *  · `gone`  → existió y no tiene sustituto vivo.
  *  · `moved` → el sustituto vivo al final de la cadena.
+ *  · `hidden` → existe pero está oculta por calidad (`en_revision`, 064/067);
+ *    `since` es cuándo se ocultó (075) o null si fue antes de registrarlo.
  */
 export async function resolveEntityRedirect(
   type: RedirectEntityType,
@@ -71,8 +74,65 @@ export async function resolveEntityRedirect(
     if (!row.new_id) return { status: 'gone' };
     current = row.new_id;
   }
-  if (!found) return null;
+  if (!found) return hiddenByQuality(type, id);
 
   const alive = await db.query(`SELECT 1 FROM ${TABLE[type]} WHERE id = $1`, [current]);
   return (alive.rowCount ?? 0) > 0 ? { status: 'moved', newId: current } : { status: 'gone' };
+}
+
+/**
+ * Momento de la ocultación cuando varias banderas ocultan a la vez: la más
+ * reciente (la revisión dura desde la última). Si alguna no tiene fecha (oculta
+ * antes de la 075), null: no se sabe desde cuándo, se trata como revisión larga.
+ */
+function hiddenSince(dates: Array<Date | null>): string | null {
+  if (dates.length === 0 || dates.some((d) => d === null)) return null;
+  const max = Math.max(...dates.map((d) => (d as Date).getTime()));
+  return new Date(max).toISOString();
+}
+
+/**
+ * ¿La entidad existe pero está oculta por calidad? (F1-6). Solo partidos y
+ * competiciones se ocultan enteros: equipos y jugadores siguen visibles con
+ * las temporadas ocultas filtradas.
+ */
+async function hiddenByQuality(type: RedirectEntityType, id: string): Promise<EntityRedirectResolution> {
+  if (type === 'match') {
+    const { rows } = await db.query<{ s_ok: boolean; s_t: Date | null; c_ok: boolean; c_t: Date | null }>(
+      `SELECT s.data_quality = 'ok' AS s_ok, s.data_quality_changed_at AS s_t,
+              c.data_quality = 'ok' AS c_ok, c.data_quality_changed_at AS c_t
+         FROM matches m
+         JOIN seasons s      ON s.id = m.season_id
+         JOIN competitions c ON c.id = s.competition_id
+        WHERE m.id = $1`,
+      [id]
+    );
+    const r = rows[0];
+    if (!r || (r.s_ok && r.c_ok)) return null;
+    const dates: Array<Date | null> = [];
+    if (!r.s_ok) dates.push(r.s_t);
+    if (!r.c_ok) dates.push(r.c_t);
+    return { status: 'hidden', since: hiddenSince(dates) };
+  }
+
+  if (type === 'competition') {
+    const { rows } = await db.query<{ c_ok: boolean; c_t: Date | null; seasons: number; visible: number; hidden_t: Array<Date | null> | null }>(
+      `SELECT c.data_quality = 'ok' AS c_ok, c.data_quality_changed_at AS c_t,
+              count(s.id)::int AS seasons,
+              (count(s.id) FILTER (WHERE s.data_quality = 'ok'))::int AS visible,
+              array_agg(s.data_quality_changed_at) FILTER (WHERE s.data_quality <> 'ok') AS hidden_t
+         FROM competitions c
+         LEFT JOIN seasons s ON s.competition_id = c.id
+        WHERE c.id = $1
+        GROUP BY c.id`,
+      [id]
+    );
+    const r = rows[0];
+    if (!r) return null;
+    if (!r.c_ok) return { status: 'hidden', since: hiddenSince([r.c_t]) };
+    if (r.seasons > 0 && r.visible === 0) return { status: 'hidden', since: hiddenSince(r.hidden_t ?? []) };
+    return null;
+  }
+
+  return null;
 }

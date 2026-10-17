@@ -9,7 +9,7 @@ const permanentRedirect = vi.fn((url: string) => { throw new Error(`REDIRECT ${u
 const notFound = vi.fn(() => { throw new Error('NOT_FOUND'); });
 vi.mock('next/navigation', () => ({ permanentRedirect, notFound }));
 
-const { redirectOrNotFound } = await import('./entity-redirect');
+const { redirectOrNotFound, TemporarilyHiddenError } = await import('./entity-redirect');
 
 function stubApi(status: number, body: unknown) {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(body), {
@@ -37,6 +37,21 @@ describe('redirectOrNotFound', () => {
     await expect(redirectOrNotFound('team', 'o1', 'es')).rejects.toThrow('NOT_FOUND');
     stubApi(404, { error: 'not found' });
     await expect(redirectOrNotFound('team', 'o1', 'es')).rejects.toThrow('NOT_FOUND');
+  });
+
+  it('oculta por calidad hace menos de 72 h: error (5xx), Google reintenta y conserva la URL', async () => {
+    const hace2h = new Date(Date.now() - 2 * 3600_000).toISOString();
+    stubApi(200, { status: 'hidden', since: hace2h });
+    await expect(redirectOrNotFound('match', 'o1', 'es')).rejects.toBeInstanceOf(TemporarilyHiddenError);
+    expect(notFound).not.toHaveBeenCalled();
+  });
+
+  it('oculta hace más de 72 h, o sin fecha (antes de la 075): 404', async () => {
+    const hace4d = new Date(Date.now() - 4 * 24 * 3600_000).toISOString();
+    stubApi(200, { status: 'hidden', since: hace4d });
+    await expect(redirectOrNotFound('match', 'o1', 'es')).rejects.toThrow('NOT_FOUND');
+    stubApi(200, { status: 'hidden', since: null });
+    await expect(redirectOrNotFound('competition', 'o1', 'es')).rejects.toThrow('NOT_FOUND');
   });
 
   it('si la consulta de redirección falla, 404 (nunca un 5xx por esto)', async () => {
