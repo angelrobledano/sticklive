@@ -395,3 +395,18 @@ export async function getPlayerDetail(playerId: string): Promise<PlayerDetail> {
     next: { revalidate: 120, tags: [`player-${playerId}`] },
   });
 }
+
+// ─── Redirecciones de fichas que ya no existen (F1-7) ───
+
+export type EntityRedirectType = 'competition' | 'team' | 'player' | 'match';
+export type EntityRedirect = { status: 'moved'; newId: string } | { status: 'gone' };
+
+/**
+ * A dónde va una ficha borrada o fusionada (`GET /redirects/:type/:id`).
+ * Lanza `ApiError` 404 si el id no consta (nunca existió).
+ */
+export async function getEntityRedirect(type: EntityRedirectType, id: string): Promise<EntityRedirect> {
+  return apiFetch<EntityRedirect>(`/redirects/${type}/${encodeURIComponent(id)}`, {
+    next: { revalidate: 300 },
+  });
+}

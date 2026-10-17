@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound, permanentRedirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 import { localeAlternates, socialMeta, isSupportedLocale, competitionJsonLd, competitionCanonicalPath, SITE_URL, metadataOnError } from '@/lib/seo';
 import {
   getSeasonOverview,
@@ -12,6 +12,7 @@ import {
 import { CompetitionClient } from '@/components/competition/CompetitionClient';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
+import { redirectOrNotFound } from '@/lib/entity-redirect';
 
 // #351: esta ruta es dinámica (lee `?season=`), así que el HTML no entra en el
 // ISR de Next y Next le pone `private, no-cache, no-store`. Como la ficha es
@@ -98,7 +99,7 @@ export default async function CompetitionPage(props: Props) {
     params.id; // retrocompatibilidad
 
   // #350: overview y stats dependen solo de seasonId, así que se piden en
-  // paralelo (un round-trip menos). El 404 de overview sigue siendo notFound();
+  // paralelo (un round-trip menos). El 404 de overview pasa por redirectOrNotFound (F1-7);
   // el fallo de stats no bloquea la vista porque los líderes son opcionales.
   let data;
   let stats: SeasonStats | null = null;
@@ -108,7 +109,10 @@ export default async function CompetitionPage(props: Props) {
       getSeasonStats(seasonId).catch(() => null),
     ]);
   } catch (err) {
-    if (isApiNotFound(err)) notFound();
+    // F1-7: si la ficha se fusionó o la sustituye otra, 308 a esa ficha.
+    if (isApiNotFound(err)) {
+      await redirectOrNotFound('competition', params.id, isSupportedLocale(params.locale) ? params.locale : 'en');
+    }
     throw err; // error boundary con reintento
   }
 

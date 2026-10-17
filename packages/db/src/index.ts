@@ -14,3 +14,4 @@ export * from './queries/phases.js';
 export * from './queries/standings.js';
 export * from './queries/scrape-logs.js';
 export * from './queries/users.js';
+export * from './queries/redirects.js';

@@ -6,67 +6,19 @@
  * insertó con source_ref 'synthetic:...' junto a las filas reales con
  * 'fep_match_{idp}', y la web mostraba los placeholders como "En juego 0-0".
  *
- * Criterio de borrado: sintético cuyo (season, local, visitante, fecha)
- * coincide con un partido real. Los sintéticos SIN partido real (series
- * futuras aún sin idp) se conservan: son la única referencia del cruce.
+ * Ejecuta la misma limpieza que el pipeline tras cada carga
+ * (`reconcileSyntheticMatches`) sobre TODAS las temporadas: sintéticos con
+ * partido real del mismo cruce y día, sintéticos duplicados entre sí y
+ * placeholders pasados sin partido real. Antes duplicaba aquí las consultas;
+ * ahora comparte la función para que los borrados dejen su redirección al
+ * partido que los sustituye (F1-7, migración 073) y no haya dos criterios.
  *
  * Uso: npx tsx --env-file=.env apps/etl/src/cleanup-synthetic-dupes.ts
  */
-import { db, closeDb } from '@sports/db';
+import { closeDb, reconcileSyntheticMatches } from '@sports/db';
 
 void (async () => {
-  const { rows } = await db.query(
-    `DELETE FROM matches s
-     USING matches r
-     WHERE s.source_ref LIKE 'synthetic:%'
-       AND r.source_ref NOT LIKE 'synthetic:%'
-       AND r.season_id    = s.season_id
-       AND r.home_team_id = s.home_team_id
-       AND r.away_team_id = s.away_team_id
-       -- Día en hora española (evita el desfase UTC del placeholder a las 00:00)
-       AND (r.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
-         = (s.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
-     RETURNING s.source_ref`
-  );
-  console.log(`🧹 Eliminados ${rows.length} placeholders sintéticos duplicados:`);
-  for (const r of rows) console.log('  -', r.source_ref);
-
-  // Sintéticos huérfanos con fecha pasada: el partido no se jugó o la fuente
-  // lo publicará como partido real (con idp) cuando ocurra. Son fantasmas.
-  const stale = await db.query(
-    `DELETE FROM matches
-     WHERE source_ref LIKE 'synthetic:%'
-       AND status = 'scheduled'
-       AND scheduled_at < NOW() - INTERVAL '6 hours'
-     RETURNING source_ref`
-  );
-  console.log(`👻 Eliminados ${stale.rows.length} placeholders pasados sin partido real:`);
-  for (const r of stale.rows) console.log('  -', r.source_ref);
-
-  // Sintéticos DUPLICADOS del mismo cruce y día: la ref sintética incluye el
-  // `scheduledAt`, así que un cambio de hora de la fuente creó una fila nueva y
-  // dejó la vieja (medianoche o la hora anterior). Gana el que tiene hora / el
-  // más reciente. (Mismo criterio que reconcileSyntheticMatches en run-pipeline.)
-  const synDupes = await db.query(
-    `DELETE FROM matches s
-     USING matches r
-     WHERE s.source_ref LIKE 'synthetic:%'
-       AND r.source_ref LIKE 'synthetic:%'
-       AND s.id <> r.id
-       AND r.season_id    = s.season_id
-       AND r.home_team_id = s.home_team_id
-       AND r.away_team_id = s.away_team_id
-       AND (r.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
-           = (s.scheduled_at AT TIME ZONE 'Europe/Madrid')::date
-       AND (
-         ((s.scheduled_at AT TIME ZONE 'Europe/Madrid')::time = TIME '00:00'
-          AND (r.scheduled_at AT TIME ZONE 'Europe/Madrid')::time <> TIME '00:00')
-         OR (r.scraped_at > s.scraped_at)
-       )
-     RETURNING s.source_ref`
-  );
-  console.log(`🔁 Eliminados ${synDupes.rows.length} placeholders sintéticos duplicados del mismo cruce y día:`);
-  for (const r of synDupes.rows) console.log('  -', r.source_ref);
-
+  const removed = await reconcileSyntheticMatches(null);
+  console.log(`🧹 Eliminados ${removed} placeholders sintéticos (duplicados, sustituidos o pasados).`);
   await closeDb();
 })();

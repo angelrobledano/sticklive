@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
-import { notFound } from 'next/navigation';
 import { getTeamDetail, isApiNotFound } from '@/lib/api/client';
 import { TeamCenterClient } from '@/components/team/TeamCenterClient';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
+import { redirectOrNotFound } from '@/lib/entity-redirect';
 import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL, metadataOnError } from '@/lib/seo';
 import { clubName, playerDisplayName } from '@/lib/names';
 
@@ -45,7 +45,10 @@ export default async function TeamDetailPage(props: Props) {
   try {
     data = await getTeamDetail(params.id, searchParams.season);
   } catch (err) {
-    if (isApiNotFound(err)) notFound();
+    // F1-7: si la ficha se fusionó o la sustituye otra, 308 a esa ficha.
+    if (isApiNotFound(err)) {
+      await redirectOrNotFound('team', params.id, isSupportedLocale(params.locale) ? params.locale : 'en');
+    }
     throw err; // error boundary con reintento — no convertir caídas de API en 404
   }
 

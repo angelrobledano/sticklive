@@ -583,8 +583,11 @@ export async function replaceMatchLineups(
  */
 export async function reconcileSyntheticMatches(seasonId: string | null = null): Promise<number> {
   const scope = [seasonId];
-  const dupes = await db.query(
-    `DELETE FROM matches s
+  // Cada borrado deja su redirección al partido que lo sustituye (F1-7): la URL
+  // del placeholder (compartida, indexada) pasa a llevar al partido real.
+  const dupes = await db.query<{ n: number }>(
+    `WITH del AS (
+     DELETE FROM matches s
      USING matches r
      WHERE s.source_ref LIKE 'synthetic:%'
        AND r.source_ref NOT LIKE 'synthetic:%'
@@ -604,7 +607,13 @@ export async function reconcileSyntheticMatches(seasonId: string | null = null):
                   AND r2.away_team_id = s.away_team_id AND r2.source_ref NOT LIKE 'synthetic:%') = 1)
        )
        AND ($1::uuid IS NULL OR s.season_id = $1::uuid)
-     RETURNING s.id`, scope
+     RETURNING s.id AS old_id, r.id AS new_id
+     ), ins AS (
+       INSERT INTO entity_redirects (entity_type, old_id, new_id, reason)
+       SELECT DISTINCT ON (old_id) 'match', old_id, new_id, 'synthetic-adopted' FROM del
+       ON CONFLICT (entity_type, old_id) DO UPDATE SET new_id = EXCLUDED.new_id, reason = EXCLUDED.reason
+     )
+     SELECT count(DISTINCT old_id)::int AS n FROM del`, scope
   );
   const stale = await db.query(
     `DELETE FROM matches
@@ -616,8 +625,9 @@ export async function reconcileSyntheticMatches(seasonId: string | null = null):
   );
   // Sintéticos DUPLICADOS del mismo cruce y día (la ref incluye la hora, así que
   // un cambio de hora de la fuente creaba una fila nueva y dejaba la vieja).
-  const synDupes = await db.query(
-    `DELETE FROM matches s
+  const synDupes = await db.query<{ n: number }>(
+    `WITH del AS (
+     DELETE FROM matches s
      USING matches r
      WHERE s.source_ref LIKE 'synthetic:%'
        AND r.source_ref LIKE 'synthetic:%'
@@ -635,7 +645,13 @@ export async function reconcileSyntheticMatches(seasonId: string | null = null):
          OR (r.scraped_at > s.scraped_at)
        )
        AND ($1::uuid IS NULL OR s.season_id = $1::uuid)
-     RETURNING s.id`, scope
+     RETURNING s.id AS old_id, r.id AS new_id
+     ), ins AS (
+       INSERT INTO entity_redirects (entity_type, old_id, new_id, reason)
+       SELECT DISTINCT ON (old_id) 'match', old_id, new_id, 'synthetic-replaced' FROM del
+       ON CONFLICT (entity_type, old_id) DO UPDATE SET new_id = EXCLUDED.new_id, reason = EXCLUDED.reason
+     )
+     SELECT count(DISTINCT old_id)::int AS n FROM del`, scope
   );
-  return (dupes.rowCount ?? 0) + (synDupes.rowCount ?? 0) + (stale.rowCount ?? 0);
+  return (dupes.rows[0]?.n ?? 0) + (synDupes.rows[0]?.n ?? 0) + (stale.rowCount ?? 0);
 }

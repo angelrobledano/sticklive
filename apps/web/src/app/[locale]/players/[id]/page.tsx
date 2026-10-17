@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import { getPlayerDetail, isApiNotFound } from '@/lib/api/client';
 import type { PlayerDetail } from '@/lib/api/client';
 import { PlayerProfileClient } from '@/components/player/PlayerProfileClient';
 import { JsonLd } from '@/components/shared/JsonLd';
+import { redirectOrNotFound } from '@/lib/entity-redirect';
 import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL, metadataOnError } from '@/lib/seo';
 import { toTitleCase, clubName } from '@/lib/names';
 
@@ -41,7 +41,10 @@ export default async function PlayerProfilePage(props: Props) {
   try {
     data = await getPlayerDetail(params.id);
   } catch (err) {
-    if (isApiNotFound(err)) notFound();
+    // F1-7: si la ficha se fusionó o la sustituye otra, 308 a esa ficha.
+    if (isApiNotFound(err)) {
+      await redirectOrNotFound('player', params.id, isSupportedLocale(params.locale) ? params.locale : 'en');
+    }
     throw err; // error boundary con reintento — la API puede estar reiniciándose
   }
 

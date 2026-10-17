@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import { getMatchDetail, isApiNotFound } from '@/lib/api/client';
 import { MatchCenterClient } from '@/components/match/MatchCenterClient';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
+import { redirectOrNotFound } from '@/lib/entity-redirect';
 import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL, metadataOnError } from '@/lib/seo';
 import { teamTitleName } from '@/lib/names';
 
@@ -52,7 +52,10 @@ export default async function MatchDetailPage(props: Props) {
   try {
     data = await getMatchDetail(matchId);
   } catch (err) {
-    if (isApiNotFound(err)) notFound();
+    // F1-7: si la ficha se fusionó o la sustituye otra, 308 a esa ficha.
+    if (isApiNotFound(err)) {
+      await redirectOrNotFound('match', params.id, isSupportedLocale(params.locale) ? params.locale : 'en');
+    }
     throw err; // error boundary con reintento — la API puede estar reiniciándose
   }
 

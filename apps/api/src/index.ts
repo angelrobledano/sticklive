@@ -30,6 +30,7 @@ import { adminRouter } from './routes/admin.js';
 import { healthRouter } from './routes/health.js';
 import { pushRouter } from './routes/push.js';
 import { metaRouter } from './routes/meta.js';
+import { redirectsRouter } from './routes/redirects.js';
 import { stripeRouter } from './routes/payments-stripe.js';
 import { statusRouter } from './routes/payments-status.js';
 import { adsConfigRouter } from './routes/ads-config.js';
@@ -110,6 +111,7 @@ app.get('/', (c) => {
       'GET /players/:id/photo',
       'GET /search?q=',
       'GET /meta/sitemap',
+      'GET /redirects/:type/:id',
     ],
   });
 });
@@ -135,6 +137,7 @@ app.route('/auth', authRouter);                // magic links + favoritos en nub
 app.route('/admin', adminRouter);              // panel de admin (X-Admin-Token)
 app.route('/push', pushRouter);                // suscripciones Web Push
 app.route('/meta', metaRouter);                // ids para sitemap
+app.route('/redirects', redirectsRouter);      // bajas y fusiones de fichas (F1-7)
 
 // 404 genérico
 app.notFound((c) => {

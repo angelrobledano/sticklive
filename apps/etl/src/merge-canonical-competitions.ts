@@ -17,7 +17,7 @@
  *   npx tsx --env-file=../../.env src/merge-canonical-competitions.ts           # plan
  *   npx tsx --env-file=../../.env src/merge-canonical-competitions.ts --apply   # ejecutar
  */
-import { db, closeDb } from '@sports/db';
+import { db, closeDb, recordEntityRedirect } from '@sports/db';
 
 // ── Normalización ─────────────────────────────────────────────────────────────
 
@@ -184,6 +184,8 @@ async function main() {
         );
       }
       await db.query(`DELETE FROM competitions WHERE id = $1`, [dupe.id]);
+      // La URL de la duplicada redirige a la canónica (F1-7, migración 073).
+      await recordEntityRedirect('competition', dupe.id, canonical.id, 'merged');
       removed++;
     }
     merged++;

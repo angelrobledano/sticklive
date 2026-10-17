@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { db } from '../client.js';
+import { recordEntityRedirect } from './redirects.js';
 
 export interface DbCompetition {
   id: string;
@@ -266,6 +267,8 @@ export async function mergeCompetitions(
     }
 
     await client.query(`DELETE FROM competitions WHERE id = $1`, [mergeId]);
+    // La URL de la absorbida redirige a la canónica (F1-7).
+    await recordEntityRedirect('competition', mergeId, keepId, 'merged', client);
     await client.query('COMMIT');
 
     return { seasonsMoved, canonicalId: keepId, removedId: mergeId, canonicalName: canonical.name };

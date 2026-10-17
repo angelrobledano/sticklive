@@ -20,7 +20,7 @@
  *   node dist/apps/etl/src/split-filial-teams.js --write
  *   node dist/apps/etl/src/split-filial-teams.js --revert --write
  */
-import { db, closeDb, withTransaction } from '@sports/db';
+import { db, closeDb, withTransaction, recordEntityRedirect } from '@sports/db';
 import { createLogger } from '@sports/logger';
 import { slugify } from './transformers/slugify.js';
 
@@ -94,6 +94,8 @@ async function aplicar(c: Caso): Promise<void> {
       await tx.query(`UPDATE teams SET alt_source_refs = array_append(alt_source_refs, $2) WHERE id = $1 AND NOT ($2 = ANY(alt_source_refs))`, [a.id, c.refFilial]);
       await tx.query(`UPDATE source_entity_map SET team_id = $1 WHERE team_id = $2 AND source_ref = $3`, [a.id, ya.id, c.refFilial]);
       await tx.query(`DELETE FROM teams WHERE id = $1`, [ya.id]);
+      // La ficha del filial revertido redirige al primer equipo (F1-7).
+      await recordEntityRedirect('team', ya.id, a.id, 'merged', tx);
     });
     console.log(`✓ ${c.nombre}: revertido (el filial ${c.refFilial} vuelve a colgar del primer equipo)`);
     return;
