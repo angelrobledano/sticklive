@@ -281,7 +281,10 @@
     "stage_final": "Finale",
     "group_stage": "Phase de groupes",
     "group_n": "Groupe {g}",
-    "game_n": "Match {n}"
+    "game_n": "Match {n}",
+    "round_historic": "Historique",
+    "round_final_phase": "Phase finale",
+    "placement_range": "Places {from}-{to}"
   },
   "standings": {
     "team": "Équipe",

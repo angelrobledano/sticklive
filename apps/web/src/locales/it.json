@@ -281,7 +281,10 @@
     "stage_final": "Finale",
     "group_stage": "Fase a gironi",
     "group_n": "Girone {g}",
-    "game_n": "Gara {n}"
+    "game_n": "Gara {n}",
+    "round_historic": "Storico",
+    "round_final_phase": "Fase finale",
+    "placement_range": "Posti {from}º-{to}º"
   },
   "standings": {
     "team": "Squadra",

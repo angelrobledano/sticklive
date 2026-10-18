@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import es from '@/locales/es.json';
-import { matchRoundLabel, stageLabel, type MatchRoundInfo } from './stage-label';
+import { matchRoundLabel, roundNameLabel, stageLabel, type MatchRoundInfo } from './stage-label';
 
 /** `t` real sobre el diccionario de `es`: una clave que falte se ve aquí. */
 function t(key: string, vars?: Record<string, string | number>): string {
@@ -25,6 +25,32 @@ describe('stageLabel', () => {
 
   it('colocación no tiene nombre genérico', () => {
     expect(stageLabel('placement', t)).toBeNull();
+  });
+});
+
+describe('roundNameLabel — i18n de nombres de ronda enumerables', () => {
+  it('traduce Histórico y Fase final por clave, no copia el texto de la fuente', () => {
+    const fake = (key: string) =>
+      key === 'playoffs.round_historic' ? 'HISTORIC' :
+      key === 'playoffs.round_final_phase' ? 'FINAL PHASE' : key;
+
+    expect(roundNameLabel('HISTÓRICO', fake)).toBe('HISTORIC');
+    expect(roundNameLabel('Fase Final', fake)).toBe('FINAL PHASE');
+  });
+
+  it('traduce cuartos, semifinales y final', () => {
+    expect(roundNameLabel('CUARTOS DE FINAL', t)).toBe('Cuartos de final');
+    expect(roundNameLabel('Semifinales', t)).toBe('Semifinales');
+    expect(roundNameLabel('Final', t)).toBe('Final');
+  });
+
+  it('traduce el rango de puestos', () => {
+    expect(roundNameLabel('Puestos 5º-8º', t)).toBe('Puestos 5º-8º');
+  });
+
+  it('deja intacto un nombre propio desconocido', () => {
+    expect(roundNameLabel('Copa Presidenta', t)).toBe('Copa Presidenta');
+    expect(roundNameLabel(null, t)).toBeNull();
   });
 });
 

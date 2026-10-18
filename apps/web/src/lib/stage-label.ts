@@ -37,6 +37,37 @@ export function stageLabel(stage: KnockoutStage, t: T, one = false): string | nu
 }
 
 /**
+ * Nombres de ronda que la fuente escribe en texto libre y que en realidad son
+ * enumerables: se traducen por clave en vez de copiarlos tal cual (i18n de
+ * datos). Un nombre propio desconocido se devuelve sin tocar.
+ */
+const SOURCE_ROUNDS: Array<{ pattern: RegExp; key: string }> = [
+  { pattern: /^hist[oó]rico$/i, key: 'playoffs.round_historic' },
+  { pattern: /^fase final$/i, key: 'playoffs.round_final_phase' },
+  { pattern: /^cuartos( de final)?$/i, key: 'playoffs.stage_quarters' },
+  { pattern: /^semifinal(es)?$/i, key: 'playoffs.stage_semis' },
+  { pattern: /^final$/i, key: 'playoffs.stage_final' },
+  { pattern: /^(tercer|3\.?er).*(cuarto|4\.?º).*puesto$/i, key: 'playoffs.third_place' },
+];
+
+const PLACEMENT_RANGE = /^puestos?\s+(\d+)\s*[ºo]?\s*[-–—]\s*(\d+)\s*[ºo]?$/i;
+
+/** Traduce un nombre de ronda enumerable; deja intacto un nombre propio. */
+export function roundNameLabel(name: string | null | undefined, t: T): string | null {
+  const clean = name?.trim();
+  if (!clean) return null;
+
+  const placement = PLACEMENT_RANGE.exec(clean);
+  if (placement) {
+    return t('playoffs.placement_range', { from: placement[1]!, to: placement[2]! });
+  }
+  for (const { pattern, key } of SOURCE_ROUNDS) {
+    if (pattern.test(clean)) return t(key);
+  }
+  return clean;
+}
+
+/**
  * Línea de fase de la ficha del partido, o `null` si no hay nada que decir.
  *  · eliminatoria: «Semifinal» (+ «· Partido 2» en series)
  *  · colocación: nombre de la fuente («Puestos 5º-8º»)
@@ -49,7 +80,7 @@ export function matchRoundLabel(round: MatchRoundInfo | null | undefined, t: T):
   const parts: string[] = [];
 
   if (isKnockoutStage(round.stage)) {
-    const label = stageLabel(round.stage, t, true) ?? round.name;
+    const label = stageLabel(round.stage, t, true) ?? roundNameLabel(round.name, t);
     if (label) parts.push(label);
     if (round.seriesGame != null && round.seriesGame > 0 && round.stage !== 'placement') {
       parts.push(t('playoffs.game_n', { n: round.seriesGame }));
@@ -65,5 +96,5 @@ export function matchRoundLabel(round: MatchRoundInfo | null | undefined, t: T):
     return parts.length > 0 ? parts.join(' · ') : null;
   }
 
-  return round.name || null;
+  return roundNameLabel(round.name, t);
 }
