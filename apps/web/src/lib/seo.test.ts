@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  matchDateLabel, matchMetaDescription, matchMetaTitle,
   socialMeta, socialImageVersion, socialImageUrl, localeLessUrl, SITE_URL,
   siteJsonLd, competitionJsonLd, competitionsListJsonLd, privateMetadata,
   competitionCanonicalPath,
@@ -11,6 +12,62 @@ import {
  * #274: la URL de la imagen social lleva un token de versión dependiente del
  * estado/marcador para que los scrapers pidan una URL nueva en cada cambio.
  */
+describe('matchMetaTitle / matchMetaDescription (F3-3)', () => {
+  const base = {
+    locale: 'es' as const,
+    home: 'Liceo',
+    away: 'Reus',
+    scheduledAt: '2026-10-12T16:15:00.000Z',
+  };
+
+  it('un partido terminado lleva marcador y fecha en el título', () => {
+    const title = matchMetaTitle({ ...base, status: 'finished', score: { home: 2, away: 2 } });
+
+    expect(title).toContain('Liceo 2-2 Reus');
+    expect(title).toContain(matchDateLabel(base.scheduledAt, 'es'));
+    expect(title.endsWith('| Stick Live')).toBe(true);
+  });
+
+  it('un partido en directo no lleva marcador (se quedaría desactualizado)', () => {
+    const title = matchMetaTitle({ ...base, status: 'live', score: { home: 3, away: 1 } });
+
+    expect(title).not.toContain('3-1');
+    expect(title).toContain('Liceo - Reus');
+  });
+
+  it('un partido programado no lleva marcador y sí fecha', () => {
+    const title = matchMetaTitle({ ...base, status: 'scheduled', score: { home: null, away: null } });
+
+    expect(title).toContain('Liceo - Reus');
+    expect(title).not.toContain('0-0');
+    expect(title).toContain(matchDateLabel(base.scheduledAt, 'es'));
+  });
+
+  it('si falta el marcador de un terminado no inventa 0-0', () => {
+    const title = matchMetaTitle({ ...base, status: 'finished', score: { home: null, away: null } });
+    expect(title).not.toContain('0-0');
+  });
+
+  it('la descripción de un terminado no dice «en directo»', () => {
+    const desc = matchMetaDescription({ ...base, status: 'finished', score: { home: 2, away: 2 } });
+    expect(desc.toLowerCase()).not.toContain('directo');
+    expect(desc).toContain('Liceo');
+  });
+
+  it('la descripción de un directo sí lo dice; la de un programado no', () => {
+    expect(matchMetaDescription({ ...base, status: 'live', score: { home: 1, away: 0 } }).toLowerCase())
+      .toContain('directo');
+    expect(matchMetaDescription({ ...base, status: 'scheduled', score: { home: null, away: null } }).toLowerCase())
+      .not.toContain('directo');
+  });
+
+  it('cambia el copy por idioma', () => {
+    const en = matchMetaDescription({ ...base, locale: 'en', status: 'finished', score: { home: 2, away: 2 } });
+    expect(en.toLowerCase()).toContain('final');
+    expect(en.toLowerCase()).not.toContain('directo');
+  });
+});
+
 describe('socialImageVersion (#274)', () => {
   it('es determinista para el mismo estado', () => {
     expect(socialImageVersion('CPC 2-2 LUB|desc')).toBe(

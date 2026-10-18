@@ -4,20 +4,20 @@ import { MatchCenterClient } from '@/components/match/MatchCenterClient';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
-import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL, metadataOnError } from '@/lib/seo';
+import {
+  localeAlternates,
+  matchMetaDescription,
+  matchMetaTitle,
+  socialMeta,
+  isSupportedLocale,
+  SITE_URL,
+  metadataOnError,
+} from '@/lib/seo';
 import { teamTitleName } from '@/lib/names';
 
 interface Props {
   params: Promise<{ locale: string; id: string }>;
 }
-
-const DESC: Record<string, (h: string, a: string) => string> = {
-  es: (h, a) => `Resultado, goles, alineaciones y estadísticas del ${h} - ${a} de hockey patines, en directo en Stick Live.`,
-  en: (h, a) => `${h} vs ${a} rink hockey: live score, goals, lineups and stats on Stick Live.`,
-  pt: (h, a) => `${h} - ${a} de hóquei em patins: resultado, golos, onzes e estatísticas em direto no Stick Live.`,
-  fr: (h, a) => `${h} - ${a} de rink hockey : score en direct, buts, compositions et statistiques sur Stick Live.`,
-  it: (h, a) => `${h} - ${a} di hockey su pista: risultato in diretta, gol, formazioni e statistiche su Stick Live.`,
-};
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params;
@@ -29,11 +29,21 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     // "Cpah"); sin nombre completo se conserva la sigla tal cual.
     const home = teamTitleName(data.match.homeTeam?.name, data.match.homeTeam?.shortName);
     const away = teamTitleName(data.match.awayTeam?.name, data.match.awayTeam?.shortName);
-    const showScore = data.match.status === 'finished' || data.match.status === 'live';
-    const score = showScore ? ` ${data.match.score.home ?? 0}-${data.match.score.away ?? 0} ` : ' - ';
-    const ogTitle = `${home}${score}${away}`;
-    const title = `${ogTitle} | Stick Live`;
-    const description = (DESC[locale] ?? DESC['en'])!(home, away);
+    const showOgScore = data.match.status === 'finished' || data.match.status === 'live';
+    const ogScore = showOgScore
+      ? ` ${data.match.score.home ?? 0}-${data.match.score.away ?? 0} `
+      : ' - ';
+    const ogTitle = `${home}${ogScore}${away}`;
+    const metaInput = {
+      locale,
+      home,
+      away,
+      status: data.match.status,
+      score: data.match.score,
+      scheduledAt: data.match.scheduledAt,
+    };
+    const title = matchMetaTitle(metaInput);
+    const description = matchMetaDescription(metaInput);
     return {
       title,
       description,

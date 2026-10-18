@@ -149,6 +149,111 @@ export function localeLessUrl(path: string): string {
   return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+/** Fecha corta del partido en la zona de Madrid (para title/description). */
+export function matchDateLabel(
+  scheduledAt: string | null | undefined,
+  locale: Locale,
+): string {
+  if (!scheduledAt) return '';
+  const date = new Date(scheduledAt);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'Europe/Madrid',
+  }).format(date);
+}
+
+export interface MatchMetaInput {
+  locale: Locale;
+  home: string;
+  away: string;
+  status: string;
+  score?: { home: number | null; away: number | null } | null;
+  scheduledAt?: string | null;
+}
+
+/**
+ * Title de una ficha de partido (F3-3, §9).
+ *
+ * Reglas: fecha siempre (desambigua ida/vuelta y cruces entre competiciones);
+ * marcador solo si está terminado y ambos goles son no nulos (en directo el
+ * title se quedaría desactualizado y Google lo cachearía).
+ */
+export function matchMetaTitle({ locale, home, away, status, score, scheduledAt }: MatchMetaInput): string {
+  const date = matchDateLabel(scheduledAt, locale);
+  const finishedScore =
+    status === 'finished' && score?.home != null && score?.away != null
+      ? `${score.home}-${score.away} `
+      : '';
+  const core = finishedScore ? `${home} ${finishedScore}${away}` : `${home} - ${away}`;
+  return `${core}${date ? `, ${date}` : ''} | Stick Live`;
+}
+
+const FINISHED_DESC: Record<Locale, (home: string, away: string, score: string) => string> = {
+  es: (h, a, s) => `Resultado final del ${h} - ${a}${s ? ` (${s})` : ''}: goles, alineaciones y estadísticas de hockey patines.`,
+  en: (h, a, s) => `Final result of ${h} vs ${a}${s ? ` (${s})` : ''}: goals, lineups and rink hockey stats.`,
+  pt: (h, a, s) => `Resultado final do ${h} - ${a}${s ? ` (${s})` : ''}: golos, onzes e estatísticas de hóquei em patins.`,
+  fr: (h, a, s) => `Résultat final du ${h} - ${a}${s ? ` (${s})` : ''} : buts, compositions et statistiques de rink hockey.`,
+  it: (h, a, s) => `Risultato finale di ${h} - ${a}${s ? ` (${s})` : ''}: gol, formazioni e statistiche di hockey su pista.`,
+};
+
+const LIVE_DESC: Record<Locale, (home: string, away: string) => string> = {
+  es: (h, a) => `${h} - ${a}: resultado en directo, goles, alineaciones y estadísticas de hockey patines.`,
+  en: (h, a) => `${h} vs ${a}: live score, goals, lineups and rink hockey stats.`,
+  pt: (h, a) => `${h} - ${a}: resultado em direto, golos, onzes e estatísticas de hóquei em patins.`,
+  fr: (h, a) => `${h} - ${a} : score en direct, buts, compositions et statistiques de rink hockey.`,
+  it: (h, a) => `${h} - ${a}: risultato in diretta, gol, formazioni e statistiche di hockey su pista.`,
+};
+
+const UPCOMING_DESC: Record<Locale, (home: string, away: string) => string> = {
+  es: (h, a) => `${h} - ${a}: previa, hora, alineaciones y estadísticas del partido de hockey patines.`,
+  en: (h, a) => `${h} vs ${a}: preview, time, lineups and rink hockey stats.`,
+  pt: (h, a) => `${h} - ${a}: antevisão, hora, onzes e estatísticas do jogo de hóquei em patins.`,
+  fr: (h, a) => `${h} - ${a} : avant-match, horaire, compositions et statistiques de rink hockey.`,
+  it: (h, a) => `${h} - ${a}: preview, orario, formazioni e statistiche di hockey su pista.`,
+};
+
+const POSTPONED_DESC: Record<Locale, (home: string, away: string) => string> = {
+  es: (h, a) => `${h} - ${a}: partido aplazado de hockey patines.`,
+  en: (h, a) => `${h} vs ${a}: postponed rink hockey match.`,
+  pt: (h, a) => `${h} - ${a}: jogo adiado de hóquei em patins.`,
+  fr: (h, a) => `${h} - ${a} : match de rink hockey reporté.`,
+  it: (h, a) => `${h} - ${a}: partita di hockey su pista rinviata.`,
+};
+
+const CANCELLED_DESC: Record<Locale, (home: string, away: string) => string> = {
+  es: (h, a) => `${h} - ${a}: partido cancelado de hockey patines.`,
+  en: (h, a) => `${h} vs ${a}: cancelled rink hockey match.`,
+  pt: (h, a) => `${h} - ${a}: jogo cancelado de hóquei em patins.`,
+  fr: (h, a) => `${h} - ${a} : match de rink hockey annulé.`,
+  it: (h, a) => `${h} - ${a}: partita di hockey su pista annullata.`,
+};
+
+/**
+ * Description de una ficha de partido según su estado (F3-3, §9).
+ *
+ * Nunca dice «en directo» en un partido terminado o futuro: era el texto de
+ * todas las fichas y Google lo cacheaba igual para un 0-0 de hace un mes.
+ */
+export function matchMetaDescription({
+  locale,
+  home,
+  away,
+  status,
+  score,
+}: MatchMetaInput): string {
+  const lang = FINISHED_DESC[locale] ? locale : 'en';
+  if (status === 'finished') {
+    const s = score?.home != null && score?.away != null ? `${score.home}-${score.away}` : '';
+    return FINISHED_DESC[lang](home, away, s);
+  }
+  if (status === 'live') return LIVE_DESC[lang](home, away);
+  if (status === 'postponed') return POSTPONED_DESC[lang](home, away);
+  if (status === 'cancelled') return CANCELLED_DESC[lang](home, away);
+  return UPCOMING_DESC[lang](home, away);
+}
+
 /**
  * Construye los bloques openGraph + twitter (Metadata de Next) optimizados para
  * compartir en WhatsApp/Twitter/etc. Centralizado para que todas las páginas
