@@ -34,12 +34,11 @@ export default async function sitemap(props: { id: string | Promise<string> }): 
   // #337: el lastmod sale de los datos de cada entidad (updatedAt/finishedAt/
   // scheduledAt), no de `new Date()`. Si una entrada no trae fecha, se omite el
   // lastModified en vez de firmar todas las URLs con el mismo timestamp falso.
-  return sitemapEntries(id, ids).flatMap(({ path, priority, changeFrequency, lastModified }) =>
+  return sitemapEntries(id, ids).flatMap(({ path, lastModified }) =>
     SUPPORTED_LOCALES.map((locale) => ({
       url: `${SITE_URL}/${locale}${path}`,
       ...(lastModified ? { lastModified } : {}),
-      changeFrequency,
-      priority,
+      // F2-5: `changefreq` y `priority` se omiten a propósito; Google los ignora.
       // Mismo bloque hreflang que sirve el HTML, `x-default` incluido.
       alternates: { languages: sitemapLanguages(path, SITE_URL, SUPPORTED_LOCALES) },
     }))

@@ -39,17 +39,25 @@ describe('sitemapSectionIds', () => {
 describe('sitemapEntries', () => {
   it('core son la home, el listado de competiciones y la privacidad', () => {
     expect(sitemapEntries('core', ids())).toEqual([
-      { path: '', priority: 1.0, changeFrequency: 'hourly' },
-      { path: '/competitions', priority: 0.9, changeFrequency: 'daily' },
-      { path: '/privacy', priority: 0.3, changeFrequency: 'weekly' },
+      { path: '' },
+      { path: '/competitions' },
+      { path: '/privacy' },
     ]);
+  });
+
+  it('no emite priority ni changeFrequency: Google los ignora (F2-5)', () => {
+    const entries = sitemapEntries('competitions-0', ids({ competitions: ['c'] }));
+    for (const entry of entries) {
+      expect(entry).not.toHaveProperty('priority');
+      expect(entry).not.toHaveProperty('changeFrequency');
+    }
   });
 
   it('un trozo de entidad toma su franja de ids', () => {
     const players = Array.from({ length: SITEMAP_SECTION_SIZE + 1 }, (_, i) => `p${i}`);
     const entries = sitemapEntries('players-1', ids({ players }));
     expect(entries).toEqual([
-      { path: `/players/p${SITEMAP_SECTION_SIZE}`, priority: 0.6, changeFrequency: 'weekly' },
+      { path: `/players/p${SITEMAP_SECTION_SIZE}` },
     ]);
   });
 
@@ -111,8 +119,6 @@ describe('sitemapEntries con lastmod (#337)', () => {
     }));
     expect(entries).toEqual([{
       path: '/matches/m1',
-      priority: 0.6,
-      changeFrequency: 'hourly',
       lastModified: new Date('2026-09-20T20:00:00.000Z'),
     }]);
   });
@@ -123,7 +129,7 @@ describe('sitemapEntries con lastmod (#337)', () => {
 
   it('sigue aceptando ids en forma de string sin lastModified (retrocompatible)', () => {
     expect(sitemapEntries('teams-0', ids({ teams: ['t1'] }))).toEqual([
-      { path: '/teams/t1', priority: 0.7, changeFrequency: 'daily' },
+      { path: '/teams/t1' },
     ]);
   });
 });

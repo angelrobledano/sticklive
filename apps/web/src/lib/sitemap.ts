@@ -38,13 +38,9 @@ export interface SitemapIds {
 /** Entradas por sección. ×5 locales = 40.000 < 50.000 (límite de Google). */
 export const SITEMAP_SECTION_SIZE = 8_000;
 
-export type SitemapChangeFrequency = 'hourly' | 'daily' | 'weekly';
-
 export interface SitemapEntry {
   /** Ruta sin prefijo de idioma (p. ej. `/teams/<id>`). */
   path: string;
-  priority: number;
-  changeFrequency: SitemapChangeFrequency;
   /**
    * `lastmod` derivado de los datos (#337). `undefined` en `core` o cuando la
    * entidad no trae fecha: mejor omitirlo que emitir una fecha de generación
@@ -74,11 +70,11 @@ export function sitemapLastModified(item: SitemapId): Date | null {
   return null;
 }
 
-const ENTITY_META: Record<string, { prefix: string; priority: number; changeFrequency: SitemapChangeFrequency }> = {
-  competitions: { prefix: '/competitions', priority: 0.8, changeFrequency: 'daily' },
-  teams:        { prefix: '/teams',        priority: 0.7, changeFrequency: 'daily' },
-  players:      { prefix: '/players',      priority: 0.6, changeFrequency: 'weekly' },
-  matches:      { prefix: '/matches',      priority: 0.6, changeFrequency: 'hourly' },
+const ENTITY_META: Record<string, { prefix: string }> = {
+  competitions: { prefix: '/competitions' },
+  teams: { prefix: '/teams' },
+  players: { prefix: '/players' },
+  matches: { prefix: '/matches' },
 };
 
 /** Ids de sección para `generateSitemaps`: `core` + un trozo por tipo con datos. */
@@ -97,10 +93,10 @@ export function sitemapSectionIds(ids: SitemapIds): string[] {
 export function sitemapEntries(section: string, ids: SitemapIds): SitemapEntry[] {
   if (section === 'core') {
     return [
-      { path: '', priority: 1.0, changeFrequency: 'hourly' },
-      { path: '/competitions', priority: 0.9, changeFrequency: 'daily' },
+      { path: '' },
+      { path: '/competitions' },
       // Página pública indexable que faltaba en el sitemap.
-      { path: '/privacy', priority: 0.3, changeFrequency: 'weekly' },
+      { path: '/privacy' },
     ];
   }
 
@@ -116,8 +112,6 @@ export function sitemapEntries(section: string, ids: SitemapIds): SitemapEntry[]
   return slice.map((item) => {
     const entry: SitemapEntry = {
       path: `${meta.prefix}/${sitemapItemId(item)}`,
-      priority: meta.priority,
-      changeFrequency: meta.changeFrequency,
     };
     const lastModified = sitemapLastModified(item);
     if (lastModified) entry.lastModified = lastModified;
