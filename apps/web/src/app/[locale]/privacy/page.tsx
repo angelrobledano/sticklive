@@ -27,6 +27,8 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   return {
     title: locale === 'es' ? 'Privacidad | Stick Live' : 'Privacy | Stick Live',
+    // F3-7: description propia; sin esto heredaba la de la home (SEO-05).
+    description: OG_DESCRIPTIONS[locale] ?? OG_DESCRIPTIONS['en']!,
     alternates: localeAlternates(locale, '/privacy'),
     ...socialMeta({
       locale,

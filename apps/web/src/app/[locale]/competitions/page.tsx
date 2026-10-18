@@ -10,11 +10,11 @@ import { competitionName } from '@/lib/names';
 export const revalidate = 300;
 
 const TITLES: Record<string, string> = {
-  es: 'Competiciones · Stick Live',
-  en: 'Competitions · Stick Live',
-  pt: 'Competições · Stick Live',
-  fr: 'Compétitions · Stick Live',
-  it: 'Competizioni · Stick Live',
+  es: 'Competiciones | Stick Live',
+  en: 'Competitions | Stick Live',
+  pt: 'Competições | Stick Live',
+  fr: 'Compétitions | Stick Live',
+  it: 'Competizioni | Stick Live',
 };
 
 // OG propio: sin esto, Next hereda el del layout (home) y el preview de
@@ -39,6 +39,8 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
   const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   return {
     title: TITLES[locale],
+    // F3-7: description propia; sin esto heredaba la de la home (SEO-05).
+    description: OG_DESCRIPTIONS[locale] ?? OG_DESCRIPTIONS['en']!,
     alternates: localeAlternates(locale, '/competitions'),
     ...socialMeta({
       locale,
