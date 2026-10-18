@@ -67,6 +67,8 @@ interface MatchRow {
   away_score: number | null;
   winner_team_id: string | null;
   win_type: string | null;
+  home_pen: number | null;
+  away_pen: number | null;
   venue_name: string | null;
   round_id: string | null;
   phase_id: string | null;
@@ -169,7 +171,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
       db.query<MatchRow>(`
         SELECT
           m.id, m.status, m.scheduled_at, m.started_at, m.finished_at,
-          m.home_score, m.away_score, m.winner_team_id, m.win_type, m.venue_name, m.round_id,
+          m.home_score, m.away_score, m.winner_team_id, m.win_type, m.home_pen, m.away_pen, m.venue_name, m.round_id,
           m.group_name, m.phase_id, m.series_game,
           r.number       AS round_number,
           r.name         AS round_name,
@@ -286,6 +288,8 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
           score:       { home: m.home_score, away: m.away_score },
           winnerTeamId: m.winner_team_id,
           winType:      m.win_type,
+          // Tanda de penaltis (null si no hubo): el cuadro explica un empate.
+          penalties:    m.home_pen != null && m.away_pen != null ? { home: m.home_pen, away: m.away_pen } : null,
           venueName:   m.venue_name,
           roundId:     m.round_id,
           // Grupo de la fase de grupos ("A", "B"...): NULL en eliminatorias y

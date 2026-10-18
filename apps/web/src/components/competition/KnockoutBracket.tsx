@@ -8,6 +8,7 @@ import { buildBracketRounds, type BracketRound } from '@/lib/bracket';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
 import { fmtDate, fmtTime } from './format';
+import { finalLabelKey } from '@/lib/match-result';
 
 /**
  * Cuadro de eliminatorias a partido único (formato World Skate: Cuartos → Semis
@@ -32,9 +33,13 @@ export function KnockoutMatchCard({ m, label, showFinishedLabel = true }: { m: S
       ? (m.score.home > m.score.away ? m.homeTeam.id : m.awayTeam.id)
       : null);
 
+  // Tanda de penaltis: se pinta junto al marcador para que un empate se
+  // explique solo (quién pasó y cómo).
+  const pens = isFinished && m.penalties?.home != null && m.penalties?.away != null ? m.penalties : null;
+
   const sides = [
-    { team: m.homeTeam, score: m.score.home },
-    { team: m.awayTeam, score: m.score.away },
+    { team: m.homeTeam, score: m.score.home, pen: pens?.home ?? null, side: 'home' },
+    { team: m.awayTeam, score: m.score.away, pen: pens?.away ?? null, side: 'away' },
   ];
 
   return (
@@ -48,7 +53,7 @@ export function KnockoutMatchCard({ m, label, showFinishedLabel = true }: { m: S
           {label}
         </p>
       )}
-      {sides.map(({ team, score }, idx) => {
+      {sides.map(({ team, score, pen, side }, idx) => {
         const isWinner = showScore && winnerId === team.id;
         return (
           <div
@@ -60,6 +65,9 @@ export function KnockoutMatchCard({ m, label, showFinishedLabel = true }: { m: S
             <span className={`flex-1 text-[13px] truncate ${isWinner ? 'font-bold text-slate-900 dark:text-slate-50' : 'font-medium text-slate-700 dark:text-slate-300'}`}>
               <AdaptiveTeamName name={team.name} shortName={team.shortName} mobile="abbr" />
             </span>
+            {pen != null && (
+              <span data-pen={side} className="font-score text-[11px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">({pen})</span>
+            )}
             {showScore && score != null && (
               <span className="font-score text-sm font-bold tabular-nums text-slate-900 dark:text-slate-50">{score}</span>
             )}
@@ -70,7 +78,7 @@ export function KnockoutMatchCard({ m, label, showFinishedLabel = true }: { m: S
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isLive ? 'text-emerald-500' : 'text-slate-500 dark:text-slate-400'}`}>
           {isLive ? `🟢 ${t('playoffs.live')}`
             : isFinished
-              ? `${showFinishedLabel ? `${t('match_states.final')} · ` : ''}${fmtDate(m.scheduledAt ?? m.finishedAt, m.competitionTimezone, locale)}`
+              ? `${showFinishedLabel ? `${t(finalLabelKey(m.winType))} · ` : ''}${fmtDate(m.scheduledAt ?? m.finishedAt, m.competitionTimezone, locale)}`
               : `${fmtDate(m.scheduledAt, m.competitionTimezone, locale)} · ${fmtTime(m.scheduledAt, m.competitionTimezone, locale)}`}
         </span>
       </div>

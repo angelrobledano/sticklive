@@ -4,6 +4,11 @@ Historial de hitos de producto y plataforma. El estado vivo está en [ESTADO_PRO
 
 ---
 
+## Octubre 2026 — Tandas de penaltis completas y explicadas en el cuadro
+
+- El directo vuelve a pedir el acta de un partido terminado mientras su tanda de penaltis siga empatada. Antes, si el acta se capturaba con la tanda a medias y los goles ya cuadraban, nadie la volvía a pedir (ITA–CHI del Mundial quedó 1-1 en la tanda cuando acabó 1-2).
+- Las tarjetas del cuadro dicen «Final (Penaltis)» o «Final (Prórroga)» y pintan el marcador de la tanda junto al resultado. API: `penalties` en los partidos de `GET /seasons/:id/overview` (aditivo).
+
 ## Octubre 2026 — Aviso para instalar la PWA (Android e iPhone)
 
 - Aviso inferior en móvil con el beneficio que importa: abrir los directos en un toque y recibir el aviso de cada gol (en iPhone, solo con la app instalada). Android lanza el diálogo nativo, iPhone despliega los dos pasos (Compartir → Añadir a pantalla de inicio).

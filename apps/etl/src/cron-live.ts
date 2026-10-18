@@ -34,6 +34,7 @@ import { deriveMatchResults } from './derive-results.js';
 import { sweepStaleLive } from './stale-live-watchdog.js';
 import { MissingLiveTracker } from './missing-live.js';
 import { checkWindow } from './live-window.js';
+import { selectFichaCandidates } from './ficha-candidates.js';
 import { actaFinalCandidates, finalizeByActa, type EndedByActa } from './acta-final.js';
 import { touchAlive } from './heartbeat-file.js';
 import { ScrapeFailureTracker } from './scrape-health.js';
@@ -158,57 +159,8 @@ async function resolveSeasonIds(): Promise<string[]> {
  */
 async function runFichasForActiveMatches(seasonIds: string[]): Promise<EndedByActa[]> {
   const ended: EndedByActa[] = [];
-  const rows = await db.query<{
-    id: string;
-    season_id: string;
-    status: string;
-    source_ref: string;
-    comp_ref: string | null;
-    home_team_name: string | null;
-  }>(
-    `SELECT m.id, m.season_id, m.status, m.source_ref, comp.source_ref AS comp_ref, ht.name AS home_team_name
-     FROM matches m
-     JOIN seasons s ON s.id = m.season_id
-     JOIN competitions comp ON comp.id = s.competition_id
-     LEFT JOIN teams ht ON ht.id = m.home_team_id
-     WHERE m.season_id = ANY($1)
-       -- Sin filtro por fuente: hasta el 20/07/2026 aquí había un
-       -- \`LIKE 'fep_match_%'\` que descartaba en silencio todo lo que no fuera
-       -- de la FEP. Efecto práctico: World Skate nunca tuvo cronología ni
-       -- crono, sólo marcador. Ahora se resuelve la fuente por prefijo y se
-       -- omite únicamente lo que no sabemos tratar (ver core/sources.ts).
-       AND m.source_ref IS NOT NULL
-       AND (
-         -- Partidos en directo: siempre actualizar eventos
-         m.status = 'live'
-         OR (
-           -- Partidos recién terminados (3h): sin acta o CON ACTA PARCIAL.
-           -- Guardia: solo los jugados en las últimas 48h. Evita perseguir en
-           -- bucle la ficha (404) de partidos viejos que la fuente sigue
-           -- listando en el feed mc (p.ej. incomparecencias antiguas 0-10).
-           --
-           -- El acta parcial (wse_match_3248, 8/10: 0-6 con 0-2 en acta) se
-           -- capturó con el partido en curso y, al tener ya eventos, la rama
-           -- de abajo la excluía — los goles finales nunca se sincronizaban.
-           -- Ahora: si los goles del acta no cuadran con el marcador, se
-           -- re-pide la ficha hasta que cuadren (o se agoten las ventanas).
-           m.status = 'finished'
-           AND m.updated_at   > NOW() - INTERVAL '3 hours'
-           AND m.scheduled_at > NOW() - INTERVAL '48 hours'
-           AND (
-             NOT EXISTS (SELECT 1 FROM match_events me WHERE me.match_id = m.id)
-             OR EXISTS (
-               SELECT 1 FROM match_events me
-                WHERE me.match_id = m.id
-                GROUP BY me.match_id
-               HAVING COUNT(*) FILTER (WHERE me.event_type='goal' AND me.team_id = m.home_team_id) <> m.home_score
-                   OR COUNT(*) FILTER (WHERE me.event_type='goal' AND me.team_id = m.away_team_id) <> m.away_score
-             )
-           )
-         )
-       )`,
-    [seasonIds]
-  );
+  // Selección (y por qué cada caso) en ficha-candidates.ts.
+  const rows = { rows: await selectFichaCandidates(seasonIds) };
 
   if (rows.rows.length === 0) return ended;
 
