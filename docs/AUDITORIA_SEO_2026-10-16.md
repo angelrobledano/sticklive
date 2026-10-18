@@ -553,12 +553,15 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 | F2-5 quitar `changefreq` y `priority` | Hecho: el sitemap ya no los emite | 4a926c0 |
 | F2-4 UUID en mayúsculas | Hecho: el middleware responde 301 a la ruta en minúsculas | 5131799 |
 | F2-1 `updated_at` estable (lastmod real) | Hecho (migración 077): un UPDATE que solo mueve `updated_at`/`scraped_at` conserva el timestamp; un cambio visible lo mueve. Test de integración contra Postgres real | 5b415d9 |
-| F3-3 titles y descriptions de partido | Parcial: fecha siempre y marcador solo en terminados; description por estado, sin «en directo» fuera de directo. Falta F3-2 y las fichas de competición/equipo/jugador | 4c6d593 |
+| F3-3 titles y descriptions | Hecho en títulos de partido, competición, equipo y jugador (fecha/contexto, marcador solo terminado). Las descripciones con datos concretos esperan F3-2 | 4c6d593, bd57851 |
 | F3-7 description y `og:url` propios | Hecho: listado, búsqueda y privacidad | 0d7ed4d |
 | F2-3 secciones de sitemap por estado | Hecho: `matches-recent` (jugados o en directo, -60 días) y `matches-upcoming` (+14 días) | 1581819 |
 | F5-6 migas visibles + `BreadcrumbList` | Hecho: competición, equipo, partido y jugador; los enlaces conservan el idioma | c458f17 |
 | F5-4 enlazado entre entidades | Parcial: las migas enlazan cada ficha con su competición; faltan rivales y partido anterior entre ambos | c458f17 |
 | i18n de datos (rondas) | Parcial: Histórico, fase final, cuartos/semis/final y puestos N-M traducidos por clave; faltan `match_events.detail` y nombres propios en `jsonb` | b767c56 |
+| F3-5 caché y locale de las OG | Hecho: `s-maxage` por tipo y textos/fecha por idioma | 189db27 |
+| F3-6 JSON-LD | Hecho: partido con `url`/`homeTeam`/`awayTeam`; equipo con `memberOf`/`sport`; builders puros con tests | bd57851 |
+| F6 control SEO programado | Hecho: `seo-check` diario en GitHub Actions (sitemap, canonical y OG) | 2759d38 |
 | F2-6 quitar `/sitemap.xml` de Search Console | Hecho (18/10): eliminado el sitemap antiguo que devolvía 404 | — |
 | F2-7 redirigir los partidos con tráfico que hoy son 404 | Parcial (18/10). Recuperadas: `d87e7dfc` → `db7f3b3b` (Chile–Angola 12/10; 9 clics y 26 impresiones, consulta «chile vs angola») y `df95ecd9` → `3369141a` (Sudáfrica–Australia 13/10; sintético en el backup del 11/10). El resto de 404 con clics (`c4e78c74`, `a192b8cd`) no tiene consultas ni rastro en BD/backups: se quedan en 404 | — |
 
