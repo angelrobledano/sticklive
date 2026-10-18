@@ -6,6 +6,7 @@ import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
 import {
   localeAlternates,
+  breadcrumbJsonLd,
   matchMetaDescription,
   matchMetaTitle,
   socialMeta,
@@ -14,6 +15,8 @@ import {
   metadataOnError,
 } from '@/lib/seo';
 import { teamTitleName } from '@/lib/names';
+import { BREADCRUMB_LABELS } from '@/lib/breadcrumbs';
+import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 
 interface Props {
   params: Promise<{ locale: string; id: string }>;
@@ -58,6 +61,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 export default async function MatchDetailPage(props: Props) {
   const params = await props.params;
   const matchId = params.id;
+  const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   let data;
   try {
     data = await getMatchDetail(matchId);
@@ -71,6 +75,22 @@ export default async function MatchDetailPage(props: Props) {
 
   // schema.org SportsEvent — resultados enriquecidos en buscadores
   const m = data.match;
+
+  // F5-6: migas visibles + BreadcrumbList (Inicio › Competiciones › Competición › Partido).
+  const homeName = teamTitleName(m.homeTeam?.name, m.homeTeam?.shortName);
+  const awayName = teamTitleName(m.awayTeam?.name, m.awayTeam?.shortName);
+  const crumbs = [
+    { label: BREADCRUMB_LABELS[locale].home, href: '/' },
+    { label: BREADCRUMB_LABELS[locale].competitions, href: '/competitions' },
+    ...(m.competitionName && m.competitionId
+      ? [{ label: m.competitionName, href: `/competitions/${m.competitionId}` }]
+      : []),
+    { label: `${homeName} - ${awayName}`, href: `/matches/${m.id}` },
+  ];
+  const breadcrumbLd = breadcrumbJsonLd(
+    locale,
+    crumbs.map(({ label, href }) => ({ name: label, path: href })),
+  );
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'SportsEvent',
@@ -98,9 +118,11 @@ export default async function MatchDetailPage(props: Props) {
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
       <JsonLd data={jsonLd} />
+      <JsonLd data={breadcrumbLd} />
 
       {/* Navegacion de vuelta: el fallback es la competición del partido (#182) */}
       <BackLink href={m.competitionId ? `/competitions/${m.competitionId}` : '/'} />
+      <Breadcrumbs items={crumbs} />
 
       {/* Match Center */}
       <MatchCenterClient data={data} />

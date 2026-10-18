@@ -255,6 +255,28 @@ export function matchMetaDescription({
 }
 
 /**
+ * `BreadcrumbList` de schema.org (F5-6).
+ *
+ * Los `path` van sin prefijo de idioma; el builder añade `SITE_URL` y el locale
+ * para que el `item` sea absoluto, como exige Google.
+ */
+export function breadcrumbJsonLd(
+  locale: Locale,
+  items: Array<{ name: string; path: string }>,
+): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      item: `${SITE_URL}/${locale}${item.path === '/' ? '' : item.path}`,
+    })),
+  };
+}
+
+/**
  * Construye los bloques openGraph + twitter (Metadata de Next) optimizados para
  * compartir en WhatsApp/Twitter/etc. Centralizado para que todas las páginas
  * usen el mismo formato (tarjeta grande 1.91:1, imagen segura, dimensiones).

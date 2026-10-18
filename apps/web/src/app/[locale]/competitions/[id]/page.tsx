@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { permanentRedirect } from 'next/navigation';
-import { localeAlternates, socialMeta, isSupportedLocale, competitionJsonLd, competitionCanonicalPath, SITE_URL, metadataOnError } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale, competitionJsonLd, competitionCanonicalPath, breadcrumbJsonLd, SITE_URL, metadataOnError } from '@/lib/seo';
+import { BREADCRUMB_LABELS } from '@/lib/breadcrumbs';
+import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import {
   getSeasonOverview,
   getCompetitionSeasons,
@@ -137,11 +139,25 @@ export default async function CompetitionPage(props: Props) {
     country: data.season.competitionCountry,
   });
 
+  // F5-6: migas visibles + BreadcrumbList. La última apunta a la competición
+  // canónica (sin ?season) para no declarar dos URLs del mismo contenido.
+  const crumbs = [
+    { label: BREADCRUMB_LABELS[locale].home, href: '/' },
+    { label: BREADCRUMB_LABELS[locale].competitions, href: '/competitions' },
+    { label: data.season.competitionName, href: `/competitions/${canonicalId}` },
+  ];
+  const breadcrumbLd = breadcrumbJsonLd(
+    locale,
+    crumbs.map(({ label, href }) => ({ name: label, path: href })),
+  );
+
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
       <JsonLd data={competitionLd} />
+      <JsonLd data={breadcrumbLd} />
 
       <BackLink href="/competitions" />
+      <Breadcrumbs items={crumbs} />
 
       <CompetitionClient data={data} seasons={seasons} competitionId={params.id} stats={stats} />
     </div>

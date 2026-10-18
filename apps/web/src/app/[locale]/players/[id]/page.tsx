@@ -4,7 +4,9 @@ import type { PlayerDetail } from '@/lib/api/client';
 import { PlayerProfileClient } from '@/components/player/PlayerProfileClient';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
-import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL, metadataOnError } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale, breadcrumbJsonLd, SITE_URL, metadataOnError } from '@/lib/seo';
+import { BREADCRUMB_LABELS } from '@/lib/breadcrumbs';
+import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { toTitleCase, clubName } from '@/lib/names';
 
 interface Props {
@@ -37,6 +39,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
 export default async function PlayerProfilePage(props: Props) {
   const params = await props.params;
+  const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   let data: PlayerDetail;
   try {
     data = await getPlayerDetail(params.id);
@@ -49,6 +52,18 @@ export default async function PlayerProfilePage(props: Props) {
   }
 
   const name = toTitleCase(`${data.player.firstName} ${data.player.lastName}`);
+  // F5-6: migas visibles + BreadcrumbList (Inicio › Equipo › Jugador).
+  const crumbs = [
+    { label: BREADCRUMB_LABELS[locale].home, href: '/' },
+    ...(data.currentTeam
+      ? [{ label: clubName(data.currentTeam.name), href: `/teams/${data.currentTeam.id}` }]
+      : []),
+    { label: name, href: `/players/${data.player.id}` },
+  ];
+  const breadcrumbLd = breadcrumbJsonLd(
+    locale,
+    crumbs.map(({ label, href }) => ({ name: label, path: href })),
+  );
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Person',
@@ -64,6 +79,10 @@ export default async function PlayerProfilePage(props: Props) {
   return (
     <>
       <JsonLd data={jsonLd} />
+      <JsonLd data={breadcrumbLd} />
+      <div className="px-4 pt-4 max-w-2xl mx-auto">
+        <Breadcrumbs items={crumbs} />
+      </div>
       <PlayerProfileClient data={data} />
     </>
   );

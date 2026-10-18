@@ -5,7 +5,9 @@ import { TeamCenterClient } from '@/components/team/TeamCenterClient';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
-import { localeAlternates, socialMeta, isSupportedLocale, SITE_URL, metadataOnError } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale, breadcrumbJsonLd, SITE_URL, metadataOnError } from '@/lib/seo';
+import { BREADCRUMB_LABELS } from '@/lib/breadcrumbs';
+import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { clubName, playerDisplayName } from '@/lib/names';
 import { teamHistory } from '@/lib/team-histories';
 
@@ -42,6 +44,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 export default async function TeamDetailPage(props: Props) {
   const params = await props.params;
   const searchParams = await props.searchParams;
+  const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
   let data;
   try {
     data = await getTeamDetail(params.id, searchParams.season);
@@ -66,6 +69,21 @@ export default async function TeamDetailPage(props: Props) {
     location: data.team.city ? { '@type': 'Place', name: data.team.city } : undefined,
   };
 
+  // F5-6: migas visibles + BreadcrumbList (Inicio › Competiciones › Competición › Equipo).
+  const compName = data.standing?.competitionName ?? data.season?.competitionName;
+  const compId = data.standing?.competitionId ?? data.season?.competitionId;
+  const teamName = clubName(data.team.name);
+  const crumbs = [
+    { label: BREADCRUMB_LABELS[locale].home, href: '/' },
+    { label: BREADCRUMB_LABELS[locale].competitions, href: '/competitions' },
+    ...(compName && compId ? [{ label: compName, href: `/competitions/${compId}` }] : []),
+    { label: teamName, href: `/teams/${data.team.id}` },
+  ];
+  const breadcrumbLd = breadcrumbJsonLd(
+    locale,
+    crumbs.map(({ label, href }) => ({ name: label, path: href })),
+  );
+
   // Historia y palmarés editorial del club (ver `lib/team-histories`): texto
   // propio y verificado al final de la ficha, server-rendered.
   const history = teamHistory(params.id);
@@ -73,7 +91,9 @@ export default async function TeamDetailPage(props: Props) {
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
       <JsonLd data={jsonLd} />
+      <JsonLd data={breadcrumbLd} />
       <BackLink href="/" />
+      <Breadcrumbs items={crumbs} />
 
       <TeamCenterClient data={data} />
 

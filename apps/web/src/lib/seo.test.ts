@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  breadcrumbJsonLd,
   matchDateLabel, matchMetaDescription, matchMetaTitle,
   socialMeta, socialImageVersion, socialImageUrl, localeLessUrl, SITE_URL,
   siteJsonLd, competitionJsonLd, competitionsListJsonLd, privateMetadata,
@@ -12,6 +13,25 @@ import {
  * #274: la URL de la imagen social lleva un token de versión dependiente del
  * estado/marcador para que los scrapers pidan una URL nueva en cada cambio.
  */
+describe('breadcrumbJsonLd (F5-6)', () => {
+  it('numera las migas y convierte las rutas en URLs absolutas con idioma', () => {
+    const ld = breadcrumbJsonLd('es', [
+      { name: 'Inicio', path: '/' },
+      { name: 'Competiciones', path: '/competitions' },
+      { name: 'OK Liga', path: '/competitions/c1' },
+    ]);
+    const items = ld['itemListElement'] as Array<Record<string, unknown>>;
+
+    expect(ld['@type']).toBe('BreadcrumbList');
+    expect(items[0]).toEqual({
+      '@type': 'ListItem', position: 1, name: 'Inicio', item: `${SITE_URL}/es`,
+    });
+    expect(items[2]).toEqual({
+      '@type': 'ListItem', position: 3, name: 'OK Liga', item: `${SITE_URL}/es/competitions/c1`,
+    });
+  });
+});
+
 describe('matchMetaTitle / matchMetaDescription (F3-3)', () => {
   const base = {
     locale: 'es' as const,
