@@ -9,8 +9,8 @@ import { TEAM_HISTORIES, teamHistory } from './team-histories';
  * en runtime, así que este test es la guardia contra entradas a medias.
  */
 describe('team-histories', () => {
-  it('cubre los 14 equipos de la OK Liga Masculina 2026/27', () => {
-    expect(Object.keys(TEAM_HISTORIES)).toHaveLength(14);
+  it('cubre los 14 equipos de OK Liga Masculina y los 14 de Femenina 2026/27', () => {
+    expect(Object.keys(TEAM_HISTORIES)).toHaveLength(28);
   });
 
   it('cada entrada tiene historia, fuentes y fecha de revisión', () => {

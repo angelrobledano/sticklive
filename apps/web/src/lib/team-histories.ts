@@ -193,6 +193,161 @@ export const TEAM_HISTORIES: Readonly<Record<string, TeamHistory>> = {
     sources: [`${WIKIDATA} Q3138995`, 'Wikipedia (es): Hockey Club Liceo'],
     updatedAt: UPDATED,
   },
+
+  // ─── OK Liga Femenina 2026/27 ───────────────────────────────────────────────
+
+  // CH MATARÓ
+  '4db4f4ca-8ed5-42d6-90e8-86f0f23e1680': {
+    history:
+      'El Club Hoquei Mataró se fundó en 1951 en Mataró (Maresme) y en 2026/27 compite en la OK Liga Femenina.',
+    honours: [
+      '1 Copa de la CERS (2008-09)',
+      '1 OK Liga Plata (2019-20)',
+      '1 Copa del Generalísimo (1967)',
+      '1 Liga Nacional (1967-68)',
+      '1 Campeonato de Cataluña (1968-69)',
+    ],
+    sources: [`${WIKIDATA} Q11914262`, 'Wikipedia (es): Club Hoquei Mataró'],
+    updatedAt: UPDATED,
+  },
+
+  // ORKLA BIGUES I RIELLS
+  '682e11af-a000-45bf-952e-2655a0f95101': {
+    history: 'El Club Hoquei Bigues i Riells (Vallès Oriental) compite en la OK Liga Femenina 2026/27.',
+    honours: [],
+    sources: ['Competición 2026/27'],
+    updatedAt: UPDATED,
+  },
+
+  // CLUB PATIN ESNECA FRAGA
+  '15cea8ef-243b-40f6-8b52-dcbdac6d22e4': {
+    history:
+      'El Club Patín Fraga se fundó en 2021 y se ha convertido en pocos años en uno de los referentes del hockey femenino: ganó la Champions League Women en 2024 y repitió en 2026.',
+    honours: [
+      '2 WSE Champions League Women (2024 y 2026)',
+      '1 Supercopa de España femenina (2025)',
+      '1 OK Liga Plata Femenina (2022)',
+    ],
+    sources: [`${WIKIDATA} Q112749867`, 'Wikipedia (es): Club Patín Fraga'],
+    updatedAt: UPDATED,
+  },
+
+  // HC RAXOI
+  '84bb0f3c-5af9-48ef-adfa-5eb79c3657bb': {
+    history: 'El HC Raxoi (Santiago de Compostela) compite en la OK Liga Femenina 2026/27.',
+    honours: [],
+    sources: ['Competición 2026/27'],
+    updatedAt: UPDATED,
+  },
+
+  // OXIGEN PHC SANT CUGAT
+  'e7d5e3f2-4248-4f77-97bf-8311d91a3aa9': {
+    history: 'El Patí Hoquei Club Sant Cugat (Vallès Occidental) compite en la OK Liga Femenina 2026/27.',
+    honours: [],
+    sources: [`${WIKIDATA} Q3353248`, 'Competición 2026/27'],
+    updatedAt: UPDATED,
+  },
+
+  // LLEIDANET HC ALPICAT
+  '0efd3269-740d-496c-a6a3-e422b6c4126d': {
+    history:
+      'El Hoquei Club Alpicat se fundó en 2004 en Alpicat (Segrià) y ha ido escalando categorías hasta la OK Liga Femenina.',
+    honours: [
+      '1 Copa Generalitat (2015-16)',
+      '1 Liga Nacional Catalana y ascenso a Primera Nacional (2015-16)',
+    ],
+    sources: [`${WIKIDATA} Q56400557`, 'Wikipedia (es): Hoquei Club Alpicat'],
+    updatedAt: UPDATED,
+  },
+
+  // GENERALI HC PALAU
+  'ce57e2dd-45e7-4012-9b72-8989254881f7': {
+    history:
+      'El Hoquei Club Palau de Plegamans se fundó en 1975 en Palau-solità i Plegamans (Vallès Occidental) y es uno de los grandes del hockey femenino español, con cinco ligas y tres Copas de Europa.',
+    honours: [
+      '5 Ligas (2014-15, 2018-19, 2020-21, 2021-22 y 2023-24)',
+      '1 Copa de la Reina (2024)',
+      '3 Copas de Europa (2020-21, 2021-22 y 2024-25)',
+      '1 Supercopa de España (2021-22)',
+      '2 Lligues Nacionals Catalanes (2010-11 y 2023-24)',
+    ],
+    sources: [`${WIKIDATA} Q11926045`, 'Wikipedia (es): Hoquei Club Palau de Plegamans (femenino)'],
+    updatedAt: UPDATED,
+  },
+
+  // BEMBIBRE HOCKEY CLUB
+  '05c0c636-b089-4c08-9cb8-c5a564afc6c5': {
+    history:
+      'El Bembibre Hockey Club se fundó en 2022 en Bembibre (El Bierzo) y compite en la OK Liga Femenina 2026/27.',
+    honours: [],
+    sources: [`${WIKIDATA} Q122984652`, 'Wikipedia (es): Bembibre Hockey Club'],
+    updatedAt: UPDATED,
+  },
+
+  // CATA CP VOLTREGA (equipo femenino del mismo club que la masculina)
+  '04228c8f-2c8c-448c-905b-8a86331aaf62': {
+    history:
+      'El Club Patí Voltregà se fundó en 1955 en Sant Hipòlit de Voltregà (Osona). Su equipo femenino es una referencia europea: suma seis Copas de Europa.',
+    honours: [
+      'Femenino: 6 Copas de Europa y 7 Ligas Catalanas',
+      'Masculino: 3 OK Liga, 5 Copas del Rey, 3 Copas de Europa y 2 Copas CERS',
+    ],
+    sources: [`${WIKIDATA} Q2979970`, 'Wikipedia (es): Club Patí Voltregà'],
+    updatedAt: UPDATED,
+  },
+
+  // CP VILA-SANA COOP D'IVARS
+  '0f6b9d7b-da34-4fa4-9f04-7ee2162600a3': {
+    history:
+      'El Club Patí Vila-sana se fundó en 2003 en Vila-sana (Pla d’Urgell) y compite en la OK Liga Femenina.',
+    honours: [],
+    sources: [`${WIKIDATA} Q109417535`, 'Competición 2026/27'],
+    updatedAt: UPDATED,
+  },
+
+  // MARINEDA HOCKEY
+  '17081947-d783-46a2-a1dc-81172cab3776': {
+    history: 'El Marineda Hockey, con sede en A Coruña, compite en la OK Liga Femenina 2026/27.',
+    honours: [],
+    sources: ['Competición 2026/27'],
+    updatedAt: UPDATED,
+  },
+
+  // CERDANYOLA CLUB D'HOQUEI
+  '66eec095-0739-4c1e-99af-e690baf37865': {
+    history:
+      'El Cerdanyola Club d’Hoquei se fundó en 1936 en Cerdanyola del Vallès (Vallès Occidental) y es uno de los clubes con más historia del hockey catalán.',
+    honours: [
+      '1 Liga Primera Catalana (2012-13)',
+      '1 Copa de la Lliga Primera Catalana (2013)',
+      '1 Campeonato de Cataluña de 2.ª categoría (1937)',
+      '1 Campeonato de Cataluña (1945)',
+      '3 Copas de Cataluña (1979, 1980 y 1981)',
+    ],
+    sources: [`${WIKIDATA} Q5064041`, 'Wikipedia (es): CH Cerdanyola'],
+    updatedAt: UPDATED,
+  },
+
+  // TELECABLE HOCKEY CLUB = CP Gijón Solimar
+  'fc81ea84-d0df-4119-ac0d-6dbbc3574e04': {
+    history:
+      'El Club Patín Gijón Solimar se fundó en 1995 y compite como Telecable Hockey Club. Es uno de los clubes de referencia del hockey femenino español.',
+    honours: [
+      '4 OK Liga (2009, 2017, 2018 y 2023)',
+      '5 Copas de la Reina (2012, 2013, 2016, 2019 y 2023)',
+    ],
+    sources: [`${WIKIDATA} Q4887440`, 'Wikipedia (es): Club Patín Gijón Solimar'],
+    updatedAt: UPDATED,
+  },
+
+  // MARTINELIA MANLLEU
+  'e786b5d7-2f86-41f7-bc5c-37c688119ee3': {
+    history:
+      'El Club Patí Manlleu se fundó en 1973 en Manlleu (Osona) y compite como Martinelia Manlleu. Su equipo femenino ganó la OK Liga en 2019/20.',
+    honours: ['1 OK Liga Femenina (2019/20)', '3 Copas de la Reina (2015, 2021 y 2022)'],
+    sources: [`${WIKIDATA} Q30640419`, 'Wikipedia (es): Club Patí Manlleu'],
+    updatedAt: UPDATED,
+  },
 };
 
 /** Historia del equipo por `teamId`, o `null` si no hay texto para esa ficha. */
