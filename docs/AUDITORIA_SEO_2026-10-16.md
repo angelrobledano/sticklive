@@ -532,11 +532,12 @@ Procedimiento si Search Console notifica algo: (1) leer el aviso completo y las 
 
 Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, M 4-16 h, L > 16 h.
 
-### Estado de ejecución (17/10/2026)
+### Estado de ejecución (actualizado 18/10/2026)
 
 | Tarea | Estado | Commit |
 |---|---|---|
 | F0-1 | Hecho (§1b) | f8aa3a2 |
+| F0-3 rastreo reproducible | Hecho: `apps/web/scripts/seo-crawl.ts` + tests. Uso en «Rastreo reproducible» (debajo) | 42bfcf4 |
 | F1-0 metadata en el `<head>` para rastreadores | Hecho y desplegado (verificado en frío con el UA de Googlebot smartphone) | da36688 |
 | F1-1 enlaces internos con idioma + guardia de CI | Hecho, pendiente de desplegar | 72bd8b1, e370834, 0c3409a |
 | F1-8 sitemap 503 si falla la API | Hecho, pendiente de desplegar. Falta la alerta por caída > 20 % | a93747e |
@@ -548,15 +549,40 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 | F1-5 `noindex` de lo no elegible | Pendiente: 2 semanas después de desplegar F1-4, revisando antes las URLs con tráfico | — |
 | F1-6 ocultar por calidad sin desindexar | Hecho, pendiente de desplegar (migración 075). Desviación de §5.3: en vez de servir la última versión con aviso, la ficha responde 5xx las primeras 72 h y 404 después (el producto sigue sin mostrar datos en revisión). Next responde 500, no 503 | 16574ea |
 | F1-11 | Pendiente: limpieza de equipos duplicados, necesita revisión manual | — |
+| F2-6 quitar `/sitemap.xml` de Search Console | Pendiente (producto): es una acción manual en Search Console, no se puede hacer desde el repo | — |
+| F2-7 redirigir los partidos con tráfico que hoy son 404 | Bloqueado: faltan las 9 URLs con impresiones del informe de páginas de Search Console. El rastreador ya las comprueba con `--urls`; después se mapea cada una a su partido actual y se apunta el 308 en `entity_redirects` | — |
 
 Tras desplegar F1-1: en Search Console, pedir la validación de "Duplicada: el usuario no ha indicado ninguna versión canónica" y revisar en 2-4 semanas el porcentaje de redirecciones en Estadísticas de rastreo.
+
+### Rastreo reproducible (F0-3)
+
+`apps/web/scripts/seo-crawl.ts` materializa el rastreo de esta auditoría. Pide la muestra con el UA de Googlebot para smartphone y guarda un JSON con los campos de §4 (estado, canonical/title en `<head>`, hreflang, robots, JSON-LD, enlaces sin idioma, OG y tiempos). No necesita credenciales ni escribe en la base de datos.
+
+```bash
+# Muestra de 10 fichas por tipo, repartida entre idiomas.
+npm run seo:crawl --workspace=apps/web -- --per-type=10
+
+# Render en frío: comprueba que la metadata sigue en el <head> (F1-0).
+npm run seo:crawl --workspace=apps/web -- --per-type=10 --cache-bust
+
+# Compara con la ejecución anterior: solo imprime lo que cambió.
+npm run seo:crawl --workspace=apps/web -- --per-type=10 --compare=seo-crawl-anterior.json
+
+# Comprueba una lista suelta (los 404 de Search Console de F2-7).
+npm run seo:crawl --workspace=apps/web -- --urls=404s.txt --out=404s.json
+
+# Comprueba también la imagen Open Graph (F3-1 y F3-5).
+npm run seo:crawl --workspace=apps/web -- --per-type=10 --og
+```
+
+La muestra es determinista: el mismo sitemap produce siempre las mismas URLs, aunque cambie el orden de las secciones. El JSON lleva `meta` (fecha, commit, base, tamaño) y `pages` (una entrada por URL). Sale con código 2 si alguna URL del sitemap responde 4xx/5xx; el JSON se escribe igual porque los 404 también son diagnóstico.
 
 ### Fase 0 · Línea base (antes de tocar nada)
 | ID | Prio | Tarea | Problema | Solución | Dep. | Esf. | Riesgo regresión | Criterio de aceptación | Medición | Resp. |
 |---|---|---|---|---|---|---|---|---|---|---|
 | F0-1 | P0 | ~~Exportar Search Console~~ **Hecho el 16/10 (§1b)** | Sin datos reales no se puede priorizar lo que ya está indexado | Consulta de rendimiento, indexación, sitemaps, rastreo, mejoras e inspección de URL | — | S | Nulo | Línea base en §1b y §16 | — | P |
 | F0-2 | P0 | Decisión legal sobre jugadores y menores | DQ-05, §13 | Decidir qué se publica, qué se indexa y si se muestran fotos | — | S (decisión) | — | Decisión escrita en `docs/` | — | P |
-| F0-3 | P0 | Script de rastreo reproducible | Sin forma de comparar antes y después | Convertir el rastreo de este informe en `scripts/seo-crawl` (muestra por tipo, campos de §4) | — | M | Nulo | Genera un JSON comparable entre ejecuciones | Diferencias entre ejecuciones | T |
+| F0-3 | P0 | ~~Script de rastreo reproducible~~ **Hecho el 18/10 (`apps/web/scripts/seo-crawl.ts`)** | Sin forma de comparar antes y después | Muestra por tipo e idioma con el UA de Googlebot, campos de §4 y `--compare` | — | M | Nulo | Genera un JSON comparable entre ejecuciones | Diferencias entre ejecuciones | T |
 
 ### Fase 1 · Errores críticos de indexación y calidad del dato
 | ID | Prio | Tarea | Evidencia | Solución | Dep. | Esf. | Riesgo | Aceptación | Medición | Resp. |
