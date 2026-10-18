@@ -540,7 +540,7 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 | F0-3 rastreo reproducible | Hecho: `apps/web/scripts/seo-crawl.ts` + tests. Uso en «Rastreo reproducible» (debajo) | 42bfcf4 |
 | F1-0 metadata en el `<head>` para rastreadores | Hecho y desplegado (verificado en frío con el UA de Googlebot smartphone) | da36688 |
 | F1-1 enlaces internos con idioma + guardia de CI | Hecho, pendiente de desplegar | 72bd8b1, e370834, 0c3409a |
-| F1-8 sitemap 503 si falla la API | Hecho, pendiente de desplegar. Falta la alerta por caída > 20 % | a93747e |
+| F1-8 sitemap 503 si falla la API + alerta de caída | Hecho: 503 si la API falla y aviso a Sentry si el total cae más del 20 % (migración 076) | a93747e, 66bde50 |
 | F1-9 `?season=` inválido ya no da 500 | Hecho, pendiente de desplegar | 884fb7b |
 | F1-10 metadata de error sin heredar la home | Hecho, pendiente de desplegar | 47d3391 |
 | F0-2 / F1-2 jugadores menores | Decidido (17/10): se publican nombre y foto porque las fuentes los exponen. Retirada a petición del interesado | — |
@@ -549,8 +549,12 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 | F1-5 `noindex` de lo no elegible | Pendiente: 2 semanas después de desplegar F1-4, revisando antes las URLs con tráfico | — |
 | F1-6 ocultar por calidad sin desindexar | Hecho, pendiente de desplegar (migración 075). Desviación de §5.3: en vez de servir la última versión con aviso, la ficha responde 5xx las primeras 72 h y 404 después (el producto sigue sin mostrar datos en revisión). Next responde 500, no 503 | 16574ea |
 | F1-11 | Pendiente: limpieza de equipos duplicados, necesita revisión manual | — |
-| F2-6 quitar `/sitemap.xml` de Search Console | Pendiente (producto): es una acción manual en Search Console, no se puede hacer desde el repo | — |
-| F2-7 redirigir los partidos con tráfico que hoy son 404 | Bloqueado: faltan las 9 URLs con impresiones del informe de páginas de Search Console. El rastreador ya las comprueba con `--urls`; después se mapea cada una a su partido actual y se apunta el 308 en `entity_redirects` | — |
+| F3-1 escudos en las OG | Hecho: `?format=png` en `/teams/:id/logo`; las OG de partido y equipo lo piden y usan iniciales si no hay escudo | 40bddea |
+| F2-5 quitar `changefreq` y `priority` | Hecho: el sitemap ya no los emite | 4a926c0 |
+| F2-4 UUID en mayúsculas | Hecho: el middleware responde 301 a la ruta en minúsculas | 5131799 |
+| F2-1 `updated_at` estable (lastmod real) | Hecho (migración 077): un UPDATE que solo mueve `updated_at`/`scraped_at` conserva el timestamp; un cambio visible lo mueve. Test de integración contra Postgres real | 5b415d9 |
+| F2-6 quitar `/sitemap.xml` de Search Console | Hecho (18/10): eliminado el sitemap antiguo que devolvía 404 | — |
+| F2-7 redirigir los partidos con tráfico que hoy son 404 | Parcial (18/10). Recuperadas: `d87e7dfc` → `db7f3b3b` (Chile–Angola 12/10; 9 clics y 26 impresiones, consulta «chile vs angola») y `df95ecd9` → `3369141a` (Sudáfrica–Australia 13/10; sintético en el backup del 11/10). El resto de 404 con clics (`c4e78c74`, `a192b8cd`) no tiene consultas ni rastro en BD/backups: se quedan en 404 | — |
 
 Tras desplegar F1-1: en Search Console, pedir la validación de "Duplicada: el usuario no ha indicado ninguna versión canónica" y revisar en 2-4 semanas el porcentaje de redirecciones en Estadísticas de rastreo.
 
