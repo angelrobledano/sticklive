@@ -45,18 +45,35 @@ export function resolveImageWidth(raw: string | null | undefined): number {
 }
 
 /**
- * Redimensiona por ancho y reencoda a WebP.
+ * Formato de salida de una imagen transformada.
+ *
+ * WebP es el formato por defecto (peso). PNG existe para consumidores que no
+ * decodifican WebP: `next/og` (Satori) rechaza las imágenes WebP y rompe la
+ * respuesta con «failed to pipe response».
+ */
+export type ImageFormat = 'webp' | 'png';
+
+/** `?format=png` es el único valor que cambia el formato; el resto sigue en WebP. */
+export function resolveImageFormat(raw: string | null | undefined): ImageFormat {
+  return String(raw ?? '').trim().toLowerCase() === 'png' ? 'png' : 'webp';
+}
+
+/**
+ * Redimensiona por ancho y reencoda a WebP (o PNG si se pide).
  *
  * - `withoutEnlargement` evita ampliar originales pequeños.
  * - `rotate()` respeta la orientación EXIF de las fotos de móvil.
  * - WebP conserva el alfa de los escudos transparentes.
  */
-export async function renderResizedImage(input: Buffer, width: number): Promise<Buffer> {
-  return sharp(input)
-    .rotate()
-    .resize({ width, withoutEnlargement: true })
-    .webp({ quality: 80 })
-    .toBuffer();
+export async function renderResizedImage(
+  input: Buffer,
+  width: number,
+  format: ImageFormat = 'webp'
+): Promise<Buffer> {
+  const resized = sharp(input).rotate().resize({ width, withoutEnlargement: true });
+  return format === 'png'
+    ? resized.png().toBuffer()
+    : resized.webp({ quality: 80 }).toBuffer();
 }
 
 /**

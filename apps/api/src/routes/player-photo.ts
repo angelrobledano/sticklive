@@ -3,7 +3,12 @@ import { db } from '@sports/db';
 import { setBounded } from '../lib/bounded-cache.js';
 import { isUuid } from '../lib/uuid.js';
 import { lookupImageUrl } from '../lib/image-url.js';
-import { imageResponse, renderResizedImage, resolveImageWidth } from '../lib/image.js';
+import {
+  imageResponse,
+  renderResizedImage,
+  resolveImageFormat,
+  resolveImageWidth,
+} from '../lib/image.js';
 
 /**
  * GET /players/:id/photo — foto del jugador servida desde NUESTRO dominio.
@@ -16,6 +21,9 @@ import { imageResponse, renderResizedImage, resolveImageWidth } from '../lib/ima
  * #335 (perf P0): la ficha original puede pesar >1 MB y la web la pinta a
  * 32–80 px. Se redimensiona/reencoda a WebP (ancho con `?w=`, acotado a
  * presets) y se sirve con `Cache-Control` inmutable.
+ *
+ * `?format=png` existe para `next/og` (Satori), que no decodifica WebP: la
+ * imagen de la alineación se quedaba en 502 en cuanto un titular tenía foto.
  */
 export const playerPhotoRouter = new Hono();
 
@@ -29,9 +37,10 @@ playerPhotoRouter.get('/:id/photo', async (c) => {
   if (!isUuid(id)) return c.notFound();
 
   const width = resolveImageWidth(c.req.query('w'));
-  const key = `${id}:${width}`;
+  const format = resolveImageFormat(c.req.query('format'));
+  const key = `${id}:${width}:${format}`;
   const cached = photoCache.get(key);
-  if (cached) return imageResponse(cached);
+  if (cached) return imageResponse(cached, format === 'png' ? 'image/png' : 'image/webp');
 
   const url = await lookupImageUrl(async () => {
     const r = await db.query<{ photo_url: string | null }>(
@@ -51,9 +60,9 @@ playerPhotoRouter.get('/:id/photo', async (c) => {
     const source = Buffer.from(await res.arrayBuffer());
 
     try {
-      const out = await renderResizedImage(source, width);
+      const out = await renderResizedImage(source, width, format);
       setBounded(photoCache, key, out, PHOTO_CACHE_MAX);
-      return imageResponse(out);
+      return imageResponse(out, format === 'png' ? 'image/png' : 'image/webp');
     } catch {
       // sharp no pudo decodificar: degradar al original antes que al 404.
       return imageResponse(source, res.headers.get('content-type') ?? 'image/jpeg');

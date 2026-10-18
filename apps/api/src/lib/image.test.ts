@@ -4,6 +4,7 @@ import {
   DEFAULT_IMAGE_WIDTH,
   IMAGE_WIDTH_PRESETS,
   LOGO_BACKGROUND,
+  resolveImageFormat,
   resolveImageWidth,
   renderNormalizedLogo,
   renderResizedImage,
@@ -49,6 +50,18 @@ describe('resolveImageWidth (#335)', () => {
   });
 });
 
+describe('resolveImageFormat (OG/Satori)', () => {
+  it('solo `png` explícito cambia el formato; el resto sigue en WebP', () => {
+    expect(resolveImageFormat('png')).toBe('png');
+    expect(resolveImageFormat('PNG')).toBe('png');
+    expect(resolveImageFormat(' png ')).toBe('png');
+
+    for (const raw of [undefined, null, '', 'webp', 'jpg', 'jpeg', 'avif', 'basura']) {
+      expect(resolveImageFormat(raw), String(raw)).toBe('webp');
+    }
+  });
+});
+
 describe('renderResizedImage (#335)', () => {
   it('reencoda a WebP con el ancho pedido', async () => {
     const src = await sharp({
@@ -82,6 +95,17 @@ describe('renderResizedImage (#335)', () => {
 
     expect(meta.width).toBe(100);
     expect(meta.height).toBe(50);
+  });
+
+  it('sirve PNG cuando se pide format=png (Satori no decodifica WebP)', async () => {
+    const src = await sharp({
+      create: { width: 512, height: 512, channels: 3, background: { r: 255, g: 0, b: 0 } },
+    }).webp().toBuffer();
+
+    const meta = await sharp(await renderResizedImage(src, 96, 'png')).metadata();
+
+    expect(meta.format).toBe('png');
+    expect(meta.width).toBe(96);
   });
 });
 

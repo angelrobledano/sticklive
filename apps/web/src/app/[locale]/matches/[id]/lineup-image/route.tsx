@@ -2,6 +2,7 @@ import { ImageResponse } from 'next/og';
 import { getMatchDetail, type LineupPlayer } from '@/lib/api/client';
 import { teamTitleName } from '@/lib/names';
 import { OgLockup } from '@/lib/og-brand';
+import { isSatoriRenderableImage, playerPhotoUrlForSatori } from '@/lib/og-image';
 import { localeLessUrl } from '@/lib/seo';
 
 // Imagen del 5 inicial sobre la pista, renderizada EN EL SERVIDOR (Satori/next/og).
@@ -24,12 +25,14 @@ const SIZE = { width: 1200, height: 630 };
 async function loadPhoto(playerId: string | null | undefined): Promise<string | null> {
   if (!playerId) return null;
   try {
-    const r = await fetch(`${API}/players/${playerId}/photo`, { cache: 'no-store' });
+    // La API reencoda a WebP por defecto; Satori solo entiende PNG/JPEG.
+    const r = await fetch(playerPhotoUrlForSatori(API, playerId), { cache: 'no-store' });
     if (!r.ok) return null;
     const ct = r.headers.get('content-type') ?? '';
-    if (!ct.startsWith('image/') || ct.includes('svg')) return null;
+    if (!isSatoriRenderableImage(ct)) return null;
+    const type = ct.split(';')[0]!.trim().toLowerCase();
     const buf = Buffer.from(await r.arrayBuffer());
-    return `data:${ct};base64,${buf.toString('base64')}`;
+    return `data:${type};base64,${buf.toString('base64')}`;
   } catch {
     return null;
   }
