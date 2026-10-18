@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { OG_BRAND, OgBrandStrip, OgLockup } from '@/lib/og-brand';
 import { getTeamDetail } from '@/lib/api/client';
-import { teamInitials, teamLogoUrlForSatori } from '@/lib/og-image';
+import { ogCopy, teamInitials, teamLogoUrlForSatori } from '@/lib/og-image';
 import { clubName } from '@/lib/names';
 
 // Imagen OG dinámica por equipo (#278): escudo + nombre + posición en liga.
@@ -19,11 +19,12 @@ const API = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 // `params` es una promesa desde Next 15, también en las rutas de metadatos.
 export default async function Image(props: { params: Promise<{ locale: string; id: string }> }) {
   const params = await props.params;
+  const copy = ogCopy(params.locale);
   let loaded = false;
   let teamId = '';
   let hasLogo = false;
   let name = 'Stick Live';
-  let subtitle = 'Hockey patines en directo';
+  let subtitle = copy.hockey;
 
   try {
     const data = await getTeamDetail(params.id);
@@ -34,11 +35,11 @@ export default async function Image(props: { params: Promise<{ locale: string; i
     subtitle = st
       ? [st.position != null ? `${st.position}º` : '', st.competitionName, `${st.points} pts`]
           .filter(Boolean).join(' · ')
-      : (data.team.city ?? 'Hockey patines en directo');
+      : (data.team.city ?? copy.hockey);
     loaded = true;
   } catch { /* tarjeta genérica si la API no responde */ }
 
-  return new ImageResponse(
+  const image = new ImageResponse(
     (
       <div style={{
         width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
@@ -80,4 +81,7 @@ export default async function Image(props: { params: Promise<{ locale: string; i
     ),
     { ...size },
   );
+  // F3-5: caché de borde acorde al `revalidate` de 120 s.
+  image.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
+  return image;
 }

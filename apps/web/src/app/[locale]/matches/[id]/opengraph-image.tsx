@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { OG_BRAND, OgBrandStrip, OgLockup } from '@/lib/og-brand';
 import { getMatchDetail } from '@/lib/api/client';
-import { teamInitials, teamLogoUrlForSatori } from '@/lib/og-image';
+import { ogCopy, teamInitials, teamLogoUrlForSatori } from '@/lib/og-image';
 import { teamTitleName } from '@/lib/names';
 
 // Imagen OG dinámica por partido (escudos + marcador) para compartir en
@@ -24,8 +24,9 @@ const API = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 // `next-async-request-api` NO cubre estos ficheros: hay que hacerlo a mano.
 export default async function Image(props: { params: Promise<{ locale: string; id: string }> }) {
   const params = await props.params;
-  let home = 'Local';
-  let away = 'Visitante';
+  const copy = ogCopy(params.locale);
+  let home = copy.home;
+  let away = copy.away;
   let homeId = '';
   let awayId = '';
   let homeLogo = false;
@@ -37,8 +38,8 @@ export default async function Image(props: { params: Promise<{ locale: string; i
 
   try {
     const data = await getMatchDetail(params.id);
-    home = teamTitleName(data.match.homeTeam?.name, data.match.homeTeam?.shortName) || 'Local';
-    away = teamTitleName(data.match.awayTeam?.name, data.match.awayTeam?.shortName) || 'Visitante';
+    home = teamTitleName(data.match.homeTeam?.name, data.match.homeTeam?.shortName) || copy.home;
+    away = teamTitleName(data.match.awayTeam?.name, data.match.awayTeam?.shortName) || copy.away;
     homeId = data.match.homeTeam?.id ?? '';
     awayId = data.match.awayTeam?.id ?? '';
     homeLogo = Boolean(data.match.homeTeam?.logoUrl);
@@ -47,7 +48,7 @@ export default async function Image(props: { params: Promise<{ locale: string; i
     awayScore = data.match.score.away;
     status = data.match.status;
     if (data.match.scheduledAt) {
-      dateLine = new Date(data.match.scheduledAt).toLocaleDateString('es-ES', {
+      dateLine = new Date(data.match.scheduledAt).toLocaleDateString(copy.dateLocale, {
         day: 'numeric', month: 'long', timeZone: 'Europe/Madrid',
       });
     }
@@ -57,7 +58,7 @@ export default async function Image(props: { params: Promise<{ locale: string; i
   const live = status === 'live';
   const showScore = finished || live;
   const center = showScore ? `${homeScore ?? 0} – ${awayScore ?? 0}` : 'VS';
-  const statusLine = live ? 'EN DIRECTO' : finished ? `FINAL · ${dateLine}` : dateLine;
+  const statusLine = live ? copy.live : finished ? `${copy.final} · ${dateLine}` : dateLine;
   // F3-1: Satori no decodifica WebP; la API sirve el escudo en PNG con
   // `?format=png`. Si no hay escudo, iniciales: nunca un círculo vacío.
   const logo = (id: string) => teamLogoUrlForSatori(API, id);
@@ -79,7 +80,7 @@ export default async function Image(props: { params: Promise<{ locale: string; i
     </div>
   );
 
-  return new ImageResponse(
+  const image = new ImageResponse(
     (
       <div style={{
         width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
@@ -117,4 +118,8 @@ export default async function Image(props: { params: Promise<{ locale: string; i
     ),
     { ...size }
   );
+  // F3-5: cache de borde acorde al `revalidate` (30 s) en vez de
+  // `max-age=0, must-revalidate`, que obligaba a regenerar en cada scrape.
+  image.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=300');
+  return image;
 }

@@ -1,3 +1,5 @@
+import type { Locale } from './locales';
+
 /**
  * Ayudas para las imágenes que pinta `next/og` (Satori).
  *
@@ -6,6 +8,56 @@
  * API sirve fotos y escudos en WebP por peso, así que las rutas de OG deben
  * pedir explícitamente PNG y, aun así, rechazar cualquier otro formato.
  */
+
+/**
+ * Textos de las tarjetas OG por idioma (F3-5). Antes la tarjeta de un partido
+ * servida en `/en` seguía diciendo «Local / Visitante / EN DIRECTO» y la fecha
+ * se formateaba en `es-ES`.
+ */
+export interface OgCopy {
+  home: string;
+  away: string;
+  live: string;
+  final: string;
+  hockey: string;
+  competitionSubtitle: string;
+  goalkeeper: string;
+  goals: string;
+  dateLocale: string;
+}
+
+export const OG_COPY: Record<Locale, OgCopy> = {
+  es: {
+    home: 'Local', away: 'Visitante', live: 'EN DIRECTO', final: 'FINAL',
+    hockey: 'Hockey patines en directo', competitionSubtitle: 'Clasificación, calendario y resultados',
+    goalkeeper: 'Portero', goals: 'goles', dateLocale: 'es-ES',
+  },
+  en: {
+    home: 'Home', away: 'Away', live: 'LIVE', final: 'FINAL',
+    hockey: 'Live rink hockey', competitionSubtitle: 'Standings, fixtures and results',
+    goalkeeper: 'Goalkeeper', goals: 'goals', dateLocale: 'en-GB',
+  },
+  pt: {
+    home: 'Casa', away: 'Visitante', live: 'EM DIRETO', final: 'FINAL',
+    hockey: 'Hóquei em patins em direto', competitionSubtitle: 'Classificação, calendário e resultados',
+    goalkeeper: 'Guarda-redes', goals: 'golos', dateLocale: 'pt-PT',
+  },
+  fr: {
+    home: 'Domicile', away: 'Visiteur', live: 'EN DIRECT', final: 'FINAL',
+    hockey: 'Rink hockey en direct', competitionSubtitle: 'Classement, calendrier et résultats',
+    goalkeeper: 'Gardien', goals: 'buts', dateLocale: 'fr-FR',
+  },
+  it: {
+    home: 'Casa', away: 'Ospite', live: 'IN DIRETTA', final: 'FINAL',
+    hockey: 'Hockey su pista in diretta', competitionSubtitle: 'Classifica, calendario e risultati',
+    goalkeeper: 'Portiere', goals: 'gol', dateLocale: 'it-IT',
+  },
+};
+
+/** Copia de la tarjeta para un locale; cae a inglés si llega uno desconocido. */
+export function ogCopy(locale: string | undefined | null): OgCopy {
+  return OG_COPY[locale as Locale] ?? OG_COPY.en;
+}
 
 /** Ancho de la foto en la imagen de alineación (se pinta a 76 px). */
 export const SATORI_PHOTO_WIDTH = 192;

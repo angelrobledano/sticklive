@@ -2,6 +2,7 @@ import { ImageResponse } from 'next/og';
 import { OG_BRAND, OgBrandStrip, OgLockup } from '@/lib/og-brand';
 import { getPlayerDetail } from '@/lib/api/client';
 import { toTitleCase, clubName } from '@/lib/names';
+import { ogCopy } from '@/lib/og-image';
 
 // Imagen OG dinámica por jugador (#278): foto + nombre + equipo/temporada.
 // Next la sirve en /{locale}/players/{id}/opengraph-image.
@@ -14,11 +15,12 @@ const API = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
 export default async function Image(props: { params: Promise<{ locale: string; id: string }> }) {
   const params = await props.params;
+  const copy = ogCopy(params.locale);
   let loaded = false;
   let playerId = '';
   let hasPhoto = false;
   let name = 'Stick Live';
-  let subtitle = 'Hockey patines en directo';
+  let subtitle = copy.hockey;
 
   try {
     const data = await getPlayerDetail(params.id);
@@ -26,15 +28,15 @@ export default async function Image(props: { params: Promise<{ locale: string; i
     hasPhoto = Boolean(data.player.photoUrl);
     name = toTitleCase(`${data.player.firstName} ${data.player.lastName}`);
     const team = data.currentTeam ? clubName(data.currentTeam.name) : null;
-    const role = data.player.isGoalkeeper ? 'Portero' : null;
-    const goals = data.seasonTotals.goals > 0 ? `${data.seasonTotals.goals} goles` : null;
-    subtitle = [team, role, goals].filter(Boolean).join(' · ') || 'Hockey patines en directo';
+    const role = data.player.isGoalkeeper ? copy.goalkeeper : null;
+    const goals = data.seasonTotals.goals > 0 ? `${data.seasonTotals.goals} ${copy.goals}` : null;
+    subtitle = [team, role, goals].filter(Boolean).join(' · ') || copy.hockey;
     loaded = true;
   } catch { /* tarjeta genérica si la API no responde */ }
 
   const initial = name.charAt(0).toUpperCase() || '·';
 
-  return new ImageResponse(
+  const image = new ImageResponse(
     (
       <div style={{
         width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
@@ -75,4 +77,7 @@ export default async function Image(props: { params: Promise<{ locale: string; i
     ),
     { ...size },
   );
+  // F3-5: caché de borde acorde al `revalidate` de 120 s.
+  image.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
+  return image;
 }

@@ -3,6 +3,7 @@ import { OG_BRAND, OgBrandStrip, OgLockup } from '@/lib/og-brand';
 import { getCompetitionSeasons, getSeasonOverview } from '@/lib/api/client';
 import { competitionName } from '@/lib/names';
 import { fedLabelFromSeason } from '@/components/competition/format';
+import { ogCopy } from '@/lib/og-image';
 
 // Imagen OG dinámica por competición (#278). Next la sirve en
 // /{locale}/competitions/{id}/opengraph-image.
@@ -19,8 +20,9 @@ export const revalidate = 300;
 
 export default async function Image(props: { params: Promise<{ locale: string; id: string }> }) {
   const params = await props.params;
+  const copy = ogCopy(params.locale);
   let name = 'Stick Live';
-  let subtitle = 'Clasificación, calendario y resultados';
+  let subtitle = copy.competitionSubtitle;
 
   try {
     const seasons = await getCompetitionSeasons(params.id);
@@ -33,7 +35,7 @@ export default async function Image(props: { params: Promise<{ locale: string; i
     }
   } catch { /* tarjeta genérica si la API no responde */ }
 
-  return new ImageResponse(
+  const image = new ImageResponse(
     (
       <div style={{
         width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
@@ -55,4 +57,7 @@ export default async function Image(props: { params: Promise<{ locale: string; i
     ),
     { ...size },
   );
+  // F3-5: caché de borde acorde al `revalidate` de 300 s.
+  image.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+  return image;
 }

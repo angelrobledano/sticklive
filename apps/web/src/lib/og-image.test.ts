@@ -3,6 +3,7 @@ import {
   SATORI_LOGO_WIDTH,
   SATORI_PHOTO_WIDTH,
   isSatoriRenderableImage,
+  ogCopy,
   playerPhotoUrlForSatori,
   teamInitials,
   teamLogoUrlForSatori,
@@ -15,6 +16,14 @@ describe('playerPhotoUrlForSatori', () => {
     expect(url).toBe(
       `https://sticklive.eu/api/players/p1/photo?w=${SATORI_PHOTO_WIDTH}&format=png`,
     );
+  });
+});
+
+describe('ogCopy (F3-5)', () => {
+  it('devuelve los textos del idioma y cae a inglés', () => {
+    expect(ogCopy('en').live).toBe('LIVE');
+    expect(ogCopy('it').live).toBe('IN DIRETTA');
+    expect(ogCopy('xx').live).toBe('LIVE');
   });
 });
 
