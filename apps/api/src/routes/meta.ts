@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { captureRouteError } from '../lib/route-error.js';
+import { shouldAlertSitemapDrop, sitemapDropPct } from '../lib/sitemap-state.js';
 
 /**
  * GET /meta/sitemap — ids para construir el sitemap de la web.
@@ -81,6 +82,39 @@ metaRouter.get('/sitemap', async (c) => {
          LIMIT 3000
       `),
     ]);
+
+    // F1-8: memoria de la última generación. La caída > 20 % se avisa a Sentry,
+    // pero el sitemap se sirve igual: la alerta no debe tumbar el endpoint.
+    const sections = {
+      competitions: comps.rows.length,
+      teams: teams.rows.length,
+      players: players.rows.length,
+      matches: matches.rows.length,
+    };
+    const total = Object.values(sections).reduce((sum, value) => sum + value, 0);
+    try {
+      const previousResult = await db.query<{ total: number }>(
+        'SELECT total FROM sitemap_state WHERE id = TRUE'
+      );
+      const previous = previousResult.rows[0]?.total ?? null;
+      await db.query(
+        `INSERT INTO sitemap_state (id, total, sections)
+         VALUES (TRUE, $1, $2)
+         ON CONFLICT (id) DO UPDATE
+           SET total = EXCLUDED.total, sections = EXCLUDED.sections, updated_at = NOW()`,
+        [total, JSON.stringify(sections)]
+      );
+      if (shouldAlertSitemapDrop(previous, total)) {
+        const pct = sitemapDropPct(previous, total);
+        const err = new Error(`sitemap: caída del ${pct}% (${previous} → ${total} URLs)`);
+        captureRouteError(err, 'meta] sitemap drop');
+        logger.error({ previous, total, sections, pct }, '[meta] sitemap cae más del 20 %');
+      }
+    } catch (err) {
+      // La tabla aún no existe en un despliegue a medias o la BD tuvo un bache:
+      // el sitemap sigue sirviendo; la falta de snapshot se ve en los logs.
+      logger.warn({ err }, '[meta] no se pudo registrar el snapshot del sitemap');
+    }
 
     c.header('Cache-Control', 'public, max-age=3600');
     return c.json({
