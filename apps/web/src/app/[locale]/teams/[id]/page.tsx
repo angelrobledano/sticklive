@@ -5,7 +5,7 @@ import { TeamCenterClient } from '@/components/team/TeamCenterClient';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
-import { localeAlternates, socialMeta, isSupportedLocale, breadcrumbJsonLd, SITE_URL, metadataOnError } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale, breadcrumbJsonLd, teamJsonLd, teamMetaTitle, metadataOnError } from '@/lib/seo';
 import { BREADCRUMB_LABELS } from '@/lib/breadcrumbs';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { clubName, playerDisplayName } from '@/lib/names';
@@ -33,7 +33,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   try {
     const data = await getTeamDetail(params.id);
     const name = clubName(data.team.name);
-    const title = `${name} | Stick Live`;
+    const title = teamMetaTitle({ locale, name });
     const description = (DESC[locale] ?? DESC['en'])!(name);
     return { title, description, alternates, ...socialMeta({ locale, path: `/teams/${params.id}`, title: name, description, dynamicImage: true }) };
   } catch (err) {
@@ -56,18 +56,18 @@ export default async function TeamDetailPage(props: Props) {
     throw err; // error boundary con reintento — no convertir caídas de API en 404
   }
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'SportsTeam',
+  const jsonLd = teamJsonLd({
+    locale,
+    id: data.team.id,
     name: clubName(data.team.name),
-    sport: 'Roller Hockey',
-    url: `${SITE_URL}/${params.locale}/teams/${data.team.id}`,
+    city: data.team.city,
     // El escudo real lo sirve `${API}/teams/:id/logo` (fichero del volumen o proxy
     // del CDN con Referer); `/escudos/*.png` no existe y el JSON-LD declaraba un
     // 404 (#169). No usamos `logoUrl` directo porque el CDN bloquea el hotlink.
-    logo: `${API_URL}/teams/${data.team.id}/logo`,
-    location: data.team.city ? { '@type': 'Place', name: data.team.city } : undefined,
-  };
+    logoUrl: `${API_URL}/teams/${data.team.id}/logo`,
+    competitionId: data.standing?.competitionId ?? data.season?.competitionId,
+    competitionName: data.standing?.competitionName ?? data.season?.competitionName,
+  });
 
   // F5-6: migas visibles + BreadcrumbList (Inicio › Competiciones › Competición › Equipo).
   const compName = data.standing?.competitionName ?? data.season?.competitionName;

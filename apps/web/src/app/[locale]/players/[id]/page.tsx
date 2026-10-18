@@ -4,7 +4,7 @@ import type { PlayerDetail } from '@/lib/api/client';
 import { PlayerProfileClient } from '@/components/player/PlayerProfileClient';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
-import { localeAlternates, socialMeta, isSupportedLocale, breadcrumbJsonLd, SITE_URL, metadataOnError } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale, breadcrumbJsonLd, playerJsonLd, playerMetaTitle, metadataOnError } from '@/lib/seo';
 import { BREADCRUMB_LABELS } from '@/lib/breadcrumbs';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { toTitleCase, clubName } from '@/lib/names';
@@ -29,7 +29,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     const data = await getPlayerDetail(params.id);
     const name = toTitleCase(`${data.player.firstName} ${data.player.lastName}`);
     const team = data.currentTeam ? clubName(data.currentTeam.name) : null;
-    const title = `${name} | Stick Live`;
+    const title = playerMetaTitle({ locale, name, teamName: team });
     const description = (DESC[locale] ?? DESC['en'])!(name, team);
     return { title, description, alternates, ...socialMeta({ locale, path: `/players/${params.id}`, title: name, description, type: 'profile', dynamicImage: true }) };
   } catch (err) {
@@ -64,17 +64,13 @@ export default async function PlayerProfilePage(props: Props) {
     locale,
     crumbs.map(({ label, href }) => ({ name: label, path: href })),
   );
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Person',
+  const jsonLd = playerJsonLd({
+    locale,
+    id: data.player.id,
     name,
-    url: `${SITE_URL}/${params.locale}/players/${data.player.id}`,
-    ...(data.player.photoUrl ? { image: data.player.photoUrl } : {}),
-    ...(data.currentTeam ? {
-      memberOf: { '@type': 'SportsTeam', name: clubName(data.currentTeam.name) },
-    } : {}),
-    jobTitle: 'Roller Hockey Player',
-  };
+    photoUrl: data.player.photoUrl,
+    teamName: data.currentTeam ? clubName(data.currentTeam.name) : null,
+  });
 
   return (
     <>

@@ -149,6 +149,66 @@ export function localeLessUrl(path: string): string {
   return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+/**
+ * Sufijos de title por tipo de ficha (F3-3, §9.2). Se mantienen cortos para no
+ * pasar de ~65 caracteres con nombres reales.
+ */
+const TITLE_COPY: Record<
+  Locale,
+  { competitionResults: string; competitionCalendar: string; team: string; playerWithTeam: string; playerAlone: string }
+> = {
+  es: {
+    competitionResults: 'clasificación y resultados', competitionCalendar: 'calendario',
+    team: 'calendario, resultados y plantilla', playerWithTeam: 'estadísticas con', playerAlone: 'estadísticas',
+  },
+  en: {
+    competitionResults: 'standings and results', competitionCalendar: 'fixtures',
+    team: 'fixtures, results and squad', playerWithTeam: 'stats with', playerAlone: 'stats',
+  },
+  pt: {
+    competitionResults: 'classificação e resultados', competitionCalendar: 'calendário',
+    team: 'calendário, resultados e plantel', playerWithTeam: 'estatísticas com', playerAlone: 'estatísticas',
+  },
+  fr: {
+    competitionResults: 'classement et résultats', competitionCalendar: 'calendrier',
+    team: 'calendrier, résultats et effectif', playerWithTeam: 'statistiques avec', playerAlone: 'statistiques',
+  },
+  it: {
+    competitionResults: 'classifica e risultati', competitionCalendar: 'calendario',
+    team: 'calendario, risultati e rosa', playerWithTeam: 'statistiche con', playerAlone: 'statistiche',
+  },
+};
+
+/** Title de competición: clasificación si hay jornadas jugadas; si no, calendario. */
+export function competitionMetaTitle(opts: {
+  locale: Locale;
+  competitionName: string;
+  seasonName?: string | null;
+  hasPlayed: boolean;
+}): string {
+  const copy = TITLE_COPY[opts.locale] ?? TITLE_COPY.en;
+  const season = opts.seasonName?.trim();
+  const suffix = opts.hasPlayed ? copy.competitionResults : copy.competitionCalendar;
+  return `${opts.competitionName}${season ? ` ${season}` : ''}: ${suffix} | Stick Live`;
+}
+
+/** Title de equipo club. */
+export function teamMetaTitle(opts: { locale: Locale; name: string }): string {
+  const copy = TITLE_COPY[opts.locale] ?? TITLE_COPY.en;
+  return `${opts.name}: ${copy.team} | Stick Live`;
+}
+
+/** Title de jugador: incluye el equipo actual si se conoce. */
+export function playerMetaTitle(opts: {
+  locale: Locale;
+  name: string;
+  teamName?: string | null;
+}): string {
+  const copy = TITLE_COPY[opts.locale] ?? TITLE_COPY.en;
+  const stats = opts.teamName ? `${copy.playerWithTeam} ${opts.teamName}` : copy.playerAlone;
+  return `${opts.name}: ${stats} | Stick Live`;
+}
+
 /** Fecha corta del partido en la zona de Madrid (para title/description). */
 export function matchDateLabel(
   scheduledAt: string | null | undefined,
@@ -410,6 +470,102 @@ export function competitionJsonLd(opts: {
 }
 
 /** ItemList del listado de competiciones (#349). */
+/**
+ * `SportsEvent` de una ficha de partido (F3-6, §11).
+ *
+ * Incluye `url`, `homeTeam` y `awayTeam` además de `competitor`. No añade
+ * `superEvent`: la API no expone el nombre de la temporada y no se inventa.
+ * Tampoco pone `location` si no hay sede (hoy es nula en todos los partidos).
+ */
+export function matchJsonLd(opts: {
+  locale: Locale;
+  id: string;
+  home: { id?: string | null; name: string };
+  away: { id?: string | null; name: string };
+  scheduledAt?: string | null;
+  status: string;
+  venue?: { name?: string | null; city?: string | null } | null;
+}): Record<string, unknown> {
+  const team = (side: { id?: string | null; name: string }) => ({
+    '@type': 'SportsTeam',
+    name: side.name,
+    ...(side.id ? { url: `${SITE_URL}/${opts.locale}/teams/${side.id}` } : {}),
+  });
+  const eventStatus =
+    opts.status === 'finished'
+      ? undefined
+      : opts.status === 'postponed'
+        ? 'https://schema.org/EventPostponed'
+        : opts.status === 'cancelled'
+          ? 'https://schema.org/EventCancelled'
+          : 'https://schema.org/EventScheduled';
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SportsEvent',
+    name: `${opts.home.name} vs ${opts.away.name}`,
+    sport: 'Roller Hockey',
+    ...(opts.scheduledAt ? { startDate: opts.scheduledAt } : {}),
+    ...(eventStatus ? { eventStatus } : {}),
+    url: `${SITE_URL}/${opts.locale}/matches/${opts.id}`,
+    ...(opts.venue?.name
+      ? { location: { '@type': 'Place', name: opts.venue.name, ...(opts.venue.city ? { address: opts.venue.city } : {}) } }
+      : {}),
+    homeTeam: team(opts.home),
+    awayTeam: team(opts.away),
+    competitor: [team(opts.home), team(opts.away)],
+  };
+}
+
+/** `SportsTeam` de una ficha de equipo, con `memberOf` de su liga actual (F3-6). */
+export function teamJsonLd(opts: {
+  locale: Locale;
+  id: string;
+  name: string;
+  city?: string | null;
+  logoUrl: string;
+  competitionId?: string | null;
+  competitionName?: string | null;
+}): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SportsTeam',
+    name: opts.name,
+    sport: 'Roller Hockey',
+    url: `${SITE_URL}/${opts.locale}/teams/${opts.id}`,
+    logo: opts.logoUrl,
+    ...(opts.city ? { location: { '@type': 'Place', name: opts.city } } : {}),
+    ...(opts.competitionId && opts.competitionName
+      ? {
+          memberOf: {
+            '@type': 'SportsLeague',
+            name: opts.competitionName,
+            url: `${SITE_URL}/${opts.locale}/competitions/${opts.competitionId}`,
+          },
+        }
+      : {}),
+  };
+}
+
+/** `Person` de una ficha de jugador (F3-6). */
+export function playerJsonLd(opts: {
+  locale: Locale;
+  id: string;
+  name: string;
+  photoUrl?: string | null;
+  teamName?: string | null;
+}): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: opts.name,
+    url: `${SITE_URL}/${opts.locale}/players/${opts.id}`,
+    ...(opts.photoUrl ? { image: opts.photoUrl } : {}),
+    ...(opts.teamName ? { memberOf: { '@type': 'SportsTeam', name: opts.teamName } } : {}),
+    jobTitle: 'Roller Hockey Player',
+  };
+}
+
 export function competitionsListJsonLd(
   items: Array<{ name: string; url: string }>,
 ): Record<string, unknown> {

@@ -7,11 +7,11 @@ import { redirectOrNotFound } from '@/lib/entity-redirect';
 import {
   localeAlternates,
   breadcrumbJsonLd,
+  matchJsonLd,
   matchMetaDescription,
   matchMetaTitle,
   socialMeta,
   isSupportedLocale,
-  SITE_URL,
   metadataOnError,
 } from '@/lib/seo';
 import { teamTitleName } from '@/lib/names';
@@ -91,29 +91,15 @@ export default async function MatchDetailPage(props: Props) {
     locale,
     crumbs.map(({ label, href }) => ({ name: label, path: href })),
   );
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'SportsEvent',
-    name: `${teamTitleName(m.homeTeam?.name, m.homeTeam?.shortName)} vs ${teamTitleName(m.awayTeam?.name, m.awayTeam?.shortName)}`,
-    sport: 'Roller Hockey',
-    startDate: m.scheduledAt ?? undefined,
-    // schema.org no tiene un estado "finalizado": para un partido terminado se
-    // omite eventStatus (omitirlo es correcto; EventScheduled sería erróneo).
-    eventStatus: m.status === 'finished'
-      ? undefined
-      : m.status === 'postponed'
-        ? 'https://schema.org/EventPostponed'
-        : m.status === 'cancelled'
-          ? 'https://schema.org/EventCancelled'
-          : 'https://schema.org/EventScheduled',
-    location: m.venue?.name
-      ? { '@type': 'Place', name: m.venue.name, address: m.venue.city ?? undefined }
-      : undefined,
-    competitor: [
-      { '@type': 'SportsTeam', name: teamTitleName(m.homeTeam?.name, m.homeTeam?.shortName), url: `${SITE_URL}/${params.locale}/teams/${m.homeTeam?.id}` },
-      { '@type': 'SportsTeam', name: teamTitleName(m.awayTeam?.name, m.awayTeam?.shortName), url: `${SITE_URL}/${params.locale}/teams/${m.awayTeam?.id}` },
-    ],
-  };
+  const jsonLd = matchJsonLd({
+    locale,
+    id: m.id,
+    home: { id: m.homeTeam?.id, name: homeName },
+    away: { id: m.awayTeam?.id, name: awayName },
+    scheduledAt: m.scheduledAt,
+    status: m.status,
+    venue: m.venue,
+  });
 
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">

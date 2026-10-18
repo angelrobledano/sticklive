@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { permanentRedirect } from 'next/navigation';
-import { localeAlternates, socialMeta, isSupportedLocale, competitionJsonLd, competitionCanonicalPath, breadcrumbJsonLd, SITE_URL, metadataOnError } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale, competitionJsonLd, competitionMetaTitle, competitionCanonicalPath, breadcrumbJsonLd, SITE_URL, metadataOnError } from '@/lib/seo';
 import { BREADCRUMB_LABELS } from '@/lib/breadcrumbs';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import {
@@ -56,7 +56,13 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     const canonical = competitionCanonicalPath(params.id, overview.season.competitionId);
     const alternates = localeAlternates(locale, canonical);
     const name = `${overview.season.competitionName} ${season.name ?? ''}`.trim();
-    const title = `${name} | Stick Live`;
+    const title = competitionMetaTitle({
+      locale,
+      competitionName: overview.season.competitionName,
+      // La temporada solo se añade al title cuando hay más de una visible.
+      seasonName: seasons.length > 1 ? season.name : null,
+      hasPlayed: (overview.standings ?? []).some((row) => row.played > 0),
+    });
     const description = (DESC[locale] ?? DESC['en'])!(name);
     // #279: solo añadimos `?season=` a la URL si la temporada pedida existe de
     // verdad (la misma que sirve el cuerpo). Un `?season=` inválido cae a la

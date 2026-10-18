@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   breadcrumbJsonLd,
   matchDateLabel, matchMetaDescription, matchMetaTitle,
+  competitionMetaTitle, teamMetaTitle, playerMetaTitle,
+  matchJsonLd, teamJsonLd, playerJsonLd,
   socialMeta, socialImageVersion, socialImageUrl, localeLessUrl, SITE_URL,
   siteJsonLd, competitionJsonLd, competitionsListJsonLd, privateMetadata,
   competitionCanonicalPath,
@@ -29,6 +31,37 @@ describe('breadcrumbJsonLd (F5-6)', () => {
     expect(items[2]).toEqual({
       '@type': 'ListItem', position: 3, name: 'OK Liga', item: `${SITE_URL}/es/competitions/c1`,
     });
+  });
+});
+
+describe('titles de competición, equipo y jugador (F3-3)', () => {
+  it('competición: clasificación si hay jornadas jugadas; calendario si no', () => {
+    expect(competitionMetaTitle({
+      locale: 'es', competitionName: 'OK Liga', seasonName: '2026/27', hasPlayed: true,
+    })).toBe('OK Liga 2026/27: clasificación y resultados | Stick Live');
+    expect(competitionMetaTitle({
+      locale: 'es', competitionName: 'OK Liga', seasonName: '2026/27', hasPlayed: false,
+    })).toBe('OK Liga 2026/27: calendario | Stick Live');
+  });
+
+  it('competición sin temporada no deja un espacio doble', () => {
+    expect(competitionMetaTitle({
+      locale: 'es', competitionName: 'OK Liga', seasonName: null, hasPlayed: true,
+    })).toBe('OK Liga: clasificación y resultados | Stick Live');
+  });
+
+  it('equipo y jugador incluyen el contexto pedido', () => {
+    expect(teamMetaTitle({ locale: 'es', name: 'CP Tordera' }))
+      .toBe('CP Tordera: calendario, resultados y plantilla | Stick Live');
+    expect(playerMetaTitle({ locale: 'es', name: 'Marc Castañer', teamName: 'CP Tordera' }))
+      .toBe('Marc Castañer: estadísticas con CP Tordera | Stick Live');
+    expect(playerMetaTitle({ locale: 'es', name: 'Marc Castañer' }))
+      .toBe('Marc Castañer: estadísticas | Stick Live');
+  });
+
+  it('cambia el sufijo por idioma', () => {
+    expect(teamMetaTitle({ locale: 'en', name: 'CP Tordera' }))
+      .toBe('CP Tordera: fixtures, results and squad | Stick Live');
   });
 });
 
@@ -337,5 +370,76 @@ describe('competitionCanonicalPath', () => {
   it('sin competitionId en el payload conserva la ruta pedida', () => {
     expect(competitionCanonicalPath('season-1', null)).toBe('/competitions/season-1');
     expect(competitionCanonicalPath('season-1', undefined)).toBe('/competitions/season-1');
+  });
+});
+
+describe('matchJsonLd (F3-6)', () => {
+  const base = {
+    locale: 'es' as const,
+    id: 'm1',
+    home: { id: 'h1', name: 'Liceo' },
+    away: { id: 'a1', name: 'Reus' },
+    scheduledAt: '2026-10-12T16:15:00.000Z',
+  };
+
+  it('incluye url, homeTeam, awayTeam y competitor', () => {
+    const ld = matchJsonLd({ ...base, status: 'finished' });
+    expect(ld['@type']).toBe('SportsEvent');
+    expect(ld['url']).toBe(`${SITE_URL}/es/matches/m1`);
+    expect(ld['homeTeam']).toEqual({ '@type': 'SportsTeam', name: 'Liceo', url: `${SITE_URL}/es/teams/h1` });
+    expect(ld['awayTeam']).toEqual({ '@type': 'SportsTeam', name: 'Reus', url: `${SITE_URL}/es/teams/a1` });
+    expect((ld['competitor'] as unknown[]).length).toBe(2);
+  });
+
+  it('omite eventStatus en terminado y lo pone en programado/directo', () => {
+    expect(matchJsonLd({ ...base, status: 'finished' })).not.toHaveProperty('eventStatus');
+    expect(matchJsonLd({ ...base, status: 'live' })['eventStatus']).toBe('https://schema.org/EventScheduled');
+    expect(matchJsonLd({ ...base, status: 'postponed' })['eventStatus']).toBe('https://schema.org/EventPostponed');
+  });
+
+  it('no inventa location si no hay sede', () => {
+    expect(matchJsonLd({ ...base, status: 'scheduled' })).not.toHaveProperty('location');
+    const withVenue = matchJsonLd({ ...base, status: 'scheduled', venue: { name: 'Palau', city: 'Barcelona' } });
+    expect(withVenue['location']).toEqual({ '@type': 'Place', name: 'Palau', address: 'Barcelona' });
+  });
+});
+
+describe('teamJsonLd (F3-6)', () => {
+  it('a�ade memberOf con la liga y omite location sin ciudad', () => {
+    const ld = teamJsonLd({
+      locale: 'es', id: 't1', name: 'CP Tordera', logoUrl: 'https://api/logo',
+      competitionId: 'c1', competitionName: 'OK Liga',
+    });
+    expect(ld['memberOf']).toEqual({
+      '@type': 'SportsLeague', name: 'OK Liga', url: `${SITE_URL}/es/competitions/c1`,
+    });
+    expect(ld).not.toHaveProperty('location');
+    expect(ld['sport']).toBe('Roller Hockey');
+  });
+
+  it('incluye location solo si hay ciudad', () => {
+    const ld = teamJsonLd({
+      locale: 'es', id: 't1', name: 'CP Tordera', city: 'Tordera', logoUrl: 'https://api/logo',
+    });
+    expect(ld['location']).toEqual({ '@type': 'Place', name: 'Tordera' });
+    expect(ld).not.toHaveProperty('memberOf');
+  });
+});
+
+describe('playerJsonLd (F3-6)', () => {
+  it('incluye imagen, equipo y url', () => {
+    const ld = playerJsonLd({
+      locale: 'es', id: 'p1', name: 'Marc Casta�er', photoUrl: 'https://api/photo', teamName: 'CP Tordera',
+    });
+    expect(ld['@type']).toBe('Person');
+    expect(ld['url']).toBe(`${SITE_URL}/es/players/p1`);
+    expect(ld['image']).toBe('https://api/photo');
+    expect(ld['memberOf']).toEqual({ '@type': 'SportsTeam', name: 'CP Tordera' });
+  });
+
+  it('omite imagen y equipo si no existen', () => {
+    const ld = playerJsonLd({ locale: 'es', id: 'p1', name: 'X' });
+    expect(ld).not.toHaveProperty('image');
+    expect(ld).not.toHaveProperty('memberOf');
   });
 });
