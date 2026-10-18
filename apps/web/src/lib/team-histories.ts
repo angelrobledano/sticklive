@@ -234,7 +234,7 @@ export const TEAM_HISTORIES: Readonly<Record<string, TeamHistory>> = {
 
   // HC RAXOI
   '84bb0f3c-5af9-48ef-adfa-5eb79c3657bb': {
-    history: 'El HC Raxoi (Santiago de Compostela) compite en la OK Liga Femenina 2026/27.',
+    history: 'El HC Raxoi, con sede en Santiago de Compostela, compite en la OK Liga Femenina 2026/27.',
     honours: [],
     sources: ['Competición 2026/27'],
     updatedAt: UPDATED,
