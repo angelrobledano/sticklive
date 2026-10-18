@@ -561,6 +561,15 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 
 Tras desplegar F1-1: en Search Console, pedir la validación de "Duplicada: el usuario no ha indicado ninguna versión canónica" y revisar en 2-4 semanas el porcentaje de redirecciones en Estadísticas de rastreo.
 
+### F1-5 · Revisión previa de URLs con clics (18/10/2026)
+
+Del informe de Páginas de Search Console y el sitemap actual, estas URLs con clics **no** están en el sitemap y devuelven 200. No aplicarles `noindex`:
+
+- `/players/f2d5ca7a-…` (2 clics), `/players/f78b4553-…`, `/players/32b153d1-…`, `/players/0cf66dae-…` y `/players/bff99cf3-…` (1 cada una): jugadores fuera de `top_tier`.
+- `/matches/fb634853-…` (1 clic): partido fuera de la ventana -60/+14. §6 indica no marcarlo `noindex`, solo sacarlo del sitemap.
+
+Las URLs de competición por id de temporada (`0ffb4a72`, `c0aa5f5f`, `c9f90718`) responden 307/308 a la competición: no son candidatas. El resto de URLs con clics ya está en el sitemap o es un 404/308.
+
 ### Rastreo reproducible (F0-3)
 
 `apps/web/scripts/seo-crawl.ts` materializa el rastreo de esta auditoría. Pide la muestra con el UA de Googlebot para smartphone y guarda un JSON con los campos de §4 (estado, canonical/title en `<head>`, hreflang, robots, JSON-LD, enlaces sin idioma, OG y tiempos). No necesita credenciales ni escribe en la base de datos.
