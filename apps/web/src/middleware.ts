@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { lowercaseUuidPath } from '@/lib/uuid-path';
 
 /**
  * Middleware de localización.
@@ -37,6 +38,19 @@ function detectLocale(req: NextRequest): Locale {
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // F2-4: un UUID en mayúsculas es un duplicado auto-canónico. 301 a la ruta
+  // en minúsculas; si además falta el idioma, se añade en el mismo salto.
+  const normalized = lowercaseUuidPath(pathname);
+  if (normalized !== pathname) {
+    const url = req.nextUrl.clone();
+    const normalizedFirst = normalized.split('/')[1];
+    url.pathname = isLocale(normalizedFirst)
+      ? normalized
+      : `/${detectLocale(req)}${normalized === '/' ? '' : normalized}`;
+    return NextResponse.redirect(url, 301);
+  }
+
   const first = pathname.split('/')[1];
 
   // Ya viene con prefijo de idioma válido → seguir
