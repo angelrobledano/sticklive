@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { OG_BRAND, OgBrandStrip, OgLockup } from '@/lib/og-brand';
 import { getMatchDetail } from '@/lib/api/client';
+import { teamInitials, teamLogoUrlForSatori } from '@/lib/og-image';
 import { teamTitleName } from '@/lib/names';
 
 // Imagen OG dinámica por partido (escudos + marcador) para compartir en
@@ -27,6 +28,8 @@ export default async function Image(props: { params: Promise<{ locale: string; i
   let away = 'Visitante';
   let homeId = '';
   let awayId = '';
+  let homeLogo = false;
+  let awayLogo = false;
   let homeScore: number | null = null;
   let awayScore: number | null = null;
   let status = 'scheduled';
@@ -38,6 +41,8 @@ export default async function Image(props: { params: Promise<{ locale: string; i
     away = teamTitleName(data.match.awayTeam?.name, data.match.awayTeam?.shortName) || 'Visitante';
     homeId = data.match.homeTeam?.id ?? '';
     awayId = data.match.awayTeam?.id ?? '';
+    homeLogo = Boolean(data.match.homeTeam?.logoUrl);
+    awayLogo = Boolean(data.match.awayTeam?.logoUrl);
     homeScore = data.match.score.home;
     awayScore = data.match.score.away;
     status = data.match.status;
@@ -53,22 +58,23 @@ export default async function Image(props: { params: Promise<{ locale: string; i
   const showScore = finished || live;
   const center = showScore ? `${homeScore ?? 0} – ${awayScore ?? 0}` : 'VS';
   const statusLine = live ? 'EN DIRECTO' : finished ? `FINAL · ${dateLine}` : dateLine;
-  const logo = (id: string) => `${API}/teams/${id}/logo`;
+  // F3-1: Satori no decodifica WebP; la API sirve el escudo en PNG con
+  // `?format=png`. Si no hay escudo, iniciales: nunca un círculo vacío.
+  const logo = (id: string) => teamLogoUrlForSatori(API, id);
 
-  const side = (name: string, id: string) => (
+  const side = (name: string, id: string, hasLogo: boolean) => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '380px', gap: '24px' }}>
-      {id ? (
-        // El escudo normalizado trae fondo blanco: lo recortamos en círculo para
-        // que se vea como un badge sobre el fondo oscuro de la tarjeta.
-        <div style={{
-          display: 'flex', width: '170px', height: '170px',
-          borderRadius: '9999px', overflow: 'hidden', background: '#ffffff',
-        }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+      <div style={{
+        display: 'flex', width: '170px', height: '170px', alignItems: 'center', justifyContent: 'center',
+        borderRadius: '9999px', overflow: 'hidden', background: '#ffffff',
+        color: OG_BRAND.night, fontSize: '54px', fontWeight: 800,
+      }}>
+        {id && hasLogo ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img src={logo(id)} width={170} height={170}
                style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
-        </div>
-      ) : null}
+        ) : teamInitials(name)}
+      </div>
       <div style={{ fontSize: '44px', fontWeight: 700, textAlign: 'center', lineHeight: 1.1 }}>{name}</div>
     </div>
   );
@@ -84,7 +90,7 @@ export default async function Image(props: { params: Promise<{ locale: string; i
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {side(home, homeId)}
+          {side(home, homeId, homeLogo)}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
             <div style={{ fontSize: '92px', fontWeight: 800 }}>{center}</div>
             {live ? (
@@ -102,7 +108,7 @@ export default async function Image(props: { params: Promise<{ locale: string; i
               </div>
             )}
           </div>
-          {side(away, awayId)}
+          {side(away, awayId, awayLogo)}
         </div>
 
         <div style={{ fontSize: '24px', color: OG_BRAND.muted }}>sticklive.eu</div>

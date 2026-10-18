@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { OG_BRAND, OgBrandStrip, OgLockup } from '@/lib/og-brand';
 import { getTeamDetail } from '@/lib/api/client';
+import { teamInitials, teamLogoUrlForSatori } from '@/lib/og-image';
 import { clubName } from '@/lib/names';
 
 // Imagen OG dinámica por equipo (#278): escudo + nombre + posición en liga.
@@ -48,21 +49,23 @@ export default async function Image(props: { params: Promise<{ locale: string; i
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '56px' }}>
-          {loaded && hasLogo ? (
-            // El escudo normalizado trae fondo blanco: lo recortamos en círculo
-            // para que se vea como un badge sobre el fondo oscuro de la tarjeta.
+          {loaded ? (
+            // F3-1: PNG para Satori; sin escudo, iniciales (nunca un círculo vacío).
             <div style={{
-              display: 'flex', width: '260px', height: '260px',
-              borderRadius: '9999px', overflow: 'hidden', background: '#ffffff',
+              display: 'flex', width: '260px', height: '260px', alignItems: 'center',
+              justifyContent: 'center', borderRadius: '9999px', overflow: 'hidden',
+              background: '#ffffff', color: OG_BRAND.night, fontSize: '84px', fontWeight: 800,
             }}>
-              {/* eslint-disable-next-line @next/next/no-img-element -- next/og (satori) requiere <img>, no next/image */}
-              <img
-                src={`${API}/teams/${teamId}/logo`}
-                width={260}
-                height={260}
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                alt=""
-              />
+              {hasLogo ? (
+                /* eslint-disable-next-line @next/next/no-img-element -- next/og (satori) requiere <img>, no next/image */
+                <img
+                  src={teamLogoUrlForSatori(API, teamId)}
+                  width={260}
+                  height={260}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  alt=""
+                />
+              ) : teamInitials(name)}
             </div>
           ) : null}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: '780px' }}>

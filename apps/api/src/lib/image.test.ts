@@ -177,6 +177,19 @@ describe('renderNormalizedLogo (#385)', () => {
     expect(corner.b).toBeGreaterThan(240);
   });
 
+  it('sirve el escudo en PNG cuando se pide format=png (Satori)', async () => {
+    const src = await sharp({
+      create: { width: 240, height: 180, channels: 4, background: { r: 200, g: 30, b: 30, alpha: 1 } },
+    }).webp().toBuffer();
+
+    const meta = await sharp(await renderNormalizedLogo(src, 96, 'png')).metadata();
+
+    expect(meta.format).toBe('png');
+    expect(meta.width).toBe(96);
+    expect(meta.height).toBe(96);
+    expect(meta.hasAlpha).toBe(false);
+  });
+
   it('reescala un escudo ya opaco y cuadrado al ancho pedido', async () => {
     const src = await sharp({
       create: { width: 512, height: 512, channels: 3, background: { r: 10, g: 120, b: 200 } },

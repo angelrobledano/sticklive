@@ -99,12 +99,21 @@ export const LOGO_MARGIN = 0.06;
  * se reescala, sin `trim()` (que en bordes anti-aliased podría "crecerlo").
  * La micro-caché de la ruta evita repetirlo por request.
  */
-export async function renderNormalizedLogo(input: Buffer, width: number): Promise<Buffer> {
+export async function renderNormalizedLogo(
+  input: Buffer,
+  width: number,
+  format: ImageFormat = 'webp'
+): Promise<Buffer> {
+  const encode = (pipeline: ReturnType<typeof sharp>): Promise<Buffer> =>
+    format === 'png'
+      ? pipeline.png().toBuffer()
+      : pipeline.webp({ quality: 80 }).toBuffer();
+
   const meta = await sharp(input).metadata();
 
   // Ya opaco y cuadrado: basta reescalar al ancho pedido.
   if (!meta.hasAlpha && meta.width === meta.height) {
-    return sharp(input).resize(width, width).webp({ quality: 80 }).toBuffer();
+    return encode(sharp(input).resize(width, width));
   }
 
   const margin = Math.round(width * LOGO_MARGIN);
@@ -121,16 +130,15 @@ export async function renderNormalizedLogo(input: Buffer, width: number): Promis
   const left = Math.floor((width - info.width) / 2);
   const top = Math.floor((width - info.height) / 2);
 
-  return sharp(data)
-    .extend({
+  return encode(
+    sharp(data).extend({
       top,
       bottom: width - info.height - top,
       left,
       right: width - info.width - left,
       background: LOGO_BACKGROUND,
     })
-    .webp({ quality: 80 })
-    .toBuffer();
+  );
 }
 
 /** Respuesta de imagen con caché inmutable. */

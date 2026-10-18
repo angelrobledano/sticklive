@@ -5,7 +5,12 @@ import { db } from '@sports/db';
 import { setBounded } from '../lib/bounded-cache.js';
 import { isUuid } from '../lib/uuid.js';
 import { lookupImageUrl } from '../lib/image-url.js';
-import { imageResponse, renderNormalizedLogo, resolveImageWidth } from '../lib/image.js';
+import {
+  imageResponse,
+  renderNormalizedLogo,
+  resolveImageFormat,
+  resolveImageWidth,
+} from '../lib/image.js';
 
 /**
  * GET /teams/:id/logo — escudo del equipo (auditoría A3: una sola fuente).
@@ -49,9 +54,13 @@ teamLogoRouter.get('/:id/logo', async (c) => {
   if (!isUuid(id)) return c.notFound();
 
   const width = resolveImageWidth(c.req.query('w'));
-  const key = `${id}:${width}`;
+  // `?format=png` para `next/og` (Satori), que no decodifica WebP. El resto
+  // sigue recibiendo WebP, que pesa menos.
+  const format = resolveImageFormat(c.req.query('format'));
+  const key = `${id}:${width}:${format}`;
+  const contentType = format === 'png' ? 'image/png' : 'image/webp';
   const cached = logoCache.get(key);
-  if (cached) return imageResponse(cached);
+  if (cached) return imageResponse(cached, contentType);
 
   // 1) Fichero local del volumen.
   let source: Buffer | null = null;
@@ -87,9 +96,9 @@ teamLogoRouter.get('/:id/logo', async (c) => {
   }
 
   try {
-    const out = await renderNormalizedLogo(source, width);
+    const out = await renderNormalizedLogo(source, width, format);
     setBounded(logoCache, key, out, LOGO_CACHE_MAX);
-    return imageResponse(out);
+    return imageResponse(out, contentType);
   } catch {
     // sharp no pudo decodificar (formato exótico): mejor servir el original que
     // romper el escudo. El cliente sintetiza su fallback si tampoco carga.

@@ -21,3 +21,19 @@ export function isSatoriRenderableImage(contentType: string | null | undefined):
   const type = (contentType ?? '').split(';')[0]!.trim().toLowerCase();
   return type === 'image/png' || type === 'image/jpeg';
 }
+
+/** Ancho del escudo en las tarjetas OG (se pinta a 170–260 px). */
+export const SATORI_LOGO_WIDTH = 256;
+
+/** URL del escudo en PNG, lista para Satori. */
+export function teamLogoUrlForSatori(apiBase: string, teamId: string): string {
+  const base = apiBase.replace(/\/+$/, '');
+  return `${base}/teams/${encodeURIComponent(teamId)}/logo?w=${SATORI_LOGO_WIDTH}&format=png`;
+}
+
+/** Iniciales para el fallback cuando no hay escudo (nunca un círculo vacío). */
+export function teamInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '·';
+  return words.slice(0, 2).map((word) => word[0]!.toUpperCase()).join('');
+}
