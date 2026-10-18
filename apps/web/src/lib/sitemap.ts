@@ -74,18 +74,47 @@ const ENTITY_META: Record<string, { prefix: string }> = {
   competitions: { prefix: '/competitions' },
   teams: { prefix: '/teams' },
   players: { prefix: '/players' },
-  matches: { prefix: '/matches' },
 };
+
+/**
+ * Separa los partidos en recientes (jugados o en directo: -60 días) y próximos
+ * (+14 días). La API ya devuelve solo esa ventana; aquí se reparte para que
+ * Search Console distinga en su informe cuánto se indexa de cada grupo (F2-3).
+ */
+function splitMatches(matches: SitemapIds['matches'] | undefined): {
+  recent: SitemapId[];
+  upcoming: SitemapId[];
+} {
+  const now = Date.now();
+  const recent: SitemapId[] = [];
+  const upcoming: SitemapId[] = [];
+  for (const item of matches ?? []) {
+    if (typeof item === 'string') {
+      recent.push(item);
+      continue;
+    }
+    const finished = item.finishedAt ? new Date(item.finishedAt).getTime() : null;
+    const scheduled = item.scheduledAt ? new Date(item.scheduledAt).getTime() : null;
+    const isRecent = finished !== null || (scheduled !== null && scheduled <= now);
+    (isRecent ? recent : upcoming).push(item);
+  }
+  return { recent, upcoming };
+}
+
+function sectionIdsFor(name: string, list: SitemapId[]): string[] {
+  if (list.length === 0) return [];
+  const chunks = Math.ceil(list.length / SITEMAP_SECTION_SIZE);
+  return Array.from({ length: chunks }, (_, i) => `${name}-${i}`);
+}
 
 /** Ids de sección para `generateSitemaps`: `core` + un trozo por tipo con datos. */
 export function sitemapSectionIds(ids: SitemapIds): string[] {
   const out: string[] = ['core'];
   for (const name of Object.keys(ENTITY_META)) {
-    const list = ids[name as keyof SitemapIds];
-    if (!list || list.length === 0) continue;
-    const chunks = Math.ceil(list.length / SITEMAP_SECTION_SIZE);
-    for (let i = 0; i < chunks; i++) out.push(`${name}-${i}`);
+    out.push(...sectionIdsFor(name, ids[name as keyof SitemapIds] ?? []));
   }
+  const { recent, upcoming } = splitMatches(ids.matches);
+  out.push(...sectionIdsFor('matches-recent', recent), ...sectionIdsFor('matches-upcoming', upcoming));
   return out;
 }
 
@@ -103,6 +132,20 @@ export function sitemapEntries(section: string, ids: SitemapIds): SitemapEntry[]
   const dash = section.lastIndexOf('-');
   if (dash < 0) return [];
   const name = section.slice(0, dash);
+
+  if (name === 'matches-recent' || name === 'matches-upcoming') {
+    const chunk = Number(section.slice(dash + 1)) || 0;
+    const { recent, upcoming } = splitMatches(ids.matches);
+    const list = name === 'matches-recent' ? recent : upcoming;
+    const slice = list.slice(chunk * SITEMAP_SECTION_SIZE, (chunk + 1) * SITEMAP_SECTION_SIZE);
+    return slice.map((item) => {
+      const entry: SitemapEntry = { path: `/matches/${sitemapItemId(item)}` };
+      const lastModified = sitemapLastModified(item);
+      if (lastModified) entry.lastModified = lastModified;
+      return entry;
+    });
+  }
+
   const meta = ENTITY_META[name];
   if (!meta) return [];
 

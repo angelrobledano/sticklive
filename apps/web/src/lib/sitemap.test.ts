@@ -64,6 +64,25 @@ describe('sitemapEntries', () => {
   it('una sección desconocida no emite nada', () => {
     expect(sitemapEntries('nope-0', ids())).toEqual([]);
   });
+
+  it('separa los partidos recientes de los próximos (F2-3)', () => {
+    const now = Date.now();
+    const past = new Date(now - 86_400_000).toISOString();
+    const future = new Date(now + 86_400_000).toISOString();
+    const matches = [
+      { id: 'm1', finishedAt: past, scheduledAt: past },
+      { id: 'm2', scheduledAt: future },
+    ];
+
+    expect(sitemapSectionIds(ids({ matches })))
+      .toEqual(['core', 'matches-recent-0', 'matches-upcoming-0']);
+    expect(sitemapEntries('matches-recent-0', ids({ matches }))).toEqual([
+      { path: '/matches/m1', lastModified: new Date(past) },
+    ]);
+    expect(sitemapEntries('matches-upcoming-0', ids({ matches }))).toEqual([
+      { path: '/matches/m2', lastModified: new Date(future) },
+    ]);
+  });
 });
 
 // #337: el lastmod debe derivar de los DATOS de cada entidad, nunca de
@@ -114,7 +133,7 @@ describe('sitemapItemId (#337)', () => {
 
 describe('sitemapEntries con lastmod (#337)', () => {
   it('adjunta lastModified a las entradas con datos', () => {
-    const entries = sitemapEntries('matches-0', ids({
+    const entries = sitemapEntries('matches-recent-0', ids({
       matches: [{ id: 'm1', finishedAt: '2026-09-20T20:00:00.000Z' }],
     }));
     expect(entries).toEqual([{

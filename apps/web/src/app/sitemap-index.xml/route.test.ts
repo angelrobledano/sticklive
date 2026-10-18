@@ -31,7 +31,7 @@ describe('GET /sitemap-index.xml', () => {
     expect(res.headers.get('content-type')).toBe('application/xml; charset=utf-8');
 
     const xml = await res.text();
-    for (const section of ['core', 'competitions-0', 'teams-0', 'matches-0']) {
+    for (const section of ['core', 'competitions-0', 'teams-0', 'matches-recent-0']) {
       expect(xml).toContain(`<loc>${SITE_URL}/sitemap/${section}.xml</loc>`);
     }
     // players no trae datos: su sección no debe declararse (apuntaría a un 404).
