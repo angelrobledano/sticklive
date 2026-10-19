@@ -4,10 +4,12 @@ Historial de hitos de producto y plataforma. El estado vivo está en [ESTADO_PRO
 
 ---
 
-## Octubre 2026 — Tandas de penaltis completas y explicadas en el cuadro
+## Octubre 2026 — Tandas de penaltis completas y cuadro con campeón
 
 - El directo vuelve a pedir el acta de un partido terminado mientras su tanda de penaltis siga empatada. Antes, si el acta se capturaba con la tanda a medias y los goles ya cuadraban, nadie la volvía a pedir (ITA–CHI del Mundial quedó 1-1 en la tanda cuando acabó 1-2).
-- Las tarjetas del cuadro dicen «Final (Penaltis)» o «Final (Prórroga)» y pintan el marcador de la tanda junto al resultado. API: `penalties` en los partidos de `GET /seasons/:id/overview` (aditivo).
+- Cuadro más legible: el perdedor de cada cruce se atenúa (nombre, escudo y marcador), un chip «Penaltis» o «Prórroga» dice cómo se decidió y el marcador de la tanda va entre paréntesis junto al resultado. API: `penalties` en los partidos de `GET /seasons/:id/overview` (aditivo).
+- El campeón se destaca: la final lleva borde de acento y debajo un bloque «Campeón» con escudo y nombre. En móvil, donde la final queda fuera de pantalla, una franja «Campeón» encabeza el cuadro.
+- Si falta el ganador guardado en un empate, lo decide la tanda (si está decidida).
 
 ## Octubre 2026 — Aviso para instalar la PWA (Android e iPhone)
 
