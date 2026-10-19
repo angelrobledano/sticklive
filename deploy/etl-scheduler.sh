@@ -136,6 +136,18 @@ while true; do
     node dist/apps/etl/src/scrape-health-watch.js \
       || echo "[scheduler] scrape-health-watch fallo (seguimos)"
 
+    # Clasificación final de las temporadas cerradas (C7): el refresco horario
+    # solo recorre la temporada activa de cada competición, así que la anterior
+    # se quedaba congelada en la última jornada que se scrapeó (Plata Sur
+    # 2025/26: jornada 20 de 22). Pide de nuevo la tabla de las temporadas sin
+    # partidos pendientes que no cuadran y avisa a Sentry si siguen sin cuadrar.
+    # Con lock: escribe clasificaciones. Va antes del integrity-check para que
+    # este vea ya la tabla buena.
+    echo "[scheduler] standings-final $(date -u +%T)"
+    $LOCK node dist/apps/etl/src/standings-final.js \
+      || echo "[scheduler] standings-final saltado o falló (seguimos)"
+    touch "$ALIVE"
+
     # Chequeo de integridad de datos (#231): ventana de temporadas, coherencia
     # eventos↔marcador, standings↔partidos, homónimos en temporada, refs
     # compartidas, partidos sin season_teams, ganadores imposibles y, desde la

@@ -53,3 +53,70 @@ export async function countStandingsMismatches(batchId: string | null = null): P
   const { rows } = await db.query<{ n: string }>(STANDINGS_RECONCILE_SQL, [batchId]);
   return Number(rows[0]?.n ?? 0);
 }
+
+// ── C7: clasificación final de temporadas cerradas (ver standings-final.ts) ──
+
+/** Tope por ejecución: si la fuente no da la tabla, se reintenta al día siguiente. */
+const MAX_SEASONS_PER_RUN = 25;
+
+export interface StaleFinalStandings {
+  seasonId: string;
+  idc: string;
+  competitionName: string;
+  seasonName: string;
+  /** Equipos con menos PJ en la tabla que partidos de liga terminados. */
+  staleTeams: number;
+}
+
+/**
+ * Temporadas cerradas (sin partidos por jugar ni en juego) con la tabla
+ * atrasada. Cuentan los partidos sin fase o de fase de liga/grupos: los de una
+ * eliminatoria no suman a la clasificación.
+ */
+export async function findStaleFinalStandings(limit = MAX_SEASONS_PER_RUN): Promise<StaleFinalStandings[]> {
+  const { rows } = await db.query<{
+    season_id: string; idc: string; competition_name: string; season_name: string; stale_teams: number;
+  }>(
+    `WITH closed AS (
+       SELECT s.id, s.source_ref AS idc, s.name AS season_name, c.name AS competition_name
+         FROM seasons s
+         JOIN competitions c ON c.id = s.competition_id
+        WHERE s.source_ref ~ '^[0-9]+$'
+          AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s.id AND m.status = 'finished')
+          AND NOT EXISTS (
+            SELECT 1 FROM matches m
+             WHERE m.season_id = s.id
+               AND m.status IN ('scheduled', 'live', 'halftime', 'overtime', 'penalty_shootout'))
+     ),
+     league_played AS (
+       SELECT x.season_id, x.team_id, count(*)::int AS pj
+         FROM (
+           SELECT m.season_id, m.home_team_id AS team_id, m.phase_id FROM matches m
+            WHERE m.status = 'finished' AND m.season_id IN (SELECT id FROM closed)
+           UNION ALL
+           SELECT m.season_id, m.away_team_id, m.phase_id FROM matches m
+            WHERE m.status = 'finished' AND m.season_id IN (SELECT id FROM closed)
+         ) x
+         LEFT JOIN phases ph ON ph.id = x.phase_id
+        WHERE ph.id IS NULL OR ph.kind IN ('league', 'groups')
+        GROUP BY x.season_id, x.team_id
+     )
+     SELECT cl.id AS season_id, cl.idc, cl.competition_name, cl.season_name,
+            count(*)::int AS stale_teams
+       FROM closed cl
+       JOIN standings st ON st.season_id = cl.id
+       JOIN league_played lp ON lp.season_id = st.season_id AND lp.team_id = st.team_id
+      WHERE COALESCE(st.played, 0) < lp.pj
+      GROUP BY cl.id, cl.idc, cl.competition_name, cl.season_name
+      ORDER BY cl.season_name DESC, cl.competition_name
+      LIMIT $1`,
+    [limit]
+  );
+  return rows.map((r) => ({
+    seasonId: r.season_id,
+    idc: r.idc,
+    competitionName: r.competition_name,
+    seasonName: r.season_name,
+    staleTeams: r.stale_teams,
+  }));
+}
