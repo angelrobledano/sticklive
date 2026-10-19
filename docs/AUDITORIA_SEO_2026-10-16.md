@@ -550,7 +550,7 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 | F1-7 bajas y fusiones con 308 | Hecho, pendiente de desplegar (migración 073). Baja sin sustituto = 404, no 410 | 5d48dc3 |
 | F1-5 `noindex` de lo no elegible | Pendiente: 2 semanas después de desplegar F1-4, revisando antes las URLs con tráfico | — |
 | F1-6 ocultar por calidad sin desindexar | Hecho, pendiente de desplegar (migración 075). Desviación de §5.3: en vez de servir la última versión con aviso, la ficha responde 5xx las primeras 72 h y 404 después (el producto sigue sin mostrar datos en revisión). Next responde 500, no 503 | 16574ea |
-| F1-11 | Pendiente: limpieza de equipos duplicados, necesita revisión manual | — |
+| F1-11 | Parcial: informe en [INFORME_EQUIPOS_2026-10-19.md](./INFORME_EQUIPOS_2026-10-19.md). Limpieza/fusión pendiente de revisión manual | 949f8fb |
 | F3-1 escudos en las OG | Hecho: `?format=png` en `/teams/:id/logo`; las OG de partido y equipo lo piden y usan iniciales si no hay escudo | 40bddea |
 | F2-5 quitar `changefreq` y `priority` | Hecho: el sitemap ya no los emite | 4a926c0 |
 | F2-4 UUID en mayúsculas | Hecho: el middleware responde 301 a la ruta en minúsculas | 5131799 |
@@ -567,7 +567,8 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 | F3-6 JSON-LD | Hecho: partido con `url`/`homeTeam`/`awayTeam`; equipo con `memberOf`/`sport`; builders puros con tests | bd57851 |
 | F6 control SEO programado | Hecho: `seo-check` diario en GitHub Actions (sitemap, canonical y OG) | 2759d38 |
 | F5-1 CWV de laboratorio | Hecho (19/10): PSI móvil 76 / escritorio 90; LCP 4,7 s / 0,8 s, TBT 170 / 250 ms, CLS 0,129 / 0,007. Campo sin datos | — |
-| F5-2 / F5-3 diagnóstico | Hecho (19/10): AdSense + Funding Choices y la tarjeta de onboarding desplazada por `AdBanner` identificados como causas. Falta decisión sobre anuncios y reserva de altura | — |
+| F5-2 / F5-3 rendimiento | Hecho (19/10): AdSense, `AdBanner` y `AdInterstitial` esperan a que el usuario responda al aviso; el aviso se sirve en SSR y se oculta antes del primer pintado si ya hay elección. El CMP sigue gobernando la publicidad | 9f04ecc |
+| F1-11 informe de equipos | Hecho (19/10): 4 vacíos, 200 sin plantilla, 214 sin género/categoría y 7 grupos de clubes candidatos a duplicado. Sin fusionar | 949f8fb |
 | F2-6 quitar `/sitemap.xml` de Search Console | Hecho (18/10): eliminado el sitemap antiguo que devolvía 404 | — |
 | F2-7 redirigir los partidos con tráfico que hoy son 404 | Parcial (18/10). Recuperadas: `d87e7dfc` → `db7f3b3b` (Chile–Angola 12/10; 9 clics y 26 impresiones, consulta «chile vs angola») y `df95ecd9` → `3369141a` (Sudáfrica–Australia 13/10; sintético en el backup del 11/10). El resto de 404 con clics (`c4e78c74`, `a192b8cd`) no tiene consultas ni rastro en BD/backups: se quedan en 404 | — |
 
@@ -664,8 +665,8 @@ La muestra es determinista: el mismo sitemap produce siempre las mismas URLs, au
 | ID | Prio | Tarea | Solución | Dep. | Esf. | Riesgo | Aceptación | Medición | Resp. |
 |---|---|---|---|---|---|---|---|---|---|
 | F5-1 | P2 | Medir CWV reales | Informe de Search Console o CrUX. **Hecho el 19/10 con PSI de laboratorio** (móvil 76, escritorio 90); el campo sigue sin datos | F0-1 | S | Nulo | Línea base guardada | — | T |
-| F5-2 | P2 | Reducir TBT | Analizar el chunk principal, diferir AdSense. **Datos 19/10:** AdSense 254 KiB/107 ms y Funding Choices 102 KiB/39 ms en el hilo principal; el TBT móvil ya está en 170 ms | F5-1 | M-L | Medio | TBT laboratorio < 600 ms en home | INP de campo | T |
-| F5-3 | P2 | CLS de la home | Reservar altura de la tarjeta. **Datos 19/10:** 0,129 móvil; el culpable es la tarjeta de onboarding (`2xl:hidden`) desplazada por el hueco de `AdBanner` (0,114 + 0,015) | — | S | Bajo | CLS < 0,1 | — | T |
+| F5-2 | P2 | Reducir TBT | Analizar el chunk principal, diferir AdSense. **Hecho 19/10:** el tag no se descarga hasta que el usuario responde al aviso; AdSense/Funding Choices quedan fuera del primer render | F5-1 | M-L | Medio | TBT laboratorio < 600 ms en home | INP de campo | T |
+| F5-3 | P2 | CLS de la home | Reservar altura de la tarjeta. **Hecho 19/10:** el aviso se sirve en SSR y el anuncio no se inserta antes de la respuesta, por lo que la tarjeta de onboarding ya no se desplaza en la primera visita | — | S | Bajo | CLS < 0,1 | — | T |
 | F5-4 | P2 | Enlazado entre entidades | Equipo → rivales y competición, partido → partido anterior entre ambos, competición → temporada anterior | F1-1 | M | Bajo | Ningún equipo indexable sin enlaces entrantes | Páginas huérfanas (control §15) | T |
 | F5-5 | P3 | Rendimiento de `/players/:id` | Endpoint de ~1,3 s y 5xx con 4 peticiones concurrentes | — | M | Bajo | p95 < 400 ms | Sentry | T |
 | F5-6 | P3 | Migas de pan visibles + `BreadcrumbList` | — | — | S | Bajo | — | — | T |

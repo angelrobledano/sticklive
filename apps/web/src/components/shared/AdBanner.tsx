@@ -5,12 +5,14 @@
  * Lógica central de monetización:
  *   • Anuncios apagados por defecto: sin `NEXT_PUBLIC_ADSENSE_CLIENT` no se
  *     renderiza nada (el placeholder solo aparece si `NEXT_PUBLIC_PREMIUM_ENABLED=1`).
- *   • Usuario Premium  → retorna null inmediatamente. Cero DOM, cero layout shift.
+ *   • Usuario Premium  → retorna null inmediatamente. Cero DOM.
  *   • Usuario Free + AdSense configurado → `<ins>` real de AdSense, con etiqueta
  *     "PUBLICIDAD" (cumplimiento IAB/CNMC) y altura reservada para evitar CLS.
  *     El consentimiento publicitario lo gobierna el CMP de Google (TCF) dentro
  *     del propio tag (ver docs/monetizacion.md §4).
- *   • Durante hydratación (mounted=false) → retorna null para evitar mismatch.
+ *   • Durante hydratación (mounted=false) o sin respuesta al aviso de analítica
+ *     → retorna null para evitar mismatch y no cargar terceros en el primer
+ *     render (F5-2/F5-3).
  *
  * Zonas: home-top, home-inline, list-inline, match-summary, match-stats,
  * interstitial (solo en <AdInterstitial>).
