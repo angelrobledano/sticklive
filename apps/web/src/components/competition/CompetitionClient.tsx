@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, Suspense, useRef } from 'react';
+import { useMemo, useCallback, Suspense, useRef, type ReactNode } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useT } from '@/lib/i18n';
@@ -115,11 +115,13 @@ export function competitionVisibleTabs(
   return tabs.length > 0 ? tabs : ['Clasificación'];
 }
 
-export function CompetitionClient({ data, seasons, competitionId, stats }: {
+export function CompetitionClient({ data, seasons, competitionId, stats, summary }: {
   data: SeasonOverview;
   seasons?: CompetitionSeason[];
   competitionId?: string;
   stats?: SeasonStats | null;
+  /** Resumen server-rendered ("Así va la liga", C0): va bajo la cabecera, antes de las pestañas. */
+  summary?: ReactNode;
 }) {
   // Pestañas según los datos: una eliminatoria pura (playoff) no tiene
   // clasificación, y una liga sin fase final no necesita pestaña Playoffs.
@@ -173,6 +175,8 @@ export function CompetitionClient({ data, seasons, competitionId, stats }: {
   return (
     <div className="space-y-4">
       <CompetitionHeader data={data} seasons={seasons} competitionId={competitionId} />
+
+      {summary}
 
       {/* Pestañas principales (#358: patrón ARIA tabs) */}
       <div role="tablist"

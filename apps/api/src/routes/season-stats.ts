@@ -11,6 +11,8 @@ export const seasonStatsRouter = new Hono();
 interface LeaderRow {
   player_id: string | null;
   player_name: string;
+  first_name: string | null;
+  last_name: string | null;
   photo_url: string | null;
   team_id: string | null;
   team_short: string | null;
@@ -46,7 +48,7 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
       // Goleadores + asistentes: UNA agregación de match_lineups (antes eran dos
       // scans idénticos). Post-proceso en JS para recortar cada ranking.
       db.query<LeaderRow>(`
-        SELECT ml.player_id, ml.player_name, p.photo_url,
+        SELECT ml.player_id, ml.player_name, p.first_name, p.last_name, p.photo_url,
                tm.id AS team_id, tm.short_name AS team_short, tm.name AS team_name,
                SUM(ml.goals)::text   AS goals,
                SUM(ml.assists)::text AS assists
@@ -55,7 +57,7 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
         LEFT JOIN players p ON p.id = ml.player_id
         LEFT JOIN teams tm ON tm.id = CASE WHEN ml.is_home THEN m.home_team_id ELSE m.away_team_id END
         WHERE m.season_id = $1
-        GROUP BY ml.player_id, ml.player_name, p.photo_url, tm.id, tm.short_name, tm.name
+        GROUP BY ml.player_id, ml.player_name, p.first_name, p.last_name, p.photo_url, tm.id, tm.short_name, tm.name
         HAVING COALESCE(SUM(ml.goals), 0) > 0 OR COALESCE(SUM(ml.assists), 0) > 0
       `, [seasonId]),
       // Tarjetas (por jugador) y eficiencia a bola parada (por equipo): mismo
@@ -63,6 +65,7 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
       db.query<{
         top_cards: Array<{
           player_id: string | null; player_name: string; photo_url: string | null;
+          first_name: string | null; last_name: string | null;
           team_id: string | null; team_short: string | null; team_name: string | null;
           value: string; extra: string;
         }>;
@@ -76,6 +79,7 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
                  -- Formato fuente "APELLIDOS NOMBRE": el front invierte y
                  -- title-casea igual que en goleadores/asistentes (consistencia)
                  COALESCE(p.last_name || ' ' || p.first_name, 'Desconocido') AS player_name,
+                 p.first_name, p.last_name,
                  p.photo_url,
                  e.team_id, tm.short_name AS team_short, tm.name AS team_name,
                  COUNT(*) FILTER (WHERE e.event_type = 'blue_card')::text AS value,
@@ -120,9 +124,13 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
       `, [seasonId]),
     ]);
 
-    const toLeader = (r: { player_id: string | null; player_name: string; photo_url: string | null; team_id: string | null; team_short: string | null; team_name: string | null; value: string | number; extra: string | number }) => ({
+    const toLeader = (r: { player_id: string | null; player_name: string; first_name?: string | null; last_name?: string | null; photo_url: string | null; team_id: string | null; team_short: string | null; team_name: string | null; value: string | number; extra: string | number }) => ({
       playerId:   r.player_id,
       playerName: r.player_name,
+      // Nombre y apellidos de la ficha del jugador (C0): la web los presenta
+      // sin tener que partir el nombre crudo del acta.
+      firstName:  r.first_name ?? null,
+      lastName:   r.last_name ?? null,
       photoUrl:   r.photo_url,
       teamId:     r.team_id,
       teamShort:  r.team_short,
@@ -134,6 +142,8 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
     const leadersRows = leaders.rows.map((r) => ({
       player_id: r.player_id,
       player_name: r.player_name,
+      first_name: r.first_name,
+      last_name: r.last_name,
       photo_url: r.photo_url,
       team_id: r.team_id,
       team_short: r.team_short,

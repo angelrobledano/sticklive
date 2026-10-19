@@ -167,10 +167,11 @@ export default async function CompetitionPage(props: Props) {
       <BackLink href="/competitions" />
       <Breadcrumbs items={crumbs} />
 
-      {/* F4-2: resumen server-rendered con datos reales, antes de las pestañas. */}
-      <CompetitionSummary data={buildCompetitionSummary(data, stats)} locale={locale} />
-
-      <CompetitionClient data={data} seasons={seasons} competitionId={params.id} stats={stats} />
+      {/* C0: "Así va la liga" server-rendered, bajo la cabecera (H1) y antes de las pestañas. */}
+      <CompetitionClient
+        data={data} seasons={seasons} competitionId={params.id} stats={stats}
+        summary={<CompetitionSummary data={buildCompetitionSummary(data, stats)} locale={locale} />}
+      />
     </div>
   );
 }

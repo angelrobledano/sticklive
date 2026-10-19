@@ -1,4 +1,5 @@
-import type { SeasonMatch, SeasonOverview, SeasonStats } from '@/lib/api/types';
+import type { SeasonLeader, SeasonMatch, SeasonOverview, SeasonStats } from '@/lib/api/types';
+import { playerDisplayName, playerNameFromRaw } from '@/lib/names';
 
 /** Resumen server-rendered para fichas. Nada de textos si el dato es null. */
 
@@ -75,51 +76,127 @@ export function buildMatchPreview(
 }
 
 export interface CompetitionSummary {
-  played: number;
-  leader: { teamId: string; teamName: string; points: number; position: number | null } | null;
-  nextMatch: { id: string; homeName: string; awayName: string; date: string | null; round: string | null } | null;
-  topScorer: { playerName: string; teamName: string | null; value: number } | null;
+  /** not_started: nadie ha jugado · in_progress · finished: sin partidos pendientes. */
+  status: 'not_started' | 'in_progress' | 'finished';
+  /** Jornada de liga más alta con partidos jugados, sobre el total de jornadas de liga. */
+  matchday: { current: number; total: number } | null;
+  leader: {
+    teamId: string; teamName: string; points: number; played: number;
+    /** Puntos de ventaja sobre el 2.º (null si no hay 2.º). */
+    gap: number | null; secondTeamName: string | null;
+  } | null;
+  /** Partido de la próxima jornada entre los mejor clasificados. */
+  featured: {
+    id: string; date: string | null; timezone: string | null;
+    homeTeamId: string; homeName: string; awayTeamId: string; awayName: string;
+    homePosition: number | null; awayPosition: number | null;
+    roundNumber: number | null; roundType: string;
+  } | null;
+  topScorer: {
+    playerId: string | null; displayName: string; photoUrl: string | null;
+    teamId: string | null; teamName: string | null; value: number;
+    /** Goles de ventaja sobre el 2.º goleador. */
+    gap: number | null;
+  } | null;
+  figures: { matchesPlayed: number; goalsPerMatch: number | null; homeWinPct: number | null } | null;
+}
+
+const PENDING = new Set(['scheduled', 'live', 'halftime', 'overtime', 'penalty_shootout']);
+
+function leaderName(l: SeasonLeader): string {
+  return l.firstName && l.lastName ? playerDisplayName(l.firstName, l.lastName) : playerNameFromRaw(l.playerName);
 }
 
 /**
- * Resumen de competición: líder, próximo partido y máximo goleador. Solo
- * devuelve bloques con datos; el componente omite los vacíos.
+ * Resumen de competición ("Así va la liga"): jornada, líder con su ventaja,
+ * partido destacado de la próxima jornada, pichichi y cifras de la liga. Todo
+ * sale de la clasificación, los partidos y los líderes de la temporada; un
+ * bloque sin datos llega a null y el componente no lo pinta.
  */
 export function buildCompetitionSummary(
   overview: SeasonOverview,
   stats: SeasonStats | null | undefined,
   now: Date = new Date(),
 ): CompetitionSummary {
-  const played = overview.standings.filter((s) => s.played > 0);
-  const sorted = [...overview.standings].sort((a, b) => {
-    const pa = a.position ?? Number.MAX_SAFE_INTEGER;
-    const pb = b.position ?? Number.MAX_SAFE_INTEGER;
-    return pa - pb || b.points - a.points;
-  });
-  const leaderRow = sorted.find((s) => s.played > 0) ?? null;
+  const finished = overview.matches.filter((m) => m.status === 'finished');
+  const pending = overview.matches.filter((m) => PENDING.has(m.status));
+  const status: CompetitionSummary['status'] =
+    finished.length === 0 ? 'not_started' : pending.length === 0 ? 'finished' : 'in_progress';
 
-  const next = overview.matches
+  // Jornadas de liga: las rondas regulares de la temporada.
+  const regularRounds = overview.rounds.filter((r) => r.roundType === 'regular');
+  const totalRounds = regularRounds.length
+    ? Math.max(...regularRounds.map((r) => r.number))
+    : 0;
+  const playedRounds = finished
+    .filter((m) => m.roundType === 'regular' && m.roundNumber != null)
+    .map((m) => m.roundNumber!);
+  const matchday = totalRounds > 0 && playedRounds.length > 0
+    ? { current: Math.min(Math.max(...playedRounds), totalRounds), total: totalRounds }
+    : null;
+
+  // Líder: solo con una tabla única (con grupos no hay un líder de la liga).
+  const groups = new Set(overview.standings.map((s) => s.groupName ?? null));
+  const sorted = [...overview.standings].sort((a, b) =>
+    (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || b.points - a.points);
+  const first = groups.size === 1 ? sorted.find((s) => s.played > 0) ?? null : null;
+  const second = first ? sorted.find((s) => s !== first && s.played > 0) ?? null : null;
+
+  const position = new Map(overview.standings.map((s) => [s.teamId, s.position]));
+  const upcoming = overview.matches
     .filter((m) => m.status === 'scheduled' && m.scheduledAt && new Date(m.scheduledAt) >= now)
-    .sort((a, b) => String(a.scheduledAt).localeCompare(String(b.scheduledAt)))[0] ?? null;
+    .sort((a, b) => String(a.scheduledAt).localeCompare(String(b.scheduledAt)));
+  // Candidatos: lo que se juega en la semana que empieza con el próximo partido.
+  // Por ronda no vale: un aplazado de la jornada 2 jugado a mitad de semana
+  // taparía la jornada 5 del fin de semana.
+  const windowEnd = upcoming[0] ? new Date(upcoming[0].scheduledAt!).getTime() + 7 * 86_400_000 : 0;
+  const nextRoundMatches = upcoming.filter((m) => new Date(m.scheduledAt!).getTime() <= windowEnd);
+  // Más interesante = menor suma de posiciones (desempate: el que antes se juega).
+  const rank = (m: SeasonMatch) => {
+    const h = position.get(m.homeTeam.id), a = position.get(m.awayTeam.id);
+    return h != null && a != null ? h + a : Number.MAX_SAFE_INTEGER;
+  };
+  const featuredMatch = status === 'finished' ? null
+    : [...nextRoundMatches].sort((a, b) => rank(a) - rank(b))[0] ?? upcoming[0] ?? null;
 
-  const scorer = stats?.topScorers?.[0] ?? null;
+  const [scorer1, scorer2] = stats?.topScorers ?? [];
+
+  const scored = finished.filter((m) => m.score.home != null && m.score.away != null);
+  const goals = scored.reduce((n, m) => n + m.score.home! + m.score.away!, 0);
+  const homeWins = scored.filter((m) => m.score.home! > m.score.away!).length;
 
   return {
-    played: played.length,
-    leader: leaderRow
-      ? { teamId: leaderRow.teamId, teamName: leaderRow.teamName, points: leaderRow.points, position: leaderRow.position }
-      : null,
-    nextMatch: next
+    status,
+    matchday,
+    leader: first
       ? {
-          id: next.id,
-          homeName: next.homeTeam.name,
-          awayName: next.awayTeam.name,
-          date: next.scheduledAt,
-          round: next.roundName ?? (next.roundNumber ? `J${next.roundNumber}` : null),
+          teamId: first.teamId, teamName: first.teamName, points: first.points, played: first.played,
+          gap: second ? first.points - second.points : null, secondTeamName: second?.teamName ?? null,
         }
       : null,
-    topScorer: scorer
-      ? { playerName: scorer.playerName, teamName: scorer.teamName, value: scorer.value }
+    featured: featuredMatch
+      ? {
+          id: featuredMatch.id, date: featuredMatch.scheduledAt, timezone: featuredMatch.competitionTimezone ?? null,
+          homeTeamId: featuredMatch.homeTeam.id, homeName: featuredMatch.homeTeam.name,
+          awayTeamId: featuredMatch.awayTeam.id, awayName: featuredMatch.awayTeam.name,
+          homePosition: position.get(featuredMatch.homeTeam.id) ?? null,
+          awayPosition: position.get(featuredMatch.awayTeam.id) ?? null,
+          roundNumber: featuredMatch.roundNumber, roundType: featuredMatch.roundType,
+        }
+      : null,
+    topScorer: scorer1
+      ? {
+          playerId: scorer1.playerId, displayName: leaderName(scorer1), photoUrl: scorer1.photoUrl ?? null,
+          teamId: scorer1.teamId, teamName: scorer1.teamName, value: scorer1.value,
+          gap: scorer2 ? scorer1.value - scorer2.value : null,
+        }
+      : null,
+    figures: scored.length > 0
+      ? {
+          matchesPlayed: scored.length,
+          goalsPerMatch: Math.round((goals / scored.length) * 10) / 10,
+          homeWinPct: Math.round((homeWins / scored.length) * 100),
+        }
       : null,
   };
 }

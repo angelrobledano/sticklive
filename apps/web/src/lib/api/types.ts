@@ -276,6 +276,9 @@ export interface TeamSeasonInfo {
 export interface SeasonLeader {
   playerId: string | null;
   playerName: string;
+  /** Nombre y apellidos de la ficha (API ≥ C0); ausentes en payloads antiguos. */
+  firstName?: string | null;
+  lastName?: string | null;
   photoUrl?: string | null;
   teamId: string | null;
   teamShort: string | null;

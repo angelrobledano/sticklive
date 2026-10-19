@@ -39,19 +39,102 @@ describe('buildMatchPreview', () => {
   });
 });
 
+const team = (id: string, name = id.toUpperCase()) => ({ id, name, shortName: null, logoUrl: null });
+const row = (teamId: string, position: number, points: number, played: number, extra: Record<string, unknown> = {}) =>
+  ({ teamId, teamName: `CLUB ${teamId.toUpperCase()}`, position, points, played, form: [], groupName: null, ...extra });
+
+/** Liga de 4 equipos a 6 jornadas (12 partidos): 4 jornadas jugadas. */
+function liga(opts: { pending?: boolean } = {}): SeasonOverview {
+  const pairs: Array<[string, string]> = [['a', 'b'], ['c', 'd'], ['a', 'c'], ['b', 'd'], ['a', 'd'], ['b', 'c']];
+  const matches = [];
+  for (let r = 1; r <= 6; r++) {
+    for (const [h, a] of pairs.slice(((r - 1) % 3) * 2, ((r - 1) % 3) * 2 + 2)) {
+      const played = r <= 4 || !opts.pending;
+      matches.push(match({
+        id: `r${r}-${h}${a}`, roundNumber: r, roundName: `JORNADA ${r}`,
+        status: played ? 'finished' : 'scheduled',
+        scheduledAt: `2026-10-${String(r * 2).padStart(2, '0')}T18:00:00Z`,
+        homeTeam: team(h), awayTeam: team(a),
+        score: played ? { home: 3, away: 1 } : { home: null, away: null },
+      }));
+    }
+  }
+  return {
+    season: { id: 's1', name: '2026/27', competitionId: 'c1', competitionName: 'Liga', phases: [] },
+    standings: [row('a', 1, 12, 4), row('b', 2, 9, 4), row('c', 3, 7, 4), row('d', 4, 3, 4)],
+    rounds: [1, 2, 3, 4, 5, 6].map((n) => ({ id: `rd${n}`, number: n, name: `JORNADA ${n}`, roundType: 'regular' })),
+    matches,
+  } as unknown as SeasonOverview;
+}
+
+const scorers = {
+  topScorers: [
+    { playerId: 'p1', playerName: 'FERNANDEZ DELGADO JUAN GABRIEL', firstName: 'JUAN GABRIEL', lastName: 'FERNANDEZ DELGADO', photoUrl: null, teamId: 'a', teamShort: null, teamName: 'CLUB A', value: 9, extra: 0 },
+    { playerId: 'p2', playerName: 'PUJOL QUINTANA GERARD', photoUrl: null, teamId: 'b', teamShort: null, teamName: 'CLUB B', value: 7, extra: 0 },
+  ],
+  topAssists: [], topCards: [],
+};
+
 describe('buildCompetitionSummary', () => {
-  it('elige líder, próximo partido y goleador solo si hay datos', () => {
-    const summary = buildCompetitionSummary(overview, {
-      topScorers: [{ playerId: 'p1', playerName: 'Ana', photoUrl: null, teamId: 'h', teamShort: null, teamName: 'Local', value: 9, extra: 0 }],
-      topAssists: [], topCards: [],
-    }, new Date('2026-10-19T00:00:00Z'));
-    expect(summary.leader?.teamName).toBe('Local');
-    expect(summary.nextMatch?.id).toBe('current');
-    expect(summary.topScorer?.playerName).toBe('Ana');
+  const now = new Date('2026-10-09T00:00:00Z');
+
+  it('jornada en curso sobre el total de jornadas de liga', () => {
+    const s = buildCompetitionSummary(liga({ pending: true }), scorers, now);
+    expect(s.status).toBe('in_progress');
+    expect(s.matchday).toEqual({ current: 4, total: 6 });
+  });
+
+  it('líder con su ventaja sobre el segundo y enlace por id', () => {
+    const s = buildCompetitionSummary(liga({ pending: true }), scorers, now);
+    expect(s.leader).toMatchObject({ teamId: 'a', teamName: 'CLUB A', points: 12, gap: 3, secondTeamName: 'CLUB B' });
+  });
+
+  it('partido destacado: el de la próxima jornada entre los mejor clasificados', () => {
+    const s = buildCompetitionSummary(liga({ pending: true }), scorers, now);
+    // Jornada 5: a-c (1.º contra 3.º) y b-d (2.º contra 4.º).
+    expect(s.featured).toMatchObject({ id: 'r5-ac', homePosition: 1, awayPosition: 3, roundNumber: 5 });
+  });
+
+  it('un aplazado entre semana no tapa el partido grande del fin de semana', () => {
+    const o = liga({ pending: true });
+    o.matches.push(match({
+      id: 'aplazado', roundNumber: 2, status: 'scheduled', scheduledAt: '2026-10-09T18:00:00Z',
+      homeTeam: team('c'), awayTeam: team('d'), score: { home: null, away: null },
+    }));
+    expect(buildCompetitionSummary(o, scorers, now).featured?.id).toBe('r5-ac');
+  });
+
+  it('pichichi con nombre de presentación y ventaja', () => {
+    const s = buildCompetitionSummary(liga({ pending: true }), scorers, now);
+    expect(s.topScorer).toMatchObject({ playerId: 'p1', displayName: 'Juan Gabriel Fernandez', value: 9, gap: 2, teamId: 'a' });
+  });
+
+  it('sin nombre y apellidos de la API, cae al nombre crudo', () => {
+    const s = buildCompetitionSummary(liga({ pending: true }), { ...scorers, topScorers: [scorers.topScorers[1]!] }, now);
+    expect(s.topScorer?.displayName).toBe('Gerard Pujol');
+  });
+
+  it('cifras de la liga desde los resultados', () => {
+    const s = buildCompetitionSummary(liga({ pending: true }), scorers, now);
+    expect(s.figures).toEqual({ matchesPlayed: 8, goalsPerMatch: 4, homeWinPct: 100 });
+  });
+
+  it('temporada terminada: estado finished y sin partido destacado', () => {
+    const s = buildCompetitionSummary(liga(), scorers, now);
+    expect(s.status).toBe('finished');
+    expect(s.matchday).toEqual({ current: 6, total: 6 });
+    expect(s.featured).toBeNull();
+  });
+
+  it('con varios grupos no hay un líder único', () => {
+    const o = liga({ pending: true });
+    o.standings = [row('a', 1, 12, 4, { groupName: 'A' }), row('b', 1, 9, 4, { groupName: 'B' })] as never;
+    expect(buildCompetitionSummary(o, scorers, now).leader).toBeNull();
   });
 
   it('no inventa un líder si nadie ha jugado', () => {
-    const empty = { ...overview, standings: overview.standings.map((s) => ({ ...s, played: 0 })) } as SeasonOverview;
-    expect(buildCompetitionSummary(empty, null).leader).toBeNull();
+    const o = liga({ pending: true });
+    o.standings = o.standings.map((x) => ({ ...x, played: 0 }));
+    expect(buildCompetitionSummary(o, null, now).leader).toBeNull();
   });
 });

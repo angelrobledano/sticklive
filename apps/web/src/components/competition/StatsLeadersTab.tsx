@@ -8,7 +8,7 @@ import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { clubName } from '@/lib/names';
-import { toLeaderName } from './format';
+import { leaderDisplayName } from './format';
 
 const LEADERBOARD_PREVIEW = 5;
 
@@ -40,17 +40,17 @@ function LeaderBoard({ title, leaders, valueLabel, extraLabel }: {
             <span className="w-5 text-xs font-semibold text-slate-500 dark:text-slate-400 tabular-nums text-center">{idx + 1}</span>
             <PlayerAvatar
               photoUrl={l.photoUrl}
-              name={toLeaderName(l.playerName)}
+              name={leaderDisplayName(l)}
               className="w-8 h-8 rounded-full shrink-0"
             />
             <div className="flex-1 min-w-0">
               {l.playerId ? (
                 <Link href={`/players/${l.playerId}`}
                       className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate hover:text-rink-passion hover:underline block">
-                  {toLeaderName(l.playerName)}
+                  {leaderDisplayName(l)}
                 </Link>
               ) : (
-                <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate block">{toLeaderName(l.playerName)}</span>
+                <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate block">{leaderDisplayName(l)}</span>
               )}
               <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate block">{clubName(l.teamName ?? l.teamShort ?? '')}</span>
             </div>

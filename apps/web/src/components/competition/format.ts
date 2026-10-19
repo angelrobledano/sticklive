@@ -5,6 +5,7 @@
 import type { SeasonOverview, SeasonRound } from '@/lib/api/client';
 import { APP_TZ } from '@/lib/match-time';
 import { isKnockoutStage, stageLabel } from '@/lib/stage-label';
+import { playerDisplayName } from '@/lib/names';
 
 /**
  * Hora/fecha de un partido en la zona de SU competición (columna 042). Cae a
@@ -142,4 +143,13 @@ export function toLeaderName(raw: string): string {
   if (!isUpper || parts.length === 1) return title(clean);
   // Formato fuente "APELLIDO APELLIDO NOMBRE" → "Nombre Apellido"
   return title(`${parts[parts.length - 1]} ${parts[0]}`);
+}
+
+/**
+ * Nombre de presentación de un líder de estadísticas. Con nombre y apellidos
+ * de la ficha (API ≥ C0) es exacto ("Juan Gabriel Fernandez"); sin ellos, se
+ * deduce del nombre crudo del acta.
+ */
+export function leaderDisplayName(l: { playerName: string; firstName?: string | null; lastName?: string | null }): string {
+  return l.firstName && l.lastName ? playerDisplayName(l.firstName, l.lastName) : toLeaderName(l.playerName);
 }
