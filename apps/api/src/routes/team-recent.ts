@@ -40,9 +40,9 @@ teamRecentRouter.get('/:id/recent', async (c) => {
     const result = await db.query<RecentRow>(`
       SELECT m.id,
              COALESCE(m.finished_at, m.scheduled_at) AS date,
-             ht.id AS home_team_id, ht.name AS home_team_name,
+             ht.id AS home_team_id, COALESCE(ht.display_name, ht.name) AS home_team_name,
              ht.short_name AS home_team_short_name, ht.logo_url AS home_team_logo_url,
-             at.id AS away_team_id, at.name AS away_team_name,
+             at.id AS away_team_id, COALESCE(at.display_name, at.name) AS away_team_name,
              at.short_name AS away_team_short_name, at.logo_url AS away_team_logo_url,
              m.home_score, m.away_score,
              c.id AS competition_id, c.name AS competition_name,

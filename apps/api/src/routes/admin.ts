@@ -129,6 +129,122 @@ adminRouter.delete('/users/:id', async (c) => {
   }
 });
 
+// ── Equipos: nombre de presentación curado (F3-2) ──────────────────────────
+
+interface AdminTeamRow {
+  id: string;
+  name: string;
+  display_name: string | null;
+  short_name: string | null;
+  gender: string | null;
+  age_category: string | null;
+  squad_level: number | null;
+  team_type: string;
+  club_name: string | null;
+}
+
+const MAX_DISPLAY_NAME = 120;
+const MAX_TEAM_QUERY = 80;
+
+/** Caracteres de control (C0 y DEL): no pintan nada y ensucian títulos/logs. */
+function hasControlChars(value: string): boolean {
+  for (const char of value) {
+    const code = char.codePointAt(0) ?? 0;
+    if (code < 0x20 || code === 0x7f) return true;
+  }
+  return false;
+}
+
+/** GET /admin/teams?q= — busca equipos para curar su nombre visible. */
+adminRouter.get('/teams', async (c) => {
+  const q = (c.req.query('q') ?? '').trim();
+  if (q.length > MAX_TEAM_QUERY) {
+    return c.json({ error: `q must be at most ${MAX_TEAM_QUERY} characters` }, 400);
+  }
+
+  try {
+    const result = await db.query<AdminTeamRow>(`
+      SELECT t.id, t.name, t.display_name, t.short_name, t.gender, t.age_category,
+             t.squad_level, t.team_type, cl.canonical_name AS club_name
+        FROM teams t
+        LEFT JOIN clubs cl ON cl.id = t.club_id
+       WHERE $1 = ''
+          OR t.name ILIKE '%' || $1 || '%'
+          OR COALESCE(t.display_name, '') ILIKE '%' || $1 || '%'
+       ORDER BY COALESCE(t.display_name, t.name) ASC
+       LIMIT 100
+    `, [q]);
+
+    return c.json({
+      count: result.rows.length,
+      teams: result.rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        displayName: r.display_name,
+        shortName: r.short_name,
+        gender: r.gender,
+        ageCategory: r.age_category,
+        squadLevel: r.squad_level,
+        teamType: r.team_type,
+        clubName: r.club_name,
+      })),
+    });
+  } catch (err) {
+    captureRouteError(err, 'admin] teams list error');
+    logger.error({ err }, '[admin] teams list error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/**
+ * PATCH /admin/teams/:id/display-name  { displayName: string | null }
+ * `null` o cadena vacía restauran el nombre de la fuente.
+ */
+adminRouter.patch('/teams/:id/display-name', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Team not found' }, 404);
+
+  const body = await c.req.json().catch(() => ({})) as { displayName?: unknown } | null;
+  if (!body || typeof body !== 'object' || !Object.hasOwn(body, 'displayName')) {
+    return c.json({ error: 'displayName is required' }, 400);
+  }
+  if (body.displayName !== null && typeof body.displayName !== 'string') {
+    return c.json({ error: 'displayName must be a string or null' }, 400);
+  }
+
+  const displayName = body.displayName === null
+    ? null
+    : body.displayName.replace(/\s+/g, ' ').trim();
+
+  if (displayName !== null && displayName.length > MAX_DISPLAY_NAME) {
+    return c.json({ error: `displayName must be at most ${MAX_DISPLAY_NAME} characters` }, 400);
+  }
+  if (displayName && hasControlChars(displayName)) {
+    return c.json({ error: 'displayName contains control characters' }, 400);
+  }
+
+  try {
+    const result = await db.query<{ id: string; name: string; display_name: string | null }>(
+      `UPDATE teams
+          SET display_name = $2,
+              updated_at  = NOW()
+        WHERE id = $1
+        RETURNING id, name, display_name`,
+      [id, displayName || null]
+    );
+    if (result.rowCount === 0) return c.json({ error: 'Team not found' }, 404);
+    const row = result.rows[0]!;
+    return c.json({
+      ok: true,
+      team: { id: row.id, name: row.name, displayName: row.display_name },
+    });
+  } catch (err) {
+    captureRouteError(err, 'admin] team display name error');
+    logger.error({ err }, '[admin] team display name error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
 // ── Competiciones ─────────────────────
 
 /**

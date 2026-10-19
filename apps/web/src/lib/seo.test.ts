@@ -63,6 +63,10 @@ describe('titles de competición, equipo y jugador (F3-3)', () => {
   it('equipo y jugador incluyen el contexto pedido', () => {
     expect(teamMetaTitle({ locale: 'es', name: 'CP Tordera' }))
       .toBe('CP Tordera: calendario, resultados y plantilla | Stick Live');
+    expect(teamMetaTitle({ locale: 'es', name: 'España', section: 'Femenina · Sub-19' }))
+      .toBe('España (Femenina · Sub-19): calendario, resultados y plantilla | Stick Live');
+    expect(teamMetaTitle({ locale: 'es', name: 'España Femenina', section: 'Femenina · Sub-19' }))
+      .toBe('España Femenina (Sub-19): calendario, resultados y plantilla | Stick Live');
     expect(playerMetaTitle({ locale: 'es', name: 'Marc Castañer', teamName: 'CP Tordera' }))
       .toBe('Marc Castañer: estadísticas con CP Tordera | Stick Live');
     expect(playerMetaTitle({ locale: 'es', name: 'Marc Castañer' }))

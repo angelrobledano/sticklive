@@ -155,7 +155,7 @@ teamDetailRouter.get('/:id', async (c) => {
     const [teamRes, seasonsRes, clubTeamsRes] = await Promise.all([
       // 1) Info del equipo
       db.query<TeamRow>(
-        `SELECT t.id, t.name, t.short_name, t.city, t.country, t.logo_url, t.website_url,
+        `SELECT t.id, COALESCE(t.display_name, t.name) AS name, t.short_name, t.city, t.country, t.logo_url, t.website_url,
                 t.gender, t.age_category, t.squad_level, t.team_type,
                 t.club_id,
                 cl.canonical_name AS club_canonical_name,
@@ -204,12 +204,12 @@ teamDetailRouter.get('/:id', async (c) => {
       // casa si el club es NULL, así que devuelve vacío hasta el backfill 0.2).
       // El orden definitivo lo fija `orderClubTeams` (función pura testeada).
       db.query<ClubTeamRow>(`
-        SELECT t2.id, t2.name, t2.short_name, t2.logo_url,
+        SELECT t2.id, COALESCE(t2.display_name, t2.name) AS name, t2.short_name, t2.logo_url,
                t2.gender, t2.age_category, t2.squad_level, t2.team_type
         FROM teams t
         JOIN teams t2 ON t2.club_id = t.club_id AND t2.id <> t.id
         WHERE t.id = $1
-        ORDER BY t2.name
+        ORDER BY COALESCE(t2.display_name, t2.name)
       `, [id]),
     ]);
 
@@ -313,11 +313,11 @@ teamDetailRouter.get('/:id', async (c) => {
             r.name         AS round_name,
             r.round_type,
             ht.id           AS home_team_id,
-            ht.name         AS home_team_name,
+            COALESCE(ht.display_name, ht.name) AS home_team_name,
             ht.short_name   AS home_team_short_name,
             ht.logo_url     AS home_team_logo_url,
             at.id           AS away_team_id,
-            at.name         AS away_team_name,
+            COALESCE(at.display_name, at.name) AS away_team_name,
             at.short_name   AS away_team_short_name,
             at.logo_url     AS away_team_logo_url,
             c.timezone      AS competition_timezone
@@ -350,32 +350,21 @@ teamDetailRouter.get('/:id', async (c) => {
             )               AS is_goalkeeper,
             p.photo_url,
             tp.jersey_number,
-            COUNT(DISTINCT me_g.id)  FILTER (WHERE me_g.event_type = 'goal')       AS goals,
-            COUNT(DISTINCT me_b.id)  FILTER (WHERE me_b.event_type = 'blue_card')  AS blue_cards,
-            COUNT(DISTINCT me_r.id)  FILTER (WHERE me_r.event_type = 'red_card')   AS red_cards,
-            COUNT(DISTINCT me_p.id)  FILTER (WHERE me_p.event_type = 'penalty')    AS penalties
+            COUNT(DISTINCT me.id) FILTER (WHERE me.event_type = 'goal'      AND mx.id IS NOT NULL) AS goals,
+            COUNT(DISTINCT me.id) FILTER (WHERE me.event_type = 'blue_card' AND mx.id IS NOT NULL) AS blue_cards,
+            COUNT(DISTINCT me.id) FILTER (WHERE me.event_type = 'red_card'  AND mx.id IS NOT NULL) AS red_cards,
+            COUNT(DISTINCT me.id) FILTER (WHERE me.event_type = 'penalty'   AND mx.id IS NOT NULL) AS penalties
           FROM team_players tp
           JOIN players p ON p.id = tp.player_id
-          -- Agregados desde match_events (LEFT JOIN para no excluir jugadores sin eventos).
-          -- #214: acotar por team_id del propio tp — un jugador traspasado tiene
-          -- eventos marcados con su equipo anterior; sin este filtro la plantilla
-          -- atribuía al equipo actual goles/tarjetas marcados con OTRO equipo.
-          LEFT JOIN match_events me_g ON me_g.player_id = p.id
-            AND me_g.event_type = 'goal'
-            AND me_g.team_id = tp.team_id
-            AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_g.match_id AND mx.season_id = ANY($1))
-          LEFT JOIN match_events me_b ON me_b.player_id = p.id
-            AND me_b.event_type = 'blue_card'
-            AND me_b.team_id = tp.team_id
-            AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_b.match_id AND mx.season_id = ANY($1))
-          LEFT JOIN match_events me_r ON me_r.player_id = p.id
-            AND me_r.event_type = 'red_card'
-            AND me_r.team_id = tp.team_id
-            AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_r.match_id AND mx.season_id = ANY($1))
-          LEFT JOIN match_events me_p ON me_p.player_id = p.id
-            AND me_p.event_type = 'penalty'
-            AND me_p.team_id = tp.team_id
-            AND EXISTS (SELECT 1 FROM matches mx WHERE mx.id = me_p.match_id AND mx.season_id = ANY($1))
+          -- Un ÚNICO LEFT JOIN a los eventos relevantes. Antes había cuatro
+          -- joins (goal/blue/red/penalty) con su propio EXISTS a matches:
+          -- cuatro pasadas por jugador y por evento. La temporada se filtra
+          -- en el join a mx y los agregados ignoran las filas fuera de ella.
+          LEFT JOIN match_events me ON me.player_id = p.id
+            AND me.team_id = tp.team_id
+            AND me.event_type IN ('goal', 'blue_card', 'red_card', 'penalty')
+          LEFT JOIN matches mx ON mx.id = me.match_id
+            AND mx.season_id = ANY($1)
           WHERE tp.team_id = $2
             AND tp.season_id = ANY($1)
             AND tp.is_active = TRUE
@@ -412,11 +401,11 @@ teamDetailRouter.get('/:id', async (c) => {
                 r.name         AS round_name,
                 r.round_type,
                 ht.id           AS home_team_id,
-                ht.name         AS home_team_name,
+                COALESCE(ht.display_name, ht.name) AS home_team_name,
                 ht.short_name   AS home_team_short_name,
                 ht.logo_url     AS home_team_logo_url,
                 at.id           AS away_team_id,
-                at.name         AS away_team_name,
+                COALESCE(at.display_name, at.name) AS away_team_name,
                 at.short_name   AS away_team_short_name,
                 at.logo_url     AS away_team_logo_url,
                 c.timezone      AS competition_timezone

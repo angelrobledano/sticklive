@@ -95,7 +95,7 @@ export async function getStandings(
   // del endpoint no necesitan así un segundo fetch.
   if (groupName) {
     const result = await db.query<DbStanding>(
-      `SELECT st.*, t.name AS team_name, t.short_name AS team_short_name, t.logo_url AS team_logo_url
+      `SELECT st.*, COALESCE(t.display_name, t.name) AS team_name, t.short_name AS team_short_name, t.logo_url AS team_logo_url
        FROM standings st
        JOIN teams t ON t.id = st.team_id
        WHERE st.season_id = $1 AND st.group_name = $2
@@ -105,7 +105,7 @@ export async function getStandings(
     return result.rows;
   }
   const result = await db.query<DbStanding>(
-    `SELECT st.*, t.name AS team_name, t.short_name AS team_short_name, t.logo_url AS team_logo_url
+    `SELECT st.*, COALESCE(t.display_name, t.name) AS team_name, t.short_name AS team_short_name, t.logo_url AS team_logo_url
      FROM standings st
      JOIN teams t ON t.id = st.team_id
      WHERE st.season_id = $1

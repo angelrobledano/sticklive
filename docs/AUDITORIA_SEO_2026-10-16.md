@@ -555,7 +555,9 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 | F2-5 quitar `changefreq` y `priority` | Hecho: el sitemap ya no los emite | 4a926c0 |
 | F2-4 UUID en mayúsculas | Hecho: el middleware responde 301 a la ruta en minúsculas | 5131799 |
 | F2-1 `updated_at` estable (lastmod real) | Hecho (migración 077): un UPDATE que solo mueve `updated_at`/`scraped_at` conserva el timestamp; un cambio visible lo mueve. Test de integración contra Postgres real | 5b415d9 |
-| F3-3 titles y descriptions | Hecho en títulos de partido, competición, equipo y jugador (fecha/contexto, marcador solo terminado). Las descripciones con datos concretos esperan F3-2 | 4c6d593, bd57851 |
+| F3-3 titles y descriptions | Hecho en títulos de partido, competición, equipo y jugador (fecha/contexto, marcador solo terminado). Las descripciones con datos concretos ya no están bloqueadas por F3-2; falta redactarlas | 4c6d593, bd57851 |
+| F3-2 nombre de presentación curado | Infraestructura hecha (20/10): `teams.display_name` (080), lecturas con `COALESCE(display_name, name)`, pestaña Equipos en `/admin` y normalización de siglas con puntos (`C.E.` → `CE`). Queda la revisión manual de los nombres que la heurística no resuelva | — |
+| F3-4 desambiguar selecciones | Hecho (20/10): el title de equipo añade sección (`Femenina · Sub-19`, `Filial B`) y el badge reconoce categorías `subNN`/`U19` | — |
 | F3-7 description y `og:url` propios | Hecho: listado, búsqueda y privacidad | 0d7ed4d |
 | F2-3 secciones de sitemap por estado | Hecho: `matches-recent` (jugados o en directo, -60 días) y `matches-upcoming` (+14 días) | 1581819 |
 | F5-6 migas visibles + `BreadcrumbList` | Hecho: competición, equipo, partido y jugador; los enlaces conservan el idioma | c458f17 |

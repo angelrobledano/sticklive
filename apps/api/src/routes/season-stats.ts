@@ -49,7 +49,7 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
       // scans idénticos). Post-proceso en JS para recortar cada ranking.
       db.query<LeaderRow>(`
         SELECT ml.player_id, ml.player_name, p.first_name, p.last_name, p.photo_url,
-               tm.id AS team_id, tm.short_name AS team_short, tm.name AS team_name,
+               tm.id AS team_id, tm.short_name AS team_short, COALESCE(tm.display_name, tm.name) AS team_name,
                SUM(ml.goals)::text   AS goals,
                SUM(ml.assists)::text AS assists
         FROM match_lineups ml
@@ -57,7 +57,7 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
         LEFT JOIN players p ON p.id = ml.player_id
         LEFT JOIN teams tm ON tm.id = CASE WHEN ml.is_home THEN m.home_team_id ELSE m.away_team_id END
         WHERE m.season_id = $1
-        GROUP BY ml.player_id, ml.player_name, p.first_name, p.last_name, p.photo_url, tm.id, tm.short_name, tm.name
+        GROUP BY ml.player_id, ml.player_name, p.first_name, p.last_name, p.photo_url, tm.id, tm.short_name, tm.name, tm.display_name
         HAVING COALESCE(SUM(ml.goals), 0) > 0 OR COALESCE(SUM(ml.assists), 0) > 0
       `, [seasonId]),
       // Tarjetas (por jugador) y eficiencia a bola parada (por equipo): mismo
@@ -81,7 +81,7 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
                  COALESCE(p.last_name || ' ' || p.first_name, 'Desconocido') AS player_name,
                  p.first_name, p.last_name,
                  p.photo_url,
-                 e.team_id, tm.short_name AS team_short, tm.name AS team_name,
+                 e.team_id, tm.short_name AS team_short, COALESCE(tm.display_name, tm.name) AS team_name,
                  COUNT(*) FILTER (WHERE e.event_type = 'blue_card')::text AS value,
                  COUNT(*) FILTER (WHERE e.event_type = 'red_card')::text  AS extra
           FROM match_events e
@@ -91,7 +91,7 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
           WHERE m.season_id = $1
             AND e.event_type IN ('blue_card', 'red_card')
             AND e.player_id IS NOT NULL
-          GROUP BY e.player_id, p.first_name, p.last_name, p.photo_url, e.team_id, tm.short_name, tm.name
+          GROUP BY e.player_id, p.first_name, p.last_name, p.photo_url, e.team_id, tm.short_name, tm.name, tm.display_name
           ORDER BY COUNT(*) FILTER (WHERE e.event_type = 'red_card') DESC,
                    COUNT(*) FILTER (WHERE e.event_type = 'blue_card') DESC
           LIMIT 30
@@ -101,7 +101,7 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
         -- estaría sesgado — por equipo es el dato honesto.
         set_pieces AS (
           SELECT e.team_id,
-                 tm.short_name AS team_short, tm.name AS team_name,
+                 tm.short_name AS team_short, COALESCE(tm.display_name, tm.name) AS team_name,
                  COUNT(*) FILTER (WHERE e.event_type = 'direct_foul')::text AS fd_total,
                  COUNT(*) FILTER (WHERE e.event_type = 'direct_foul' AND e.detail = 'marcada')::text AS fd_scored,
                  COUNT(*) FILTER (WHERE e.event_type = 'penalty')::text AS pen_total,
@@ -115,7 +115,7 @@ seasonStatsRouter.get('/:id/stats', async (c) => {
           WHERE m.season_id = $1
             AND e.event_type IN ('direct_foul', 'penalty')
             AND e.team_id IS NOT NULL
-          GROUP BY e.team_id, tm.short_name, tm.name
+          GROUP BY e.team_id, tm.short_name, tm.name, tm.display_name
           ORDER BY COUNT(*) FILTER (WHERE e.event_type = 'direct_foul' AND e.detail = 'marcada') DESC
         )
         SELECT

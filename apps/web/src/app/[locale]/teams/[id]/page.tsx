@@ -9,7 +9,8 @@ import { redirectOrNotFound } from '@/lib/entity-redirect';
 import { localeAlternates, socialMeta, isSupportedLocale, breadcrumbJsonLd, teamJsonLd, teamMetaTitle, metadataOnError } from '@/lib/seo';
 import { BREADCRUMB_LABELS } from '@/lib/breadcrumbs';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
-import { clubName, playerDisplayName } from '@/lib/names';
+import { clubName, playerDisplayName, teamQualifiedName } from '@/lib/names';
+import { teamSectionLabel } from '@/lib/team-section-label';
 import { teamHistory } from '@/lib/team-histories';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
@@ -34,9 +35,11 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   try {
     const data = await getTeamDetail(params.id);
     const name = clubName(data.team.name);
-    const title = teamMetaTitle({ locale, name });
-    const description = (DESC[locale] ?? DESC['en'])!(name);
-    return { title, description, alternates, ...socialMeta({ locale, path: `/teams/${params.id}`, title: name, description, dynamicImage: true }) };
+    const section = teamSectionLabel(data.team, locale);
+    const qualified = teamQualifiedName(name, section);
+    const title = teamMetaTitle({ locale, name, section });
+    const description = (DESC[locale] ?? DESC['en'])!(qualified);
+    return { title, description, alternates, ...socialMeta({ locale, path: `/teams/${params.id}`, title: qualified, description, dynamicImage: true }) };
   } catch (err) {
     return metadataOnError(err, alternates);
   }
@@ -57,10 +60,14 @@ export default async function TeamDetailPage(props: Props) {
     throw err; // error boundary con reintento — no convertir caídas de API en 404
   }
 
+  const teamName = clubName(data.team.name);
+  const section = teamSectionLabel(data.team, locale);
+  const qualifiedTeamName = teamQualifiedName(teamName, section);
+
   const jsonLd = teamJsonLd({
     locale,
     id: data.team.id,
-    name: clubName(data.team.name),
+    name: qualifiedTeamName,
     city: data.team.city,
     // El escudo real lo sirve `${API}/teams/:id/logo` (fichero del volumen o proxy
     // del CDN con Referer); `/escudos/*.png` no existe y el JSON-LD declaraba un
@@ -73,12 +80,11 @@ export default async function TeamDetailPage(props: Props) {
   // F5-6: migas visibles + BreadcrumbList (Inicio › Competiciones › Competición › Equipo).
   const compName = data.standing?.competitionName ?? data.season?.competitionName;
   const compId = data.standing?.competitionId ?? data.season?.competitionId;
-  const teamName = clubName(data.team.name);
   const crumbs = [
     { label: BREADCRUMB_LABELS[locale].home, href: '/' },
     { label: BREADCRUMB_LABELS[locale].competitions, href: '/competitions' },
     ...(compName && compId ? [{ label: compName, href: `/competitions/${compId}` }] : []),
-    { label: teamName, href: `/teams/${data.team.id}` },
+    { label: qualifiedTeamName, href: `/teams/${data.team.id}` },
   ];
   const breadcrumbLd = breadcrumbJsonLd(
     locale,

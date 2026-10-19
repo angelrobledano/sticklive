@@ -130,15 +130,18 @@ export function buildSearchResults(
 // `$1` = término normalizado (sin acentos, minúsculas); `$2` = límite.
 // El ranking: coincidencia exacta > prefijo > resto; desempate alfabético.
 
+/** Nombre de presentación: el curado manda; si no, el de la fuente. */
+const TEAM_DISPLAY_NAME = 'COALESCE(t.display_name, t.name)';
+
 export const TEAM_QUERY = `
-  SELECT t.id, t.name, t.short_name, t.logo_url, t.country
+  SELECT t.id, ${TEAM_DISPLAY_NAME} AS name, t.short_name, t.logo_url, t.country
   FROM teams t
-  WHERE strpos(${unaccentExpr('t.name')}, $1) > 0
+  WHERE strpos(${unaccentExpr(TEAM_DISPLAY_NAME)}, $1) > 0
      OR strpos(${unaccentExpr("coalesce(t.short_name, '')")}, $1) > 0
   ORDER BY
-    (${unaccentExpr('t.name')} = $1) DESC,
-    (strpos(${unaccentExpr('t.name')}, $1) = 1) DESC,
-    t.name ASC
+    (${unaccentExpr(TEAM_DISPLAY_NAME)} = $1) DESC,
+    (strpos(${unaccentExpr(TEAM_DISPLAY_NAME)}, $1) = 1) DESC,
+    ${TEAM_DISPLAY_NAME} ASC
   LIMIT $2
 `;
 
@@ -146,7 +149,7 @@ export const PLAYER_QUERY = `
   SELECT
     p.id, p.first_name, p.last_name, p.photo_url,
     (
-      SELECT t.name
+      SELECT COALESCE(t.display_name, t.name)
       FROM team_players tp
       JOIN teams t   ON t.id = tp.team_id
       JOIN seasons s ON s.id = tp.season_id

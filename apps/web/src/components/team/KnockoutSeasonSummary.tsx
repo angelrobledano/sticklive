@@ -277,7 +277,7 @@ export function KnockoutSeasonSummary({ data, summary, renderMatch }: {
                 {t('playoffs.champion')}
               </span>
               <span className="flex-1 truncate text-right text-sm font-bold">
-                {clubName(data.team.club?.canonicalName ?? data.team.name)}
+                {clubName(data.team.name)}
               </span>
             </div>
           )}

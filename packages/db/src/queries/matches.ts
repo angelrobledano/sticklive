@@ -251,10 +251,10 @@ export async function getMatchesBySeason(
   const result = await db.query<DbMatchWithTeams>(
     `SELECT
        m.*,
-       ht.name         AS home_team_name,
+       COALESCE(ht.display_name, ht.name) AS home_team_name,
        ht.short_name   AS home_team_short_name,
        ht.logo_url     AS home_team_logo_url,
-       at.name         AS away_team_name,
+       COALESCE(at.display_name, at.name) AS away_team_name,
        at.short_name   AS away_team_short_name,
        at.logo_url     AS away_team_logo_url
      FROM matches m

@@ -149,7 +149,7 @@ export async function loadSeasonInsights(seasonId: string): Promise<SeasonInsigh
   const [teams, players] = await Promise.all([
     teamIds.length
       ? db.query<{ id: string; name: string; short_name: string | null }>(
-          `SELECT id, name, short_name FROM teams WHERE id = ANY($1::uuid[])`, [teamIds])
+          `SELECT id, COALESCE(display_name, name) AS name, short_name FROM teams WHERE id = ANY($1::uuid[])`, [teamIds])
       : Promise.resolve({ rows: [] }),
     playerIds.length
       ? db.query<{ id: string; first_name: string; last_name: string }>(

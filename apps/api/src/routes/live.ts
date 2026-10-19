@@ -146,12 +146,12 @@ liveRouter.get('/live', async (c) => {
         comp.country    AS competition_country,
         -- equipo local
         ht.id           AS home_team_id,
-        ht.name         AS home_team_name,
+        COALESCE(ht.display_name, ht.name) AS home_team_name,
         ht.short_name   AS home_team_short_name,
         ht.logo_url     AS home_team_logo_url,
         -- equipo visitante
         at.id           AS away_team_id,
-        at.name         AS away_team_name,
+        COALESCE(at.display_name, at.name) AS away_team_name,
         at.short_name   AS away_team_short_name,
         at.logo_url     AS away_team_logo_url
       FROM matches m
@@ -230,9 +230,9 @@ liveRouter.get('/current', async (c) => {
         comp.slug AS competition_slug,
         comp.timezone AS competition_timezone,
         comp.country AS competition_country,
-        ht.id AS home_team_id, ht.name AS home_team_name,
+        ht.id AS home_team_id, COALESCE(ht.display_name, ht.name) AS home_team_name,
         ht.short_name AS home_team_short_name, ht.logo_url AS home_team_logo_url,
-        at.id AS away_team_id, at.name AS away_team_name,
+        at.id AS away_team_id, COALESCE(at.display_name, at.name) AS away_team_name,
         at.short_name AS away_team_short_name, at.logo_url AS away_team_logo_url
       FROM matches m
       JOIN seasons s ON s.id = m.season_id AND s.is_current = true

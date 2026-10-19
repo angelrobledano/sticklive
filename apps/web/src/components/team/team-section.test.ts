@@ -16,8 +16,10 @@ describe('sectionBadgeText (#196)', () => {
       .toBe('common.male · age_categories.senior · team.filial B');
   });
 
-  it('omite categorías sin etiqueta (no pide claves inexistentes)', () => {
+  it('incluye categorías sub-NN y omite las que no tienen etiqueta', () => {
     expect(sectionBadgeText({ gender: 'male', ageCategory: 'sub17', squadLevel: 1 }, t))
+      .toBe('common.male · Sub-17');
+    expect(sectionBadgeText({ gender: 'male', ageCategory: 'desconocida', squadLevel: 1 }, t))
       .toBe('common.male');
   });
 

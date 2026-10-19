@@ -422,6 +422,12 @@ export interface TeamDetail {
     country: string;
     logoUrl: string | null;
     websiteUrl: string | null;
+    // Sección club × género × categoría × filial (migraciones 032/044). La API
+    // ya las devuelve; aquí son opcionales para no romper payloads antiguos.
+    gender?: string | null;
+    ageCategory?: string | null;
+    squadLevel?: number | null;
+    teamType?: string | null;
     // Club canónico (Fase 0.3). NULL hasta que el backfill 0.2 corra en prod.
     club: TeamClub | null;
   };

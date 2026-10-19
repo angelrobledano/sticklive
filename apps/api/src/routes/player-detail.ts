@@ -93,7 +93,7 @@ playerDetailRouter.get('/:id', async (c) => {
       db.query<TeamRow>(`
       SELECT
         t.id          AS team_id,
-        t.name        AS team_name,
+        COALESCE(t.display_name, t.name) AS team_name,
         t.short_name  AS team_short_name,
         t.logo_url    AS team_logo_url,
         tp.jersey_number,
@@ -214,7 +214,7 @@ playerDetailRouter.get('/:id', async (c) => {
         c.name          AS competition_name,
         c.short_name    AS competition_short,
         t.id            AS team_id,
-        t.name          AS team_name,
+        COALESCE(t.display_name, t.name) AS team_name,
         t.short_name    AS team_short_name,
         t.logo_url      AS team_logo_url,
         tp.jersey_number,
@@ -255,7 +255,7 @@ playerDetailRouter.get('/:id', async (c) => {
       SELECT
         s.id, s.name, s.start_date, s.is_current,
         c.id, c.name, c.short_name,
-        t.id, t.name, t.short_name, t.logo_url,
+        t.id, COALESCE(t.display_name, t.name), t.short_name, t.logo_url,
         NULL::int AS jersey_number,
         COUNT(DISTINCT me.match_id),
         COUNT(*) FILTER (WHERE me.event_type = 'goal'),
@@ -283,7 +283,7 @@ playerDetailRouter.get('/:id', async (c) => {
         )
       GROUP BY s.id, s.name, s.start_date, s.is_current,
                c.id, c.name, c.short_name,
-               t.id, t.name, t.short_name, t.logo_url
+               t.id, COALESCE(t.display_name, t.name), t.short_name, t.logo_url
 
       ORDER BY season_start DESC NULLS LAST, season_name DESC,
                team_name ASC, competition_name ASC

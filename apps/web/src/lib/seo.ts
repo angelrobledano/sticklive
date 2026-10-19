@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { FALLBACK_LOCALE, SUPPORTED_LOCALES, type Locale } from '@/lib/locales';
 import { isApiNotFound } from '@/lib/api/core';
+import { teamQualifiedName } from '@/lib/names';
 
 /** Base pública del sitio — configúrala en producción (sin barra final) */
 export const SITE_URL =
@@ -192,10 +193,15 @@ export function competitionMetaTitle(opts: {
   return `${opts.competitionName}${season ? ` ${season}` : ''}: ${suffix} | Stick Live`;
 }
 
-/** Title de equipo club. */
-export function teamMetaTitle(opts: { locale: Locale; name: string }): string {
+/** Title de equipo club. `section` desambigua género/categoría/filial (F3-4). */
+export function teamMetaTitle(opts: {
+  locale: Locale;
+  name: string;
+  /** Etiqueta de sección ya localizada: "Femenina · Sub-19", "Filial B"… */
+  section?: string | null;
+}): string {
   const copy = TITLE_COPY[opts.locale] ?? TITLE_COPY.en;
-  return `${opts.name}: ${copy.team} | Stick Live`;
+  return `${teamQualifiedName(opts.name, opts.section)}: ${copy.team} | Stick Live`;
 }
 
 /** Title de jugador: incluye el equipo actual si se conoce. */

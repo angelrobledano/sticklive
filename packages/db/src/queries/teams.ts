@@ -5,6 +5,8 @@ export interface DbTeam {
   id: string;
   sport_id: string;
   name: string;
+  /** Nombre curado desde /admin (migración 080). NULL = usar `name`. */
+  display_name?: string | null;
   short_name: string | null;
   slug: string;
   city: string | null;

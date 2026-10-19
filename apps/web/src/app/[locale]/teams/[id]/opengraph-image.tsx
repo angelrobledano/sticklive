@@ -3,6 +3,8 @@ import { OG_BRAND, OgBrandStrip, OgLockup } from '@/lib/og-brand';
 import { getTeamDetail } from '@/lib/api/client';
 import { ogCopy, teamInitials, teamLogoUrlForSatori } from '@/lib/og-image';
 import { clubName } from '@/lib/names';
+import { teamSectionLabel } from '@/lib/team-section-label';
+import { isSupportedLocale } from '@/lib/locales';
 
 // Imagen OG dinámica por equipo (#278): escudo + nombre + posición en liga.
 // Next la sirve en /{locale}/teams/{id}/opengraph-image siguiendo el patrón de
@@ -31,11 +33,14 @@ export default async function Image(props: { params: Promise<{ locale: string; i
     teamId = data.team.id;
     hasLogo = Boolean(data.team.logoUrl);
     name = clubName(data.team.name);
+    const locale = isSupportedLocale(params.locale) ? params.locale : 'en';
+    const section = teamSectionLabel(data.team, locale);
     const st = data.standing;
-    subtitle = st
+    const baseSubtitle = st
       ? [st.position != null ? `${st.position}º` : '', st.competitionName, `${st.points} pts`]
           .filter(Boolean).join(' · ')
       : (data.team.city ?? copy.hockey);
+    subtitle = [section, baseSubtitle].filter(Boolean).join(' · ');
     loaded = true;
   } catch { /* tarjeta genérica si la API no responde */ }
 

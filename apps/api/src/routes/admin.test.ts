@@ -73,6 +73,55 @@ describe('admin — ids malformados no llegan a la BD (#321)', () => {
   });
 });
 
+describe('admin — nombre de presentación de equipos (F3-2, guards sin BD)', () => {
+  const TEAM_ID = '00000000-0000-0000-0000-000000000001';
+
+  it('PATCH /teams/:id/display-name con uuid inválido → 404', async () => {
+    const res = await adminRouter.request('/teams/xyz/display-name', {
+      method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({ displayName: 'CE Noia' }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('PATCH /teams/:id/display-name sin displayName → 400', async () => {
+    const res = await adminRouter.request(`/teams/${TEAM_ID}/display-name`, {
+      method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('PATCH /teams/:id/display-name con tipo incorrecto → 400', async () => {
+    const res = await adminRouter.request(`/teams/${TEAM_ID}/display-name`, {
+      method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({ displayName: 42 }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('PATCH /teams/:id/display-name demasiado largo → 400 sin tocar la BD', async () => {
+    const res = await adminRouter.request(`/teams/${TEAM_ID}/display-name`, {
+      method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({ displayName: 'x'.repeat(121) }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('PATCH /teams/:id/display-name con caracteres de control → 400', async () => {
+    const res = await adminRouter.request(`/teams/${TEAM_ID}/display-name`, {
+      method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({ displayName: 'CE\u0001Noia' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('GET /teams?q= demasiado larga → 400 sin tocar la BD', async () => {
+    const res = await adminRouter.request(`/teams?q=${'x'.repeat(81)}`, { headers: AUTH });
+    expect(res.status).toBe(400);
+  });
+
+  it('sin token → 401', async () => {
+    const res = await adminRouter.request('/teams', { headers: {} });
+    expect(res.status).toBe(401);
+  });
+});
+
 describe('admin — calidad (guards sin BD)', () => {
   it('PATCH /competitions/:id/quality con uuid inválido → 404', async () => {
     const res = await adminRouter.request('/competitions/xyz/quality', {

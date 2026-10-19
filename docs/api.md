@@ -145,5 +145,7 @@ con canal nativo `push-expo.ts`. Detalle: [docs/app.md](app.md).
 | POST | `/admin/resolution-queue/:id/resolve` · `/:id/reject` | Resolver/descartar de la cola (aprende alias) |
 | GET | `/admin/competitions/archived` · `/duplicates` | Competiciones archivadas / candidatas a duplicado |
 | POST | `/admin/competitions/:id/archive` · `/:id/restore` · `/competitions/merge` | Archivar, restaurar y fusionar competiciones |
+| GET | `/admin/teams?q=` | Buscar equipos para curar su nombre de presentación |
+| PATCH | `/admin/teams/:id/display-name` | Guardar `{ displayName }` o restablecer con `null` |
 
 El panel web de administración vive en `/admin/resolucion` (web).

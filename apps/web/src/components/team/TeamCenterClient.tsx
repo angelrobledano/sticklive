@@ -62,6 +62,15 @@ function squadLevelLetter(level: number | null | undefined): string {
   return String.fromCharCode(64 + Math.min(n, 26));
 }
 
+/** Categoría de edad visible: 'sub19' → 'Sub-19'; conocidas → etiqueta i18n. */
+function ageCategoryLabel(raw: string | null | undefined, t: (key: string) => string): string | null {
+  if (!raw) return null;
+  const key = raw.trim().toLowerCase().replace(/\s+/g, '');
+  const sub = /^(?:sub|u)-?(\d{1,2})$/.exec(key);
+  if (sub) return `Sub-${sub[1]}`;
+  return KNOWN_AGE_CATEGORIES.has(key) ? t(`age_categories.${key}`) : null;
+}
+
 /**
  * #196: etiqueta legible de la sección (género · categoría · filial) para
  * desambiguar dos fichas del mismo club. Pura: recibe `t` para poder testearla
@@ -74,9 +83,8 @@ export function sectionBadgeText(
   const parts: string[] = [];
   if (team.gender === 'female') parts.push(t('common.female'));
   else if (team.gender === 'male') parts.push(t('common.male'));
-  if (team.ageCategory && KNOWN_AGE_CATEGORIES.has(team.ageCategory)) {
-    parts.push(t(`age_categories.${team.ageCategory}`));
-  }
+  const age = ageCategoryLabel(team.ageCategory, t);
+  if (age) parts.push(age);
   const letter = squadLevelLetter(team.squadLevel);
   if (letter) parts.push(`${t('team.filial')} ${letter}`);
   return parts.join(' · ');
@@ -147,7 +155,7 @@ function TeamHeader({ data }: { data: TeamDetailView }) {
             {/* Fase 0.3: preferimos el nombre canónico del club cuando existe;
                 si no (club_id NULL en prod hasta el backfill 0.2), fallback al
                 team. Pasa por clubName() igual, así no hay regresión visual. */}
-            {clubName(team.club?.canonicalName ?? team.name)}
+            {clubName(team.name)}
           </h1>
           {section && (
             <span className="inline-block mt-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
@@ -819,6 +827,14 @@ export function TeamCenterClient({ data }: { data: TeamDetailView }) {
     return () => window.removeEventListener('popstate', applyFromUrl);
   }, []);
 
+  // Los cuatro paneles viven siempre en el DOM (SEO: Googlebot no pulsa
+  // pestañas). Se memoizan por `data`: cambiar de pestaña no vuelve a calcular
+  // el calendario, la plantilla ni las estadísticas.
+  const summaryTab    = useMemo(() => <SummaryTab    data={data} />, [data]);
+  const calendarTab   = useMemo(() => <CalendarTab   data={data} />, [data]);
+  const squadTab      = useMemo(() => <SquadTab      data={data} />, [data]);
+  const teamStatsTab  = useMemo(() => <TeamStatsTab  data={data} />, [data]);
+
   return (
     <div className="space-y-4">
       <TeamHeader data={data} />
@@ -849,10 +865,10 @@ export function TeamCenterClient({ data }: { data: TeamDetailView }) {
           jugadores), ni calendario (20 partidos), ni estadísticas — datos que
           ya vienen en las props. Los inactivos se ocultan con `hidden`, que los
           saca del pintado y del árbol de accesibilidad sin desmontarlos. */}
-      <div hidden={activeTab !== 'Resumen'}>      <SummaryTab   data={data} /></div>
-      <div hidden={activeTab !== 'Calendario'}>   <CalendarTab  data={data} /></div>
-      <div hidden={activeTab !== 'Plantilla'}>    <SquadTab     data={data} /></div>
-      <div hidden={activeTab !== 'Estadísticas'}> <TeamStatsTab data={data} /></div>
+      <div hidden={activeTab !== 'Resumen'}>      {summaryTab}</div>
+      <div hidden={activeTab !== 'Calendario'}>   {calendarTab}</div>
+      <div hidden={activeTab !== 'Plantilla'}>    {squadTab}</div>
+      <div hidden={activeTab !== 'Estadísticas'}> {teamStatsTab}</div>
     </div>
   );
 }

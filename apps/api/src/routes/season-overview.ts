@@ -133,7 +133,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
       db.query<StandingRow>(`
         SELECT
           st.id, st.team_id,
-          t.name         AS team_name,
+          COALESCE(t.display_name, t.name) AS team_name,
           t.short_name   AS team_short_name,
           t.logo_url     AS team_logo_url,
           st.group_name, st.position,
@@ -179,11 +179,11 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
           r.name         AS round_name,
           r.round_type,
           ht.id          AS home_team_id,
-          ht.name        AS home_team_name,
+          COALESCE(ht.display_name, ht.name) AS home_team_name,
           ht.short_name  AS home_team_short_name,
           ht.logo_url    AS home_team_logo_url,
           at.id          AS away_team_id,
-          at.name        AS away_team_name,
+          COALESCE(at.display_name, at.name) AS away_team_name,
           at.short_name  AS away_team_short_name,
           at.logo_url    AS away_team_logo_url
         FROM matches m

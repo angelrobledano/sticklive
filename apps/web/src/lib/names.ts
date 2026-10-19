@@ -35,23 +35,76 @@ const CONNECTORS = new Set([
   'de', 'del', 'la', 'las', 'el', 'los', 'lo', 'y', 'e', 'o', 'u', 'a', 'al', 'con', 'en', 'por', 'para',
 ]);
 // Palabras cortas en mayúsculas que NO son siglas (deben ir en Título), para que
-// la heurística de "≤3 letras = sigla" no las deje gritadas (REY, SUR…).
-const FORCE_TITLE = new Set(['REY', 'SUR']);
+// la heurística de "≤3 letras = sigla" no las deje gritadas (REY, SUR, SAN…).
+const FORCE_TITLE = new Set(['REY', 'SUR', 'SAN']);
+
+/** "C.E." / "C.E" / "S.A." → sigla con puntos. */
+function isDottedAcronym(word: string): boolean {
+  return word.includes('.') && /^\p{L}(?:\.?\p{L})+\.?$/u.test(word);
+}
+
+/** Quita puntos/comas y normaliza a mayúsculas, conservando dígitos (U19). */
+function normalizeAcronym(word: string): string {
+  return word.replace(/[^\p{L}\p{N}]/gu, '').toUpperCase();
+}
+
+/** Une siglas de una sola letra consecutivas: "C." + "P." → "CP". */
+function pushAcronym(out: string[], acronym: string): void {
+  const previous = out[out.length - 1];
+  if (acronym.length === 1 && previous && /^[A-Z]$/.test(previous)) {
+    out[out.length - 1] = previous + acronym;
+    return;
+  }
+  out.push(acronym);
+}
 
 /**
- * "IGUALADA RIGAT HC" → "Igualada Rigat HC"; "COPA DEL REY" → "Copa del Rey".
- * Conserva siglas reales (OK, SAR, HC, CP…), baja conectores y pone en Título el resto.
+ * "IGUALADA RIGAT HC" → "Igualada Rigat HC"; "COPA DEL REY" → "Copa del Rey";
+ * "C.E. NOIA FREIXENET" → "CE Noia Freixenet"; "C. P. SAN CRISTOBAL" → "CP San Cristobal".
+ *
+ * Conserva siglas reales (≤3 letras, con o sin puntos) y baja conectores. Si una
+ * palabra ya trae minúsculas (nombre curado como "Barça" o "CE Noia Freixenet")
+ * se respeta tal cual: la normalización no debe re-mayusculizar lo editado a mano.
  */
 export function clubName(name: string): string {
-  return name
-    .split(/\s+/)
-    .map((w, i) => {
-      const lower = w.toLowerCase();
-      if (i > 0 && CONNECTORS.has(lower)) return lower;
-      const isAcronym = w.length <= 3 && w === w.toUpperCase() && !FORCE_TITLE.has(w.toUpperCase());
-      return isAcronym ? w : w.charAt(0).toUpperCase() + lower.slice(1);
-    })
-    .join(' ');
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const out: string[] = [];
+
+  for (const [i, word] of words.entries()) {
+    const lower = word.toLowerCase();
+    if (i > 0 && CONNECTORS.has(lower)) {
+      out.push(lower);
+      continue;
+    }
+
+    if (isDottedAcronym(word)) {
+      pushAcronym(out, normalizeAcronym(word));
+      continue;
+    }
+
+    const letters = word.replace(/[^\p{L}\p{N}]/gu, '');
+    const allUpper = word === word.toUpperCase();
+    const isAcronym =
+      allUpper &&
+      letters.length > 0 &&
+      letters.length <= 3 &&
+      !FORCE_TITLE.has(letters.toUpperCase());
+
+    if (isAcronym) {
+      pushAcronym(out, normalizeAcronym(word));
+      continue;
+    }
+
+    // Nombre ya curado (tiene minúsculas): no tocar su casing.
+    if (!allUpper) {
+      out.push(word);
+      continue;
+    }
+
+    out.push(word.charAt(0).toUpperCase() + lower.slice(1));
+  }
+
+  return out.join(' ');
 }
 
 /**
@@ -68,6 +121,20 @@ export function teamTitleName(
   const full = name?.trim();
   if (full) return clubName(full);
   return (shortName ?? '').trim();
+}
+
+/**
+ * Nombre + sección sin duplicar lo que ya esté en el nombre curado (F3-4).
+ * "España Femenina" + "Femenina · Sub-19" → "España Femenina (Sub-19)".
+ */
+export function teamQualifiedName(name: string, section: string | null | undefined): string {
+  const parts = (section ?? '')
+    .split(' · ')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const lowerName = name.toLowerCase();
+  const missing = parts.filter((part) => !lowerName.includes(part.toLowerCase()));
+  return missing.length > 0 ? `${name} (${missing.join(' · ')})` : name;
 }
 
 /** Desde first/last de la API: "FERRAN" + "FONT SÁNCHEZ" → "Ferran Font" */
