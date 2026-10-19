@@ -7,9 +7,11 @@ import {
   getSeasonOverview,
   getCompetitionSeasons,
   getSeasonStats,
+  getSeasonInsights,
   isApiNotFound,
   type CompetitionSeason,
   type SeasonStats,
+  type SeasonInsights,
 } from '@/lib/api/client';
 import { CompetitionClient } from '@/components/competition/CompetitionClient';
 import { CompetitionSummary } from '@/components/competition/CompetitionSummary';
@@ -113,10 +115,13 @@ export default async function CompetitionPage(props: Props) {
   // el fallo de stats no bloquea la vista porque los líderes son opcionales.
   let data;
   let stats: SeasonStats | null = null;
+  let insights: SeasonInsights | null = null;
   try {
-    [data, stats] = await Promise.all([
+    [data, stats, insights] = await Promise.all([
       getSeasonOverview(seasonId),
       getSeasonStats(seasonId).catch(() => null),
+      // C2: opcionales, como los líderes; si fallan, el resumen sale sin ellos.
+      getSeasonInsights(seasonId).catch(() => null),
     ]);
   } catch (err) {
     // F1-7: si la ficha se fusionó o la sustituye otra, 308 a esa ficha.
@@ -170,7 +175,13 @@ export default async function CompetitionPage(props: Props) {
       {/* C0: "Así va la liga" server-rendered, bajo la cabecera (H1) y antes de las pestañas. */}
       <CompetitionClient
         data={data} seasons={seasons} competitionId={params.id} stats={stats}
-        summary={<CompetitionSummary data={buildCompetitionSummary(data, stats)} locale={locale} />}
+        summary={
+          <CompetitionSummary
+            data={buildCompetitionSummary(data, stats)} locale={locale}
+            insights={insights} seed={seasonId}
+            day={new Intl.DateTimeFormat('en-CA', { timeZone: data.season.competitionTimezone || 'Europe/Madrid' }).format(new Date())}
+          />
+        }
       />
     </div>
   );

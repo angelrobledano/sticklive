@@ -26,6 +26,7 @@ import type {
   CompetitionSummary,
   CompetitionSeason,
   SeasonStats,
+  SeasonInsights,
   TeamDetail,
   SeasonOverview,
   PlayerDetail,
@@ -366,6 +367,13 @@ export async function getCompetitionSeasons(competitionId: string): Promise<Comp
 export async function getSeasonStats(seasonId: string): Promise<SeasonStats> {
   return apiFetch<SeasonStats>(`/seasons/${seasonId}/stats`, {
     next: { revalidate: 120, tags: [`season-stats-${seasonId}`] },
+  });
+}
+
+/** Datos destacados de la temporada (C2). Opcional: si falla, la ficha sigue sin ellos. */
+export async function getSeasonInsights(seasonId: string): Promise<SeasonInsights> {
+  return apiFetch<SeasonInsights>(`/seasons/${seasonId}/insights`, {
+    next: { revalidate: 600, tags: [`season-insights-${seasonId}`] },
   });
 }
 

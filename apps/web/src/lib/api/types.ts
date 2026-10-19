@@ -590,3 +590,28 @@ export interface PlayerDetail {
   seasonTotals: PlayerSeasonTotals;
   statsByCompetition: PlayerCompStats[];
 }
+
+// ─── Insights de temporada (C2) ───
+
+export type InsightKind =
+  | 'only_unbeaten' | 'win_streak' | 'losing_streak' | 'best_attack' | 'best_defense'
+  | 'perfect_home' | 'home_win_pct' | 'second_half_goals' | 'team_second_half' | 'late_goals'
+  | 'penalty_pct' | 'direct_foul_pct' | 'penalty_drought' | 'scorer_share'
+  | 'biggest_win' | 'highest_scoring' | 'first_goal_wins';
+
+export interface Insight {
+  id: string;
+  kind: InsightKind;
+  priority: number;
+  teamIds: string[];
+  playerIds: string[];
+  matchId: string | null;
+  values: Record<string, number>;
+}
+
+export interface SeasonInsights {
+  insights: Insight[];
+  teams: Record<string, { name: string; shortName: string | null }>;
+  players: Record<string, { firstName: string; lastName: string }>;
+  matches: Record<string, { homeTeamId: string; awayTeamId: string; date: string | null }>;
+}

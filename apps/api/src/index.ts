@@ -25,6 +25,7 @@ import { matchStreamRouter } from './routes/match-stream.js';
 import { competitionsRouter } from './routes/competitions.js';
 import { searchRouter } from './routes/search.js';
 import { seasonStatsRouter } from './routes/season-stats.js';
+import { seasonInsightsRouter } from './routes/season-insights.js';
 import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
 import { healthRouter } from './routes/health.js';
@@ -128,6 +129,7 @@ app.route('/teams',   teamLogoRouter);    // /teams/:id/logo — escudo (volumen
 app.route('/teams',   teamDetailRouter);  // /teams/:id
 app.route('/seasons', seasonOverviewRouter); // /seasons/:id/overview — después de standings/matches
 app.route('/seasons', seasonStatsRouter);    // /seasons/:id/stats — líderes de temporada
+app.route('/seasons', seasonInsightsRouter); // /seasons/:id/insights — datos destacados (C2)
 app.route('/players',  playerPhotoRouter);   // /players/:id/photo — foto (proxy CDN)
 app.route('/players',  playerDetailRouter);  // /players/:id
 app.route('/payments/stripe', stripeRouter);   // proveedor ACTIVO: checkout + webhook

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import type { CompetitionSummary as CompetitionSummaryData } from '@/lib/content-summary';
+import type { SeasonInsights } from '@/lib/api/types';
+import { isRenderable, pickDailyInsight, renderInsight, type InsightPart } from '@/lib/insights';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
@@ -14,6 +16,7 @@ interface Copy {
   scorer: string; goals: string; scorerAhead: (n: number) => string; scorerTied: string;
   matches: (n: number) => string; gpm: (n: string) => string; homeWins: (n: number) => string;
   ordinal: (n: number) => string;
+  didYouKnow: string; more: (n: number) => string;
 }
 
 const COPY: Record<string, Copy> = {
@@ -25,6 +28,7 @@ const COPY: Record<string, Copy> = {
     scorer: 'Máximo goleador', goals: 'goles', scorerAhead: (n) => `+${n} sobre el 2.º`, scorerTied: 'Empatado con el 2.º',
     matches: (n) => `${n} partidos`, gpm: (n) => `${n} goles por partido`, homeWins: (n) => `${n} % de victorias locales`,
     ordinal: (n) => `${n}.º`,
+    didYouKnow: '¿Sabías que…?', more: (n) => `Más datos de la liga (${n})`,
   },
   en: {
     live: 'The league so far', done: 'How it ended', matchday: (c, t) => `Matchday ${c} of ${t}`,
@@ -37,6 +41,7 @@ const COPY: Record<string, Copy> = {
       const s = new Intl.PluralRules('en', { type: 'ordinal' }).select(n);
       return `${n}${({ one: 'st', two: 'nd', few: 'rd' } as Record<string, string>)[s] ?? 'th'}`;
     },
+    didYouKnow: 'Did you know?', more: (n) => `More league facts (${n})`,
   },
   pt: {
     live: 'Assim vai a liga', done: 'Assim terminou', matchday: (c, t) => `Jornada ${c} de ${t}`,
@@ -46,6 +51,7 @@ const COPY: Record<string, Copy> = {
     scorer: 'Melhor marcador', goals: 'golos', scorerAhead: (n) => `+${n} sobre o 2.º`, scorerTied: 'Empatado com o 2.º',
     matches: (n) => `${n} jogos`, gpm: (n) => `${n} golos por jogo`, homeWins: (n) => `${n} % de vitórias em casa`,
     ordinal: (n) => `${n}.º`,
+    didYouKnow: 'Sabia que…?', more: (n) => `Mais dados da liga (${n})`,
   },
   fr: {
     live: 'Le championnat en cours', done: 'Bilan de la saison', matchday: (c, t) => `Journée ${c} sur ${t}`,
@@ -55,6 +61,7 @@ const COPY: Record<string, Copy> = {
     scorer: 'Meilleur buteur', goals: 'buts', scorerAhead: (n) => `+${n} sur le 2e`, scorerTied: 'À égalité avec le 2e',
     matches: (n) => `${n} matchs`, gpm: (n) => `${n} buts par match`, homeWins: (n) => `${n} % de victoires à domicile`,
     ordinal: (n) => (n === 1 ? '1er' : `${n}e`),
+    didYouKnow: 'Le saviez-vous ?', more: (n) => `Plus de chiffres du championnat (${n})`,
   },
   it: {
     live: 'Il campionato finora', done: 'Com’è finita', matchday: (c, t) => `Giornata ${c} di ${t}`,
@@ -64,8 +71,23 @@ const COPY: Record<string, Copy> = {
     scorer: 'Capocannoniere', goals: 'gol', scorerAhead: (n) => `+${n} sul 2º`, scorerTied: 'A pari con il 2º',
     matches: (n) => `${n} partite`, gpm: (n) => `${n} gol a partita`, homeWins: (n) => `${n}% di vittorie in casa`,
     ordinal: (n) => `${n}º`,
+    didYouKnow: 'Lo sapevi?', more: (n) => `Altri dati del campionato (${n})`,
   },
 };
+
+function Sentence({ parts }: { parts: InsightPart[] }) {
+  return (
+    <>
+      {parts.map((p, i) => (typeof p === 'string'
+        ? <span key={i}>{p}</span>
+        : (
+          <Link key={i} href={p.href} className="font-semibold text-slate-900 underline decoration-slate-300 underline-offset-2 hover:decoration-rink-passion dark:text-slate-50 dark:decoration-slate-600">
+            {p.text}
+          </Link>
+        )))}
+    </>
+  );
+}
 
 function Tile({ href, label, children }: { href: string | null; label: string; children: ReactNode }) {
   const body = (
@@ -91,10 +113,22 @@ function Tile({ href, label, children }: { href: string | null; label: string; c
  * próxima jornada y pichichi, cada uno enlazado a su ficha, más las cifras de
  * la liga. Server-rendered y solo con datos reales: lo que no hay no se pinta.
  */
-export function CompetitionSummary({ data, locale }: { data: CompetitionSummaryData; locale: string }) {
+export function CompetitionSummary({ data, locale, insights, seed, day }: {
+  data: CompetitionSummaryData;
+  locale: string;
+  /** Datos destacados de la temporada (C2); sin ellos el bloque sigue igual. */
+  insights?: SeasonInsights | null;
+  /** Semilla y día (AAAA-MM-DD) del dato del día: mismo dato durante todo el día. */
+  seed?: string;
+  day?: string;
+}) {
   const c = COPY[locale] ?? COPY['en']!;
   const { leader, featured, topScorer, figures, matchday } = data;
-  if (!leader && !featured && !topScorer) return null;
+  const facts = insights ? insights.insights.filter((i) => isRenderable(i, insights)) : [];
+  const daily = insights && seed && day ? pickDailyInsight(facts, seed, day) : null;
+  const rest = facts.filter((i) => i !== daily);
+  if (!leader && !featured && !topScorer && !daily) return null;
+  const tiles = [leader, featured, topScorer].filter(Boolean).length;
 
   // "Campeón" no: en ligas cuyo título se decide en un playoff de otra
   // competición (OK Liga), el 1.º de la tabla no lo es.
@@ -114,7 +148,8 @@ export function CompetitionSummary({ data, locale }: { data: CompetitionSummaryD
         )}
       </div>
 
-      <ul className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 scrollbar-none sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0">
+      <ul className={`-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 scrollbar-none sm:mx-0 sm:grid sm:overflow-visible sm:px-0 sm:pb-0 ${
+        tiles === 3 ? 'sm:grid-cols-3' : tiles === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}>
         {leader && (
           <Tile href={`/teams/${leader.teamId}`} label={leaderLabel}>
             <div className="flex items-center gap-2">
@@ -183,6 +218,15 @@ export function CompetitionSummary({ data, locale }: { data: CompetitionSummaryD
         )}
       </ul>
 
+      {daily && insights && (
+        <div className="rounded-lg bg-slate-50 px-3 py-2.5 dark:bg-white/[0.03]">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{c.didYouKnow}</p>
+          <p className="mt-1 text-sm leading-snug text-slate-700 dark:text-slate-300">
+            <Sentence parts={renderInsight(daily, insights, locale)} />
+          </p>
+        </div>
+      )}
+
       {figures && (
         <ul className="flex flex-wrap gap-1.5 text-xs text-slate-600 dark:text-slate-300">
           {[
@@ -193,6 +237,19 @@ export function CompetitionSummary({ data, locale }: { data: CompetitionSummaryD
             <li key={text} className="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-white/[0.05]">{text}</li>
           ))}
         </ul>
+      )}
+
+      {rest.length > 0 && insights && (
+        <details className="group text-sm">
+          <summary className="cursor-pointer select-none text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50">
+            {c.more(rest.length)}
+          </summary>
+          <ul className="mt-2 space-y-1.5 text-slate-700 dark:text-slate-300">
+            {rest.map((i) => (
+              <li key={i.id} className="leading-snug"><Sentence parts={renderInsight(i, insights, locale)} /></li>
+            ))}
+          </ul>
+        </details>
       )}
     </section>
   );
