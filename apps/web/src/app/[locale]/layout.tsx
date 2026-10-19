@@ -115,6 +115,10 @@ export default async function RootLayout({ children, params }: Props) {
   const { locale: raw } = await params;
   if (!isSupportedLocale(raw)) notFound();
   const locale: Locale = raw;
+  // AdSense se sirve también en el HTML inicial (no solo tras hidratar): el
+  // revisor de AdSense y el CMP de Google lo encuentran antes, y el mensaje de
+  // consentimiento puede empezar a cargarse sin esperar a React.
+  const adsenseClient = process.env['NEXT_PUBLIC_ADSENSE_CLIENT']?.trim();
 
   return (
     <html lang={locale} className={inter.variable} suppressHydrationWarning>
@@ -124,6 +128,17 @@ export default async function RootLayout({ children, params }: Props) {
         <link rel="preconnect" href="https://flagcdn.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://flagcdn.com" />
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('rink-theme');if(t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}` }} />
+        {/* AdSense: tag estático (mismo id que `loadAdsenseScript`) para que el
+            rastreador de AdSense lo vea sin ejecutar React y para que el CMP de
+            Google arranque antes. La carga cliente queda como respaldo. */}
+        {adsenseClient && (
+          <script
+            id="adsbygoogle-js"
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(adsenseClient)}`}
+            crossOrigin="anonymous"
+          />
+        )}
       </head>
       <body>
         {/* #349: WebSite + Organization en todas las páginas (marca en la SERP) */}
