@@ -180,12 +180,12 @@ describe('sitemapIndexXml', () => {
 // El HTML declara `x-default` (localeAlternates) pero el sitemap no lo repetía:
 // dos señales hreflang distintas para la misma página. Deben coincidir.
 describe('sitemapLanguages', () => {
-  it('emite un hreflang por idioma más x-default → inglés', () => {
+  it('emite un hreflang por idioma más x-default → español', () => {
     expect(sitemapLanguages('/teams/t1', 'https://sticklive.eu', ['es', 'en', 'pt'])).toEqual({
       es: 'https://sticklive.eu/es/teams/t1',
       en: 'https://sticklive.eu/en/teams/t1',
       pt: 'https://sticklive.eu/pt/teams/t1',
-      'x-default': 'https://sticklive.eu/en/teams/t1',
+      'x-default': 'https://sticklive.eu/es/teams/t1',
     });
   });
 

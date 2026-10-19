@@ -63,9 +63,13 @@ export function ogCopy(locale: string | undefined | null): OgCopy {
 export const SATORI_PHOTO_WIDTH = 192;
 
 /** URL de la foto del jugador en PNG, lista para Satori. */
-export function playerPhotoUrlForSatori(apiBase: string, playerId: string): string {
+export function playerPhotoUrlForSatori(
+  apiBase: string,
+  playerId: string,
+  width = SATORI_PHOTO_WIDTH,
+): string {
   const base = apiBase.replace(/\/+$/, '');
-  return `${base}/players/${encodeURIComponent(playerId)}/photo?w=${SATORI_PHOTO_WIDTH}&format=png`;
+  return `${base}/players/${encodeURIComponent(playerId)}/photo?w=${width}&format=png`;
 }
 
 /** ¿Satori puede decodificar este `Content-Type`? Solo PNG y JPEG. */

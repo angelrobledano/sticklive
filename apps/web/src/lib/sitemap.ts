@@ -10,6 +10,8 @@
  * Lógica pura para poder testearla sin Next ni red.
  */
 
+import { FALLBACK_LOCALE } from '@/lib/locales';
+
 /** Fecha de una entidad en el sitemap (ISO string o Date ya parseado). */
 export type SitemapDate = string | Date | null | undefined;
 
@@ -185,7 +187,8 @@ export function sitemapIndexXml(sectionIds: string[], siteUrl: string): string {
  *
  * Debe coincidir con el que sirve el propio HTML (`localeAlternates`): Google
  * contrasta las dos fuentes y un `x-default` que solo apareciera en una de
- * ellas es una señal contradictoria.
+ * ellas es una señal contradictoria. El idioma por defecto es español, el
+ * mercado principal del producto.
  */
 export function sitemapLanguages(
   path: string,
@@ -194,6 +197,6 @@ export function sitemapLanguages(
 ): Record<string, string> {
   const languages: Record<string, string> = {};
   for (const locale of locales) languages[locale] = `${siteUrl}/${locale}${path}`;
-  languages['x-default'] = `${siteUrl}/en${path}`;
+  languages['x-default'] = `${siteUrl}/${FALLBACK_LOCALE}${path}`;
   return languages;
 }

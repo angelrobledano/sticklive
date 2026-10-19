@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lowercaseUuidPath } from '@/lib/uuid-path';
+import { FALLBACK_LOCALE } from '@/lib/locales';
 
 /**
  * Middleware de localización.
@@ -8,7 +9,7 @@ import { lowercaseUuidPath } from '@/lib/uuid-path';
  * sin prefijo se redirige al idioma del usuario:
  *   1. Cookie sticklive_locale (elección manual previa)
  *   2. Cabecera Accept-Language
- *   3. Fallback: en
+ *   3. Fallback: es (mercado principal; Googlebot no envía Accept-Language)
  *
  * Redirección 307 (temporal): la URL sin prefijo no es canónica de ningún
  * idioma concreto, depende del visitante. Las URLs canónicas e indexables
@@ -17,7 +18,7 @@ import { lowercaseUuidPath } from '@/lib/uuid-path';
 
 const LOCALES = ['es', 'en', 'pt', 'fr', 'it'] as const;
 type Locale = (typeof LOCALES)[number];
-const FALLBACK: Locale = 'en';
+const FALLBACK: Locale = FALLBACK_LOCALE;
 const COOKIE = 'sticklive_locale';
 
 function isLocale(v: string | undefined | null): v is Locale {

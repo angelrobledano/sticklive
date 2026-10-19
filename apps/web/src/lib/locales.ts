@@ -7,7 +7,7 @@ export const LOCALE_NAMES: Record<Locale, string> = {
   es: 'Español', en: 'English', pt: 'Português', fr: 'Français', it: 'Italiano',
 };
 
-export const FALLBACK_LOCALE: Locale = 'en';
+export const FALLBACK_LOCALE: Locale = 'es';
 export const REFERENCE_LOCALE: Locale = 'es';
 export const LOCALE_COOKIE = 'sticklive_locale';
 

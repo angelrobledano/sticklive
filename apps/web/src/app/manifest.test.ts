@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 /**
  * #363 — el manifest PWA es dinámico: `lang` y los `shortcuts` siguen el idioma
- * activo (cookie `sticklive_locale` > Accept-Language > fallback 'en'), igual
+ * activo (cookie `sticklive_locale` > Accept-Language > fallback 'es'), igual
  * que el middleware de i18n. `theme_color` debe coincidir con el meta
  * theme-color claro para que el marco de la app instalada no cambie.
  */
@@ -39,9 +39,9 @@ describe('manifest PWA — idioma dinámico (#363)', () => {
     expect(m.lang).toBe('it');
   });
 
-  it("fallback 'en' sin cookie ni Accept-Language", async () => {
+  it("fallback 'es' sin cookie ni Accept-Language", async () => {
     const m = await manifest();
-    expect(m.lang).toBe('en');
+    expect(m.lang).toBe('es');
   });
 });
 

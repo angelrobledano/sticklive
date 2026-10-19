@@ -6,7 +6,7 @@ import {
   matchJsonLd, teamJsonLd, playerJsonLd,
   socialMeta, socialImageVersion, socialImageUrl, localeLessUrl, SITE_URL,
   siteJsonLd, competitionJsonLd, competitionsListJsonLd, privateMetadata,
-  competitionCanonicalPath,
+  competitionCanonicalPath, localeAlternates,
 } from './seo';
 
 /**
@@ -31,6 +31,16 @@ describe('breadcrumbJsonLd (F5-6)', () => {
     expect(items[2]).toEqual({
       '@type': 'ListItem', position: 3, name: 'OK Liga', item: `${SITE_URL}/es/competitions/c1`,
     });
+  });
+});
+
+describe('localeAlternates (x-default español)', () => {
+  it('usa el español como x-default sin cambiar el canonical de la URL', () => {
+    const alternates = localeAlternates('en', '/teams/t1');
+    const languages = (alternates?.languages ?? {}) as Record<string, string>;
+
+    expect(alternates?.canonical).toBe(`${SITE_URL}/en/teams/t1`);
+    expect(languages['x-default']).toBe(`${SITE_URL}/es/teams/t1`);
   });
 });
 

@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 import { OG_BRAND, OgBrandStrip, OgLockup } from '@/lib/og-brand';
 import { getPlayerDetail } from '@/lib/api/client';
 import { toTitleCase, clubName } from '@/lib/names';
-import { ogCopy } from '@/lib/og-image';
+import { ogCopy, playerPhotoUrlForSatori } from '@/lib/og-image';
 
 // Imagen OG dinámica por jugador (#278): foto + nombre + equipo/temporada.
 // Next la sirve en /{locale}/players/{id}/opengraph-image.
@@ -50,7 +50,7 @@ export default async function Image(props: { params: Promise<{ locale: string; i
           {loaded && hasPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element -- next/og (satori) requiere <img>, no next/image
             <img
-              src={`${API}/players/${playerId}/photo`}
+              src={playerPhotoUrlForSatori(API, playerId, 256)}
               width={260}
               height={260}
               style={{ width: 260, height: 260, borderRadius: 130, objectFit: 'cover', border: `6px solid ${OG_BRAND.granate}`, background: '#e2e8f0' }}

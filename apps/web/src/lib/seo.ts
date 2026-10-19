@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { SUPPORTED_LOCALES, type Locale } from '@/lib/locales';
+import { FALLBACK_LOCALE, SUPPORTED_LOCALES, type Locale } from '@/lib/locales';
 import { isApiNotFound } from '@/lib/api/core';
 
 /** Base pública del sitio — configúrala en producción (sin barra final) */
@@ -11,7 +11,7 @@ export const SITE_URL =
  *
  * localeAlternates('es', '/competitions') →
  *   canonical: /es/competitions
- *   languages: { es: /es/competitions, en: /en/competitions, ..., x-default: /en/... }
+ *   languages: { es: /es/competitions, en: /en/competitions, ..., x-default: /es/... }
  */
 export function localeAlternates(locale: Locale, path = ''): Metadata['alternates'] {
   const clean = path === '/' ? '' : path;
@@ -19,7 +19,7 @@ export function localeAlternates(locale: Locale, path = ''): Metadata['alternate
   for (const l of SUPPORTED_LOCALES) {
     languages[l] = `${SITE_URL}/${l}${clean}`;
   }
-  languages['x-default'] = `${SITE_URL}/en${clean}`;
+  languages['x-default'] = `${SITE_URL}/${FALLBACK_LOCALE}${clean}`;
   return {
     canonical: `${SITE_URL}/${locale}${clean}`,
     languages,
