@@ -569,6 +569,8 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 | F5-1 CWV de laboratorio | Hecho (19/10): PSI móvil 76 / escritorio 90; LCP 4,7 s / 0,8 s, TBT 170 / 250 ms, CLS 0,129 / 0,007. Campo sin datos | — |
 | F5-2 / F5-3 rendimiento | Hecho (19/10): AdSense, `AdBanner` y `AdInterstitial` esperan a que el usuario responda al aviso; el aviso se sirve en SSR y se oculta antes del primer pintado si ya hay elección. El CMP sigue gobernando la publicidad | 9f04ecc |
 | F1-11 informe de equipos | Hecho (19/10): 4 vacíos, 200 sin plantilla, 214 sin género/categoría y 7 grupos de clubes candidatos a duplicado. Sin fusionar | 949f8fb |
+| F1-8 sitemap estricto en build | Hecho (19/10): `generateSitemaps` usa `fetchSitemapIdsStrict`; si la API no responde el build falla en vez de publicar solo `core` | a0b38cf |
+| Descubrimiento para agentes | Hecho (19/10): `/llms.txt` con portada, competiciones, búsqueda, sitemap y API. No sustituye al sitemap ni al HTML | 001dc03 |
 | F2-6 quitar `/sitemap.xml` de Search Console | Hecho (18/10): eliminado el sitemap antiguo que devolvía 404 | — |
 | F2-7 redirigir los partidos con tráfico que hoy son 404 | Parcial (18/10). Recuperadas: `d87e7dfc` → `db7f3b3b` (Chile–Angola 12/10; 9 clics y 26 impresiones, consulta «chile vs angola») y `df95ecd9` → `3369141a` (Sudáfrica–Australia 13/10; sintético en el backup del 11/10). El resto de 404 con clics (`c4e78c74`, `a192b8cd`) no tiene consultas ni rastro en BD/backups: se quedan en 404 | — |
 
