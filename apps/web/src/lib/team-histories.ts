@@ -194,12 +194,12 @@ export const TEAM_HISTORIES: Readonly<Record<string, TeamHistory>> = {
     updatedAt: UPDATED,
   },
 
-  // ─── OK Liga Femenina 2026/27 ───────────────────────────────────────────────
+  // ─── OK Liga Iberdrola 2026/27 ───────────────────────────────────────────────
 
   // CH MATARÓ
   '4db4f4ca-8ed5-42d6-90e8-86f0f23e1680': {
     history:
-      'El Club Hoquei Mataró se fundó en 1951 en Mataró (Maresme) y en 2026/27 compite en la OK Liga Femenina.',
+      'El Club Hoquei Mataró se fundó en 1951 en Mataró (Maresme) y en 2026/27 compite en la OK Liga Iberdrola.',
     honours: [
       '1 Copa de la CERS (2008-09)',
       '1 OK Liga Plata (2019-20)',
@@ -213,7 +213,7 @@ export const TEAM_HISTORIES: Readonly<Record<string, TeamHistory>> = {
 
   // ORKLA BIGUES I RIELLS
   '682e11af-a000-45bf-952e-2655a0f95101': {
-    history: 'El Club Hoquei Bigues i Riells (Vallès Oriental) compite en la OK Liga Femenina 2026/27.',
+    history: 'El Club Hoquei Bigues i Riells (Vallès Oriental) compite en la OK Liga Iberdrola 2026/27.',
     honours: [],
     sources: ['Competición 2026/27'],
     updatedAt: UPDATED,
@@ -234,7 +234,7 @@ export const TEAM_HISTORIES: Readonly<Record<string, TeamHistory>> = {
 
   // HC RAXOI
   '84bb0f3c-5af9-48ef-adfa-5eb79c3657bb': {
-    history: 'El HC Raxoi, con sede en Santiago de Compostela, compite en la OK Liga Femenina 2026/27.',
+    history: 'El HC Raxoi, con sede en Santiago de Compostela, compite en la OK Liga Iberdrola 2026/27.',
     honours: [],
     sources: ['Competición 2026/27'],
     updatedAt: UPDATED,
@@ -242,7 +242,7 @@ export const TEAM_HISTORIES: Readonly<Record<string, TeamHistory>> = {
 
   // OXIGEN PHC SANT CUGAT
   'e7d5e3f2-4248-4f77-97bf-8311d91a3aa9': {
-    history: 'El Patí Hoquei Club Sant Cugat (Vallès Occidental) compite en la OK Liga Femenina 2026/27.',
+    history: 'El Patí Hoquei Club Sant Cugat (Vallès Occidental) compite en la OK Liga Iberdrola 2026/27.',
     honours: [],
     sources: [`${WIKIDATA} Q3353248`, 'Competición 2026/27'],
     updatedAt: UPDATED,
@@ -251,7 +251,7 @@ export const TEAM_HISTORIES: Readonly<Record<string, TeamHistory>> = {
   // LLEIDANET HC ALPICAT
   '0efd3269-740d-496c-a6a3-e422b6c4126d': {
     history:
-      'El Hoquei Club Alpicat se fundó en 2004 en Alpicat (Segrià) y ha ido escalando categorías hasta la OK Liga Femenina.',
+      'El Hoquei Club Alpicat se fundó en 2004 en Alpicat (Segrià) y ha ido escalando categorías hasta la OK Liga Iberdrola.',
     honours: [
       '1 Copa Generalitat (2015-16)',
       '1 Liga Nacional Catalana y ascenso a Primera Nacional (2015-16)',
@@ -278,7 +278,7 @@ export const TEAM_HISTORIES: Readonly<Record<string, TeamHistory>> = {
   // BEMBIBRE HOCKEY CLUB
   '05c0c636-b089-4c08-9cb8-c5a564afc6c5': {
     history:
-      'El Bembibre Hockey Club se fundó en 2022 en Bembibre (El Bierzo) y compite en la OK Liga Femenina 2026/27.',
+      'El Bembibre Hockey Club se fundó en 2022 en Bembibre (El Bierzo) y compite en la OK Liga Iberdrola 2026/27.',
     honours: [],
     sources: [`${WIKIDATA} Q122984652`, 'Wikipedia (es): Bembibre Hockey Club'],
     updatedAt: UPDATED,
@@ -299,7 +299,7 @@ export const TEAM_HISTORIES: Readonly<Record<string, TeamHistory>> = {
   // CP VILA-SANA COOP D'IVARS
   '0f6b9d7b-da34-4fa4-9f04-7ee2162600a3': {
     history:
-      'El Club Patí Vila-sana se fundó en 2003 en Vila-sana (Pla d’Urgell) y compite en la OK Liga Femenina.',
+      'El Club Patí Vila-sana se fundó en 2003 en Vila-sana (Pla d’Urgell) y compite en la OK Liga Iberdrola.',
     honours: [],
     sources: [`${WIKIDATA} Q109417535`, 'Competición 2026/27'],
     updatedAt: UPDATED,
@@ -307,7 +307,7 @@ export const TEAM_HISTORIES: Readonly<Record<string, TeamHistory>> = {
 
   // MARINEDA HOCKEY
   '17081947-d783-46a2-a1dc-81172cab3776': {
-    history: 'El Marineda Hockey, con sede en A Coruña, compite en la OK Liga Femenina 2026/27.',
+    history: 'El Marineda Hockey, con sede en A Coruña, compite en la OK Liga Iberdrola 2026/27.',
     honours: [],
     sources: ['Competición 2026/27'],
     updatedAt: UPDATED,

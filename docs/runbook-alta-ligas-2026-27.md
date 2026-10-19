@@ -31,7 +31,7 @@ DC_ETL="$DC exec -T etl node dist/apps/etl/src/seed-fep-competition.js"
 
 # Nivel 1
 $DC_ETL --idc=3568 --name="OK LIGA MASCULINA" --short="OK Liga" --gender=male
-$DC_ETL --idc=3569 --name="OK LIGA FEMENINA"  --short="OK Liga Iberdrola" --gender=female
+$DC_ETL --idc=3569 --name="OK LIGA IBERDROLA"  --short="OK Liga Iberdrola" --gender=female
 
 # Plata (nivel 2) — grupos territoriales
 $DC_ETL --idc=3574 --name="OK LIGA PLATA NORTE"    --short="Plata Norte" --gender=male

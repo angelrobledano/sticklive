@@ -10,7 +10,7 @@ Fuente única de los textos de Google Play (`google-play/metadata/<idioma>/`) y 
 
 **Descripción breve (Play, máx. 80):** Resultados de hockey patines en directo y aviso de cada gol de tu equipo. · 73
 
-**Texto promocional (App Store, máx. 170):** Sigue la OK Liga y la OK Liga Femenina en directo y recibe el aviso de cada gol de tus equipos. · 95
+**Texto promocional (App Store, máx. 170):** Sigue la OK Liga y la OK Liga Iberdrola en directo y recibe el aviso de cada gol de tus equipos. · 95
 
 **Palabras clave (App Store, máx. 100):** ok liga,rink,marcador,clasificación,femenina,partidos,calendario,jornada,deporte,pista · 86
 
@@ -40,7 +40,7 @@ CLASIFICACIONES Y FAVORITOS
 • Inicia sesión y lleva tus favoritos a todos tus dispositivos.
 
 COMPETICIONES
-OK Liga y OK Liga Femenina, y más competiciones que vamos sumando una a una. Los datos salen de las fuentes oficiales: federaciones, ligas y actas de los partidos.
+OK Liga y OK Liga Iberdrola, y más competiciones que vamos sumando una a una. Los datos salen de las fuentes oficiales: federaciones, ligas y actas de los partidos.
 
 En español, inglés, francés, italiano y portugués, y con modo oscuro.
 
@@ -57,7 +57,7 @@ Stick Live es un proyecto independiente y no está afiliado a la Real Federació
 
 **Descripción breve (Play, máx. 80):** Live rink hockey scores, with an alert for every goal your team scores. · 71
 
-**Texto promocional (App Store, máx. 170):** Follow Spain's OK Liga and OK Liga Femenina live and get an alert for every goal your teams score. · 98
+**Texto promocional (App Store, máx. 170):** Follow Spain's OK Liga and OK Liga Iberdrola live and get an alert for every goal your teams score. · 98
 
 **Palabras clave (App Store, máx. 100):** roller,quad,ok liga,standings,results,fixtures,spain,league,matches,sport,skates · 80
 
@@ -87,7 +87,7 @@ STANDINGS AND FAVORITES
 • Sign in to take your favorites to all your devices.
 
 COMPETITIONS
-Spain's OK Liga and OK Liga Femenina, with more competitions added one at a time. The data comes from official sources: federations, leagues and match reports.
+Spain's OK Liga and OK Liga Iberdrola, with more competitions added one at a time. The data comes from official sources: federations, leagues and match reports.
 
 Available in Spanish, English, French, Italian and Portuguese, with dark mode.
 
