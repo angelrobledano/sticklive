@@ -6,6 +6,8 @@
 **Limitaciones:** sin acceso a la base de datos de producción. Las métricas de rendimiento son de laboratorio (Lighthouse móvil simulado): Search Console no tiene datos de Core Web Vitals por falta de tráfico.
 **Esta fase no cambia código ni datos.** Todo lo que aparece como "solución" es una propuesta pendiente de aprobación.
 
+**Actualización (19/10/2026):** export de Search Console de los últimos 3 meses: **59 clics y 664 impresiones**, España 59/664 y Portugal 9/52; móvil 60/764 y escritorio 23/273. Por idioma: `/es` 49 URLs, 50 clics y 587 impresiones; **115 URLs sin idioma, 15 clics y 289 impresiones**; `/en` 76 URLs, 14/147. Se decide que **el español sea el idioma por defecto**: el middleware, el `manifest` y el `x-default` de HTML y sitemap pasan de `en` a `es`. PageSpeed del 19/10: móvil 76 (LCP 4,7 s, TBT 170 ms, CLS 0,129) y escritorio 90 (LCP 0,8 s, TBT 250 ms, CLS 0,007); el LCP móvil es el aviso de consentimiento, que aparece tras la hidratación, y el CLS lo provoca la tarjeta de onboarding desplazada por el hueco de AdSense. Rastreo de 90 días: 41,32 % redirecciones temporales, 1,21 % 5xx, sin 5xx de API en las últimas 24 h; el 17/10 hubo un pico de 7.336 peticiones. Los CWV de campo siguen sin datos.
+
 Convención de cada hallazgo: severidad (Crítica, Alta, Media, Baja) y confianza (Alta = verificado en producción o en el código, Media = evidencia parcial, Baja = hipótesis que hay que validar).
 
 ---
@@ -109,7 +111,7 @@ Fuente (sidgad FEP / World Skate)
 
 Renderizado: todas las páginas públicas son SSR dinámicas. La ficha de competición se cachea en el borde 30 s (`next.config.mjs`), la home con `s-maxage=60`, el listado con 300. Equipo, jugador y partido salen con `private, no-cache, no-store` (cada visita de Googlebot renderiza, aunque los `fetch` a la API sí están cacheados entre 20 y 120 s).
 
-Idiomas: todo vive bajo `/{es|en|pt|fr|it}/…`. El middleware redirige con 307 cualquier ruta sin prefijo según cookie, después `Accept-Language`, y si no hay nada a `en`. Googlebot no envía `Accept-Language`, así que siempre acaba en `/en`. `x-default` apunta a `/en`.
+Idiomas: todo vive bajo `/{es|en|pt|fr|it}/…`. El middleware redirige con 307 cualquier ruta sin prefijo según cookie, después `Accept-Language`, y si no hay nada a `es` (actualizado el 19/10: antes `en`). Googlebot no envía `Accept-Language`, así que acaba en `/es`. `x-default` apunta a `/es` tanto en el HTML como en el sitemap.
 
 Sitemap (estado real el 16/10/2026): índice en `/sitemap-index.xml` con cinco secciones. `/sitemap.xml` devuelve 404 a propósito (documentado en el código).
 
@@ -532,7 +534,7 @@ Procedimiento si Search Console notifica algo: (1) leer el aviso completo y las 
 
 Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, M 4-16 h, L > 16 h.
 
-### Estado de ejecución (actualizado 18/10/2026)
+### Estado de ejecución (actualizado 19/10/2026)
 
 | Tarea | Estado | Commit |
 |---|---|---|
@@ -560,8 +562,12 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 | F5-4 enlazado entre entidades | Parcial: las migas enlazan cada ficha con su competición; faltan rivales y partido anterior entre ambos | c458f17 |
 | i18n de datos (rondas) | Parcial: Histórico, fase final, cuartos/semis/final y puestos N-M traducidos por clave; faltan `match_events.detail` y nombres propios en `jsonb` | b767c56 |
 | F3-5 caché y locale de las OG | Hecho: `s-maxage` por tipo y textos/fecha por idioma | 189db27 |
+| F3-5 foto de jugador en la OG | Hecho: la OG de jugador pide la foto en PNG (Satori no acepta WebP); elimina el error de log de producción | accb8a4 |
+| Fallback y `x-default` en español | Hecho: middleware, manifest, HTML y sitemap usan `es`; tests de middleware y de `localeAlternates`/`sitemapLanguages` | accb8a4 |
 | F3-6 JSON-LD | Hecho: partido con `url`/`homeTeam`/`awayTeam`; equipo con `memberOf`/`sport`; builders puros con tests | bd57851 |
 | F6 control SEO programado | Hecho: `seo-check` diario en GitHub Actions (sitemap, canonical y OG) | 2759d38 |
+| F5-1 CWV de laboratorio | Hecho (19/10): PSI móvil 76 / escritorio 90; LCP 4,7 s / 0,8 s, TBT 170 / 250 ms, CLS 0,129 / 0,007. Campo sin datos | — |
+| F5-2 / F5-3 diagnóstico | Hecho (19/10): AdSense + Funding Choices y la tarjeta de onboarding desplazada por `AdBanner` identificados como causas. Falta decisión sobre anuncios y reserva de altura | — |
 | F2-6 quitar `/sitemap.xml` de Search Console | Hecho (18/10): eliminado el sitemap antiguo que devolvía 404 | — |
 | F2-7 redirigir los partidos con tráfico que hoy son 404 | Parcial (18/10). Recuperadas: `d87e7dfc` → `db7f3b3b` (Chile–Angola 12/10; 9 clics y 26 impresiones, consulta «chile vs angola») y `df95ecd9` → `3369141a` (Sudáfrica–Australia 13/10; sintético en el backup del 11/10). El resto de 404 con clics (`c4e78c74`, `a192b8cd`) no tiene consultas ni rastro en BD/backups: se quedan en 404 | — |
 
@@ -657,9 +663,9 @@ La muestra es determinista: el mismo sitemap produce siempre las mismas URLs, au
 ### Fase 5 · Rendimiento, enlazado y experiencia
 | ID | Prio | Tarea | Solución | Dep. | Esf. | Riesgo | Aceptación | Medición | Resp. |
 |---|---|---|---|---|---|---|---|---|---|
-| F5-1 | P2 | Medir CWV reales | Informe de Search Console o CrUX | F0-1 | S | Nulo | Línea base guardada | — | T |
-| F5-2 | P2 | Reducir TBT | Analizar el chunk principal, diferir AdSense | F5-1 | M-L | Medio | TBT laboratorio < 600 ms en home | INP de campo | T |
-| F5-3 | P2 | CLS de la home | Reservar altura de la tarjeta | — | S | Bajo | CLS < 0,1 | — | T |
+| F5-1 | P2 | Medir CWV reales | Informe de Search Console o CrUX. **Hecho el 19/10 con PSI de laboratorio** (móvil 76, escritorio 90); el campo sigue sin datos | F0-1 | S | Nulo | Línea base guardada | — | T |
+| F5-2 | P2 | Reducir TBT | Analizar el chunk principal, diferir AdSense. **Datos 19/10:** AdSense 254 KiB/107 ms y Funding Choices 102 KiB/39 ms en el hilo principal; el TBT móvil ya está en 170 ms | F5-1 | M-L | Medio | TBT laboratorio < 600 ms en home | INP de campo | T |
+| F5-3 | P2 | CLS de la home | Reservar altura de la tarjeta. **Datos 19/10:** 0,129 móvil; el culpable es la tarjeta de onboarding (`2xl:hidden`) desplazada por el hueco de `AdBanner` (0,114 + 0,015) | — | S | Bajo | CLS < 0,1 | — | T |
 | F5-4 | P2 | Enlazado entre entidades | Equipo → rivales y competición, partido → partido anterior entre ambos, competición → temporada anterior | F1-1 | M | Bajo | Ningún equipo indexable sin enlaces entrantes | Páginas huérfanas (control §15) | T |
 | F5-5 | P3 | Rendimiento de `/players/:id` | Endpoint de ~1,3 s y 5xx con 4 peticiones concurrentes | — | M | Bajo | p95 < 400 ms | Sentry | T |
 | F5-6 | P3 | Migas de pan visibles + `BreadcrumbList` | — | — | S | Bajo | — | — | T |
@@ -711,7 +717,8 @@ Los controles de §15, la rutina de §12.3 y una revisión trimestral de la matr
 | Equipos vacíos en sitemap | API | 62 | 0 |
 | `lastmod` movidos sin cambios | Sitemap | 98 % de partidos en la última hora | < 5 % |
 | OG de partido con escudos | Revisión | 0 % | 100 % con escudo o iniciales |
-| LCP / TBT laboratorio home | Lighthouse | 5,2 s / 2,45 s | < 3 s / < 600 ms |
+| LCP / TBT laboratorio home | Lighthouse | 4,7 s / 170 ms móvil; 0,8 s / 250 ms escritorio (19/10) | < 3 s / < 600 ms |
+| CLS laboratorio home | Lighthouse | 0,129 móvil; 0,007 escritorio (19/10) | < 0,1 |
 | CWV de campo | Search Console | Sin datos (tráfico insuficiente) | LCP < 2,5 s, INP < 200 ms, CLS < 0,1 |
 
 ---
@@ -721,7 +728,7 @@ Los controles de §15, la rutina de §12.3 y una revisión trimestral de la matr
 Decisiones de producto (tuyas):
 1. **Jugadores menores y fotos**: qué se publica, qué se indexa, con qué base legal. Bloquea F1-2 y cualquier trabajo en fichas de jugador.
 2. **Umbral de indexación de jugadores**: propongo absolutos con 5 o más partidos. ¿Hay algún segmento con demanda que conozcas (por ejemplo, internacionales de la selección)?
-3. **Idiomas**: mantener los cinco hasta tener datos, o retirar ya alguno de sitemap y hreflang. Mi recomendación es esperar 8 semanas.
+3. **Idiomas**: decidido el 19/10. España es el mercado principal y Portugal el segundo; se mantienen los cinco idiomas publicados, pero el fallback y el `x-default` pasan a `es`. No se retira ningún idioma del sitemap ni del hreflang hasta tener 8 semanas de datos tras el cambio.
 4. **Histórico**: si se re-importa, las temporadas pasadas pasan a ser el contenido con más valor permanente (F4-5). Si no, se queda como está.
 5. **URLs con slug**: decidir después de la Fase 1, no antes.
 6. **Ventana de partidos próximos en el sitemap**: propongo 14 días.

@@ -72,7 +72,7 @@ REST: competiciones (+temporadas históricas), overview de temporada (clasificac
 - **Vistas**: home de partidos por día con sección "Siguiendo", competición (clasificación con zonas, jornadas, playoffs con bracket informativo, estadísticas con top-5 expandibles), ficha de partido (timeline espejo, alineaciones, estadísticas con eficiencias), ficha de equipo (resumen, calendario, plantilla con fotos y cuerpo técnico, estadísticas), ficha de jugador, favoritos, login, ajustes, admin (usuarios y panel de resolución de entidades en `/admin/resolucion`).
 - **Tiempo real**: SSE con reconexión + polling de respaldo (30s) + refresco de partidos atrasados.
 - **i18n propio** (sin dependencias): diccionarios JSON por idioma, interpolación, fallback es→clave, fechas/meses vía `Intl` con el locale activo.
-- **Routing por idioma**: todas las rutas bajo `app/[locale]/`; middleware que redirige según cookie → `Accept-Language` → `en`; `generateMetadata` con canonical + hreflang (incl. `x-default`) en las páginas indexables; `<html lang>` correcto desde servidor.
+- **Routing por idioma**: todas las rutas bajo `app/[locale]/`; middleware que redirige según cookie → `Accept-Language` → `es` (mercado principal); `generateMetadata` con canonical + hreflang (incl. `x-default` → `es`) en las páginas indexables; `<html lang>` correcto desde servidor.
 - **Diseño**: mobile-first, dark mode con superficies elevadas (no negro plano), toggles iOS-style, contrastes AA, targets táctiles 44px, branding "Stick Live" sin referencias a la fuente de datos.
 - **Analítica**: PostHog con autocapture apagado, pageviews manuales con rutas normalizadas (`/matches/:id`), 9 eventos de plan de tracking, `identified_only`, captura desactivada en desarrollo.
 
