@@ -118,6 +118,32 @@ Dos avisos de calidad salen de este mismo ejemplo:
 
 **SEO:** hoy una temporada pasada solo existe como `?season=` con canonical a la temporada actual, así que no puede posicionar por "clasificación final 2025/26". Esta página es el contenido que justifica darle una URL propia e indexable (F4-5 de la auditoría): cada temporada cerrada y verificada pasa a ser una página permanente que no caduca.
 
+### 4.8 Previa del partido al estilo FotMob
+
+Referencia: la previa de FotMob (capturas del 19/10). Cuatro piezas, de más fácil a más delicada:
+
+**Últimos 5 partidos de cada equipo.** Dos columnas, una por equipo, con escudos y el marcador coloreado desde el punto de vista de ese equipo (verde ganó, gris empató, rojo perdió). Incluye todas las competiciones, y cada fila enlaza a su partido. Los datos ya están en la ficha de equipo, así que es casi solo diseño. Sustituye a los puntos de forma actuales, que no dicen contra quién ni por cuánto.
+
+**Observaciones de cada equipo.** De 2 a 4 tarjetas por equipo, con el escudo a la izquierda y una franja del color del equipo (local o visitante). Salen del catálogo de §4.2 y solo cuando superan su umbral. Ejemplos del tipo de frase: "Marcó 21 goles en sus últimos 5 partidos", "Ganó 5 de sus 6 partidos fuera de casa", "Mejor arranque desde…". Esto último solo cuando el histórico esté cargado y verificado. Es el bloque que más texto único aporta a cada ficha de partido.
+
+**Números del cruce.** Sin inventar métricas que no podemos calcular:
+- **Minutos por gol** del equipo (50 minutos de partido entre goles marcados por partido) y minutos por gol encajado.
+- **Faltas por partido**, a favor y en contra, y **faltas directas por partido** observadas, con su % de acierto. Es la frecuencia real con la que el equipo llega a la falta directa, no una regla deducida.
+- **Efectividad a balón parado** (penaltis y faltas directas). Bloqueada hasta arreglar el parser (C1).
+- **Goles por parte**, y % de victorias cuando marca primero.
+- **No hay "goles esperados" (xG) de verdad.** El xG necesita tiros con su posición y no los tenemos. Lo que sí se puede es una **estimación de goles del partido** a partir del ataque y la defensa de cada uno (modelo de Poisson), y llamarla así, con una nota de cómo se calcula.
+
+**"¿Quién ganará?"** Dos cosas distintas, y propongo hacerlas en este orden:
+
+1. **Votación de los aficionados (1-X-2).** Se vota sin registrarse (un voto por dispositivo y partido, con límite por IP), se cierra al empezar el partido, y el porcentaje se muestra después de votar. Al terminar, la ficha dice "el 64 % acertó". Es lo que más engancha: da un motivo para volver a la ficha después del partido y no tiene riesgo de dato falso. Necesita una tabla (migración), un endpoint y protección contra abuso.
+2. **Probabilidades calculadas por un modelo.** Solo cuando demuestre que acierta. Lo he probado con un modelo de Poisson sencillo sobre OK Liga Plata Sur 2025/26 (102 partidos evaluados con lo que se sabía antes de cada uno):
+   - **Ganador más probable:** acierta el 52 %, frente al 47 % de "gana siempre el local".
+   - **Probabilidades:** salen peor calibradas que la referencia (log-loss 1,019 frente a 0,998). Es decir, el modelo está demasiado seguro de sí mismo.
+
+   Publicar esos porcentajes hoy sería dar números con apariencia de precisión que no tienen. Antes hace falta un modelo con ajuste (Elo o Poisson con regularización hacia la media) evaluado en varias temporadas, y que gane a la referencia también en calibración. Tampoco lo presentaría como pronóstico de apuestas.
+
+**Lo que no haría:** "goleadores con nota" al estilo FotMob. Esa nota sale de un modelo con datos de cada acción que no tenemos.
+
 ---
 
 ## 5. Diseño propuesto
@@ -182,6 +208,9 @@ Cada generador devuelve una prioridad: rareza (un hat-trick vale más que un "l�
 | C4 | Disciplina: expulsados de la última jornada + spike de sanciones oficiales | S + spike | — | Solo hechos o fuente oficial citada |
 | C5 | Compartir un insight como imagen (OG por insight) | M | C2 | Imagen < 1 s, datos iguales a la página |
 | C6 | Insights de jugador y percentiles | M | C2 | — |
+| C9 | Previa estilo FotMob: últimos 5 con escudos y enlaces, observaciones por equipo y números del cruce (§4.8) | M | C2 (observaciones), C1 (balón parado) | Toda observación supera su umbral y enlaza a su partido o jugador |
+| C10 | "¿Quién ganará?": votación 1-X-2 sin registro, cierre al inicio y resultado tras el partido | M | Migración + endpoint | Un voto por dispositivo y partido. Votación cerrada al empezar el partido |
+| C11 | Probabilidades del modelo (opcional) | M | Backtest | Gana a la referencia en acierto y en log-loss en al menos 3 temporadas |
 | C7 | Reconciliación de la clasificación al cerrar temporada (con alerta si no cuadra con los resultados) | M | — | Para toda temporada terminada, la tabla publicada coincide con la recalculada desde los resultados |
 | C8 | "Así terminó": campeón, alirón, carrera por el título, premios, récords y cifras de la liga (§4.7), con URL propia indexable para cada temporada cerrada (F4-5) | L | C1, C7, C2 | Ningún dato del bloque contradice la tabla final. Incomparecencias fuera de récords y medias |
 
