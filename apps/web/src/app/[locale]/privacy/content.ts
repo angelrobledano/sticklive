@@ -45,7 +45,7 @@ const ES: PrivacyDict = {
     },
     {
       h: 'Cookies y almacenamiento local',
-      p: 'Guardamos en tu navegador tus preferencias (idioma, tema, favoritos, configuración de alertas) y una cookie técnica de idioma. La analítica de producto (PostHog, servidores en la UE) solo se activa si aceptas el aviso de cookies: hasta entonces no se carga ni guarda nada. Si aceptas, PostHog usa almacenamiento propio (cookies y localStorage de primera parte) y, si inicias sesión, vincula tu email a esa analítica para medir el uso de forma agregada. Puedes rechazarla y la app sigue funcionando igual.',
+      p: 'Guardamos en tu navegador tus preferencias (idioma, tema, favoritos, configuración de alertas) y una cookie técnica de idioma. La analítica de producto (PostHog, servidores en la UE) solo se activa si das tu consentimiento en el aviso de Google (el mismo que gobierna la publicidad): hasta entonces no se carga ni guarda nada. Si aceptas, PostHog usa almacenamiento propio (cookies y localStorage de primera parte) y, si inicias sesión, vincula tu email a esa analítica para medir el uso de forma agregada. Puedes rechazarla y la app sigue funcionando igual.',
     },
     {
       h: 'Publicidad',
@@ -84,7 +84,7 @@ const EN: PrivacyDict = {
     },
     {
       h: 'Cookies and local storage',
-      p: 'We store your preferences in your browser (language, theme, favorites, alert settings) plus a technical language cookie. Product analytics (PostHog, EU servers) only starts if you accept the cookie notice: until then it loads and stores nothing. If you accept, PostHog uses its own first-party storage (cookies and localStorage) and, when you sign in, links your email to that analytics to measure usage in aggregate. You can decline and the app keeps working the same.',
+      p: 'We store your preferences in your browser (language, theme, favorites, alert settings) plus a technical language cookie. Product analytics (PostHog, EU servers) only starts if you give consent in Google\'s notice (the same one that governs advertising): until then it loads and stores nothing. If you accept, PostHog uses its own first-party storage (cookies and localStorage) and, when you sign in, links your email to that analytics to measure usage in aggregate. You can decline and the app keeps working the same.',
     },
     {
       h: 'Advertising',
@@ -123,7 +123,7 @@ const FR: PrivacyDict = {
     },
     {
       h: 'Cookies et stockage local',
-      p: 'Nous stockons vos préférences dans votre navigateur (langue, thème, favoris, paramètres d\'alerte) ainsi qu\'un cookie technique de langue. L\'analytique produit (PostHog, serveurs dans l\'UE) ne démarre que si vous acceptez l\'avis relatif aux cookies : jusque-là, elle ne charge et ne stocke rien. Si vous acceptez, PostHog utilise son propre stockage first-party (cookies et localStorage) et, si vous vous connectez, associe votre adresse e-mail à cette analytique pour mesurer l\'usage de manière agrégée. Vous pouvez refuser et l\'app continue de fonctionner de la même manière.',
+      p: 'Nous stockons vos préférences dans votre navigateur (langue, thème, favoris, paramètres d\'alerte) ainsi qu\'un cookie technique de langue. L\'analytique produit (PostHog, serveurs dans l\'UE) ne démarre que si vous donnez votre consentement dans l\'avis de Google (le même que celui qui régit la publicité) : jusque-là, elle ne charge et ne stocke rien. Si vous acceptez, PostHog utilise son propre stockage first-party (cookies et localStorage) et, si vous vous connectez, associe votre adresse e-mail à cette analytique pour mesurer l\'usage de manière agrégée. Vous pouvez refuser et l\'app continue de fonctionner de la même manière.',
     },
     {
       h: 'Publicité',
@@ -162,7 +162,7 @@ const PT: PrivacyDict = {
     },
     {
       h: 'Cookies e armazenamento local',
-      p: 'Guardamos no navegador as suas preferências (idioma, tema, favoritos, configuração de alertas) e um cookie técnico de idioma. A análise de produto (PostHog, servidores na UE) só começa se aceitar o aviso de cookies: até lá, não carrega nem guarda nada. Se aceitar, a PostHog usa armazenamento próprio (cookies e localStorage de primeira parte) e, se iniciar sessão, associa o seu e-mail a essa análise para medir o uso de forma agregada. Pode recusar e a app continua a funcionar da mesma forma.',
+      p: 'Guardamos no navegador as suas preferências (idioma, tema, favoritos, configuração de alertas) e um cookie técnico de idioma. A análise de produto (PostHog, servidores na UE) só começa se der o seu consentimento no aviso da Google (o mesmo que rege a publicidade): até lá, não carrega nem guarda nada. Se aceitar, a PostHog usa armazenamento próprio (cookies e localStorage de primeira parte) e, se iniciar sessão, associa o seu e-mail a essa análise para medir o uso de forma agregada. Pode recusar e a app continua a funcionar da mesma forma.',
     },
     {
       h: 'Publicidade',
@@ -201,7 +201,7 @@ const IT: PrivacyDict = {
     },
     {
       h: 'Cookie e archiviazione locale',
-      p: 'Salviamo nel browser le tue preferenze (lingua, tema, preferiti, impostazioni degli avvisi) e un cookie tecnico della lingua. L\'analytics di prodotto (PostHog, server nell\'UE) parte solo se accetti l\'avviso sui cookie: fino ad allora non carica né salva nulla. Se accetti, PostHog usa un proprio archivio first-party (cookie e localStorage) e, se accedi, collega il tuo indirizzo e-mail a tale analytics per misurare l\'uso in forma aggregata. Puoi rifiutare e l\'app continua a funzionare allo stesso modo.',
+      p: 'Salviamo nel browser le tue preferenze (lingua, tema, preferiti, impostazioni degli avvisi) e un cookie tecnico della lingua. L\'analytics di prodotto (PostHog, server nell\'UE) parte solo se dai il tuo consenso nell\'avviso di Google (lo stesso che governa la pubblicità): fino ad allora non carica né salva nulla. Se accetti, PostHog usa un proprio archivio first-party (cookie e localStorage) e, se accedi, collega il tuo indirizzo e-mail a tale analytics per misurare l\'uso in forma aggregata. Puoi rifiutare e l\'app continua a funzionare allo stesso modo.',
     },
     {
       h: 'Pubblicità',

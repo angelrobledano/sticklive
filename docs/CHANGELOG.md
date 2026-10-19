@@ -14,7 +14,7 @@ Historial de hitos de producto y plataforma. El estado vivo está en [ESTADO_PRO
 ## Octubre 2026 — Aviso para instalar la PWA (Android e iPhone)
 
 - Aviso inferior en móvil con el beneficio que importa: abrir los directos en un toque y recibir el aviso de cada gol (en iPhone, solo con la app instalada). Android lanza el diálogo nativo, iPhone despliega los dos pasos (Compartir → Añadir a pantalla de inicio).
-- Sale tras 2 páginas vistas, nunca a la vez que el aviso de cookies, nunca si ya está instalada, y un «Ahora no» lo silencia 14 días.
+- Sale tras 2 páginas vistas, nunca a la vez que el CMP de Google, nunca si ya está instalada, y un «Ahora no» lo silencia 14 días.
 - Embudo completo en PostHog: `install_banner_shown → install_cta_clicked → app_install_prompt_result → app_installed` (con `source`), `install_ios_steps_shown`, `install_banner_dismissed` y `app_opened_standalone`. Detalle en [TRACKING_POSTHOG.md](./TRACKING_POSTHOG.md).
 
 ## Octubre 2026 — Competición con eliminatorias y fase en la ficha (referencia FotMob)

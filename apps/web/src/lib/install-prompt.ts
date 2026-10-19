@@ -11,7 +11,7 @@
  *    primer segundo convierte peor y molesta.
  *  · Un «Ahora no» lo silencia `DISMISS_DAYS` días.
  */
-import type { ConsentState } from '@/lib/consent';
+import type { ConsentState } from '@/lib/consent-tcf';
 
 export type InstallPlatform = 'ios' | 'android' | 'desktop';
 

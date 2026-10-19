@@ -20,6 +20,7 @@ import { useDeviceId, useDarkMode, useNotifConfig } from './hooks';
 import { PremiumBanner } from './PremiumBanner';
 import { LanguageCard, AccountCard, FavoriteRow, SubHeader } from './cards';
 import { NotificationStatus } from './NotificationStatus';
+import { openConsentManager } from '@/lib/consent-tcf';
 
 
 // ─── Fila de navegación (título + chevron) ────────────────────────────────────
@@ -71,6 +72,7 @@ export default function SettingsPage() {
   const [loadingTeams, setLoadingTeams] = useState(true);
   // #344: un fallo de API no es una lista vacía.
   const [loadError, setLoadError]   = useState(false);
+  const [consentError, setConsentError] = useState(false);
   // Competiciones (para resolver nombres de las ligas seguidas)
   const [comps, setComps] = useState<Array<{ id: string; name: string; shortName: string | null }>>([]);
 
@@ -370,6 +372,22 @@ export default function SettingsPage() {
       {/* Pie */}
       <div className="text-center pb-4 space-y-1">
         <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('settings.footer')}</p>
+        <button
+          type="button"
+          onClick={async () => {
+            const opened = await openConsentManager();
+            setConsentError(!opened);
+          }}
+          className="inline-block text-[11px] text-slate-500 dark:text-slate-400 underline hover:text-rink-passion"
+        >
+          {t('settings.privacy_entry_title')}
+        </button>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('settings.privacy_entry_desc')}</p>
+        {consentError && (
+          <p role="alert" className="text-[11px] text-red-600 dark:text-red-400">
+            {t('settings.privacy_error')}
+          </p>
+        )}
         <Link href="/privacy" className="inline-block text-[11px] text-slate-500 dark:text-slate-400 underline hover:text-rink-passion">
           {t('settings.privacy_link')}
         </Link>

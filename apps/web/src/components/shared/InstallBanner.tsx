@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import { tt } from '@/components/search/translate';
 import { track, trackOnce } from '@/lib/analytics';
-import { CONSENT_EVENT, readConsent } from '@/lib/consent';
+import { getConsentState, startConsentWatcher, subscribeConsent } from '@/lib/consent-tcf';
 import { isStandalone } from '@/lib/push';
 import { canInstall, promptInstall, pwaPlatform } from '@/lib/pwa';
 import {
@@ -49,7 +49,7 @@ export function InstallBanner() {
       platform: pwaPlatform(),
       standalone: false,
       hasNativePrompt: canInstall(),
-      consent: readConsent(),
+      consent: getConsentState(),
       dismissedAt: readDismissedAt(),
       pageViews: pageViews.current,
       now: Date.now(),
@@ -65,14 +65,15 @@ export function InstallBanner() {
 
   useEffect(() => {
     if (isStandalone()) trackOnce('app-opened-standalone', 'app_opened_standalone', { platform: pwaPlatform() });
+    startConsentWatcher();
     const onChange = () => evaluate();
+    const unsubscribe = subscribeConsent(onChange);
     window.addEventListener('pwa-installable', onChange);
     window.addEventListener('pwa-installed', onChange);
-    window.addEventListener(CONSENT_EVENT, onChange);
     return () => {
+      unsubscribe();
       window.removeEventListener('pwa-installable', onChange);
       window.removeEventListener('pwa-installed', onChange);
-      window.removeEventListener(CONSENT_EVENT, onChange);
     };
   }, [evaluate]);
 

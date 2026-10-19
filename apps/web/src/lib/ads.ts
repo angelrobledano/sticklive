@@ -1,7 +1,5 @@
 'use client';
 
-import type { ConsentState } from '@/lib/consent';
-
 /**
  * Anuncios (Google AdSense) — configuración, lógica pura y helpers de cliente.
  *
@@ -9,18 +7,13 @@ import type { ConsentState } from '@/lib/consent';
  *   · Sin `NEXT_PUBLIC_ADSENSE_CLIENT` no se carga el script ni se renderiza
  *     ningún anuncio (comportamiento actual intacto).
  *   · Nunca anuncios para usuarios Premium.
- *   · El consentimiento publicitario (RGPD; EEE/UK/Suiza) lo gestiona el CMP
- *     certificado de Google (Funding Choices/TCF), que se sirve a través del
- *     propio tag de AdSense.
- *   · El tag se carga **después de que el usuario responda** al aviso de
- *     analítica (`adsConsentReady`). Es una puerta de rendimiento: no convierte
- *     ese aviso en consentimiento publicitario, que sigue siendo del CMP. Si el
- *     usuario nunca responde, no se descarga AdSense ni se muestra publicidad.
+ *   · El CMP certificado de Google (Funding Choices/TCF) es la única puerta de
+ *     consentimiento: lo publica el propio tag de AdSense y de él se leen tanto
+ *     los propósitos publicitarios como los de analítica.
  *
- * La lógica de decisión (`adsEnabled`, `adsConsentReady`,
- * `listAdInsertIndex`, `shouldShowInterstitial`) es PURA y está cubierta por
- * tests. La carga del script es un helper de cliente: solo navegador y nunca
- * lanza.
+ * La lógica de decisión (`adsEnabled`, `listAdInsertIndex`,
+ * `shouldShowInterstitial`) es PURA y está cubierta por tests. La carga del
+ * script es un helper de cliente: solo navegador y nunca lanza.
  */
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -138,17 +131,6 @@ export interface AdsEnabledInput {
  */
 export function adsEnabled({ client, premium }: AdsEnabledInput): boolean {
   return clean(client).length > 0 && !premium;
-}
-
-/**
- * ¿Ha respondido ya el usuario al aviso de analítica?
- *
- * Se usa solo como puerta de carga de AdSense: `granted` y `denied` son ambos
- * una respuesta; `pending` (o `null` antes de montar) mantiene el tag fuera del
- * navegador. El consentimiento publicitario lo decide el CMP de Google.
- */
-export function adsConsentReady(state: ConsentState | null): boolean {
-  return state === 'granted' || state === 'denied';
 }
 
 /**

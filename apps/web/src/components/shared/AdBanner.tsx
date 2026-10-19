@@ -20,10 +20,8 @@
 
 import { useEffect, useRef } from 'react';
 import { usePremium } from '@/context/PremiumContext';
-import { useConsentState } from '@/hooks/useConsentState';
 import { track } from '@/lib/analytics';
 import {
-  adsConsentReady,
   adsEnabled,
   adsenseConfig,
   loadAdsenseScript,
@@ -262,14 +260,12 @@ function AdPlaceholder({ zone, className = '' }: AdBannerProps) {
 
 export function AdBanner({ zone, className = '' }: AdBannerProps) {
   const { isPremium, mounted } = usePremium();
-  const consent = useConsentState();
 
   const slot = ADS.slots[zone];
 
-  // Durante SSR/hidratación, Premium o sin respuesta al aviso: sin DOM. Así
-  // el primer render no descarga anuncios ni desplaza el contenido que va
-  // debajo (F5-2/F5-3).
-  if (!mounted || isPremium || !adsConsentReady(consent)) return null;
+  // Durante SSR/hidratación o Premium: sin DOM. El CMP de Google decide qué
+  // anuncios se pueden servir (personalizados o no).
+  if (!mounted || isPremium) return null;
 
   // AdSense configurado: anuncio real solo con slot y sin premium. El
   // consentimiento publicitario lo aplica el CMP de Google dentro del tag.

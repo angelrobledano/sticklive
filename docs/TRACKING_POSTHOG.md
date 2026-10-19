@@ -73,7 +73,7 @@ Estado: **LIVE** = emitiéndose; los marcados **(F4)** se añadieron al instrume
 | `login_completed` | Al verificarse la sesión | `method` (real) | Conversión a cuenta |
 | `login_failed` **(F4)** | Verificación falla (link caducado / OAuth) | `method`, `reason` | Tasa de error del login |
 | `logout` | Al cerrar sesión | — | Salud de cuenta |
-| `install_banner_shown` | Aviso inferior de instalar la PWA visible (1 vez por sesión). Solo móvil, tras 2 páginas vistas y con el aviso de cookies contestado | `platform` (ios/android), `mode` (native/ios_steps), `page` | Top del embudo de instalación |
+| `install_banner_shown` | Aviso inferior de instalar la PWA visible (1 vez por sesión). Solo móvil, tras 2 páginas vistas y con el CMP de Google contestado | `platform` (ios/android), `mode` (native/ios_steps), `page` | Top del embudo de instalación |
 | `install_cta_clicked` | Toca «Instalar» (aviso inferior o Ajustes) | `platform`, `source` (banner/settings), `mode`, `page` | CTR del aviso: clicks / shown |
 | `install_ios_steps_shown` | iPhone: se despliegan los pasos Compartir → Añadir a inicio | `platform`, `page` | En iOS no hay evento de instalación: este es el último paso medible |
 | `install_banner_dismissed` | «Ahora no» o cerrar (lo silencia 14 días) | `platform`, `mode`, `step` (banner/ios_steps), `page` | Rechazo del aviso |

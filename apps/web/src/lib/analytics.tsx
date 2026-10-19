@@ -54,7 +54,9 @@ import posthog from 'posthog-js';
 import { useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { entityViewFromPath, entityIdProp } from '@/lib/analytics-entity';
-import { CONSENT_EVENT, CONSENT_KEY, isAnalyticsAllowed, readConsent } from '@/lib/consent';
+import { isAnalyticsAllowed, startConsentWatcher, subscribeConsent } from '@/lib/consent-tcf';
+
+startConsentWatcher();
 
 const KEY  = process.env['NEXT_PUBLIC_POSTHOG_KEY'];
 const HOST = process.env['NEXT_PUBLIC_POSTHOG_HOST'] ?? 'https://eu.i.posthog.com';
@@ -141,8 +143,9 @@ function withDevice(props?: Record<string, unknown>): Record<string, unknown> {
 
 function ensureInit(): boolean {
   if (!ENABLED || typeof window === 'undefined') return false;
-  // Puerta de consentimiento: nada de PostHog (ni cookies/persistencia) hasta aceptar.
-  if (!isAnalyticsAllowed(readConsent())) return false;
+  // Puerta de consentimiento: nada de PostHog (ni cookies/persistencia) hasta
+  // que el CMP de Google conceda los propósitos de analítica.
+  if (!isAnalyticsAllowed()) return false;
   if (!initialized) {
     const deviceId = readDeviceId();
     posthog.init(KEY!, {
@@ -361,25 +364,20 @@ export function AnalyticsPageview() {
     last.current = pathname;
   }, [pathname, capturePage]);
 
-  // Si el usuario acepta en caliente (misma pestaña o en otra), inicializa y
-  // registra la página actual, que quedó sin capturar porque el efecto anterior
-  // corrió antes de la elección.
+  // Si el usuario consiente en el CMP (misma pestaña), inicializa y registra
+  // la página actual, que quedó sin capturar porque el efecto anterior corrió
+  // antes de la elección.
   useEffect(() => {
     if (!pathname) return;
     const captureIfAllowed = () => {
-      if (!isAnalyticsAllowed(readConsent())) return;
+      if (!isAnalyticsAllowed()) return;
       if (last.current === pathname) return;
       if (capturePage(pathname)) last.current = pathname;
     };
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === CONSENT_KEY || e.key === null) captureIfAllowed();
-    };
-    window.addEventListener(CONSENT_EVENT, captureIfAllowed);
-    window.addEventListener('storage', onStorage);
-    return () => {
-      window.removeEventListener(CONSENT_EVENT, captureIfAllowed);
-      window.removeEventListener('storage', onStorage);
-    };
+    const unsubscribe = subscribeConsent((state) => {
+      if (state === 'granted') captureIfAllowed();
+    });
+    return unsubscribe;
   }, [pathname, capturePage]);
 
   return null;

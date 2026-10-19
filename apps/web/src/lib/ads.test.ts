@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-  adsConsentReady,
   adsEnabled,
   listAdInsertIndex,
   shouldShowInterstitial,
@@ -26,15 +25,6 @@ describe('adsEnabled', () => {
     expect(adsEnabled({ client: '   ', premium: false })).toBe(false);
     expect(adsEnabled({ client: undefined, premium: false })).toBe(false);
     expect(adsEnabled({ client: null, premium: false })).toBe(false);
-  });
-});
-
-describe('adsConsentReady', () => {
-  it('solo carga anuncios después de una respuesta, sea aceptar o rechazar', () => {
-    expect(adsConsentReady(null)).toBe(false);
-    expect(adsConsentReady('pending')).toBe(false);
-    expect(adsConsentReady('granted')).toBe(true);
-    expect(adsConsentReady('denied')).toBe(true);
   });
 });
 

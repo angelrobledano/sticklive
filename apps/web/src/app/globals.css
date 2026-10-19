@@ -2,13 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* El aviso de consentimiento se sirve en el HTML inicial para no ser el LCP
-   tardío. El script inline del layout marca <html> antes del primer pintado
-   cuando ya hay una elección guardada y esta regla lo oculta sin parpadeo. */
-html[data-consent='set'] .consent-banner {
-  display: none !important;
-}
-
 /* Estado vacío de partidos — "una jugada, una vez": la escena se reproduce UNA
    sola vez al montar y queda en calma (sin bucle perpetuo). No hay partido, así
    que no hay movimiento continuo. reduce-motion la desactiva (regla de abajo). */

@@ -3,32 +3,32 @@
 /**
  * <AdsenseScript />
  *
- * Carga `adsbygoogle.js` si AdSense está configurado, el usuario no es Premium
- * y ya ha respondido al aviso de analítica. Montado una vez en el layout raíz.
- * No pinta nada.
+ * Carga `adsbygoogle.js` si AdSense está configurado. Montado una vez en el
+ * layout raíz.
  *
- * La espera es de rendimiento: si el usuario nunca contesta, no se descargan
- * AdSense ni Funding Choices. Cuando contesta (acepte o rechace analítica), se
- * carga el tag y el CMP de Google sigue gobernando el consentimiento
- * publicitario (ver docs/monetizacion.md §4).
+ * Desde la unificación del consentimiento, el tag se carga SIEMPRE (también
+ * para Premium) porque es el que publica el CMP de Google (`__tcfapi`): sin él
+ * no habría aviso único ni forma de conceder/retirar los propósitos de
+ * analítica y publicidad. Los usuarios Premium no tienen huecos de anuncio, así
+ * que no se solicita publicidad para ellos.
+ *
+ * El CMP de Google decide qué anuncios se sirven (personalizados o no) y el
+ * estado TCF alimenta la puerta de PostHog en `lib/consent-tcf.ts`.
  */
 
 import { useEffect } from 'react';
 import { usePremium } from '@/context/PremiumContext';
-import { useConsentState } from '@/hooks/useConsentState';
-import { adsConsentReady, adsEnabled, adsenseConfig, loadAdsenseScript } from '@/lib/ads';
+import { adsenseConfig, loadAdsenseScript } from '@/lib/ads';
 
 const ADS = adsenseConfig();
 
 export function AdsenseScript() {
-  const { isPremium, mounted } = usePremium();
-  const consent = useConsentState();
+  const { mounted } = usePremium();
 
   useEffect(() => {
-    if (!mounted || !adsConsentReady(consent)) return;
-    if (!adsEnabled({ client: ADS.client, premium: isPremium })) return;
+    if (!mounted || !ADS.client) return;
     loadAdsenseScript(ADS.client);
-  }, [mounted, isPremium, consent]);
+  }, [mounted]);
 
   return null;
 }

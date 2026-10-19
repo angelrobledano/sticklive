@@ -13,12 +13,10 @@ import { PremiumProvider } from '@/context/PremiumContext';
 import { AnalyticsPageview } from '@/lib/analytics';
 import { AdsenseScript } from '@/components/shared/AdsenseScript';
 import { AdInterstitial } from '@/components/shared/AdInterstitial';
-import { ConsentBanner } from '@/components/shared/ConsentBanner';
 import { InstallBanner } from '@/components/shared/InstallBanner';
 import { LocaleHint } from '@/components/layout/LocaleHint';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { SUPPORTED_LOCALES, isSupportedLocale, type Locale } from '@/lib/locales';
-import { CONSENT_KEY } from '@/lib/consent';
 import { localeAlternates, socialMeta, siteJsonLd, SITE_URL } from '@/lib/seo';
 import { BRAND } from '@sports/brand';
 import esDict from '@/locales/es.json';
@@ -125,9 +123,6 @@ export default async function RootLayout({ children, params }: Props) {
         <link rel="preconnect" href="https://flagcdn.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://flagcdn.com" />
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('rink-theme');if(t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}` }} />
-        {/* Oculta el aviso de consentimiento antes del primer pintado si ya hay
-            una elección; sin esto el aviso aparecía tarde y era el LCP móvil. */}
-        <script dangerouslySetInnerHTML={{ __html: `try{var c=localStorage.getItem(${JSON.stringify(CONSENT_KEY)});if(c==='granted'||c==='denied'){document.documentElement.dataset.consent='set'}}catch(e){}` }} />
       </head>
       <body>
         {/* #349: WebSite + Organization en todas las páginas (marca en la SERP) */}
@@ -169,15 +164,14 @@ export default async function RootLayout({ children, params }: Props) {
           {/* Pageviews de PostHog (no-op en desarrollo y sin consentimiento) */}
           <AnalyticsPageview />
 
-          {/* AdSense: script si está configurado y sin Premium; el CMP de Google
-              (servido por este mismo tag) gestiona el consentimiento publicitario */}
+          {/* AdSense: el tag publica el CMP de Google, única puerta de
+              consentimiento (publicidad y analítica). Se carga también para
+              Premium, que no tiene huecos de anuncio. */}
           <AdsenseScript />
 
           {/* Intersticial no agresivo (desactivado por defecto, 1/sesión) */}
           <AdInterstitial />
 
-          {/* Consentimiento de analítica — PostHog no se carga hasta aceptar */}
-          <ConsentBanner />
           <InstallBanner />
 
           {/* Aviso "ver en tu idioma" si el navegador no coincide (#277) */}

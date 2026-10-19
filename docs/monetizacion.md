@@ -104,8 +104,9 @@ Unido y Suiza. Sin un **CMP certificado por Google (IAB TCF v2.2)** o el CMP
 propio de Google (Funding Choices), AdSense **no sirve anuncios personalizados** y
 la cuenta puede recibir avisos/sanción por política.
 
-El aviso de consentimiento actual (`ConsentBanner`, #246) cubre **solo
-analítica**, no publicidad: no es un CMP certificado. **No basta** para ads.
+El CMP de Google es la **única** puerta de consentimiento (publicidad y
+analítica). El antiguo aviso propio de analítica (`ConsentBanner`, #246) se
+retiró el 2026-10-19; ver §4.2.
 
 ### 4.1 Decisión: CMP de Google con tres opciones (2026-10-06)
 
@@ -145,40 +146,29 @@ consentir", no se sirven anuncios personalizados; el estado del CMP (`__tcfapi`)
 refleja la elección; en AdSense "Privacidad y mensajes" el CMP figura como
 configurado/publicado.
 
-### 4.2 Separación de las dos puertas — hecho (2026-10-06)
+### 4.2 Consentimiento unificado con el CMP de Google — hecho (2026-10-19)
 
-El mensaje del CMP de Google se sirve **a través del tag de AdSense**. Antes, el
-tag solo se cargaba si el usuario había aceptado el aviso de **analítica**
-(`useAdConsent()` → `lib/consent.ts`), con lo que el CMP no podía mostrarse a
-quien no la aceptaba y el consentimiento publicitario nunca llegaba a pedirse.
+El aviso propio de analítica (`ConsentBanner`, #246) se ha **retirado**. Ahora
+hay una sola puerta: el CMP certificado de Google (Funding Choices, TCF v2.2),
+que se sirve a través del tag de AdSense y cubre **publicidad y analítica**.
 
-Ya está **desacoplado** (código + tests):
+- **Publicidad** → el CMP decide si los anuncios son personalizados o no.
+- **Analítica** → `lib/consent-tcf.ts` lee `__tcfapi` y solo permite PostHog si
+  `gdprApplies === false` (fuera del EEE/UK/CH) o si el usuario ha concedido los
+  propósitos TCF **1** (almacenar/acceder a información del dispositivo) y **7**
+  (medir audiencia). Si el CMP no carga, fail-closed: PostHog no se inicializa.
+- **Cambiar la elección** → Ajustes → “Publicidad y privacidad” abre
+  `googlefc.showRevocationMessage()`.
 
-- **Analítica** → `ConsentBanner` (#246) sigue gobernando PostHog.
-- **Publicidad** → el CMP de Google (TCF) gobierna el consentimiento y el tipo de
-  anuncio dentro del propio tag; `adsEnabled()` ya no depende del consentimiento
-  de analítica.
+El tag de AdSense se carga siempre que esté configurado, también para Premium:
+es el que publica el CMP. Los usuarios Premium no tienen huecos de anuncio, así
+que no se solicita publicidad para ellos.
 
-Archivos: `apps/web/src/lib/ads.ts` (se elimina `useAdConsent` y el parámetro
-`consentGranted` de `adsEnabled` y `shouldShowInterstitial`) y sus tres
-consumidores (`AdsenseScript`, `AdBanner`, `AdInterstitial`). Cubierto por
-`apps/web/src/lib/ads.test.ts`.
-
-**Hecho también (2026-10-06):** la política de privacidad
-(`apps/web/src/app/[locale]/privacy/page.tsx`, ES + EN) ya describe la
-publicidad, sus cookies y el consentimiento (nueva sección "Publicidad" /
-"Advertising") y deja de afirmar "no usamos cookies publicitarias"; también
-actualiza la fecha de revisión.
-
-**Ajuste de rendimiento (19/10/2026):** el tag de AdSense ya **no se carga en
-el primer render**. `AdsenseScript`, `AdBanner` y `AdInterstitial` esperan a que
-el usuario responda al aviso de analítica (`adsConsentReady`: `granted` o
-`denied`). Si nunca responde, no se descargan AdSense ni Funding Choices. Esto
-no convierte el aviso de analítica en consentimiento publicitario: en cuanto
-hay respuesta se carga el tag y el CMP de Google sigue gobernando el
-consentimiento y el tipo de anuncio. Motivo: LCP móvil de 4,7 s y CLS de 0,129
-en PageSpeed del 19/10, con AdSense/Funding Choices como terceros principales.
-Cubierto por `adsConsentReady` en `apps/web/src/lib/ads.test.ts`.
+Archivos: `lib/consent-tcf.ts` (lógica TCF pura + watcher + apertura del CMP),
+`lib/analytics.tsx` (PostHog tras consentimiento), `AdsenseScript`, `AdBanner`,
+`AdInterstitial`, `InstallBanner` y `instrumentation-client.ts` (Sentry Replay).
+La política de privacidad se actualizó en los cinco idiomas para explicar que la
+analítica se rige por el mismo aviso de Google que la publicidad.
 
 **Pendiente antes de activar:** no activar el client id en producción con
 tráfico UE hasta que el CMP esté configurado y publicado en el panel.
