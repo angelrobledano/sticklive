@@ -19,14 +19,16 @@
 | GET | `/seasons/:id/standings` | Solo clasificación (soporta grupos) |
 | GET | `/seasons/:id/matches` | Partidos de la temporada (filtros por jornada/estado/equipo) |
 | GET | `/seasons/:id/stats` | Líderes de temporada (goleadores, asistentes, tarjetas, eficiencias) |
-| GET | `/seasons/:id/insights` | Datos destacados de la temporada (C2): insights tipados que superan su umbral, ordenados por interés, con los equipos, jugadores y partidos que citan. Sin texto: la frase la pone la web por idioma. Caché de 10 min |
+| GET | `/seasons/:id/insights` | Datos destacados de la temporada (C2): insights tipados que superan su umbral, ordenados por interés, con los equipos, jugadores y partidos que citan. Incluye `discipline` (C4): rojas de la última jornada de liga, sin deducir sanciones. Sin texto: la frase la pone la web por idioma. Caché de 10 min |
 | GET | `/matches/live` | Partidos en juego ahora (API pública; **sin consumidor interno**, ver nota) |
 | GET | `/matches/current` | Ventana de la home (por defecto ±días; `?from=&to=` / `?days=`) |
 | GET | `/matches/:id` | Detalle de partido: eventos, estadísticas, alineaciones |
 | GET | `/matches/:id/stream` | **SSE** del directo (snapshot inicial + eventos; timeout a 2 h con `event: timeout`) |
 | GET | `/teams/:id` | Ficha de equipo: club canónico, standing, partidos, plantilla, cuerpo técnico, estadísticas |
+| GET | `/teams/:id/recent?limit=5` | Últimos partidos terminados en todas las competiciones (C9) |
 | GET | `/teams/:id/logo` | Escudo (volumen local o proxy del CDN de la fuente) |
 | GET | `/players/:id` | Ficha de jugador |
+| GET | `/players/:id/insights` | Percentiles del jugador frente a su liga (C6), posición de goleador, racha, hat-tricks y peso en los goles del equipo |
 | GET | `/players/:id/photo` | Foto (proxy del CDN). `?w=` acota a presets; `?format=png` reencoda a PNG para `next/og` (Satori no decodifica WebP) |
 | GET | `/meta/sitemap` | IDs para el sitemap dinámico de la web: competiciones visibles con partidos, equipos con partidos en temporadas visibles, jugadores de competiciones `top_tier` y partidos de los últimos 60 días y los próximos 14 |
 | GET | `/redirects/:type/:id` | Ficha que ya no existe (`type` = competition, team, player o match): `{ status: 'moved', newId }`, `{ status: 'gone' }`, `{ status: 'hidden', since }` si existe pero está oculta por calidad (partidos y competiciones, F1-6) o 404 si el id no consta. 400 si el tipo o el id no son válidos |
@@ -34,7 +36,7 @@
 Rate limit de lectura: **120/min por IP** en `GET /competitions`, `/search`,
 `/seasons/:id/overview`, `/seasons/:id/stats`, `/seasons/:id/insights`, `/seasons/:id/matches`,
 `/seasons/:id/standings`, `/matches/:id`, `/matches/live`, `/matches/current`,
-`/teams/:id`, `/players/:id` y `/meta/sitemap`.
+`/teams/:id`, `/teams/:id/recent`, `/players/:id`, `/players/:id/insights` y `/meta/sitemap`.
 
 ### `/seasons/:id/overview` — estructura de la temporada (072)
 
