@@ -7,7 +7,7 @@ import { captureRouteError } from '../lib/route-error.js';
 import { penaltyScoredSql } from '../lib/penalty-sql.js';
 import { setBounded } from '../lib/bounded-cache.js';
 import { computeSeasonInsights, type Insight, type InsightInput } from '../lib/insights.js';
-import { buildSeasonDiscipline, type DisciplineCardRow, type SeasonDiscipline } from '../lib/discipline.js';
+import { buildSeasonDiscipline, type SeasonDiscipline } from '../lib/discipline.js';
 
 export const seasonInsightsRouter = new Hono();
 
@@ -23,6 +23,18 @@ export interface SeasonInsightsResponse {
   matches: Record<string, { homeTeamId: string; awayTeamId: string; date: string | null }>;
   /** C4: rojas de la última jornada de liga, sin deducir sanciones. */
   discipline: SeasonDiscipline;
+}
+
+interface RawDisciplineRow {
+  match_id: string;
+  team_id: string;
+  player_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  minute: number | null;
+  round_number: number | null;
+  round_name: string | null;
+  round_type: string | null;
 }
 
 const TTL_MS = 10 * 60_000;
@@ -80,7 +92,7 @@ export async function loadSeasonInsights(seasonId: string): Promise<SeasonInsigh
          AND r.number IS NOT NULL
        ORDER BY r.number DESC
        LIMIT 1`, [seasonId]),
-    db.query<DisciplineCardRow>(`
+    db.query<RawDisciplineRow>(`
       SELECT e.match_id, e.team_id, e.player_id,
              p.first_name, p.last_name, e.minute,
              r.number AS round_number, r.name AS round_name, r.round_type
@@ -109,7 +121,19 @@ export async function loadSeasonInsights(seasonId: string): Promise<SeasonInsigh
   // web usa para enlazar; una roja sin marcador no debe quedar huérfana.
   const scoredMatchIds = new Set(input.matches.map((m) => m.id));
   const discipline = buildSeasonDiscipline(
-    redCards.rows.filter((r) => scoredMatchIds.has(r.matchId)),
+    redCards.rows
+      .map((r) => ({
+        matchId: r.match_id,
+        teamId: r.team_id,
+        playerId: r.player_id,
+        firstName: r.first_name,
+        lastName: r.last_name,
+        minute: r.minute,
+        roundNumber: r.round_number,
+        roundName: r.round_name,
+        roundType: r.round_type,
+      }))
+      .filter((r) => scoredMatchIds.has(r.matchId)),
     { number: lastRound.rows[0]?.number ?? null, name: lastRound.rows[0]?.name ?? null },
   );
 
