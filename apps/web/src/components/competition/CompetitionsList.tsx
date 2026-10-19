@@ -182,7 +182,7 @@ function CompetitionRow({
         {/* Avatar circular */}
         <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center overflow-hidden
                          ${hasLogo
-                           ? 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5'
+                           ? 'bg-white border border-slate-200 dark:border-slate-700 p-0.5'
                            : hasFlag
                              ? 'bg-slate-100 dark:bg-slate-800'
                              : 'bg-rink-passion/10 border border-rink-passion/20'}`}

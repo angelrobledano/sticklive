@@ -34,7 +34,7 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
   return (
     <div className="card px-4 py-3.5 flex items-center gap-3.5">
       {season.competitionLogoUrl ? (
-        <div className="w-11 h-11 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-1 shrink-0 flex items-center justify-center overflow-hidden">
+        <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 dark:border-slate-700 p-1 shrink-0 flex items-center justify-center overflow-hidden">
           <img
             src={season.competitionLogoUrl}
             alt=""

@@ -15,6 +15,7 @@ import {
 } from '@/lib/api/client';
 import { CompetitionClient } from '@/components/competition/CompetitionClient';
 import { CompetitionSummary } from '@/components/competition/CompetitionSummary';
+import { CompetitionEditorial } from '@/components/competition/CompetitionEditorial';
 import { buildCompetitionSummary } from '@/lib/content-summary';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
@@ -202,6 +203,11 @@ export default async function CompetitionPage(props: Props) {
           </Link>
         </p>
       )}
+
+      <CompetitionEditorial
+        slug={seasons.find((s) => s.id === seasonId)?.isCurrent ? data.season.competitionSlug : null}
+        locale={locale}
+      />
     </div>
   );
 }
