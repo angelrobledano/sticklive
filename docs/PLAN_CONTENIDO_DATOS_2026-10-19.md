@@ -97,6 +97,27 @@ Un bloque "¿Sabías que…?" que elige uno de los insights que cumplen su umbra
 
 El resto de insights elegibles siguen en el HTML (en el bloque de estadísticas). La rotación solo decide cuál se destaca.
 
+### 4.7 Temporadas terminadas: "Así terminó"
+
+Una temporada cerrada no es una liga en curso sin próximos partidos. Es otra página con otra intención de búsqueda ("campeón OK Liga Plata Sur 2025/26", "clasificación final", "pichichi"). Hoy la ficha la trata igual que una en curso: dice "Líder" en vez de "Campeón" y repite el bloque de próximos partidos vacío.
+
+**Antes de nada, un fallo de datos.** La clasificación de OK Liga Plata Sur 2025/26 que se muestra es la de la jornada 20 de 22: todos los equipos tienen PJ 20, pero los 132 partidos de la temporada (22 jornadas de 12 equipos) están terminados. Recalculada con los resultados, Simar Igualada acaba con 52 puntos (no 46) y el segundo puesto pasa del Espanyol (36 en la tabla, 33 recalculado) al Digittecnic CPV Capital del Vi (41). Una página de "Así terminó" con esa tabla daría un podio falso. Hay que reconciliar la clasificación con los resultados al cerrar cada temporada (y avisar cuando no cuadren) antes de construir nada encima.
+
+Contenido, todo calculable con los datos que ya hay (cifras reales de Plata Sur 2025/26, recalculadas):
+- **Campeón y cuándo lo fue:** "Simar Igualada, campeón con 52 puntos. Alirón matemático el 24/04/2026, en su partido 19 de 22."
+- **La carrera por el título:** gráfico de puntos acumulados por jornada de los cuatro primeros, y los cambios de líder (9 en esta temporada entre Alcobendas, Corredor Mató e Igualada, el último en diciembre).
+- **Podio y zonas:** ascenso, promoción y descenso, pero solo cuando la regla de la competición esté guardada como dato. No se deduce del puesto.
+- **Premios con datos:** pichichi (Ordóñez, 21 goles), máximo asistente, equipo más goleador, mejor defensa.
+- **Récords de la temporada:** mayor goleada, partido con más goles (Alcorcón 5-8 Digittecnic), rachas más largas.
+- **La liga en cifras:** 6,0 goles por partido, el local gana el 47 % (62 de 132), 18 empates.
+- **Puente a la temporada nueva:** "2026/27 ya está en juego: así va" con enlace. Retiene al que llega por la búsqueda del año pasado.
+
+Dos avisos de calidad salen de este mismo ejemplo:
+- **Posible incomparecencia.** La "mayor goleada" (0-10) puede ser una incomparecencia. Los resultados por incomparecencia o sanción hay que marcarlos y excluirlos de récords y medias.
+- **Penaltis.** La tabla de balón parado da a Simar Igualada 14 penaltis con 0 marcados, lo que confirma el fallo del parser de penaltis (C1).
+
+**SEO:** hoy una temporada pasada solo existe como `?season=` con canonical a la temporada actual, así que no puede posicionar por "clasificación final 2025/26". Esta página es el contenido que justifica darle una URL propia e indexable (F4-5 de la auditoría): cada temporada cerrada y verificada pasa a ser una página permanente que no caduca.
+
 ---
 
 ## 5. Diseño propuesto
@@ -161,8 +182,10 @@ Cada generador devuelve una prioridad: rareza (un hat-trick vale más que un "l�
 | C4 | Disciplina: expulsados de la última jornada + spike de sanciones oficiales | S + spike | — | Solo hechos o fuente oficial citada |
 | C5 | Compartir un insight como imagen (OG por insight) | M | C2 | Imagen < 1 s, datos iguales a la página |
 | C6 | Insights de jugador y percentiles | M | C2 | — |
+| C7 | Reconciliación de la clasificación al cerrar temporada (con alerta si no cuadra con los resultados) | M | — | Para toda temporada terminada, la tabla publicada coincide con la recalculada desde los resultados |
+| C8 | "Así terminó": campeón, alirón, carrera por el título, premios, récords y cifras de la liga (§4.7), con URL propia indexable para cada temporada cerrada (F4-5) | L | C1, C7, C2 | Ningún dato del bloque contradice la tabla final. Incomparecencias fuera de récords y medias |
 
-Orden recomendado: C0 y C1 en paralelo (C0 es visible ya, C1 desbloquea lo demás), después C2. C4 puede ir en cualquier momento porque no depende del motor.
+Orden recomendado: C0, C1 y C7 en paralelo (C0 es visible ya, C1 y C7 son calidad del dato y desbloquean lo demás), después C2 y C8. C4 puede ir en cualquier momento porque no depende del motor.
 
 ---
 
