@@ -17,6 +17,7 @@ const REQUIRED = ['DATABASE_URL'] as const;
  */
 const RECOMMENDED_PROD: Array<{ key: string; feature: string }> = [
   { key: 'WEB_BASE_URL',           feature: 'CORS y enlaces (sin ella se usa localhost)' },
+  { key: 'INTERNAL_API_TOKEN',     feature: 'exención de cuotas para el SSR de la web (sin ella comparte cuota con los visitantes)' },
   { key: 'SMTP_HOST',              feature: 'envío de magic links (sin ella, login por email deshabilitado)' },
   { key: 'STRIPE_SECRET_KEY',      feature: 'checkout de pago' },
   { key: 'STRIPE_WEBHOOK_SECRET',  feature: 'activación de premium vía webhook' },

@@ -10,8 +10,9 @@ import { assertSchemaCurrent, SchemaOutdatedError } from '@sports/db';
 import { assertEnv } from './lib/env.js';
 import { rateLimit } from './lib/rate-limit.js';
 import { corsOrigins } from './lib/cors-origins.js';
-import { READ_LIMIT_MAX, READ_LIMIT_PATHS, READ_LIMIT_WINDOW_MS } from './lib/read-limits.js';
+import { READ_LIMIT_MAX, READ_LIMIT_PATHS, READ_LIMIT_WINDOW_MS, HEAVY_READ_LIMITS } from './lib/read-limits.js';
 import { cacheControlFor } from './lib/read-cache.js';
+import { readGuard, isInternalRequest } from './lib/read-guard.js';
 import { standingsRouter } from './routes/standings.js';
 import { matchesRouter } from './routes/matches.js';
 import { liveRouter } from './routes/live.js';
@@ -73,15 +74,32 @@ app.use('*', async (c, next) => {
   // #333: un error nunca debe servirse con caché pública. Los catch de ruta no
   // pasan por onError y heredaban la cabecera de lectura (p. ej. max-age=120).
   if (c.res.status >= 400) c.header('Cache-Control', 'no-store');
+  // Los JSON de la API no son páginas: que los buscadores no los indexen
+  // (robots.txt es solo una declaración; esta cabecera la refuerza).
+  if (c.res.headers.get('content-type')?.includes('application/json')) {
+    c.header('X-Robots-Tag', 'noindex, nofollow');
+  }
 });
+
+// Anti-scraping (paquete A): cuota global y diaria por IP, concurrencia y
+// detección de enumeración. Solo actúa sobre GET de datos; SSE, imágenes,
+// health, auth, push, pagos y admin quedan fuera. Ver lib/read-guard.ts.
+app.use('*', readGuard);
 
 // Rate-limit de lectura (I1): tope generoso por IP en los GET más caros de BD.
 // Defensivo anti-DoS; no toca /matches/:id/stream (SSE).
 // La lista vive en lib/read-limits.ts: `/matches/:id` cubre también /matches/live
 // y /matches/current, que NO deben registrarse aparte (duplicarían el contador y
 // dejarían el tope real en 60/min pese a documentarse 120 — #333).
-const readLimit = rateLimit(READ_LIMIT_MAX, READ_LIMIT_WINDOW_MS);
+const readLimit = rateLimit(READ_LIMIT_MAX, READ_LIMIT_WINDOW_MS, undefined, isInternalRequest);
 for (const path of READ_LIMIT_PATHS) app.use(path, readLimit);
+
+// Topes más estrictos para los volcados de catálogo (temporada completa,
+// overview y sitemap). Se suman al general; el efectivo es el menor. La web
+// (SSR) queda exenta mediante el token interno: no compite con los visitantes.
+for (const { path, max, windowMs } of HEAVY_READ_LIMITS) {
+  app.use(path, rateLimit(max, windowMs, undefined, isInternalRequest));
+}
 
 // Health. #377(P3-12): `/health` (readiness) comprueba que Postgres responde
 // además del proceso; NO lo usa el healthcheck del contenedor, porque un bache

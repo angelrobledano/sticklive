@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { READ_LIMIT_MAX, READ_LIMIT_WINDOW_MS, READ_LIMIT_PATHS } from './read-limits.js';
+import { READ_LIMIT_MAX, READ_LIMIT_WINDOW_MS, READ_LIMIT_PATHS, HEAVY_READ_LIMITS } from './read-limits.js';
 
 /**
  * #333: /matches/live y /matches/current se registraban dos veces (explícito +
@@ -21,5 +21,22 @@ describe('READ_LIMIT_PATHS', () => {
 
   it('no hay rutas repetidas en la lista', () => {
     expect(new Set(READ_LIMIT_PATHS).size).toBe(READ_LIMIT_PATHS.length);
+  });
+
+  it('incluye el histórico de temporadas', () => {
+    expect(READ_LIMIT_PATHS).toContain('/competitions/:id/seasons');
+  });
+});
+
+describe('HEAVY_READ_LIMITS', () => {
+  it('aplica topes más estrictos a los volcados de catálogo', () => {
+    const byPath = new Map(HEAVY_READ_LIMITS.map((h) => [h.path, h]));
+    expect(byPath.get('/seasons/:id/matches')?.max).toBe(60);
+    expect(byPath.get('/seasons/:id/overview')?.max).toBe(60);
+    expect(byPath.get('/meta/sitemap')?.max).toBe(30);
+    for (const heavy of HEAVY_READ_LIMITS) {
+      expect(heavy.max).toBeLessThan(READ_LIMIT_MAX);
+      expect(READ_LIMIT_PATHS).toContain(heavy.path);
+    }
   });
 });

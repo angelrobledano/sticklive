@@ -6,6 +6,13 @@
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
 /**
+ * Token servidor-a-servidor para que la API no aplique las cuotas de visitante
+ * al SSR/build de la web. Nunca es `NEXT_PUBLIC_*`: en el bundle del navegador
+ * queda `undefined` y no se envía. Si no está configurado, no hay bypass.
+ */
+const INTERNAL_API_TOKEN = process.env['INTERNAL_API_TOKEN'];
+
+/**
  * Presupuesto máximo por petición a la API (ms).
  *
  * Una API colgada (proceso vivo pero sin responder) no debe congelar el SSR de
@@ -42,10 +49,15 @@ export async function apiFetch<T>(
   // abortar cualquiera de los dos cancela la petición.
   const timeout = AbortSignal.timeout(timeoutMs);
   const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+  const headers = new Headers(init?.headers);
+  headers.set('Content-Type', 'application/json');
+  if (typeof window === 'undefined' && INTERNAL_API_TOKEN) {
+    headers.set('x-internal-token', INTERNAL_API_TOKEN);
+  }
   const res = await fetch(url, {
     ...init,
     signal,
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
+    headers,
   });
   if (!res.ok) {
     const body = await res.text();

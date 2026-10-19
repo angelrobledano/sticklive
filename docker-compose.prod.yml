@@ -154,6 +154,9 @@ services:
     # fuga gratis si algún día hay un RCE/SSRF en el SSR.
     environment:
       NODE_ENV: production
+      # Token servidor-a-servidor para que la API no aplique las cuotas de
+      # visitante al SSR/build de la web (ver read-guard.ts). No es público.
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
     volumes:
       # Escudos como DATOS (no horneados en la imagen): los rellena el etl con
       # `run-pipeline --entity=download-logos` y los sirve Next desde public/.
@@ -181,6 +184,9 @@ services:
       - "443:443"
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Log de acceso para fail2ban. `logs/` está en .gitignore; el instalador
+      # crea el directorio con permisos 0750.
+      - ./logs/caddy:/var/log/caddy
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

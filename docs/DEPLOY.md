@@ -11,6 +11,7 @@ Procedimiento de despliegue en el VPS. No contiene secretos: la password de BD y
 - **VPS**: Hetzner, IP `167.233.94.156`, ruta `/opt/sticklive`.
 - **Orquestación**: Docker Compose (`docker-compose.prod.yml`) con servicios `postgres` (16-alpine), `api`, `web`, `caddy`, `etl`.
 - **Proxy/TLS**: Caddy con HTTPS automático para `sticklive.eu` (+ www). Regla `handle_path /api/*` → `api:3000`.
+- **Anti-scraping de borde**: Caddy escribe access logs en `logs/caddy/access.log` y fail2ban banea abusos en `DOCKER-USER`. Se instala una vez en el host con `sudo bash deploy/install-fail2ban.sh` (ver [operations.md § Anti-scraping](./operations.md#anti-scraping-sin-cloudflare)). No forma parte de Compose.
 - **Postgres**: publicado solo en `127.0.0.1:5432` (accesible por túnel SSH, nunca expuesto a internet).
 - **Runtime**: los contenedores ejecutan **JavaScript ya compilado** desde `dist/`, con `node`. La imagen se construye en tres etapas (`deploy/Dockerfile`) y la final no lleva ni `tsx`, ni TypeScript, ni el código fuente; corre como usuario `node`, sin privilegios. El empaquetado lo hace `scripts/build-server.mjs`.
 - **Migraciones**: las aplica el servicio `migrate`, que corre una vez al levantar y del que dependen `api` y `etl`. Ya **no** hay paso manual.

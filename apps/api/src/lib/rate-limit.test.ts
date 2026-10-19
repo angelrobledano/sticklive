@@ -74,6 +74,13 @@ describe('rateLimit', () => {
     expect((await run(mw, b.ctx)).nextCalled).toBe(true);
     expect((await run(mw, c.ctx)).nextCalled).toBe(true);
   });
+
+  it('skipIf deja pasar sin consumir cuota (token interno web→API)', async () => {
+    const mw = rateLimit(1, 60_000, undefined, () => true) as unknown as Mw;
+    const { ctx } = makeCtx('/matches/x', '5.5.5.5');
+    expect((await run(mw, ctx)).nextCalled).toBe(true);
+    expect((await run(mw, ctx)).nextCalled).toBe(true);
+  });
 });
 
 describe('hitRateLimit (clave arbitraria, p. ej. email o deviceId)', () => {

@@ -78,9 +78,11 @@ export function hitRateLimit(key: string, max: number, windowMs: number): RateLi
 export function rateLimit(
   max: number,
   windowMs = 60_000,
-  keyFn?: (c: Context) => string | Promise<string>
+  keyFn?: (c: Context) => string | Promise<string>,
+  skipIf?: (c: Context) => boolean,
 ) {
   return async (c: Context, next: Next) => {
+    if (skipIf?.(c)) return next();
     const extra = keyFn ? `:${await keyFn(c)}` : '';
     const key = `${c.req.path}:${clientIp(c)}${extra}`;
     const r = hitRateLimit(key, max, windowMs);

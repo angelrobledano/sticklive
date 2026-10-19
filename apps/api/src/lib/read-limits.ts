@@ -18,6 +18,8 @@ export const READ_LIMIT_WINDOW_MS = 60_000;
  * ya quedan cubiertos por `/matches/:id` y duplicarlos restaría la mitad del tope.
  */
 export const READ_LIMIT_PATHS: readonly string[] = [
+  '/competitions',
+  '/competitions/:id/seasons',
   '/seasons/:id/overview',
   '/seasons/:id/stats',
   '/seasons/:id/insights',
@@ -25,10 +27,27 @@ export const READ_LIMIT_PATHS: readonly string[] = [
   '/teams/:id/recent',
   '/players/:id',
   '/players/:id/insights',
-  '/competitions',
   '/search',
   '/seasons/:id/matches',
   '/seasons/:id/standings',
   '/matches/:id', // cubre /matches/:id, /matches/live y /matches/current
   '/meta/sitemap',
+];
+
+/**
+ * Topes MÁS ESTRICTOS para los endpoints que un scraper usa para volcar el
+ * catálogo de golpe. Se suman al tope general de 120/min: el efectivo es el
+ * menor de los dos. Son lecturas que la web hace una vez por página/jornada,
+ * no en bucle, así que 30/min sigue sobrando para uso humano.
+ */
+export interface HeavyReadLimit {
+  path: string;
+  max: number;
+  windowMs: number;
+}
+
+export const HEAVY_READ_LIMITS: readonly HeavyReadLimit[] = [
+  { path: '/seasons/:id/matches',   max: 60, windowMs: 60_000 },
+  { path: '/seasons/:id/overview',  max: 60, windowMs: 60_000 },
+  { path: '/meta/sitemap',          max: 30, windowMs: 60_000 },
 ];

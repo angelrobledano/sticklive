@@ -5,7 +5,7 @@
 ## Convenciones
 
 - Errores JSON `{ "error": "..." }`; handler global que **no** filtra `err.message` al cliente (lo loguea en servidor y Sentry).
-- `Cache-Control` por recurso en lecturas (`read-cache.ts`) + rate limit en memoria por ruta+IP (`rate-limit.ts`).
+- `Cache-Control` por recurso en lecturas (`read-cache.ts`) + rate limit en memoria por ruta+IP (`rate-limit.ts`) y guardia anti-scraping global (`read-guard.ts`).
 - Body limit global 64 KB. CORS con allowlist (`WEB_BASE_URL` + localhost dev).
 - Health: `GET /health/live` → `{ status: "ok" }` (liveness, sin BD; lo usa el healthcheck del contenedor) y `GET /health` → `{ status: "ok", db: "ok" }` (readiness, `SELECT 1`; 503 si Postgres no responde; lo usa el monitor externo).
 
@@ -33,10 +33,29 @@
 | GET | `/meta/sitemap` | IDs para el sitemap dinámico de la web: competiciones visibles con partidos, equipos con partidos en temporadas visibles, jugadores de competiciones `top_tier` y partidos de los últimos 60 días y los próximos 14 |
 | GET | `/redirects/:type/:id` | Ficha que ya no existe (`type` = competition, team, player o match): `{ status: 'moved', newId }`, `{ status: 'gone' }`, `{ status: 'hidden', since }` si existe pero está oculta por calidad (partidos y competiciones, F1-6) o 404 si el id no consta. 400 si el tipo o el id no son válidos |
 
-Rate limit de lectura: **120/min por IP** en `GET /competitions`, `/search`,
-`/seasons/:id/overview`, `/seasons/:id/stats`, `/seasons/:id/insights`, `/seasons/:id/matches`,
-`/seasons/:id/standings`, `/matches/:id`, `/matches/live`, `/matches/current`,
-`/teams/:id`, `/teams/:id/recent`, `/players/:id`, `/players/:id/insights` y `/meta/sitemap`.
+Rate limit de lectura: **120/min por IP y ruta** en `GET /competitions`,
+`/competitions/:id/seasons`, `/search`, `/seasons/:id/overview`, `/seasons/:id/stats`,
+`/seasons/:id/insights`, `/seasons/:id/matches`, `/seasons/:id/standings`,
+`/matches/:id`, `/matches/live`, `/matches/current`, `/teams/:id`, `/teams/:id/recent`,
+`/players/:id`, `/players/:id/insights` y `/meta/sitemap`.
+
+Además, el guardia anti-scraping (`apps/api/src/lib/read-guard.ts`) aplica:
+
+- **Cuota global por IP**: 600 lecturas/min sumando todas las rutas de datos
+  (no se puede multiplicar recorriendo endpoints).
+- **Cuota diaria por IP**: 50.000 lecturas/día (ventana móvil desde la primera).
+- **Concurrencia por IP**: 8 peticiones de lectura simultáneas.
+- **Detección de enumeración**: si una IP toca más de 300 entidades distintas
+  (partidos, equipos, jugadores o temporadas) en 10 min, se bloquea 15 min.
+  Los crawlers declarados (Googlebot, Bingbot…) están exentos de esta señal
+  para no romper el SEO, pero siguen sujetos a cuotas y concurrencia.
+- **Topes reforzados** en los volcados de catálogo: 60/min en
+  `/seasons/:id/matches` y `/seasons/:id/overview`; 30/min en `/meta/sitemap`.
+
+Los rechazos responden `429` con `Retry-After` y
+`{ "error": "rate_limited", "reason": "...", "retryAfterSeconds": N }`. Las
+imágenes (`/teams/:id/logo`, `/players/:id/photo`), el SSE y las rutas de
+auth/push/pagos/admin no entran en este presupuesto.
 
 ### `/seasons/:id/overview` — estructura de la temporada (072)
 

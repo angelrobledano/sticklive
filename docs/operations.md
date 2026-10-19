@@ -7,6 +7,7 @@
 | Qué | Cómo | Sano si… |
 |---|---|---|
 | Web + API arriba | `curl -fsS https://sticklive.eu/api/health` | `{"status":"ok","db":"ok",…}` (503 si Postgres no responde) |
+| Anti-scraping (borde) | `sudo fail2ban-client status sticklive-caddy` | jail `enabled`, con IPs baneadas si hay abuso |
 | Contenedores | `$DC ps` | todos `Up`; `api`/`web`/`etl` `(healthy)` |
 | Directo vivo | Sentry → Cron Monitor del directo | latidos sin miss (avisa solo si falla) |
 | Scraping al día | tabla `scrape_logs` (`SELECT scraper_key, status, max(scraped_at) FROM scrape_logs GROUP BY 1,2`) | últimas pasadas `success`, sin huecos de horas |
@@ -60,6 +61,10 @@ $DC logs --since 1h etl | grep -i error   # errores de la última hora
 
 Además: `scrape_logs` en BD (trazabilidad por scraper, estado y filas) y Sentry (errores de api/web/etl + alertas del pipeline).
 
+- **Access logs de Caddy** (para fail2ban): `/opt/sticklive/logs/caddy/access.log`
+  (rotación 10 MB × 5, permisos solo root). Ya **no** aparecen en
+  `docker logs caddy`; los logs de runtime (arranque/errores) sí siguen ahí.
+
 ## Reinicio y caídas
 
 - Reiniciar un servicio: `$DC restart api` (o `web`, `etl`). Rebuild si cambió código: `$DC up -d --build api`.
@@ -102,6 +107,81 @@ Antes de reiniciar escribe una **alerta** (log siempre; a Sentry si el entorno d
 - `handle_path /api/*` hacia `api:3000` con `flush_interval -1` (imprescindible para el SSE).
 - **Publicidad (Google AdSense):** apagada por defecto; solo se carga si se define `NEXT_PUBLIC_ADSENSE_CLIENT`. La CSP (modo observación) ya incluye los hosts de AdSense. Guía de activación, consentimiento (CMP) y política: **[docs/monetizacion.md](./monetizacion.md)**.
 - **Monitorización externa (UptimeRobot, #155/#299):** monitor creado (dashboard id `804186186`) sobre `https://sticklive.eu` y `https://sticklive.eu/api/health` (readiness). Es la señal externa de "web/BD caída" (antes solo abrir la web o mirar Sentry). UptimeRobot expone además **MCP oficial** (`https://mcp.uptimerobot.com/mcp`), añadido a la config de OpenCode (`~/.config/opencode/opencode.jsonc`, OAuth al primer uso). Pendiente: **probar el canal de alertas**, añadir monitor de **TLS** y conectar la vigilancia de disco (`DISK_PING_URL`) a un heartbeat.
+
+### Anti-scraping (sin Cloudflare)
+
+El stack real es **Hetzner + Docker Compose + Caddy 2-alpine**; no hay CDN/WAF
+externo. La protección vive en la API (`apps/api/src/lib/read-guard.ts`):
+
+- **Cuota global por IP** (600 lecturas/min, todas las rutas de datos juntas)
+  y **cuota diaria** (50.000/día). Variables: `READ_GLOBAL_MAX`,
+  `READ_GLOBAL_WINDOW_MS`, `READ_DAILY_MAX`, `READ_DAILY_WINDOW_MS`.
+- **Concurrencia por IP** (8 lecturas simultáneas): `READ_CONCURRENCY_MAX`.
+- **Detección de enumeración**: >300 entidades distintas en 10 min bloquea la
+  IP 15 min (`ENUM_WINDOW_MS`, `ENUM_DISTINCT_MAX`, `ENUM_BLOCK_MS`). Los
+  crawlers declarados quedan exentos de esta señal para no romper el SEO.
+- **Topes reforzados** en `/seasons/:id/matches`, `/seasons/:id/overview`
+  (60/min) y `/meta/sitemap` (30/min), además del general de 120/min por ruta.
+- **Excepción interna web→API**: el contenedor `web` envía
+  `x-internal-token: $INTERNAL_API_TOKEN` en sus fetches de SSR/build, y la API
+  no le aplica las cuotas de visitante. Sin ese token, una subida de tráfico
+  podría agotar la cuota de la IP del contenedor `web` y romper el renderizado.
+  Definir `INTERNAL_API_TOKEN` en `.env.prod` (la API lo lee del `env_file`; el
+  servicio `web` lo recibe explícitamente en `docker-compose.prod.yml`).
+- Todo el estado es **en memoria y de un solo nodo** (igual que el rate limit
+  existente). Si algún día hay varias réplicas de `api`, moverlo a Redis.
+
+Los rechazos quedan en el log de la API con `reason` (`global`, `daily`,
+`concurrency`, `enumeration`) y `Retry-After`. Para investigar:
+
+```bash
+$DC logs --since 1h api | grep -E 'read-guard|429'
+```
+
+**Caddy estándar no trae rate-limit** (el módulo no está en `caddy:2-alpine`).
+Sin Cloudflare, el borde se resuelve con **Caddy + fail2ban** (implementado):
+
+1. Caddy escribe access logs JSON en `logs/caddy/access.log` (volumen
+   `./logs/caddy:/var/log/caddy` en `docker-compose.prod.yml`). Los logs ya no
+   salen por `docker logs caddy`.
+2. Antes de escribir, Caddy redacta `token`, `deviceId` y `q` de la query, y
+   elimina `Referer`. El fichero queda en `0640` dentro de un directorio `0750`.
+3. fail2ban vigila `access*.log` y banea en la cadena **`DOCKER-USER`** (la que
+   sí atraviesa el tráfico publicado por Docker; `INPUT` no lo bloquearía):
+   - 30 respuestas `429`/`403` en 5 min → 1 h de ban.
+   - Ignora loopback, redes Docker/privadas y link-local.
+   - Ignora crawlers declarados (Googlebot, Bingbot…) para no romper el SEO.
+4. Instalación en el VPS:
+
+   ```bash
+   sudo apt-get update && sudo apt-get install -y fail2ban
+   cd /opt/sticklive
+   sudo bash deploy/install-fail2ban.sh
+   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d caddy
+   tail -f logs/caddy/access.log
+   sudo fail2ban-client status sticklive-caddy
+   ```
+
+   El instalador copia filtro/acción/jail desde `deploy/fail2ban/`, valida con
+   `fail2ban-client -t` y reinicia el servicio. Es idempotente.
+
+5. Si hay falsos positivos, ajustar `maxretry`, `findtime` y `bantime` en
+   `deploy/fail2ban/jail.d/sticklive.local` y reinstalar. Para desbanear una IP:
+
+   ```bash
+   sudo fail2ban-client set sticklive-caddy unbanip 203.0.113.7
+   ```
+
+6. **Imagen propia de Caddy con `caddy-ratelimit`** (build con `xcaddy`) sigue
+   siendo una alternativa si se quiere limitar en el borde por ruta/IP antes de
+   que la petición llegue a la API. No es necesaria para el jail actual.
+7. **Cloudflare u otro WAF** más adelante: la opción más potente (bot
+   management, ASNs, challenges), pero no es el stack actual.
+
+El `User-Agent` y el `Origin` son falsificables: sirven como señal, no como
+autenticación. Para cerrar el acceso de verdad habría que dejar de exponer la
+API al navegador (BFF en Next.js) y autenticar a los clientes; eso es un cambio
+de arquitectura, no un ajuste de límites.
 
 ## Acceso, cuentas y SSH (#302, #304)
 

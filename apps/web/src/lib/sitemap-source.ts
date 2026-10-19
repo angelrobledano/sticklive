@@ -13,6 +13,9 @@ import type { SitemapIds } from './sitemap';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
+/** Token servidor-a-servidor (SSR/build); nunca llega al navegador. */
+const INTERNAL_API_TOKEN = process.env['INTERNAL_API_TOKEN'];
+
 /** La API no ha dado los ids del sitemap (caída, timeout o respuesta no OK). */
 export class SitemapSourceError extends Error {
   constructor(cause: string) {
@@ -30,7 +33,10 @@ export class SitemapSourceError extends Error {
 export async function fetchSitemapIdsStrict(): Promise<SitemapIds> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/meta/sitemap`, { next: { revalidate: 3600 } });
+    res = await fetch(`${API_URL}/meta/sitemap`, {
+      next: { revalidate: 3600 },
+      headers: INTERNAL_API_TOKEN ? { 'x-internal-token': INTERNAL_API_TOKEN } : {},
+    });
   } catch (err) {
     throw new SitemapSourceError(err instanceof Error ? err.message : String(err));
   }

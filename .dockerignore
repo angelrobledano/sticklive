@@ -2,3 +2,7 @@
 # Sin esto, `npm ci` del builder (tras `COPY . .`) instalaría expo/react-native
 # en la imagen de runtime, porque el package-lock.json incluye apps/mobile.
 apps/mobile
+
+# Logs locales (incluye los access logs de Caddy con IPs): no deben entrar en
+# el contexto de build ni en las capas de la imagen.
+logs/

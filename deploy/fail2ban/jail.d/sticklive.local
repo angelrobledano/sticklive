@@ -1,0 +1,27 @@
+# Fail2ban — baneo de scrapers que abusan de la API (429) o prueban el admin (403).
+#
+# Requiere que Caddy escriba /var/log/caddy/access.log (ver deploy/Caddyfile) y
+# que ese directorio esté montado en el host como /opt/sticklive/logs/caddy
+# (ver docker-compose.prod.yml).
+#
+# Instalación: sudo deploy/install-fail2ban.sh
+# Estado:      sudo fail2ban-client status sticklive-caddy
+
+[sticklive-caddy]
+enabled  = true
+filter   = sticklive-caddy
+logpath  = /opt/sticklive/logs/caddy/access*.log
+# polling (no inotify) para sobrevivir a la rotación de Caddy sin perder el
+# fichero nuevo; el coste es una lectura cada 10 s.
+backend  = polling
+
+# 30 respuestas 429/403 en 5 minutos → 1 hora de ban. Un usuario normal no
+# acumula 30 rechazos; un scraper sí. Ajustar si aparecen falsos positivos.
+maxretry = 30
+findtime = 300
+bantime  = 3600
+
+# Nunca banear loopback, redes Docker/privadas ni link-local.
+ignoreip = 127.0.0.1/8 ::1 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 fe80::/10
+
+action   = sticklive-docker
