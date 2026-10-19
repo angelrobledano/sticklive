@@ -20,6 +20,7 @@ export const READ_LIMIT_WINDOW_MS = 60_000;
 export const READ_LIMIT_PATHS: readonly string[] = [
   '/seasons/:id/overview',
   '/seasons/:id/stats',
+  '/seasons/:id/insights',
   '/teams/:id',
   '/players/:id',
   '/competitions',

@@ -101,6 +101,7 @@ app.get('/', (c) => {
       'GET /seasons/:id/standings',
       'GET /seasons/:id/matches[?gameweek=&status=&teamId=]',
       'GET /seasons/:id/stats',
+      'GET /seasons/:id/insights',
       'GET /matches/live',
       'GET /matches/current',
       'GET /matches/:id',
