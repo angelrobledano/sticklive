@@ -170,6 +170,16 @@ publicidad, sus cookies y el consentimiento (nueva sección "Publicidad" /
 "Advertising") y deja de afirmar "no usamos cookies publicitarias"; también
 actualiza la fecha de revisión.
 
+**Ajuste de rendimiento (19/10/2026):** el tag de AdSense ya **no se carga en
+el primer render**. `AdsenseScript`, `AdBanner` y `AdInterstitial` esperan a que
+el usuario responda al aviso de analítica (`adsConsentReady`: `granted` o
+`denied`). Si nunca responde, no se descargan AdSense ni Funding Choices. Esto
+no convierte el aviso de analítica en consentimiento publicitario: en cuanto
+hay respuesta se carga el tag y el CMP de Google sigue gobernando el
+consentimiento y el tipo de anuncio. Motivo: LCP móvil de 4,7 s y CLS de 0,129
+en PageSpeed del 19/10, con AdSense/Funding Choices como terceros principales.
+Cubierto por `adsConsentReady` en `apps/web/src/lib/ads.test.ts`.
+
 **Pendiente antes de activar:** no activar el client id en producción con
 tráfico UE hasta que el CMP esté configurado y publicado en el panel.
 

@@ -17,9 +17,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n';
 import { usePremium } from '@/context/PremiumContext';
+import { useConsentState } from '@/hooks/useConsentState';
 import { track } from '@/lib/analytics';
 import { AdBanner } from '@/components/shared/AdBanner';
 import {
+  adsConsentReady,
   adsEnabled,
   adsenseConfig,
   shouldShowInterstitial,
@@ -48,6 +50,7 @@ function trapFocusIndex(current: number, count: number, backwards: boolean): num
 export function AdInterstitial() {
   const { t } = useT();
   const { isPremium, mounted } = usePremium();
+  const consent = useConsentState();
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -56,7 +59,7 @@ export function AdInterstitial() {
 
   // Programa la aparición tras un tiempo de interacción (nunca al cargar).
   useEffect(() => {
-    if (!enabled || !mounted) return;
+    if (!enabled || !mounted || !adsConsentReady(consent)) return;
     if (!adsEnabled({ client: ADS.client, premium: isPremium })) return;
 
     let alreadyShown = false;
@@ -90,7 +93,7 @@ export function AdInterstitial() {
     }, INTERSTITIAL_INTERACTION_MS);
 
     return () => clearTimeout(timer);
-  }, [enabled, mounted, isPremium]);
+  }, [enabled, mounted, isPremium, consent]);
 
   const close = useCallback(() => {
     setOpen(false);

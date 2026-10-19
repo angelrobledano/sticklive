@@ -12,16 +12,28 @@ import { CONSENT_KEY, emitConsentChange, readConsent, writeConsent, type Consent
  * PostHog (vía `CONSENT_EVENT`, escuchado en `AnalyticsPageview`); rechazar
  * deja la analítica como no-op sin crear ninguna cookie/persistencia.
  *
+ * Se renderiza también en servidor (visible por defecto) para que el aviso no
+ * sea el LCP tardío: un script inline en el layout marca `<html>` y el CSS lo
+ * oculta antes del primer pintado si ya hay una elección guardada.
+ *
  * Montado una sola vez en el layout raíz.
  */
 export function ConsentBanner() {
   const { t } = useT();
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     // Leer en un efecto (no en el render) evita desajustes de hidratación:
-    // el HTML estático no conoce localStorage.
-    const sync = () => setVisible(readConsent() === 'pending');
+    // el HTML estático no conoce localStorage. El script inline del layout ya
+    // ocultó el banner antes del primer pintado si había elección.
+    const sync = () => {
+      const pending = readConsent() === 'pending';
+      setVisible(pending);
+      try {
+        if (pending) delete document.documentElement.dataset['consent'];
+        else document.documentElement.dataset['consent'] = 'set';
+      } catch { /* noop */ }
+    };
     sync();
     // Si se decide en otra pestaña, ocultar/mostrar aquí también.
     const onStorage = (e: StorageEvent) => {
@@ -43,7 +55,7 @@ export function ConsentBanner() {
     <div
       role="region"
       aria-label={t('consent.title')}
-      className="fixed left-0 right-0 bottom-20 md:bottom-4 z-[60] px-3"
+      className="consent-banner fixed left-0 right-0 bottom-20 md:bottom-4 z-[60] px-3"
     >
       <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 dark:border-slate-700
                       bg-white dark:bg-slate-900 shadow-2xl p-4 space-y-3">

@@ -3,29 +3,32 @@
 /**
  * <AdsenseScript />
  *
- * Carga `adsbygoogle.js` si AdSense está configurado y el usuario no es Premium.
- * Montado una vez en el layout raíz. No pinta nada.
+ * Carga `adsbygoogle.js` si AdSense está configurado, el usuario no es Premium
+ * y ya ha respondido al aviso de analítica. Montado una vez en el layout raíz.
+ * No pinta nada.
  *
- * El tag debe cargarse aunque el usuario aún no haya elegido sobre la analítica:
- * el mensaje de consentimiento publicitario del CMP de Google se sirve a través
- * de este mismo script (ver docs/monetizacion.md §4). El consentimiento de
- * analítica solo gobierna PostHog, no los anuncios.
+ * La espera es de rendimiento: si el usuario nunca contesta, no se descargan
+ * AdSense ni Funding Choices. Cuando contesta (acepte o rechace analítica), se
+ * carga el tag y el CMP de Google sigue gobernando el consentimiento
+ * publicitario (ver docs/monetizacion.md §4).
  */
 
 import { useEffect } from 'react';
 import { usePremium } from '@/context/PremiumContext';
-import { adsEnabled, adsenseConfig, loadAdsenseScript } from '@/lib/ads';
+import { useConsentState } from '@/hooks/useConsentState';
+import { adsConsentReady, adsEnabled, adsenseConfig, loadAdsenseScript } from '@/lib/ads';
 
 const ADS = adsenseConfig();
 
 export function AdsenseScript() {
   const { isPremium, mounted } = usePremium();
+  const consent = useConsentState();
 
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || !adsConsentReady(consent)) return;
     if (!adsEnabled({ client: ADS.client, premium: isPremium })) return;
     loadAdsenseScript(ADS.client);
-  }, [mounted, isPremium]);
+  }, [mounted, isPremium, consent]);
 
   return null;
 }
