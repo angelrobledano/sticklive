@@ -13,7 +13,8 @@ interface Copy {
   leader: string; finalFirst: string; pts: string;
   ahead: (n: number, team: string) => string; tied: (team: string) => string;
   featured: string; next: string; versus: (h: string, a: string) => string; round: (n: number) => string;
-  scorer: string; goals: string; scorerAhead: (n: number) => string; scorerTied: string;
+  scorer: string; goals: string; team: string;
+  scorerAhead: (n: number, name: string | null) => string; scorerTied: (name: string | null) => string;
   matches: (n: number) => string; gpm: (n: string) => string; homeWins: (n: number) => string;
   ordinal: (n: number) => string;
   didYouKnow: string; more: (n: number) => string;
@@ -26,7 +27,9 @@ const COPY: Record<string, Copy> = {
     leader: 'Líder', finalFirst: '1.º en la clasificación final', pts: 'pts',
     ahead: (n, team) => `+${n} sobre ${team}`, tied: (team) => `Empatado a puntos con ${team}`,
     featured: 'Partido destacado', next: 'Próximo partido', versus: (h, a) => `${h} contra ${a}`, round: (n) => `Jornada ${n}`,
-    scorer: 'Máximo goleador', goals: 'goles', scorerAhead: (n) => `+${n} sobre el 2.º`, scorerTied: 'Empatado con el 2.º',
+    scorer: 'Máximo goleador', goals: 'goles', team: 'Equipo',
+    scorerAhead: (n, name) => name ? `+${n} sobre ${name} (2.º)` : `+${n} sobre el 2.º`,
+    scorerTied: (name) => name ? `Empatado con ${name} (2.º)` : 'Empatado con el 2.º',
     matches: (n) => `${n} partidos`, gpm: (n) => `${n} goles por partido`, homeWins: (n) => `${n} % de victorias locales`,
     ordinal: (n) => `${n}.º`,
     didYouKnow: '¿Sabías que…?', more: (n) => `Más datos de la liga (${n})`,
@@ -37,7 +40,9 @@ const COPY: Record<string, Copy> = {
     leader: 'Leader', finalFirst: '1st in the final standings', pts: 'pts',
     ahead: (n, team) => `+${n} over ${team}`, tied: (team) => `Level on points with ${team}`,
     featured: 'Match of the round', next: 'Next match', versus: (h, a) => `${h} vs ${a}`, round: (n) => `Matchday ${n}`,
-    scorer: 'Top scorer', goals: 'goals', scorerAhead: (n) => `+${n} over 2nd`, scorerTied: 'Level with 2nd',
+    scorer: 'Top scorer', goals: 'goals', team: 'Team',
+    scorerAhead: (n, name) => name ? `+${n} over ${name} (2nd)` : `+${n} over 2nd`,
+    scorerTied: (name) => name ? `Level with ${name} (2nd)` : 'Level with 2nd',
     matches: (n) => `${n} matches`, gpm: (n) => `${n} goals per match`, homeWins: (n) => `${n}% home wins`,
     ordinal: (n) => {
       const s = new Intl.PluralRules('en', { type: 'ordinal' }).select(n);
@@ -51,7 +56,9 @@ const COPY: Record<string, Copy> = {
     leader: 'Líder', finalFirst: '1.º na classificação final', pts: 'pts',
     ahead: (n, team) => `+${n} sobre ${team}`, tied: (team) => `Empatado em pontos com ${team}`,
     featured: 'Jogo em destaque', next: 'Próximo jogo', versus: (h, a) => `${h} contra ${a}`, round: (n) => `Jornada ${n}`,
-    scorer: 'Melhor marcador', goals: 'golos', scorerAhead: (n) => `+${n} sobre o 2.º`, scorerTied: 'Empatado com o 2.º',
+    scorer: 'Melhor marcador', goals: 'golos', team: 'Equipa',
+    scorerAhead: (n, name) => name ? `+${n} sobre ${name} (2.º)` : `+${n} sobre o 2.º`,
+    scorerTied: (name) => name ? `Empatado com ${name} (2.º)` : 'Empatado com o 2.º',
     matches: (n) => `${n} jogos`, gpm: (n) => `${n} golos por jogo`, homeWins: (n) => `${n} % de vitórias em casa`,
     ordinal: (n) => `${n}.º`,
     didYouKnow: 'Sabia que…?', more: (n) => `Mais dados da liga (${n})`,
@@ -62,7 +69,9 @@ const COPY: Record<string, Copy> = {
     leader: 'Leader', finalFirst: '1er du classement final', pts: 'pts',
     ahead: (n, team) => `+${n} sur ${team}`, tied: (team) => `À égalité de points avec ${team}`,
     featured: 'Match à suivre', next: 'Prochain match', versus: (h, a) => `${h} contre ${a}`, round: (n) => `Journée ${n}`,
-    scorer: 'Meilleur buteur', goals: 'buts', scorerAhead: (n) => `+${n} sur le 2e`, scorerTied: 'À égalité avec le 2e',
+    scorer: 'Meilleur buteur', goals: 'buts', team: 'Équipe',
+    scorerAhead: (n, name) => name ? `+${n} sur ${name} (2e)` : `+${n} sur le 2e`,
+    scorerTied: (name) => name ? `À égalité avec ${name} (2e)` : 'À égalité avec le 2e',
     matches: (n) => `${n} matchs`, gpm: (n) => `${n} buts par match`, homeWins: (n) => `${n} % de victoires à domicile`,
     ordinal: (n) => (n === 1 ? '1er' : `${n}e`),
     didYouKnow: 'Le saviez-vous ?', more: (n) => `Plus de chiffres du championnat (${n})`,
@@ -73,7 +82,9 @@ const COPY: Record<string, Copy> = {
     leader: 'Capolista', finalFirst: '1º nella classifica finale', pts: 'pt',
     ahead: (n, team) => `+${n} su ${team}`, tied: (team) => `A pari punti con ${team}`,
     featured: 'Partita da seguire', next: 'Prossima partita', versus: (h, a) => `${h} contro ${a}`, round: (n) => `Giornata ${n}`,
-    scorer: 'Capocannoniere', goals: 'gol', scorerAhead: (n) => `+${n} sul 2º`, scorerTied: 'A pari con il 2º',
+    scorer: 'Capocannoniere', goals: 'gol', team: 'Squadra',
+    scorerAhead: (n, name) => name ? `+${n} su ${name} (2°)` : `+${n} sul 2º`,
+    scorerTied: (name) => name ? `A pari con ${name} (2°)` : 'A pari con il 2º',
     matches: (n) => `${n} partite`, gpm: (n) => `${n} gol a partita`, homeWins: (n) => `${n}% di vittorie in casa`,
     ordinal: (n) => `${n}º`,
     didYouKnow: 'Lo sapevi?', more: (n) => `Altri dati del campionato (${n})`,
@@ -215,12 +226,16 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
             <p className="font-score text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-50">
               {topScorer.value} <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">{c.goals}</span>
             </p>
-            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-              {[
-                topScorer.gap === null ? null : topScorer.gap > 0 ? c.scorerAhead(topScorer.gap) : c.scorerTied,
-                topScorer.teamName ? clubName(topScorer.teamName) : null,
-              ].filter(Boolean).join(' · ')}
-            </p>
+            {topScorer.gap !== null && (
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                {topScorer.gap > 0 ? c.scorerAhead(topScorer.gap, topScorer.secondName) : c.scorerTied(topScorer.secondName)}
+              </p>
+            )}
+            {topScorer.teamName && (
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                {c.team}: {clubName(topScorer.teamName)}
+              </p>
+            )}
           </Tile>
         )}
       </ul>

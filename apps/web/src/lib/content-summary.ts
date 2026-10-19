@@ -238,6 +238,8 @@ export interface CompetitionSummary {
     teamId: string | null; teamName: string | null; value: number;
     /** Goles de ventaja sobre el 2.º goleador. */
     gap: number | null;
+    /** Nombre del 2.º goleador, para que la ventaja no se confunda con su equipo. */
+    secondName: string | null;
   } | null;
   figures: { matchesPlayed: number; goalsPerMatch: number | null; homeWinPct: number | null } | null;
 }
@@ -330,6 +332,7 @@ export function buildCompetitionSummary(
           playerId: scorer1.playerId, displayName: leaderName(scorer1), photoUrl: scorer1.photoUrl ?? null,
           teamId: scorer1.teamId, teamName: scorer1.teamName, value: scorer1.value,
           gap: scorer2 ? scorer1.value - scorer2.value : null,
+          secondName: scorer2 ? leaderName(scorer2) : null,
         }
       : null,
     figures: scored.length > 0

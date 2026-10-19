@@ -71,8 +71,22 @@ export function teamTitleName(
 }
 
 /** Desde first/last de la API: "FERRAN" + "FONT SÁNCHEZ" → "Ferran Font" */
+// Partículas que forman parte del apellido compuesto ("DI BENEDETTO",
+// "DE LA CRUZ", "VAN DER BERG"). No son apellidos por sí solas.
+const SURNAME_PARTICLES = new Set([
+  'de', 'del', 'della', 'di', 'da', 'das', 'dos', 'van', 'von', 'der', 'den', 'la', 'le', 'lo',
+]);
+
+/**
+ * Desde first/last de la API: "FERRAN" + "FONT SÁNCHEZ" → "Ferran Font";
+ * "CARLO" + "DI BENEDETTO" → "Carlos Di Benedetto". Usa el primer apellido,
+ * pero conserva las partículas que lo convierten en apellido compuesto.
+ */
 export function playerDisplayName(firstName: string, lastName: string): string {
-  const surname = lastName.trim().split(/\s+/)[0] ?? '';
+  const parts = lastName.trim().split(/\s+/).filter(Boolean);
+  let take = Math.min(1, parts.length);
+  while (take < parts.length && SURNAME_PARTICLES.has(parts[take - 1]!.toLowerCase())) take++;
+  const surname = parts.slice(0, take).join(' ');
   return toTitleCase(`${firstName} ${surname}`.trim());
 }
 

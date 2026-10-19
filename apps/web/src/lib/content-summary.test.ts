@@ -106,7 +106,10 @@ describe('buildCompetitionSummary', () => {
 
   it('pichichi con nombre de presentaciÃ³n y ventaja', () => {
     const s = buildCompetitionSummary(liga({ pending: true }), scorers, now);
-    expect(s.topScorer).toMatchObject({ playerId: 'p1', displayName: 'Juan Gabriel Fernandez', value: 9, gap: 2, teamId: 'a' });
+    expect(s.topScorer).toMatchObject({
+      playerId: 'p1', displayName: 'Juan Gabriel Fernandez', value: 9, gap: 2, teamId: 'a',
+      secondName: 'Gerard Pujol',
+    });
   });
 
   it('sin nombre y apellidos de la API, cae al nombre crudo', () => {
@@ -138,7 +141,7 @@ describe('buildCompetitionSummary', () => {
     expect(buildCompetitionSummary(o, null, now).leader).toBeNull();
   });
 });
-describe('C9: observaciones y números del cruce', () => {
+describe('C9: observaciones y nï¿½meros del cruce', () => {
   const recent = [
     { id: '1', date: null, opponentId: 'x', opponentName: 'X', opponentLogoUrl: null, competitionName: null, isHome: true, goalsFor: 4, goalsAgainst: 1, result: 'W' as const },
     { id: '2', date: null, opponentId: 'y', opponentName: 'Y', opponentLogoUrl: null, competitionName: null, isHome: false, goalsFor: 3, goalsAgainst: 2, result: 'W' as const },

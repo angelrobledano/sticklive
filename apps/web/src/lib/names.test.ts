@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { competitionName, teamTitleName } from './names';
+import { competitionName, playerDisplayName, teamTitleName } from './names';
 
 describe('competitionName', () => {
   it('elige el idioma activo cuando existe', () => {
@@ -28,6 +28,18 @@ describe('competitionName', () => {
 
 // #338: el title/meta de un partido debe usar el nombre COMPLETO normalizado,
 // no el shortName (que `clubName()` degrada: "CPAH" → "Cpah").
+describe('playerDisplayName', () => {
+  it('conserva el apellido compuesto con partícula', () => {
+    expect(playerDisplayName('CARLO', 'DI BENEDETTO')).toBe('Carlo Di Benedetto');
+    expect(playerDisplayName('ANA', 'DE LA CRUZ')).toBe('Ana De La Cruz');
+    expect(playerDisplayName('JOHN', 'VAN DER BERG')).toBe('John Van Der Berg');
+  });
+
+  it('usa solo el primer apellido cuando no es compuesto', () => {
+    expect(playerDisplayName('FERRAN', 'FONT SÁNCHEZ')).toBe('Ferran Font');
+  });
+});
+
 describe('teamTitleName (#338)', () => {
   it('prefiere el nombre completo normalizado sobre el shortName', () => {
     expect(teamTitleName('CLUB PATIN ALCALA HOCKEY', 'CPAH')).toBe('Club Patin Alcala Hockey');
