@@ -530,11 +530,6 @@
     "reject": "Refuser",
     "privacy": "Politique de confidentialité"
   },
-  "locale_hint": {
-    "body": "Vous préférez {lang} ?",
-    "cta": "Voir en {lang}",
-    "dismiss": "Fermer"
-  },
   "notif_presets": {
     "title": "Que voulez-vous recevoir ?",
     "complete": {

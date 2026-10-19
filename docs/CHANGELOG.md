@@ -4,6 +4,12 @@ Historial de hitos de producto y plataforma. El estado vivo está en [ESTADO_PRO
 
 ---
 
+## Octubre 2026 — Cada persona ve la web en el idioma de su dispositivo
+
+- Un enlace con prefijo de otro idioma (compartido, resultado de búsqueda) se abre directamente en el idioma de quien lo recibe: el que eligió a mano (cookie) o, si no eligió, el de su dispositivo. Redirección 307 en el middleware, sin caché compartida. Si el dispositivo no está en un idioma soportado, se respeta la URL.
+- Bots y previsualizadores de enlaces (Googlebot, WhatsApp, Facebook…) y las peticiones internas de navegación nunca se redirigen: cada URL prefijada sigue siendo la canónica de su idioma (hreflang).
+- Se retira el aviso «Parece que prefieres…» (`LocaleHint`), que además tapaba el botón «Rechazar» del aviso de cookies.
+
 ## Octubre 2026 — Tandas de penaltis completas y cuadro con campeón
 
 - El directo vuelve a pedir el acta de un partido terminado mientras su tanda de penaltis siga empatada. Antes, si el acta se capturaba con la tanda a medias y los goles ya cuadraban, nadie la volvía a pedir (ITA–CHI del Mundial quedó 1-1 en la tanda cuando acabó 1-2).

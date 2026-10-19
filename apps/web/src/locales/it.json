@@ -530,11 +530,6 @@
     "reject": "Rifiuta",
     "privacy": "Informativa sulla privacy"
   },
-  "locale_hint": {
-    "body": "Sembra che preferisca {lang}",
-    "cta": "Vedi in {lang}",
-    "dismiss": "Chiudi"
-  },
   "notif_presets": {
     "title": "Cosa vuoi ricevere?",
     "complete": {
