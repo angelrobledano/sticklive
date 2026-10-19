@@ -37,6 +37,24 @@ describe('buildMatchPreview', () => {
     expect(preview.headToHead).toHaveLength(1);
     expect(preview.headToHead[0]?.id).toBe('prev');
   });
+
+  it('no repite el partido actual en los últimos 5 (directo/finalizado)', () => {
+    const recent = (id: string) => ({
+      id, date: '2026-10-20T18:00:00Z',
+      homeTeamId: 'h', homeName: 'Local', homeShortName: null, homeLogoUrl: null,
+      awayTeamId: 'a', awayName: 'Visitante', awayShortName: null, awayLogoUrl: null,
+      homeScore: 1, awayScore: 0, competitionId: 'c1', competitionName: 'Liga',
+      competitionShortName: null, roundNumber: 1,
+    });
+    const preview = buildMatchPreview(overview, {
+      matchId: 'current', homeTeamId: 'h', awayTeamId: 'a', homeName: 'Local', awayName: 'Visitante',
+    }, {
+      homeRecent: [recent('current'), recent('r1')],
+      awayRecent: [recent('current'), recent('r2')],
+    });
+    expect(preview.home.recent.map((r) => r.id)).not.toContain('current');
+    expect(preview.away.recent.map((r) => r.id)).not.toContain('current');
+  });
 });
 
 const team = (id: string, name = id.toUpperCase()) => ({ id, name, shortName: null, logoUrl: null });

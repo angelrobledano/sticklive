@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import * as Sentry from '@sentry/nextjs';
 import { useT } from '@/lib/i18n';
 import { track, matchAnalyticsDecision, type LiveStreamStatus } from '@/lib/analytics';
@@ -130,7 +130,7 @@ export function planScheduledRefetch(
   };
 }
 
-export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) {
+export function MatchCenterClient({ data: initialData, preview }: { data: MatchDetail; preview?: ReactNode }) {
   const { t } = useT();
   const [activeTab,  setActiveTab]  = useState<Tab>('Resumen');
   // Estado local que empieza con los datos SSR y se actualiza en caliente via SSE
@@ -521,6 +521,9 @@ export function MatchCenterClient({ data: initialData }: { data: MatchDetail }) 
     <div className="space-y-4">
       {/* Cabecera del partido */}
       <MatchHeader data={data} sseStatus={sseStatus} lastUpdateAt={lastUpdateAt} serverStale={serverStale} />
+
+      {/* Previa: justo debajo del marcador y antes de las pestañas */}
+      {preview}
 
       {/* Pestañas — solo las que tienen datos (#358: patrón ARIA tabs) */}
       <div

@@ -237,8 +237,14 @@ export function buildMatchPreview(
     }));
 
   return {
-    home: snapshot(overview, input.homeTeamId, input.homeName, { recent: extra?.homeRecent, stats: extra?.homeStats }),
-    away: snapshot(overview, input.awayTeamId, input.awayName, { recent: extra?.awayRecent, stats: extra?.awayStats }),
+    home: snapshot(overview, input.homeTeamId, input.homeName, {
+      recent: extra?.homeRecent?.filter((m) => m.id !== input.matchId),
+      stats: extra?.homeStats,
+    }),
+    away: snapshot(overview, input.awayTeamId, input.awayName, {
+      recent: extra?.awayRecent?.filter((m) => m.id !== input.matchId),
+      stats: extra?.awayStats,
+    }),
     headToHead,
     cross: buildCrossMetrics(extra?.homeStats, extra?.awayStats),
   };

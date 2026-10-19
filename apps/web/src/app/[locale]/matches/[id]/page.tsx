@@ -106,9 +106,10 @@ export default async function MatchDetailPage(props: Props) {
     venue: m.venue,
   });
 
-  // F4-1: previa con datos reales para partidos aún no jugados. La API de
-  // temporada ya está cacheada 120 s; si falla, la ficha sigue funcionando.
-  const preview = (m.status === 'scheduled' || m.status === 'postponed') && m.homeTeam?.id && m.awayTeam?.id
+  // F4-1: previa con datos reales. En programados se muestra debajo del
+  // marcador; en directo/finalizado, al final de la ficha (el marcador manda).
+  const isPreMatch = m.status === 'scheduled' || m.status === 'postponed';
+  const preview = m.status !== 'cancelled' && m.homeTeam?.id && m.awayTeam?.id
     ? await getSeasonOverview(m.seasonId)
         .then(async (overview) => {
           const homeId = m.homeTeam!.id;
@@ -170,13 +171,17 @@ export default async function MatchDetailPage(props: Props) {
       <BackLink href={m.competitionId ? `/competitions/${m.competitionId}` : '/'} />
       <Breadcrumbs items={crumbs} />
 
-      {preview && <MatchPreview data={preview} locale={locale} />}
-
-      {/* Match Center */}
-      <MatchCenterClient data={data} />
+      {/* Match Center; en programados la previa va debajo del marcador. En
+          directo/finalizado se pinta al final de la ficha. */}
+      <MatchCenterClient
+        data={data}
+        preview={isPreMatch && preview ? <MatchPreview data={preview} locale={locale} /> : null}
+      />
 
       <MatchChronicle facts={chronicle} locale={locale} teams={chronicleTeams} />
       <PreviousMeeting match={previousMeeting} locale={locale} />
+
+      {!isPreMatch && preview && <MatchPreview data={preview} locale={locale} />}
     </div>
   );
 }

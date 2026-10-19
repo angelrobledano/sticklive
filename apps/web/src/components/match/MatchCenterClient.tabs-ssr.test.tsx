@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import type { ReactNode } from 'react';
 import { I18nProvider } from '@/lib/i18n';
 import { MatchCenterClient } from './MatchCenterClient';
 import type { MatchDetail } from '@/lib/api/client';
@@ -22,10 +23,10 @@ vi.mock('next/navigation', () => ({
 
 const data = matchJson as unknown as MatchDetail;
 
-function render(): string {
+function render(preview?: ReactNode): string {
   return renderToStaticMarkup(
     <I18nProvider initialLocale="es" dict={{}} referenceDict={{}}>
-      <MatchCenterClient data={data} />
+      <MatchCenterClient data={data} preview={preview} />
     </I18nProvider>,
   );
 }
@@ -41,5 +42,14 @@ describe('MatchCenterClient — paneles en el HTML servido', () => {
     const html = render();
     const firstPlayer = String(data.lineups.home[0]!.playerName).split(' ')[0]!.toLowerCase();
     expect(html.toLowerCase()).toContain(firstPlayer);
+  });
+
+  it('la previa va debajo del marcador y antes de las pestañas', () => {
+    const html = render(<div>PREVIA_TEST</div>);
+    const previewAt = html.indexOf('PREVIA_TEST');
+    const tabsAt = html.indexOf('role="tablist"');
+    expect(previewAt).toBeGreaterThan(-1);
+    expect(tabsAt).toBeGreaterThan(-1);
+    expect(previewAt).toBeLessThan(tabsAt);
   });
 });
