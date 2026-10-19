@@ -72,6 +72,28 @@ describe('Fase 2b — panel de la cola de resolución', () => {
     expect(await resolveQueueItem(id, teamId)).toBeNull();
   });
 
+  it('resolver fija el mapa de fuente y pisa un mapeo previo (el clic manda)', async () => {
+    const correcto = await crearEquipo(sportId, 'CH MATARÓ');
+    const equivocado = await crearEquipo(sportId, 'CH MATARÓ (femenino)');
+    await db.query(
+      `INSERT INTO source_entity_map (source_id, source_ref, team_id)
+       VALUES ($1, '3725', $2)`,
+      [sourceId, equivocado],
+    );
+    await enqueueResolution({
+      rawText: 'CH MATARÓ', normalized: 'ch mataro', sourceId, sourceRef: '3725', candidates: [],
+    });
+    const id = await idDe('ch mataro');
+
+    await resolveQueueItem(id, correcto, 'human:test');
+
+    const { rows } = await db.query<{ team_id: string }>(
+      `SELECT team_id FROM source_entity_map WHERE source_id = $1 AND source_ref = '3725'`,
+      [sourceId],
+    );
+    expect(rows[0]!.team_id).toBe(correcto);
+  });
+
   it('descartar marca rejected y no crea alias; descartar dos veces es no-op', async () => {
     await enqueueResolution({ rawText: 'Ruido', normalized: 'ruido', sourceId, candidates: [] });
     const id = await idDe('ruido');

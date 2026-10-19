@@ -26,10 +26,10 @@ async function sembrar() {
     `INSERT INTO seasons (competition_id, name, slug) VALUES ($1, '2026/27', '2026-27') RETURNING id`,
     [comp.id]
   )).rows[0]!;
-  const team = async (name: string, slug: string) => {
+  const team = async (name: string, slug: string, shortName?: string) => {
     const t = (await db.query<{ id: string }>(
-      `INSERT INTO teams (sport_id, name, slug) VALUES ($1, $2, $3) RETURNING id`,
-      [sport.id, name, slug]
+      `INSERT INTO teams (sport_id, name, slug, short_name) VALUES ($1, $2, $3, $4) RETURNING id`,
+      [sport.id, name, slug, shortName ?? null]
     )).rows[0]!;
     await db.query(`INSERT INTO season_teams (season_id, team_id) VALUES ($1, $2)`, [season.id, t.id]);
     return t.id;
@@ -42,6 +42,40 @@ describe('findTeamInSeasonByName', () => {
     const { season, team } = await sembrar();
     const id = await team('CDM HOCKEY PATINES', 'cdm-hockey-patines');
     expect(await findTeamInSeasonByName(season.id, 'CDM HOCKEY PATINES')).toBe(id);
+  });
+
+  it('cae a la abreviatura cuando la fuente usa el nombre del patrocinador', async () => {
+    const { season, team } = await sembrar();
+    // La fuente publica "FENIE ENERGIA CERDANYOLA CCH"; en la ficha el nombre
+    // es el canónico. La abreviatura (CCH) sí es estable y única en la temporada.
+    const id = await team("CERDANYOLA CLUB D'HOQUEI", 'cerdanyola-club-d-hoquei', 'CCH');
+    expect(
+      await findTeamInSeasonByName(season.id, 'FENIE ENERGIA CERDANYOLA CCH', 'CCH'),
+    ).toBe(id);
+  });
+
+  it('ignora los acentos al comparar el nombre', async () => {
+    const { season, team } = await sembrar();
+    const id = await team('CLUB PATÍN ALCORCÓN', 'club-patin-alcorcon-m', 'CPA');
+    expect(
+      await findTeamInSeasonByName(season.id, 'CLUB PATIN ALCORCON', 'CPA'),
+    ).toBe(id);
+  });
+
+  it('no resuelve por abreviatura si es ambigua', async () => {
+    const { season, team } = await sembrar();
+    await team('CH MATARÓ', 'ch-mataro', 'CHM');
+    await team('PREVINTEGRAL CH MOLLERUSSA', 'previntegral-ch-mollerussa', 'CHM');
+    expect(
+      await findTeamInSeasonByName(season.id, 'EQUIPO DESCONOCIDO', 'CHM'),
+    ).toBeNull();
+  });
+
+  it('el nombre exacto manda sobre la abreviatura', async () => {
+    const { season, team } = await sembrar();
+    const exacto = await team('CH MATARÓ', 'ch-mataro', 'CHM');
+    await team('OTRO EQUIPO', 'otro-equipo', 'CHM');
+    expect(await findTeamInSeasonByName(season.id, 'CH MATARÓ', 'CHM')).toBe(exacto);
   });
 
   it('REGRESIÓN: el nombre del primer equipo resuelve al filial " B" de esa temporada', async () => {

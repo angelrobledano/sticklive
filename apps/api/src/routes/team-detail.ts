@@ -177,6 +177,7 @@ teamDetailRouter.get('/:id', async (c) => {
                c.name AS competition_name, c.short_name AS competition_short_name
         FROM seasons se
         JOIN competitions c ON c.id = se.competition_id
+        JOIN teams t ON t.id = $1
         WHERE se.id IN (
           SELECT season_id FROM season_teams WHERE team_id = $1
           UNION
@@ -186,6 +187,13 @@ teamDetailRouter.get('/:id', async (c) => {
         )
           AND se.data_quality = 'ok'
           AND c.data_quality = 'ok'
+          -- Aislamiento de sección: una ficha no lista temporadas de la sección
+          -- contraria. Las filas del legado pueden tener gender NULL y pasar;
+          -- pero un equipo con género/categoría conocido sólo ve sus ligas.
+          -- Sin esto, la ficha femenina de CH MATARÓ abría por defecto en la
+          -- clasificación masculina de Plata Sur (datos mal atribuidos).
+          AND (t.gender IS NULL OR c.gender IS NULL OR c.gender = t.gender)
+          AND (t.age_category IS NULL OR c.age_category IS NULL OR c.age_category = t.age_category)
         ORDER BY se.is_current DESC,
                  EXISTS (SELECT 1 FROM standings st WHERE st.season_id = se.id AND st.team_id = $1) DESC,
                  se.start_date DESC NULLS LAST,

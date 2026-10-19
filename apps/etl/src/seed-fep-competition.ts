@@ -185,31 +185,31 @@ async function main() {
     return (r.rowCount ?? 0) > 0;
   };
   /**
-   * Salud del candidato (#195): los SÚPER-EQUIPOS del legado (#192) fusionaron
-   * secciones M/F/cantera en una fila y tienen gender NULL, así que
-   * `mismoGenero` los deja pasar. Reutilizar una fila con historial MEZCLADO
-   * (más de un género o categoría en sus season_teams) hereda ese historial al
-   * equipo nuevo. Solo se aplica a los match por NOMBRE (slug/alias): un match
-   * por source_ref es la misma entidad de la fuente, su historial es el que es.
+   * ¿Ese candidato tiene historial de OTRA sección (género/categoría)?
+   *
+   * `mismoGenero`/`mismaCategoria` dejan pasar a los NULL del legado porque no
+   * sabemos qué son. Pero si el equipo YA jugó competiciones con género/categoría
+   * conocidos y distintos de los de esta liga, reutilizarlo mezcla dos secciones
+   * del mismo club: fue el caso CH MATARÓ (la ficha masculina se reutilizó para
+   * la OK Liga Femenina porque su `gender` era NULL y su historial sólo era
+   * masculino). Un historial mixto o de la sección contraria se aparca en HITL.
    */
-  const mezclaEnHistorial = async (teamId: string): Promise<boolean> => {
-    const r = await db.query<{ ok: boolean }>(
+  const historialIncompatible = async (teamId: string): Promise<boolean> => {
+    const r = await db.query<{ incompatible: boolean }>(
       `SELECT EXISTS (
          SELECT 1 FROM season_teams st
            JOIN seasons s ON s.id = st.season_id
            JOIN competitions c ON c.id = s.competition_id
-          WHERE st.team_id = $1 AND c.gender IS NOT NULL
-         HAVING COUNT(DISTINCT c.gender) > 1
+          WHERE st.team_id = $1 AND c.gender IS NOT NULL AND c.gender <> $2
        ) OR EXISTS (
          SELECT 1 FROM season_teams st
            JOIN seasons s ON s.id = st.season_id
            JOIN competitions c ON c.id = s.competition_id
-          WHERE st.team_id = $1 AND c.age_category IS NOT NULL
-         HAVING COUNT(DISTINCT c.age_category) > 1
-       ) AS ok`,
-      [teamId],
+          WHERE st.team_id = $1 AND c.age_category IS NOT NULL AND c.age_category <> $3
+       ) AS incompatible`,
+      [teamId, GENDER, AGE],
     );
-    return r.rows[0]?.ok ?? false;
+    return r.rows[0]?.incompatible ?? false;
   };
   const gTag = (g?: string | null) => (g === 'female' ? 'F' : g === 'male' ? 'M' : '·');
   const etiqueta = `[${gTag(GENDER)}/${AGE}${SQUAD_LEVEL > 1 ? `/B${SQUAD_LEVEL}` : ''}]`;
@@ -231,8 +231,9 @@ async function main() {
         continue;
       }
       // Súper-equipo del legado (#195): gender NULL pasa el filtro de arriba,
-      // pero si su historial mezcla géneros/categorías es una fila fusionada.
-      if (await mezclaEnHistorial(bySlug.id)) {
+      // pero si su historial es de otra sección (o mezcla géneros/categorías)
+      // es una fila fusionada y se aparca en HITL.
+      if (await historialIncompatible(bySlug.id)) {
         plan.push({ t, accion: 'dudoso', candidatos: [{ teamId: bySlug.id, name: bySlug.name, gender: bySlug.gender ?? null, score: 1 }] });
         continue;
       }
@@ -247,7 +248,7 @@ async function main() {
           plan.push({ t, accion: 'dudoso', candidatos: [{ teamId: aliasId, name: g!.name, gender: g?.gender ?? null, score: 1 }] });
           continue;
         }
-        if (await mezclaEnHistorial(aliasId)) {
+        if (await historialIncompatible(aliasId)) {
           plan.push({ t, accion: 'dudoso', candidatos: [{ teamId: aliasId, name: g!.name, gender: g?.gender ?? null, score: 1 }] });
           continue;
         }

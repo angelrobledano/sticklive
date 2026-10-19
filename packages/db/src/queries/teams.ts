@@ -35,6 +35,11 @@ export interface DbTeam {
 // findTeamByNameSimilarity fue, además, el origen del falso positivo del Liceo
 // (#322).
 
+export async function findTeamById(teamId: string): Promise<DbTeam | null> {
+  const result = await db.query<DbTeam>('SELECT * FROM teams WHERE id = $1', [teamId]);
+  return result.rows[0] ?? null;
+}
+
 export async function findTeamBySourceRef(sourceRef: string): Promise<DbTeam | null> {
   // Busca tanto en source_ref principal como en el array alt_source_refs.
   // Esto permite que scrapers con sistemas de IDs distintos (ej: rfep_mc_1.php
@@ -115,16 +120,31 @@ export async function updateTeamLogoUrl(
 export async function findTeamInSeasonByName(
   seasonId: string,
   name: string,
+  abbreviation?: string | null,
   client: pg.PoolClient | typeof db = db,
 ): Promise<string | null> {
+  // La fuente cambia el nombre por patrocinios ("FENIE ENERGIA CERDANYOLA CCH")
+  // mientras la ficha conserva el canónico. La abreviatura de la tabla (CCH) es
+  // más estable. Se usa SOLO si no hay match por nombre y NO es ambigua dentro
+  // de la temporada (p. ej. "CHM" lo comparten Mataró y Mollerussa).
   const result = await client.query<{ id: string }>(
-    `SELECT t.id
-       FROM season_teams st JOIN teams t ON t.id = st.team_id
-      WHERE st.season_id = $1
-        AND (lower(t.name) = lower($2) OR lower(t.name) LIKE lower($2) || ' b%')
-      ORDER BY (lower(t.name) = lower($2)) DESC
+    `WITH candidatos AS (
+       SELECT t.id,
+              (lower(t.name) = lower($2)) AS nombre_exacto,
+              (lower(t.name) LIKE lower($2) || ' b%') AS nombre_filial,
+              (translate(lower(t.name), 'áàäâãéèëêíìïîóòöôõúùüûñç', 'aaaaaeeeeiiiiooooouuuunc')
+                 = translate(lower($2), 'áàäâãéèëêíìïîóòöôõúùüûñç', 'aaaaaeeeeiiiiooooouuuunc')) AS nombre_sin_acentos,
+              ($3 <> '' AND lower(t.short_name) = lower($3)) AS abreviatura,
+              COUNT(*) FILTER (WHERE $3 <> '' AND lower(t.short_name) = lower($3))
+                OVER () AS abreviaturas
+         FROM season_teams st JOIN teams t ON t.id = st.team_id
+        WHERE st.season_id = $1
+     )
+     SELECT id FROM candidatos
+      WHERE nombre_exacto OR nombre_filial OR nombre_sin_acentos OR (abreviatura AND abreviaturas = 1)
+      ORDER BY nombre_exacto DESC, nombre_filial DESC, nombre_sin_acentos DESC
       LIMIT 1`,
-    [seasonId, name],
+    [seasonId, name, abbreviation ?? ''],
   );
   return result.rows[0]?.id ?? null;
 }

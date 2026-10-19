@@ -15,6 +15,7 @@
  */
 import {
   findTeamsBySourceRef,
+  findTeamById,
   findTeamBySlug,
   resolveTeamViaSourceMap,
   upsertSourceEntityMapTeam,
@@ -42,7 +43,7 @@ const log = createLogger({ module: 'ref-resolver' });
  * discriminantes que el nombre: son lo que separa al filial del primer equipo
  * y al equipo femenino del masculino.
  */
-function signalsConflict(
+export function signalsConflict(
   team: DbTeam,
   signals?: { gender?: string | null; ageCategory?: string | null },
 ): boolean {
@@ -110,6 +111,21 @@ export class RefResolver {
 
     // 1. source_entity_map (escalón 1 determinista)
     let teamId = await resolveTeamViaSourceMap(teamRef, sourceId);
+    // Una ref de fuente designa una SECCIÓN (género/categoría), no sólo un club.
+    // Si el mapa apunta a un equipo que contradice las señales de la competición,
+    // el mapeo está corrupto (p. ej. un ref masculino reasignado a la ficha
+    // femenina): no se acepta y se sigue la cascada. Sin esto, un mapa viejo
+    // contaminaba con datos de un género la ficha del otro.
+    if (teamId) {
+      const mapped = await findTeamById(teamId);
+      if (mapped && signalsConflict(mapped, signals)) {
+        log.warn(
+          { teamRef, sourceId, candidato: mapped.name, gender: mapped.gender ?? null, ageCategory: mapped.age_category ?? null },
+          'source_entity_map contradice las señales de la competición (#194) — se descarta y sigue la cascada',
+        );
+        teamId = null;
+      }
+    }
 
     // 2. Puente: teams.source_ref / alt_source_refs. Si resuelve y tenemos
     //    fuente, se alimenta el mapa para que la próxima entre por el escalón 1.
@@ -124,11 +140,18 @@ export class RefResolver {
           'Ref casada con >1 equipo (colisión entre portales, #228) — no se resuelve por ref; sigue la cascada'
         );
       } else if (team) {
-        teamId = team.id;
-        if (sourceId) {
-          await upsertSourceEntityMapTeam(sourceId, teamRef, team.id).catch((err) => {
-            log.debug({ teamRef, sourceId, err }, 'No se pudo alimentar source_entity_map');
-          });
+        if (signalsConflict(team, signals)) {
+          log.warn(
+            { teamRef, sourceId, candidato: team.name, gender: team.gender ?? null, ageCategory: team.age_category ?? null },
+            'Equipo por source_ref con señales contradictorias (#194) — se descarta y sigue la cascada',
+          );
+        } else {
+          teamId = team.id;
+          if (sourceId) {
+            await upsertSourceEntityMapTeam(sourceId, teamRef, team.id).catch((err) => {
+              log.debug({ teamRef, sourceId, err }, 'No se pudo alimentar source_entity_map');
+            });
+          }
         }
       }
     }
@@ -159,8 +182,20 @@ export class RefResolver {
       const normalized = normalizeTeamName(teamRef);
       const aliasTeamId = await findTeamByNormalizedAlias(normalized, sourceId);
       if (aliasTeamId) {
-        teamId = aliasTeamId;
-        log.debug({ teamRef, normalized, method: 'alias' }, 'Equipo resuelto por alias normalizado');
+        // Un alias es sólo un NOMBRE: "CH MATARÓ" designa a la vez al equipo
+        // masculino y al femenino del club. Aceptarlo sin mirar las señales es
+        // exactamente cómo la clasificación masculina acabó colgando de la ficha
+        // femenina (#194). Si contradice género/categoría, se descarta.
+        const aliasTeam = await findTeamById(aliasTeamId);
+        if (aliasTeam && signalsConflict(aliasTeam, signals)) {
+          log.warn(
+            { teamRef, normalized, candidato: aliasTeam.name, gender: aliasTeam.gender ?? null, ageCategory: aliasTeam.age_category ?? null },
+            'Alias con señales contradictorias (#194) — se descarta y sigue la cascada',
+          );
+        } else {
+          teamId = aliasTeamId;
+          log.debug({ teamRef, normalized, method: 'alias' }, 'Equipo resuelto por alias normalizado');
+        }
       }
     }
 

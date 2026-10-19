@@ -57,6 +57,29 @@ export async function upsertSourceEntityMapTeam(
 }
 
 /**
+ * Igual que `upsertSourceEntityMapTeam`, pero PISA el mapeo existente. Se usa
+ * cuando la decisión es humana (resolver la cola): el clic debe mandar sobre un
+ * mapa viejo o sobre un alias homónimo de otra sección. Si no, la resolución se
+ * perdía en silencio (`ON CONFLICT DO NOTHING`) y el mismo nombre volvía a
+ * resolverse al equipo equivocado.
+ */
+export async function setSourceEntityMapTeam(
+  sourceId: string,
+  sourceRef: string,
+  teamId: string,
+  client: Ejecutor = db,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO source_entity_map (source_id, source_ref, team_id, confidence, status)
+          VALUES ($1, $2, $3, 1.0, 'confirmed')
+     ON CONFLICT (source_id, source_ref) DO UPDATE
+       SET club_id = NULL, team_id = EXCLUDED.team_id,
+           confidence = 1.0, status = 'confirmed'`,
+    [sourceId, sourceRef, teamId],
+  );
+}
+
+/**
  * Escalón 2: nombre normalizado → team_id, match EXACTO sobre `team_aliases`.
  * Sólo aliases `confirmed`. Con `sourceId`, prioriza el de la misma fuente.
  */
@@ -276,8 +299,8 @@ export async function resolveQueueItem(
   createdBy = 'human',
 ): Promise<{ id: string; teamId: string } | null> {
   return withTransaction(async (client) => {
-    const { rows } = await client.query<{ normalized: string; source_id: string; raw_text: string }>(
-      `SELECT normalized, source_id, raw_text FROM resolution_queue
+    const { rows } = await client.query<{ normalized: string; source_id: string; source_ref: string | null; raw_text: string }>(
+      `SELECT normalized, source_id, source_ref, raw_text FROM resolution_queue
         WHERE id = $1 AND status = 'pending' FOR UPDATE`,
       [id],
     );
@@ -302,6 +325,13 @@ export async function resolveQueueItem(
       },
       client,
     );
+    // La resolución humana también fija el mapa determinista. Un alias
+    // homónimo de otra sección puede bloquear el escalón 2 (`ON CONFLICT DO
+    // NOTHING`), así que sin esto el clic no sobrevivía a la siguiente pasada:
+    // el ref volvía a caer en el equipo equivocado.
+    if (item.source_ref && item.source_ref !== item.raw_text) {
+      await setSourceEntityMapTeam(item.source_id, item.source_ref, teamId, client);
+    }
     return { id, teamId };
   });
 }
