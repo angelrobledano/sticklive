@@ -571,6 +571,7 @@
     "rewarded_retry": "Toque para tentar novamente",
     "privacy_entry_title": "Publicidade e privacidade",
     "privacy_entry_desc": "Gerencie seu consentimento de anúncios",
+    "analytics_consent_desc": "Usado apenas se o aviso da Google não estiver disponível.",
     "privacy_title": "Publicidade e privacidade",
     "privacy_desc": "Os anúncios do app são exibidos de acordo com o consentimento dado no formulário do Google. Você pode alterar sua escolha a qualquer momento: abriremos novamente o formulário do Google com suas opções.",
     "privacy_manage_cta": "Gerenciar opções de anúncios",

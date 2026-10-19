@@ -54,7 +54,7 @@ import posthog from 'posthog-js';
 import { useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { entityViewFromPath, entityIdProp } from '@/lib/analytics-entity';
-import { isAnalyticsAllowed, startConsentWatcher, subscribeConsent } from '@/lib/consent-tcf';
+import { isAnalyticsAllowed, startConsentWatcher, subscribeAnalyticsConsent } from '@/lib/consent-tcf';
 
 startConsentWatcher();
 
@@ -364,9 +364,9 @@ export function AnalyticsPageview() {
     last.current = pathname;
   }, [pathname, capturePage]);
 
-  // Si el usuario consiente en el CMP (misma pestaña), inicializa y registra
-  // la página actual, que quedó sin capturar porque el efecto anterior corrió
-  // antes de la elección.
+  // Si el usuario consiente (CMP de Google o aviso de respaldo, en la misma
+  // pestaña), inicializa y registra la página actual, que quedó sin capturar
+  // porque el efecto anterior corrió antes de la elección.
   useEffect(() => {
     if (!pathname) return;
     const captureIfAllowed = () => {
@@ -374,7 +374,7 @@ export function AnalyticsPageview() {
       if (last.current === pathname) return;
       if (capturePage(pathname)) last.current = pathname;
     };
-    const unsubscribe = subscribeConsent((state) => {
+    const unsubscribe = subscribeAnalyticsConsent((state) => {
       if (state === 'granted') captureIfAllowed();
     });
     return unsubscribe;

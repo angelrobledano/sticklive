@@ -20,7 +20,8 @@ import { useDeviceId, useDarkMode, useNotifConfig } from './hooks';
 import { PremiumBanner } from './PremiumBanner';
 import { LanguageCard, AccountCard, FavoriteRow, SubHeader } from './cards';
 import { NotificationStatus } from './NotificationStatus';
-import { openConsentManager } from '@/lib/consent-tcf';
+import { openConsentManager, getConsentState, subscribeConsent, type TcfState } from '@/lib/consent-tcf';
+import { resetFallbackConsent, requestFallbackConsent } from '@/lib/consent-fallback';
 
 
 // ─── Fila de navegación (título + chevron) ────────────────────────────────────
@@ -73,8 +74,16 @@ export default function SettingsPage() {
   // #344: un fallo de API no es una lista vacía.
   const [loadError, setLoadError]   = useState(false);
   const [consentError, setConsentError] = useState(false);
+  // Estado del CMP (null hasta montar): el control de respaldo solo tiene
+  // sentido si Google aún no ha tomado una decisión.
+  const [tcfState, setTcfState] = useState<TcfState | null>(null);
   // Competiciones (para resolver nombres de las ligas seguidas)
   const [comps, setComps] = useState<Array<{ id: string; name: string; shortName: string | null }>>([]);
+
+  useEffect(() => {
+    setTcfState(getConsentState());
+    return subscribeConsent(setTcfState);
+  }, []);
 
   // #344: una sola carga de /competitions + standings de la temporada actual.
   // Antes eran dos fetches de /competitions con `catch {}` que convertían
@@ -387,6 +396,23 @@ export default function SettingsPage() {
           <p role="alert" className="text-[11px] text-red-600 dark:text-red-400">
             {t('settings.privacy_error')}
           </p>
+        )}
+        {(tcfState === 'pending' || tcfState === 'unavailable') && (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                resetFallbackConsent();
+                requestFallbackConsent();
+              }}
+              className="inline-block text-[11px] text-slate-500 dark:text-slate-400 underline hover:text-rink-passion"
+            >
+              {t('consent.title')}
+            </button>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              {t('settings.analytics_consent_desc')}
+            </p>
+          </>
         )}
         <Link href="/privacy" className="inline-block text-[11px] text-slate-500 dark:text-slate-400 underline hover:text-rink-passion">
           {t('settings.privacy_link')}

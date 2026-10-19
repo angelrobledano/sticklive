@@ -571,6 +571,7 @@
     "rewarded_retry": "Tap to try again",
     "privacy_entry_title": "Ads & privacy",
     "privacy_entry_desc": "Manage your ads consent",
+    "analytics_consent_desc": "Only used if Google's notice is unavailable.",
     "privacy_title": "Ads & privacy",
     "privacy_desc": "Ads in this app are served according to the consent you gave in the Google form. You can change your choice at any time: we will open the Google form with your options again.",
     "privacy_manage_cta": "Manage ad options",

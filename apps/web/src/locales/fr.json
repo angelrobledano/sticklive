@@ -571,6 +571,7 @@
     "rewarded_retry": "Touchez pour réessayer",
     "privacy_entry_title": "Publicité et confidentialité",
     "privacy_entry_desc": "Gérez votre consentement publicitaire",
+    "analytics_consent_desc": "Utilisé uniquement si l'avis de Google n'est pas disponible.",
     "privacy_title": "Publicité et confidentialité",
     "privacy_desc": "Les publicités de l'application sont diffusées selon le consentement donné dans le formulaire de Google. Vous pouvez modifier votre choix à tout moment : nous rouvrirons le formulaire de Google avec vos options.",
     "privacy_manage_cta": "Gérer les options de publicités",
