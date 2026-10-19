@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { SUPPORTED_LOCALES } from '@/lib/locales';
 import { SITE_URL } from '@/lib/seo';
 import { sitemapEntries, sitemapLanguages, sitemapSectionIds } from '@/lib/sitemap';
-import { fetchSitemapIds, fetchSitemapIdsStrict } from '@/lib/sitemap-source';
+import { fetchSitemapIdsStrict } from '@/lib/sitemap-source';
 
 /**
  * Sitemap por secciones/trozos (#169): evita que un solo fichero supere el
@@ -14,7 +14,10 @@ import { fetchSitemapIds, fetchSitemapIdsStrict } from '@/lib/sitemap-source';
  * y es la URL que anuncia `robots.ts`.
  */
 export async function generateSitemaps(): Promise<Array<{ id: string }>> {
-  return sitemapSectionIds(await fetchSitemapIds()).map((id) => ({ id }));
+  // F1-8: durante el build también se usa la fuente estricta. Antes, si la API
+  // estaba arrancando, `fetchSitemapIds()` devolvía vacío y el build publicaba
+  // solo `core`: las secciones de equipos/partidos desaparecían en silencio.
+  return sitemapSectionIds(await fetchSitemapIdsStrict()).map((id) => ({ id }));
 }
 
 /**
