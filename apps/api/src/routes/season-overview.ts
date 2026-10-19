@@ -18,6 +18,7 @@ interface SeasonRow {
   competition_slug: string;
   competition_name_i18n: Record<string, string> | null;
   competition_short_name: string | null;
+  competition_logo_url: string | null;
   competition_organizer: string;
   competition_scope: string;
   competition_country: string | null;
@@ -113,6 +114,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
                c.slug       AS competition_slug,
                c.name_i18n  AS competition_name_i18n,
                c.short_name AS competition_short_name,
+               c.logo_url   AS competition_logo_url,
                c.organizer  AS competition_organizer,
                c.scope      AS competition_scope,
                c.country    AS competition_country,
@@ -232,6 +234,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         competitionSlug:  s.competition_slug,
         competitionNameI18n: s.competition_name_i18n,
         competitionShort: s.competition_short_name,
+        competitionLogoUrl: s.competition_logo_url,
         competitionOrganizer: s.competition_organizer,
         competitionScope:     s.competition_scope,
         competitionCountry:   s.competition_country,

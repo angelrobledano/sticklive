@@ -33,11 +33,25 @@ export function CompetitionHeader({ data, seasons, competitionId }: {
 
   return (
     <div className="card px-4 py-3.5 flex items-center gap-3.5">
-      <div className="w-10 h-10 rounded-xl bg-rink-passion flex items-center justify-center shrink-0">
-        <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} className="w-5 h-5">
-          <path d="M8 3h8v10a4 4 0 0 1-8 0V3Z" /><path d="M12 17v4M8 21h8" />
-        </svg>
-      </div>
+      {season.competitionLogoUrl ? (
+        <div className="w-11 h-11 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-1 shrink-0 flex items-center justify-center overflow-hidden">
+          <img
+            src={season.competitionLogoUrl}
+            alt=""
+            width={44}
+            height={44}
+            loading="eager"
+            decoding="async"
+            className="w-full h-full object-contain"
+          />
+        </div>
+      ) : (
+        <div className="w-10 h-10 rounded-xl bg-rink-passion flex items-center justify-center shrink-0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} className="w-5 h-5">
+            <path d="M8 3h8v10a4 4 0 0 1-8 0V3Z" /><path d="M12 17v4M8 21h8" />
+          </svg>
+        </div>
+      )}
       <div className="min-w-0 flex-1">
         <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
           {fedLabel}

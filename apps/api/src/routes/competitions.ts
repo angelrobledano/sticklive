@@ -11,6 +11,7 @@ interface CompetitionRow {
   name: string;
   name_i18n: Record<string, string> | null;
   short_name: string | null;
+  logo_url: string | null;
   slug: string;
   gender: string | null;
   category: string | null;
@@ -76,7 +77,7 @@ competitionsRouter.get('/', async (c) => {
         GROUP BY m.season_id
       )
       SELECT
-        comp.id, comp.name, comp.name_i18n, comp.short_name, comp.slug,
+        comp.id, comp.name, comp.name_i18n, comp.short_name, comp.logo_url, comp.slug,
         comp.gender, comp.category, comp.country, comp.data_quality,
         comp.organizer, comp.scope, comp.region, comp.age_category,
         s.id         AS season_id,
@@ -99,6 +100,7 @@ competitionsRouter.get('/', async (c) => {
       name:       r.name,
       nameI18n:   r.name_i18n,
       shortName:  r.short_name,
+      logoUrl:    r.logo_url,
       slug:       r.slug,
       gender:     r.gender,
       category:   r.category,

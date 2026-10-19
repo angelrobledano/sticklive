@@ -44,7 +44,7 @@ interface CatalogCompetition {
 /** Alias de patrocinador → competición canónica (las líneas principales) */
 const CANONICAL: Array<{ re: RegExp; slug: string; name: string; gender: 'male' | 'female' }> = [
   { re: /^(PARLEM )?OK LIGA( MASCULINA)?$/i,            slug: 'ok-liga-masculina',  name: 'OK Liga Masculina',  gender: 'male' },
-  { re: /^OK LIGA IBERDROLA$|^OK LIGA FEMENINA$/i,      slug: 'ok-liga-femenina',   name: 'OK Liga Femenina',   gender: 'female' },
+  { re: /^OK LIGA IBERDROLA$|^OK LIGA FEMENINA$/i,      slug: 'ok-liga-femenina',   name: 'OK Liga Iberdrola',  gender: 'female' },
   { re: /^PLAY ?OFFS? (PARLEM )?OK LIGA$/i,             slug: 'playoff-ok-liga',    name: 'Playoff OK Liga',    gender: 'male' },
   { re: /^PLAY ?OFF OK LIGA IBERDROLA$/i,               slug: 'playoff-ok-liga-femenina', name: 'Playoff OK Liga Femenina', gender: 'female' },
   { re: /^PLAY ?OUT (PARLEM )?OK LIGA$/i,               slug: 'playout-ok-liga',    name: 'Playout OK Liga',    gender: 'male' },
@@ -167,18 +167,24 @@ async function main() {
     const season = seasonFields(comp.seasonLabel);
 
     // 1. Competición
+    // El catálogo trae el fichero del logo de la competición (`logos_competiciones`).
+    const portal = process.env['SIDGAD_PORTAL'] ?? 'rfep';
+    const compLogoUrl = comp.logo && comp.logo !== 'default.png'
+      ? `https://sidgad.cloud/${portal}/images/logos_competiciones/${comp.logo.replace(/^\/+/, '')}`
+      : null;
     const compRes = await db.query<{ id: string }>(
       `INSERT INTO competitions
          (sport_id, name, short_name, slug, gender, category, country, source_id, source_ref, scraped_at,
-          organizer, scope, region, age_category)
-       VALUES ($1,$2,$3,$4,$5,'senior','ES',$6,$7,NOW(),$8,$9,$10,$11)
+          organizer, scope, region, age_category, logo_url)
+       VALUES ($1,$2,$3,$4,$5,'senior','ES',$6,$7,NOW(),$8,$9,$10,$11,$12)
        ON CONFLICT (sport_id, slug) DO UPDATE SET
          age_category = EXCLUDED.age_category,
          scope = EXCLUDED.scope,
+         logo_url = COALESCE(EXCLUDED.logo_url, competitions.logo_url),
          updated_at = NOW()
        RETURNING id`,
       [sportId, canon.name, null, canon.slug, canon.gender, sourceId, comp.idc,
-       organizer, scope ?? inferScope(comp.name), region, inferAgeCategory(comp.name)]
+       organizer, scope ?? inferScope(comp.name), region, inferAgeCategory(comp.name), compLogoUrl]
     );
     const competitionId = compRes.rows[0]!.id;
 
@@ -218,7 +224,6 @@ async function main() {
       // solo guarda el fichero; el prefijo sale de SIDGAD_PORTAL (lo fija
       // import-federations). Antes se hardcodeaba rfep y los escudos de las
       // federaciones apuntaban a un 404.
-      const portal = process.env['SIDGAD_PORTAL'] ?? 'rfep';
       const logoUrl = team.logo && team.logo !== 'default.png'
         ? `https://sidgad.cloud/${portal}/images/logos_clubes/${team.logo.replace(/^\/+/, '')}`
         : null;

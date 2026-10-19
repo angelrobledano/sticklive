@@ -157,6 +157,7 @@ function CompetitionRow({
   // Avatar: bandera del país (imagen, multiplataforma), globo para las
   // competiciones del Mundo (country='W', sin bandera de un solo país) o
   // iniciales como último recurso
+  const hasLogo = !!comp.logoUrl;
   const hasFlag = !!comp.country && comp.country.length === 2;
   const isWorld = comp.country === 'W';
   const initials = (comp.shortName ?? comp.name).slice(0, 2).toUpperCase();
@@ -180,11 +181,23 @@ function CompetitionRow({
       >
         {/* Avatar circular */}
         <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center overflow-hidden
-                         ${hasFlag
-                           ? 'bg-slate-100 dark:bg-slate-800'
-                           : 'bg-rink-passion/10 border border-rink-passion/20'}`}
+                         ${hasLogo
+                           ? 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5'
+                           : hasFlag
+                             ? 'bg-slate-100 dark:bg-slate-800'
+                             : 'bg-rink-passion/10 border border-rink-passion/20'}`}
         >
-          {hasFlag ? (
+          {hasLogo ? (
+            <img
+              src={comp.logoUrl!}
+              alt=""
+              width={32}
+              height={32}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-contain"
+            />
+          ) : hasFlag ? (
             <CountryFlag code={comp.country} className="w-full h-full object-cover" />
           ) : isWorld ? (
             <span className="text-base leading-none" role="img" aria-label="Mundo">🌍</span>

@@ -218,6 +218,8 @@ export interface CompetitionSummary {
   /** Traducciones del nombre por locale; la web cae a `name`. Ver migración 038. */
   nameI18n?: Record<string, string> | null;
   shortName: string | null;
+  /** Logo de la competición publicado por la fuente (migración 078). */
+  logoUrl?: string | null;
   slug: string;
   gender: string | null;
   category: string | null;
@@ -547,6 +549,8 @@ export interface SeasonOverview {
     /** Traducciones del nombre por locale; la web cae a `competitionName`. Ver migración 038. */
     competitionNameI18n?: Record<string, string> | null;
     competitionShort: string | null;
+    /** Logo de la competición publicado por la fuente (migración 078). */
+    competitionLogoUrl?: string | null;
     competitionOrganizer: string;
     competitionScope: string;
     competitionCountry: string | null;
