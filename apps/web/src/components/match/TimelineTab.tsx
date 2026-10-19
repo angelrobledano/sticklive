@@ -87,7 +87,7 @@ export function eventAnnouncement(
     .join(' · ');
 }
 
-function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
+export function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
   ev: TimelineEvent;
   homeName: string;
   awayName: string;
@@ -96,7 +96,8 @@ function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
   const { t } = useT();
   if (ev.eventType === 'period_divider') {
     return (
-      <div className="flex items-center gap-3 py-3 select-none">
+      // relative z-10: el eje central es absoluto y, sin esto, tacha el rótulo.
+      <div className="relative z-10 flex items-center gap-3 py-3 select-none">
         <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
         <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0
                          px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800">
@@ -111,9 +112,10 @@ function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
 
   if (ev.eventType === 'period_end') {
     return (
-      <div className="flex items-center gap-3 py-2 select-none">
+      <div className="relative z-10 flex items-center gap-3 py-2 select-none">
         <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
-        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0">
+        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0
+                         px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800">
           {t('match_detail.end_of_period', { n: ev.period ?? '' })}
         </span>
         <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
