@@ -43,3 +43,44 @@ describe('buildMatchChronicle', () => {
     })).toEqual([]);
   });
 });
+
+describe('crónica ampliada con estadísticas del acta', () => {
+  const stats = {
+    homeFouls: 13, awayFouls: 7,
+    homeTimeouts: 3, awayTimeouts: 4,
+    homeDirectFouls: { total: 0, scored: 0 },
+    awayDirectFouls: { total: 1, scored: 1 },
+    homePenalties: { total: 0, scored: 0 },
+    awayPenalties: { total: 0, scored: 0 },
+  } as never;
+  const player = (id: string, firstName: string, lastName: string) => ({ id, firstName, lastName });
+  const event = (id: string, eventType: MatchEvent['eventType'], minute: number, period: number, isHomeTeam: boolean, extra: Partial<MatchEvent> = {}) => ({
+    id, eventType, minute, period, teamId: isHomeTeam ? 'arg' : 'fra', isHomeTeam, detail: null, player: null, ...extra,
+  }) as MatchEvent;
+
+  it('extrae goles por parte, remontada, igualada, racha, falta directa, faltas y tanda', () => {
+    const facts = buildMatchChronicle({
+      status: 'finished', score: { home: 2, away: 2 }, homeTeamId: 'arg', awayTeamId: 'fra',
+      winType: 'penalties', stats,
+      penaltyShootout: {
+        home: Array.from({ length: 7 }, (_, i) => ({ player: 'ARG', scored: i === 1 })),
+        away: Array.from({ length: 7 }, (_, i) => ({ player: 'FRA', scored: i === 3 || i === 6 })),
+      },
+      events: [
+        event('g1', 'goal', 20, 1, true, { player: player('p1', 'EZEQUIEL', 'MENA TOMAS') }),
+        event('g2', 'goal', 11, 2, false, { player: player('p2', 'BRUNO', 'DI BENEDETTO') }),
+        event('df', 'direct_foul', 14, 2, false, { detail: 'marcada', player: player('p3', 'CARLO', 'DI BENEDETTO') }),
+        event('g3', 'goal', 14, 2, false, { player: player('p3', 'CARLO', 'DI BENEDETTO') }),
+        event('g4', 'goal', 22, 2, true, { player: player('p4', 'LUCAS', 'MARTINEZ') }),
+      ],
+    });
+    const kinds = facts.map((f) => f.kind);
+    expect(kinds).toEqual(expect.arrayContaining([
+      'shootout', 'turnaround', 'period_goals', 'opening_goal', 'late_equalizer',
+      'goal_flurry', 'direct_foul_goal', 'fouls', 'timeouts',
+    ]));
+    expect(facts.find((f) => f.kind === 'late_equalizer')).toMatchObject({ teamId: 'arg', playerId: 'p4', minute: 47 });
+    expect(facts.find((f) => f.kind === 'goal_flurry')).toMatchObject({ teamId: 'fra', values: { n: 2, from: 36, to: 39 } });
+    expect(facts.find((f) => f.kind === 'shootout')).toMatchObject({ teamId: 'fra', values: { home: 1, away: 2, rounds: 7, scored: 3, attempts: 14 } });
+  });
+});

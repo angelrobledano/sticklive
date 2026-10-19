@@ -156,6 +156,8 @@ export default async function MatchDetailPage(props: Props) {
     awayTeamId: m.awayTeamId,
     winType: m.winType,
     events: data.events,
+    stats: data.stats,
+    penaltyShootout: m.penaltyShootout,
   });
   const chronicleTeams: Record<string, string> = {
     ...(m.homeTeam?.id ? { [m.homeTeam.id]: homeName } : {}),
