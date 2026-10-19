@@ -1,14 +1,13 @@
 'use client';
 
-import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useMemo } from 'react';
 import type { SeasonMatch, TeamSummary } from '@/lib/api/client';
 import { useT } from '@/lib/i18n';
 import { gameWinnerId } from '@/lib/playoff';
-import { TrophyIcon } from '@/components/match/icons';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName } from '@/components/shared/TeamName';
 import { KnockoutMatchCard } from './KnockoutBracket';
+import { ChampionBlock } from './ChampionBlock';
 
 /**
  * Cuadro de un torneo FINAL FOUR (formato Supercopa): dos semifinales a partido
@@ -92,25 +91,6 @@ function PendingCard({ label, teams }: { label: string; teams: (TeamSummary | nu
           </div>
         );
       })}
-    </div>
-  );
-}
-
-/** Trofeo + campeón. Solo se monta cuando la final ya tiene ganador. */
-function ChampionBlock({ team }: { team: TeamSummary }) {
-  const { t } = useT();
-  return (
-    <div className="flex flex-col items-center gap-1.5 text-center">
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-rink-passion px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
-        <TrophyIcon className="h-3.5 w-3.5" />
-        {t('playoffs.champion')}
-      </span>
-      <Link
-        href={`/teams/${team.id}`}
-        className="max-w-full truncate text-sm font-bold text-slate-900 hover:underline dark:text-slate-50"
-      >
-        <TeamName name={team.name} shortName={team.shortName} mobile="abbr" />
-      </Link>
     </div>
   );
 }

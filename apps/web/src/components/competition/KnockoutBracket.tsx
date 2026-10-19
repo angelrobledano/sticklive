@@ -8,6 +8,8 @@ import { buildBracketRounds, type BracketRound } from '@/lib/bracket';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
 import { fmtDate, fmtTime } from './format';
+import { gameWinnerId } from '@/lib/playoff';
+import { ChampionBlock } from './ChampionBlock';
 
 /**
  * Cuadro de eliminatorias a partido único (formato World Skate: Cuartos → Semis
@@ -20,53 +22,76 @@ import { fmtDate, fmtTime } from './format';
  */
 
 /** Tarjeta de un partido a partido único (bracket/copa/final four). */
-export function KnockoutMatchCard({ m, label, showFinishedLabel = true }: { m: SeasonMatch; label?: string; showFinishedLabel?: boolean }) {
+export function KnockoutMatchCard({ m, label, showFinishedLabel = true, highlight = false }: {
+  m: SeasonMatch;
+  label?: string;
+  showFinishedLabel?: boolean;
+  /** Borde de acento (la final del cuadro). */
+  highlight?: boolean;
+}) {
   const { t, locale } = useT();
   const isFinished = m.status === 'finished';
   const isLive = m.status === 'live';
   const showScore = isFinished || isLive;
 
-  const winnerId =
-    m.winnerTeamId ??
-    (m.score.home != null && m.score.away != null && m.score.home !== m.score.away
-      ? (m.score.home > m.score.away ? m.homeTeam.id : m.awayTeam.id)
-      : null);
+  // Ganador: el guardado o, si falta, el marcador o la tanda decidida.
+  const winnerId = isFinished ? gameWinnerId(m) : null;
+  // Cómo se decidió, visible también en el cuadro (que omite "Final").
+  const decided = isFinished && (m.winType === 'penalties' || m.winType === 'overtime') ? m.winType : null;
+
+  // Tanda de penaltis: se pinta junto al marcador para que un empate se
+  // explique solo (quién pasó y cómo).
+  const pens = isFinished && m.penalties?.home != null && m.penalties?.away != null ? m.penalties : null;
 
   const sides = [
-    { team: m.homeTeam, score: m.score.home },
-    { team: m.awayTeam, score: m.score.away },
+    { team: m.homeTeam, score: m.score.home, pen: pens?.home ?? null, side: 'home' },
+    { team: m.awayTeam, score: m.score.away, pen: pens?.away ?? null, side: 'away' },
   ];
 
   return (
     <Link
       href={`/matches/${m.id}`}
       className={`block card overflow-hidden border transition-opacity hover:opacity-90
-        ${isLive ? 'border-emerald-400/40' : 'border-slate-200 dark:border-slate-800'}`}
+        ${isLive ? 'border-emerald-400/40' : highlight ? 'border-rink-passion/50 ring-1 ring-rink-passion/20' : 'border-slate-200 dark:border-slate-800'}`}
     >
       {label && (
         <p className="px-2.5 pt-1.5 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
           {label}
         </p>
       )}
-      {sides.map(({ team, score }, idx) => {
-        const isWinner = showScore && winnerId === team.id;
+      {sides.map(({ team, score, pen, side }, idx) => {
+        // Con ganador, el perdedor se atenúa (nombre, escudo y marcador): el
+        // que pasa se lee de un vistazo, sin depender solo de la negrita.
+        const result = winnerId == null ? undefined : winnerId === team.id ? 'win' : 'loss';
+        const isWinner = result === 'win';
         return (
           <div
             key={idx}
+            data-side={side}
+            data-result={result}
             className={`flex items-center gap-2 px-2.5 py-2 ${idx === 0 ? 'border-b border-slate-100 dark:border-slate-800' : ''}
-                        ${!showScore ? 'opacity-70' : ''}`}
+                        ${!showScore ? 'opacity-70' : result === 'loss' ? 'opacity-55' : ''}`}
           >
             <TeamShield teamId={team.id} teamName={team.shortName ?? team.name} size={22} />
             <span className={`flex-1 text-[13px] truncate ${isWinner ? 'font-bold text-slate-900 dark:text-slate-50' : 'font-medium text-slate-700 dark:text-slate-300'}`}>
               <AdaptiveTeamName name={team.name} shortName={team.shortName} mobile="abbr" />
             </span>
+            {pen != null && (
+              <span data-pen={side} className="font-score text-[11px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">({pen})</span>
+            )}
             {showScore && score != null && (
-              <span className="font-score text-sm font-bold tabular-nums text-slate-900 dark:text-slate-50">{score}</span>
+              <span className={`font-score text-sm tabular-nums ${result === 'loss' ? 'font-medium text-slate-600 dark:text-slate-400' : 'font-bold text-slate-900 dark:text-slate-50'}`}>{score}</span>
             )}
           </div>
         );
       })}
-      <div className="px-2.5 pb-1.5 pt-1">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2.5 pb-1.5 pt-1">
+        {decided && (
+          <span
+            data-decided={decided}
+            className="rounded bg-rink-passion/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rink-passion dark:bg-rink-passion/20 dark:text-rink-accent"
+          >{t(decided === 'penalties' ? 'match_states.penalties_label' : 'match_states.overtime')}</span>
+        )}
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isLive ? 'text-emerald-500' : 'text-slate-500 dark:text-slate-400'}`}>
           {isLive ? `🟢 ${t('playoffs.live')}`
             : isFinished
@@ -76,6 +101,13 @@ export function KnockoutMatchCard({ m, label, showFinishedLabel = true }: { m: S
       </div>
     </Link>
   );
+}
+
+/** Campeón: el ganador de la final, si ya está decidida. */
+function championOf(m: SeasonMatch): SeasonMatch['homeTeam'] | null {
+  if (m.status !== 'finished') return null;
+  const id = gameWinnerId(m);
+  return id === m.homeTeam.id ? m.homeTeam : id === m.awayTeam.id ? m.awayTeam : null;
 }
 
 const HEADING = 'text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1';
@@ -150,8 +182,12 @@ export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound
           <section key={i} className="space-y-2">
             {(r.key || r.name) && <h3 className={HEADING}>{labelOf(r, i)}</h3>}
             <div className="space-y-2">
-              {r.matches.map((m) => <KnockoutMatchCard key={m.id} m={m} showFinishedLabel={false} />)}
+              {r.matches.map((m) => <KnockoutMatchCard key={m.id} m={m} showFinishedLabel={false} highlight={r.key === 'final'} />)}
             </div>
+            {r.key === 'final' && r.matches.length === 1 && (() => {
+              const champion = championOf(r.matches[0]!);
+              return champion ? <div className="mx-auto max-w-xs pt-1"><ChampionBlock team={champion} /></div> : null;
+            })()}
           </section>
         ))}
         {thirdBlock}
@@ -164,8 +200,12 @@ export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound
   const columns: string[] = [];
   bracket.forEach((_, i) => { if (i > 0) columns.push('20px'); columns.push('minmax(150px,1fr)'); });
 
+  const lastRound = bracket[bracket.length - 1]!;
+  const champion = lastRound.matches.length === 1 ? championOf(lastRound.matches[0]!) : null;
+
   return (
     <div className="space-y-3">
+      {champion && <div className="md:hidden"><ChampionBlock team={champion} variant="row" /></div>}
       {/* Cuadro horizontal con conectores en todos los anchos (como la app
           de FotMob): en móvil, columnas de ancho mínimo y scroll lateral si no
           caben, en vez de rondas apiladas que se leían como una lista. */}
@@ -184,15 +224,28 @@ export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound
 
           {bracket.map((r, ri) => {
             const span = base / r.matches.length;
-            return r.matches.map((m, j) => (
-              <div
-                key={m.id}
-                className="flex items-center py-1.5"
-                style={{ gridColumn: ri * 2 + 1, gridRow: `${2 + j * span} / span ${span}` }}
-              >
-                <div className="w-full"><KnockoutMatchCard m={m} showFinishedLabel={false} /></div>
-              </div>
-            ));
+            const isFinal = ri === bracket.length - 1 && r.matches.length === 1;
+            return r.matches.map((m, j) => {
+              const champion = isFinal ? championOf(m) : null;
+              return (
+                <div
+                  key={m.id}
+                  className="relative flex items-center py-1.5"
+                  style={{ gridColumn: ri * 2 + 1, gridRow: `${2 + j * span} / span ${span}` }}
+                >
+                  <div className="w-full">
+                    <KnockoutMatchCard m={m} showFinishedLabel={false} highlight={isFinal} />
+                  </div>
+                  {/* Campeón colgado bajo la final, sin mover la tarjeta del
+                      centro (los conectores apuntan a su mitad). */}
+                  {champion && (
+                    <div className="absolute inset-x-0 top-1/2 pt-[4.75rem]">
+                      <ChampionBlock team={champion} />
+                    </div>
+                  )}
+                </div>
+              );
+            });
           })}
 
           {bracket.slice(0, -1).map((r, ri) => {

@@ -486,6 +486,8 @@ export interface SeasonMatch {
   /** Ganador explícito (eliminatorias resueltas en penaltis); null si no aplica. */
   winnerTeamId?: string | null;
   winType?: 'regular' | 'overtime' | 'penalties' | null;
+  /** Marcador de la tanda de penaltis; null/ausente si no hubo. */
+  penalties?: MatchScore | null;
   venueName: string | null;
   roundId: string | null;
   roundNumber: number | null;

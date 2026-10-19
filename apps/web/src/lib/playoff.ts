@@ -28,11 +28,18 @@ export interface PlayoffSeries {
 export function gameWinnerId(g: {
   winnerTeamId?: string | null;
   score: { home: number | null; away: number | null };
+  penalties?: { home: number | null; away: number | null } | null;
   homeTeam: { id: string };
   awayTeam: { id: string };
 }): string | null {
   if (g.winnerTeamId) return g.winnerTeamId;
-  if (g.score.home === null || g.score.away === null || g.score.home === g.score.away) return null;
+  if (g.score.home === null || g.score.away === null) return null;
+  if (g.score.home === g.score.away) {
+    // Empate sin ganador guardado: lo decide la tanda, si está decidida.
+    const p = g.penalties;
+    if (!p || p.home == null || p.away == null || p.home === p.away) return null;
+    return p.home > p.away ? g.homeTeam.id : g.awayTeam.id;
+  }
   return g.score.home > g.score.away ? g.homeTeam.id : g.awayTeam.id;
 }
 
