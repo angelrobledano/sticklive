@@ -11,6 +11,7 @@ import { clubName } from '@/lib/names';
 
 interface Copy {
   title: string; position: string; points: string; form: string; h2h: string; emptyH2h: string; lastFive: string;
+  home: string; away: string;
   observations: string; cross: string;
   obs: Record<TeamObservationKind, (value: number, total: number) => string>;
   crossLabels: Record<CrossMetricKey, string>;
@@ -20,6 +21,7 @@ const COPY: Record<string, Copy> = {
   es: {
     title: 'Previa del partido', position: 'Posición', points: 'Puntos', form: 'Forma',
     h2h: 'Enfrentamientos previos', emptyH2h: 'Sin enfrentamientos previos esta temporada.', lastFive: 'Últimos 5',
+    home: 'Local', away: 'Visitante',
     observations: 'Cómo llega', cross: 'Números del cruce',
     obs: {
       recent_goals: (v, t) => `${v} goles en sus últimos ${t} partidos.`,
@@ -38,6 +40,7 @@ const COPY: Record<string, Copy> = {
   en: {
     title: 'Match preview', position: 'Position', points: 'Points', form: 'Form',
     h2h: 'Previous meetings', emptyH2h: 'No previous meetings this season.', lastFive: 'Last 5',
+    home: 'Home', away: 'Away',
     observations: 'Recent form', cross: 'Head-to-head numbers',
     obs: {
       recent_goals: (v, t) => `${v} goals in their last ${t} matches.`,
@@ -56,6 +59,7 @@ const COPY: Record<string, Copy> = {
   pt: {
     title: 'Antevisão do jogo', position: 'Posição', points: 'Pontos', form: 'Forma',
     h2h: 'Confrontos anteriores', emptyH2h: 'Sem confrontos anteriores esta temporada.', lastFive: 'Últimos 5',
+    home: 'Casa', away: 'Fora',
     observations: 'Como chega', cross: 'Números do confronto',
     obs: {
       recent_goals: (v, t) => `${v} golos nos últimos ${t} jogos.`,
@@ -74,6 +78,7 @@ const COPY: Record<string, Copy> = {
   fr: {
     title: 'Avant-match', position: 'Position', points: 'Points', form: 'Forme',
     h2h: 'Confrontations précédentes', emptyH2h: 'Aucune confrontation cette saison.', lastFive: '5 derniers',
+    home: 'Dom.', away: 'Ext.',
     observations: 'Forme récente', cross: 'Chiffres du duel',
     obs: {
       recent_goals: (v, t) => `${v} buts lors de ses ${t} derniers matchs.`,
@@ -92,6 +97,7 @@ const COPY: Record<string, Copy> = {
   it: {
     title: 'Anteprima partita', position: 'Posizione', points: 'Punti', form: 'Forma',
     h2h: 'Precedenti', emptyH2h: 'Nessun precedente in questa stagione.', lastFive: 'Ultime 5',
+    home: 'Casa', away: 'Trasferta',
     observations: 'Come arriva', cross: 'Numeri del confronto',
     obs: {
       recent_goals: (v, t) => `${v} gol nelle ultime ${t} partite.`,
@@ -192,7 +198,11 @@ export function MatchPreview({ data, locale }: { data: MatchPreviewData; locale:
                         <Link href={`/matches/${r.id}`} className="flex items-center gap-1.5 text-[11px] hover:underline">
                           <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${r.result === 'W' ? 'bg-emerald-600' : r.result === 'L' ? 'bg-red-600' : 'bg-slate-400'}`} />
                           <TeamShield teamId={r.opponentId} teamName={r.opponentName} size={14} className="shrink-0" />
-                          <span className="min-w-0 flex-1 truncate text-slate-600 dark:text-slate-300">{r.isHome ? 'vs' : '@'} {clubName(r.opponentName)}</span>
+                          <span className="min-w-0 flex-1 truncate text-slate-600 dark:text-slate-300">
+                            <span className="font-medium text-slate-500 dark:text-slate-400">{r.isHome ? copy.home : copy.away}</span>
+                            {' · '}
+                            {clubName(r.opponentName)}
+                          </span>
                           <span className="font-score shrink-0 tabular-nums text-slate-700 dark:text-slate-200">{r.goalsFor}-{r.goalsAgainst}</span>
                         </Link>
                       </li>
