@@ -1,7 +1,7 @@
 /**
  * Textos legales de privacidad. ES es la versión nativa; EN es la de respaldo;
- * FR se añadió el 19/10/2026 porque `/fr/privacy` servía inglés. PT/IT siguen
- * usando EN hasta que se traduzcan.
+ * FR, PT e IT se añadieron el 19/10/2026 para que cada URL sirva su idioma.
+ * Ante un locale desconocido se cae a EN.
  */
 
 export interface PrivacySection {
@@ -132,7 +132,85 @@ const FR: PrivacyDict = {
   ],
 };
 
-const DICTS: Record<string, PrivacyDict> = { es: ES, en: EN, fr: FR };
+const PT: PrivacyDict = {
+  title: 'Política de privacidade',
+  updated: 'Última atualização: outubro de 2026',
+  sections: [
+    {
+      h: 'Quem somos',
+      p: 'A Stick Live (sticklive.eu) é uma plataforma de resultados e estatísticas de hóquei em patins. Responsável: Ángel Robledano · robledano@gmail.com.',
+    },
+    {
+      h: 'Que dados tratamos',
+      p: 'Sem conta: um identificador anónimo de dispositivo, os seus favoritos e preferências (guardados no navegador) e, se ativar as notificações, a subscrição push do navegador. Com conta: além disso, o seu endereço de e-mail. Não pedimos nome, telefone nem qualquer outro dado.',
+    },
+    {
+      h: 'Para que os usamos',
+      p: 'Para que a app funcione: sincronizar os favoritos entre dispositivos, enviar-lhe o link de acesso por e-mail e os alertas de jogos que ativar. Também medimos o uso da app de forma agregada para a melhorar. Na versão gratuita mostramos anúncios que ajudam a financiar o serviço; as contas com subscrição Premium não veem anúncios.',
+    },
+    {
+      h: 'Com quem os partilhamos',
+      p: 'Não vendemos os seus dados. Usamos prestadores técnicos que tratam dados por nossa conta: Hetzner (alojamento, Alemanha), Brevo (e-mails de acesso, UE) e PostHog (análise de produto, servidores na UE). Quando mostramos anúncios, a Google (AdSense) e os seus parceiros publicitários tratam dados de utilização e do dispositivo para apresentar e medir anúncios. Se iniciar sessão com a Google, a Google comunica-nos apenas o seu e-mail.',
+    },
+    {
+      h: 'Durante quanto tempo',
+      p: 'Enquanto tiver conta ou subscrição push ativa. As subscrições push inválidas são eliminadas automaticamente. Pode pedir a eliminação da conta a qualquer momento.',
+    },
+    {
+      h: 'Os seus direitos',
+      p: 'Acesso, retificação, apagamento, oposição e portabilidade (RGPD). Escreva-nos para robledano@gmail.com e resolvemos. Também pode reclamar junto da CNPD (cnpd.pt) ou da autoridade local de proteção de dados.',
+    },
+    {
+      h: 'Cookies e armazenamento local',
+      p: 'Guardamos no navegador as suas preferências (idioma, tema, favoritos, configuração de alertas) e um cookie técnico de idioma. A análise de produto (PostHog, servidores na UE) só começa se aceitar o aviso de cookies: até lá, não carrega nem guarda nada. Se aceitar, a PostHog usa armazenamento próprio (cookies e localStorage de primeira parte) e, se iniciar sessão, associa o seu e-mail a essa análise para medir o uso de forma agregada. Pode recusar e a app continua a funcionar da mesma forma.',
+    },
+    {
+      h: 'Publicidade',
+      p: 'Para financiar a versão gratuita, mostramos anúncios através da Google AdSense. A Google e os seus parceiros publicitários podem usar cookies e identificadores do dispositivo para apresentar e medir anúncios. No Espaço Económico Europeu, no Reino Unido e na Suíça, pedimos o seu consentimento antes de apresentar anúncios personalizados, através do aviso certificado da Google (IAB TCF): pode aceitar, recusar ou gerir as opções. Se recusar, podemos continuar a mostrar anúncios não personalizados e a app funciona da mesma forma. As contas com subscrição Premium não veem anúncios.',
+    },
+  ],
+};
+
+const IT: PrivacyDict = {
+  title: 'Informativa sulla privacy',
+  updated: 'Ultimo aggiornamento: ottobre 2026',
+  sections: [
+    {
+      h: 'Chi siamo',
+      p: 'Stick Live (sticklive.eu) è una piattaforma di risultati e statistiche di hockey su pista. Titolare del trattamento: Ángel Robledano · robledano@gmail.com.',
+    },
+    {
+      h: 'Quali dati trattiamo',
+      p: 'Senza account: un identificatore anonimo del dispositivo, i tuoi preferiti e le preferenze (salvati nel browser) e, se attivi le notifiche, l\'iscrizione push del browser. Con un account: inoltre, il tuo indirizzo e-mail. Non chiediamo nome, telefono o altri dati.',
+    },
+    {
+      h: 'Perché li usiamo',
+      p: 'Per far funzionare l\'app: sincronizzare i preferiti tra dispositivi, inviarti il link di accesso via e-mail e gli avvisi delle partite che attivi. Misuriamo anche l\'uso dell\'app in forma aggregata per migliorarla. Nella versione gratuita mostriamo annunci che aiutano a finanziare il servizio; gli account con abbonamento Premium non vedono annunci.',
+    },
+    {
+      h: 'Con chi li condividiamo',
+      p: 'Non vendiamo i tuoi dati. Utilizziamo fornitori tecnici che trattano dati per nostro conto: Hetzner (hosting, Germania), Brevo (e-mail di accesso, UE) e PostHog (analytics di prodotto, server nell\'UE). Quando mostriamo annunci, Google (AdSense) e i suoi partner pubblicitari trattano dati di utilizzo e del dispositivo per erogare e misurare gli annunci. Se accedi con Google, Google ci comunica solo il tuo indirizzo e-mail.',
+    },
+    {
+      h: 'Per quanto tempo',
+      p: 'Finché mantieni un account o un\'iscrizione push attiva. Le iscrizioni push scadute vengono eliminate automaticamente. Puoi richiedere la cancellazione dell\'account in qualsiasi momento.',
+    },
+    {
+      h: 'I tuoi diritti',
+      p: 'Accesso, rettifica, cancellazione, opposizione e portabilità (GDPR). Scrivici a robledano@gmail.com e risolveremo. Puoi anche presentare reclamo al Garante per la protezione dei dati personali (garanteprivacy.it) o alla tua autorità locale.',
+    },
+    {
+      h: 'Cookie e archiviazione locale',
+      p: 'Salviamo nel browser le tue preferenze (lingua, tema, preferiti, impostazioni degli avvisi) e un cookie tecnico della lingua. L\'analytics di prodotto (PostHog, server nell\'UE) parte solo se accetti l\'avviso sui cookie: fino ad allora non carica né salva nulla. Se accetti, PostHog usa un proprio archivio first-party (cookie e localStorage) e, se accedi, collega il tuo indirizzo e-mail a tale analytics per misurare l\'uso in forma aggregata. Puoi rifiutare e l\'app continua a funzionare allo stesso modo.',
+    },
+    {
+      h: 'Pubblicità',
+      p: 'Per finanziare la versione gratuita mostriamo annunci tramite Google AdSense. Google e i suoi partner pubblicitari possono usare cookie e identificatori del dispositivo per erogare e misurare gli annunci. Nello Spazio economico europeo, nel Regno Unito e in Svizzera chiediamo il tuo consenso prima di erogare annunci personalizzati, tramite l\'avviso certificato di Google (IAB TCF): puoi accettare, rifiutare o gestire le opzioni. Se rifiuti, possiamo continuare a mostrare annunci non personalizzati e l\'app funziona allo stesso modo. Gli account con abbonamento Premium non vedono annunci.',
+    },
+  ],
+};
+
+const DICTS: Record<string, PrivacyDict> = { es: ES, en: EN, fr: FR, pt: PT, it: IT };
 
 export function privacyDict(locale: string): PrivacyDict {
   return DICTS[locale] ?? EN;

@@ -14,8 +14,14 @@ describe('privacyDict', () => {
     expect(privacyDict('en').title).toBe('Privacy policy');
   });
 
-  it('PT/IT caen a EN hasta que se traduzcan', () => {
-    expect(privacyDict('pt').title).toBe('Privacy policy');
-    expect(privacyDict('it').title).toBe('Privacy policy');
+  it('sirve portugués e italiano nativos', () => {
+    expect(privacyDict('pt').title).toBe('Política de privacidade');
+    expect(privacyDict('pt').sections[0]?.h).toBe('Quem somos');
+    expect(privacyDict('it').title).toBe('Informativa sulla privacy');
+    expect(privacyDict('it').sections[0]?.h).toBe('Chi siamo');
+  });
+
+  it('un locale desconocido cae a EN', () => {
+    expect(privacyDict('de').title).toBe('Privacy policy');
   });
 });

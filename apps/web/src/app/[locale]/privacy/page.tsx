@@ -4,8 +4,7 @@ import { privacyDict } from './content';
 
 /**
  * Política de privacidad — honesta y en lenguaje llano.
- * ES nativo; EN de respaldo; FR traducido (19/10/2026). PT/IT siguen EN hasta
- * que haya traducción revisada.
+ * ES nativo; EN de respaldo; FR, PT e IT traducidos (19/10/2026).
  */
 
 interface Props {
