@@ -179,6 +179,8 @@ interface MapaSuelto {
 const MAP_ONLY: MapaSuelto[] = [
   { label: 'SD ESPANYOL', teamRef: '3352', currentRef: '3699', compSlug: 'ok-liga-plata-sur' },
   { label: 'SPORTING ALCOI ERUM', teamRef: '3351', currentRef: '3683', compSlug: 'ok-liga-plata-sur' },
+  { label: 'GESTAS DE ESPAÑA CHP ALUCHE', teamRef: '3404', currentRef: '3749', compSlug: 'ok-liga-bronce-masculina-sur' },
+  { label: 'CP COSLADA', teamRef: '3499', currentRef: '3757', compSlug: 'ok-liga-bronce-masculina-sur' },
 ];
 
 interface TeamRow {
@@ -417,6 +419,29 @@ async function mapRef(tx: Cliente, sourceId: string, ref: string, teamId: string
   );
 }
 
+/** Fuente activa de una competición (la que usa el calendario/standings). */
+async function sourceIdForComp(tx: Cliente, compSlug: string): Promise<string | null> {
+  const { rows } = await tx.query<{ source_id: string }>(
+    `SELECT cs.source_id
+       FROM competition_sources cs
+       JOIN competitions c ON c.id = cs.competition_id
+      WHERE c.slug = $1 AND cs.is_active
+      ORDER BY cs.created_at DESC
+      LIMIT 1`,
+    [compSlug],
+  );
+  return rows[0]?.source_id ?? null;
+}
+
+/** Puente global sin namespacing por fuente: resuelve aunque el mapa sea de otra fuente. */
+async function addAltRef(tx: Cliente, teamId: string, ref: string): Promise<void> {
+  await tx.query(
+    `UPDATE teams SET alt_source_refs = array_append(alt_source_refs, $2), updated_at = NOW()
+      WHERE id = $1 AND NOT ($2 = ANY(alt_source_refs))`,
+    [teamId, ref],
+  );
+}
+
 /** Mueve un mapeo que apuntaba a `fromId` para que apunte a `toId`. */
 async function moveMap(tx: Cliente, sourceId: string, ref: string, fromId: string, toId: string): Promise<void> {
   await tx.query(
@@ -467,14 +492,29 @@ async function repairCase(tx: Cliente, c: Caso): Promise<CasoReport | null> {
   if (c.femaleCurrentComp) await ensureSeasonTeam(tx, female.id, c.femaleCurrentComp);
   if (c.maleCurrentComp) await ensureSeasonTeam(tx, male.id, c.maleCurrentComp);
 
-  // Refs: la pareja actual manda; las antiguas se reasignan a su sección.
-  const sourceId = male.source_id ?? female.source_id;
-  if (sourceId) {
-    if (c.femaleCurrentRef) await mapRef(tx, sourceId, c.femaleCurrentRef, female.id);
-    if (c.maleCurrentRef) await mapRef(tx, sourceId, c.maleCurrentRef, male.id);
-    if (c.oldMaleRef) await moveMap(tx, sourceId, c.oldMaleRef, female.id, male.id);
+  // Refs: la ref actual pertenece a la fuente de SU competición, no a la fuente
+  // histórica con la que se creó la ficha. Mapear con la fuente equivocada deja
+  // el ref invisible para el calendario. Además se apunta en alt_source_refs,
+  // puente global que resuelve aunque el mapa sea de otro portal.
+  const femaleSourceId = c.femaleCurrentComp
+    ? (await sourceIdForComp(tx, c.femaleCurrentComp)) ?? female.source_id
+    : female.source_id;
+  const maleSourceId = c.maleCurrentComp
+    ? (await sourceIdForComp(tx, c.maleCurrentComp)) ?? male.source_id
+    : male.source_id;
+  if (c.femaleCurrentRef) {
+    if (femaleSourceId) await mapRef(tx, femaleSourceId, c.femaleCurrentRef, female.id);
+    await addAltRef(tx, female.id, c.femaleCurrentRef);
+  }
+  if (c.maleCurrentRef) {
+    if (maleSourceId) await mapRef(tx, maleSourceId, c.maleCurrentRef, male.id);
+    await addAltRef(tx, male.id, c.maleCurrentRef);
+  }
+  const historicalSourceId = male.source_id ?? female.source_id;
+  if (historicalSourceId) {
+    if (c.oldMaleRef) await moveMap(tx, historicalSourceId, c.oldMaleRef, female.id, male.id);
     if (!c.createMale && femaleOldSourceRef && femaleOldSourceRef !== c.maleCurrentRef) {
-      await moveMap(tx, sourceId, femaleOldSourceRef, male.id, female.id);
+      await moveMap(tx, historicalSourceId, femaleOldSourceRef, male.id, female.id);
     }
   }
 
@@ -501,11 +541,13 @@ async function applyMapOnly(tx: Cliente, m: MapaSuelto): Promise<boolean> {
     console.log(`… ${m.label}: no existe la ficha (ref ${m.teamRef}), se salta`);
     return false;
   }
-  if (!team.source_id) {
-    console.log(`… ${m.label}: la ficha no tiene source_id, se salta`);
+  const sourceId = (await sourceIdForComp(tx, m.compSlug)) ?? team.source_id;
+  if (!sourceId) {
+    console.log(`… ${m.label}: sin fuente para ${m.compSlug}, se salta`);
     return false;
   }
-  await mapRef(tx, team.source_id, m.currentRef, team.id);
+  await mapRef(tx, sourceId, m.currentRef, team.id);
+  await addAltRef(tx, team.id, m.currentRef);
   await ensureSeasonTeam(tx, team.id, m.compSlug);
   console.log(`→ ${m.label}: ref ${m.currentRef} → ${team.slug} (` + `${m.compSlug})`);
   return true;
