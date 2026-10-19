@@ -30,7 +30,8 @@ export async function deriveMatchResults(seasonIds: string[]): Promise<void> {
              COUNT(*) FILTER (WHERE e.event_type = 'goal' AND e.team_id = m.home_team_id AND COALESCE(e.period, 1) <= 2) AS home_reg,
              COUNT(*) FILTER (WHERE e.event_type = 'goal' AND e.team_id = m.away_team_id AND COALESCE(e.period, 1) <= 2) AS away_reg,
              COUNT(*) FILTER (WHERE COALESCE(e.period, 1) >= 3)                          AS extra_events,
-             COUNT(*) FILTER (WHERE e.event_type = 'goal' AND COALESCE(e.period, 1) >= 3) AS ot_goals
+             COUNT(*) FILTER (WHERE e.event_type = 'goal' AND COALESCE(e.period, 1) >= 3) AS ot_goals,
+             BOOL_OR(m.home_pen IS NOT NULL AND m.away_pen IS NOT NULL AND m.home_pen <> m.away_pen) AS has_shootout
       FROM matches m
       LEFT JOIN match_events e ON e.match_id = m.id
       WHERE m.season_id = ANY($1)
@@ -41,8 +42,11 @@ export async function deriveMatchResults(seasonIds: string[]): Promise<void> {
     UPDATE matches m SET
       home_goals_reg = a.home_reg,
       away_goals_reg = a.away_reg,
+      -- Tanda registrada en el acta (home_pen/away_pen distintos): penaltis
+      -- aunque no haya eventos de fase extra. World Skate trae la tanda sin
+      -- eventos con periodo ≥3 (ESP-ARG 2-2, pen. 1-2, semis WSG 16/10).
       win_type = CASE
-        WHEN m.home_score = m.away_score AND a.extra_events > 0 THEN 'penalties'
+        WHEN m.home_score = m.away_score AND (a.extra_events > 0 OR a.has_shootout) THEN 'penalties'
         WHEN a.ot_goals > 0                                     THEN 'overtime'
         WHEN m.home_score <> m.away_score                       THEN 'regular'
         ELSE NULL END,
@@ -55,6 +59,8 @@ export async function deriveMatchResults(seasonIds: string[]): Promise<void> {
       winner_team_id = CASE
         WHEN m.home_score > m.away_score THEN m.home_team_id
         WHEN m.away_score > m.home_score THEN m.away_team_id
+        WHEN m.home_score = m.away_score AND a.has_shootout AND m.home_pen > m.away_pen THEN m.home_team_id
+        WHEN m.home_score = m.away_score AND a.has_shootout AND m.away_pen > m.home_pen THEN m.away_team_id
         WHEN m.home_score = m.away_score AND a.extra_events > 0 THEN m.winner_team_id
         ELSE NULL END,
       updated_at = NOW()
