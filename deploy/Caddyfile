@@ -25,6 +25,10 @@ sticklive.eu {
 				delete deviceId
 				delete q
 			}
+			# Cabeceras propias con secretos: Caddy redacta Cookie/Authorization
+			# por defecto, pero no las custom. No deben acabar en el log.
+			request>headers>X-Internal-Token delete
+			request>headers>X-Admin-Token delete
 			request>headers>Referer delete
 			wrap json
 		}
