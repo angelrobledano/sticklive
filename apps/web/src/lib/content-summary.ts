@@ -1,4 +1,5 @@
 import type { SeasonLeader, SeasonMatch, SeasonOverview, SeasonStats, TeamRecentMatch, TeamSeasonStats } from '@/lib/api/types';
+import { gameWinnerId } from '@/lib/playoff';
 import { playerDisplayName, playerNameFromRaw } from '@/lib/names';
 
 /** Resumen server-rendered para fichas. Nada de textos si el dato es null. */
@@ -221,6 +222,15 @@ export interface CompetitionSummary {
   status: 'not_started' | 'in_progress' | 'finished';
   /** Jornada de liga más alta con partidos jugados, sobre el total de jornadas de liga. */
   matchday: { current: number; total: number } | null;
+  /**
+   * Medallero de una competición con final y 3.º/4.º puesto (Mundiales, Europeos,
+   * copas con partido por el bronce). Null si no hay un podio completo.
+   */
+  podium: {
+    gold: { teamId: string; teamName: string };
+    silver: { teamId: string; teamName: string };
+    bronze: { teamId: string; teamName: string };
+  } | null;
   leader: {
     teamId: string; teamName: string; points: number; played: number;
     /** Puntos de ventaja sobre el 2.º (null si no hay 2.º). */
@@ -248,6 +258,50 @@ const PENDING = new Set(['scheduled', 'live', 'halftime', 'overtime', 'penalty_s
 
 function leaderName(l: SeasonLeader): string {
   return l.firstName && l.lastName ? playerDisplayName(l.firstName, l.lastName) : playerNameFromRaw(l.playerName);
+}
+
+/** Último partido terminado de un grupo (por fecha; el desempate es estable). */
+function lastFinished(matches: SeasonMatch[]): SeasonMatch | null {
+  const done = matches
+    .filter((m) => m.status === 'finished')
+    .sort((a, b) => String(a.scheduledAt ?? '').localeCompare(String(b.scheduledAt ?? '')));
+  return done[done.length - 1] ?? null;
+}
+
+/**
+ * Podio de una competición con final y partido por el 3.º puesto. Se apoya en
+ * `stage` (fuente actual) y cae al nombre de ronda en temporadas heredadas.
+ * Solo devuelve un medallero completo: sin bronce no hay tabla de medallas.
+ */
+function buildPodium(matches: SeasonMatch[]): CompetitionSummary['podium'] {
+  const isFinal = (m: SeasonMatch) =>
+    m.stage === 'final' || (!m.stage && /^final$/i.test((m.roundName ?? '').trim()));
+  const isThird = (m: SeasonMatch) =>
+    m.stage === 'third_place' || (!m.stage && /3.*4|tercer|third|bronce/i.test(m.roundName ?? ''));
+
+  const final = lastFinished(matches.filter(isFinal));
+  const third = lastFinished(matches.filter(isThird));
+  if (!final || !third) return null;
+
+  const finalWinner = gameWinnerId(final);
+  const thirdWinner = gameWinnerId(third);
+  if (!finalWinner || !thirdWinner) return null;
+
+  const byId = (m: SeasonMatch, id: string) => {
+    if (m.homeTeam.id === id) return m.homeTeam;
+    if (m.awayTeam.id === id) return m.awayTeam;
+    return null;
+  };
+  const gold = byId(final, finalWinner);
+  const silver = byId(final, final.homeTeam.id === finalWinner ? final.awayTeam.id : final.homeTeam.id);
+  const bronze = byId(third, thirdWinner);
+  if (!gold || !silver || !bronze) return null;
+
+  return {
+    gold: { teamId: gold.id, teamName: gold.name },
+    silver: { teamId: silver.id, teamName: silver.name },
+    bronze: { teamId: bronze.id, teamName: bronze.name },
+  };
 }
 
 /**
@@ -311,6 +365,7 @@ export function buildCompetitionSummary(
   return {
     status,
     matchday,
+    podium: buildPodium(overview.matches),
     leader: first
       ? {
           teamId: first.teamId, teamName: first.teamName, points: first.points, played: first.played,

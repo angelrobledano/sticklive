@@ -129,6 +129,36 @@ describe('buildCompetitionSummary', () => {
     expect(s.featured).toBeNull();
   });
 
+  it('medallero desde la final y el partido por el 3.º y 4.º puesto', () => {
+    const o = liga();
+    o.matches.push(
+      match({
+        id: 'final', status: 'finished', roundType: 'playoff', roundName: 'Final', stage: 'final',
+        homeTeam: team('a'), awayTeam: team('b'),
+        score: { home: 2, away: 2 }, penalties: { home: 3, away: 4 }, winnerTeamId: 'b',
+      }),
+      match({
+        id: 'third', status: 'finished', roundType: 'playoff', roundName: '3º y 4º puesto', stage: 'third_place',
+        homeTeam: team('c'), awayTeam: team('d'),
+        score: { home: 3, away: 5 }, winnerTeamId: 'd',
+      }),
+    );
+    expect(buildCompetitionSummary(o, scorers, now).podium).toEqual({
+      gold: { teamId: 'b', teamName: 'B' },
+      silver: { teamId: 'a', teamName: 'A' },
+      bronze: { teamId: 'd', teamName: 'D' },
+    });
+  });
+
+  it('sin partido por el bronce no inventa un medallero', () => {
+    const o = liga();
+    o.matches.push(match({
+      id: 'final', status: 'finished', roundType: 'playoff', roundName: 'Final', stage: 'final',
+      homeTeam: team('a'), awayTeam: team('b'), score: { home: 1, away: 0 }, winnerTeamId: 'a',
+    }));
+    expect(buildCompetitionSummary(o, scorers, now).podium).toBeNull();
+  });
+
   it('con varios grupos no hay un líder único', () => {
     const o = liga({ pending: true });
     o.standings = [row('a', 1, 12, 4, { groupName: 'A' }), row('b', 1, 9, 4, { groupName: 'B' })] as never;

@@ -17,6 +17,7 @@ interface Copy {
   scorerAhead: (n: number, name: string | null) => string; scorerTied: (name: string | null) => string;
   matches: (n: number) => string; gpm: (n: string) => string; homeWins: (n: number) => string;
   ordinal: (n: number) => string;
+  medals: string; gold: string; silver: string; bronze: string;
   didYouKnow: string; more: (n: number) => string;
   sentOff: string; sentOffRound: (n: number) => string; matchLink: string;
 }
@@ -34,6 +35,7 @@ const COPY: Record<string, Copy> = {
     ordinal: (n) => `${n}.º`,
     didYouKnow: '¿Sabías que…?', more: (n) => `Más datos de la liga (${n})`,
     sentOff: 'Expulsados en la última jornada', sentOffRound: (n) => `Jornada ${n}`, matchLink: 'Ver partido',
+    medals: 'Medallero', gold: 'Oro', silver: 'Plata', bronze: 'Bronce',
   },
   en: {
     live: 'The league so far', done: 'How it ended', matchday: (c, t) => `Matchday ${c} of ${t}`,
@@ -50,6 +52,7 @@ const COPY: Record<string, Copy> = {
     },
     didYouKnow: 'Did you know?', more: (n) => `More league facts (${n})`,
     sentOff: 'Sent off on the last matchday', sentOffRound: (n) => `Matchday ${n}`, matchLink: 'View match',
+    medals: 'Medal table', gold: 'Gold', silver: 'Silver', bronze: 'Bronze',
   },
   pt: {
     live: 'Assim vai a liga', done: 'Assim terminou', matchday: (c, t) => `Jornada ${c} de ${t}`,
@@ -63,6 +66,7 @@ const COPY: Record<string, Copy> = {
     ordinal: (n) => `${n}.º`,
     didYouKnow: 'Sabia que…?', more: (n) => `Mais dados da liga (${n})`,
     sentOff: 'Expulsos na última jornada', sentOffRound: (n) => `Jornada ${n}`, matchLink: 'Ver jogo',
+    medals: 'Medalheiro', gold: 'Ouro', silver: 'Prata', bronze: 'Bronze',
   },
   fr: {
     live: 'Le championnat en cours', done: 'Bilan de la saison', matchday: (c, t) => `Journée ${c} sur ${t}`,
@@ -76,6 +80,7 @@ const COPY: Record<string, Copy> = {
     ordinal: (n) => (n === 1 ? '1er' : `${n}e`),
     didYouKnow: 'Le saviez-vous ?', more: (n) => `Plus de chiffres du championnat (${n})`,
     sentOff: 'Exclus lors de la dernière journée', sentOffRound: (n) => `Journée ${n}`, matchLink: 'Voir le match',
+    medals: 'Tableau des médailles', gold: 'Or', silver: 'Argent', bronze: 'Bronze',
   },
   it: {
     live: 'Il campionato finora', done: 'Com’è finita', matchday: (c, t) => `Giornata ${c} di ${t}`,
@@ -89,6 +94,7 @@ const COPY: Record<string, Copy> = {
     ordinal: (n) => `${n}º`,
     didYouKnow: 'Lo sapevi?', more: (n) => `Altri dati del campionato (${n})`,
     sentOff: 'Espulsi nell’ultima giornata', sentOffRound: (n) => `Giornata ${n}`, matchLink: 'Vedi partita',
+    medals: 'Medagliere', gold: 'Oro', silver: 'Argento', bronze: 'Bronzo',
   },
 };
 
@@ -140,12 +146,12 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
   day?: string;
 }) {
   const c = COPY[locale] ?? COPY['en']!;
-  const { leader, featured, topScorer, figures, matchday } = data;
+  const { leader, featured, topScorer, figures, matchday, podium } = data;
   const facts = insights ? insights.insights.filter((i) => isRenderable(i, insights)) : [];
   const daily = insights && seed && day ? pickDailyInsight(facts, seed, day) : null;
   const rest = facts.filter((i) => i !== daily);
   const hasDiscipline = Boolean(insights?.discipline && insights.discipline.reds.length > 0);
-  if (!leader && !featured && !topScorer && !daily && !hasDiscipline) return null;
+  if (!leader && !featured && !topScorer && !podium && !daily && !hasDiscipline) return null;
   const tiles = [leader, featured, topScorer].filter(Boolean).length;
 
   // "Campeón" no: en ligas cuyo título se decide en un playoff de otra
@@ -159,12 +165,43 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
         <h2 id="competition-summary-title" className="text-base font-bold text-slate-900 dark:text-slate-50">
           {data.status === 'finished' ? c.done : c.live}
         </h2>
-        {matchday && (
+        {data.status !== 'finished' && matchday && (
           <p className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
             {c.matchday(matchday.current, matchday.total)}
           </p>
         )}
       </div>
+
+      {podium && (
+        <div className="rounded-lg border border-slate-200 p-3 dark:border-white/[0.06]">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            {c.medals}
+          </p>
+          <ul className="mt-2 divide-y divide-slate-100 dark:divide-white/[0.06]">
+            {[
+              { medal: '1', tone: 'bg-amber-400 text-amber-950', label: c.gold, team: podium.gold },
+              { medal: '2', tone: 'bg-slate-300 text-slate-800', label: c.silver, team: podium.silver },
+              { medal: '3', tone: 'bg-amber-700 text-white', label: c.bronze, team: podium.bronze },
+            ].map(({ medal, tone, label, team }) => (
+              <li key={medal} className="flex items-center gap-2.5 py-1.5 first:pt-0 last:pb-0">
+                <span
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-black ${tone}`}
+                  aria-hidden="true"
+                >
+                  {medal}
+                </span>
+                <TeamShield teamId={team.teamId} teamName={team.teamName} size={22} className="shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
+                  {clubName(team.teamName)}
+                </span>
+                <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  {label}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <ul className={`-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 scrollbar-none sm:mx-0 sm:grid sm:overflow-visible sm:px-0 sm:pb-0 ${
         tiles === 3 ? 'sm:grid-cols-3' : tiles === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}>
