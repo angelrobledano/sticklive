@@ -11,9 +11,14 @@ Fecha: 2026-10-19 · Fuente: `https://www.server2.sidgad.es/fecapa` (portal `fec
 - **Fase final** (`content_fase_5093`): **semifinales y final** a partido único.
   Los semifinalistas son los 3 primeros de grupo + el mejor segundo:
   Igualada (A1) – Calafell (C1) y Barça (B1) – Voltregà (B2).
-- El **partido de la final** (18/10/2026, Calafell – Barça) existe en el calendario, pero la fuente
-  **no publica `idp` ni resultado** (tampoco tiene acta). Se muestra como pendiente con sus dos
-  equipos; si la fuente publica el resultado, el siguiente scrape lo actualiza.
+- **Resultados reales cargados desde las actas**:
+  - Semifinal 1: Igualada 2–2 Calafell → **Calafell gana 0–1 en penaltis** (`gr_164289`).
+  - Semifinal 2: Barça 5–0 Voltregà (`gr_164290`).
+  - **Final: Calafell 0–1 Barça** (`gr_164291`), campeón **Barça**.
+- El calendario **no publica el `idp` de la final** (la fila no tiene enlace de acta); el acta sí
+  existe en `fecapa_gr_164291_1.php`. Se cargó con el scraper de ficha apuntando al portal `fecapa`
+  y se creó el partido real con `source_ref=fep_match_164291` para que futuros pases no lo traten
+  como placeholder.
 - Un partido de la jornada 3 (CH Lloret – PAS Alcoi) tampoco tiene `idp`/resultado: la fuente no lo
   jugó/publicó (ambos equipos constan con 2 partidos en la clasificación). Se descarta como
   placeholder de liga.
@@ -78,7 +83,7 @@ Requisitos: túnel SSH abierto, `DATABASE_URL`/`STAGING_URL`/`PROD_URL`, `SIDGAD
 Base Postgres efímera + migraciones desde cero + seed/calendario/clasificación reales:
 
 - 12 equipos, 2 fases (`groups` + `knockout`), 3 jornadas + semis/final.
-- 20 partidos: 18 de grupos + 2 semifinales + final pendiente (la fuente no da resultado).
+- 20 partidos: 18 de grupos + 2 semifinales + final (0–1, campeón Barça) con actas.
 - 12 filas de clasificación en 3 grupos (4 por grupo), posiciones/puntos/goles correctos.
 - Web local: grupos A/B/C renderizados, cuadro con la final «Calafell la Menorquina – Barça».
 - Tests: `apps/scraper` 218 OK, `apps/etl` 192 OK, `packages/shared-types` 45 OK, web 814 OK.
