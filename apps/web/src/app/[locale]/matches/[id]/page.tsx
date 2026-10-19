@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { getMatchDetail, getSeasonOverview, isApiNotFound } from '@/lib/api/client';
 import { MatchCenterClient } from '@/components/match/MatchCenterClient';
 import { MatchPreview } from '@/components/match/MatchPreview';
+import { MatchChronicle } from '@/components/match/MatchChronicle';
 import { buildMatchPreview } from '@/lib/content-summary';
+import { buildMatchChronicle } from '@/lib/match-chronicle';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
@@ -117,6 +119,20 @@ export default async function MatchDetailPage(props: Props) {
         .catch(() => null)
     : null;
 
+  // C3: crónica de hechos verificables del acta (remontada, hat-trick, etc.).
+  const chronicle = buildMatchChronicle({
+    status: m.status,
+    score: m.score,
+    homeTeamId: m.homeTeamId,
+    awayTeamId: m.awayTeamId,
+    winType: m.winType,
+    events: data.events,
+  });
+  const chronicleTeams: Record<string, string> = {
+    ...(m.homeTeam?.id ? { [m.homeTeam.id]: homeName } : {}),
+    ...(m.awayTeam?.id ? { [m.awayTeam.id]: awayName } : {}),
+  };
+
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
       <JsonLd data={jsonLd} />
@@ -130,6 +146,8 @@ export default async function MatchDetailPage(props: Props) {
 
       {/* Match Center */}
       <MatchCenterClient data={data} />
+
+      <MatchChronicle facts={chronicle} locale={locale} teams={chronicleTeams} />
     </div>
   );
 }

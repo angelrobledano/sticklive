@@ -27,7 +27,7 @@ const MAX_ENTRIES = 300;
 const cache = new Map<string, { at: number; body: SeasonInsightsResponse }>();
 
 export async function loadSeasonInsights(seasonId: string): Promise<SeasonInsightsResponse> {
-  const [matches, goals, setPieces, scorers, pending] = await Promise.all([
+  const [matches, goals, setPieces, cards, scorers, pending] = await Promise.all([
     db.query<{
       id: string; date: Date | null; home_team_id: string; away_team_id: string;
       home_score: number; away_score: number; league: boolean; full_events: boolean;
@@ -54,6 +54,11 @@ export async function loadSeasonInsights(seasonId: string): Promise<SeasonInsigh
         FROM match_events e JOIN matches m ON m.id = e.match_id
        WHERE m.season_id = $1 AND m.status = 'finished'
          AND e.event_type IN ('penalty', 'direct_foul') AND e.team_id IS NOT NULL`, [seasonId]),
+    db.query<{ match_id: string; team_id: string; kind: 'blue_card' | 'red_card' }>(`
+      SELECT e.match_id, e.team_id, e.event_type AS kind
+        FROM match_events e JOIN matches m ON m.id = e.match_id
+       WHERE m.season_id = $1 AND m.status = 'finished'
+         AND e.event_type IN ('blue_card', 'red_card') AND e.team_id IS NOT NULL`, [seasonId]),
     db.query<{ player_id: string; team_id: string; goals: number }>(`
       SELECT ml.player_id,
              CASE WHEN ml.is_home THEN m.home_team_id ELSE m.away_team_id END AS team_id,
@@ -76,6 +81,7 @@ export async function loadSeasonInsights(seasonId: string): Promise<SeasonInsigh
     })),
     goals: goals.rows.map((r) => ({ matchId: r.match_id, teamId: r.team_id, period: r.period, minute: r.minute })),
     setPieces: setPieces.rows.map((r) => ({ matchId: r.match_id, teamId: r.team_id, kind: r.kind, scored: r.scored })),
+    cards: cards.rows.map((r) => ({ matchId: r.match_id, teamId: r.team_id, kind: r.kind })),
     scorers: scorers.rows.map((r) => ({ playerId: r.player_id, teamId: r.team_id, goals: r.goals })),
     seasonFinished: matches.rows.length > 0 && (pending.rows[0]?.n ?? 0) === 0,
   };

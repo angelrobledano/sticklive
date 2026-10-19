@@ -597,7 +597,8 @@ export type InsightKind =
   | 'only_unbeaten' | 'win_streak' | 'losing_streak' | 'best_attack' | 'best_defense'
   | 'perfect_home' | 'home_win_pct' | 'second_half_goals' | 'team_second_half' | 'late_goals'
   | 'penalty_pct' | 'direct_foul_pct' | 'penalty_drought' | 'scorer_share'
-  | 'biggest_win' | 'highest_scoring' | 'first_goal_wins';
+  | 'biggest_win' | 'highest_scoring' | 'first_goal_wins'
+  | 'most_blue_cards' | 'most_red_cards';
 
 export interface Insight {
   id: string;

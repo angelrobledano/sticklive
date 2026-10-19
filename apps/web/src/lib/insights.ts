@@ -38,6 +38,8 @@ const T: Record<string, Record<InsightKind, Template>> = {
     biggest_win: (c) => ['La mayor goleada de la temporada: ', c.match, '.'],
     highest_scoring: (c) => ['El partido con más goles de la temporada: ', c.match, '.'],
     first_goal_wins: (c) => [`Quien marca primero gana el ${c.v('pct')} % de los partidos.`],
+    most_blue_cards: (c) => [c.team(0), ` es el equipo con más tarjetas azules: ${c.v('n')}.`],
+    most_red_cards: (c) => [c.team(0), ` es el equipo con más expulsiones: ${c.v('n')} tarjetas rojas.`],
   },
   en: {
     only_unbeaten: (c) => [c.team(0), ` are the only unbeaten side: ${c.v('won')} wins and ${c.v('drawn')} draws in ${c.v('played')} matches.`],
@@ -57,6 +59,8 @@ const T: Record<string, Record<InsightKind, Template>> = {
     biggest_win: (c) => ['Biggest win of the season: ', c.match, '.'],
     highest_scoring: (c) => ['Highest-scoring match of the season: ', c.match, '.'],
     first_goal_wins: (c) => [`The team that scores first wins ${c.v('pct')}% of matches.`],
+    most_blue_cards: (c) => [c.team(0), ` have the most blue cards: ${c.v('n')}.`],
+    most_red_cards: (c) => [c.team(0), ` have the most red cards: ${c.v('n')}.`],
   },
   pt: {
     only_unbeaten: (c) => [c.team(0), ` é a única equipa invicta: ${c.v('won')} vitórias e ${c.v('drawn')} empates em ${c.v('played')} jogos.`],
@@ -76,6 +80,8 @@ const T: Record<string, Record<InsightKind, Template>> = {
     biggest_win: (c) => ['A maior goleada da época: ', c.match, '.'],
     highest_scoring: (c) => ['O jogo com mais golos da época: ', c.match, '.'],
     first_goal_wins: (c) => [`Quem marca primeiro vence ${c.v('pct')} % dos jogos.`],
+    most_blue_cards: (c) => [c.team(0), ` é a equipa com mais cartões azuis: ${c.v('n')}.`],
+    most_red_cards: (c) => [c.team(0), ` é a equipa com mais expulsões: ${c.v('n')} cartões vermelhos.`],
   },
   fr: {
     only_unbeaten: (c) => [c.team(0), ` est la seule équipe invaincue : ${c.v('won')} victoires et ${c.v('drawn')} nuls en ${c.v('played')} matchs.`],
@@ -95,6 +101,8 @@ const T: Record<string, Record<InsightKind, Template>> = {
     biggest_win: (c) => ['Le plus large succès de la saison : ', c.match, '.'],
     highest_scoring: (c) => ['Le match le plus prolifique de la saison : ', c.match, '.'],
     first_goal_wins: (c) => [`L'équipe qui ouvre le score gagne ${c.v('pct')} % des matchs.`],
+    most_blue_cards: (c) => [c.team(0), ` est l'équipe avec le plus de cartons bleus : ${c.v('n')}.`],
+    most_red_cards: (c) => [c.team(0), ` est l'équipe avec le plus d'exclusions : ${c.v('n')} cartons rouges.`],
   },
   it: {
     only_unbeaten: (c) => [c.team(0), ` è l'unica imbattuta: ${c.v('won')} vittorie e ${c.v('drawn')} pareggi in ${c.v('played')} partite.`],
@@ -114,6 +122,8 @@ const T: Record<string, Record<InsightKind, Template>> = {
     biggest_win: (c) => ['La vittoria più larga della stagione: ', c.match, '.'],
     highest_scoring: (c) => ['La partita con più gol della stagione: ', c.match, '.'],
     first_goal_wins: (c) => [`Chi segna per primo vince il ${c.v('pct')}% delle partite.`],
+    most_blue_cards: (c) => [c.team(0), ` è la squadra con più cartellini blu: ${c.v('n')}.`],
+    most_red_cards: (c) => [c.team(0), ` è la squadra con più espulsioni: ${c.v('n')} cartellini rossi.`],
   },
 };
 

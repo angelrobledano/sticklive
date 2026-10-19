@@ -67,6 +67,17 @@ describe('computeSeasonInsights', () => {
     expect(find(i, 'scorer_share')).toMatchObject({ playerIds: ['p1'], teamIds: ['a'], values: { goals: 6, teamGoals: 12, pct: 50 } });
   });
 
+  it('disciplina: rojas y azules solo con umbral y sin empate', () => {
+    const ms = [m('a', 'b', 1, 0), m('c', 'd', 1, 0)];
+    const cards = [
+      ...Array.from({ length: 2 }, () => ({ matchId: ms[0]!.id, teamId: 'a', kind: 'red_card' as const })),
+      ...Array.from({ length: 8 }, () => ({ matchId: ms[1]!.id, teamId: 'b', kind: 'blue_card' as const })),
+    ];
+    const i = base(ms, { cards });
+    expect(find(i, 'most_red_cards')).toMatchObject({ teamIds: ['a'], values: { n: 2 } });
+    expect(find(i, 'most_blue_cards')).toMatchObject({ teamIds: ['b'], values: { n: 8 } });
+  });
+
   describe('con actas', () => {
     function conGoles(fullEvents: boolean) {
       const ms = Array.from({ length: 10 }, () => m('a', 'b', 4, 1, { fullEvents }));

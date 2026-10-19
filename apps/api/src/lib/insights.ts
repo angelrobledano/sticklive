@@ -29,6 +29,7 @@ export interface InsightMatch {
 export interface InsightGoal { matchId: string; teamId: string; period: number | null; minute: number | null }
 export interface InsightSetPiece { matchId: string; teamId: string; kind: 'penalty' | 'direct_foul'; scored: boolean }
 export interface InsightScorer { playerId: string; teamId: string; goals: number }
+export interface InsightCard { matchId: string; teamId: string; kind: 'blue_card' | 'red_card' }
 
 export interface InsightInput {
   teams: InsightTeam[];
@@ -37,6 +38,7 @@ export interface InsightInput {
   goals: InsightGoal[];
   setPieces: InsightSetPiece[];
   scorers: InsightScorer[];
+  cards?: InsightCard[];
   /** Sin partidos pendientes: las rachas "en curso" ya no lo están. */
   seasonFinished?: boolean;
 }
@@ -58,7 +60,9 @@ export type InsightKind =
   | 'scorer_share'
   | 'biggest_win'
   | 'highest_scoring'
-  | 'first_goal_wins';
+  | 'first_goal_wins'
+  | 'most_blue_cards'
+  | 'most_red_cards';
 
 export interface Insight {
   /** Estable entre llamadas: tipo + entidades. Sirve de clave y de semilla. */
@@ -92,6 +96,8 @@ export const THRESHOLDS = {
   scorerSharePct: 35,
   bigWinMargin: 5,
   highScoring: 12,
+  blueCards: 8,
+  redCards: 2,
 } as const;
 
 const pct = (part: number, total: number) => Math.round((part / total) * 100);
@@ -232,6 +238,19 @@ export function computeSeasonInsights(input: InsightInput): Insight[] {
     return out.sort((a, b) => b.priority - a.priority);
   }
   const goals = input.goals.filter((g) => full.has(g.matchId));
+
+  // Disciplina (C4): solo hechos, sin deducir sanciones del Comité.
+  const cards = (input.cards ?? []).filter((c) => full.has(c.matchId));
+  for (const kind of ['red_card', 'blue_card'] as const) {
+    const byTeam = new Map<string, number>();
+    for (const c of cards.filter((x) => x.kind === kind)) byTeam.set(c.teamId, (byTeam.get(c.teamId) ?? 0) + 1);
+    const top = uniqueMax([...byTeam.entries()], ([, n]) => n);
+    const min = kind === 'red_card' ? T.redCards : T.blueCards;
+    if (top && top[1] >= min) {
+      out.push(insight(kind === 'red_card' ? 'most_red_cards' : 'most_blue_cards',
+        kind === 'red_card' ? 65 : 30, { teamIds: [top[0]], values: { n: top[1] } }));
+    }
+  }
 
   if (goals.length >= T.leagueGoals) {
     const second = goals.filter((g) => g.period === 2).length;

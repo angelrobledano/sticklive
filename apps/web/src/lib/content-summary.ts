@@ -3,6 +3,16 @@ import { playerDisplayName, playerNameFromRaw } from '@/lib/names';
 
 /** Resumen server-rendered para fichas. Nada de textos si el dato es null. */
 
+export interface RecentMatch {
+  id: string;
+  date: string | null;
+  opponentName: string;
+  isHome: boolean;
+  goalsFor: number;
+  goalsAgainst: number;
+  result: 'W' | 'D' | 'L';
+}
+
 export interface TeamSnapshot {
   teamId: string;
   teamName: string;
@@ -10,6 +20,7 @@ export interface TeamSnapshot {
   points: number | null;
   played: number | null;
   form: string[];
+  recent: RecentMatch[];
 }
 
 export interface HeadToHeadMatch {
@@ -29,6 +40,24 @@ export interface MatchPreview {
 
 function snapshot(overview: SeasonOverview, teamId: string, fallbackName: string): TeamSnapshot {
   const row = overview.standings.find((s) => s.teamId === teamId);
+  const recent = overview.matches
+    .filter((m) => m.status === 'finished' && (m.homeTeam.id === teamId || m.awayTeam.id === teamId))
+    .sort((a, b) => String(matchDate(b) ?? '').localeCompare(String(matchDate(a) ?? '')))
+    .slice(0, 5)
+    .map((m) => {
+      const isHome = m.homeTeam.id === teamId;
+      const goalsFor = (isHome ? m.score.home : m.score.away) ?? 0;
+      const goalsAgainst = (isHome ? m.score.away : m.score.home) ?? 0;
+      return {
+        id: m.id,
+        date: matchDate(m),
+        opponentName: isHome ? m.awayTeam.name : m.homeTeam.name,
+        isHome,
+        goalsFor,
+        goalsAgainst,
+        result: goalsFor > goalsAgainst ? 'W' as const : goalsFor < goalsAgainst ? 'L' as const : 'D' as const,
+      };
+    });
   return {
     teamId,
     teamName: row?.teamName ?? fallbackName,
@@ -36,6 +65,7 @@ function snapshot(overview: SeasonOverview, teamId: string, fallbackName: string
     points: row?.points ?? null,
     played: row?.played ?? null,
     form: (row?.form ?? []).slice(-5),
+    recent,
   };
 }
 
