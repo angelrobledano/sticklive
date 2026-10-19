@@ -53,7 +53,7 @@ const ES: TrustDict = {
     sections: [
       { h: 'Titular', p: 'Stick Live (sticklive.eu) es un proyecto informativo titularidad de Ángel Robledano. Contacto: robledano@gmail.com.' },
       { h: 'Objeto', p: 'El sitio ofrece información y estadísticas deportivas de hockey sobre patines. El acceso es gratuito; algunas funciones pueden requerir cuenta o suscripción.' },
-      { h: 'Fuentes e independencia', p: 'Los datos deportivos se obtienen de las federaciones nacionales de hockey sobre patines de España, Portugal e Italia y la federación catalana. Stick Live no está afiliada ni representa oficialmente a estas entidades. Las marcas, escudos y fotografías pertenecen a sus titulares.' },
+      { h: 'Fuentes e independencia', p: 'Datos: federaciones nacionales de hockey patines de España, Portugal e Italia y la federación catalana. Stick Live no es una web oficial. No está afiliada ni representa oficialmente a estas entidades. Las marcas, escudos y fotografías pertenecen a sus titulares.' },
       { h: 'Uso del sitio', p: 'No está permitido extraer de forma masiva el contenido, interferir en el servicio, intentar acceder a zonas privadas ni reutilizar la base de datos para un producto competidor sin autorización.' },
       { h: 'Propiedad intelectual', p: 'El diseño, el código y los textos propios de Stick Live están protegidos. Los datos deportivos, escudos y marcas de terceros conservan la titularidad de sus fuentes. La cita de un dato con enlace a esta web es bienvenida.' },
       { h: 'Responsabilidad', p: 'La información se ofrece con la diligencia razonable, pero puede contener errores o retrasos de la fuente. No garantizamos disponibilidad continua ni exactitud absoluta. Los enlaces externos se ofrecen como referencia y no implican respaldo.' },
@@ -93,7 +93,7 @@ const EN: TrustDict = {
     sections: [
       { h: 'Owner', p: 'Stick Live (sticklive.eu) is an information project owned by Ángel Robledano. Contact: robledano@gmail.com.' },
       { h: 'Purpose', p: 'The site provides rink hockey information and sports statistics. Access is free; some features may require an account or subscription.' },
-      { h: 'Sources and independence', p: 'Sports data is obtained from the national rink hockey federations of Spain, Portugal and Italy and the Catalan federation. Stick Live is not affiliated with or an official representative of these organisations. Third-party brands, crests and photographs belong to their owners.' },
+      { h: 'Sources and independence', p: 'Data: national rink hockey federations of Spain, Portugal and Italy and the Catalan federation. Stick Live is not an official website. It is not affiliated with or an official representative of these organisations. Third-party brands, crests and photographs belong to their owners.' },
       { h: 'Use of the site', p: 'Mass extraction of content, interference with the service, attempts to access private areas or reuse of the database for a competing product without permission are not allowed.' },
       { h: 'Intellectual property', p: 'Stick Live’s own design, code and texts are protected. Sports data, crests and third-party trademarks remain owned by their sources. Quoting a fact with a link to this site is welcome.' },
       { h: 'Liability', p: 'Information is provided with reasonable care but may contain errors or delays from the source. We do not guarantee continuous availability or absolute accuracy. External links are references and do not imply endorsement.' },
@@ -133,7 +133,7 @@ const PT: TrustDict = {
     sections: [
       { h: 'Titular', p: 'O Stick Live (sticklive.eu) é um projeto informativo de Ángel Robledano. Contacto: robledano@gmail.com.' },
       { h: 'Objeto', p: 'O site disponibiliza informação e estatísticas de hóquei em patins. O acesso é gratuito; algumas funções podem exigir conta ou subscrição.' },
-      { h: 'Fontes e independência', p: 'Os dados desportivos são obtidos das federações nacionais de hóquei em patins de Espanha, Portugal e Itália e a federação catalã. O Stick Live não está afiliado nem representa oficialmente estas entidades. Marcas, emblemas e fotografias pertencem aos seus titulares.' },
+      { h: 'Fontes e independência', p: 'Dados: federações nacionais de hóquei em patins de Espanha, Portugal e Itália e a federação catalã. O Stick Live não é um site oficial. Não está afiliado nem representa oficialmente estas entidades. Marcas, emblemas e fotografias pertencem aos seus titulares.' },
       { h: 'Utilização do site', p: 'Não é permitida a extração massiva de conteúdo, a interferência no serviço, a tentativa de acesso a áreas privadas ou a reutilização da base de dados para um produto concorrente sem autorização.' },
       { h: 'Propriedade intelectual', p: 'O design, o código e os textos próprios do Stick Live estão protegidos. Os dados desportivos, emblemas e marcas de terceiros mantêm a titularidade das fontes. Citar um dado com ligação a este site é bem-vindo.' },
       { h: 'Responsabilidade', p: 'A informação é prestada com diligência razoável, mas pode conter erros ou atrasos da fonte. Não garantimos disponibilidade contínua nem exatidão absoluta. As ligações externas são referências e não implicam endorsement.' },
@@ -173,7 +173,7 @@ const FR: TrustDict = {
     sections: [
       { h: 'Titulaire', p: 'Stick Live (sticklive.eu) est un projet d’information appartenant à Ángel Robledano. Contact : robledano@gmail.com.' },
       { h: 'Objet', p: 'Le site fournit des informations et statistiques de rink hockey. L’accès est gratuit ; certaines fonctions peuvent nécessiter un compte ou un abonnement.' },
-      { h: 'Sources et indépendance', p: 'Les données sportives proviennent des fédérations nationales de rink hockey d’Espagne, du Portugal et d’Italie et la fédération catalane. Stick Live n’est ni affilié ni représentant officiel de ces entités. Les marques, écussons et photographies appartiennent à leurs titulaires.' },
+      { h: 'Sources et indépendance', p: 'Données : fédérations nationales de rink hockey d’Espagne, du Portugal et d’Italie et la fédération catalane. Stick Live n’est pas un site officiel. Il n’est ni affilié ni représentant officiel de ces entités. Les marques, écussons et photographies appartiennent à leurs titulaires.' },
       { h: 'Utilisation du site', p: 'L’extraction massive de contenu, l’interférence avec le service, les tentatives d’accès aux zones privées et la réutilisation de la base pour un produit concurrent sans autorisation sont interdites.' },
       { h: 'Propriété intellectuelle', p: 'Le design, le code et les textes propres de Stick Live sont protégés. Les données sportives, écussons et marques de tiers restent la propriété de leurs sources. Citer un fait avec un lien vers ce site est bienvenu.' },
       { h: 'Responsabilité', p: 'Les informations sont fournies avec une diligence raisonnable mais peuvent contenir des erreurs ou des retards de la source. Nous ne garantissons pas une disponibilité continue ni une exactitude absolue. Les liens externes sont des références et n’impliquent aucun endossement.' },
@@ -213,7 +213,7 @@ const IT: TrustDict = {
     sections: [
       { h: 'Titolare', p: 'Stick Live (sticklive.eu) è un progetto informativo di Ángel Robledano. Contatto: robledano@gmail.com.' },
       { h: 'Oggetto', p: 'Il sito offre informazioni e statistiche di hockey su pista. L’accesso è gratuito; alcune funzioni possono richiedere un account o un abbonamento.' },
-      { h: 'Fonti e indipendenza', p: 'I dati sportivi sono ottenuti dalle federazioni nazionali di hockey su pista di Spagna, Portogallo e Italia e la federazione catalana. Stick Live non è affiliata né rappresenta ufficialmente queste entità. Marchi, stemmi e fotografie appartengono ai rispettivi titolari.' },
+      { h: 'Fonti e indipendenza', p: 'Dati: federazioni nazionali di hockey su pista di Spagna, Portogallo e Italia e la federazione catalana. Stick Live non è un sito ufficiale. Non è affiliata né rappresenta ufficialmente queste entità. Marchi, stemmi e fotografie appartengono ai rispettivi titolari.' },
       { h: 'Uso del sito', p: 'Non sono consentiti estrazione massiva dei contenuti, interferenze con il servizio, tentativi di accesso ad aree private o riutilizzo del database per un prodotto concorrente senza autorizzazione.' },
       { h: 'Proprietà intellettuale', p: 'Design, codice e testi propri di Stick Live sono protetti. Dati sportivi, stemmi e marchi di terzi restano dei rispettivi titolari. Citare un dato con un link a questo sito è benvenuto.' },
       { h: 'Responsabilità', p: 'Le informazioni sono fornite con ragionevole diligenza ma possono contenere errori o ritardi della fonte. Non garantiamo disponibilità continua né accuratezza assoluta. I link esterni sono riferimenti e non implicano approvazione.' },
