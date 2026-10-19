@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { track, setPersonProps } from '@/lib/analytics';
 import { enablePush, disablePush, syncPushConfig } from '@/lib/push';
 import { THEME_KEY, NOTIF_KEY, DEVICE_KEY, DEFAULT_NOTIF, type NotifConfig } from './config';
+import { resolveTheme, storedTheme, type ResolvedTheme, type ThemePref } from './theme';
 
 export function useDeviceId(): string {
   const [deviceId, setDeviceId] = useState('');
@@ -23,32 +24,52 @@ export function useDeviceId(): string {
   return deviceId;
 }
 
-export function useDarkMode() {
-  const [isDark,   setIsDark]   = useState(false);
-  const [mounted, setMounted]   = useState(false);
+/** Aplica el tema resuelto al documento (la clase que leen todos los estilos). */
+function applyTheme(theme: ResolvedTheme) {
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+}
+
+/**
+ * Preferencia de tema con tres estados. `system` se guarda como ausencia de
+ * clave, de modo que el script inline del layout resuelve el primer pintado
+ * igual que lo hace este hook.
+ */
+export function useTheme() {
+  const [pref, setPref]       = useState<ThemePref>('system');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    setIsDark(document.documentElement.classList.contains('dark'));
-  }, []);
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const prefNow = storedTheme(localStorage.getItem(THEME_KEY));
+    setPref(prefNow);
+    // Reaplica por si el script de arranque y este hook no coinciden (p. ej.
+    // un valor corrupto o el SO cambió entre el primer pintado y la hidratación).
+    applyTheme(resolveTheme(prefNow, media.matches));
 
-  const toggle = useCallback(() => {
-    setIsDark((prev) => {
-      const next = !prev;
-      track('theme_changed', { dark: next });
-      setPersonProps({ theme: next ? 'dark' : 'light' });
-      if (next) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem(THEME_KEY, 'dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem(THEME_KEY, 'light');
+    // Si la preferencia es "sistema", seguir los cambios del SO en caliente.
+    const onChange = () => {
+      if (storedTheme(localStorage.getItem(THEME_KEY)) === 'system') {
+        applyTheme(resolveTheme('system', media.matches));
       }
-      return next;
-    });
+    };
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
   }, []);
 
-  return { isDark, toggle, mounted };
+  const set = useCallback((next: ThemePref) => {
+    setPref(next);
+    const resolved = resolveTheme(next, window.matchMedia('(prefers-color-scheme: dark)').matches);
+    applyTheme(resolved);
+    try {
+      if (next === 'system') localStorage.removeItem(THEME_KEY);
+      else localStorage.setItem(THEME_KEY, next);
+    } catch { /* almacenamiento no disponible: el tema sigue aplicado en esta sesión */ }
+    track('theme_changed', { theme: next, dark: resolved === 'dark' });
+    setPersonProps({ theme: next });
+  }, []);
+
+  return { pref, set, mounted };
 }
 
 export function useNotifConfig() {
