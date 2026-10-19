@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { getTeamDetail, isApiNotFound } from '@/lib/api/client';
 import { TeamCenterClient } from '@/components/team/TeamCenterClient';
+import { TeamOpponents } from '@/components/team/TeamOpponents';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
@@ -96,6 +97,8 @@ export default async function TeamDetailPage(props: Props) {
       <Breadcrumbs items={crumbs} />
 
       <TeamCenterClient data={data} />
+
+      <TeamOpponents data={data} locale={locale} />
 
       {/* #339: la plantilla vive en un tab client-side, así que el HTML inicial
           no enlazaba ninguna ficha de jugador (`grep /players/` = 0). Esta lista

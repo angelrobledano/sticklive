@@ -21,6 +21,7 @@ import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
+import { previousSeason } from '@/lib/season-nav';
 
 // #351: esta ruta es dinámica (lee `?season=`), así que el HTML no entra en el
 // ISR de Next y Next le pone `private, no-cache, no-store`. Como la ficha es
@@ -39,6 +40,14 @@ const PERMANENT_SEASON: Record<string, string> = {
   pt: 'Ver esta temporada como página permanente',
   fr: 'Voir cette saison comme page permanente',
   it: 'Vedi questa stagione come pagina permanente',
+};
+
+const PREVIOUS_SEASON: Record<string, string> = {
+  es: 'Temporada anterior',
+  en: 'Previous season',
+  pt: 'Temporada anterior',
+  fr: 'Saison précédente',
+  it: 'Stagione precedente',
 };
 
 const DESC: Record<string, (n: string) => string> = {
@@ -153,6 +162,8 @@ export default async function CompetitionPage(props: Props) {
     permanentRedirect(`/${locale}/competitions/${canonicalId}?season=${seasonId}`);
   }
 
+  const previous = previousSeason(seasons, seasonId);
+
   const competitionLd = competitionJsonLd({
     leagueName: data.season.competitionName,
     leagueUrl: `${SITE_URL}/${locale}/competitions/${params.id}`,
@@ -200,6 +211,17 @@ export default async function CompetitionPage(props: Props) {
         <p className="text-center text-xs">
           <Link href={`/seasons/${seasonId}`} className="font-semibold text-rink-passion underline underline-offset-2">
             {PERMANENT_SEASON[locale] ?? PERMANENT_SEASON['en']}
+          </Link>
+        </p>
+      )}
+
+      {previous && (
+        <p className="text-center text-xs">
+          <Link
+            href={`/competitions/${canonicalId}?season=${previous.id}`}
+            className="font-semibold text-rink-passion underline underline-offset-2"
+          >
+            ← {PREVIOUS_SEASON[locale] ?? PREVIOUS_SEASON['en']}: {previous.name}
           </Link>
         </p>
       )}
