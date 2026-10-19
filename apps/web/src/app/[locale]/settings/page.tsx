@@ -389,12 +389,12 @@ export default function SettingsPage() {
           }}
           className="inline-block text-[11px] text-slate-500 dark:text-slate-400 underline hover:text-rink-passion"
         >
-          {t('settings.privacy_entry_title')}
+          {t('ads.privacy_entry_title')}
         </button>
-        <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('settings.privacy_entry_desc')}</p>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('ads.privacy_entry_desc')}</p>
         {consentError && (
           <p role="alert" className="text-[11px] text-red-600 dark:text-red-400">
-            {t('settings.privacy_error')}
+            {t('ads.privacy_error')}
           </p>
         )}
         {(tcfState === 'pending' || tcfState === 'unavailable') && (
@@ -410,7 +410,7 @@ export default function SettingsPage() {
               {t('consent.title')}
             </button>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              {t('settings.analytics_consent_desc')}
+              {t('ads.analytics_consent_desc')}
             </p>
           </>
         )}
