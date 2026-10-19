@@ -133,7 +133,8 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
   const facts = insights ? insights.insights.filter((i) => isRenderable(i, insights)) : [];
   const daily = insights && seed && day ? pickDailyInsight(facts, seed, day) : null;
   const rest = facts.filter((i) => i !== daily);
-  if (!leader && !featured && !topScorer && !daily) return null;
+  const hasDiscipline = Boolean(insights?.discipline && insights.discipline.reds.length > 0);
+  if (!leader && !featured && !topScorer && !daily && !hasDiscipline) return null;
   const tiles = [leader, featured, topScorer].filter(Boolean).length;
 
   // "Campeón" no: en ligas cuyo título se decide en un playoff de otra
