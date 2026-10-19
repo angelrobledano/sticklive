@@ -15,6 +15,7 @@ import * as Sentry from '@sentry/node';
 import { transformMatch } from '../transformers/match.transformer.js';
 import { RefResolver } from './ref-resolver.js';
 import { buildMatchErrorMessage, type MatchLoadError } from './match-error-message.js';
+import { keepPastSynthetic } from './synthetic-policy.js';
 import { isStatusRegression } from '../status-regression.js';
 import { resolveLiveTimeStamps } from '../live-times.js';
 
@@ -304,9 +305,20 @@ export async function loadMatches(
             if (input.scheduledAt) {
               const scheduled = new Date(input.scheduledAt).getTime();
               if (scheduled < Date.now() - 6 * 3_600_000) {
-                log.debug({ item: itemLabel }, 'Placeholder sintético pasado omitido');
-                skipped++;
-                continue;
+                // En eliminatorias el cruce es real aunque la fuente aún no
+                // publique acta (final sin idp): se conserva para el cuadro.
+                const roundType = input.roundId
+                  ? (await db.query<{ round_type: string }>(
+                      `SELECT round_type FROM rounds WHERE id = $1`,
+                      [input.roundId],
+                    )).rows[0]?.round_type ?? null
+                  : null;
+                const hasResult = input.homeScore != null && input.awayScore != null;
+                if (!keepPastSynthetic(roundType, hasResult)) {
+                  log.debug({ item: itemLabel }, 'Placeholder sintético pasado omitido');
+                  skipped++;
+                  continue;
+                }
               }
             }
             // Con fecha: el mismo día. Sin fecha ("nodate"): solo si hay un

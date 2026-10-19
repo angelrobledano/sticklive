@@ -618,12 +618,18 @@ export async function reconcileSyntheticMatches(seasonId: string | null = null):
      SELECT count(DISTINCT old_id)::int AS n FROM del`, scope
   );
   const stale = await db.query(
-    `DELETE FROM matches
-     WHERE source_ref LIKE 'synthetic:%'
-       AND status = 'scheduled'
-       AND scheduled_at < NOW() - INTERVAL '6 hours'
-       AND ($1::uuid IS NULL OR season_id = $1::uuid)
-     RETURNING id`, scope
+    `DELETE FROM matches m
+     WHERE m.source_ref LIKE 'synthetic:%'
+       AND m.status = 'scheduled'
+       AND m.scheduled_at < NOW() - INTERVAL '6 hours'
+       -- Un cruce de eliminatoria sin acta sigue siendo parte del cuadro (la
+       -- final de FECAPA 4858 venía sin idp): se muestra pendiente, no se borra.
+       AND NOT EXISTS (
+         SELECT 1 FROM rounds r
+          WHERE r.id = m.round_id AND r.round_type = 'playoff'
+       )
+       AND ($1::uuid IS NULL OR m.season_id = $1::uuid)
+     RETURNING m.id`, scope
   );
   // Sintéticos DUPLICADOS del mismo cruce y día (la ref incluye la hora, así que
   // un cambio de hora de la fuente creaba una fila nueva y dejaba la vieja).

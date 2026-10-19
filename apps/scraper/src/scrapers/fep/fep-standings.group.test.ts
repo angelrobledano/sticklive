@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isGenericStandingsTitle } from './standings-title.js';
+import { isGenericStandingsTitle, parseGroupTitle } from './standings-title.js';
 
 /**
  * El scraper tomaba el título de la cabecera como nombre de grupo. El título
@@ -25,5 +25,25 @@ describe('isGenericStandingsTitle', () => {
     expect(isGenericStandingsTitle('GRUPO A')).toBe(false);
     expect(isGenericStandingsTitle('Grupo B')).toBe(false);
     expect(isGenericStandingsTitle('Fase final')).toBe(false);
+  });
+});
+
+describe('parseGroupTitle — grupo de la cabecera de una tabla', () => {
+  it('extrae la etiqueta del grupo (FECAPA concatena etiquetas de idioma)', () => {
+    expect(parseGroupTitle('GRUPOGIRONEGROUP GRUP A')).toBe('A');
+    expect(parseGroupTitle('GRUPO GRUP B')).toBe('B');
+    expect(parseGroupTitle('GRUP C')).toBe('C');
+    expect(parseGroupTitle('GROUP A')).toBe('A');
+  });
+
+  it('admite nombres de grupo cortos', () => {
+    expect(parseGroupTitle('GRUPO NORTE')).toBe('NORTE');
+  });
+
+  it('no confunde un título de fase con un grupo', () => {
+    expect(parseGroupTitle('FASE DE GRUPS FRIT RAVICH LLIGA CATALANA')).toBeUndefined();
+    expect(parseGroupTitle('FASES FINALS FRIT RAVICH LLIGA CATALANA')).toBeUndefined();
+    expect(parseGroupTitle('GROUP PHASE')).toBeUndefined();
+    expect(parseGroupTitle('CLASIFICACIÓN')).toBeUndefined();
   });
 });

@@ -530,11 +530,11 @@ export function parsePhaseTitle(raw: string | null | undefined): PhaseTitleInfo 
 
   const isPlacement = PLACE_RANGE.test(u)
     || /PUESTOS|PLACE\b|POSITION|CONSOLACI|PLAY ?OUT|PERMANENCIA|DESCENSO/.test(u);
-  const group = u.match(/\b(?:GRUPOS?|GROUPS?|GRUPPO|GRUP)\s+([A-Z0-9]{1,2})$/);
+  const group = u.match(/\b(?:GRUPOS?|GRUPS?|GROUPS?|GRUPPO|GRUP)\s+([A-Z0-9]{1,2})$/);
 
   let kindHint: PhaseKind | null = null;
-  if (group || /\bGRUPOS?\b|\bGROUPS?\b|\bGRUPPO\b|\bGRUP\b/.test(u)) kindHint = 'groups';
-  else if (/PLAY ?OFF|PLAY ?OUT|KNOCKOUT|FINAL (?:PHASE|STAGE)|FASE FINAL|ELIMINATORI|FINAL ?(?:FOUR|4|EIGHT|8)\b/.test(u)) kindHint = 'knockout';
+  if (group || /\bGRUPOS?\b|\bGRUPS?\b|\bGROUPS?\b|\bGRUPPO\b|\bGRUP\b/.test(u)) kindHint = 'groups';
+  else if (/PLAY ?OFF|PLAY ?OUT|KNOCKOUT|FINAL (?:PHASE|STAGE)|FASES? FINALS?|ELIMINATORI|FINAL ?(?:FOUR|4|EIGHT|8)\b/.test(u)) kindHint = 'knockout';
   else if (/LIGA REGULAR|LLIGA REGULAR|FASE REGULAR|REGULAR SEASON|TEMPORADA REGULAR|LIGUILLA/.test(u)) kindHint = 'league';
   else if (isPlacement && /PLACE|POSITION|PUESTOS/.test(u)) kindHint = 'knockout';
 

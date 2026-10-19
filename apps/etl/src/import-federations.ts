@@ -73,6 +73,13 @@ async function main() {
   const args = process.argv.slice(2);
   const doRun = args.includes('--run');
   const only = args.find((a) => a.startsWith('--only='))?.split('=')[1];
+  // Alta puntual: limita la siembra/carga a uno o varios idc del catálogo
+  // (p. ej. una liga terminada que solo queremos publicar, sin re-importar
+  // todas las competiciones de la federación).
+  const onlyIdc = args.find((a) => a.startsWith('--only-idc='))?.split('=')[1];
+  if (onlyIdc && !/^\d+(,\d+)*$/.test(onlyIdc)) {
+    throw new Error(`--only-idc inválido: "${onlyIdc}" (usa ids separados por coma)`);
+  }
 
   const feds = FEDERATIONS.filter((f) => !only || f.prefix === only);
   mkdirSync(CATALOG_DIR, { recursive: true });
@@ -96,7 +103,7 @@ async function main() {
 
       // 2/3. Siembra (+ scraping con --run) — reutiliza import-history
       execSync(
-        `npx tsx src/import-history.ts --catalog=${catalogPath} --org=${fed.org} --region=${fed.region}${doRun ? ' --run' : ''}`,
+        `npx tsx src/import-history.ts --catalog=${catalogPath} --org=${fed.org} --region=${fed.region}${onlyIdc ? ` --only-idc=${onlyIdc}` : ''}${doRun ? ' --run' : ''}`,
         {
           cwd: HERE.replace(/src$/, ''),
           stdio: 'inherit',

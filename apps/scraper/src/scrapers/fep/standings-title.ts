@@ -21,3 +21,29 @@ const GENERIC_STANDINGS_TITLES = new Set([
 export function isGenericStandingsTitle(raw: string): boolean {
   return GENERIC_STANDINGS_TITLES.has(normalizeTitle(raw));
 }
+
+// Palabras que acompañan a "GRUPO" pero no lo identifican ("GROUP PHASE").
+const NON_GROUP_NAMES = new Set([
+  'PHASE', 'FASE', 'STAGE', 'ETAPA', 'FINAL', 'FINALS', 'GRUPO', 'GRUP', 'GROUP',
+]);
+
+/**
+ * Nombre del grupo a partir de la cabecera de UNA tabla de clasificación.
+ *
+ * FECAPA titula cada tabla «GRUPO GRUP A» (las etiquetas de idioma se
+ * concatenan), mientras que el título de fase «FASE DE GRUPS…» NO identifica
+ * un grupo. Devuelve solo la etiqueta («A», «NORTE») para que la web pinte
+ * «Grupo A», igual que el grupo de una fase («GRUPO A» → `A`).
+ */
+export function parseGroupTitle(raw: string): string | undefined {
+  const u = normalizeTitle(raw);
+  const re = /\b(?:GRUPOS?|GRUPS?|GRUP|GROUP)\b/g;
+  let end = -1;
+  for (let m = re.exec(u); m; m = re.exec(u)) end = m.index + m[0].length;
+  if (end < 0) return undefined;
+  const name = u.slice(end).trim();
+  if (!name || NON_GROUP_NAMES.has(name)) return undefined;
+  // Letra/número de grupo ("A", "B2") o nombre corto ("NORTE", "SUR").
+  if (!/^[A-Z0-9]{1,2}$/.test(name) && !/^[A-Z]{3,12}$/.test(name)) return undefined;
+  return name;
+}

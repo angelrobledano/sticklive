@@ -7,7 +7,7 @@ import { FepBaseScraper } from './fep-base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
 import { isByeTeamName } from './bye-team.js';
-import { isGenericStandingsTitle } from './standings-title.js';
+import { isGenericStandingsTitle, parseGroupTitle } from './standings-title.js';
 import type { ScrapedStanding } from '@sports/shared-types';
 
 const BASE_URL = 'https://www.server2.sidgad.es/rfep';
@@ -40,60 +40,67 @@ export class FepStandingsScraper extends FepBaseScraper<ScrapedStanding> {
     return this.parseStandings(html, idc);
   }
 
-  private parseStandings(html: string, idc: string): ScrapedStanding[] {
+  /**
+   * Parser del HTML de clasificación, común a todos los portales sidgad.
+   *
+   * Público para poder fijarlo con HTML real en tests sin hacer red.
+   *
+   * - FEP publica `tabla_standard tabla_clasif`; FECAPA solo `tabla_standard`.
+   * - FECAPA mete varios grupos en la MISMA respuesta y el grupo está en la
+   *   cabecera de cada tabla («GRUPO GRUP A»), no en el título de fase. Cuando
+   *   hay cabeceras de grupo se ignoran las tablas sin grupo (la clasificación
+   *   de la fase final, que no es una liguilla).
+   */
+  parseStandings(html: string, idc: string): ScrapedStanding[] {
     const $ = cheerio.load(html);
     const standings: ScrapedStanding[] = [];
     const scrapedAt = new Date();
     const sourceUrl = `${BASE_URL}/rfep_clasif_idc_${idc}_1.php`;
-    let currentGroupName: string | undefined;
 
-    $('body').children().each((_, node) => {
+    // Recorre títulos y tablas en orden de documento (selector unión: cada nodo
+    // aparece una sola vez aunque la tabla tenga ambas clases).
+    const tables: Array<{ table: Element; groupName?: string; phaseTitle?: string }> = [];
+    let currentPhaseTitle: string | undefined;
+    $('div.div_titulo_fase_idc, table.tabla_clasif, table.tabla_standard').each((_, node) => {
       const $node = $(node);
-
-      if ($node.hasClass('div_titulo_fase_idc') || $node.is('.div_titulo_fase_idc')) {
+      if ($node.is('div.div_titulo_fase_idc')) {
         const rawText = $node.find('.lang_label.lang_es').first().text().trim()
           || $node.text().trim();
-        // Sólo es un GRUPO real si el título no es el genérico de la tabla. El
-        // filtro anterior comparaba sin normalizar tildes ('CLASIFICACIÓN' !==
-        // 'CLASIFICACION'), así que el título genérico se colaba como grupo y la
-        // web pintaba "Grupo CLASIFICACIÓN" perdiendo las zonas de playoff.
-        if (rawText && !isGenericStandingsTitle(rawText)) {
-          currentGroupName = rawText;
-        }
+        currentPhaseTitle = rawText || undefined;
+        return;
       }
-
-      if ($node.is('table.tabla_clasif') || $node.find('table.tabla_clasif').length > 0) {
-        const $table = $node.is('table.tabla_clasif')
-          ? $node
-          : $node.find('table.tabla_clasif').first();
-
-        $table.find('tbody tr').each((_, row) => {
-          const $row = $(row);
-          const cells = $row.find('td');
-          if (cells.length < 10) return;
-          try {
-            const standing = this.parseStandingRow($, $row, cells, { groupName: currentGroupName, sourceUrl, scrapedAt });
-            if (standing) standings.push(standing);
-          } catch (err) {
-            this.captureError(this.parseErrors, err, { entityRef: `row_${cells.eq(2).text().trim() || 'unknown'}` });
-          }
-        });
-      }
+      tables.push({
+        table: node as Element,
+        groupName: parseGroupTitle(tableHeaderText($, node)),
+        phaseTitle: currentPhaseTitle,
+      });
     });
 
-    if (standings.length === 0) {
-      $('table.tabla_clasif').each((tableIdx, table) => {
-        $(table).find('tbody tr').each((_, row) => {
-          const $row = $(row);
-          const cells = $row.find('td');
-          if (cells.length < 10) return;
-          try {
-            const standing = this.parseStandingRow($, $row, cells, { groupName: undefined, sourceUrl, scrapedAt });
-            if (standing) standings.push(standing);
-          } catch (err) {
-            this.captureError(this.parseErrors, err, { entityRef: `table${tableIdx}_row_${cells.eq(2).text().trim() || 'unknown'}` });
-          }
-        });
+    // Si alguna tabla declara grupo en su cabecera, es una competición con
+    // grupos: solo esas tablas son clasificación de grupo.
+    const hasHeaderGroups = tables.some((t) => !!t.groupName);
+
+    for (const entry of tables) {
+      let groupName = entry.groupName;
+      if (!groupName && !hasHeaderGroups) {
+        // Fuentes de una sola tabla: el grupo (si existe) viene del título de
+        // fase, nunca del genérico "CLASIFICACIÓN".
+        if (entry.phaseTitle && !isGenericStandingsTitle(entry.phaseTitle)) {
+          groupName = entry.phaseTitle;
+        }
+      }
+      if (hasHeaderGroups && !groupName) continue;
+
+      $(entry.table).find('tbody tr').each((_, row) => {
+        const $row = $(row);
+        const cells = $row.find('td');
+        if (cells.length < 10) return;
+        try {
+          const standing = this.parseStandingRow($, $row, cells, { groupName, sourceUrl, scrapedAt });
+          if (standing) standings.push(standing);
+        } catch (err) {
+          this.captureError(this.parseErrors, err, { entityRef: `row_${cells.eq(2).text().trim() || 'unknown'}` });
+        }
       });
     }
 
@@ -173,12 +180,27 @@ function parseStatInt(text: string): number {
   return isNaN(n) ? 0 : n;
 }
 
+/** Texto de la primera cabecera de la tabla en el idioma activo (es). */
+function tableHeaderText($: cheerio.CheerioAPI, table: Element): string {
+  const $th = $(table).find('thead th').first();
+  if (!$th.length) return '';
+  const $clone = $th.clone();
+  if ($clone.find('.lang_label').length > 0) $clone.find('.lang_label').not('.lang_es').remove();
+  return $clone.text().replace(/\s+/g, ' ').trim();
+}
+
 function resolveLogoUrl(src: string): string | null {
   if (!src) return null;
+  // Colapsa barras duplicadas sin romper el esquema (https://).
+  const normalized = src.replace(/([^:])\/{2,}/g, '$1/');
+  // FECAPA (y otros portales) ya entrega la URL absoluta de SU CDN; hay que
+  // conservarla tal cual. Antes se reescribía a la base rfep y el escudo
+  // apuntaba a un fichero inexistente.
+  if (/^https?:\/\//i.test(normalized)) return normalized;
   try {
     // Si el src es una ruta relativa como "../../images/logos_clubes/shum.png"
     // resolvemos contra BASE_URL para obtener el filename, luego redirigimos a sidgad.cloud
-    const resolved = new URL(src, `${BASE_URL}/`).href;
+    const resolved = new URL(normalized, `${BASE_URL}/`).href;
     const filename = resolved.split('/').pop();
     if (filename) return `${LOGO_CDN_BASE}/${filename}`;
     return resolved;

@@ -81,6 +81,11 @@ describe('parsePhaseTitle — títulos de fase de la fuente', () => {
     expect(parsePhaseTitle('GROUP PHASE')).toEqual({ kindHint: 'groups', isPlacement: false, groupName: null });
     expect(parsePhaseTitle('GRUPO A')).toEqual({ kindHint: 'groups', isPlacement: false, groupName: 'A' });
     expect(parsePhaseTitle('FINAL PHASE')).toEqual({ kindHint: 'knockout', isPlacement: false, groupName: null });
+    // FECAPA (catalán): "GRUPS" no es "GRUPOS"; sin esto la fase caía a liga.
+    expect(parsePhaseTitle('FASE DE GRUPS FRIT RAVICH LLIGA CATALANA'))
+      .toEqual({ kindHint: 'groups', isPlacement: false, groupName: null });
+    expect(parsePhaseTitle('FASES FINALS FRIT RAVICH LLIGA CATALANA'))
+      .toEqual({ kindHint: 'knockout', isPlacement: false, groupName: null });
     expect(parsePhaseTitle('KNOCKOUT STAGE')).toEqual({ kindHint: 'knockout', isPlacement: false, groupName: null });
     expect(parsePhaseTitle('FINAL FOUR')).toEqual({ kindHint: 'knockout', isPlacement: false, groupName: null });
     expect(parsePhaseTitle('LIGA REGULAR')).toEqual({ kindHint: 'league', isPlacement: false, groupName: null });

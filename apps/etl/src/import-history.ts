@@ -214,8 +214,13 @@ async function main() {
       (await db.query(`SELECT 1 FROM teams WHERE sport_id = $1 AND slug = $2`, [sportId, sl])).rows.length > 0;
 
     for (const team of comp.teams) {
+      // El CDN es por portal (`/rfep/`, `/fecapa/`, `/fmp/`…). El catálogo
+      // solo guarda el fichero; el prefijo sale de SIDGAD_PORTAL (lo fija
+      // import-federations). Antes se hardcodeaba rfep y los escudos de las
+      // federaciones apuntaban a un 404.
+      const portal = process.env['SIDGAD_PORTAL'] ?? 'rfep';
       const logoUrl = team.logo && team.logo !== 'default.png'
-        ? `https://sidgad.cloud/rfep/images//logos_clubes/${team.logo}`
+        ? `https://sidgad.cloud/${portal}/images/logos_clubes/${team.logo.replace(/^\/+/, '')}`
         : null;
 
       // a) ¿existe ya un equipo con este ref? (source_ref o alt_source_refs)
