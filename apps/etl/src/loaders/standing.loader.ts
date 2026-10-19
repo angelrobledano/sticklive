@@ -1,4 +1,4 @@
-import { upsertStanding, updateTeamLogoUrl, withTransaction, insertScrapeLog, findTeamInSeasonByName, getSeasonSignals, type EntitySignals } from '@sports/db';
+﻿import { upsertStanding, updateTeamLogoUrl, withTransaction, insertScrapeLog, findTeamInSeasonByName, getSeasonSignals, type EntitySignals } from '@sports/db';
 import type { ScrapedStanding, ScrapeResult } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { RefResolver } from './ref-resolver.js';
@@ -90,6 +90,10 @@ export async function loadStandings(
         resolved.push({ raw, teamId });
       }
       resolved.sort((a, b) => a.teamId.localeCompare(b.teamId));
+      if (resolved.length === 0) {
+        log.debug({ group: groupName }, 'Grupo de clasificacion solo con byes');
+        continue;
+      }
 
       let attempt = 0;
       for (;;) {
@@ -135,6 +139,19 @@ export async function loadStandings(
 
               attempted++;
             }
+
+            // La clasificación es una foto completa del grupo: las filas de
+            // equipos que ya no aparecen en la fuente son residuos de una
+            // temporada anterior (a veces con otro team_id para el mismo
+            // nombre). Sin este borrado quedan duplicados visibles.
+            const groupKey = groupName === '_default' ? null : groupName;
+            await client.query(
+              `DELETE FROM standings
+                WHERE season_id = $1
+                  AND COALESCE(group_name, '') = COALESCE($2, '')
+                  AND NOT (team_id = ANY($3::uuid[]))`,
+              [seasonId, groupKey, resolved.map((r) => r.teamId)],
+            );
           });
           upserted += attempted;
           break;
