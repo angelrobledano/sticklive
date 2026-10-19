@@ -12,6 +12,8 @@ import {
   type SeasonStats,
 } from '@/lib/api/client';
 import { CompetitionClient } from '@/components/competition/CompetitionClient';
+import { CompetitionSummary } from '@/components/competition/CompetitionSummary';
+import { buildCompetitionSummary } from '@/lib/content-summary';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
@@ -164,6 +166,9 @@ export default async function CompetitionPage(props: Props) {
 
       <BackLink href="/competitions" />
       <Breadcrumbs items={crumbs} />
+
+      {/* F4-2: resumen server-rendered con datos reales, antes de las pestañas. */}
+      <CompetitionSummary data={buildCompetitionSummary(data, stats)} locale={locale} />
 
       <CompetitionClient data={data} seasons={seasons} competitionId={params.id} stats={stats} />
     </div>

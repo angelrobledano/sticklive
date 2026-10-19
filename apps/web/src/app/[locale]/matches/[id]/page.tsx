@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
-import { getMatchDetail, isApiNotFound } from '@/lib/api/client';
+import { getMatchDetail, getSeasonOverview, isApiNotFound } from '@/lib/api/client';
 import { MatchCenterClient } from '@/components/match/MatchCenterClient';
+import { MatchPreview } from '@/components/match/MatchPreview';
+import { buildMatchPreview } from '@/lib/content-summary';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
@@ -101,6 +103,20 @@ export default async function MatchDetailPage(props: Props) {
     venue: m.venue,
   });
 
+  // F4-1: previa con datos reales para partidos aún no jugados. La API de
+  // temporada ya está cacheada 120 s; si falla, la ficha sigue funcionando.
+  const preview = (m.status === 'scheduled' || m.status === 'postponed') && m.homeTeam?.id && m.awayTeam?.id
+    ? await getSeasonOverview(m.seasonId)
+        .then((overview) => buildMatchPreview(overview, {
+          matchId: m.id,
+          homeTeamId: m.homeTeam!.id,
+          awayTeamId: m.awayTeam!.id,
+          homeName,
+          awayName,
+        }))
+        .catch(() => null)
+    : null;
+
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
       <JsonLd data={jsonLd} />
@@ -109,6 +125,8 @@ export default async function MatchDetailPage(props: Props) {
       {/* Navegacion de vuelta: el fallback es la competición del partido (#182) */}
       <BackLink href={m.competitionId ? `/competitions/${m.competitionId}` : '/'} />
       <Breadcrumbs items={crumbs} />
+
+      {preview && <MatchPreview data={preview} locale={locale} />}
 
       {/* Match Center */}
       <MatchCenterClient data={data} />
