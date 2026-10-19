@@ -68,6 +68,33 @@ export interface MatchPreview {
   cross: CrossMetric[];
 }
 
+/** Último partido anterior entre los dos equipos, para enlazar fichas jugadas. */
+export function buildPreviousMeeting(
+  overview: SeasonOverview,
+  input: { matchId: string; homeTeamId: string; awayTeamId: string; date: string | null },
+): HeadToHeadMatch | null {
+  const current = input.date ? new Date(input.date).getTime() : Date.now();
+  const previous = overview.matches
+    .filter((m) => m.id !== input.matchId && m.status === 'finished')
+    .filter((m) =>
+      (m.homeTeam.id === input.homeTeamId && m.awayTeam.id === input.awayTeamId)
+      || (m.homeTeam.id === input.awayTeamId && m.awayTeam.id === input.homeTeamId))
+    .filter((m) => {
+      const date = matchDate(m);
+      return !date || new Date(date).getTime() < current;
+    })
+    .sort((a, b) => String(matchDate(b) ?? '').localeCompare(String(matchDate(a) ?? '')))[0];
+  if (!previous) return null;
+  return {
+    id: previous.id,
+    date: matchDate(previous),
+    homeName: previous.homeTeam.name,
+    awayName: previous.awayTeam.name,
+    homeScore: previous.score.home,
+    awayScore: previous.score.away,
+  };
+}
+
 function recentFromTeam(m: TeamRecentMatch, teamId: string): RecentMatch {
   const isHome = m.homeTeamId === teamId;
   const goalsFor = isHome ? m.homeScore : m.awayScore;

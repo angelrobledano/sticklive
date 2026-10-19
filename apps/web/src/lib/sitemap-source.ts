@@ -47,6 +47,6 @@ export async function fetchSitemapIds(): Promise<SitemapIds> {
   try {
     return await fetchSitemapIdsStrict();
   } catch {
-    return { competitions: [], teams: [], players: [], matches: [] };
+    return { competitions: [], teams: [], players: [], seasons: [], matches: [] };
   }
 }

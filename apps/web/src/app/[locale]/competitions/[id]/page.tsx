@@ -19,6 +19,7 @@ import { buildCompetitionSummary } from '@/lib/content-summary';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 
 // #351: esta ruta es dinámica (lee `?season=`), así que el HTML no entra en el
 // ISR de Next y Next le pone `private, no-cache, no-store`. Como la ficha es
@@ -30,6 +31,14 @@ interface Props {
   params: Promise<{ locale: string; id: string }>;
   searchParams: Promise<{ season?: string }>;
 }
+
+const PERMANENT_SEASON: Record<string, string> = {
+  es: 'Ver esta temporada como página permanente',
+  en: 'View this season as a permanent page',
+  pt: 'Ver esta temporada como página permanente',
+  fr: 'Voir cette saison comme page permanente',
+  it: 'Vedi questa stagione come pagina permanente',
+};
 
 const DESC: Record<string, (n: string) => string> = {
   es: (n) => `${n}: clasificación, calendario, resultados, playoffs y estadísticas de hockey patines en Stick Live.`,
@@ -183,6 +192,16 @@ export default async function CompetitionPage(props: Props) {
           />
         }
       />
+
+      {/* F4-5: una temporada cerrada tiene URL permanente propia. */}
+      {data.matches.some((m) => m.status === 'finished')
+        && !data.matches.some((m) => ['scheduled', 'live', 'halftime', 'overtime', 'penalty_shootout'].includes(m.status)) && (
+        <p className="text-center text-xs">
+          <Link href={`/seasons/${seasonId}`} className="font-semibold text-rink-passion underline underline-offset-2">
+            {PERMANENT_SEASON[locale] ?? PERMANENT_SEASON['en']}
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

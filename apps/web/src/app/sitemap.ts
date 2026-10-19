@@ -32,7 +32,7 @@ export default async function sitemap(props: { id: string | Promise<string> }): 
   // `core` no depende de la API. Las secciones de entidad usan la fuente
   // estricta (F1-8): si la API falla, la respuesta es 5xx y no una lista vacía.
   const ids = id === 'core'
-    ? { competitions: [], teams: [], players: [], matches: [] }
+    ? { competitions: [], teams: [], players: [], seasons: [], matches: [] }
     : await fetchSitemapIdsStrict();
   // #337: el lastmod sale de los datos de cada entidad (updatedAt/finishedAt/
   // scheduledAt), no de `new Date()`. Si una entrada no trae fecha, se omite el

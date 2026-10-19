@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import { notFound } from 'next/navigation';
 import '../globals.css';
 import { BottomNav } from '@/components/layout/BottomNav';
+import { SiteFooter } from '@/components/layout/SiteFooter';
 import { PwaSetup } from '@/components/layout/PwaSetup';
 import { AuthUpsell } from '@/components/shared/AuthUpsell';
 import { I18nProvider } from '@/lib/i18n';
@@ -156,6 +157,7 @@ export default async function RootLayout({ children, params }: Props) {
           </div>
 
           {/* Bottom Nav — solo visible en móvil */}
+          <SiteFooter locale={locale} />
           <BottomNav />
 
           {/* Sheet de conversión a cuenta (se dispara al 3er favorito anónimo) */}

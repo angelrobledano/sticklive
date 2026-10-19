@@ -3,7 +3,8 @@ import { getMatchDetail, getSeasonOverview, getTeamDetail, getTeamRecent, isApiN
 import { MatchCenterClient } from '@/components/match/MatchCenterClient';
 import { MatchPreview } from '@/components/match/MatchPreview';
 import { MatchChronicle } from '@/components/match/MatchChronicle';
-import { buildMatchPreview } from '@/lib/content-summary';
+import { PreviousMeeting } from '@/components/match/PreviousMeeting';
+import { buildMatchPreview, buildPreviousMeeting } from '@/lib/content-summary';
 import { buildMatchChronicle } from '@/lib/match-chronicle';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
@@ -134,6 +135,18 @@ export default async function MatchDetailPage(props: Props) {
         .catch(() => null)
     : null;
 
+  // F5-4: enlace al último enfrentamiento anterior entre los dos equipos.
+  const previousMeeting = m.status === 'finished' && m.homeTeam?.id && m.awayTeam?.id
+    ? await getSeasonOverview(m.seasonId)
+        .then((overview) => buildPreviousMeeting(overview, {
+          matchId: m.id,
+          homeTeamId: m.homeTeam!.id,
+          awayTeamId: m.awayTeam!.id,
+          date: m.finishedAt ?? m.scheduledAt,
+        }))
+        .catch(() => null)
+    : null;
+
   // C3: crónica de hechos verificables del acta (remontada, hat-trick, etc.).
   const chronicle = buildMatchChronicle({
     status: m.status,
@@ -163,6 +176,7 @@ export default async function MatchDetailPage(props: Props) {
       <MatchCenterClient data={data} />
 
       <MatchChronicle facts={chronicle} locale={locale} teams={chronicleTeams} />
+      <PreviousMeeting match={previousMeeting} locale={locale} />
     </div>
   );
 }

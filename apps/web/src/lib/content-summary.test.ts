@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { SeasonOverview } from '@/lib/api/types';
-import { buildCompetitionSummary, buildCrossMetrics, buildMatchPreview, buildTeamObservations } from './content-summary';
+import { buildCompetitionSummary, buildCrossMetrics, buildMatchPreview, buildPreviousMeeting, buildTeamObservations } from './content-summary';
 
 function match(overrides: Partial<SeasonOverview['matches'][number]> = {}): SeasonOverview['matches'][number] {
   return {
@@ -198,5 +198,19 @@ describe('C9: observaciones y n�meros del cruce', () => {
     expect(cross.find((m) => m.key === 'minutes_goal')).toMatchObject({ home: 17, away: 17, unit: 'minutes' });
     expect(cross.find((m) => m.key === 'fouls')).toMatchObject({ home: 8, away: 8 });
     expect(cross.find((m) => m.key === 'penalty_pct')).toMatchObject({ home: 75, away: 75 });
+  });
+});
+
+describe('F5-4: enlace al partido anterior', () => {
+  it('elige el enfrentamiento anterior de los mismos equipos', () => {
+    expect(buildPreviousMeeting(overview, {
+      matchId: 'current', homeTeamId: 'h', awayTeamId: 'a', date: '2026-10-20T18:00:00Z',
+    })).toMatchObject({ id: 'prev', homeName: 'Visitante', awayName: 'Local' });
+  });
+
+  it('no inventa un anterior si no existe', () => {
+    expect(buildPreviousMeeting(overview, {
+      matchId: 'prev', homeTeamId: 'h', awayTeamId: 'a', date: '2026-10-01T18:00:00Z',
+    })).toBeNull();
   });
 });

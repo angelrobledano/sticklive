@@ -17,7 +17,7 @@ metaRouter.get('/sitemap', async (c) => {
     // #337: se devuelven también las fechas de DATOS para que el sitemap emita un
     // `lastmod` real (no el timestamp de generación). El cliente tolera ambas
     // formas (id suelto u objeto) por retrocompatibilidad.
-    const [comps, teams, players, matches] = await Promise.all([
+    const [comps, teams, players, matches, seasons] = await Promise.all([
       db.query<{ id: string; updated_at: Date }>(`
         SELECT c.id, c.updated_at
           FROM competitions c
@@ -37,14 +37,15 @@ metaRouter.get('/sitemap', async (c) => {
       db.query<{ id: string; updated_at: Date }>(`
         SELECT t.id, t.updated_at
           FROM teams t
-         WHERE EXISTS (
-           SELECT 1 FROM matches m
+         WHERE (
+           SELECT count(*)
+             FROM matches m
              JOIN seasons s      ON s.id = m.season_id
              JOIN competitions c ON c.id = s.competition_id
             WHERE (m.home_team_id = t.id OR m.away_team_id = t.id)
               AND s.data_quality = 'ok'
               AND c.data_quality = 'ok'
-         )
+         ) >= 3
       `),
       // F1-4: jugadores con alineación en una competición de máxima categoría
       // (`competitions.top_tier`, migración 074 — decisión de producto del
@@ -53,8 +54,9 @@ metaRouter.get('/sitemap', async (c) => {
       db.query<{ id: string; updated_at: Date }>(`
         SELECT p.id, p.updated_at
           FROM players p
-         WHERE EXISTS (
-           SELECT 1 FROM match_lineups ml
+         WHERE (
+           SELECT count(DISTINCT ml.match_id)
+             FROM match_lineups ml
              JOIN matches m      ON m.id = ml.match_id
              JOIN seasons s      ON s.id = m.season_id
              JOIN competitions c ON c.id = s.competition_id
@@ -62,9 +64,7 @@ metaRouter.get('/sitemap', async (c) => {
               AND c.top_tier
               AND s.data_quality = 'ok'
               AND c.data_quality = 'ok'
-         )
-         ORDER BY p.id
-         LIMIT 10000
+         ) >= 8
       `),
       // F1-4: partidos de los últimos 60 días y de los próximos 14. Los que están
       // a meses vista solo tienen equipos y hora: entran en el sitemap cuando se
@@ -81,6 +81,26 @@ metaRouter.get('/sitemap', async (c) => {
          ORDER BY m.scheduled_at DESC
          LIMIT 3000
       `),
+      // F4-5: temporadas cerradas y verificadas con URL permanente indexable.
+      // No entran las que aún tienen partidos pendientes ni las ocultas.
+      db.query<{ id: string; updated_at: Date }>(`
+        SELECT s.id, s.updated_at
+          FROM seasons s
+          JOIN competitions c ON c.id = s.competition_id
+         WHERE s.data_quality = 'ok'
+           AND c.data_quality = 'ok'
+           AND c.archived_at IS NULL
+           AND NOT s.is_current
+           AND EXISTS (
+             SELECT 1 FROM matches m
+              WHERE m.season_id = s.id AND m.status = 'finished'
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM matches m
+              WHERE m.season_id = s.id
+                AND m.status IN ('scheduled', 'live', 'halftime', 'overtime', 'penalty_shootout')
+           )
+      `),
     ]);
 
     // F1-8: memoria de la última generación. La caída > 20 % se avisa a Sentry,
@@ -90,6 +110,7 @@ metaRouter.get('/sitemap', async (c) => {
       teams: teams.rows.length,
       players: players.rows.length,
       matches: matches.rows.length,
+      seasons: seasons.rows.length,
     };
     const total = Object.values(sections).reduce((sum, value) => sum + value, 0);
     try {
@@ -121,6 +142,7 @@ metaRouter.get('/sitemap', async (c) => {
       competitions: comps.rows.map((r) => ({ id: r.id, updatedAt: r.updated_at })),
       teams:        teams.rows.map((r) => ({ id: r.id, updatedAt: r.updated_at })),
       players:      players.rows.map((r) => ({ id: r.id, updatedAt: r.updated_at })),
+      seasons:      seasons.rows.map((r) => ({ id: r.id, updatedAt: r.updated_at })),
       matches:      matches.rows.map((r) => ({
         id: r.id, updatedAt: r.updated_at, finishedAt: r.finished_at, scheduledAt: r.scheduled_at,
       })),

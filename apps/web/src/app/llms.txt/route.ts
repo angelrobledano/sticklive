@@ -47,6 +47,9 @@ export function GET(): Response {
 
 ## Política
 
+- [Sobre Stick Live](${SITE_URL}/es/about)
+- [Contacto](${SITE_URL}/es/contact)
+- [Aviso legal](${SITE_URL}/es/legal)
 - [Privacidad](${SITE_URL}/es/privacy)
 - No se publican datos personales de menores más allá de lo que ya aparece en
   las fuentes deportivas oficiales.

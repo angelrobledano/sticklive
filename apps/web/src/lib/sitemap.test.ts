@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 import {
   sitemapSectionIds,
   sitemapEntries,
@@ -14,6 +14,7 @@ const ids = (o: Partial<SitemapIds> = {}): SitemapIds => ({
   competitions: o.competitions ?? [],
   teams: o.teams ?? [],
   players: o.players ?? [],
+  seasons: o.seasons ?? [],
   matches: o.matches ?? [],
 });
 
@@ -25,6 +26,13 @@ describe('sitemapSectionIds', () => {
   it('crea una sección por tipo con datos', () => {
     expect(sitemapSectionIds(ids({ competitions: ['c'], teams: ['a'] })))
       .toEqual(['core', 'competitions-0', 'teams-0']);
+  });
+
+  it('incluye las temporadas cerradas como sección propia (F4-5)', () => {
+    expect(sitemapSectionIds(ids({ seasons: ['s1'] })))
+      .toEqual(['core', 'seasons-0']);
+    expect(sitemapEntries('seasons-0', ids({ seasons: ['s1'] })))
+      .toEqual([{ path: '/seasons/s1' }]);
   });
 
   it('trocea las listas grandes y el trozo queda por debajo del límite de Google', () => {
@@ -41,6 +49,9 @@ describe('sitemapEntries', () => {
     expect(sitemapEntries('core', ids())).toEqual([
       { path: '' },
       { path: '/competitions' },
+      { path: '/about' },
+      { path: '/contact' },
+      { path: '/legal' },
       { path: '/privacy' },
     ]);
   });

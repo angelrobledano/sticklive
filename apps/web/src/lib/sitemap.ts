@@ -34,6 +34,8 @@ export interface SitemapIds {
   competitions: SitemapId[];
   teams: SitemapId[];
   players: SitemapId[];
+  /** Temporadas cerradas con página permanente (F4-5). */
+  seasons: SitemapId[];
   matches: SitemapId[];
 }
 
@@ -76,6 +78,7 @@ const ENTITY_META: Record<string, { prefix: string }> = {
   competitions: { prefix: '/competitions' },
   teams: { prefix: '/teams' },
   players: { prefix: '/players' },
+  seasons: { prefix: '/seasons' },
 };
 
 /**
@@ -126,6 +129,9 @@ export function sitemapEntries(section: string, ids: SitemapIds): SitemapEntry[]
     return [
       { path: '' },
       { path: '/competitions' },
+      { path: '/about' },
+      { path: '/contact' },
+      { path: '/legal' },
       // Página pública indexable que faltaba en el sitemap.
       { path: '/privacy' },
     ];
