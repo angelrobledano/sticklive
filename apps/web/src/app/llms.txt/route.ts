@@ -1,4 +1,4 @@
-import { SITE_URL } from '@/lib/seo';
+﻿import { SITE_URL } from '@/lib/seo';
 
 /**
  * `/llms.txt` — resumen del sitio para agentes y modelos.
@@ -14,7 +14,7 @@ export function GET(): Response {
   const body = `# Stick Live
 
 > Resultados, estadísticas y alineaciones de hockey sobre patines en directo.
-> Cubre competiciones de la RFEP y World Skate Europe, con datos actualizados
+> Cubre competiciones de las federaciones nacionales de hockey patines de España, Portugal e Italia y de la federación catalana, con datos actualizados
 > al segundo durante los partidos.
 
 ## Qué ofrece
