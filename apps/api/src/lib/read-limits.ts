@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Rutas con rate-limit de lectura (I1) en un único sitio, para poder testearlas.
  *
  * #333: `/matches/current` y `/matches/live` se registraban ADEMÁS con
@@ -22,7 +22,9 @@ export const READ_LIMIT_PATHS: readonly string[] = [
   '/seasons/:id/stats',
   '/seasons/:id/insights',
   '/teams/:id',
+  '/teams/:id/recent',
   '/players/:id',
+  '/players/:id/insights',
   '/competitions',
   '/search',
   '/seasons/:id/matches',

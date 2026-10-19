@@ -1,11 +1,11 @@
-import type { ReactNode } from 'react';
+﻿import type { ReactNode } from 'react';
 import type { CompetitionSummary as CompetitionSummaryData } from '@/lib/content-summary';
 import type { SeasonInsights } from '@/lib/api/types';
 import { isRenderable, pickDailyInsight, renderInsight, type InsightPart } from '@/lib/insights';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
-import { clubName } from '@/lib/names';
+import { clubName, playerDisplayName } from '@/lib/names';
 import { fmtDate, fmtTime } from './format';
 
 interface Copy {
@@ -17,6 +17,7 @@ interface Copy {
   matches: (n: number) => string; gpm: (n: string) => string; homeWins: (n: number) => string;
   ordinal: (n: number) => string;
   didYouKnow: string; more: (n: number) => string;
+  sentOff: string; sentOffRound: (n: number) => string; matchLink: string;
 }
 
 const COPY: Record<string, Copy> = {
@@ -29,6 +30,7 @@ const COPY: Record<string, Copy> = {
     matches: (n) => `${n} partidos`, gpm: (n) => `${n} goles por partido`, homeWins: (n) => `${n} % de victorias locales`,
     ordinal: (n) => `${n}.º`,
     didYouKnow: '¿Sabías que…?', more: (n) => `Más datos de la liga (${n})`,
+    sentOff: 'Expulsados en la última jornada', sentOffRound: (n) => `Jornada ${n}`, matchLink: 'Ver partido',
   },
   en: {
     live: 'The league so far', done: 'How it ended', matchday: (c, t) => `Matchday ${c} of ${t}`,
@@ -42,6 +44,7 @@ const COPY: Record<string, Copy> = {
       return `${n}${({ one: 'st', two: 'nd', few: 'rd' } as Record<string, string>)[s] ?? 'th'}`;
     },
     didYouKnow: 'Did you know?', more: (n) => `More league facts (${n})`,
+    sentOff: 'Sent off on the last matchday', sentOffRound: (n) => `Matchday ${n}`, matchLink: 'View match',
   },
   pt: {
     live: 'Assim vai a liga', done: 'Assim terminou', matchday: (c, t) => `Jornada ${c} de ${t}`,
@@ -52,6 +55,7 @@ const COPY: Record<string, Copy> = {
     matches: (n) => `${n} jogos`, gpm: (n) => `${n} golos por jogo`, homeWins: (n) => `${n} % de vitórias em casa`,
     ordinal: (n) => `${n}.º`,
     didYouKnow: 'Sabia que…?', more: (n) => `Mais dados da liga (${n})`,
+    sentOff: 'Expulsos na última jornada', sentOffRound: (n) => `Jornada ${n}`, matchLink: 'Ver jogo',
   },
   fr: {
     live: 'Le championnat en cours', done: 'Bilan de la saison', matchday: (c, t) => `Journée ${c} sur ${t}`,
@@ -62,6 +66,7 @@ const COPY: Record<string, Copy> = {
     matches: (n) => `${n} matchs`, gpm: (n) => `${n} buts par match`, homeWins: (n) => `${n} % de victoires à domicile`,
     ordinal: (n) => (n === 1 ? '1er' : `${n}e`),
     didYouKnow: 'Le saviez-vous ?', more: (n) => `Plus de chiffres du championnat (${n})`,
+    sentOff: 'Exclus lors de la dernière journée', sentOffRound: (n) => `Journée ${n}`, matchLink: 'Voir le match',
   },
   it: {
     live: 'Il campionato finora', done: 'Com’è finita', matchday: (c, t) => `Giornata ${c} di ${t}`,
@@ -72,6 +77,7 @@ const COPY: Record<string, Copy> = {
     matches: (n) => `${n} partite`, gpm: (n) => `${n} gol a partita`, homeWins: (n) => `${n}% di vittorie in casa`,
     ordinal: (n) => `${n}º`,
     didYouKnow: 'Lo sapevi?', more: (n) => `Altri dati del campionato (${n})`,
+    sentOff: 'Espulsi nell’ultima giornata', sentOffRound: (n) => `Giornata ${n}`, matchLink: 'Vedi partita',
   },
 };
 
@@ -224,6 +230,35 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
           <p className="mt-1 text-sm leading-snug text-slate-700 dark:text-slate-300">
             <Sentence parts={renderInsight(daily, insights, locale)} />
           </p>
+        </div>
+      )}
+
+      {insights?.discipline && insights.discipline.reds.length > 0 && insights.discipline.roundNumber !== null && (
+        <div className="rounded-lg border border-red-200 bg-red-50/70 px-3 py-2.5 dark:border-red-900/40 dark:bg-red-950/20">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-red-700 dark:text-red-300">
+            {c.sentOff} · {c.sentOffRound(insights.discipline.roundNumber)}
+          </p>
+          <ul className="mt-1 space-y-1 text-sm text-slate-700 dark:text-slate-300">
+            {insights.discipline.reds.map((r) => {
+              const player = r.playerId && insights.players[r.playerId]
+                ? playerDisplayName(insights.players[r.playerId]!.firstName, insights.players[r.playerId]!.lastName)
+                : (r.firstName || r.lastName ? playerDisplayName(r.firstName ?? '', r.lastName ?? '') : '—');
+              const team = insights.teams[r.teamId] ? clubName(insights.teams[r.teamId]!.name) : '';
+              const hasMatch = Boolean(insights.matches[r.matchId]);
+              return (
+                <li key={`${r.matchId}-${r.playerId ?? r.minute ?? 'x'}`} className="leading-snug">
+                  {r.playerId ? (
+                    <Link href={`/players/${r.playerId}`} className="font-semibold underline decoration-slate-300 underline-offset-2 hover:decoration-rink-passion">{player}</Link>
+                  ) : <span className="font-semibold">{player}</span>}
+                  {team ? ` (${team})` : ''}
+                  {r.minute !== null ? `, ${r.minute}'` : ''}
+                  {hasMatch ? (
+                    <> · <Link href={`/matches/${r.matchId}`} className="text-xs underline decoration-slate-300 underline-offset-2 hover:decoration-rink-passion">{c.matchLink}</Link></>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 

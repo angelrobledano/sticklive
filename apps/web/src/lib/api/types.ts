@@ -388,6 +388,29 @@ export interface TeamClub {
   country: string;
 }
 
+export interface TeamRecentMatch {
+  id: string;
+  date: string | null;
+  homeTeamId: string;
+  homeName: string;
+  homeShortName: string | null;
+  homeLogoUrl: string | null;
+  awayTeamId: string;
+  awayName: string;
+  awayShortName: string | null;
+  awayLogoUrl: string | null;
+  homeScore: number;
+  awayScore: number;
+  competitionId: string;
+  competitionName: string;
+  competitionShortName: string | null;
+  roundNumber: number | null;
+}
+
+export interface TeamRecentResponse {
+  matches: TeamRecentMatch[];
+}
+
 export interface TeamDetail {
   team: {
     id: string;
@@ -568,6 +591,37 @@ export interface PlayerCompStats {
   penaltiesScored: number;
 }
 
+export type PlayerMetricKind = 'goals_per_match' | 'assists_per_match' | 'participation' | 'penalty_pct';
+
+export interface PlayerPercentileMetric {
+  kind: PlayerMetricKind;
+  value: number;
+  rank: number;
+  percentile: number;
+  peers: number;
+}
+
+export interface PlayerInsightsFacts {
+  goals: number;
+  teamGoals: number | null;
+  goalSharePct: number | null;
+  scorerRank: number | null;
+  scoringStreak: number;
+  hatTricks: number;
+}
+
+export interface PlayerInsights {
+  playerId: string;
+  season: {
+    id: string;
+    name: string;
+    competitionName: string;
+    startDate: string | null;
+  } | null;
+  metrics: PlayerPercentileMetric[];
+  facts?: PlayerInsightsFacts;
+}
+
 export interface PlayerDetail {
   player: {
     id: string;
@@ -610,9 +664,25 @@ export interface Insight {
   values: Record<string, number>;
 }
 
+export interface SeasonDisciplineRed {
+  matchId: string;
+  teamId: string;
+  playerId: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  minute: number | null;
+}
+
+export interface SeasonDiscipline {
+  roundNumber: number | null;
+  roundName: string | null;
+  reds: SeasonDisciplineRed[];
+}
+
 export interface SeasonInsights {
   insights: Insight[];
   teams: Record<string, { name: string; shortName: string | null }>;
   players: Record<string, { firstName: string; lastName: string }>;
   matches: Record<string, { homeTeamId: string; awayTeamId: string; date: string | null }>;
+  discipline?: SeasonDiscipline;
 }

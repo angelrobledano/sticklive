@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getMatchDetail, getSeasonOverview, isApiNotFound } from '@/lib/api/client';
+import { getMatchDetail, getSeasonOverview, getTeamDetail, getTeamRecent, isApiNotFound } from '@/lib/api/client';
 import { MatchCenterClient } from '@/components/match/MatchCenterClient';
 import { MatchPreview } from '@/components/match/MatchPreview';
 import { MatchChronicle } from '@/components/match/MatchChronicle';
@@ -109,13 +109,28 @@ export default async function MatchDetailPage(props: Props) {
   // temporada ya está cacheada 120 s; si falla, la ficha sigue funcionando.
   const preview = (m.status === 'scheduled' || m.status === 'postponed') && m.homeTeam?.id && m.awayTeam?.id
     ? await getSeasonOverview(m.seasonId)
-        .then((overview) => buildMatchPreview(overview, {
-          matchId: m.id,
-          homeTeamId: m.homeTeam!.id,
-          awayTeamId: m.awayTeam!.id,
-          homeName,
-          awayName,
-        }))
+        .then(async (overview) => {
+          const homeId = m.homeTeam!.id;
+          const awayId = m.awayTeam!.id;
+          const [homeDetail, awayDetail, homeRecent, awayRecent] = await Promise.all([
+            getTeamDetail(homeId, m.seasonId).catch(() => null),
+            getTeamDetail(awayId, m.seasonId).catch(() => null),
+            getTeamRecent(homeId).catch(() => null),
+            getTeamRecent(awayId).catch(() => null),
+          ]);
+          return buildMatchPreview(overview, {
+            matchId: m.id,
+            homeTeamId: homeId,
+            awayTeamId: awayId,
+            homeName,
+            awayName,
+          }, {
+            homeStats: homeDetail?.stats,
+            awayStats: awayDetail?.stats,
+            homeRecent: homeRecent?.matches,
+            awayRecent: awayRecent?.matches,
+          });
+        })
         .catch(() => null)
     : null;
 

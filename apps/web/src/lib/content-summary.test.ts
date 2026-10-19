@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { SeasonOverview } from '@/lib/api/types';
-import { buildCompetitionSummary, buildMatchPreview } from './content-summary';
+import { buildCompetitionSummary, buildCrossMetrics, buildMatchPreview, buildTeamObservations } from './content-summary';
 
 function match(overrides: Partial<SeasonOverview['matches'][number]> = {}): SeasonOverview['matches'][number] {
   return {
@@ -136,5 +136,34 @@ describe('buildCompetitionSummary', () => {
     const o = liga({ pending: true });
     o.standings = o.standings.map((x) => ({ ...x, played: 0 }));
     expect(buildCompetitionSummary(o, null, now).leader).toBeNull();
+  });
+});
+describe('C9: observaciones y números del cruce', () => {
+  const recent = [
+    { id: '1', date: null, opponentId: 'x', opponentName: 'X', opponentLogoUrl: null, competitionName: null, isHome: true, goalsFor: 4, goalsAgainst: 1, result: 'W' as const },
+    { id: '2', date: null, opponentId: 'y', opponentName: 'Y', opponentLogoUrl: null, competitionName: null, isHome: false, goalsFor: 3, goalsAgainst: 2, result: 'W' as const },
+    { id: '3', date: null, opponentId: 'z', opponentName: 'Z', opponentLogoUrl: null, competitionName: null, isHome: true, goalsFor: 2, goalsAgainst: 0, result: 'W' as const },
+  ];
+
+  it('solo publica observaciones que superan su umbral', () => {
+    const facts = buildTeamObservations(recent, null);
+    expect(facts.some((f) => f.kind === 'recent_goals' && f.value === 9)).toBe(true);
+    expect(facts.some((f) => f.kind === 'win_streak' && f.value === 3)).toBe(true);
+    expect(facts.some((f) => f.kind === 'home_wins' && f.value === 2)).toBe(true);
+    expect(buildTeamObservations([], null)).toEqual([]);
+  });
+
+  const stats = {
+    played: 5, goalsFor: 15, goalsAgainst: 5, teamFouls: 40,
+    blueCards: 4, redCards: 0,
+    directFouls: { total: 10, scored: 2, pct: 20 },
+    penalties: { total: 4, scored: 3, pct: 75 },
+  } as never;
+
+  it('calcula minutos por gol y faltas por partido', () => {
+    const cross = buildCrossMetrics(stats, stats);
+    expect(cross.find((m) => m.key === 'minutes_goal')).toMatchObject({ home: 17, away: 17, unit: 'minutes' });
+    expect(cross.find((m) => m.key === 'fouls')).toMatchObject({ home: 8, away: 8 });
+    expect(cross.find((m) => m.key === 'penalty_pct')).toMatchObject({ home: 75, away: 75 });
   });
 });

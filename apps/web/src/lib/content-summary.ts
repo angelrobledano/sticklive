@@ -1,4 +1,4 @@
-import type { SeasonLeader, SeasonMatch, SeasonOverview, SeasonStats } from '@/lib/api/types';
+import type { SeasonLeader, SeasonMatch, SeasonOverview, SeasonStats, TeamRecentMatch, TeamSeasonStats } from '@/lib/api/types';
 import { playerDisplayName, playerNameFromRaw } from '@/lib/names';
 
 /** Resumen server-rendered para fichas. Nada de textos si el dato es null. */
@@ -6,11 +6,31 @@ import { playerDisplayName, playerNameFromRaw } from '@/lib/names';
 export interface RecentMatch {
   id: string;
   date: string | null;
+  opponentId: string;
   opponentName: string;
+  opponentLogoUrl: string | null;
+  competitionName: string | null;
   isHome: boolean;
   goalsFor: number;
   goalsAgainst: number;
   result: 'W' | 'D' | 'L';
+}
+
+export type TeamObservationKind = 'win_streak' | 'unbeaten' | 'recent_goals' | 'home_wins' | 'away_wins' | 'goals_per_match';
+
+export interface TeamObservation {
+  kind: TeamObservationKind;
+  value: number;
+  total: number;
+}
+
+export type CrossMetricKey = 'goals_per_match' | 'minutes_goal' | 'minutes_conceded' | 'fouls' | 'direct_fouls' | 'direct_foul_pct' | 'penalty_pct' | 'cards';
+
+export interface CrossMetric {
+  key: CrossMetricKey;
+  home: number | null;
+  away: number | null;
+  unit: 'minutes' | 'per_match' | 'pct';
 }
 
 export interface TeamSnapshot {
@@ -21,6 +41,14 @@ export interface TeamSnapshot {
   played: number | null;
   form: string[];
   recent: RecentMatch[];
+  observations: TeamObservation[];
+}
+
+export interface PreviewExtra {
+  homeRecent?: TeamRecentMatch[];
+  awayRecent?: TeamRecentMatch[];
+  homeStats?: TeamSeasonStats | null;
+  awayStats?: TeamSeasonStats | null;
 }
 
 export interface HeadToHeadMatch {
@@ -36,11 +64,29 @@ export interface MatchPreview {
   home: TeamSnapshot;
   away: TeamSnapshot;
   headToHead: HeadToHeadMatch[];
+  cross: CrossMetric[];
 }
 
-function snapshot(overview: SeasonOverview, teamId: string, fallbackName: string): TeamSnapshot {
-  const row = overview.standings.find((s) => s.teamId === teamId);
-  const recent = overview.matches
+function recentFromTeam(m: TeamRecentMatch, teamId: string): RecentMatch {
+  const isHome = m.homeTeamId === teamId;
+  const goalsFor = isHome ? m.homeScore : m.awayScore;
+  const goalsAgainst = isHome ? m.awayScore : m.homeScore;
+  return {
+    id: m.id,
+    date: m.date,
+    opponentId: isHome ? m.awayTeamId : m.homeTeamId,
+    opponentName: isHome ? m.awayName : m.homeName,
+    opponentLogoUrl: isHome ? m.awayLogoUrl : m.homeLogoUrl,
+    competitionName: m.competitionShortName ?? m.competitionName,
+    isHome,
+    goalsFor,
+    goalsAgainst,
+    result: goalsFor > goalsAgainst ? 'W' : goalsFor < goalsAgainst ? 'L' : 'D',
+  };
+}
+
+function recentFromOverview(overview: SeasonOverview, teamId: string): RecentMatch[] {
+  return overview.matches
     .filter((m) => m.status === 'finished' && (m.homeTeam.id === teamId || m.awayTeam.id === teamId))
     .sort((a, b) => String(matchDate(b) ?? '').localeCompare(String(matchDate(a) ?? '')))
     .slice(0, 5)
@@ -51,13 +97,75 @@ function snapshot(overview: SeasonOverview, teamId: string, fallbackName: string
       return {
         id: m.id,
         date: matchDate(m),
+        opponentId: isHome ? m.awayTeam.id : m.homeTeam.id,
         opponentName: isHome ? m.awayTeam.name : m.homeTeam.name,
+        opponentLogoUrl: null,
+        competitionName: m.roundType === 'regular' ? null : m.roundName,
         isHome,
         goalsFor,
         goalsAgainst,
         result: goalsFor > goalsAgainst ? 'W' as const : goalsFor < goalsAgainst ? 'L' as const : 'D' as const,
       };
     });
+}
+
+/** Observaciones de la previa: sólo hechos de los últimos 5 y de la temporada. */
+export function buildTeamObservations(recent: RecentMatch[], stats: TeamSeasonStats | null | undefined): TeamObservation[] {
+  const out: TeamObservation[] = [];
+  if (recent.length === 0) return out;
+  const goals = recent.reduce((n, r) => n + r.goalsFor, 0);
+  if (goals >= 5) out.push({ kind: 'recent_goals', value: goals, total: recent.length });
+  let streak = 0;
+  for (const r of recent) {
+    if (r.result !== 'W') break;
+    streak++;
+  }
+  if (streak >= 3) out.push({ kind: 'win_streak', value: streak, total: recent.length });
+  const unbeaten = recent.findIndex((r) => r.result === 'L');
+  const unbeatenCount = unbeaten === -1 ? recent.length : unbeaten;
+  if (unbeatenCount >= 3 && streak < 3) out.push({ kind: 'unbeaten', value: unbeatenCount, total: recent.length });
+  const home = recent.filter((r) => r.isHome);
+  const homeWins = home.filter((r) => r.result === 'W').length;
+  if (home.length >= 2 && homeWins >= 2) out.push({ kind: 'home_wins', value: homeWins, total: home.length });
+  const away = recent.filter((r) => !r.isHome);
+  const awayWins = away.filter((r) => r.result === 'W').length;
+  if (away.length >= 2 && awayWins >= 2) out.push({ kind: 'away_wins', value: awayWins, total: away.length });
+  if (stats && stats.played >= 3 && stats.goalsFor > 0) {
+    out.push({ kind: 'goals_per_match', value: Math.round((stats.goalsFor / stats.played) * 10) / 10, total: stats.played });
+  }
+  return out.slice(0, 4);
+}
+
+/** Números del cruce calculados con los totales de temporada de cada equipo. */
+export function buildCrossMetrics(home: TeamSeasonStats | null | undefined, away: TeamSeasonStats | null | undefined): CrossMetric[] {
+  if (!home || !away || home.played === 0 || away.played === 0) return [];
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+  const per = (n: number, played: number) => r1(n / played);
+  const minutes = (goals: number, played: number) => goals > 0 ? Math.round(50 / (goals / played)) : null;
+  const cards = (s: TeamSeasonStats) => s.blueCards + s.redCards;
+  const metrics: CrossMetric[] = [
+    { key: 'goals_per_match', home: per(home.goalsFor, home.played), away: per(away.goalsFor, away.played), unit: 'per_match' },
+    { key: 'minutes_goal', home: minutes(home.goalsFor, home.played), away: minutes(away.goalsFor, away.played), unit: 'minutes' },
+    { key: 'minutes_conceded', home: minutes(home.goalsAgainst, home.played), away: minutes(away.goalsAgainst, away.played), unit: 'minutes' },
+    { key: 'fouls', home: per(home.teamFouls, home.played), away: per(away.teamFouls, away.played), unit: 'per_match' },
+    { key: 'direct_fouls', home: per(home.directFouls.total, home.played), away: per(away.directFouls.total, away.played), unit: 'per_match' },
+    { key: 'direct_foul_pct', home: home.directFouls.pct, away: away.directFouls.pct, unit: 'pct' },
+    { key: 'penalty_pct', home: home.penalties.pct, away: away.penalties.pct, unit: 'pct' },
+    { key: 'cards', home: per(cards(home), home.played), away: per(cards(away), away.played), unit: 'per_match' },
+  ];
+  return metrics.filter((m) => m.home !== null || m.away !== null);
+}
+
+function snapshot(
+  overview: SeasonOverview,
+  teamId: string,
+  fallbackName: string,
+  extra?: { recent?: TeamRecentMatch[]; stats?: TeamSeasonStats | null },
+): TeamSnapshot {
+  const row = overview.standings.find((s) => s.teamId === teamId);
+  const recent = extra?.recent?.length
+    ? extra.recent.slice(0, 5).map((m) => recentFromTeam(m, teamId))
+    : recentFromOverview(overview, teamId);
   return {
     teamId,
     teamName: row?.teamName ?? fallbackName,
@@ -66,6 +174,7 @@ function snapshot(overview: SeasonOverview, teamId: string, fallbackName: string
     played: row?.played ?? null,
     form: (row?.form ?? []).slice(-5),
     recent,
+    observations: buildTeamObservations(recent, extra?.stats),
   };
 }
 
@@ -81,6 +190,7 @@ function matchDate(m: SeasonMatch): string | null {
 export function buildMatchPreview(
   overview: SeasonOverview,
   input: { matchId: string; homeTeamId: string; awayTeamId: string; homeName: string; awayName: string },
+  extra?: PreviewExtra,
 ): MatchPreview {
   const headToHead = overview.matches
     .filter((m) => m.id !== input.matchId && m.status === 'finished')
@@ -99,9 +209,10 @@ export function buildMatchPreview(
     }));
 
   return {
-    home: snapshot(overview, input.homeTeamId, input.homeName),
-    away: snapshot(overview, input.awayTeamId, input.awayName),
+    home: snapshot(overview, input.homeTeamId, input.homeName, { recent: extra?.homeRecent, stats: extra?.homeStats }),
+    away: snapshot(overview, input.awayTeamId, input.awayName, { recent: extra?.awayRecent, stats: extra?.awayStats }),
     headToHead,
+    cross: buildCrossMetrics(extra?.homeStats, extra?.awayStats),
   };
 }
 

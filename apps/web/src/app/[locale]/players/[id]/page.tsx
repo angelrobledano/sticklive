@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
-import { getPlayerDetail, isApiNotFound } from '@/lib/api/client';
+import { getPlayerDetail, getPlayerInsights, isApiNotFound } from '@/lib/api/client';
 import type { PlayerDetail } from '@/lib/api/client';
 import { PlayerProfileClient } from '@/components/player/PlayerProfileClient';
 import { PlayerFacts } from '@/components/player/PlayerFacts';
+import { PlayerPercentiles } from '@/components/player/PlayerPercentiles';
 import { buildPlayerFacts } from '@/lib/player-facts';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
@@ -55,6 +56,7 @@ export default async function PlayerProfilePage(props: Props) {
 
   const name = toTitleCase(`${data.player.firstName} ${data.player.lastName}`);
   // F5-6: migas visibles + BreadcrumbList (Inicio › Equipo › Jugador).
+  const insights = await getPlayerInsights(data.player.id).catch(() => null);
   const crumbs = [
     { label: BREADCRUMB_LABELS[locale].home, href: '/' },
     ...(data.currentTeam
@@ -82,8 +84,9 @@ export default async function PlayerProfilePage(props: Props) {
         <Breadcrumbs items={crumbs} />
       </div>
       <PlayerProfileClient data={data} />
-      <div className="px-4 pb-8 max-w-2xl mx-auto">
+      <div className="px-4 pb-8 max-w-2xl mx-auto space-y-4">
         <PlayerFacts facts={buildPlayerFacts(data)} locale={locale} />
+        <PlayerPercentiles data={insights} locale={locale} />
       </div>
     </>
   );

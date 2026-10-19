@@ -1,4 +1,4 @@
-/**
+﻿/**
  * API Client — fetchers tipados hacia apps/api (Hono).
  *
  * Barrel público de la capa API: los tipos viven en `./types` y el fetch en
@@ -30,6 +30,8 @@ import type {
   TeamDetail,
   SeasonOverview,
   PlayerDetail,
+  PlayerInsights,
+  TeamRecentResponse,
 } from './types';
 
 export { isApiNotFound } from './core';
@@ -379,6 +381,13 @@ export async function getSeasonInsights(seasonId: string): Promise<SeasonInsight
 
 // ─── Team detail ───
 
+/** C9: últimos partidos del equipo en todas las competiciones. */
+export async function getTeamRecent(teamId: string, limit = 5): Promise<TeamRecentResponse> {
+  return apiFetch<TeamRecentResponse>(`/teams/${teamId}/recent?limit=${limit}`, {
+    next: { revalidate: 120, tags: [`team-recent-${teamId}`] },
+  });
+}
+
 export async function getTeamDetail(teamId: string, seasonId?: string | null): Promise<TeamDetail> {
   // Un `?season=` que no es UUID se ignora: la API responde 400 y la ficha
   // acababa en 500 (SEO-03). Se sirve la temporada por defecto.
@@ -401,6 +410,13 @@ export async function getSeasonOverview(seasonId: string): Promise<SeasonOvervie
 export async function getPlayerDetail(playerId: string): Promise<PlayerDetail> {
   return apiFetch<PlayerDetail>(`/players/${playerId}`, {
     next: { revalidate: 120, tags: [`player-${playerId}`] },
+  });
+}
+
+/** C6: percentiles de jugador; opcional, la ficha sigue sin ellos si falla. */
+export async function getPlayerInsights(playerId: string): Promise<PlayerInsights> {
+  return apiFetch<PlayerInsights>(`/players/${playerId}/insights`, {
+    next: { revalidate: 600, tags: [`player-insights-${playerId}`] },
   });
 }
 

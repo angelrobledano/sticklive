@@ -7,6 +7,7 @@ import { captureRouteError } from '../lib/route-error.js';
 import { penaltyScoredSql } from '../lib/penalty-sql.js';
 import { setBounded } from '../lib/bounded-cache.js';
 import { computeSeasonInsights, type Insight, type InsightInput } from '../lib/insights.js';
+import { buildSeasonDiscipline, type DisciplineCardRow, type SeasonDiscipline } from '../lib/discipline.js';
 
 export const seasonInsightsRouter = new Hono();
 
@@ -20,6 +21,8 @@ export interface SeasonInsightsResponse {
   teams: Record<string, { name: string; shortName: string | null }>;
   players: Record<string, { firstName: string; lastName: string }>;
   matches: Record<string, { homeTeamId: string; awayTeamId: string; date: string | null }>;
+  /** C4: rojas de la última jornada de liga, sin deducir sanciones. */
+  discipline: SeasonDiscipline;
 }
 
 const TTL_MS = 10 * 60_000;
@@ -27,7 +30,7 @@ const MAX_ENTRIES = 300;
 const cache = new Map<string, { at: number; body: SeasonInsightsResponse }>();
 
 export async function loadSeasonInsights(seasonId: string): Promise<SeasonInsightsResponse> {
-  const [matches, goals, setPieces, cards, scorers, pending] = await Promise.all([
+  const [matches, goals, setPieces, cards, scorers, pending, lastRound, redCards] = await Promise.all([
     db.query<{
       id: string; date: Date | null; home_team_id: string; away_team_id: string;
       home_score: number; away_score: number; league: boolean; full_events: boolean;
@@ -70,6 +73,22 @@ export async function loadSeasonInsights(seasonId: string): Promise<SeasonInsigh
     db.query<{ n: number }>(`
       SELECT count(*)::int AS n FROM matches
        WHERE season_id = $1 AND status IN ('scheduled', 'live', 'halftime', 'overtime', 'penalty_shootout')`, [seasonId]),
+    db.query<{ number: number | null; name: string | null }>(`
+      SELECT r.number, r.name
+        FROM matches m JOIN rounds r ON r.id = m.round_id
+       WHERE m.season_id = $1 AND m.status = 'finished' AND r.round_type = 'regular'
+         AND r.number IS NOT NULL
+       ORDER BY r.number DESC
+       LIMIT 1`, [seasonId]),
+    db.query<DisciplineCardRow>(`
+      SELECT e.match_id, e.team_id, e.player_id,
+             p.first_name, p.last_name, e.minute,
+             r.number AS round_number, r.name AS round_name, r.round_type
+        FROM match_events e
+        JOIN matches m ON m.id = e.match_id
+        LEFT JOIN rounds r ON r.id = m.round_id
+        LEFT JOIN players p ON p.id = e.player_id
+       WHERE m.season_id = $1 AND m.status = 'finished' AND e.event_type = 'red_card'`, [seasonId]),
   ]);
 
   const input: InsightInput = {
@@ -86,10 +105,23 @@ export async function loadSeasonInsights(seasonId: string): Promise<SeasonInsigh
     seasonFinished: matches.rows.length > 0 && (pending.rows[0]?.n ?? 0) === 0,
   };
   const insights = computeSeasonInsights(input);
+  // Solo partidos con marcador conocido: `matches` es el diccionario que la
+  // web usa para enlazar; una roja sin marcador no debe quedar huérfana.
+  const scoredMatchIds = new Set(input.matches.map((m) => m.id));
+  const discipline = buildSeasonDiscipline(
+    redCards.rows.filter((r) => scoredMatchIds.has(r.matchId)),
+    { number: lastRound.rows[0]?.number ?? null, name: lastRound.rows[0]?.name ?? null },
+  );
 
   // Diccionario de lo que se cita: nombres para la frase, ids para el enlace.
-  const teamIds = [...new Set(insights.flatMap((i) => i.teamIds))];
-  const playerIds = [...new Set(insights.flatMap((i) => i.playerIds))];
+  const teamIds = [...new Set([
+    ...insights.flatMap((i) => i.teamIds),
+    ...discipline.reds.map((r) => r.teamId),
+  ])];
+  const playerIds = [...new Set([
+    ...insights.flatMap((i) => i.playerIds),
+    ...discipline.reds.map((r) => r.playerId).filter((id): id is string => Boolean(id)),
+  ])];
   const [teams, players] = await Promise.all([
     teamIds.length
       ? db.query<{ id: string; name: string; short_name: string | null }>(
@@ -102,12 +134,17 @@ export async function loadSeasonInsights(seasonId: string): Promise<SeasonInsigh
   ]);
   const matchById = new Map(input.matches.map((m) => [m.id, m]));
 
+  const citedMatchIds = new Set([
+    ...insights.map((i) => i.matchId).filter((id): id is string => Boolean(id)),
+    ...discipline.reds.map((r) => r.matchId),
+  ]);
   return {
     insights,
+    discipline,
     teams: Object.fromEntries(teams.rows.map((t) => [t.id, { name: t.name, shortName: t.short_name }])),
     players: Object.fromEntries(players.rows.map((p) => [p.id, { firstName: p.first_name, lastName: p.last_name }])),
-    matches: Object.fromEntries(insights.filter((i) => i.matchId).map((i) => {
-      const m = matchById.get(i.matchId!)!;
+    matches: Object.fromEntries([...citedMatchIds].map((matchId) => {
+      const m = matchById.get(matchId)!;
       return [m.id, { homeTeamId: m.homeTeamId, awayTeamId: m.awayTeamId, date: m.date }];
     })),
   };
