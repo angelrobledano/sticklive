@@ -2,6 +2,7 @@ import { upsertStanding, updateTeamLogoUrl, withTransaction, insertScrapeLog, fi
 import type { ScrapedStanding, ScrapeResult } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { RefResolver } from './ref-resolver.js';
+import { isByeTeamName } from '../lib/bye-team.js';
 
 const log = createLogger({ module: 'loader:standing' });
 
@@ -45,6 +46,7 @@ export async function loadStandings(
   const errors: Array<{ item: string; error: string }> = [];
   let upserted = 0;
   let skipped = 0;
+  let byes = 0;
 
   const resolver = new RefResolver(sportId);
   const items = scrapeResult.data;
@@ -73,6 +75,12 @@ export async function loadStandings(
       // las queries de resolución fuera del lock de escritura.
       const resolved: Array<{ raw: ScrapedStanding; teamId: string }> = [];
       for (const raw of groupItems) {
+        // "DESCANSO" no es un equipo: es el bye de las ligas impares. Si se
+        // intenta resolver, el grupo entero falla y la tabla no se refresca.
+        if (isByeTeamName(raw.teamRef)) {
+          byes++;
+          continue;
+        }
         // Las clasificaciones traen solo el NOMBRE (sin ref): se busca primero
         // dentro de los equipos de ESTA temporada, así un filial nombrado igual
         // no cae en el primer equipo (que juega en otra liga). Si no aparece,
@@ -156,6 +164,7 @@ export async function loadStandings(
   }
 
   const durationMs = Date.now() - start;
+  log.info({ seasonId, upserted, skipped, byes, errors: errors.length, durationMs }, 'Clasificaciones cargadas');
 
   await insertScrapeLog({
     scraperKey: scrapeResult.scraperKey,

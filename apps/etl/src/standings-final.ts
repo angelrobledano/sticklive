@@ -32,12 +32,12 @@ const log = createLogger({ service: 'standings-final' });
 const SPORT_SLUG = 'hockey-patines';
 const PAUSE_MS = 2_000;
 
-async function refresh(item: StaleFinalStandings): Promise<'ok' | 'empty' | 'error'> {
+async function refresh(item: StaleFinalStandings): Promise<'ok' | 'empty' | 'partial' | 'error'> {
   const result = await new FepStandingsScraper({ idc: item.idc, competitionName: item.competitionName }).run();
   if (!result.success) return 'error';
   if (result.data.length === 0) return 'empty';
-  await new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: item.seasonId, dryRun: false }).runStandings(result);
-  return 'ok';
+  const loaded = await new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: item.seasonId, dryRun: false }).runStandings(result);
+  return loaded.errorCount === 0 ? 'ok' : 'partial';
 }
 
 async function main() {
