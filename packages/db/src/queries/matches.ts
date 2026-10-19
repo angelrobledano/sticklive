@@ -495,6 +495,8 @@ export interface UpsertMatchLineupInput {
   isHome: boolean;
   jerseyNumber?: number;
   playerName: string;
+  /** Nombre de pila tal como lo marca el acta (C1). Solo para dar de alta al jugador. */
+  playerFirstName?: string;
   isGoalkeeper?: boolean;
   isStarter?: boolean;
   isCaptain?: boolean;

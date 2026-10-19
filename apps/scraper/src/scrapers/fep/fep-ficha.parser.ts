@@ -167,6 +167,8 @@ export interface ScrapedMatchEvent {
   isHome: boolean | null;
   /** Nombre del jugador tal como aparece en el HTML (para resolver en ETL) */
   playerName: string | null;
+  /** Nombre de pila tal como lo marca el acta (span dentro del enlace), si viene. */
+  playerFirstName?: string;
   /** Dorsal del jugador si aparece */
   jerseyNumber: number | null;
   /** Texto libre con detalle adicional (p.ej. "1-0", "GOL PENALTI") */
@@ -177,6 +179,62 @@ export interface ScrapedMatchEvent {
   playerSourceRef?: string;
   /** Ref sidgad del equipo del jugador (atributo team_id del link, p.ej. "3358") */
   playerTeamRef?: string;
+}
+
+/** Nombre de pila marcado por el acta: "PASCUAL <span class=texto_gris_11>MATÍAS JOSÉ</span>". */
+function givenNameOf($: cheerio.CheerioAPI, $el: cheerio.Cheerio<Element>): string | undefined {
+  const t = $el.find('span.texto_gris_11').last().text().replace(/\s+/g, ' ').trim();
+  return t || undefined;
+}
+
+/**
+ * Reparte un nombre del acta ("APELLIDOS NOMBRE") en nombre y apellidos.
+ * Con el nombre de pila que marca el acta, exacto; sin él (o si no cierra el
+ * nombre completo), la última palabra es el nombre, como hasta ahora.
+ */
+export function splitPlayerName(fullName: string, givenName?: string): { firstName: string; lastName: string } {
+  const full = fullName.replace(/\s+/g, ' ').trim();
+  const given = givenName?.replace(/\s+/g, ' ').trim();
+  if (given && full.length > given.length && full.endsWith(` ${given}`)) {
+    return { firstName: given, lastName: full.slice(0, full.length - given.length - 1) };
+  }
+  const parts = full.split(' ');
+  return parts.length > 1
+    ? { firstName: parts[parts.length - 1]!, lastName: parts.slice(0, -1).join(' ') }
+    : { firstName: full, lastName: full };
+}
+
+interface SetPieceInfo {
+  /** true "GOL", false "NO HAY GOL", undefined si el acta no lo dice. */
+  scored?: boolean;
+  shooter?: { name: string; firstName?: string; sourceRef: string; teamRef?: string };
+}
+
+/**
+ * Lee de la fila de un penalti o una falta directa el resultado y el lanzador.
+ * Estructura (actas FEP y World Skate, verificada el 19/10/2026):
+ *   <a id_player="0" class="nombre_ficha_jugador_plus">…vacío…</a>
+ *   Al Lanzamiento ...
+ *   <a id="4775" team_id="3373" class="nombre_ficha_jugador_plus">XAUS MOLINARI <span>ARNAU</span></a>
+ *   <span class="lang_es">NO HAY GOL</span>   (o "GOL")
+ */
+function readSetPiece($: cheerio.CheerioAPI, $tr: cheerio.Cheerio<Element>): SetPieceInfo {
+  const info: SetPieceInfo = {};
+  const results = $tr.find('span.lang_es').map((_, el) => $(el).text().trim().toUpperCase()).get();
+  if (results.includes('NO HAY GOL')) info.scored = false;
+  else if (results.includes('GOL')) info.scored = true;
+
+  $tr.find('a.nombre_ficha_jugador_plus').each((_, a) => {
+    if (info.shooter) return;
+    const $a = $(a);
+    const id = ($a.attr('id_player') && $a.attr('id_player') !== '0' ? $a.attr('id_player') : $a.attr('id'))?.trim();
+    const name = $a.text().replace(/\s+/g, ' ').trim();
+    if (!id || id === '0' || !/^\d+$/.test(id) || !name) return;
+    const teamRef = $a.attr('team_id') || undefined;
+    const firstName = givenNameOf($, $a);
+    info.shooter = { name, sourceRef: `fep_player_${id}`, ...(firstName ? { firstName } : {}), ...(teamRef ? { teamRef } : {}) };
+  });
+  return info;
 }
 
 export function parseFicha(
@@ -212,6 +270,9 @@ export function parseFicha(
     // Se indexa por el propio objeto y no por `sourceRef` porque el post-proceso
     // de colisiones (#375 P3-2) puede cambiar la ref después de crearlo.
     const rawInstant = new Map<ScrapedMatchEvent, string>();
+    // Penaltis y faltas directas: resultado ("GOL" / "NO HAY GOL") tal como lo
+    // publica el acta, y el lanzador que figura tras "Al Lanzamiento ...".
+    const setPieceInfo = new Map<ScrapedMatchEvent, SetPieceInfo>();
 
     incidRows.each((_, tr) => {
       const $tr = $(tr);
@@ -247,6 +308,7 @@ export function parseFicha(
       // Jugador y dorsal
       const $playerLink = $tr.find('a.nombre_ficha_jugador_plus').first();
       const playerName = $playerLink.text().replace(/\s+/g, ' ').trim() || undefined;
+      const playerFirstName = givenNameOf($, $playerLink);
       const idPlayerAttr = $playerLink.attr('id_player');
       const playerSourceRef = idPlayerAttr && idPlayerAttr !== '0' ? `fep_player_${idPlayerAttr}` : undefined;
       const playerTeamRef = $playerLink.attr('team_id') || undefined;
@@ -279,6 +341,7 @@ export function parseFicha(
         clock,
         isHome,
         playerName,
+        ...(playerName && playerFirstName ? { playerFirstName } : {}),
         jerseyNumber: Number.isNaN(jerseyNumber) ? undefined : jerseyNumber,
         detail: null,
         sourceRef,
@@ -287,6 +350,9 @@ export function parseFicha(
       } as ScrapedMatchEvent;
       events.push(ev);
       rawInstant.set(ev, `${isHome}|${periodText} ${timeText}`);
+      if (eventType === 'direct_foul' || eventType === 'penalty') {
+        setPieceInfo.set(ev, readSetPiece($, $tr));
+      }
     });
 
     // Post-proceso: resultado de las faltas directas. La ficha no lo dice
@@ -300,16 +366,29 @@ export function parseFicha(
     }
     for (const ev of events) {
       if (ev.eventType !== 'direct_foul' && ev.eventType !== 'penalty') continue;
+      const info = setPieceInfo.get(ev);
       const goal = goalsByInstant.get(rawInstant.get(ev) ?? '');
+      // El resultado explícito del acta manda: un gol del mismo equipo en el
+      // mismo segundo puede ser otra jugada. Sin él (actas antiguas), se
+      // deduce del gol en el mismo instante.
+      const scored = info?.scored ?? Boolean(goal);
       // FD: marcada/fallada · Penalti: marcado/fallado (la API y las stats
       // detectan el acierto buscando 'marc' en detail)
       ev.detail = ev.eventType === 'penalty'
-        ? (goal ? 'marcado' : 'fallado')
-        : (goal ? 'marcada' : 'fallada');
-      // La fuente no informa el lanzador (id_player=0 en FD/penalti), pero
-      // si acabó en gol, el goleador del mismo instante es el lanzador.
-      if (goal && !ev.playerName) {
+        ? (scored ? 'marcado' : 'fallado')
+        : (scored ? 'marcada' : 'fallada');
+      // El primer enlace de la fila va vacío (id_player=0): el lanzador es el
+      // de "Al Lanzamiento ...". Si no figura, y acabó en gol, el goleador del
+      // mismo instante es el lanzador.
+      if (info?.shooter && !ev.playerName) {
+        ev.playerName = info.shooter.name;
+        if (info.shooter.firstName) ev.playerFirstName = info.shooter.firstName;
+        ev.playerSourceRef = info.shooter.sourceRef;
+        if (info.shooter.teamRef) ev.playerTeamRef = info.shooter.teamRef;
+      }
+      if (scored && goal && !ev.playerName) {
         ev.playerName = goal.playerName;
+        if (goal.playerFirstName) ev.playerFirstName = goal.playerFirstName;
         ev.playerSourceRef = goal.playerSourceRef;
         ev.playerTeamRef = goal.playerTeamRef;
       }
@@ -707,9 +786,12 @@ export function parseLineups(html: string, idp: string): UpsertMatchLineupInput[
       // tablas de alineación traen `id_player` (mismo ancla que las
       // incidencias). Con la REF no hay colisión de homónimos por nombre.
       let playerSourceRef: string | undefined;
+      let playerFirstName: string | undefined;
       if (nameIdx >= 0) {
-        const idPlayer = $(cells[nameIdx]).find('[id_player]').attr('id_player');
+        const $nameEl = $(cells[nameIdx]).find('[id_player]').first();
+        const idPlayer = $nameEl.attr('id_player');
         if (idPlayer && idPlayer !== '0') playerSourceRef = `fep_player_${idPlayer}`;
+        if ($nameEl.length) playerFirstName = givenNameOf($, $nameEl as cheerio.Cheerio<Element>);
       }
 
       const isGoalkeeper = cells.eq(1).text().trim().toUpperCase() === 'P';
@@ -728,6 +810,7 @@ export function parseLineups(html: string, idp: string): UpsertMatchLineupInput[
         isHome,
         jerseyNumber,
         playerName,
+        ...(playerFirstName ? { playerFirstName } : {}),
         playerSourceRef,
         isGoalkeeper,
         isStarter,

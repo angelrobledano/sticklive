@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import {
   parseFicha, parseLiveHeader, parseTeamFouls, parseLineups, eventSourceRef,
   disambiguateEventRefs,
-  remainingToElapsedMinute, mapIncidenciaType, normalizeName,
+  remainingToElapsedMinute, mapIncidenciaType, normalizeName, splitPlayerName,
   type ScrapedMatchEvent,
 } from './fep-ficha.parser.js';
 
@@ -76,6 +76,98 @@ describe('parseFicha — actas reales', () => {
     const g = parseFicha(load('acta-live-p1'), '34259')
       .find((e) => e.eventType === 'goal' && e.clock === '20:46');
     expect(g?.minute).toBe(5);
+  });
+});
+
+describe('penaltis y faltas directas: lanzador y resultado del acta (C1)', () => {
+  /**
+   * La fila de un penalti o una falta directa trae dos enlaces de jugador: el
+   * primero vacío (id_player="0") y, tras "Al Lanzamiento ...", el lanzador con
+   * su id en el atributo `id`. Debajo, el resultado explícito: "GOL" o "NO HAY
+   * GOL". Auditado contra las 268 acciones de OK Liga Plata Sur 2025/26: el
+   * parser perdía al lanzador en 186 de 189 fallos (solo lo recuperaba del gol)
+   * y daba por marcadas 3 faltas directas falladas que coincidían en el mismo
+   * segundo con otro gol del mismo equipo.
+   */
+  const setPieces = (html: string, idp = '34259') =>
+    parseFicha(html, idp).filter((e) => e.eventType === 'direct_foul' || e.eventType === 'penalty');
+
+  it('el lanzador de una falta directa fallada se lee del acta', () => {
+    const [fd1, fd2] = setPieces(load('acta-finalizada'));
+    expect(fd1).toMatchObject({ detail: 'fallada', playerName: 'XAUS MOLINARI ARNAU', playerSourceRef: 'fep_player_4775', playerTeamRef: '3373' });
+    expect(fd2?.detail).toBe('fallada');
+    expect(fd2?.playerName).toMatch(/^LLANES GALITO/);
+    expect(fd2?.playerSourceRef).toMatch(/^fep_player_\d+$/);
+  });
+
+  it('el lanzador de un penalti fallado se lee del acta (World Skate)', () => {
+    const [pen] = parseFicha(load('acta-wse-finalizada'), '3095', { eventPrefix: 'wse_event_' })
+      .filter((e) => e.eventType === 'penalty');
+    expect(pen).toMatchObject({ detail: 'fallado', playerName: 'PACZIA LEON', playerSourceRef: 'fep_player_7747' });
+  });
+
+  it('"NO HAY GOL" manda aunque haya otro gol del mismo equipo en el mismo segundo', () => {
+    // Un gol del Liceo (HCL) movido al instante exacto de su falta directa (P2 06:56).
+    const html = load('acta-finalizada');
+    const rows = html.split('<tr');
+    const goalIdx = rows.findIndex((r) => r.includes('game_view_indcidencias_period') && r.includes('21:04') && r.includes('HCL'));
+    expect(goalIdx).toBeGreaterThan(0);
+    const moved = rows[goalIdx]!.replace('21:04', '06:56').replace('>P1<', '>P2<');
+    const withGoal = [...rows.slice(0, goalIdx), moved, ...rows.slice(goalIdx + 1)].join('<tr');
+    const [fd] = setPieces(withGoal);
+    expect(fd?.clock).toBe('06:56');
+    expect(fd?.detail).toBe('fallada');
+    expect(fd?.playerName).toBe('XAUS MOLINARI ARNAU');
+  });
+
+  it('"GOL" explícito da la falta directa por marcada', () => {
+    const html = load('acta-finalizada').replace(
+      /(FALTA DIRECTA PARA[\s\S]*?XAUS MOLINARI[\s\S]*?lang_es'>)NO HAY GOL/,
+      '$1GOL',
+    );
+    const [fd1, fd2] = setPieces(html);
+    expect(fd1?.detail).toBe('marcada');
+    expect(fd2?.detail).toBe('fallada');
+  });
+});
+
+describe('nombre y apellidos del jugador (C1)', () => {
+  /**
+   * El acta marca el nombre de pila con su propio span: "PASCUAL <span>MATÍAS
+   * JOSÉ</span>". Partir por la última palabra daba "JOSÉ" / "PASCUAL MATÍAS".
+   * En OK Liga Plata Sur 2025/26, 8 de 137 jugadores con eventos tenían el
+   * nombre compuesto mal repartido ("GABRIEL" / "FERNANDEZ DELGADO JUAN").
+   */
+  it('con el nombre de pila del acta, reparte exacto', () => {
+    expect(splitPlayerName('PASCUAL MATÍAS JOSÉ', 'MATÍAS JOSÉ')).toEqual({ firstName: 'MATÍAS JOSÉ', lastName: 'PASCUAL' });
+    expect(splitPlayerName('FERNANDEZ DELGADO JUAN GABRIEL', 'JUAN GABRIEL'))
+      .toEqual({ firstName: 'JUAN GABRIEL', lastName: 'FERNANDEZ DELGADO' });
+  });
+
+  it('sin él, la última palabra es el nombre (comportamiento anterior)', () => {
+    expect(splitPlayerName('FONT SÁNCHEZ FERRAN')).toEqual({ firstName: 'FERRAN', lastName: 'FONT SÁNCHEZ' });
+    expect(splitPlayerName('PELÉ')).toEqual({ firstName: 'PELÉ', lastName: 'PELÉ' });
+  });
+
+  it('un nombre de pila que no cierra el nombre completo se ignora', () => {
+    expect(splitPlayerName('FONT SÁNCHEZ FERRAN', 'JORDI')).toEqual({ firstName: 'FERRAN', lastName: 'FONT SÁNCHEZ' });
+    expect(splitPlayerName('FERRAN', 'FERRAN')).toEqual({ firstName: 'FERRAN', lastName: 'FERRAN' });
+  });
+
+  it('los goles traen el nombre de pila del acta', () => {
+    const gol = parseFicha(load('acta-finalizada'), '34259')
+      .find((e) => e.eventType === 'goal' && e.playerName?.startsWith('PASCUAL'));
+    expect(gol).toMatchObject({ playerName: 'PASCUAL MATÍAS JOSÉ', playerFirstName: 'MATÍAS JOSÉ' });
+  });
+
+  it('el lanzador de una falta directa también', () => {
+    const fd = parseFicha(load('acta-finalizada'), '34259').find((e) => e.eventType === 'direct_foul');
+    expect(fd?.playerFirstName).toBe('ARNAU');
+  });
+
+  it('las alineaciones traen el nombre de pila del acta', () => {
+    const l = parseLineups(load('acta-finalizada'), '34259').find((x) => x.playerName.startsWith('PASCUAL'));
+    expect(l).toMatchObject({ playerName: 'PASCUAL MATÍAS JOSÉ', playerFirstName: 'MATÍAS JOSÉ' });
   });
 });
 

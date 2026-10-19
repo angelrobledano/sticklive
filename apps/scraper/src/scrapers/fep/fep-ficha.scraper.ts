@@ -19,12 +19,12 @@ import { FepBaseScraper } from './fep-base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { SidgadClient, SIDGAD_LANG } from './sidgad-client.js';
 import { sourceByKey, eventPrefix, type SourceDef } from '../../core/sources.js';
-import { db, replaceMatchEvents, replaceMatchLineups, withTransaction } from '@sports/db';
+import { db, fixPlayerNameSplit, replaceMatchEvents, replaceMatchLineups, withTransaction } from '@sports/db';
 // Los parsers viven en fep-ficha.parser.ts (puros, sin E/S) para poder testearlos
 // con HTML congelado sin necesidad de entorno ni base de datos.
 import {
   parseFicha, parseLiveHeader, parseLineups, parseTeamFouls, parseShootout,
-  normalizeName, slugifyPlayerName,
+  normalizeName, slugifyPlayerName, splitPlayerName,
   type ScrapedMatchEvent, type FepEventType,
 } from './fep-ficha.parser.js';
 
@@ -214,7 +214,7 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
             // EXACTAMENTE en esta misma pasada.
             const sinEvento = lineups.filter((l) => !l.role && !l.playerId && l.playerSourceRef);
             for (const l of sinEvento) {
-              const pid = await this.upsertPlayerByRef(l.playerSourceRef!, l.playerName, undefined, this.cfg.matchId!);
+              const pid = await this.upsertPlayerByRef(l.playerSourceRef!, l.playerName, undefined, this.cfg.matchId!, l.playerFirstName);
               if (pid) {
                 l.playerId = pid;
                 playerMap.set(`r:${l.playerSourceRef}`, pid);
@@ -341,15 +341,15 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
     playerSourceRef: string,
     name: string,
     playerTeamRef: string | undefined,
-    matchId: string
+    matchId: string,
+    givenName?: string
   ): Promise<string | null> {
     const ctx = await this.matchContext(matchId);
     if (!ctx) return null;
 
-    // "FONT SÁNCHEZ FERRAN" → apellidos + nombre (última palabra)
-    const parts = name.split(/\s+/);
-    const firstName = parts.length > 1 ? parts[parts.length - 1]! : name;
-    const lastName  = parts.length > 1 ? parts.slice(0, -1).join(' ') : name;
+    // "PASCUAL MATÍAS JOSÉ" → apellidos + nombre. El acta marca el nombre de
+    // pila; sin esa marca, la última palabra (ver splitPlayerName, C1).
+    const { firstName, lastName } = splitPlayerName(name, givenName);
     const slug = slugifyPlayerName(name);
 
     // Id de fuente (para desambiguar el slug de homónimos). La FOTO no se
@@ -368,6 +368,10 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
       `SELECT id FROM players WHERE source_ref = $1`, [playerSourceRef]
     );
     let playerId = found.rows[0]?.id;
+    if (playerId && givenName) {
+      // Corrige el reparto de los dados de alta antes de leer el nombre de pila (C1).
+      await fixPlayerNameSplit(playerId, firstName, lastName);
+    }
     if (!playerId) {
       const clash = await db.query<{ id: string; source_ref: string | null }>(
         `SELECT id, source_ref FROM players WHERE sport_id = $1 AND slug = $2`,
@@ -451,7 +455,7 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
 
     for (const ev of unique.values()) {
       const name = ev.playerName!;
-      const playerId = await this.upsertPlayerByRef(ev.playerSourceRef!, name, ev.playerTeamRef, matchId);
+      const playerId = await this.upsertPlayerByRef(ev.playerSourceRef!, name, ev.playerTeamRef, matchId, ev.playerFirstName);
       if (!playerId) continue;
 
       const normalizedName = normalizeName(name);

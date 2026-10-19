@@ -94,6 +94,7 @@ const OPERATIVOS = [
   'apps/etl/src/seed-competition-sources.ts',
   'apps/etl/src/seed-fep-competition.ts',      // seed genérico por idc (2026/27)
   'apps/etl/src/split-filial-teams.ts',        // reparación filiales conflados (one-off)
+  'apps/etl/src/refichas-set-pieces.ts',       // lanzador y resultado de penaltis/FD (C1, one-off)
   'apps/etl/src/link-lineup-players.ts',
   'apps/etl/src/backfill-season-teams-from-lineups.ts', // season_teams desde alineaciones (#220)
   'apps/etl/src/cleanup-intruder-team-events.ts',       // reparación eventos intrusos (#325)

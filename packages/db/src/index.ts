@@ -15,3 +15,4 @@ export * from './queries/standings.js';
 export * from './queries/scrape-logs.js';
 export * from './queries/users.js';
 export * from './queries/redirects.js';
+export * from './queries/players.js';
