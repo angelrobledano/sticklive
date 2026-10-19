@@ -100,15 +100,17 @@ function applyTcData(data: TcData | null, success: boolean): void {
     return;
   }
 
-  // Una elección explícita del usuario (o un TC string ya guardado) manda.
-  if (data.eventStatus === 'useractioncomplete' || data.tcString) {
-    setState(analyticsAllowedFromTcData(data) ? 'granted' : 'denied');
-    return;
-  }
-
   // Fuera del EEE/UK/CH no hace falta consentimiento.
   if (data.gdprApplies === false) {
     setState('granted');
+    return;
+  }
+
+  // Solo decidimos con datos de propósitos. Un TC string sin propósitos aún
+  // puede ser un CMP a medio cargar: seguimos pendientes y deja actuar al
+  // respaldo si el mensaje de Google no llega a mostrarse.
+  if (data.purposeConsents && (data.eventStatus === 'useractioncomplete' || data.tcString)) {
+    setState(analyticsAllowedFromTcData(data) ? 'granted' : 'denied');
   }
   // Si el CMP está cargado pero aún no hay TCData/elección, seguimos en
   // `pending` para que el aviso de respaldo pueda aparecer.
