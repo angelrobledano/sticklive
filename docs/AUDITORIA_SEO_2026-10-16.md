@@ -574,7 +574,8 @@ Responsables: **P** = producto (Ángel), **T** = técnico. Esfuerzo: S ≤ 4 h, 
 | F4-1 previa de partido | Hecho (19/10): posición, puntos, forma y H2H de la temporada para partidos no jugados | 1d78317 |
 | F4-2 resumen de competición | Hecho (19/10): líder, próximo partido y máximo goleador, server-rendered | 1d78317 |
 | F4-3 ficha de equipo | Ya existente: posición, puntos, forma, próximo y último partido en `TeamCenterClient` | — |
-| Privacidad en francés | Hecho (19/10): `/fr/privacy` deja de servir inglés; textos separados a `privacy/content.ts` | 212159d |
+| Privacidad FR/PT/IT | Hecho (19/10): `/fr`, `/pt` e `/it/privacy` dejan de servir inglés; textos separados a `privacy/content.ts` | 212159d, d530904 |
+| CWV tras diferir AdSense | Medido (19/10, Lighthouse 13.5): móvil 86 · LCP 3,5 s · TBT 170 ms · CLS 0; escritorio 100 · LCP 0,4 s · CLS 0. El LCP móvil sigue siendo el aviso de consentimiento (render delay 2,17 s) | — |
 | F2-6 quitar `/sitemap.xml` de Search Console | Hecho (18/10): eliminado el sitemap antiguo que devolvía 404 | — |
 | F2-7 redirigir los partidos con tráfico que hoy son 404 | Parcial (18/10). Recuperadas: `d87e7dfc` → `db7f3b3b` (Chile–Angola 12/10; 9 clics y 26 impresiones, consulta «chile vs angola») y `df95ecd9` → `3369141a` (Sudáfrica–Australia 13/10; sintético en el backup del 11/10). El resto de 404 con clics (`c4e78c74`, `a192b8cd`) no tiene consultas ni rastro en BD/backups: se quedan en 404 | — |
 
@@ -724,8 +725,8 @@ Los controles de §15, la rutina de §12.3 y una revisión trimestral de la matr
 | Equipos vacíos en sitemap | API | 62 | 0 |
 | `lastmod` movidos sin cambios | Sitemap | 98 % de partidos en la última hora | < 5 % |
 | OG de partido con escudos | Revisión | 0 % | 100 % con escudo o iniciales |
-| LCP / TBT laboratorio home | Lighthouse | 4,7 s / 170 ms móvil; 0,8 s / 250 ms escritorio (19/10) | < 3 s / < 600 ms |
-| CLS laboratorio home | Lighthouse | 0,129 móvil; 0,007 escritorio (19/10) | < 0,1 |
+| LCP / TBT laboratorio home | Lighthouse | 3,5 s / 170 ms móvil; 0,4 s / 0 ms escritorio (19/10) | < 3 s / < 600 ms |
+| CLS laboratorio home | Lighthouse | 0 móvil y 0 escritorio (19/10, tras diferir AdSense) | < 0,1 |
 | CWV de campo | Search Console | Sin datos (tráfico insuficiente) | LCP < 2,5 s, INP < 200 ms, CLS < 0,1 |
 
 ---
