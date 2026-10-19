@@ -19,12 +19,18 @@ export function Sidebar() {
                       min-h-screen bg-white dark:bg-slate-900
                       border-r border-slate-200 dark:border-slate-800
                       sticky top-0">
-      {/* Logotipo de marca: lockup de la i (claro/oscuro). */}
+      {/* Logotipo de marca: lockup de la i (claro/oscuro). Enlaza a la home. */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-200 dark:border-slate-800">
-        {/* eslint-disable-next-line @next/next/no-img-element -- SVG estático de marca, sin optimización */}
-        <img src="/brand/lock-on-light.svg" alt="Stick Live" className="h-8 w-auto dark:hidden" />
-        {/* eslint-disable-next-line @next/next/no-img-element -- variante oscura del mismo lockup */}
-        <img src="/brand/lock-on-dark.svg" alt="" aria-hidden="true" className="hidden h-8 w-auto dark:block" />
+        <Link
+          href="/"
+          aria-label="Stick Live"
+          className="inline-flex items-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- SVG estático de marca, sin optimización */}
+          <img src="/brand/lock-on-light.svg" alt="" className="h-8 w-auto dark:hidden" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- variante oscura del mismo lockup */}
+          <img src="/brand/lock-on-dark.svg" alt="" aria-hidden="true" className="hidden h-8 w-auto dark:block" />
+        </Link>
       </div>
 
       {/* Navegación */}
