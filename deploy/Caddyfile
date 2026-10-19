@@ -5,6 +5,20 @@
 # www redirige al apex, que es el canónico (#178).
 # ============================================================
 
+# Logs de runtime (errores de proxy, etc.): Caddy también incluye las cabeceras
+# de la petición en esos errores. Se filtran los secretos para que no lleguen a
+# `docker logs caddy`. El access log tiene su propio filtro más abajo.
+{
+	log {
+		format filter {
+			request>headers>X-Internal-Token delete
+			request>headers>X-Admin-Token delete
+			request>headers>Referer delete
+			wrap json
+		}
+	}
+}
+
 sticklive.eu {
 	# zstd además de gzip (Caddy lo soporta sin coste, #178).
 	encode zstd gzip
