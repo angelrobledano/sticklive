@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, Fragment } from 'react';
+import { useMemo, useCallback, useEffect, useRef, Fragment } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useT } from '@/lib/i18n';
@@ -23,6 +23,23 @@ const ADS = adsenseConfig();
 
 /** Sentinela interna para partidos sin fecha (no se traduce en el agrupado). */
 const NO_DATE = '__nodate__';
+
+/**
+ * Fecha contigua dentro de la tira de días (-1 anterior, +1 siguiente).
+ * `null` en los extremos o si el valor activo no está en la lista.
+ */
+export function dateNeighbor(dates: string[], value: string | null, dir: -1 | 1): string | null {
+  const i = value ? dates.indexOf(value) : -1;
+  if (i === -1) return null;
+  return dates[i + dir] ?? null;
+}
+
+/** Cronológico ascendente con los partidos SIN FECHA al final del calendario. */
+function byScheduledAt(a: SeasonMatch, b: SeasonMatch): number {
+  if (!a.scheduledAt) return b.scheduledAt ? 1 : 0;
+  if (!b.scheduledAt) return -1;
+  return a.scheduledAt.localeCompare(b.scheduledAt);
+}
 
 // ─── Filtro por defecto y modo (#157, #352) ─────────────────────────────────
 
@@ -366,27 +383,52 @@ function DatePills({ dates, value, onChange }: {
   value: string | null;
   onChange: (d: string) => void;
 }) {
-  const { locale } = useT();
+  const { t, locale } = useT();
+  const prev = dateNeighbor(dates, value, -1);
+  const next = dateNeighbor(dates, value, 1);
+  const activeRef = useRef<HTMLButtonElement | null>(null);
+
+  // Mantén visible el día activo: con una temporada entera la tira desborda y
+  // el deep-link (?date=) podía caer fuera de la vista sin scrollbar en desktop.
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }, [value]);
+
   return (
-    <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
-      {dates.map((d) => {
-        const active = d === value;
-        return (
-          <button
-            key={d}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onChange(d)}
-            className={`px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
-              active
-                ? 'bg-rink-passion text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            {dayPillLabel(d, locale)}
-          </button>
-        );
-      })}
+    <div className="flex items-center gap-2">
+      <StepArrow
+        dir="prev"
+        onClick={prev ? () => onChange(prev) : undefined}
+        disabled={!prev}
+        aria-label={tt(t, 'fixtures.prev_date', 'Fecha anterior')}
+      />
+      <div className="flex flex-1 min-w-0 gap-2 overflow-x-auto scrollbar-none py-1">
+        {dates.map((d) => {
+          const active = d === value;
+          return (
+            <button
+              key={d}
+              ref={active ? activeRef : undefined}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(d)}
+              className={`px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+                active
+                  ? 'bg-rink-passion text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              {dayPillLabel(d, locale)}
+            </button>
+          );
+        })}
+      </div>
+      <StepArrow
+        dir="next"
+        onClick={next ? () => onChange(next) : undefined}
+        disabled={!next}
+        aria-label={tt(t, 'fixtures.next_date', 'Fecha siguiente')}
+      />
     </div>
   );
 }
@@ -579,7 +621,7 @@ export function GameweeksTab({ rounds, matches }: { rounds: SeasonRound[]; match
       if (!activeTeam) return [];
       return matches
         .filter((m) => m.homeTeam?.id === activeTeam.id || m.awayTeam?.id === activeTeam.id)
-        .sort((a, b) => (a.scheduledAt ?? '').localeCompare(b.scheduledAt ?? ''));
+        .sort(byScheduledAt);
     }
     if (mode === 'date' && activeDate) {
       return matches

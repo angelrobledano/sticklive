@@ -518,6 +518,8 @@
     "filter_by": "Filtrer par",
     "prev_round": "Journée précédente",
     "next_round": "Journée suivante",
+    "prev_date": "Date précédente",
+    "next_date": "Date suivante",
     "choose_team": "Choisissez une équipe pour voir tous ses matchs.",
     "match_count_one": "{n} match",
     "match_count_many": "{n} matchs"
@@ -554,6 +556,7 @@
   },
   "notif_presets": {
     "title": "Que voulez-vous recevoir ?",
+    "close": "Fermer",
     "complete": {
       "label": "Tout",
       "desc": "Vous ne raterez rien du match."
@@ -588,7 +591,6 @@
     "rewarded_retry": "Touchez pour réessayer",
     "privacy_entry_title": "Publicité et confidentialité",
     "privacy_entry_desc": "Gérez votre consentement publicitaire",
-    "analytics_consent_desc": "Utilisé uniquement si l'avis de Google n'est pas disponible.",
     "privacy_title": "Publicité et confidentialité",
     "privacy_desc": "Les publicités de l'application sont diffusées selon le consentement donné dans le formulaire de Google. Vous pouvez modifier votre choix à tout moment : nous rouvrirons le formulaire de Google avec vos options.",
     "privacy_manage_cta": "Gérer les options de publicités",

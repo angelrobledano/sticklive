@@ -518,6 +518,8 @@
     "filter_by": "Filtrar por",
     "prev_round": "Jornada anterior",
     "next_round": "Jornada seguinte",
+    "prev_date": "Data anterior",
+    "next_date": "Data seguinte",
     "choose_team": "Escolhe uma equipa para veres todos os seus jogos.",
     "match_count_one": "{n} jogo",
     "match_count_many": "{n} jogos"
@@ -554,6 +556,7 @@
   },
   "notif_presets": {
     "title": "O que queres receber?",
+    "close": "Fechar",
     "complete": {
       "label": "Tudo",
       "desc": "Não perderás nada do jogo."
@@ -588,7 +591,6 @@
     "rewarded_retry": "Toque para tentar novamente",
     "privacy_entry_title": "Publicidade e privacidade",
     "privacy_entry_desc": "Gerencie seu consentimento de anúncios",
-    "analytics_consent_desc": "Usado apenas se o aviso da Google não estiver disponível.",
     "privacy_title": "Publicidade e privacidade",
     "privacy_desc": "Os anúncios do app são exibidos de acordo com o consentimento dado no formulário do Google. Você pode alterar sua escolha a qualquer momento: abriremos novamente o formulário do Google com suas opções.",
     "privacy_manage_cta": "Gerenciar opções de anúncios",

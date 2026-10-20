@@ -42,6 +42,7 @@
   },
   "notif_presets": {
     "title": "What do you want to get?",
+    "close": "Close",
     "complete": {
       "label": "Everything",
       "desc": "You won't miss a thing."
@@ -549,6 +550,8 @@
     "filter_by": "Filter by",
     "prev_round": "Previous matchday",
     "next_round": "Next matchday",
+    "prev_date": "Previous date",
+    "next_date": "Next date",
     "choose_team": "Pick a team to see all their matches.",
     "match_count_one": "{n} match",
     "match_count_many": "{n} matches"
@@ -588,7 +591,6 @@
     "rewarded_retry": "Tap to try again",
     "privacy_entry_title": "Ads & privacy",
     "privacy_entry_desc": "Manage your ads consent",
-    "analytics_consent_desc": "Only used if Google's notice is unavailable.",
     "privacy_title": "Ads & privacy",
     "privacy_desc": "Ads in this app are served according to the consent you gave in the Google form. You can change your choice at any time: we will open the Google form with your options again.",
     "privacy_manage_cta": "Manage ad options",

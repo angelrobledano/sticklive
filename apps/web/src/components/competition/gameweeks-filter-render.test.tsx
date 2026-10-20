@@ -51,10 +51,10 @@ const MATCHES = [
   match('m-r2', 2, 'h2', 'a2', '2099-02-08'),
 ];
 
-function render() {
+function render(matches: SeasonMatch[] = MATCHES) {
   return renderToStaticMarkup(
     <I18nProvider initialLocale="es" dict={{}} referenceDict={{}}>
-      <GameweeksTab rounds={ROUNDS} matches={MATCHES} />
+      <GameweeksTab rounds={ROUNDS} matches={matches} />
     </I18nProvider>,
   );
 }
@@ -77,6 +77,32 @@ describe('GameweeksTab — conmutador de modo', () => {
     expect(html).toContain('/matches/m-r2');
     expect(html).not.toContain('/matches/m-r1');
     expect(html).toContain('1 partido');
+  });
+
+  it('modo equipo deja los partidos sin fecha al final', () => {
+    state.params = 'filter=team&team_id=h9';
+    const dated = match('m-dated', 1, 'h9', 'a9', '2099-03-01');
+    const undated: SeasonMatch = {
+      ...match('m-undated', 2, 'h9', 'a9', '2099-01-01'),
+      scheduledAt: null,
+    };
+    // Se pasan desordenados a propósito: el orden lo decide la lista, no la entrada.
+    const html = render([undated, dated]);
+    const datedAt = html.indexOf('/matches/m-dated');
+    const undatedAt = html.indexOf('/matches/m-undated');
+    expect(datedAt).toBeGreaterThan(-1);
+    expect(undatedAt).toBeGreaterThan(-1);
+    expect(datedAt).toBeLessThan(undatedAt);
+    expect(html.indexOf('Sin fecha')).toBeGreaterThan(datedAt);
+  });
+
+  it('modo fecha filtra solo los partidos de ese día y ofrece navegación', () => {
+    state.params = 'filter=date&date=2099-02-01';
+    const html = render();
+    expect(html).toContain('/matches/m-r1');
+    expect(html).not.toContain('/matches/m-r2');
+    expect(html).toContain('Fecha anterior');
+    expect(html).toContain('Fecha siguiente');
   });
 
   it('modo jornada respeta ?journey=', () => {

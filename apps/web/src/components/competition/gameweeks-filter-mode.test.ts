@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fixturesFilterMode, nearestMatchDay } from './GameweeksTab';
+import { dateNeighbor, fixturesFilterMode, nearestMatchDay } from './GameweeksTab';
 import type { SeasonMatch } from '@/lib/api/client';
 
 function match(over: Partial<SeasonMatch> = {}): SeasonMatch {
@@ -35,6 +35,22 @@ describe('nearestMatchDay', () => {
 
   it('ignora partidos sin fecha y devuelve null si no hay ninguno', () => {
     expect(nearestMatchDay([match({ scheduledAt: null })], '2026-09-28')).toBeNull();
+  });
+});
+
+describe('dateNeighbor', () => {
+  const dates = ['2026-09-27', '2026-10-04', '2026-10-10'];
+
+  it('devuelve la fecha contigua en la dirección pedida', () => {
+    expect(dateNeighbor(dates, '2026-10-04', -1)).toBe('2026-09-27');
+    expect(dateNeighbor(dates, '2026-10-04', 1)).toBe('2026-10-10');
+  });
+
+  it('no se sale de los extremos y tolera una fecha ausente', () => {
+    expect(dateNeighbor(dates, '2026-09-27', -1)).toBeNull();
+    expect(dateNeighbor(dates, '2026-10-10', 1)).toBeNull();
+    expect(dateNeighbor(dates, null, 1)).toBeNull();
+    expect(dateNeighbor(dates, '2020-01-01', 1)).toBeNull();
   });
 });
 

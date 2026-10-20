@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useEffect, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import { useT } from '@/lib/i18n';
 import { madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
 import { computeDateWindow } from '@/lib/date-window';
@@ -12,10 +12,9 @@ import { tt } from '@/components/search/translate';
  * carrusel y el filtrado de partidos compartan exactamente la misma autoridad
  * horaria; si no, el día resaltado como "hoy" no casaría con el día filtrado.
  */
-function buildDateKeys(before = 7, after = 14): string[] {
-  const today = madridTodayKey();
+function buildDateKeys(todayKey: string, before = 7, after = 14): string[] {
   const keys: string[] = [];
-  for (let i = -before; i <= after; i++) keys.push(addDaysToKey(today, i));
+  for (let i = -before; i <= after; i++) keys.push(addDaysToKey(todayKey, i));
   return keys;
 }
 
@@ -36,14 +35,35 @@ function getRelativeKey(key: string, todayKey: string): string | null {
   return null;
 }
 
+/** Formatters de Intl cacheados por idioma: construir uno es caro y el
+ *  selector pinta ~40 chips (móvil + escritorio) en cada render. */
+const WEEKDAY_FMT = new Map<string, Intl.DateTimeFormat>();
+const MONTH_FMT = new Map<string, Intl.DateTimeFormat>();
+
+function weekdayFormatter(locale: string): Intl.DateTimeFormat {
+  let fmt = WEEKDAY_FMT.get(locale);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat(locale, { weekday: 'short' });
+    WEEKDAY_FMT.set(locale, fmt);
+  }
+  return fmt;
+}
+
+function monthFormatter(locale: string): Intl.DateTimeFormat {
+  let fmt = MONTH_FMT.get(locale);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat(locale, { month: 'short' });
+    MONTH_FMT.set(locale, fmt);
+  }
+  return fmt;
+}
+
 /** Abreviaturas de día/mes en el idioma activo (Intl, sin tablas a mano) */
 function dayAbbr(date: Date, locale: string): string {
-  const s = new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(date);
-  return s.replace('.', '').slice(0, 3);
+  return weekdayFormatter(locale).format(date).replace('.', '').slice(0, 3);
 }
 function monthAbbr(date: Date, locale: string): string {
-  const s = new Intl.DateTimeFormat(locale, { month: 'short' }).format(date);
-  return s.replace('.', '').slice(0, 3);
+  return monthFormatter(locale).format(date).replace('.', '').slice(0, 3);
 }
 
 interface DateSelectorProps {
@@ -61,19 +81,21 @@ interface DateSelectorProps {
  * Chip de día — compartido por el carrusel (móvil) y la tira paginada
  * (escritorio): mismo lenguaje visual, dos chasis de interacción.
  */
-function DayChip({ dateKey, selected, outOfRange, marked = false, onClick }: {
+function DayChipImpl({ dateKey, selected, outOfRange, marked = false, todayKey, onClick }: {
   dateKey: string;
   selected: string;
   outOfRange: boolean;
+  /** Día de "hoy" en Madrid, ya calculado por el padre (evita Intl por chip). */
+  todayKey: string;
   /** El día tiene partidos (punto bajo el número). */
   marked?: boolean;
   onClick: (key: string) => void;
 }) {
   const { t, locale } = useT();
-  const todayKey = madridTodayKey();
   const date = labelDate(dateKey);
   const isActive = dateKey === selected;
-  const relLabel = getRelativeKey(dateKey, todayKey) ? t(getRelativeKey(dateKey, todayKey)!) : null;
+  const relKey = getRelativeKey(dateKey, todayKey);
+  const relLabel = relKey ? t(relKey) : null;
 
   return (
     <button
@@ -127,6 +149,8 @@ function DayChip({ dateKey, selected, outOfRange, marked = false, onClick }: {
   );
 }
 
+const DayChip = memo(DayChipImpl);
+
 /**
  * Selector de fecha con dos chasis (#414):
  *  · Móvil: carrusel deslizable de todos los días, centrado en el activo.
@@ -134,9 +158,10 @@ function DayChip({ dateKey, selected, outOfRange, marked = false, onClick }: {
  *    navegación por teclado y flechas, sin una baranda de chips a todo el ancho.
  * La lógica de paginación vive en `lib/date-window` (pura, testeada).
  */
-export function DateSelector({ selected, onChange, availableFrom, availableTo, markedDays }: DateSelectorProps) {
+function DateSelectorImpl({ selected, onChange, availableFrom, availableTo, markedDays }: DateSelectorProps) {
   const { t } = useT();
-  const dateKeys = buildDateKeys(7, 14);
+  const todayKey = madridTodayKey();
+  const dateKeys = useMemo(() => buildDateKeys(todayKey, 7, 14), [todayKey]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Ventana de escritorio: null = auto-centrada en el día seleccionado; las
@@ -186,7 +211,7 @@ export function DateSelector({ selected, onChange, availableFrom, availableTo, m
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {dateKeys.map((key) => (
-            <DayChip key={key} dateKey={key} selected={selected}
+            <DayChip key={key} dateKey={key} selected={selected} todayKey={todayKey}
                      outOfRange={isOutOfRange(key)} marked={!!markedDays?.has(key)}
                    onClick={handleClick} />
           ))}
@@ -208,7 +233,7 @@ export function DateSelector({ selected, onChange, availableFrom, availableTo, m
           </svg>
         </button>
         {window7.keys.map((key) => (
-          <DayChip key={key} dateKey={key} selected={selected}
+          <DayChip key={key} dateKey={key} selected={selected} todayKey={todayKey}
                    outOfRange={isOutOfRange(key)} marked={!!markedDays?.has(key)}
                    onClick={handleClick} />
         ))}
@@ -228,3 +253,9 @@ export function DateSelector({ selected, onChange, availableFrom, availableTo, m
     </div>
   );
 }
+
+/**
+ * Memoizado: la home se re-renderiza en cada poll del directo, pero el
+ * selector de fecha solo cambia cuando cambia el día elegido (o sus marcas).
+ */
+export const DateSelector = memo(DateSelectorImpl);

@@ -25,6 +25,11 @@ function renderSheet(kind: 'team' | 'league' | 'player'): string {
 }
 
 describe('NotificationPresetSheet — opciones por entidad', () => {
+  it('incluye una X accesible para cerrar el modal', () => {
+    const html = renderSheet('team');
+    expect(html).toContain('aria-label="notif_presets.close"');
+  });
+
   it('equipo: Eventos clave, Resultados y Silencioso; sin "Completo"', () => {
     const html = renderSheet('team');
     expect(html).toContain('notif_presets.key_events.label');

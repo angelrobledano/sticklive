@@ -1,19 +1,38 @@
 'use client';
 
 import { useMemo, useCallback, Suspense, useRef, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import type { SeasonOverview, CompetitionSeason, SeasonStats } from '@/lib/api/client';
 import { CompetitionHeader } from './CompetitionHeader';
 import { StandingsTab } from './StandingsTab';
-import { GameweeksTab } from './GameweeksTab';
-import { PlayoffsTab } from './PlayoffsTab';
-import { StatsLeadersTab } from './StatsLeadersTab';
 import { tt } from '@/components/search/translate';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { clubName } from '@/lib/names';
 import { finalPhaseStarted, knockoutTabLabelKey } from '@/lib/season-phases';
+
+/**
+ * Pestañas cargadas bajo demanda: el chunk de jornadas, cuadro y estadísticas
+ * solo se descarga si el usuario abre esa pestaña (o si es la inicial por
+ * `?tab=`). Clasificación se sirve en el bundle principal porque es la vista
+ * por defecto de la mayoría de competiciones.
+ */
+const tabLoading = () => <div className="card h-40 animate-pulse" aria-hidden="true" />;
+
+const GameweeksTab = dynamic(
+  () => import('./GameweeksTab').then((mod) => mod.GameweeksTab),
+  { loading: tabLoading },
+);
+const PlayoffsTab = dynamic(
+  () => import('./PlayoffsTab').then((mod) => mod.PlayoffsTab),
+  { loading: tabLoading },
+);
+const StatsLeadersTab = dynamic(
+  () => import('./StatsLeadersTab').then((mod) => mod.StatsLeadersTab),
+  { loading: tabLoading },
+);
 
 // ─── Componente principal ───
 

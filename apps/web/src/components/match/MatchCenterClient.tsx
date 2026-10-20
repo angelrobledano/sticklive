@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import * as Sentry from '@sentry/nextjs';
 import { useT } from '@/lib/i18n';
 import { track, matchAnalyticsDecision, type LiveStreamStatus } from '@/lib/analytics';
@@ -474,6 +474,12 @@ export function MatchCenterClient({ data: initialData, preview }: { data: MatchD
 
   const data = liveData; // alias para no cambiar el resto del JSX
 
+  // Paneles memoizados por `data`: el cambio de pestaña no recalcula el
+  // timeline, las alineaciones ni las estadísticas (solo cambia `hidden`).
+  const timelinePanel = useMemo(() => <TimelineTab data={data} />, [data]);
+  const lineupsPanel  = useMemo(() => <LineupsTab  data={data} />, [data]);
+  const statsPanel    = useMemo(() => <StatsTab    data={data} />, [data]);
+
   // Tabs visibles según datos disponibles — nunca mostrar una pestaña vacía
   const visibleTabs = visibleTabsFor(data);
   // Si la tab activa quedó oculta (ej: alineaciones desaparecieron en live), volver a Resumen
@@ -568,13 +574,13 @@ export function MatchCenterClient({ data: initialData, preview }: { data: MatchD
         >
           {tab === 'Resumen' && (
             <>
-              <TimelineTab data={data} />
+              {timelinePanel}
               {/* Anuncio al FINAL del resumen (no en medio del marcador/timeline) */}
               {safeActiveTab === 'Resumen' && <AdBanner zone="match-summary" className="mt-4" />}
             </>
           )}
-          {tab === 'Alineaciones'  && <LineupsTab data={data} />}
-          {tab === 'Estadísticas'  && <StatsTab   data={data} />}
+          {tab === 'Alineaciones'  && lineupsPanel}
+          {tab === 'Estadísticas'  && statsPanel}
         </div>
       ))}
     </div>
