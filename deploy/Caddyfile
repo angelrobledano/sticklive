@@ -124,11 +124,13 @@ sticklive.eu {
 # en www para que ningún rastreador que no siga el 301 los dé por ausentes.
 www.sticklive.eu {
 	@ads path /ads.txt /app-ads.txt
-	route @ads {
+	handle @ads {
 		header Content-Type "text/plain; charset=utf-8"
 		respond "google.com, pub-2994866776026136, DIRECT, f08c47fec0942fa0" 200
 	}
-	redir https://sticklive.eu{uri} permanent
+	handle {
+		redir https://sticklive.eu{uri} permanent
+	}
 }
 
 # OpenOutbound (revelatu): motor de outreach, proxy al contenedor de la red
