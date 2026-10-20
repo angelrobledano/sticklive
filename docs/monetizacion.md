@@ -146,32 +146,47 @@ consentir", no se sirven anuncios personalizados; el estado del CMP (`__tcfapi`)
 refleja la elección; en AdSense "Privacidad y mensajes" el CMP figura como
 configurado/publicado.
 
-### 4.2 Consentimiento unificado con el CMP de Google — hecho (2026-10-19)
+### 4.2 Consentimiento unificado con el CMP de Google + respaldo — hecho (2026-10-19)
 
-El aviso propio de analítica (`ConsentBanner`, #246) se ha **retirado**. Ahora
-hay una sola puerta: el CMP certificado de Google (Funding Choices, TCF v2.2),
+La puerta principal es el CMP certificado de Google (Funding Choices, TCF v2.2),
 que se sirve a través del tag de AdSense y cubre **publicidad y analítica**.
 
 - **Publicidad** → el CMP decide si los anuncios son personalizados o no.
 - **Analítica** → `lib/consent-tcf.ts` lee `__tcfapi` y solo permite PostHog si
   `gdprApplies === false` (fuera del EEE/UK/CH) o si el usuario ha concedido los
   propósitos TCF **1** (almacenar/acceder a información del dispositivo) y **7**
-  (medir audiencia). Si el CMP no carga, fail-closed: PostHog no se inicializa.
+  (medir audiencia).
+- **Respaldo** → si el CMP no muestra su mensaje ni publica TCData (mensaje GDPR
+  no disponible en AdSense, bloqueador, red), a los ~7 s aparece el aviso de
+  analítica propio (`FallbackConsentBanner`, clave histórica
+  `rink-consent-analytics`). Solo decide sobre analítica; la publicidad sigue en
+  manos del CMP. Una decisión explícita del CMP (conceder o denegar) siempre
+  manda sobre el respaldo. Sin CMP y sin respaldo, fail-closed: PostHog no se
+  inicializa.
 - **Cambiar la elección** → Ajustes → “Publicidad y privacidad” abre
-  `googlefc.showRevocationMessage()`.
+  `googlefc.showRevocationMessage()`; “Analítica y privacidad” (solo si el CMP
+  está pendiente o no disponible) reabre el aviso de respaldo.
 
 El tag de AdSense se carga siempre que esté configurado, también para Premium:
 es el que publica el CMP. Los usuarios Premium no tienen huecos de anuncio, así
 que no se solicita publicidad para ellos.
 
-Archivos: `lib/consent-tcf.ts` (lógica TCF pura + watcher + apertura del CMP),
-`lib/analytics.tsx` (PostHog tras consentimiento), `AdsenseScript`, `AdBanner`,
-`AdInterstitial`, `InstallBanner` y `instrumentation-client.ts` (Sentry Replay).
-La política de privacidad se actualizó en los cinco idiomas para explicar que la
-analítica se rige por el mismo aviso de Google que la publicidad.
+**Verificación en producción (19/10/2026):** el CMP carga (`__tcfapi`, cmpId 300,
+`cmpStatus: loaded`) pero **no muestra mensaje**: `displayStatus: hidden`,
+`getTCData` devuelve `success: false` y tampoco aparece con
+`?fc=alwaysshow&fctype=gdpr`. El problema está en la configuración del mensaje
+GDPR en AdSense → Privacidad y mensajes, no en el código. Mientras se corrige, el
+respaldo mantiene operativa la analítica y el CMP sigue gobernando la publicidad
+(que se sirve en modo limitado/no personalizado). Los usuarios que ya habían
+aceptado o rechazado el aviso antiguo conservan su elección porque la clave es
+la misma.
 
-**Pendiente antes de activar:** no activar el client id en producción con
-tráfico UE hasta que el CMP esté configurado y publicado en el panel.
+Archivos: `lib/consent-tcf.ts` (TCF + estado combinado), `lib/consent-fallback.ts`
+(persistencia del respaldo), `components/shared/FallbackConsentBanner.tsx`,
+`lib/analytics.tsx`, `AdsenseScript`, `AdBanner`, `AdInterstitial`, `InstallBanner`
+y `instrumentation-client.ts` (Sentry Replay). La política de privacidad se
+actualizó en los cinco idiomas para explicar que la analítica se rige por el CMP
+de Google o, si no está disponible, por el aviso de respaldo.
 
 ---
 

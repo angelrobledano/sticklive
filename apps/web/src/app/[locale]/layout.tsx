@@ -13,6 +13,7 @@ import { PremiumProvider } from '@/context/PremiumContext';
 import { AnalyticsPageview } from '@/lib/analytics';
 import { AdsenseScript } from '@/components/shared/AdsenseScript';
 import { AdInterstitial } from '@/components/shared/AdInterstitial';
+import { FallbackConsentBanner } from '@/components/shared/FallbackConsentBanner';
 import { InstallBanner } from '@/components/shared/InstallBanner';
 import { LocaleHint } from '@/components/layout/LocaleHint';
 import { JsonLd } from '@/components/shared/JsonLd';
@@ -179,13 +180,16 @@ export default async function RootLayout({ children, params }: Props) {
           {/* Pageviews de PostHog (no-op en desarrollo y sin consentimiento) */}
           <AnalyticsPageview />
 
-          {/* AdSense: el tag publica el CMP de Google, única puerta de
-              consentimiento (publicidad y analítica). Se carga también para
-              Premium, que no tiene huecos de anuncio. */}
+          {/* AdSense: el tag publica el CMP de Google, puerta principal de
+              consentimiento. Se carga también para Premium, que no tiene
+              huecos de anuncio. */}
           <AdsenseScript />
 
           {/* Intersticial no agresivo (desactivado por defecto, 1/sesión) */}
           <AdInterstitial />
+
+          {/* Respaldo: solo si el CMP de Google no muestra su mensaje */}
+          <FallbackConsentBanner />
 
           <InstallBanner />
 

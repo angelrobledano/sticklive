@@ -18,7 +18,8 @@ import { settingsSections } from './sections';
 import { PremiumBanner } from './PremiumBanner';
 import { AccountCard, FavoritesSummary, LanguageRow, SubHeader } from './cards';
 import { NotificationStatus } from './NotificationStatus';
-import { openConsentManager } from '@/lib/consent-tcf';
+import { openConsentManager, getConsentState, subscribeConsent, type TcfState } from '@/lib/consent-tcf';
+import { resetFallbackConsent, requestFallbackConsent } from '@/lib/consent-fallback';
 
 // ─── Fila de navegación (título + chevron) ────────────────────────────────────
 
@@ -81,6 +82,11 @@ export default function SettingsPage() {
   const { isPremium, mounted: premiumMounted } = usePremium();
   const deviceId = useDeviceId();
   const [consentError, setConsentError] = useState(false);
+  const [tcfState, setTcfState] = useState<TcfState | null>(null);
+  useEffect(() => {
+    setTcfState(getConsentState());
+    return subscribeConsent(setTcfState);
+  }, []);
   // La sección "La app" solo tiene sentido mientras la PWA no está instalada.
   // `null` = aún sin comprobar (SSR/primer render): no se pinta para no mostrar
   // el bloque a quien ya la tiene instalada.
@@ -335,6 +341,22 @@ export default function SettingsPage() {
               <p role="alert" className="text-xs text-red-600 dark:text-red-400">{t('ads.privacy_error')}</p>
             )}
           </div>
+
+          {(tcfState === 'pending' || tcfState === 'unavailable') && (
+            <div className="py-3.5 space-y-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  resetFallbackConsent();
+                  requestFallbackConsent();
+                }}
+                className="text-sm font-medium text-slate-800 dark:text-slate-200 underline underline-offset-2 hover:text-rink-passion dark:hover:text-rink-accent"
+              >
+                {t('consent.title')}
+              </button>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('ads.analytics_consent_desc')}</p>
+            </div>
+          )}
 
           <div className="py-3.5">
             <Link

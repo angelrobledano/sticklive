@@ -590,6 +590,7 @@
     "rewarded_retry": "Tocca per riprovare",
     "privacy_entry_title": "Pubblicità e privacy",
     "privacy_entry_desc": "Gestisci il tuo consenso per le pubblicità",
+    "analytics_consent_desc": "Usato solo se l'avviso di Google non è disponibile.",
     "privacy_title": "Pubblicità e privacy",
     "privacy_desc": "Le pubblicità nell'app vengono mostrate in base al consenso dato nel modulo di Google. Puoi cambiare la tua scelta in qualsiasi momento: riapriremo il modulo di Google con le tue opzioni.",
     "privacy_manage_cta": "Gestisci le opzioni delle pubblicità",

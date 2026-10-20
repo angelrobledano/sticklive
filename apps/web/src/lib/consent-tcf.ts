@@ -1,9 +1,8 @@
 /**
- * Consentimiento unificado con el CMP de Google (TCF v2.2).
+ * Consentimiento de analítica: CMP de Google (TCF v2.2) + respaldo.
  *
- * El aviso propio de analítica desaparece: el CMP certificado de Google
- * (Funding Choices) es la única puerta. Se lee su estado con `__tcfapi` y se
- * traduce a una decisión de analítica:
+ * La puerta principal es el CMP certificado de Google (Funding Choices). Se lee
+ * su estado con `__tcfapi` y se traduce a una decisión de analítica:
  *
  *   · `gdprApplies === false` → no hace falta consentimiento explícito (fuera
  *     del EEE/UK/CH): analítica permitida.
@@ -11,12 +10,23 @@
  *     acceder a información del dispositivo) y 7 (medir audiencia), que son los
  *     que cubren PostHog.
  *
- * Fail-closed: si el CMP no carga (bloqueador, red), el estado se queda en
- * `denied` y no se inicializa PostHog. La UI para cambiar la elección se abre
- * con `openConsentManager()`.
+ * Si el CMP no llega a mostrar su mensaje (configuración de AdSense pendiente,
+ * bloqueador, red), se usa el aviso de respaldo de `lib/consent-fallback.ts`
+ * para no dejar la analítica sin ninguna forma de consentimiento. El CMP sigue
+ * teniendo prioridad: si concede o deniega, su decisión manda.
+ *
+ * Fail-closed: sin CMP y sin elección de respaldo, PostHog no se inicializa.
  */
 
+import { readFallbackConsent, subscribeFallbackConsent } from '@/lib/consent-fallback';
+
 export type ConsentState = 'granted' | 'denied' | 'pending';
+
+/** Estado del CMP: además de los tres estados, puede no estar disponible. */
+export type TcfState = ConsentState | 'unavailable';
+
+/** Estado combinado que consumen la analítica y el aviso de instalación. */
+export type AnalyticsConsentState = ConsentState;
 
 export interface TcData {
   gdprApplies?: boolean;
@@ -53,11 +63,25 @@ export function analyticsAllowedFromTcData(data: TcData | null | undefined): boo
   return purposes['1'] === true && purposes['7'] === true;
 }
 
-let state: ConsentState = 'pending';
-let started = false;
-const listeners = new Set<(state: ConsentState) => void>();
+/**
+ * Resuelve el estado combinado: una decisión explícita del CMP manda; si el CMP
+ * sigue pendiente o no está disponible, se usa la elección de respaldo.
+ * Pura y testeable.
+ */
+export function resolveAnalyticsConsent(
+  tcf: TcfState,
+  fallback: ConsentState,
+): AnalyticsConsentState {
+  if (tcf === 'granted' || tcf === 'denied') return tcf;
+  return fallback;
+}
 
-function setState(next: ConsentState): void {
+let state: TcfState = 'pending';
+let cmpDisplayStatus: 'visible' | 'hidden' | 'unknown' = 'unknown';
+let started = false;
+const listeners = new Set<(state: TcfState) => void>();
+
+function setState(next: TcfState): void {
   if (state === next) return;
   state = next;
   for (const listener of listeners) listener(next);
@@ -66,8 +90,15 @@ function setState(next: ConsentState): void {
 function applyTcData(data: TcData | null, success: boolean): void {
   if (!success || !data) return;
 
+  if (data.displayStatus === 'visible' || data.displayStatus === 'hidden') {
+    cmpDisplayStatus = data.displayStatus;
+  }
+
   // Mientras el CMP está enseñando su mensaje, no decidimos por él.
-  if (data.eventStatus === 'cmpuishown') return;
+  if (data.eventStatus === 'cmpuishown') {
+    cmpDisplayStatus = 'visible';
+    return;
+  }
 
   // Fuera del EEE/UK/CH no hace falta consentimiento.
   if (data.gdprApplies === false) {
@@ -76,10 +107,13 @@ function applyTcData(data: TcData | null, success: boolean): void {
   }
 
   // Solo decidimos con datos de propósitos. Un TC string sin propósitos aún
-  // puede ser un CMP a medio cargar: seguimos en `pending` (fail-closed).
+  // puede ser un CMP a medio cargar: seguimos pendientes y deja actuar al
+  // respaldo si el mensaje de Google no llega a mostrarse.
   if (data.purposeConsents && (data.eventStatus === 'useractioncomplete' || data.tcString)) {
     setState(analyticsAllowedFromTcData(data) ? 'granted' : 'denied');
   }
+  // Si el CMP está cargado pero aún no hay TCData/elección, seguimos en
+  // `pending` para que el aviso de respaldo pueda aparecer.
 }
 
 /**
@@ -96,11 +130,17 @@ export function startConsentWatcher(): void {
     if (typeof api === 'function') {
       api('addEventListener', 2, (data, success) => applyTcData(data, success));
       api('getTCData', 2, (data, success) => applyTcData(data, success));
+      api('ping', 2, (data, success) => {
+        if (success && (data?.displayStatus === 'visible' || data?.displayStatus === 'hidden')) {
+          cmpDisplayStatus = data.displayStatus;
+        }
+      });
       return;
     }
-    // Sin CMP tras 10 s: fail-closed (analítica desactivada).
+    // Sin CMP tras 10 s: no es una denegación, es indisponibilidad. El aviso
+    // de respaldo decide.
     if (Date.now() - start > 10_000) {
-      setState('denied');
+      setState('unavailable');
       return;
     }
     setTimeout(tick, 250);
@@ -108,17 +148,80 @@ export function startConsentWatcher(): void {
   tick();
 }
 
-export function getConsentState(): ConsentState {
+export function getConsentState(): TcfState {
   return state;
 }
 
-export function isAnalyticsAllowed(): boolean {
-  return state === 'granted';
+/** Estado combinado CMP + respaldo. */
+export function getAnalyticsConsentState(): AnalyticsConsentState {
+  return resolveAnalyticsConsent(state, readFallbackConsent());
 }
 
-export function subscribeConsent(listener: (state: ConsentState) => void): () => void {
+export function isAnalyticsAllowed(): boolean {
+  return getAnalyticsConsentState() === 'granted';
+}
+
+export function subscribeConsent(listener: (state: TcfState) => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+/**
+ * Suscribe a cambios del consentimiento combinado (CMP o respaldo) y notifica
+ * solo cuando el estado efectivo cambia.
+ */
+export function subscribeAnalyticsConsent(
+  listener: (state: AnalyticsConsentState) => void,
+): () => void {
+  let last = getAnalyticsConsentState();
+  const notify = () => {
+    const next = getAnalyticsConsentState();
+    if (next === last) return;
+    last = next;
+    listener(next);
+  };
+  const unsubscribeTcf = subscribeConsent(notify);
+  const unsubscribeFallback = subscribeFallbackConsent(notify);
+  return () => {
+    unsubscribeTcf();
+    unsubscribeFallback();
+  };
+}
+
+/** Último `displayStatus` conocido del CMP (o `unknown` si aún no hay ping). */
+export function getCmpDisplayStatus(): 'visible' | 'hidden' | 'unknown' {
+  return cmpDisplayStatus;
+}
+
+/**
+ * Pregunta al CMP si su mensaje está visible. Sirve para que el aviso de
+ * respaldo no tape el mensaje de Google. Devuelve `unknown` si el CMP no está.
+ */
+export function probeCmpDisplayStatus(): Promise<'visible' | 'hidden' | 'unknown'> {
+  if (typeof window === 'undefined' || typeof window.__tcfapi !== 'function') {
+    return Promise.resolve('unknown');
+  }
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (status: 'visible' | 'hidden' | 'unknown') => {
+      if (done) return;
+      done = true;
+      cmpDisplayStatus = status;
+      resolve(status);
+    };
+    const timer = setTimeout(() => finish('unknown'), 1_500);
+    try {
+      window.__tcfapi?.('ping', 2, (data, success) => {
+        clearTimeout(timer);
+        if (!success) return finish('unknown');
+        const display = data?.displayStatus;
+        finish(display === 'visible' || display === 'hidden' ? display : 'unknown');
+      });
+    } catch {
+      clearTimeout(timer);
+      finish('unknown');
+    }
+  });
 }
 
 /**
