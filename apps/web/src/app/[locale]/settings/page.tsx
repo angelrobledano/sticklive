@@ -14,6 +14,7 @@ import {
   SettingRow, SettingsBlock, SettingsNav, SegmentedControl, PremiumActiveBadge,
 } from './ui';
 import { useDeviceId, useNotifConfig, useTheme } from './hooks';
+import { settingsSections } from './sections';
 import { PremiumBanner } from './PremiumBanner';
 import { AccountCard, FavoritesSummary, LanguageRow, SubHeader } from './cards';
 import { NotificationStatus } from './NotificationStatus';
@@ -80,6 +81,16 @@ export default function SettingsPage() {
   const { isPremium, mounted: premiumMounted } = usePremium();
   const deviceId = useDeviceId();
   const [consentError, setConsentError] = useState(false);
+  // La sección "La app" solo tiene sentido mientras la PWA no está instalada.
+  // `null` = aún sin comprobar (SSR/primer render): no se pinta para no mostrar
+  // el bloque a quien ya la tiene instalada.
+  const [installed, setInstalled] = useState<boolean | null>(null);
+  useEffect(() => {
+    setInstalled(isStandalone());
+    const onInstalled = () => setInstalled(true);
+    window.addEventListener('pwa-installed', onInstalled);
+    return () => window.removeEventListener('pwa-installed', onInstalled);
+  }, []);
 
   // ¿Está el push bloqueado en este dispositivo? (permiso denegado, sin soporte,
   // iPhone sin instalar o sin clave VAPID) → los controles que dependen del
@@ -98,14 +109,7 @@ export default function SettingsPage() {
   const notifDisabled = !config.master || notifBlocked;
   const showEnableHint = !config.master && !notifBlocked;
 
-  const sections = useMemo(() => [
-    { id: 'cuenta',         label: t('settings.section_account') },
-    { id: 'notificaciones', label: t('settings.notif_title') },
-    { id: 'favoritos',      label: t('navigation.favorites') },
-    { id: 'preferencias',   label: t('settings.section_preferences') },
-    { id: 'privacidad',     label: t('settings.section_privacy') },
-    { id: 'app',            label: t('settings.section_app') },
-  ], [t]);
+  const sections = useMemo(() => settingsSections(t, installed), [t, installed]);
 
   const allMounted = theme.mounted && notifMounted && premiumMounted;
 
@@ -154,6 +158,25 @@ export default function SettingsPage() {
         >
           <AccountCard />
         </SettingsBlock>
+
+        {/* ── La app (solo mientras la PWA no esté instalada) ──────────────── */}
+        {installed === false && (
+          <SettingsBlock
+            id="app"
+            title={t('settings.section_app')}
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                <rect x="7" y="2" width="10" height="20" rx="2" />
+                <path d="M11 18h2" strokeLinecap="round" />
+              </svg>
+            }
+          >
+            <InstallApp />
+            <div className="py-3.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('settings.footer')}</p>
+            </div>
+          </SettingsBlock>
+        )}
 
         {/* ── Notificaciones ───────────────────────────────────────────────── */}
         <SettingsBlock
@@ -267,12 +290,13 @@ export default function SettingsPage() {
             </div>
             <SegmentedControl
               label={t('settings.theme')}
-              value={theme.pref}
+              // Sin opción "Sistema": si no hay elección explícita, se muestra
+              // la que resuelve el SO. Elegir claro/oscuro fija la preferencia.
+              value={theme.resolved}
               onChange={theme.set}
               options={[
-                { value: 'system', label: t('settings.theme_system') },
-                { value: 'light',  label: t('settings.theme_light') },
-                { value: 'dark',   label: t('settings.theme_dark') },
+                { value: 'light', label: t('settings.theme_light') },
+                { value: 'dark',  label: t('settings.theme_dark') },
               ]}
             />
           </div>
@@ -319,23 +343,6 @@ export default function SettingsPage() {
             >
               {t('settings.privacy_link')}
             </Link>
-          </div>
-        </SettingsBlock>
-
-        {/* ── La app ───────────────────────────────────────────────────────── */}
-        <SettingsBlock
-          id="app"
-          title={t('settings.section_app')}
-          icon={
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-              <rect x="7" y="2" width="10" height="20" rx="2" />
-              <path d="M11 18h2" strokeLinecap="round" />
-            </svg>
-          }
-        >
-          <InstallApp />
-          <div className="py-3.5">
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t('settings.footer')}</p>
           </div>
         </SettingsBlock>
       </div>

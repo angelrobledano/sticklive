@@ -36,6 +36,7 @@ function applyTheme(theme: ResolvedTheme) {
  */
 export function useTheme() {
   const [pref, setPref]       = useState<ThemePref>('system');
+  const [systemDark, setSystemDark] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -43,12 +44,14 @@ export function useTheme() {
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const prefNow = storedTheme(localStorage.getItem(THEME_KEY));
     setPref(prefNow);
+    setSystemDark(media.matches);
     // Reaplica por si el script de arranque y este hook no coinciden (p. ej.
     // un valor corrupto o el SO cambió entre el primer pintado y la hidratación).
     applyTheme(resolveTheme(prefNow, media.matches));
 
     // Si la preferencia es "sistema", seguir los cambios del SO en caliente.
     const onChange = () => {
+      setSystemDark(media.matches);
       if (storedTheme(localStorage.getItem(THEME_KEY)) === 'system') {
         applyTheme(resolveTheme('system', media.matches));
       }
@@ -69,7 +72,7 @@ export function useTheme() {
     setPersonProps({ theme: next });
   }, []);
 
-  return { pref, set, mounted };
+  return { pref, set, mounted, resolved: resolveTheme(pref, systemDark) };
 }
 
 export function useNotifConfig() {
