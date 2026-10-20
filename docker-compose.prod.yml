@@ -183,7 +183,10 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Directorio, no archivo suelto: `git pull` reemplaza el inodo del
+      # Caddyfile y un bind de archivo dejaría al contenedor con la versión
+      # antigua. Con el directorio, `caddy reload` lee siempre la nueva.
+      - ./deploy:/etc/caddy:ro
       # Log de acceso para fail2ban. `logs/` está en .gitignore; el instalador
       # crea el directorio con permisos 0750.
       - ./logs/caddy:/var/log/caddy

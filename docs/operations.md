@@ -165,6 +165,15 @@ Sin Cloudflare, el borde se resuelve con **Caddy + fail2ban** (implementado):
    El instalador copia filtro/acción/jail desde `deploy/fail2ban/`, valida con
    `fail2ban-client -t` y reinicia el servicio. Es idempotente.
 
+   El `Caddyfile` se monta como **directorio** (`./deploy:/etc/caddy:ro`), no
+   como archivo suelto: `git pull` reemplaza el inodo y un bind de archivo
+   dejaría al contenedor con la configuración antigua. Tras editar Caddy:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T caddy \
+     caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+   ```
+
 5. Si hay falsos positivos, ajustar `maxretry`, `findtime` y `bantime` en
    `deploy/fail2ban/jail.d/sticklive.local` y reinstalar. Para desbanear una IP:
 
