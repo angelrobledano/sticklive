@@ -20,6 +20,6 @@ describe('trustDict (F4-4)', () => {
   it('el aviso legal identifica al titular y un contacto', () => {
     const legal = trustDict('es').legal.sections.map((s) => s.p).join(' ');
     expect(legal).toContain('Ángel Robledano');
-    expect(legal).toContain('robledano@gmail.com');
+    expect(legal).toContain('hola@sticklive.eu');
   });
 });

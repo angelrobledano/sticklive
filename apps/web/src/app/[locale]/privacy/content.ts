@@ -21,7 +21,7 @@ const ES: PrivacyDict = {
   sections: [
     {
       h: 'Quiénes somos',
-      p: 'Stick Live (sticklive.eu) es una plataforma de resultados y estadísticas de hockey sobre patines. Responsable: Ángel Robledano · robledano@gmail.com.',
+      p: 'Stick Live (sticklive.eu) es una plataforma de resultados y estadísticas de hockey sobre patines. Responsable: Ángel Robledano · hola@sticklive.eu.',
     },
     {
       h: 'Qué datos tratamos',
@@ -41,7 +41,7 @@ const ES: PrivacyDict = {
     },
     {
       h: 'Tus derechos',
-      p: 'Acceso, rectificación, supresión, oposición y portabilidad (RGPD). Escríbenos a robledano@gmail.com y lo resolvemos. También puedes reclamar ante la AEPD (aepd.es).',
+      p: 'Acceso, rectificación, supresión, oposición y portabilidad (RGPD). Escríbenos a hola@sticklive.eu y lo resolvemos. También puedes reclamar ante la AEPD (aepd.es).',
     },
     {
       h: 'Cookies y almacenamiento local',
@@ -60,7 +60,7 @@ const EN: PrivacyDict = {
   sections: [
     {
       h: 'Who we are',
-      p: 'Stick Live (sticklive.eu) is a rink hockey live scores and stats platform. Controller: Ángel Robledano · robledano@gmail.com.',
+      p: 'Stick Live (sticklive.eu) is a rink hockey live scores and stats platform. Controller: Ángel Robledano · hola@sticklive.eu.',
     },
     {
       h: 'What data we process',
@@ -80,7 +80,7 @@ const EN: PrivacyDict = {
     },
     {
       h: 'Your rights',
-      p: 'Access, rectification, erasure, objection and portability (GDPR). Email robledano@gmail.com and we will sort it out. You may also complain to your local data protection authority.',
+      p: 'Access, rectification, erasure, objection and portability (GDPR). Email hola@sticklive.eu and we will sort it out. You may also complain to your local data protection authority.',
     },
     {
       h: 'Cookies and local storage',
@@ -99,7 +99,7 @@ const FR: PrivacyDict = {
   sections: [
     {
       h: 'Qui sommes-nous',
-      p: 'Stick Live (sticklive.eu) est une plateforme de résultats et de statistiques de hockey sur patins. Responsable du traitement : Ángel Robledano · robledano@gmail.com.',
+      p: 'Stick Live (sticklive.eu) est une plateforme de résultats et de statistiques de hockey sur patins. Responsable du traitement : Ángel Robledano · hola@sticklive.eu.',
     },
     {
       h: 'Quelles données nous traitons',
@@ -119,7 +119,7 @@ const FR: PrivacyDict = {
     },
     {
       h: 'Vos droits',
-      p: 'Accès, rectification, effacement, opposition et portabilité (RGPD). Écrivez-nous à robledano@gmail.com et nous réglerons cela. Vous pouvez également introduire une réclamation auprès de la CNIL (cnil.fr) ou de votre autorité locale de protection des données.',
+      p: 'Accès, rectification, effacement, opposition et portabilité (RGPD). Écrivez-nous à hola@sticklive.eu et nous réglerons cela. Vous pouvez également introduire une réclamation auprès de la CNIL (cnil.fr) ou de votre autorité locale de protection des données.',
     },
     {
       h: 'Cookies et stockage local',
@@ -138,7 +138,7 @@ const PT: PrivacyDict = {
   sections: [
     {
       h: 'Quem somos',
-      p: 'A Stick Live (sticklive.eu) é uma plataforma de resultados e estatísticas de hóquei em patins. Responsável: Ángel Robledano · robledano@gmail.com.',
+      p: 'A Stick Live (sticklive.eu) é uma plataforma de resultados e estatísticas de hóquei em patins. Responsável: Ángel Robledano · hola@sticklive.eu.',
     },
     {
       h: 'Que dados tratamos',
@@ -158,7 +158,7 @@ const PT: PrivacyDict = {
     },
     {
       h: 'Os seus direitos',
-      p: 'Acesso, retificação, apagamento, oposição e portabilidade (RGPD). Escreva-nos para robledano@gmail.com e resolvemos. Também pode reclamar junto da CNPD (cnpd.pt) ou da autoridade local de proteção de dados.',
+      p: 'Acesso, retificação, apagamento, oposição e portabilidade (RGPD). Escreva-nos para hola@sticklive.eu e resolvemos. Também pode reclamar junto da CNPD (cnpd.pt) ou da autoridade local de proteção de dados.',
     },
     {
       h: 'Cookies e armazenamento local',
@@ -177,7 +177,7 @@ const IT: PrivacyDict = {
   sections: [
     {
       h: 'Chi siamo',
-      p: 'Stick Live (sticklive.eu) è una piattaforma di risultati e statistiche di hockey su pista. Titolare del trattamento: Ángel Robledano · robledano@gmail.com.',
+      p: 'Stick Live (sticklive.eu) è una piattaforma di risultati e statistiche di hockey su pista. Titolare del trattamento: Ángel Robledano · hola@sticklive.eu.',
     },
     {
       h: 'Quali dati trattiamo',
@@ -197,7 +197,7 @@ const IT: PrivacyDict = {
     },
     {
       h: 'I tuoi diritti',
-      p: 'Accesso, rettifica, cancellazione, opposizione e portabilità (GDPR). Scrivici a robledano@gmail.com e risolveremo. Puoi anche presentare reclamo al Garante per la protezione dei dati personali (garanteprivacy.it) o alla tua autorità locale.',
+      p: 'Accesso, rettifica, cancellazione, opposizione e portabilità (GDPR). Scrivici a hola@sticklive.eu e risolveremo. Puoi anche presentare reclamo al Garante per la protezione dei dati personali (garanteprivacy.it) o alla tua autorità locale.',
     },
     {
       h: 'Cookie e archiviazione locale',

@@ -40,7 +40,7 @@ const ES: TrustDict = {
     description: 'Cómo contactar con Stick Live para correcciones, prensa o privacidad.',
     updated: 'Actualizado: octubre de 2026',
     sections: [
-      { h: 'Correo', p: 'Escribe a robledano@gmail.com. Es el canal para correcciones de datos, sugerencias, prensa y cuestiones de privacidad.' },
+      { h: 'Correo', p: 'Escribe a hola@sticklive.eu. Es el canal para correcciones de datos, sugerencias, prensa y cuestiones de privacidad.' },
       { h: 'Correcciones de datos', p: 'Indica la URL, el dato que crees incorrecto y, si la tienes, la fuente que lo contradice. Revisamos primero la fuente original antes de cambiar una ficha.' },
       { h: 'Privacidad y derechos', p: 'Para acceso, rectificación, supresión, oposición o portabilidad de datos, escribe al mismo correo indicando el asunto “Privacidad”. También puedes consultar la política de privacidad.' },
       { h: 'Prensa y colaboraciones', p: 'Si necesitas contexto sobre datos, cobertura o una imagen, indícalo en el correo. No atendemos solicitudes de cambio de resultados sin una fuente verificable.' },
@@ -51,7 +51,7 @@ const ES: TrustDict = {
     description: 'Titular, condiciones de uso, fuentes, propiedad intelectual y responsabilidad de Stick Live.',
     updated: 'Actualizado: octubre de 2026',
     sections: [
-      { h: 'Titular', p: 'Stick Live (sticklive.eu) es un proyecto informativo titularidad de Ángel Robledano. Contacto: robledano@gmail.com.' },
+      { h: 'Titular', p: 'Stick Live (sticklive.eu) es un proyecto informativo titularidad de Ángel Robledano. Contacto: hola@sticklive.eu.' },
       { h: 'Objeto', p: 'El sitio ofrece información y estadísticas deportivas de hockey sobre patines. El acceso es gratuito; algunas funciones pueden requerir cuenta o suscripción.' },
       { h: 'Fuentes e independencia', p: 'Datos: federaciones nacionales de hockey patines de España, Portugal e Italia y la federación catalana. Stick Live no es una web oficial. No está afiliada ni representa oficialmente a estas entidades. Las marcas, escudos y fotografías pertenecen a sus titulares.' },
       { h: 'Uso del sitio', p: 'No está permitido extraer de forma masiva el contenido, interferir en el servicio, intentar acceder a zonas privadas ni reutilizar la base de datos para un producto competidor sin autorización.' },
@@ -80,7 +80,7 @@ const EN: TrustDict = {
     description: 'How to contact Stick Live about corrections, press or privacy.',
     updated: 'Updated: October 2026',
     sections: [
-      { h: 'Email', p: 'Write to robledano@gmail.com. This is the channel for data corrections, suggestions, press and privacy questions.' },
+      { h: 'Email', p: 'Write to hola@sticklive.eu. This is the channel for data corrections, suggestions, press and privacy questions.' },
       { h: 'Data corrections', p: 'Include the URL, the data you believe is wrong and, if possible, the source that contradicts it. We check the original source before changing a page.' },
       { h: 'Privacy and rights', p: 'For access, rectification, erasure, objection or portability of data, email the same address with the subject “Privacy”. You can also read the privacy policy.' },
       { h: 'Press and partnerships', p: 'If you need context about data, coverage or an image, say so in your email. We do not change results without a verifiable source.' },
@@ -91,7 +91,7 @@ const EN: TrustDict = {
     description: 'Owner, terms of use, sources, intellectual property and liability of Stick Live.',
     updated: 'Updated: October 2026',
     sections: [
-      { h: 'Owner', p: 'Stick Live (sticklive.eu) is an information project owned by Ángel Robledano. Contact: robledano@gmail.com.' },
+      { h: 'Owner', p: 'Stick Live (sticklive.eu) is an information project owned by Ángel Robledano. Contact: hola@sticklive.eu.' },
       { h: 'Purpose', p: 'The site provides rink hockey information and sports statistics. Access is free; some features may require an account or subscription.' },
       { h: 'Sources and independence', p: 'Data: national rink hockey federations of Spain, Portugal and Italy and the Catalan federation. Stick Live is not an official website. It is not affiliated with or an official representative of these organisations. Third-party brands, crests and photographs belong to their owners.' },
       { h: 'Use of the site', p: 'Mass extraction of content, interference with the service, attempts to access private areas or reuse of the database for a competing product without permission are not allowed.' },
@@ -120,7 +120,7 @@ const PT: TrustDict = {
     description: 'Como contactar o Stick Live para correções, imprensa ou privacidade.',
     updated: 'Atualizado: outubro de 2026',
     sections: [
-      { h: 'Email', p: 'Escreva para robledano@gmail.com. É o canal para correções de dados, sugestões, imprensa e questões de privacidade.' },
+      { h: 'Email', p: 'Escreva para hola@sticklive.eu. É o canal para correções de dados, sugestões, imprensa e questões de privacidade.' },
       { h: 'Correções de dados', p: 'Indique o URL, o dado que considera incorreto e, se possível, a fonte que o contradiz. Verificamos a fonte original antes de alterar uma ficha.' },
       { h: 'Privacidade e direitos', p: 'Para acesso, retificação, apagamento, oposição ou portabilidade, escreva para o mesmo email com o assunto “Privacidade”. Pode também consultar a política de privacidade.' },
       { h: 'Imprensa e colaborações', p: 'Se precisar de contexto sobre dados, cobertura ou uma imagem, indique-o no email. Não alteramos resultados sem uma fonte verificável.' },
@@ -131,7 +131,7 @@ const PT: TrustDict = {
     description: 'Titular, condições de utilização, fontes, propriedade intelectual e responsabilidade do Stick Live.',
     updated: 'Atualizado: outubro de 2026',
     sections: [
-      { h: 'Titular', p: 'O Stick Live (sticklive.eu) é um projeto informativo de Ángel Robledano. Contacto: robledano@gmail.com.' },
+      { h: 'Titular', p: 'O Stick Live (sticklive.eu) é um projeto informativo de Ángel Robledano. Contacto: hola@sticklive.eu.' },
       { h: 'Objeto', p: 'O site disponibiliza informação e estatísticas de hóquei em patins. O acesso é gratuito; algumas funções podem exigir conta ou subscrição.' },
       { h: 'Fontes e independência', p: 'Dados: federações nacionais de hóquei em patins de Espanha, Portugal e Itália e a federação catalã. O Stick Live não é um site oficial. Não está afiliado nem representa oficialmente estas entidades. Marcas, emblemas e fotografias pertencem aos seus titulares.' },
       { h: 'Utilização do site', p: 'Não é permitida a extração massiva de conteúdo, a interferência no serviço, a tentativa de acesso a áreas privadas ou a reutilização da base de dados para um produto concorrente sem autorização.' },
@@ -160,7 +160,7 @@ const FR: TrustDict = {
     description: 'Comment contacter Stick Live pour des corrections, la presse ou la confidentialité.',
     updated: 'Mis à jour : octobre 2026',
     sections: [
-      { h: 'Email', p: 'Écrivez à robledano@gmail.com. C’est le canal pour les corrections de données, suggestions, presse et questions de confidentialité.' },
+      { h: 'Email', p: 'Écrivez à hola@sticklive.eu. C’est le canal pour les corrections de données, suggestions, presse et questions de confidentialité.' },
       { h: 'Corrections de données', p: 'Indiquez l’URL, la donnée que vous pensez incorrecte et, si possible, la source qui la contredit. Nous vérifions la source originale avant de modifier une fiche.' },
       { h: 'Confidentialité et droits', p: 'Pour l’accès, la rectification, l’effacement, l’opposition ou la portabilité, écrivez au même email avec l’objet « Confidentialité ». Vous pouvez aussi consulter la politique de confidentialité.' },
       { h: 'Presse et partenariats', p: 'Si vous avez besoin de contexte sur les données, la couverture ou une image, précisez-le dans l’email. Nous ne modifions pas les résultats sans source vérifiable.' },
@@ -171,7 +171,7 @@ const FR: TrustDict = {
     description: 'Titulaire, conditions d’utilisation, sources, propriété intellectuelle et responsabilité de Stick Live.',
     updated: 'Mis à jour : octobre 2026',
     sections: [
-      { h: 'Titulaire', p: 'Stick Live (sticklive.eu) est un projet d’information appartenant à Ángel Robledano. Contact : robledano@gmail.com.' },
+      { h: 'Titulaire', p: 'Stick Live (sticklive.eu) est un projet d’information appartenant à Ángel Robledano. Contact : hola@sticklive.eu.' },
       { h: 'Objet', p: 'Le site fournit des informations et statistiques de rink hockey. L’accès est gratuit ; certaines fonctions peuvent nécessiter un compte ou un abonnement.' },
       { h: 'Sources et indépendance', p: 'Données : fédérations nationales de rink hockey d’Espagne, du Portugal et d’Italie et la fédération catalane. Stick Live n’est pas un site officiel. Il n’est ni affilié ni représentant officiel de ces entités. Les marques, écussons et photographies appartiennent à leurs titulaires.' },
       { h: 'Utilisation du site', p: 'L’extraction massive de contenu, l’interférence avec le service, les tentatives d’accès aux zones privées et la réutilisation de la base pour un produit concurrent sans autorisation sont interdites.' },
@@ -200,7 +200,7 @@ const IT: TrustDict = {
     description: 'Come contattare Stick Live per correzioni, stampa o privacy.',
     updated: 'Aggiornato: ottobre 2026',
     sections: [
-      { h: 'Email', p: 'Scrivi a robledano@gmail.com. È il canale per correzioni dei dati, suggerimenti, stampa e questioni sulla privacy.' },
+      { h: 'Email', p: 'Scrivi a hola@sticklive.eu. È il canale per correzioni dei dati, suggerimenti, stampa e questioni sulla privacy.' },
       { h: 'Correzioni dei dati', p: 'Indica l’URL, il dato che ritieni errato e, se possibile, la fonte che lo contraddice. Verifichiamo la fonte originale prima di modificare una scheda.' },
       { h: 'Privacy e diritti', p: 'Per accesso, rettifica, cancellazione, opposizione o portabilità, scrivi alla stessa email con oggetto “Privacy”. Puoi anche consultare l’informativa sulla privacy.' },
       { h: 'Stampa e collaborazioni', p: 'Se ti serve contesto su dati, copertura o un’immagine, indicalo nell’email. Non modifichiamo i risultati senza una fonte verificabile.' },
@@ -211,7 +211,7 @@ const IT: TrustDict = {
     description: 'Titolare, condizioni d’uso, fonti, proprietà intellettuale e responsabilità di Stick Live.',
     updated: 'Aggiornato: ottobre 2026',
     sections: [
-      { h: 'Titolare', p: 'Stick Live (sticklive.eu) è un progetto informativo di Ángel Robledano. Contatto: robledano@gmail.com.' },
+      { h: 'Titolare', p: 'Stick Live (sticklive.eu) è un progetto informativo di Ángel Robledano. Contatto: hola@sticklive.eu.' },
       { h: 'Oggetto', p: 'Il sito offre informazioni e statistiche di hockey su pista. L’accesso è gratuito; alcune funzioni possono richiedere un account o un abbonamento.' },
       { h: 'Fonti e indipendenza', p: 'Dati: federazioni nazionali di hockey su pista di Spagna, Portogallo e Italia e la federazione catalana. Stick Live non è un sito ufficiale. Non è affiliata né rappresenta ufficialmente queste entità. Marchi, stemmi e fotografie appartengono ai rispettivi titolari.' },
       { h: 'Uso del sito', p: 'Non sono consentiti estrazione massiva dei contenuti, interferenze con il servizio, tentativi di accesso ad aree private o riutilizzo del database per un prodotto concorrente senza autorizzazione.' },

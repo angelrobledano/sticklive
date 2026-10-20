@@ -29,7 +29,7 @@ Respuestas para las secciones de Play Console que no son la ficha de Play Store.
 | Notas de la versión | `metadata/<idioma>/changelogs/default.txt` |
 | Categoría | Deportes |
 | Etiquetas | Deportes, Resultados deportivos (elige las que ofrezca Play Console) |
-| Correo de contacto | robledano@gmail.com |
+| Correo de contacto | hola@sticklive.eu |
 | Sitio web | https://sticklive.eu |
 
 La estructura de `metadata/` es la de `fastlane supply`. Si algún día usas fastlane, sube todo con `fastlane supply --metadata_path store/google-play/metadata`. Si no, copia y pega en Play Console.

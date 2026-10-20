@@ -18,7 +18,7 @@ En la versión gratuita de la app los anuncios los sirve Google AdMob, que trata
 
 **Borrar tu cuenta**
 
-Puedes pedir que borremos tu cuenta de Stick Live escribiendo a robledano@gmail.com desde el email de tu cuenta, con el asunto «Borrar mi cuenta de Stick Live». En un plazo máximo de 30 días borramos tu email, tus favoritos, tus preferencias de avisos, tus sesiones y los tokens de notificaciones de tus dispositivos, y borramos o anonimizamos tu perfil de analítica. No guardamos ninguna copia de esos datos después del borrado.
+Puedes pedir que borremos tu cuenta de Stick Live escribiendo a hola@sticklive.eu desde el email de tu cuenta, con el asunto «Borrar mi cuenta de Stick Live». En un plazo máximo de 30 días borramos tu email, tus favoritos, tus preferencias de avisos, tus sesiones y los tokens de notificaciones de tus dispositivos, y borramos o anonimizamos tu perfil de analítica. No guardamos ninguna copia de esos datos después del borrado.
 
 ## English
 
@@ -34,7 +34,7 @@ In the free version of the app, ads are served by Google AdMob, which processes 
 
 **Deleting your account**
 
-You can ask us to delete your Stick Live account by writing to robledano@gmail.com from your account's email address, with the subject "Delete my Stick Live account". Within 30 days we delete your email address, your favorites, your alert preferences, your sessions and your devices' notification tokens, and we delete or anonymise your analytics profile. We keep no copy of that data after deletion.
+You can ask us to delete your Stick Live account by writing to hola@sticklive.eu from your account's email address, with the subject "Delete my Stick Live account". Within 30 days we delete your email address, your favorites, your alert preferences, your sessions and your devices' notification tokens, and we delete or anonymise your analytics profile. We keep no copy of that data after deletion.
 
 ## Cuando exista el borrado dentro de la app
 

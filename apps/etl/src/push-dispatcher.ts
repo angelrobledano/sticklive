@@ -35,7 +35,7 @@ const log = createLogger({ service: 'push-dispatcher' });
 
 const VAPID_PUBLIC  = process.env['VAPID_PUBLIC_KEY']  ?? '';
 const VAPID_PRIVATE = process.env['VAPID_PRIVATE_KEY'] ?? '';
-const VAPID_SUBJECT = process.env['VAPID_SUBJECT'] ?? 'mailto:robledano@gmail.com';
+const VAPID_SUBJECT = process.env['VAPID_SUBJECT'] ?? 'mailto:hola@sticklive.eu';
 const WEB_BASE = process.env['WEB_BASE_URL'] ?? 'https://sticklive.eu';
 
 export const pushEnabled = Boolean(VAPID_PUBLIC && VAPID_PRIVATE);
