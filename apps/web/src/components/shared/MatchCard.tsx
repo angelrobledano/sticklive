@@ -119,7 +119,8 @@ export function matchCardState(match: Pick<Match, 'status' | 'scheduledAt' | 'st
 
 /** Reloj compartido de 30 s (una sola suscripción en toda la app, #366). */
 function useMatchCardState(match: Match): MatchDisplayState {
-  return matchCardState(match, useNow30s());
+  // Solo los programados necesitan el reloj (pendiente vs. sin resultado).
+  return matchCardState(match, useNow30s(match.status === 'scheduled'));
 }
 
 function ScoreBlock({ match }: { match: Match }) {

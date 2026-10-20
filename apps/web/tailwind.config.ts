@@ -40,6 +40,25 @@ const config: Config = {
       },
 
       fontFamily: {
+        // Inter ya se cargaba con `next/font` (variable `--font-inter` en
+        // <html>) pero no se aplicaba en ningún sitio: el navegador descargaba
+        // la fuente y luego usaba system-ui. Se declara como `sans` para que
+        // Tailwind (preflight) la use de verdad, con la pila del sistema como
+        // respaldo durante `display: swap`.
+        sans: [
+          'var(--font-inter)',
+          'ui-sans-serif',
+          'system-ui',
+          '-apple-system',
+          'Segoe UI',
+          'Roboto',
+          'Helvetica Neue',
+          'Arial',
+          'Noto Sans',
+          'sans-serif',
+          'Apple Color Emoji',
+          'Segoe UI Emoji',
+        ],
         // Marcadores y estadísticas: monoespaciado potente
         score: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useState } from 'react';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
@@ -45,7 +45,7 @@ type ImgState = 'team' | 'default' | 'initials';
  * px. El `srcSet`+`sizes` hace que el navegador pida a la API sólo el ancho
  * necesario (con 2× para pantallas retina), y la API lo sirve redimensionado.
  */
-export function TeamShield({
+function TeamShieldImpl({
   teamId,
   teamName,
   size = 40,
@@ -103,7 +103,7 @@ export function TeamShield({
         alt={alt ?? ''}
         width={size}
         height={size}
-        loading="lazy"
+        loading={size >= 64 ? 'eager' : 'lazy'}
         decoding="async"
         className="w-full h-full object-contain"
         onError={() => setImgState((prev) => (prev === 'team' ? 'default' : 'initials'))}
@@ -111,3 +111,10 @@ export function TeamShield({
     </div>
   );
 }
+
+/**
+ * Memoizado: en listas largas (jornada, clasificación, plantilla) los escudos
+ * reciben siempre las mismas props y no deben re-renderizarse cuando cambia el
+ * marcador de otra fila.
+ */
+export const TeamShield = memo(TeamShieldImpl);

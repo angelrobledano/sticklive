@@ -36,7 +36,21 @@ const getSnapshot = () => now;
 // cliente coincidan; el valor real llega en el primer tick tras montar.
 const getServerSnapshot = () => 0;
 
-/** Hora "actual" que se refresca cada 30 s (suscripción única compartida). */
-export function useNow30s(): number {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+/** Suscripción inerte: quien no necesita el reloj no entra en el Set. */
+const noopSubscribe = () => () => {};
+
+/**
+ * Hora "actual" que se refresca cada 30 s (suscripción única compartida).
+ *
+ * `enabled` permite que las filas ya resueltas (live/finished/postponed) NO se
+ * suscriban: solo los `scheduled` usan el reloj para distinguir "pendiente" de
+ * "sin resultado". Antes cada fila de la jornada se re-renderizaba cada 30 s
+ * aunque el partido llevara horas terminado.
+ */
+export function useNow30s(enabled = true): number {
+  return useSyncExternalStore(
+    enabled ? subscribe : noopSubscribe,
+    enabled ? getSnapshot : getServerSnapshot,
+    getServerSnapshot,
+  );
 }

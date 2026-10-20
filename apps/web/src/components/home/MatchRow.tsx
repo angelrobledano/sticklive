@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import type { Match, TeamSummary } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
@@ -91,7 +91,7 @@ const SUB = 'block text-[10px] font-semibold uppercase leading-none tracking-wid
  */
 function useCenter(match: Match, showDate: boolean): { node: React.ReactNode; text: string } {
   const { t, locale } = useT();
-  const display = matchCardState(match, useNow30s());
+  const display = matchCardState(match, useNow30s(match.status === 'scheduled'));
   const { status, score } = match;
   const tz = match.competitionTimezone || APP_TZ;
   const day = showDate ? shortDayLabel(match.scheduledAt ?? match.startedAt, locale, tz) : '';
@@ -175,7 +175,7 @@ function useCenter(match: Match, showDate: boolean): { node: React.ReactNode; te
   };
 }
 
-export function MatchRow({ match, followedTeamIds, showDate = false, caption }: {
+export function MatchRowImpl({ match, followedTeamIds, showDate = false, caption }: {
   match: Match;
   /** Equipos seguidos: su lado lleva estrella. */
   followedTeamIds?: ReadonlySet<string>;
@@ -209,3 +209,10 @@ export function MatchRow({ match, followedTeamIds, showDate = false, caption }: 
     </Link>
   );
 }
+
+/**
+ * Fila memoizada: el sondeo en vivo conserva la identidad de los partidos sin
+ * cambios (`mergeMatchList`), así que al actualizarse un marcador solo se
+ * re-renderiza su fila, no las ~30 de la jornada.
+ */
+export const MatchRow = memo(MatchRowImpl);

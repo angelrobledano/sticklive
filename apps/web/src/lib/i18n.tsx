@@ -13,7 +13,7 @@
  *   (idioma de referencia del producto) y, en último término, la propia clave.
  */
 
-import { createContext, useCallback, useContext, useEffect } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   SUPPORTED_LOCALES, LOCALE_NAMES, REFERENCE_LOCALE, LOCALE_COOKIE,
@@ -106,7 +106,9 @@ export function I18nProvider({ children, initialLocale, dict, referenceDict }: {
     return text;
   }, [dict, referenceDict]);
 
-  return <I18nContext.Provider value={{ locale, setLocale, t }}>{children}</I18nContext.Provider>;
+  const value = useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t]);
+
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
 export function useT() {

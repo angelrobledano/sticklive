@@ -21,14 +21,16 @@ metaRouter.get('/sitemap', async (c) => {
       db.query<{ id: string; updated_at: Date }>(`
         SELECT c.id, c.updated_at
           FROM competitions c
+          JOIN (
+            -- Semi-join: una sola pasada por temporadas/partidos en vez de un
+            -- EXISTS correlacionado por competición.
+            SELECT DISTINCT s.competition_id
+              FROM seasons s
+              JOIN matches m ON m.season_id = s.id
+             WHERE s.data_quality = 'ok'
+          ) visible ON visible.competition_id = c.id
          WHERE c.data_quality = 'ok'
            AND c.archived_at IS NULL
-           AND EXISTS (
-             SELECT 1 FROM seasons s
-              WHERE s.competition_id = c.id
-                AND s.data_quality = 'ok'
-                AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s.id)
-           )
       `),
       // F1-4: solo equipos con algún partido en una temporada visible. Los que
       // no tienen ninguno (selecciones autonómicas sin datos, residuos de
@@ -37,34 +39,48 @@ metaRouter.get('/sitemap', async (c) => {
       db.query<{ id: string; updated_at: Date }>(`
         SELECT t.id, t.updated_at
           FROM teams t
-         WHERE (
-           SELECT count(*)
-             FROM matches m
-             JOIN seasons s      ON s.id = m.season_id
-             JOIN competitions c ON c.id = s.competition_id
-            WHERE (m.home_team_id = t.id OR m.away_team_id = t.id)
-              AND s.data_quality = 'ok'
-              AND c.data_quality = 'ok'
-         ) >= 3
+          JOIN (
+            -- Agrega los dos lados del cruce una sola vez. El COUNT
+            -- correlacionado anterior recorría todos los partidos por CADA
+            -- equipo (la causa de los >12 s del endpoint).
+            SELECT team_id
+              FROM (
+                SELECT m.home_team_id AS team_id
+                  FROM matches m
+                  JOIN seasons s      ON s.id = m.season_id
+                  JOIN competitions c ON c.id = s.competition_id
+                 WHERE s.data_quality = 'ok'
+                   AND c.data_quality = 'ok'
+                UNION ALL
+                SELECT m.away_team_id
+                  FROM matches m
+                  JOIN seasons s      ON s.id = m.season_id
+                  JOIN competitions c ON c.id = s.competition_id
+                 WHERE s.data_quality = 'ok'
+                   AND c.data_quality = 'ok'
+              ) sides
+             GROUP BY team_id
+            HAVING count(*) >= 3
+          ) eligible ON eligible.team_id = t.id
       `),
       // F1-4: jugadores con alineación en una competición de máxima categoría
       // (`competitions.top_tier`, migración 074 — decisión de producto del
-      // 17/10/2026). Orden determinista para que el LIMIT no publique un
-      // conjunto distinto en cada generación.
+      // 17/10/2026). Un único GROUP BY sustituye el COUNT(DISTINCT) por jugador.
       db.query<{ id: string; updated_at: Date }>(`
         SELECT p.id, p.updated_at
           FROM players p
-         WHERE (
-           SELECT count(DISTINCT ml.match_id)
-             FROM match_lineups ml
-             JOIN matches m      ON m.id = ml.match_id
-             JOIN seasons s      ON s.id = m.season_id
-             JOIN competitions c ON c.id = s.competition_id
-            WHERE ml.player_id = p.id
-              AND c.top_tier
-              AND s.data_quality = 'ok'
-              AND c.data_quality = 'ok'
-         ) >= 8
+          JOIN (
+            SELECT ml.player_id
+              FROM match_lineups ml
+              JOIN matches m      ON m.id = ml.match_id
+              JOIN seasons s      ON s.id = m.season_id
+              JOIN competitions c ON c.id = s.competition_id
+             WHERE c.top_tier
+               AND s.data_quality = 'ok'
+               AND c.data_quality = 'ok'
+             GROUP BY ml.player_id
+            HAVING count(DISTINCT ml.match_id) >= 8
+          ) eligible ON eligible.player_id = p.id
       `),
       // F1-4: partidos de los últimos 60 días y de los próximos 14. Los que están
       // a meses vista solo tienen equipos y hora: entran en el sitemap cuando se
@@ -84,22 +100,23 @@ metaRouter.get('/sitemap', async (c) => {
       // F4-5: temporadas cerradas y verificadas con URL permanente indexable.
       // No entran las que aún tienen partidos pendientes ni las ocultas.
       db.query<{ id: string; updated_at: Date }>(`
+        WITH closed AS MATERIALIZED (
+          -- Materializado a propósito: sin esto el planner puede reevaluar el
+          -- GROUP BY por cada temporada (lo hacía 664 veces → 8 s).
+          SELECT season_id
+            FROM matches
+           GROUP BY season_id
+          HAVING bool_or(status = 'finished')
+             AND NOT bool_or(status IN ('scheduled', 'live', 'halftime', 'overtime', 'penalty_shootout'))
+        )
         SELECT s.id, s.updated_at
           FROM seasons s
           JOIN competitions c ON c.id = s.competition_id
+          JOIN closed cl ON cl.season_id = s.id
          WHERE s.data_quality = 'ok'
            AND c.data_quality = 'ok'
            AND c.archived_at IS NULL
            AND NOT s.is_current
-           AND EXISTS (
-             SELECT 1 FROM matches m
-              WHERE m.season_id = s.id AND m.status = 'finished'
-           )
-           AND NOT EXISTS (
-             SELECT 1 FROM matches m
-              WHERE m.season_id = s.id
-                AND m.status IN ('scheduled', 'live', 'halftime', 'overtime', 'penalty_shootout')
-           )
       `),
     ]);
 

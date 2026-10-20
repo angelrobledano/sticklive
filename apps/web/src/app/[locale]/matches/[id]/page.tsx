@@ -80,6 +80,9 @@ export default async function MatchDetailPage(props: Props) {
 
   // schema.org SportsEvent — resultados enriquecidos en buscadores
   const m = data.match;
+  // En programados la previa va debajo del marcador; en directo/finalizado,
+  // al final de la ficha (el marcador manda).
+  const isPreMatch = m.status === 'scheduled' || m.status === 'postponed';
 
   // F5-6: migas visibles + BreadcrumbList (Inicio › Competiciones › Competición › Partido).
   const homeName = teamTitleName(m.homeTeam?.name, m.homeTeam?.shortName);
@@ -106,47 +109,52 @@ export default async function MatchDetailPage(props: Props) {
     venue: m.venue,
   });
 
-  // F4-1: previa con datos reales. En programados se muestra debajo del
-  // marcador; en directo/finalizado, al final de la ficha (el marcador manda).
-  const isPreMatch = m.status === 'scheduled' || m.status === 'postponed';
-  const preview = m.status !== 'cancelled' && m.homeTeam?.id && m.awayTeam?.id
-    ? await getSeasonOverview(m.seasonId)
-        .then(async (overview) => {
-          const homeId = m.homeTeam!.id;
-          const awayId = m.awayTeam!.id;
-          const [homeDetail, awayDetail, homeRecent, awayRecent] = await Promise.all([
-            getTeamDetail(homeId, m.seasonId).catch(() => null),
-            getTeamDetail(awayId, m.seasonId).catch(() => null),
-            getTeamRecent(homeId).catch(() => null),
-            getTeamRecent(awayId).catch(() => null),
-          ]);
-          return buildMatchPreview(overview, {
+  // F4-1/F5-4: la previa y el último enfrentamiento salen del MISMO overview.
+  // Antes se pedía dos veces (una por bloque) y, además, los datos de ambos
+  // equipos esperaban a que terminara el overview. Ahora las cinco peticiones
+  // van en paralelo y el overview se reutiliza, con el mismo resultado.
+  const homeId = m.homeTeam?.id;
+  const awayId = m.awayTeam?.id;
+  let preview: ReturnType<typeof buildMatchPreview> | null = null;
+  let previousMeeting: ReturnType<typeof buildPreviousMeeting> | null = null;
+
+  if (m.status !== 'cancelled' && homeId && awayId) {
+    const [overview, homeDetail, awayDetail, homeRecent, awayRecent] = await Promise.all([
+      getSeasonOverview(m.seasonId).catch(() => null),
+      getTeamDetail(homeId, m.seasonId).catch(() => null),
+      getTeamDetail(awayId, m.seasonId).catch(() => null),
+      getTeamRecent(homeId).catch(() => null),
+      getTeamRecent(awayId).catch(() => null),
+    ]);
+
+    if (overview) {
+      try {
+        preview = buildMatchPreview(overview, {
+          matchId: m.id,
+          homeTeamId: homeId,
+          awayTeamId: awayId,
+          homeName,
+          awayName,
+        }, {
+          homeStats: homeDetail?.stats,
+          awayStats: awayDetail?.stats,
+          homeRecent: homeRecent?.matches,
+          awayRecent: awayRecent?.matches,
+        });
+      } catch { preview = null; }
+
+      if (m.status === 'finished') {
+        try {
+          previousMeeting = buildPreviousMeeting(overview, {
             matchId: m.id,
             homeTeamId: homeId,
             awayTeamId: awayId,
-            homeName,
-            awayName,
-          }, {
-            homeStats: homeDetail?.stats,
-            awayStats: awayDetail?.stats,
-            homeRecent: homeRecent?.matches,
-            awayRecent: awayRecent?.matches,
+            date: m.finishedAt ?? m.scheduledAt,
           });
-        })
-        .catch(() => null)
-    : null;
-
-  // F5-4: enlace al último enfrentamiento anterior entre los dos equipos.
-  const previousMeeting = m.status === 'finished' && m.homeTeam?.id && m.awayTeam?.id
-    ? await getSeasonOverview(m.seasonId)
-        .then((overview) => buildPreviousMeeting(overview, {
-          matchId: m.id,
-          homeTeamId: m.homeTeam!.id,
-          awayTeamId: m.awayTeam!.id,
-          date: m.finishedAt ?? m.scheduledAt,
-        }))
-        .catch(() => null)
-    : null;
+        } catch { previousMeeting = null; }
+      }
+    }
+  }
 
   // C3: crónica de hechos verificables del acta (remontada, hat-trick, etc.).
   const chronicle = buildMatchChronicle({

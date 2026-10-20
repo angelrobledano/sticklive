@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as Sentry from '@sentry/nextjs';
 import type { Match } from '@/lib/api/client';
 import { getCurrentMatchesFresh } from '@/lib/api/client';
+import { mergeMatchList } from '@/lib/live-merge';
 
 /** Cada cuánto se sondea la API mientras hay actividad en vivo. */
 const POLL_INTERVAL_MS = 25_000;
@@ -68,7 +69,13 @@ export function useLiveScores(initial: Match[]): LiveScoresState {
       if (document.visibilityState === 'hidden') return;
       try {
         const fresh = await getCurrentMatchesFresh();
-        if (!cancelled) { setMatches(fresh); setDegraded(false); }
+        if (!cancelled) {
+          // Conserva la identidad de los partidos sin cambios (#perf): evita
+          // re-renderizar toda la jornada cada 25 s y, si nada cambió, ni
+          // siquiera actualiza el estado.
+          setMatches((prev) => mergeMatchList(prev, fresh));
+          setDegraded(false);
+        }
       } catch (err) {
         // Mantén el estado actual; reintentamos en el próximo tick. #244: los
         // fallos del polling en vivo ya no se descartan en silencio.

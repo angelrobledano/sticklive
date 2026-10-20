@@ -56,6 +56,11 @@ const nextConfig = {
     NEXT_PUBLIC_SEASON_ID: process.env.NEXT_PUBLIC_SEASON_ID ?? 'e6ab9d19-cc4b-4095-a9ce-4407a4000737',
   },
   images: {
+    // AVIF pesa ~30-50 % menos que WebP para los escudos/fotos; WebP queda
+    // como respaldo. Las imágenes optimizadas se cachean una semana: las fotos
+    // de jugador pueden actualizarse y no hay invalidación manual del caché.
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 604_800,
     remotePatterns: [
       // sidgad.cloud -- CDN real de logos de clubes y competiciones FEP
       { protocol: 'https', hostname: 'sidgad.cloud', pathname: '/**' },
@@ -83,6 +88,36 @@ const nextConfig = {
         // seguir la misma regla que `htmlCacheControlForPath`.
         source: '/:locale(es|en|pt|fr|it)/competitions/:id',
         headers: [{ key: 'Cache-Control', value: COMPETITION_DETAIL_CACHE_CONTROL }],
+      },
+      {
+        // Escudos y assets de marca son inmutables (nombre = contenido/ID).
+        // Antes se servían con `max-age=0` y el navegador los revalidaba en
+        // cada visita; en /settings cada fila pedía el PNG original (hasta
+        // 443 KB). Cachearlos un año elimina esas peticiones repetidas.
+        source: '/escudos/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
+        source: '/brand/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
+        source: '/icon-192.png',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
+        source: '/icon-512.png',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
+        source: '/apple-touch-icon.png',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
+        // El service worker debe revalidarse para poder publicar versiones
+        // nuevas de la PWA; nunca se cachea como inmutable.
+        source: '/sw.js',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }],
       },
     ];
   },

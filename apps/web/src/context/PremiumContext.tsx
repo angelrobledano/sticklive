@@ -23,6 +23,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   useRef,
   type ReactNode,
 } from 'react';
@@ -102,11 +103,12 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     } catch { /* noop */ }
   }, []);
 
-  return (
-    <PremiumContext.Provider value={{ isPremium, setPremium, mounted }}>
-      {children}
-    </PremiumContext.Provider>
+  const value = useMemo(
+    () => ({ isPremium, setPremium, mounted }),
+    [isPremium, setPremium, mounted],
   );
+
+  return <PremiumContext.Provider value={value}>{children}</PremiumContext.Provider>;
 }
 
 // ─── Hook público ─────────────────────────────────────────────────────────────
