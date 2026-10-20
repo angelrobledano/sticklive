@@ -3,7 +3,7 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
-import { getAnalyticsConsentState, type ConsentState } from "@/lib/consent-tcf";
+import { getConsentState, type ConsentState } from "@/lib/consent-tcf";
 
 /**
  * Política de grabación de sesión de Sentry (#340). Pura y testeable.
@@ -36,7 +36,7 @@ export function sentryReplayPolicy(consent: ConsentState): SentryReplayPolicy {
 }
 
 function initSentry(): void {
-  const replay = sentryReplayPolicy(getAnalyticsConsentState());
+  const replay = sentryReplayPolicy(getConsentState());
   Sentry.init({
     dsn: "https://53cf0f7790b3d4ce13441e1d9c73d536@o4511608627462144.ingest.de.sentry.io/4511608643780688",
 

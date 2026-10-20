@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import { tt } from '@/components/search/translate';
 import { track, trackOnce } from '@/lib/analytics';
-import { getAnalyticsConsentState, startConsentWatcher, subscribeAnalyticsConsent } from '@/lib/consent-tcf';
+import { getConsentState, startConsentWatcher, subscribeConsent } from '@/lib/consent-tcf';
 import { isStandalone } from '@/lib/push';
 import { canInstall, promptInstall, pwaPlatform } from '@/lib/pwa';
 import {
@@ -49,7 +49,7 @@ export function InstallBanner() {
       platform: pwaPlatform(),
       standalone: false,
       hasNativePrompt: canInstall(),
-      consent: getAnalyticsConsentState(),
+      consent: getConsentState(),
       dismissedAt: readDismissedAt(),
       pageViews: pageViews.current,
       now: Date.now(),
@@ -67,7 +67,7 @@ export function InstallBanner() {
     if (isStandalone()) trackOnce('app-opened-standalone', 'app_opened_standalone', { platform: pwaPlatform() });
     startConsentWatcher();
     const onChange = () => evaluate();
-    const unsubscribe = subscribeAnalyticsConsent(onChange);
+    const unsubscribe = subscribeConsent(onChange);
     window.addEventListener('pwa-installable', onChange);
     window.addEventListener('pwa-installed', onChange);
     return () => {

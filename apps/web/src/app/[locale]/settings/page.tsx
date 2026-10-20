@@ -17,8 +17,7 @@ import { useDeviceId, useNotifConfig, useTheme } from './hooks';
 import { PremiumBanner } from './PremiumBanner';
 import { AccountCard, FavoritesSummary, LanguageRow, SubHeader } from './cards';
 import { NotificationStatus } from './NotificationStatus';
-import { openConsentManager, getConsentState, subscribeConsent, type TcfState } from '@/lib/consent-tcf';
-import { resetFallbackConsent, requestFallbackConsent } from '@/lib/consent-fallback';
+import { openConsentManager } from '@/lib/consent-tcf';
 
 // ─── Fila de navegación (título + chevron) ────────────────────────────────────
 
@@ -81,13 +80,6 @@ export default function SettingsPage() {
   const { isPremium, mounted: premiumMounted } = usePremium();
   const deviceId = useDeviceId();
   const [consentError, setConsentError] = useState(false);
-  // Estado del CMP (null hasta montar): el control de respaldo solo tiene
-  // sentido si Google aún no ha tomado una decisión.
-  const [tcfState, setTcfState] = useState<TcfState | null>(null);
-  useEffect(() => {
-    setTcfState(getConsentState());
-    return subscribeConsent(setTcfState);
-  }, []);
 
   // ¿Está el push bloqueado en este dispositivo? (permiso denegado, sin soporte,
   // iPhone sin instalar o sin clave VAPID) → los controles que dependen del
@@ -319,22 +311,6 @@ export default function SettingsPage() {
               <p role="alert" className="text-xs text-red-600 dark:text-red-400">{t('ads.privacy_error')}</p>
             )}
           </div>
-
-          {(tcfState === 'pending' || tcfState === 'unavailable') && (
-            <div className="py-3.5 space-y-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  resetFallbackConsent();
-                  requestFallbackConsent();
-                }}
-                className="text-sm font-medium text-slate-800 dark:text-slate-200 underline underline-offset-2 hover:text-rink-passion dark:hover:text-rink-accent"
-              >
-                {t('consent.title')}
-              </button>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{t('ads.analytics_consent_desc')}</p>
-            </div>
-          )}
 
           <div className="py-3.5">
             <Link

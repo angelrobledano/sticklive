@@ -50,11 +50,10 @@
  *  login_completed           (+identify por email)
  */
 
-import posthog from 'posthog-js';
 import { useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { entityViewFromPath, entityIdProp } from '@/lib/analytics-entity';
-import { isAnalyticsAllowed, startConsentWatcher, subscribeAnalyticsConsent } from '@/lib/consent-tcf';
+import { isAnalyticsAllowed, startConsentWatcher, subscribeConsent } from '@/lib/consent-tcf';
 
 startConsentWatcher();
 
@@ -70,8 +69,6 @@ const DEVICE_KEY = 'rink-device-id';
 /** Clave del tema (compartida con `app/[locale]/settings/config.ts`). */
 const THEME_KEY = 'rink-theme';
 
-let initialized = false;
-
 /** Lee el `device_id` de localStorage. Sin navegador o sin clave → null. */
 function readDeviceId(): string | null {
   try {
@@ -79,6 +76,82 @@ function readDeviceId(): string | null {
   } catch {
     return null;
   }
+}
+
+type PostHogClient = typeof import('posthog-js')['default'];
+
+/**
+ * PostHog se carga BAJO DEMANDA (#perf bundle).
+ *
+ * Antes `posthog-js` entraba en el chunk compartido de todas las páginas aunque
+ * la mayoría de visitas nunca aceptaran analítica (y, aun aceptándola, hasta
+ * responder al aviso no se usaba). Ahora se importa dinámicamente en el primer
+ * evento permitido: sale del bundle inicial y solo pesa cuando aporta valor.
+ *
+ * Mientras llega el chunk, los eventos se encolan (con tope) y se envían en
+ * orden justo después de `init`, para no perder el pageview inicial ni una
+ * transición de estado.
+ */
+let client: PostHogClient | null = null;
+let loading: Promise<PostHogClient | null> | null = null;
+const pending: Array<(ph: PostHogClient) => void> = [];
+const MAX_PENDING_EVENTS = 50;
+
+function initClient(ph: PostHogClient): PostHogClient {
+  const deviceId = readDeviceId();
+  ph.init(KEY!, {
+    api_host: HOST,
+    capture_pageview: false,   // pageviews manuales (App Router)
+    capture_pageleave: true,   // duración de sesión/página
+    autocapture: false,        // solo eventos del plan
+    // #340: sin grabador de sesión propio. Solo track()/pageviews; el único
+    // session replay es el de Sentry (solo en error) para no duplicar costo.
+    disable_session_recording: true,
+    disable_surveys: true,     // no cargar surveys.js
+    capture_dead_clicks: false, // no cargar dead-clicks-autocapture.js
+    person_profiles: 'identified_only',
+    // Identidad anónima = device_id, compartida con los eventos de servidor.
+    ...(deviceId ? { bootstrap: { distinctID: deviceId } } : {}),
+  });
+  client = ph;
+  // Vuelca en orden lo que se emitió mientras cargaba el chunk.
+  for (const action of pending.splice(0)) {
+    try { action(ph); } catch { /* un evento no debe tumbar la app */ }
+  }
+  return ph;
+}
+
+function ensureInit(): boolean {
+  if (!ENABLED || typeof window === 'undefined') return false;
+  // Puerta de consentimiento: nada de PostHog (ni cookies/persistencia) hasta
+  // que el CMP de Google conceda los propósitos de analítica.
+  if (!isAnalyticsAllowed()) return false;
+  if (!client && !loading) {
+    loading = import('posthog-js')
+      .then((mod) => initClient(mod.default))
+      .catch(() => {
+        // Sin chunk (red/blocker): se reintenta en el próximo evento.
+        loading = null;
+        pending.length = 0;
+        return null;
+      });
+  }
+  return true;
+}
+
+/** Ejecuta la acción con el cliente ya cargado, o la encola hasta que llegue. */
+function withClient(action: (ph: PostHogClient) => void): void {
+  if (!ensureInit()) return;
+  if (client) {
+    action(client);
+    return;
+  }
+  if (pending.length < MAX_PENDING_EVENTS) pending.push(action);
+}
+
+/** Evento del plan de tracking. No-op sin clave, en desarrollo o sin consentimiento. */
+export function track(event: string, props?: Record<string, unknown>): void {
+  withClient((ph) => ph.capture(event, withDevice(props)));
 }
 
 /**
@@ -141,38 +214,6 @@ function withDevice(props?: Record<string, unknown>): Record<string, unknown> {
   };
 }
 
-function ensureInit(): boolean {
-  if (!ENABLED || typeof window === 'undefined') return false;
-  // Puerta de consentimiento: nada de PostHog (ni cookies/persistencia) hasta
-  // que el CMP de Google conceda los propósitos de analítica.
-  if (!isAnalyticsAllowed()) return false;
-  if (!initialized) {
-    const deviceId = readDeviceId();
-    posthog.init(KEY!, {
-      api_host: HOST,
-      capture_pageview: false,   // pageviews manuales (App Router)
-      capture_pageleave: true,   // duración de sesión/página
-      autocapture: false,        // solo eventos del plan
-      // #340: sin grabador de sesión propio. Solo track()/pageviews; el único
-      // session replay es el de Sentry (solo en error) para no duplicar costo.
-      disable_session_recording: true,
-      disable_surveys: true,     // no cargar surveys.js
-      capture_dead_clicks: false, // no cargar dead-clicks-autocapture.js
-      person_profiles: 'identified_only',
-      // Identidad anónima = device_id, compartida con los eventos de servidor.
-      ...(deviceId ? { bootstrap: { distinctID: deviceId } } : {}),
-    });
-    initialized = true;
-  }
-  return true;
-}
-
-/** Evento del plan de tracking. No-op sin clave, en desarrollo o sin consentimiento. */
-export function track(event: string, props?: Record<string, unknown>): void {
-  if (!ensureInit()) return;
-  posthog.capture(event, withDevice(props));
-}
-
 /**
  * Guard de emisión única (#247). Devuelve `true` solo la primera vez que se ve
  * `key` en el almacén; los siguientes montajes/recargas de la misma sesión
@@ -207,7 +248,7 @@ export function trackOnce(key: string, event: string, props?: Record<string, unk
     store = typeof window !== 'undefined' ? window.sessionStorage : null;
   } catch { /* almacén no disponible (modo privado) */ }
   if (store && !claimOnce(store, `sl-track:${key}`)) return false;
-  posthog.capture(event, withDevice(props));
+  withClient((ph) => ph.capture(event, withDevice(props)));
   return true;
 }
 
@@ -218,19 +259,16 @@ export function trackOnce(key: string, event: string, props?: Record<string, unk
  * como property, que es la clave de unión con los eventos de servidor (#239).
  */
 export function identify(id: string, props?: Record<string, unknown>): void {
-  if (!ensureInit()) return;
-  posthog.identify(id, withDevice(props));
+  withClient((ph) => ph.identify(id, withDevice(props)));
 }
 
 /** Propiedades de persona (idioma, tema...) sin evento dedicado. */
 export function setPersonProps(props: Record<string, unknown>): void {
-  if (!ensureInit()) return;
-  posthog.setPersonProperties(props);
+  withClient((ph) => ph.setPersonProperties(props));
 }
 
 export function resetIdentity(): void {
-  if (!ensureInit()) return;
-  posthog.reset();
+  withClient((ph) => ph.reset());
 }
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
@@ -343,18 +381,20 @@ export function AnalyticsPageview() {
   const capturePage = useCallback((path: string): boolean => {
     if (!ensureInit()) return false;
     const { route, locale } = normalizeRoute(path);
-    posthog.capture('$pageview', withDevice({
-      $current_url: window.location.href,
-      route,
-      locale,
-    }));
-    // El pageview normaliza los UUID a `:id`; estas vistas conservan QUÉ
-    // competición/equipo se consultó (#171).
-    const view = entityViewFromPath(path);
-    if (view) {
-      const idProp = entityIdProp(view.event);
-      posthog.capture(view.event, withDevice({ [idProp]: view.id, locale }));
-    }
+    withClient((ph) => {
+      ph.capture('$pageview', withDevice({
+        $current_url: window.location.href,
+        route,
+        locale,
+      }));
+      // El pageview normaliza los UUID a `:id`; estas vistas conservan QUÉ
+      // competición/equipo se consultó (#171).
+      const view = entityViewFromPath(path);
+      if (view) {
+        const idProp = entityIdProp(view.event);
+        ph.capture(view.event, withDevice({ [idProp]: view.id, locale }));
+      }
+    });
     return true;
   }, []);
 
@@ -364,9 +404,9 @@ export function AnalyticsPageview() {
     last.current = pathname;
   }, [pathname, capturePage]);
 
-  // Si el usuario consiente (CMP de Google o aviso de respaldo, en la misma
-  // pestaña), inicializa y registra la página actual, que quedó sin capturar
-  // porque el efecto anterior corrió antes de la elección.
+  // Si el usuario consiente en el CMP (misma pestaña), inicializa y registra
+  // la página actual, que quedó sin capturar porque el efecto anterior corrió
+  // antes de la elección.
   useEffect(() => {
     if (!pathname) return;
     const captureIfAllowed = () => {
@@ -374,7 +414,7 @@ export function AnalyticsPageview() {
       if (last.current === pathname) return;
       if (capturePage(pathname)) last.current = pathname;
     };
-    const unsubscribe = subscribeAnalyticsConsent((state) => {
+    const unsubscribe = subscribeConsent((state) => {
       if (state === 'granted') captureIfAllowed();
     });
     return unsubscribe;

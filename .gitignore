@@ -24,6 +24,13 @@ dump.sql
 # Capturas efímeras de revisión de diseño (evidencia local, no se versiona)
 **/.impeccable/review/
 **/.impeccable/surfaces/
+**/.impeccable/critique/
+
+# HTML crudo de la fuente usado para depurar scraper/ETL (evidencia local)
+capturas-fuente/
+
+# Informes de rastreo SEO generados en local
+apps/web/seo-crawl-*.json
 
 # Artefactos locales de trabajo (no se versionan; permanecen en disco)
 .tmp-close/
