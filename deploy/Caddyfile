@@ -73,6 +73,18 @@ sticklive.eu {
 		-Server
 	}
 
+	# ads.txt / app-ads.txt se sirven desde Caddy, no desde Next: Google los
+	# consulta al verificar el sitio y no deben caer en la ventana de reinicio
+	# del contenedor web. Si se cambia el publisher, actualizar ambos sitios.
+	handle /ads.txt {
+		header Content-Type "text/plain; charset=utf-8"
+		respond "google.com, pub-2994866776026136, DIRECT, f08c47fec0942fa0" 200
+	}
+	handle /app-ads.txt {
+		header Content-Type "text/plain; charset=utf-8"
+		respond "google.com, pub-2994866776026136, DIRECT, f08c47fec0942fa0" 200
+	}
+
 	# API — el prefijo /api se elimina antes de llegar a Hono.
 	# flush_interval -1: imprescindible para el SSE del directo.
 	#
@@ -108,8 +120,14 @@ sticklive.eu {
 }
 
 # Canónico: www → apex (#178). Next ya emite `canonical`, esto lo refuerza en el
-# borde con un 301.
+# borde con un 301. Excepción: ads.txt/app-ads.txt se sirven directos también
+# en www para que ningún rastreador que no siga el 301 los dé por ausentes.
 www.sticklive.eu {
+	@ads path /ads.txt /app-ads.txt
+	route @ads {
+		header Content-Type "text/plain; charset=utf-8"
+		respond "google.com, pub-2994866776026136, DIRECT, f08c47fec0942fa0" 200
+	}
 	redir https://sticklive.eu{uri} permanent
 }
 
