@@ -7,7 +7,7 @@ import { useMatchDetail } from '@/src/hooks/queries';
 import { useMatchLive } from '@/src/hooks/useMatchLive';
 import { useInterstitialOnLeave } from '@/src/hooks/ads/useInterstitialOnLeave';
 import { ErrorState } from '@/src/components/shared/ErrorState';
-import { BrandLoader } from '@/src/components/shared/BrandLoader';
+import { MatchDetailSkeleton } from '@/src/components/shared/Skeleton';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { MatchHeader } from '@/src/components/match/MatchHeader';
 import { MatchTabs } from '@/src/components/match/MatchTabs';
@@ -99,9 +99,7 @@ export default function MatchScreen() {
         {query.isError ? (
           <ErrorState onRetry={() => void query.refetch()} />
         ) : (
-          <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
-            <BrandLoader />
-          </View>
+          <MatchDetailSkeleton />
         )}
       </>
     );

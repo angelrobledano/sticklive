@@ -143,7 +143,16 @@ function RootNavigator() {
 
   return (
     <NavigationThemeProvider value={navTheme}>
-      <Stack screenOptions={{ headerShown: true, headerTitleStyle: { fontWeight: '700' } }}>
+      <Stack
+        screenOptions={{
+          headerShown: true,
+          headerTitleStyle: { fontWeight: '700' },
+          animation: 'slide_from_right',
+          animationDuration: 220,
+          gestureEnabled: true,
+          fullScreenGestureEnabled: true,
+        }}
+      >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="match/[id]" options={{ title: '' }} />
         <Stack.Screen name="team/[id]" options={{ title: '' }} />
@@ -152,7 +161,14 @@ function RootNavigator() {
         <Stack.Screen name="settings/notifications" options={{ title: t('settings.notif_title') }} />
         <Stack.Screen name="settings/premium" options={{ title: t('premium.title') }} />
         <Stack.Screen name="settings/ads-privacy" options={{ title: t('ads.privacy_title') }} />
-        <Stack.Screen name="login" options={{ title: t('auth.login_title') }} />
+        <Stack.Screen
+          name="login"
+          options={{
+            title: t('auth.login_title'),
+            animation: 'slide_from_bottom',
+            presentation: 'modal',
+          }}
+        />
       </Stack>
     </NavigationThemeProvider>
   );

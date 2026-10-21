@@ -14,7 +14,7 @@ import { NativeFeedAd } from '@/src/components/ads/NativeFeedAd';
 import { insertNativeAdPositions } from '@/src/lib/ads/nativeFeed';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
-import { BrandLoader } from '@/src/components/shared/BrandLoader';
+import { FeedSkeleton } from '@/src/components/shared/Skeleton';
 import { BrandHeaderTitle, HomeHeaderRight } from '@/src/components/layout/AppHeader';
 import { capture } from '@/src/lib/analytics';
 import { formatDayLabel } from '@/src/lib/time';
@@ -154,11 +154,7 @@ export default function LiveScreen() {
   }, [sections, everyNItems]);
 
   if (isPending) {
-    return (
-      <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
-        <BrandLoader />
-      </View>
-    );
+    return <FeedSkeleton />;
   }
 
   if (isError && !data) return <ErrorState onRetry={() => void refetch()} />;

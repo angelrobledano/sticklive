@@ -6,7 +6,7 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 import { useTeam } from '@/src/hooks/queries';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { ErrorState } from '@/src/components/shared/ErrorState';
-import { BrandLoader } from '@/src/components/shared/BrandLoader';
+import { TeamDetailSkeleton } from '@/src/components/shared/Skeleton';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { formatDayLabel, formatKickoff, isEffectivelyLive } from '@/src/lib/time';
 import { clubName, playerDisplayName } from '@/src/lib/names';
@@ -69,9 +69,7 @@ export default function TeamScreen() {
             <ErrorState onRetry={() => void query.refetch()} />
           </View>
         ) : (
-          <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
-            <BrandLoader />
-          </View>
+          <TeamDetailSkeleton />
         )}
       </>
     );

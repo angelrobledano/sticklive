@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Animated, Easing, Text, View } from 'react-native';
 import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { EmptyState } from '@/src/components/shared/EmptyState';
@@ -22,6 +23,29 @@ function StatRow({ label, home, away, max }: StatRowProps) {
   const homePct = Math.round((home / safeMax) * 100);
   const awayPct = Math.round((away / safeMax) * 100);
 
+  // Animación fluida de las barras llenándose desde el centro hacia los extremos
+  const [anim] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    anim.setValue(0);
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 520,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [anim, homePct, awayPct]);
+
+  const homeWidth = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', `${homePct}%`],
+  });
+
+  const awayWidth = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', `${awayPct}%`],
+  });
+
   return (
     <View className="my-2">
       <Text className="text-center text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -33,14 +57,14 @@ function StatRow({ label, home, away, max }: StatRowProps) {
           {home}
         </Text>
 
-        {/* Dos barras enfrentadas desde el centro */}
+        {/* Dos barras enfrentadas desde el centro con animación de expansión */}
         <View className="flex-1 flex-row h-2 items-center gap-1">
           {/* Barra Local: llena de derecha a izquierda hacia el centro */}
           <View className="flex-1 flex-row justify-end h-full rounded-l-full bg-slate-100 overflow-hidden dark:bg-slate-800">
-            <View
+            <Animated.View
               className="h-full rounded-l-full"
               style={{
-                width: `${homePct}%`,
+                width: homeWidth,
                 backgroundColor: BRAND.granate,
               }}
             />
@@ -48,10 +72,10 @@ function StatRow({ label, home, away, max }: StatRowProps) {
 
           {/* Barra Visitante: llena de izquierda a derecha desde el centro */}
           <View className="flex-1 h-full rounded-r-full bg-slate-100 overflow-hidden dark:bg-slate-800">
-            <View
+            <Animated.View
               className="h-full rounded-r-full bg-slate-500 dark:bg-slate-400"
               style={{
-                width: `${awayPct}%`,
+                width: awayWidth,
               }}
             />
           </View>
@@ -161,7 +185,7 @@ export function StatsTab({ data }: StatsTabProps) {
 
         {/* Faltas de equipo */}
         <StatRow
-          label={t('hockey_stats.team_fouls')}
+          label={t('match_detail.team_fouls_header')}
           home={stats.homeFouls}
           away={stats.awayFouls}
         />

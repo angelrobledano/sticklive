@@ -8,6 +8,7 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 import { MIN_SEARCH_LENGTH, searchEnabled, useSearch } from '@/src/hooks/queries';
 import { SEARCH_DEBOUNCE_MS, useDebounced } from '@/src/hooks/useDebounced';
 import { EmptyState } from '@/src/components/shared/EmptyState';
+import { SearchSkeleton } from '@/src/components/shared/Skeleton';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { AdBanner } from '@/src/components/ads/AdBanner';
@@ -78,7 +79,7 @@ export default function SearchScreen() {
       {tooShort ? (
         <EmptyState title={t('search.hint').replace('{n}', String(MIN_SEARCH_LENGTH))} />
       ) : search.isPending && !results ? (
-        <View className="flex-1" />
+        <SearchSkeleton />
       ) : search.isError && !results ? (
         <ErrorState onRetry={() => void search.refetch()} />
       ) : !results || results.total === 0 ? (

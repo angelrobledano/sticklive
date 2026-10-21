@@ -9,7 +9,7 @@ import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { EmptyState } from '@/src/components/shared/EmptyState';
-import { BrandLoader } from '@/src/components/shared/BrandLoader';
+import { CompetitionDetailSkeleton } from '@/src/components/shared/Skeleton';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { formatDayLabel, formatKickoff, isEffectivelyLive } from '@/src/lib/time';
 import { clubName } from '@/src/lib/names';
@@ -106,9 +106,7 @@ export default function CompetitionScreen() {
     return (
       <>
         {headerElement}
-        <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
-          <BrandLoader />
-        </View>
+        <CompetitionDetailSkeleton />
       </>
     );
   }
