@@ -148,6 +148,7 @@ function RootNavigator() {
         <Stack.Screen name="match/[id]" />
         <Stack.Screen name="team/[id]" />
         <Stack.Screen name="player/[id]" />
+        <Stack.Screen name="competition/[id]" />
         <Stack.Screen name="settings/notifications" options={{ title: t('settings.notif_title') }} />
         <Stack.Screen name="settings/premium" options={{ title: t('premium.title') }} />
         <Stack.Screen name="settings/ads-privacy" options={{ title: t('ads.privacy_title') }} />

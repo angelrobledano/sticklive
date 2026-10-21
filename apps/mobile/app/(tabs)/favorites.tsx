@@ -122,7 +122,7 @@ export default function FavoritesScreen() {
   const openFavorite = (kind: FavoriteKind, id: string) => {
     if (kind === 'team') router.push(`/team/${id}`);
     else if (kind === 'player') router.push(`/player/${id}`);
-    else router.push('/standings');
+    else router.push(`/competition/${id}`);
   };
 
   const sections: { kind: FavoriteKind; title: string; ids: string[] }[] = [

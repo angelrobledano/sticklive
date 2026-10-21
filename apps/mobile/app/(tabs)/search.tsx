@@ -113,8 +113,7 @@ export default function SearchScreen() {
               {results.competitions.map((competition) => (
                 <Pressable
                   key={competition.id}
-                  // Un tab no se apila: push a la ruta del grupo (tabs) abre el tab.
-                  onPress={() => router.push('/standings')}
+                  onPress={() => router.push(`/competition/${competition.id}`)}
                   className="border-b border-slate-100 bg-white px-4 py-2.5 active:opacity-70 dark:border-slate-800 dark:bg-slate-900"
                 >
                   <Text numberOfLines={1} className="text-base font-medium">

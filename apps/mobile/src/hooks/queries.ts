@@ -3,6 +3,7 @@ import { apiFetch } from '@/src/lib/api/client';
 import { isAdfreeActive } from '@/src/lib/ads/adfree';
 import type {
   AdsConfig,
+  CompetitionSeasonsResponse,
   CompetitionSummary,
   CompetitionsResponse,
   CurrentMatchesResponse,
@@ -12,6 +13,7 @@ import type {
   PlayerDetail,
   PremiumStatus,
   SearchResults,
+  SeasonOverview,
   StandingsResponse,
   StandingsRow,
   TeamDetail,
@@ -25,6 +27,8 @@ export const qk = {
   current: ['matches', 'current'] as const,
   match: (id: string) => ['matches', id] as const,
   competitions: ['competitions'] as const,
+  competitionSeasons: (id: string) => ['competitions', id, 'seasons'] as const,
+  seasonOverview: (seasonId: string) => ['seasons', seasonId, 'overview'] as const,
   standings: (seasonId: string) => ['standings', seasonId] as const,
   search: (q: string) => ['search', q] as const,
   favorites: ['favorites'] as const,
@@ -96,6 +100,14 @@ export async function fetchCurrentMatches(): Promise<CurrentMatchesResponse> {
 
 export async function fetchCompetitions(): Promise<CompetitionsResponse> {
   return apiFetch<CompetitionsResponse>('/competitions');
+}
+
+export async function fetchCompetitionSeasons(competitionId: string): Promise<CompetitionSeasonsResponse> {
+  return apiFetch<CompetitionSeasonsResponse>(`/competitions/${competitionId}/seasons`);
+}
+
+export async function fetchSeasonOverview(seasonId: string): Promise<SeasonOverview> {
+  return apiFetch<SeasonOverview>(`/seasons/${seasonId}/overview`);
 }
 
 export async function fetchStandings(seasonId: string): Promise<StandingsResponse> {
@@ -211,5 +223,26 @@ export function usePlayer(id: string) {
     queryFn: () => apiFetch<PlayerDetail>(`/players/${id}`),
     enabled: Boolean(id),
     staleTime: 5 * 60_000,
+  });
+}
+
+/** Temporadas de una competición (histórico). */
+export function useCompetitionSeasons(competitionId: string | undefined) {
+  return useQuery({
+    queryKey: qk.competitionSeasons(competitionId ?? ''),
+    queryFn: () => fetchCompetitionSeasons(competitionId ?? ''),
+    enabled: Boolean(competitionId),
+    staleTime: 30 * 60_000,
+  });
+}
+
+/** Overview completo de una temporada (metadatos, clasificación, partidos y rondas). */
+export function useSeasonOverview(seasonId: string | undefined) {
+  return useQuery({
+    queryKey: qk.seasonOverview(seasonId ?? ''),
+    queryFn: () => fetchSeasonOverview(seasonId ?? ''),
+    enabled: Boolean(seasonId),
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
   });
 }

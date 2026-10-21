@@ -384,3 +384,75 @@ export interface AdsConfig {
   rewarded: { enabled: boolean; adfreeMinutes: number };
   nativeFeed: { enabled: boolean; everyNItems: number };
 }
+
+export interface SeasonOverviewMatch {
+  id: string;
+  status: MatchStatus;
+  competitionTimezone: string | null;
+  scheduledAt: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  score: { home: number | null; away: number | null };
+  winnerTeamId: string | null;
+  winType: string | null;
+  penalties: { home: number; away: number } | null;
+  venueName: string | null;
+  roundId: string | null;
+  groupName: string | null;
+  phaseId: string | null;
+  stage: string | null;
+  seriesGame: number | null;
+  roundNumber: number | null;
+  roundName: string | null;
+  roundType: string | null;
+  homeTeam: {
+    id: string;
+    name: string;
+    shortName: string | null;
+    logoUrl: string | null;
+  };
+  awayTeam: {
+    id: string;
+    name: string;
+    shortName: string | null;
+    logoUrl: string | null;
+  };
+}
+
+export interface SeasonOverview {
+  season: {
+    id: string;
+    name: string;
+    slug: string;
+    startDate: string | null;
+    endDate: string | null;
+    competitionId: string;
+    competitionName: string;
+    competitionSlug: string;
+    competitionShortName: string | null;
+    competitionLogoUrl: string | null;
+    competitionOrganizer: string;
+    competitionScope: string;
+    competitionCountry: string | null;
+    competitionRegion: string | null;
+    competitionTimezone: string | null;
+    competitionFormat: string | null;
+  };
+  standings: StandingsRow[];
+  rounds: {
+    id: string;
+    number: number;
+    name: string | null;
+    roundType: string;
+  }[];
+  matches: SeasonOverviewMatch[];
+}
+
+export interface CompetitionSeasonsResponse {
+  seasons: {
+    id: string;
+    name: string;
+    slug: string;
+    isCurrent: boolean;
+  }[];
+}

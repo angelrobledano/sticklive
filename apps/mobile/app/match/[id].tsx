@@ -1,5 +1,5 @@
-import { Stack, useLocalSearchParams, useIsFocused } from 'expo-router';
-import { ScrollView, Text, View } from 'react-native';
+import { Stack, useLocalSearchParams, useIsFocused, useRouter } from 'expo-router';
+import { ScrollView, Text, View, Pressable } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useMatchDetail } from '@/src/hooks/queries';
@@ -13,6 +13,7 @@ import { capture } from '@/src/lib/analytics';
 import { isAdQuietTime } from '@/src/lib/time';
 
 export default function MatchScreen() {
+  const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const matchId = Array.isArray(params.id) ? params.id[0] : params.id;
   const { t } = useLocale();
@@ -74,7 +75,18 @@ export default function MatchScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }} className="bg-rink-floor dark:bg-rink-floor-dark">
         {/* Marcador */}
         <View className="mx-3 mt-2 items-center rounded-xl bg-white p-4 dark:bg-slate-900">
-          <Text className="text-xs uppercase text-slate-500">{m.competitionName}</Text>
+          {m.competitionId ? (
+            <Pressable
+              onPress={() => router.push(`/competition/${m.competitionId}`)}
+              className="active:opacity-70"
+            >
+              <Text className="text-xs uppercase text-slate-500 underline decoration-slate-300 dark:decoration-slate-700">
+                {m.competitionName}
+              </Text>
+            </Pressable>
+          ) : (
+            <Text className="text-xs uppercase text-slate-500">{m.competitionName}</Text>
+          )}
           <View className="mt-2 flex w-full flex-row items-center justify-between">
             <Text className="flex-1 text-center font-semibold">{m.homeTeam.shortName ?? m.homeTeam.name}</Text>
             <Text className="px-3 font-mono text-4xl font-bold">
