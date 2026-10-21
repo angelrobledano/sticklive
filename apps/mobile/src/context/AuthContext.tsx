@@ -35,6 +35,8 @@ interface AuthCtx {
    */
   lastAuthError: string | null;
   signInWithGoogle: () => Promise<void>;
+  requestMagicLink: (email: string) => Promise<{ ok: boolean; error?: string; devLink?: string }>;
+  signInWithMagicLinkToken: (token: string) => Promise<boolean>;
   signOut: () => Promise<void>;
 }
 
@@ -122,6 +124,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const requestMagicLink = useCallback(async (email: string) => {
+    setLastAuthError(null);
+    try {
+      const res = await apiFetch<{ sent: boolean; devLink?: string }>('/auth/magic-link', {
+        method: 'POST',
+        body: { email },
+      });
+      return { ok: res.sent, devLink: res.devLink };
+    } catch (err) {
+      const code = err instanceof ApiError ? err.code : 'unknown';
+      setLastAuthError(code);
+      return { ok: false, error: code };
+    }
+  }, []);
+
+  const signInWithMagicLinkToken = useCallback(async (token: string) => {
+    setLastAuthError(null);
+    try {
+      const deviceId = await getDeviceId();
+      const res = await apiFetch<{ session: string; email: string }>('/auth/verify', {
+        method: 'POST',
+        body: { token, deviceId },
+      });
+      const s: Session = { token: res.session, email: res.email };
+      await saveSession(s);
+      if (s.email) identifyUser(s.email);
+      capture('login_completed', { method: 'magic_link' });
+      try {
+        await mergeLocalOnLogin(s.token);
+      } catch (mergeErr) {
+        console.error('[auth] no se pudieron fusionar los favoritos locales con la cuenta', mergeErr);
+      }
+      setSession(s);
+      return true;
+    } catch (err) {
+      const code = err instanceof ApiError ? err.code : 'unknown';
+      setLastAuthError(code);
+      return false;
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     setLastAuthError(null);
     try {
@@ -146,8 +189,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ session, ready, lastAuthError, signInWithGoogle, signOut }),
-    [session, ready, lastAuthError, signInWithGoogle, signOut],
+    () => ({
+      session,
+      ready,
+      lastAuthError,
+      signInWithGoogle,
+      requestMagicLink,
+      signInWithMagicLinkToken,
+      signOut,
+    }),
+    [
+      session,
+      ready,
+      lastAuthError,
+      signInWithGoogle,
+      requestMagicLink,
+      signInWithMagicLinkToken,
+      signOut,
+    ],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -30,6 +30,7 @@ import { authErrorKey } from '@/src/lib/auth-errors';
 /** CTA de login anónimo: mismo flujo que settings.tsx (errores visibles igual). */
 function LoginCard() {
   const { t } = useLocale();
+  const router = useRouter();
   const { lastAuthError, signInWithGoogle } = useSession();
   const [signingIn, setSigningIn] = useState(false);
 
@@ -46,15 +47,25 @@ function LoginCard() {
         {t('auth.login_title')}
       </Text>
       <Text className="mt-0.5 text-sm text-slate-500">{t('auth.login_subtitle')}</Text>
-      <Pressable
-        onPress={handleSignIn}
-        disabled={signingIn}
-        className="mt-3 self-start rounded-lg bg-rink-passion px-4 py-2 active:opacity-80 disabled:opacity-50"
-      >
-        <Text className="font-semibold text-white">
-          {signingIn ? t('auth.opening_account') : t('auth.google')}
-        </Text>
-      </Pressable>
+      <View className="mt-3 flex-row flex-wrap gap-2">
+        <Pressable
+          onPress={handleSignIn}
+          disabled={signingIn}
+          className="rounded-lg bg-rink-passion px-4 py-2 active:opacity-80 disabled:opacity-50"
+        >
+          <Text className="font-semibold text-white">
+            {signingIn ? t('auth.opening_account') : t('auth.google')}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push('/login')}
+          className="rounded-lg border border-slate-300 px-4 py-2 active:opacity-80 dark:border-slate-700"
+        >
+          <Text className="font-semibold text-slate-700 dark:text-slate-300">
+            {t('auth.upsell_email')}
+          </Text>
+        </Pressable>
+      </View>
       {lastAuthError ? (
         <Text className="mt-2 text-sm text-red-600 dark:text-red-400" accessibilityLiveRegion="polite">
           {t(authErrorKey(lastAuthError))}

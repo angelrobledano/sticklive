@@ -16,6 +16,7 @@ export default {
     ios: {
       bundleIdentifier: 'eu.sticklive.app',
       supportsTablet: false,
+      associatedDomains: ['applinks:sticklive.eu'],
       // iOS 18+: el sistema elige la variante según el aspecto de la pantalla de inicio.
       icon: {
         light: './assets/icon.png',
@@ -29,6 +30,35 @@ export default {
     },
     android: {
       package: 'eu.sticklive.app',
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: [
+            {
+              scheme: 'https',
+              host: 'sticklive.eu',
+              pathPrefix: '/login',
+            },
+            {
+              scheme: 'https',
+              host: 'sticklive.eu',
+              pathPrefix: '/match',
+            },
+            {
+              scheme: 'https',
+              host: 'sticklive.eu',
+              pathPrefix: '/competition',
+            },
+            {
+              scheme: 'https',
+              host: 'sticklive.eu',
+              pathPrefix: '/team',
+            },
+          ],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+      ],
       adaptiveIcon: {
         foregroundImage: './assets/android-icon-foreground.png',
         backgroundColor: BRAND.granate,
@@ -88,6 +118,7 @@ export default {
           delayAppMeasurementInit: true,
         },
       ],
+      './plugins/withWidget',
     ],
     experiments: { typedRoutes: true },
     // OTA (Task 5.3): runtime manual (el proyecto tiene directorio nativo para

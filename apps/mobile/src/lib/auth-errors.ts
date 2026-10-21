@@ -24,6 +24,13 @@ export function authErrorKey(reason: string): string {
     case 'bad_state':
     case 'state_reused':
       return 'auth.google_state';
+    case 'invalid_email':
+      return 'auth.error_invalid_email';
+    case 'email_not_configured':
+      return 'auth.error_email_unavailable';
+    case 'expired':
+    case 'missing_token':
+      return 'auth.expired';
     default:
       return 'auth.google_failed';
   }

@@ -152,6 +152,7 @@ function RootNavigator() {
         <Stack.Screen name="settings/notifications" options={{ title: t('settings.notif_title') }} />
         <Stack.Screen name="settings/premium" options={{ title: t('premium.title') }} />
         <Stack.Screen name="settings/ads-privacy" options={{ title: t('ads.privacy_title') }} />
+        <Stack.Screen name="login" options={{ title: t('auth.login_title') }} />
       </Stack>
     </NavigationThemeProvider>
   );
