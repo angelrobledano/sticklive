@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
+import { useNavigation } from 'expo-router';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useAdsConfig, useCurrentMatches } from '@/src/hooks/queries';
 import { useSession } from '@/src/context/AuthContext';
@@ -14,6 +15,7 @@ import { insertNativeAdPositions } from '@/src/lib/ads/nativeFeed';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { BrandLoader } from '@/src/components/shared/BrandLoader';
+import { BrandHeaderTitle, HomeHeaderRight } from '@/src/components/layout/AppHeader';
 import { capture } from '@/src/lib/analytics';
 import { formatDayLabel } from '@/src/lib/time';
 import {
@@ -54,6 +56,7 @@ export default function LiveScreen() {
   const todayKey = madridTodayKey();
   const [selectedDate, setSelectedDate] = useState<string>(todayKey);
   const [filter, setFilter] = useState<DayFilter>('all');
+  const navigation = useNavigation();
 
   // Analítica: vista de la pestaña home
   useEffect(() => {
@@ -73,6 +76,34 @@ export default function LiveScreen() {
       }),
     [data, selectedDate, teamIds, leagueIds, filter, locale],
   );
+
+  // Cabecera interactiva y de marca (STICK LIVE + Hoy + Live Badge + Búsqueda)
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
+        <BrandHeaderTitle
+          onPress={() => {
+            setSelectedDate(todayKey);
+            setFilter('all');
+          }}
+        />
+      ),
+      headerTitleAlign: 'left',
+      headerRight: () => (
+        <HomeHeaderRight
+          selectedDate={selectedDate}
+          todayKey={todayKey}
+          onResetToday={() => {
+            setSelectedDate(todayKey);
+            setFilter('all');
+          }}
+          liveCount={dayView.liveCount}
+          isLiveFilterActive={dayView.filter === 'live'}
+          onToggleLive={() => setFilter(filter === 'live' ? 'all' : 'live')}
+        />
+      ),
+    });
+  }, [navigation, selectedDate, todayKey, dayView.liveCount, dayView.filter, filter]);
 
   const next = useMemo(
     () =>

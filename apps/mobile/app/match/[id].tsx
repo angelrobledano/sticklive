@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Share, View } from 'react-native';
 import { Stack, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useColorScheme } from 'nativewind';
 import { useMatchDetail } from '@/src/hooks/queries';
 import { useMatchLive } from '@/src/hooks/useMatchLive';
 import { useInterstitialOnLeave } from '@/src/hooks/ads/useInterstitialOnLeave';
@@ -23,6 +24,7 @@ export default function MatchScreen() {
   const matchId = Array.isArray(params.id) ? params.id[0] : params.id;
   const query = useMatchDetail(matchId ?? '');
   const live = useMatchLive(matchId ?? '', undefined);
+  const { colorScheme } = useColorScheme();
 
   // Analítica (Task 5.1): apertura de la ficha, una vez por matchId
   useEffect(() => {
@@ -92,7 +94,11 @@ export default function MatchScreen() {
               hitSlop={8}
               className="p-1 active:opacity-60"
             >
-              <Ionicons name="share-outline" size={20} color="#0f172a" />
+              <Ionicons
+                name="share-outline"
+                size={20}
+                color={colorScheme === 'dark' ? '#f8fafc' : '#0f172a'}
+              />
             </Pressable>
           ),
         }}

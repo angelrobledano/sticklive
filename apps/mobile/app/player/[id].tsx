@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useColorScheme } from 'nativewind';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { usePlayer } from '@/src/hooks/queries';
 import { ErrorState } from '@/src/components/shared/ErrorState';
@@ -19,6 +20,7 @@ export default function PlayerScreen() {
   const playerId = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
   const { t } = useLocale();
+  const { colorScheme } = useColorScheme();
   const query = usePlayer(playerId ?? '');
 
   if (!query.data) {
@@ -59,7 +61,11 @@ export default function PlayerScreen() {
               hitSlop={8}
               className="p-1 active:opacity-60"
             >
-              <Ionicons name="share-outline" size={20} color="#0f172a" />
+              <Ionicons
+                name="share-outline"
+                size={20}
+                color={colorScheme === 'dark' ? '#f8fafc' : '#0f172a'}
+              />
             </Pressable>
           ),
         }}

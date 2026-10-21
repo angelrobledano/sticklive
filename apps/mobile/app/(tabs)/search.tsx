@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColorScheme } from 'nativewind';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { MIN_SEARCH_LENGTH, searchEnabled, useSearch } from '@/src/hooks/queries';
 import { SEARCH_DEBOUNCE_MS, useDebounced } from '@/src/hooks/useDebounced';
@@ -14,11 +17,14 @@ import { clubName, playerDisplayName } from '@/src/lib/names';
  * Tab de búsqueda (Task 2.5): TextInput con debounce de 300 ms → useSearch.
  * Tres secciones: equipos → /team/:id, jugadores → /player/:id (el API no trae
  * `name`, sólo firstName/lastName) y competiciones → tab de clasificación.
+ * Cabecera integrada en la zona segura superior sin barra redundante.
  */
 
 export default function SearchScreen() {
   const router = useRouter();
   const { t } = useLocale();
+  const insets = useSafeAreaInsets();
+  const { colorScheme } = useColorScheme();
   const [q, setQ] = useState('');
   const debounced = useDebounced(q, SEARCH_DEBOUNCE_MS);
   const search = useSearch(debounced);
@@ -31,26 +37,42 @@ export default function SearchScreen() {
 
   return (
     <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
-      <View className="flex-row items-center gap-2 px-3 py-2">
-        <TextInput
-          value={q}
-          onChangeText={setQ}
-          placeholder={t('search.placeholder')}
-          placeholderTextColor="#94a3b8"
-          returnKeyType="search"
-          autoCapitalize="none"
-          autoCorrect={false}
-          className="min-h-[44px] flex-1 rounded-xl bg-white px-3 text-base text-slate-900 dark:bg-slate-900 dark:text-slate-100"
-        />
-        {q.length > 0 ? (
-          <Pressable
-            accessibilityLabel={t('search.clear')}
-            onPress={() => setQ('')}
-            className="min-h-[44px] min-w-[44px] items-center justify-center rounded-xl bg-white active:opacity-70 dark:bg-slate-900"
-          >
-            <Text className="text-lg text-slate-500">✕</Text>
-          </Pressable>
-        ) : null}
+      {/* Cabecera integrada de búsqueda para aprovechar al máximo el espacio vertical */}
+      <View
+        style={{ paddingTop: Math.max(insets.top, 12) }}
+        className="border-b border-slate-200 bg-white px-3 pb-2.5 dark:border-slate-800 dark:bg-slate-900"
+      >
+        <View className="flex-row items-center rounded-xl bg-slate-100 px-3 py-1 dark:bg-slate-800">
+          <Ionicons
+            name="search-outline"
+            size={20}
+            color={colorScheme === 'dark' ? '#94a3b8' : '#64748b'}
+          />
+          <TextInput
+            value={q}
+            onChangeText={setQ}
+            placeholder={t('search.placeholder')}
+            placeholderTextColor="#94a3b8"
+            returnKeyType="search"
+            autoCapitalize="none"
+            autoCorrect={false}
+            className="min-h-[42px] flex-1 px-2.5 text-base text-slate-900 dark:text-slate-100"
+          />
+          {q.length > 0 ? (
+            <Pressable
+              accessibilityLabel={t('search.clear')}
+              onPress={() => setQ('')}
+              hitSlop={8}
+              className="h-7 w-7 items-center justify-center rounded-full bg-slate-200 active:opacity-70 dark:bg-slate-700"
+            >
+              <Ionicons
+                name="close"
+                size={16}
+                color={colorScheme === 'dark' ? '#cbd5e1' : '#475569'}
+              />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
       {tooShort ? (
