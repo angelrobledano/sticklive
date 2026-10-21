@@ -103,3 +103,10 @@ export function playerDisplayName(firstName: string, lastName: string): string {
   const surname = parts.slice(0, take).join(' ');
   return toTitleCase(`${firstName ?? ''} ${surname}`.trim());
 }
+
+/** Desde el nombre crudo de la fuente: "ALABART GONZALEZ IGNACIO" → "Ignacio Alabart" */
+export function playerNameFromRaw(raw: string): string {
+  const parts = raw.replace(/\s+/g, ' ').trim().split(' ');
+  if (parts.length === 1) return toTitleCase(parts[0]!);
+  return toTitleCase(`${parts[parts.length - 1]} ${parts[0]}`);
+}

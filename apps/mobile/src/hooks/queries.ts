@@ -14,6 +14,7 @@ import type {
   PremiumStatus,
   SearchResults,
   SeasonOverview,
+  SeasonStats,
   StandingsResponse,
   StandingsRow,
   TeamDetail,
@@ -29,6 +30,7 @@ export const qk = {
   competitions: ['competitions'] as const,
   competitionSeasons: (id: string) => ['competitions', id, 'seasons'] as const,
   seasonOverview: (seasonId: string) => ['seasons', seasonId, 'overview'] as const,
+  seasonStats: (seasonId: string) => ['seasons', seasonId, 'stats'] as const,
   standings: (seasonId: string) => ['standings', seasonId] as const,
   search: (q: string) => ['search', q] as const,
   favorites: ['favorites'] as const,
@@ -108,6 +110,17 @@ export async function fetchCompetitionSeasons(competitionId: string): Promise<Co
 
 export async function fetchSeasonOverview(seasonId: string): Promise<SeasonOverview> {
   return apiFetch<SeasonOverview>(`/seasons/${seasonId}/overview`);
+}
+
+export async function fetchSeasonStats(seasonId: string): Promise<SeasonStats> {
+  try {
+    return await apiFetch<SeasonStats>(`/seasons/${seasonId}/stats`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      return { topScorers: [], topAssists: [], topCards: [] };
+    }
+    throw err;
+  }
 }
 
 export async function fetchStandings(seasonId: string): Promise<StandingsResponse> {
@@ -251,5 +264,15 @@ export function useSeasonOverview(seasonId: string | undefined) {
     enabled: Boolean(seasonId),
     placeholderData: keepPreviousData,
     staleTime: 60_000,
+  });
+}
+
+/** Líderes estadísticos de una temporada (goleadores, asistencias, tarjetas). */
+export function useSeasonStats(seasonId: string | undefined) {
+  return useQuery({
+    queryKey: qk.seasonStats(seasonId ?? ''),
+    queryFn: () => fetchSeasonStats(seasonId ?? ''),
+    enabled: Boolean(seasonId),
+    staleTime: 5 * 60_000,
   });
 }

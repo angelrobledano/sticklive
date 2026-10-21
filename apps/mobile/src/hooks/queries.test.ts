@@ -14,6 +14,7 @@ import {
   fetchCurrentMatches,
   fetchSearch,
   fetchSeasonOverview,
+  fetchSeasonStats,
   fetchStandings,
   qk,
   searchEnabled,
@@ -227,5 +228,23 @@ describe('queryFns y selectores (vía QueryClient.fetchQuery con fetch stubeado)
 
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/competitions/c1/seasons'), expect.anything());
     expect(data).toEqual(envelope);
+  });
+
+  it('fetchSeasonStats pide /seasons/:id/stats y maneja 404 seguro', async () => {
+    const statsEnvelope = {
+      topScorers: [],
+      topAssists: [],
+      topCards: [],
+    };
+    const fetchMock = vi.fn(async () => ok(statsEnvelope));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const data = await newClient().fetchQuery({
+      queryKey: qk.seasonStats('s1'),
+      queryFn: () => fetchSeasonStats('s1'),
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/seasons/s1/stats'), expect.anything());
+    expect(data).toEqual(statsEnvelope);
   });
 });

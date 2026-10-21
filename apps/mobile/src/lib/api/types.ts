@@ -386,6 +386,48 @@ export interface AdsConfig {
   nativeFeed: { enabled: boolean; everyNItems: number };
 }
 
+export type KnockoutStage = 'round_of_16' | 'quarters' | 'semis' | 'final' | 'third_place' | 'placement';
+
+export interface SeasonPhase {
+  id: string;
+  ordinal: number;
+  kind: 'league' | 'group' | 'knockout';
+  isPlacement: boolean;
+  name: string | null;
+  hasStandings: boolean;
+  stages: KnockoutStage[];
+  stagesInferred: boolean;
+  fromSource: boolean;
+}
+
+export interface SeasonLeader {
+  playerId: string | null;
+  playerName: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  photoUrl?: string | null;
+  teamId: string | null;
+  teamShort: string | null;
+  teamName: string | null;
+  value: number;
+  extra: number;
+}
+
+export interface TeamSetPieces {
+  teamId: string;
+  teamShort: string | null;
+  teamName: string | null;
+  directFouls: { total: number; scored: number; pct: number | null };
+  penalties: { total: number; scored: number; pct: number | null };
+}
+
+export interface SeasonStats {
+  topScorers: SeasonLeader[];
+  topAssists: SeasonLeader[];
+  topCards: SeasonLeader[];
+  setPieces?: TeamSetPieces[];
+}
+
 export interface SeasonOverviewMatch {
   id: string;
   status: MatchStatus;
@@ -458,6 +500,7 @@ export interface SeasonOverview {
     competitionRegion: string | null;
     competitionTimezone: string | null;
     competitionFormat: string | null;
+    phases?: SeasonPhase[];
   };
   standings: SeasonOverviewStandingRow[];
   rounds: {
@@ -465,6 +508,8 @@ export interface SeasonOverview {
     number: number;
     name: string | null;
     roundType: string;
+    phaseId?: string | null;
+    stage?: string | null;
   }[];
   matches: SeasonOverviewMatch[];
 }

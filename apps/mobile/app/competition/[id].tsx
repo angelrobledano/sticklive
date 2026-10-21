@@ -1,8 +1,14 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { useCompetitions, useCompetitionSeasons, useSeasonOverview } from '@/src/hooks/queries';
+import {
+  useCompetitions,
+  useCompetitionSeasons,
+  useSeasonOverview,
+  useSeasonStats,
+} from '@/src/hooks/queries';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { ErrorState } from '@/src/components/shared/ErrorState';
@@ -12,7 +18,20 @@ import { ShareHeaderButton } from '@/src/components/shared/ShareHeaderButton';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { formatDayLabel, formatKickoff, isEffectivelyLive } from '@/src/lib/time';
 import { clubName } from '@/src/lib/names';
-import type { SeasonOverviewMatch, SeasonOverviewStandingRow } from '@/src/lib/api/types';
+import {
+  type MainTab,
+  competitionTeamsForIndex,
+  competitionVisibleTabs,
+  knockoutTabLabelKey,
+} from '@/src/lib/season-phases';
+import { buildCompetitionSummary } from '@/src/lib/content-summary';
+import { CompetitionSummary } from '@/src/components/competition/CompetitionSummary';
+import { PlayoffsTab } from '@/src/components/competition/PlayoffsTab';
+import { StatsLeadersTab } from '@/src/components/competition/StatsLeadersTab';
+import type {
+  SeasonOverviewMatch,
+  SeasonOverviewStandingRow,
+} from '@/src/lib/api/types';
 
 const COL_WIDTHS = 'w-7' as const;
 
@@ -22,18 +41,18 @@ export default function CompetitionScreen() {
   const router = useRouter();
   const { t } = useLocale();
 
-  // Buscar metadatos básicos de la competición en la lista en caché o fetch
+  // Metadatos básicos de la competición
   const competitionsQuery = useCompetitions();
   const competitionMeta = useMemo(
     () => (competitionsQuery.data ?? []).find((c) => c.id === competitionId),
     [competitionsQuery.data, competitionId],
   );
 
-  // Obtener temporadas disponibles
+  // Temporadas disponibles
   const seasonsQuery = useCompetitionSeasons(competitionId);
   const seasons = seasonsQuery.data?.seasons ?? [];
 
-  // Temporada seleccionada: query param > temporada activa de metadatos > primera del histórico
+  // Temporada seleccionada
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(params.seasonId ?? null);
   const activeSeasonId =
     selectedSeasonId ??
@@ -44,24 +63,88 @@ export default function CompetitionScreen() {
   const overviewQuery = useSeasonOverview(activeSeasonId);
   const overview = overviewQuery.data;
 
-  // Pestaña activa: 'standings' | 'calendar'
-  const [activeTab, setActiveTab] = useState<'standings' | 'calendar'>('standings');
+  const statsQuery = useSeasonStats(activeSeasonId);
+  const stats = statsQuery.data;
 
-  // Filtro de jornada/ronda en calendario (opcional)
+  // Resumen ("Así terminó" / "Así va la liga")
+  const summary = useMemo(() => {
+    if (!overview) return null;
+    return buildCompetitionSummary(overview, stats);
+  }, [overview, stats]);
+
+  // Pestañas visibles en el orden correcto
+  // Si playoffs han empezado o la liga ha finalizado, Playoffs se coloca primera
+  // Si liga regular está en juego, Clasificación se coloca primera
+  // Si torneo es Final Four, sólo Playoffs (sin Clasificación ni Jornadas)
+  const visibleTabs = useMemo<MainTab[]>(() => {
+    if (!overview) return ['Clasificación'];
+    return competitionVisibleTabs(overview, stats, overview.season.competitionFormat);
+  }, [overview, stats]);
+
+  // Clave de texto para el tab de playoffs ('Playoffs' | 'Final Four' | 'Eliminatorias')
+  const knockoutLabelKey = useMemo(() => {
+    if (!overview) return 'match_tabs.playoffs';
+    return knockoutTabLabelKey(
+      overview.season.competitionFormat,
+      overview.season.phases,
+      overview.rounds,
+      overview.matches,
+    );
+  }, [overview]);
+
+  // Pestaña activa por defecto
+  const [selectedTab, setSelectedTab] = useState<MainTab | null>(null);
+  const activeTab: MainTab = useMemo(() => {
+    if (selectedTab && visibleTabs.includes(selectedTab)) {
+      return selectedTab;
+    }
+    return visibleTabs[0] ?? 'Clasificación';
+  }, [selectedTab, visibleTabs]);
+
+  // Filtro de jornada en pestaña Jornadas
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
 
   const overviewRounds = overview?.rounds;
-  const rounds = useMemo(() => {
+  const regularRounds = useMemo(() => {
     if (!overviewRounds) return [];
-    return [...overviewRounds].sort((a, b) => a.number - b.number);
+    return overviewRounds
+      .filter((r) => r.roundType === 'regular')
+      .sort((a, b) => a.number - b.number);
   }, [overviewRounds]);
 
   const overviewMatches = overview?.matches;
-  const matchesByRound = useMemo(() => {
+  const regularMatches = useMemo(() => {
     if (!overviewMatches) return [];
-    if (selectedRound === null) return overviewMatches;
-    return overviewMatches.filter((m) => m.roundNumber === selectedRound);
+    const regs = overviewMatches.filter((m) => m.roundType === 'regular');
+    if (selectedRound === null) return regs;
+    return regs.filter((m) => m.roundNumber === selectedRound);
   }, [overviewMatches, selectedRound]);
+
+  // Equipos participantes para la sección final
+  const participatingTeams = useMemo(() => {
+    if (!overview) return [];
+    return competitionTeamsForIndex(overview);
+  }, [overview]);
+
+  // Agrupación de clasificación por grupos (para torneos tipo Mundial o Champions con Grupo A/B)
+  const standings = overview?.standings;
+  const standingsByGroup = useMemo(() => {
+    if (!standings || standings.length === 0) return [];
+    const groupsMap = new Map<string, SeasonOverviewStandingRow[]>();
+    for (const row of standings) {
+      const grp = row.groupName ?? '';
+      if (!groupsMap.has(grp)) groupsMap.set(grp, []);
+      groupsMap.get(grp)!.push(row);
+    }
+    return [...groupsMap.entries()].map(([groupName, rows]) => ({
+      groupName,
+      rows: [...rows].sort(
+        (a, b) =>
+          (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) ||
+          b.points - a.points,
+      ),
+    }));
+  }, [standings]);
 
   const compTitle =
     overview?.season.competitionName ??
@@ -76,6 +159,22 @@ export default function CompetitionScreen() {
       url: `https://sticklive.eu/competitions/${competitionId}`,
       title: displayTitle,
     });
+  };
+
+  const getTabLabel = (tab: MainTab) => {
+    if (tab === 'Playoffs') {
+      if (knockoutLabelKey === 'playoffs.final_four') {
+        return t('playoffs.final_four') ?? 'Final Four';
+      }
+      if (knockoutLabelKey === 'match_tabs.knockout') {
+        return t('match_tabs.knockout') ?? 'Eliminatorias';
+      }
+      return t('match_tabs.playoffs') ?? 'Playoffs';
+    }
+    if (tab === 'Clasificación') return t('match_tabs.standing') ?? 'Clasificación';
+    if (tab === 'Jornadas') return t('match_tabs.fixtures') ?? 'Jornadas';
+    if (tab === 'Estadísticas') return t('match_tabs.stats') ?? 'Estadísticas';
+    return tab;
   };
 
   const headerElement = (
@@ -115,23 +214,31 @@ export default function CompetitionScreen() {
   return (
     <>
       {headerElement}
-      <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
+      <ScrollView
+        className="flex-1 bg-rink-floor dark:bg-rink-floor-dark"
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
         {/* Cabecera de competición */}
-        <View className="mx-3 mt-2 rounded-xl bg-white p-4 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+        <View className="mx-3 mt-2 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-3 flex-1 pr-3">
+            <View className="flex-1 flex-row items-center gap-3 pr-3">
               <Avatar
                 uri={overview?.season.competitionLogoUrl ?? competitionMeta?.logoUrl}
                 name={compTitle}
-                size={44}
+                size={46}
                 variant="competition"
               />
               <View className="flex-1">
-                <Text className="text-xl font-bold text-slate-900 dark:text-slate-100" numberOfLines={2}>
+                <Text
+                  className="text-xl font-bold text-slate-900 dark:text-slate-100"
+                  numberOfLines={2}
+                >
                   {compTitle}
                 </Text>
                 {overview?.season.name ? (
-                  <Text className="text-xs text-slate-500">{overview.season.name}</Text>
+                  <Text className="text-xs font-semibold text-slate-500">
+                    {overview.season.name}
+                  </Text>
                 ) : null}
               </View>
             </View>
@@ -156,7 +263,9 @@ export default function CompetitionScreen() {
                     >
                       <Text
                         className={`text-xs font-semibold ${
-                          isSelected ? 'text-white dark:text-slate-900' : 'text-slate-600 dark:text-slate-300'
+                          isSelected
+                            ? 'text-white dark:text-slate-900'
+                            : 'text-slate-600 dark:text-slate-300'
                         }`}
                       >
                         {s.name}
@@ -167,117 +276,158 @@ export default function CompetitionScreen() {
               </View>
             </ScrollView>
           ) : null}
-
-          {/* Tabs: Clasificación vs Calendario */}
-          <View className="mt-4 flex-row rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800">
-            <Pressable
-              onPress={() => setActiveTab('standings')}
-              className={`flex-1 rounded-md py-1.5 ${
-                activeTab === 'standings' ? 'bg-white shadow-sm dark:bg-slate-900' : ''
-              }`}
-            >
-              <Text
-                className={`text-center text-sm font-semibold ${
-                  activeTab === 'standings'
-                    ? 'text-slate-900 dark:text-slate-100'
-                    : 'text-slate-500 dark:text-slate-400'
-                }`}
-              >
-                {t('nav.standings')}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setActiveTab('calendar')}
-              className={`flex-1 rounded-md py-1.5 ${
-                activeTab === 'calendar' ? 'bg-white shadow-sm dark:bg-slate-900' : ''
-              }`}
-            >
-              <Text
-                className={`text-center text-sm font-semibold ${
-                  activeTab === 'calendar'
-                    ? 'text-slate-900 dark:text-slate-100'
-                    : 'text-slate-500 dark:text-slate-400'
-                }`}
-              >
-                {t('team.calendar')}
-              </Text>
-            </Pressable>
-          </View>
         </View>
 
-        {/* Contenido de la pestaña */}
-        {activeTab === 'standings' ? (
-          <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-            {!overview?.standings || overview.standings.length === 0 ? (
-              <EmptyState title={t('standings.no_data')} />
-            ) : (
-              <View className="mx-3 mt-3 overflow-hidden rounded-xl bg-white dark:bg-slate-900">
-                {/* Cabecera tabla */}
-                <View className="flex-row items-center border-b border-slate-100 px-3 py-2 text-xs font-semibold text-slate-500 dark:border-slate-800">
-                  <Text className="w-6 text-center text-xs font-bold text-slate-500">#</Text>
-                  <Text className="flex-1 text-xs font-bold uppercase text-slate-500">{t('standings.team')}</Text>
-                  <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-500`}>{t('standings.cols.played')}</Text>
-                  <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-500`}>{t('standings.cols.won')}</Text>
-                  <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-500`}>{t('standings.cols.drawn')}</Text>
-                  <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-500`}>{t('standings.cols.lost')}</Text>
-                  <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-900 dark:text-slate-100`}>
-                    {t('standings.cols.pts')}
-                  </Text>
-                </View>
-                {/* Filas */}
-                {overview.standings.map((row: SeasonOverviewStandingRow) => (
-                  <Pressable
-                    key={row.id}
-                    onPress={() => router.push(`/team/${row.teamId}`)}
-                    className="flex-row items-center border-b border-slate-100 px-3 py-2.5 active:opacity-70 dark:border-slate-800"
+        {/* Resumen ("Así terminó" / "Así va la liga") */}
+        {summary ? <CompetitionSummary summary={summary} /> : null}
+
+        {/* Selector de pestañas dinámicas */}
+        {visibleTabs.length > 1 ? (
+          <View className="mx-3 mt-3 flex-row rounded-xl bg-slate-200/70 p-1 dark:bg-slate-800">
+            {visibleTabs.map((tab) => {
+              const isActive = activeTab === tab;
+              return (
+                <Pressable
+                  key={tab}
+                  onPress={() => setSelectedTab(tab)}
+                  className={`flex-1 rounded-lg py-2 ${
+                    isActive ? 'bg-white shadow-sm dark:bg-slate-900' : ''
+                  }`}
+                >
+                  <Text
+                    className={`text-center text-xs font-bold ${
+                      isActive
+                        ? 'text-slate-900 dark:text-slate-100'
+                        : 'text-slate-600 dark:text-slate-400'
+                    }`}
                   >
-                    <Text className="w-6 text-center text-sm font-semibold text-slate-500">
-                      {row.position ?? '–'}
-                    </Text>
-                    <View className="flex-1 flex-row items-center pr-2">
-                      <Avatar
-                        uri={teamLogoUri(row.teamId, 48)}
-                        fallbackUri={row.teamLogoUrl}
-                        name={row.teamName}
-                        size={22}
-                      />
-                      <Text numberOfLines={1} className="ml-2 flex-1 text-sm font-medium">
-                        {clubName(row.teamName) || row.teamShortName || row.teamName}
+                    {getTabLabel(tab)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+
+        {/* Contenido de la pestaña activa */}
+
+        {/* PESTAÑA: PLAYOFFS / ELIMINATORIAS / FINAL FOUR */}
+        {activeTab === 'Playoffs' && overview ? (
+          <PlayoffsTab matches={overview.matches} />
+        ) : null}
+
+        {/* PESTAÑA: CLASIFICACIÓN */}
+        {activeTab === 'Clasificación' ? (
+          <View className="px-3 pt-3">
+            {standingsByGroup.length === 0 ? (
+              <EmptyState title={t('standings.no_data') ?? 'No hay datos de clasificación'} />
+            ) : (
+              standingsByGroup.map(({ groupName, rows }) => (
+                <View
+                  key={groupName}
+                  className="mb-3 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900"
+                >
+                  {/* Título de grupo si hay más de 1 grupo */}
+                  {groupName ? (
+                    <View className="border-b border-slate-100 bg-slate-50/70 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/40">
+                      <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        {groupName}
                       </Text>
                     </View>
-                    <Text className={`${COL_WIDTHS} text-center text-sm text-slate-600 dark:text-slate-300`}>
-                      {row.played}
+                  ) : null}
+
+                  {/* Cabecera tabla */}
+                  <View className="flex-row items-center border-b border-slate-100 px-3 py-2 dark:border-slate-800">
+                    <Text className="w-6 text-center text-xs font-bold text-slate-400">#</Text>
+                    <Text className="flex-1 text-xs font-bold uppercase text-slate-500">
+                      {t('standings.team')}
                     </Text>
-                    <Text className={`${COL_WIDTHS} text-center text-sm text-slate-600 dark:text-slate-300`}>
-                      {row.won}
+                    <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-400`}>
+                      {t('standings.cols.played')}
                     </Text>
-                    <Text className={`${COL_WIDTHS} text-center text-sm text-slate-600 dark:text-slate-300`}>
-                      {row.drawn}
+                    <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-400`}>
+                      {t('standings.cols.won')}
                     </Text>
-                    <Text className={`${COL_WIDTHS} text-center text-sm text-slate-600 dark:text-slate-300`}>
-                      {row.lost}
+                    <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-400`}>
+                      {t('standings.cols.drawn')}
                     </Text>
-                    <Text className={`${COL_WIDTHS} text-center text-sm font-bold text-slate-900 dark:text-slate-100`}>
-                      {row.points}
+                    <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-400`}>
+                      {t('standings.cols.lost')}
                     </Text>
-                  </Pressable>
-                ))}
-              </View>
+                    <Text
+                      className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-900 dark:text-slate-100`}
+                    >
+                      {t('standings.cols.pts')}
+                    </Text>
+                  </View>
+
+                  {/* Filas */}
+                  {rows.map((row: SeasonOverviewStandingRow) => (
+                    <Pressable
+                      key={row.id}
+                      onPress={() => router.push(`/team/${row.teamId}`)}
+                      className="flex-row items-center border-b border-slate-100 px-3 py-2.5 active:opacity-70 dark:border-slate-800"
+                    >
+                      <Text className="w-6 text-center text-xs font-semibold text-slate-500">
+                        {row.position ?? '–'}
+                      </Text>
+                      <View className="flex-1 flex-row items-center pr-2">
+                        <Avatar
+                          uri={teamLogoUri(row.teamId, 48)}
+                          fallbackUri={row.teamLogoUrl}
+                          name={row.teamName}
+                          size={22}
+                        />
+                        <Text numberOfLines={1} className="ml-2 flex-1 text-sm font-medium">
+                          {clubName(row.teamName) || row.teamShortName || row.teamName}
+                        </Text>
+                      </View>
+                      <Text
+                        className={`${COL_WIDTHS} text-center text-sm text-slate-600 dark:text-slate-300`}
+                      >
+                        {row.played}
+                      </Text>
+                      <Text
+                        className={`${COL_WIDTHS} text-center text-sm text-slate-600 dark:text-slate-300`}
+                      >
+                        {row.won}
+                      </Text>
+                      <Text
+                        className={`${COL_WIDTHS} text-center text-sm text-slate-600 dark:text-slate-300`}
+                      >
+                        {row.drawn}
+                      </Text>
+                      <Text
+                        className={`${COL_WIDTHS} text-center text-sm text-slate-600 dark:text-slate-300`}
+                      >
+                        {row.lost}
+                      </Text>
+                      <Text
+                        className={`${COL_WIDTHS} text-center text-sm font-bold text-slate-900 dark:text-slate-100`}
+                      >
+                        {row.points}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ))
             )}
-            <AdBanner variant="list" />
-          </ScrollView>
-        ) : (
-          <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-            {/* Filtro de jornadas si hay rondas */}
-            {rounds.length > 1 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mx-3 mt-3">
+          </View>
+        ) : null}
+
+        {/* PESTAÑA: JORNADAS */}
+        {activeTab === 'Jornadas' ? (
+          <View className="pt-2">
+            {/* Filtro de jornadas */}
+            {regularRounds.length > 1 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mx-3 mt-1 mb-2">
                 <View className="flex-row gap-1.5">
                   <Pressable
                     onPress={() => setSelectedRound(null)}
-                    className={`rounded-lg px-2.5 py-1 ${
+                    className={`rounded-full px-3 py-1 ${
                       selectedRound === null
                         ? 'bg-rink-passion dark:bg-accent'
-                        : 'bg-white dark:bg-slate-900'
+                        : 'border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
                     }`}
                   >
                     <Text
@@ -287,19 +437,19 @@ export default function CompetitionScreen() {
                           : 'text-slate-600 dark:text-slate-300'
                       }`}
                     >
-                      {t('competitions.tab_all')}
+                      {t('competitions.tab_all') ?? 'Todas'}
                     </Text>
                   </Pressable>
-                  {rounds.map((r) => {
+                  {regularRounds.map((r) => {
                     const isSelected = selectedRound === r.number;
                     return (
                       <Pressable
                         key={r.id}
                         onPress={() => setSelectedRound(r.number)}
-                        className={`rounded-lg px-2.5 py-1 ${
+                        className={`rounded-full px-3 py-1 ${
                           isSelected
                             ? 'bg-rink-passion dark:bg-accent'
-                            : 'bg-white dark:bg-slate-900'
+                            : 'border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
                         }`}
                       >
                         <Text
@@ -318,11 +468,11 @@ export default function CompetitionScreen() {
               </ScrollView>
             ) : null}
 
-            {matchesByRound.length === 0 ? (
+            {regularMatches.length === 0 ? (
               <EmptyState title={t('team.no_season_matches')} />
             ) : (
-              <View className="mt-2">
-                {matchesByRound.map((m: SeasonOverviewMatch) => {
+              <View className="px-3">
+                {regularMatches.map((m: SeasonOverviewMatch) => {
                   const live = isEffectivelyLive(m.status, m.scheduledAt);
                   const isFinal = m.status === 'finished';
                   const dateLabel = formatDayLabel(m.scheduledAt);
@@ -338,10 +488,10 @@ export default function CompetitionScreen() {
                     <Pressable
                       key={m.id}
                       onPress={() => router.push(`/match/${m.id}`)}
-                      className="mx-3 my-1 rounded-xl bg-white p-3 active:opacity-70 dark:bg-slate-900"
+                      className="mb-2 rounded-xl border border-slate-100 bg-white p-3 shadow-xs active:opacity-75 dark:border-slate-800 dark:bg-slate-900"
                     >
                       <View className="flex-row items-center justify-between">
-                        <Text className="text-xs text-slate-500">
+                        <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                           {m.roundName ?? (m.roundNumber ? `Jornada ${m.roundNumber}` : when)}
                         </Text>
                         {live ? (
@@ -364,7 +514,10 @@ export default function CompetitionScreen() {
                             name={m.homeTeam.name}
                             size={24}
                           />
-                          <Text numberOfLines={1} className="ml-2 flex-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          <Text
+                            numberOfLines={1}
+                            className="ml-2 flex-1 text-sm font-semibold text-slate-800 dark:text-slate-100"
+                          >
                             {clubName(m.homeTeam.name) || m.homeTeam.shortName || m.homeTeam.name}
                           </Text>
                         </View>
@@ -374,7 +527,10 @@ export default function CompetitionScreen() {
                             : 'vs'}
                         </Text>
                         <View className="flex-1 flex-row items-center justify-end pl-1">
-                          <Text numberOfLines={1} className="mr-2 flex-1 text-right text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          <Text
+                            numberOfLines={1}
+                            className="mr-2 flex-1 text-right text-sm font-semibold text-slate-800 dark:text-slate-100"
+                          >
                             {clubName(m.awayTeam.name) || m.awayTeam.shortName || m.awayTeam.name}
                           </Text>
                           <Avatar
@@ -390,10 +546,53 @@ export default function CompetitionScreen() {
                 })}
               </View>
             )}
-            <AdBanner variant="list" />
-          </ScrollView>
-        )}
-      </View>
+          </View>
+        ) : null}
+
+        {/* PESTAÑA: ESTADÍSTICAS */}
+        {activeTab === 'Estadísticas' ? (
+          <StatsLeadersTab stats={stats} />
+        ) : null}
+
+        {/* Sección: EQUIPOS PARTICIPANTES */}
+        {participatingTeams.length > 0 ? (
+          <View className="mx-3 mt-6">
+            <View className="mb-3 flex-row items-center justify-between">
+              <View className="flex-row items-center gap-1.5">
+                <Ionicons name="shield-outline" size={14} color="#64748b" />
+                <Text className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Equipos
+                </Text>
+              </View>
+              <Text className="text-xs font-semibold text-slate-400">
+                {participatingTeams.length}
+              </Text>
+            </View>
+
+            <View className="flex-row flex-wrap gap-2">
+              {participatingTeams.map((team) => (
+                <Pressable
+                  key={team.id}
+                  onPress={() => router.push(`/team/${team.id}`)}
+                  className="w-[48.5%] flex-row items-center gap-2 rounded-xl border border-slate-100 bg-white p-2.5 shadow-xs active:opacity-75 dark:border-slate-800 dark:bg-slate-900"
+                >
+                  <Avatar uri={teamLogoUri(team.id, 64)} name={team.name} size={28} />
+                  <Text
+                    numberOfLines={2}
+                    className="flex-1 text-xs font-semibold text-slate-800 dark:text-slate-200"
+                  >
+                    {clubName(team.name) || team.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        <View className="mt-4">
+          <AdBanner variant="list" />
+        </View>
+      </ScrollView>
     </>
   );
 }
