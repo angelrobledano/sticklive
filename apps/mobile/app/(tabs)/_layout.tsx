@@ -7,7 +7,7 @@ import { BrandHeaderTitle, SearchHeaderButton } from '@/src/components/layout/Ap
 
 const ICONS = {
   index: 'radio-outline',
-  standings: 'podium-outline',
+  competitions: 'trophy-outline',
   search: 'search-outline',
   favorites: 'star-outline',
   settings: 'settings-outline',
@@ -38,11 +38,17 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="competitions"
+        options={{
+          title: t('navigation.competitions'),
+          headerRight: () => <SearchHeaderButton />,
+          tabBarIcon: ({ color, size }) => <Ionicons name={ICONS.competitions} color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="standings"
         options={{
-          title: t('nav.standings'),
-          headerRight: () => <SearchHeaderButton />,
-          tabBarIcon: ({ color, size }) => <Ionicons name={ICONS.standings} color={color} size={size} />,
+          href: null,
         }}
       />
       <Tabs.Screen

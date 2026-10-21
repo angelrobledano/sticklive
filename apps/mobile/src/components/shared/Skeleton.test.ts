@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CompetitionDetailSkeleton,
+  CompetitionsSkeleton,
   FeedSkeleton,
   MatchDetailSkeleton,
   PlayerDetailSkeleton,
@@ -21,6 +22,7 @@ describe('Skeleton components', () => {
     expect(typeof PlayerDetailSkeleton).toBe('function');
     expect(typeof TeamDetailSkeleton).toBe('function');
     expect(typeof CompetitionDetailSkeleton).toBe('function');
+    expect(typeof CompetitionsSkeleton).toBe('function');
     expect(typeof StandingsSkeleton).toBe('function');
     expect(typeof SearchSkeleton).toBe('function');
     expect(typeof FeedSkeleton).toBe('function');

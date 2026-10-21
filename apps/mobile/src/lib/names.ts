@@ -2,6 +2,14 @@
  * Utilidades de formateo de nombres para la app móvil (paridad con web apps/web/src/lib/names.ts).
  */
 
+export function competitionName(
+  name: string,
+  nameI18n: Record<string, string> | null | undefined,
+  locale: string,
+): string {
+  return nameI18n?.[locale] ?? nameI18n?.['es'] ?? name;
+}
+
 export function toTitleCase(s: string): string {
   return s
     .toLowerCase()

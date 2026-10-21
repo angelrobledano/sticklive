@@ -325,6 +325,55 @@ export function CompetitionDetailSkeleton() {
 }
 
 /**
+ * Skeleton para la pantalla de Competiciones (Competitions).
+ * Muestra barra de búsqueda + 3 pestañas + acordeones de país y filas de ligas.
+ */
+export function CompetitionsSkeleton() {
+  return (
+    <View className="flex-1 bg-rink-floor px-3 pt-3 dark:bg-rink-floor-dark">
+      {/* Buscador */}
+      <Skeleton className="h-11 w-full rounded-xl mb-3" />
+
+      {/* Tabs */}
+      <View className="flex-row gap-2 mb-4">
+        <Skeleton className="h-8 flex-1 rounded-lg" />
+        <Skeleton className="h-8 flex-1 rounded-lg" />
+        <Skeleton className="h-8 flex-1 rounded-lg" />
+      </View>
+
+      {/* Tarjeta de competiciones */}
+      <SkeletonCard>
+        {/* Cabecera país */}
+        <View className="flex-row items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+          <View className="flex-row items-center gap-2">
+            <Skeleton className="h-4 w-6 rounded-sm" />
+            <Skeleton className="h-4 w-28 rounded-md" />
+          </View>
+          <Skeleton className="h-4 w-6 rounded-md" />
+        </View>
+
+        {/* Filas de ligas */}
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <View
+            key={i}
+            className="flex-row items-center justify-between py-3 border-b border-slate-50 last:border-b-0 dark:border-slate-800/60"
+          >
+            <View className="flex-row items-center gap-3 flex-1">
+              <SkeletonCircle size={32} />
+              <View className="gap-1.5 flex-1">
+                <Skeleton className="h-3.5 w-3/4 rounded-md" />
+                <Skeleton className="h-3 w-1/2 rounded-md" />
+              </View>
+            </View>
+            <SkeletonCircle size={24} />
+          </View>
+        ))}
+      </SkeletonCard>
+    </View>
+  );
+}
+
+/**
  * Skeleton para la pantalla de clasificación por ligas (Standings).
  */
 export function StandingsSkeleton() {

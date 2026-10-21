@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { clubName, teamDisplayName, playerDisplayName } from './names';
+import { clubName, competitionName, teamDisplayName, playerDisplayName } from './names';
 
 describe('names utility', () => {
+  it('resolves competition names with i18n support', () => {
+    expect(competitionName('OK Liga', { en: 'OK League' }, 'en')).toBe('OK League');
+    expect(competitionName('OK Liga', { en: 'OK League' }, 'fr')).toBe('OK Liga');
+    expect(competitionName('OK Liga', null, 'es')).toBe('OK Liga');
+  });
+
   it('normalizes uppercase club names to sentence/title case with acronyms preserved', () => {
     expect(clubName('IGUALADA RIGAT HC')).toBe('Igualada Rigat HC');
     expect(clubName('C.E. NOIA FREIXENET')).toBe('CE Noia Freixenet');
