@@ -1,16 +1,21 @@
-import { useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { PenaltyShootout } from '@/src/components/match/PenaltyShootout';
 import {
   compareTimelineEvents,
+  eventSurname,
   fmtEventClock,
   injectAccumulatedFouls,
   injectPeriodDividers,
   playerFullName,
+  timelineWindow,
   type AccumulatedFoulEvent,
   type PeriodDividerEvent,
+  type TimelineEvent,
 } from '@/src/lib/match-helpers';
 import type { MatchDetail } from '@/src/lib/api/types';
 
@@ -23,6 +28,372 @@ interface TimelineTabProps {
   penaltyShootout?: MatchDetail['match']['penaltyShootout'];
 }
 
+function interpolate(template: string, params?: Record<string, string | number>): string {
+  if (!params) return template;
+  return Object.entries(params).reduce(
+    (acc, [k, v]) => acc.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v)),
+    template
+  );
+}
+
+/**
+ * Icono de Stick de hockey sobre patines + bola (identidad de Stick Live).
+ * Dibuja el stick diagonal con pala curva y bola exactamente como el SVG web.
+ */
+function GoalStickIcon() {
+  return (
+    <View className="h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 shadow-sm dark:bg-white">
+      <View className="relative h-4 w-4 items-center justify-center">
+        {/* Mango del stick */}
+        <View
+          style={{
+            position: 'absolute',
+            left: 2.5,
+            top: 1,
+            width: 2,
+            height: 11,
+            transform: [{ rotate: '-32deg' }],
+            borderRadius: 1,
+          }}
+          className="bg-white dark:bg-slate-900"
+        />
+        {/* Pala curva del stick */}
+        <View
+          style={{
+            position: 'absolute',
+            left: 6,
+            top: 10,
+            width: 5.5,
+            height: 2.2,
+            borderRadius: 1.1,
+          }}
+          className="bg-white dark:bg-slate-900"
+        />
+        {/* Bola */}
+        <View
+          style={{
+            position: 'absolute',
+            right: 0.5,
+            top: 9,
+            width: 3.5,
+            height: 3.5,
+            borderRadius: 2,
+          }}
+          className="bg-white dark:bg-slate-900"
+        />
+      </View>
+    </View>
+  );
+}
+
+function TimelineEventIcon({ type }: { type: TimelineEvent['eventType'] }) {
+  switch (type) {
+    case 'goal':
+      return <GoalStickIcon />;
+    case 'blue_card':
+      return (
+        <View className="h-7 w-5 shrink-0 items-center justify-center rounded-[3px] bg-blue-500 shadow-sm">
+          <Text className="text-[10px] font-black leading-none text-white">A</Text>
+        </View>
+      );
+    case 'red_card':
+      return (
+        <View className="h-7 w-5 shrink-0 items-center justify-center rounded-[3px] bg-rose-600 shadow-sm">
+          <Text className="text-[10px] font-black leading-none text-white">R</Text>
+        </View>
+      );
+    case 'penalty':
+      return (
+        <View className="h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-500 shadow-sm">
+          <Text className="text-[10px] font-black leading-none text-white">P</Text>
+        </View>
+      );
+    case 'direct_foul':
+      return (
+        <View className="h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-500 shadow-sm">
+          <Ionicons name="disc-outline" size={17} color="white" />
+        </View>
+      );
+    case 'accumulated_foul':
+      return (
+        <View className="h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-500 shadow-sm">
+          <Ionicons name="warning-outline" size={15} color="white" />
+        </View>
+      );
+    case 'timeout':
+      return (
+        <View className="h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+          <Ionicons name="time-outline" size={10} color="#64748b" />
+        </View>
+      );
+    case 'foul':
+    default:
+      return (
+        <View className="h-4 w-4 shrink-0 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/40">
+          <View className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+        </View>
+      );
+  }
+}
+
+function eventTitle(
+  ev: TimelineEvent,
+  t: (k: string) => string
+): string {
+  switch (ev.eventType) {
+    case 'goal':
+      return t('timeline_events.goal');
+    case 'penalty':
+      return t('timeline_events.penalty');
+    case 'blue_card':
+      return t('timeline_events.blue_card');
+    case 'red_card':
+      return t('timeline_events.red_card');
+    case 'timeout':
+      return t('timeline_events.timeout');
+    case 'foul':
+      return t('timeline_events.foul');
+    case 'direct_foul':
+      return t('timeline_events.direct_foul');
+    case 'accumulated_foul': {
+      const v = ev as AccumulatedFoulEvent;
+      return interpolate(t('timeline_events.team_foul_nth'), { n: v.foulNumber });
+    }
+    default:
+      return '';
+  }
+}
+
+function TimelineRow({
+  ev,
+  homeName,
+  awayName,
+  sameInstantAsPrev,
+}: {
+  ev: TimelineEvent;
+  homeName: string;
+  awayName: string;
+  sameInstantAsPrev: boolean;
+}) {
+  const { t } = useLocale();
+  const router = useRouter();
+
+  // 1. Divisor de periodo (1ª parte, 2ª parte, prórroga)
+  if (ev.eventType === 'period_divider') {
+    const p = (ev as PeriodDividerEvent).period;
+    const periodLabel =
+      p === 1
+        ? t('match_detail.first_half')
+        : p === 2
+          ? t('match_detail.second_half')
+          : interpolate(t('match_detail.overtime'), { n: p - 2 });
+
+    return (
+      <View className="my-1.5 flex-row items-center gap-3 py-2">
+        <View className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+        <View className="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">
+          <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            {periodLabel}
+          </Text>
+        </View>
+        <View className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+      </View>
+    );
+  }
+
+  const isVirtual = ev.eventType === 'accumulated_foul';
+  const isHome = ev.isHomeTeam;
+  const directScored = ev.eventType === 'direct_foul' && !!ev.detail?.includes('marcada');
+  const penaltyScored =
+    ev.eventType === 'penalty' &&
+    !!ev.detail &&
+    (ev.detail.toLowerCase().includes('gol') || ev.detail.toLowerCase().includes('marc'));
+
+  const outcomeText =
+    ev.eventType === 'direct_foul' && ev.detail
+      ? directScored
+        ? t('timeline_events.scored')
+        : t('timeline_events.missed')
+      : ev.eventType === 'penalty' && ev.detail
+        ? penaltyScored
+          ? t('timeline_events.scored')
+          : t('timeline_events.missed')
+        : null;
+
+  const outcomeIsScored = ev.eventType === 'direct_foul' ? directScored : penaltyScored;
+
+  // Jerarquía visual en 3 niveles (réplica del modelo web)
+  const tier: 'high' | 'mid' | 'low' =
+    ev.eventType === 'goal' || ev.eventType === 'blue_card' || ev.eventType === 'red_card'
+      ? 'high'
+      : ev.eventType === 'timeout' || ev.eventType === 'foul'
+        ? 'low'
+        : 'mid';
+
+  const isGoal = ev.eventType === 'goal';
+  const titleColor = isGoal
+    ? 'text-emerald-600 dark:text-emerald-400'
+    : ev.eventType === 'blue_card'
+      ? 'text-blue-600 dark:text-blue-400'
+      : ev.eventType === 'red_card'
+        ? 'text-rose-600 dark:text-rose-400'
+        : 'text-slate-800 dark:text-slate-200';
+
+  const playerObj = 'player' in ev && ev.player ? ev.player : null;
+  const fullName = playerFullName(playerObj);
+  const surname = playerObj ? eventSurname(playerObj) : null;
+  const playerId = playerObj?.id;
+
+  // Celda de contenido según el nivel visual
+  let cellContent: React.ReactNode;
+
+  if (isVirtual) {
+    // Aviso de 10ª / 15ª falta de equipo (siempre en el lado infractor)
+    cellContent = (
+      <View className="rounded-md border border-orange-200/60 bg-orange-50 px-2 py-0.5 dark:border-orange-800/40 dark:bg-orange-950/40">
+        <Text className="text-[11px] font-medium text-orange-800 dark:text-orange-300">
+          {eventTitle(ev, t)}
+        </Text>
+      </View>
+    );
+  } else if (tier === 'low') {
+    // Tiempo muerto / Falta individual (una sola línea mínima gris)
+    cellContent = (
+      <Text className="text-[11px] text-slate-500 dark:text-slate-400" numberOfLines={1}>
+        {eventTitle(ev, t)}
+        {ev.eventType === 'foul' && surname ? ` · ${surname}` : ''}
+      </Text>
+    );
+  } else if (tier === 'high') {
+    // Nivel Alto: Goles y tarjetas con el nombre del jugador protagonista en negrita
+    cellContent = (
+      <View className={`min-w-0 ${isHome ? 'items-end' : 'items-start'}`}>
+        {fullName ? (
+          <Pressable
+            onPress={() => {
+              if (playerId) {
+                router.push({ pathname: '/player/[id]', params: { id: playerId } });
+              }
+            }}
+            hitSlop={4}
+          >
+            <Text
+              numberOfLines={1}
+              className="text-[13px] font-bold text-slate-900 active:underline dark:text-slate-100"
+            >
+              {fullName}
+            </Text>
+          </Pressable>
+        ) : null}
+        <View className="flex-row items-center gap-1">
+          <Text className={`text-xs font-semibold ${titleColor}`}>
+            {eventTitle(ev, t)}
+          </Text>
+          {isGoal && ev.detail ? (
+            <Text className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400">
+              {ev.detail}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    );
+  } else {
+    // Nivel Medio: Penaltis y Faltas directas con desenlace destacado (MARCADA / FALLADA)
+    cellContent = (
+      <View className={`min-w-0 ${isHome ? 'items-end' : 'items-start'}`}>
+        <View className="flex-row items-center gap-1">
+          <Text className="text-[13px] font-semibold text-slate-800 dark:text-slate-200">
+            {eventTitle(ev, t)}
+          </Text>
+          {outcomeText ? (
+            <Text
+              className={`text-xs font-bold uppercase tracking-wide ${
+                outcomeIsScored
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-rose-600 dark:text-rose-400'
+              }`}
+            >
+              · {outcomeText}
+            </Text>
+          ) : null}
+        </View>
+        {fullName ? (
+          <Pressable
+            onPress={() => {
+              if (playerId) {
+                router.push({ pathname: '/player/[id]', params: { id: playerId } });
+              }
+            }}
+            hitSlop={4}
+          >
+            <Text
+              numberOfLines={1}
+              className="text-xs text-slate-500 active:underline dark:text-slate-400"
+            >
+              {fullName}
+            </Text>
+          </Pressable>
+        ) : (
+          <Text
+            numberOfLines={1}
+            className="text-xs text-slate-500 dark:text-slate-400"
+          >
+            {isHome ? homeName : awayName}
+          </Text>
+        )}
+      </View>
+    );
+  }
+
+  const rowPadding =
+    tier === 'low' ? 'py-0.5' : tier === 'high' ? 'py-1.5' : 'py-1';
+  const linkedMargin = sameInstantAsPrev ? '-mt-1' : '';
+  const clock = fmtEventClock(ev);
+
+  return (
+    <View
+      className={`flex-row items-center ${rowPadding} ${linkedMargin}`}
+    >
+      {/* Columna Local (Izquierda) */}
+      <View className="flex-1 items-end justify-center pr-1.5 min-h-[26px]">
+        {isHome ? (
+          <View className="flex-row items-center justify-end gap-2 max-w-full">
+            {cellContent}
+            <TimelineEventIcon type={ev.eventType} />
+          </View>
+        ) : null}
+      </View>
+
+      {/* Nodo del Crono Central (50px exactos sobre el eje) */}
+      <View className="w-[50px] items-center justify-center z-10 shrink-0">
+        <View className="rounded bg-white px-1 py-0.5 dark:bg-slate-900">
+          <Text
+            className={`font-mono text-center tabular-nums ${
+              sameInstantAsPrev
+                ? 'text-[11px] text-slate-300 dark:text-slate-600'
+                : tier === 'low'
+                  ? 'text-[10px] text-slate-400 dark:text-slate-500'
+                  : 'text-[11px] font-bold text-slate-600 dark:text-slate-300'
+            }`}
+          >
+            {sameInstantAsPrev ? '-' : clock}
+          </Text>
+        </View>
+      </View>
+
+      {/* Columna Visitante (Derecha) */}
+      <View className="flex-1 items-start justify-center pl-1.5 min-h-[26px]">
+        {!isHome ? (
+          <View className="flex-row items-center justify-start gap-2 max-w-full">
+            <TimelineEventIcon type={ev.eventType} />
+            {cellContent}
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 export function TimelineTab({
   events,
   homeTeamId,
@@ -32,14 +403,15 @@ export function TimelineTab({
   penaltyShootout,
 }: TimelineTabProps) {
   const { t } = useLocale();
+  const [showAll, setShowAll] = useState(false);
 
   const timeline = useMemo(() => {
     if (!events || events.length === 0) return [];
-    // 1. Orden cronológico
+    // 1. Orden cronológico réplica del backend
     const sorted = [...events].sort(compareTimelineEvents);
-    // 2. Faltas acumuladas
+    // 2. Inyección de faltas acumuladas (10ª, 15ª, etc.)
     const withFouls = injectAccumulatedFouls(sorted, homeTeamId);
-    // 3. Divisores de periodo
+    // 3. Divisores de periodo (1ª parte, 2ª parte, prórroga)
     return injectPeriodDividers(withFouls);
   }, [events, homeTeamId]);
 
@@ -62,152 +434,55 @@ export function TimelineTab({
     );
   }
 
+  const { visible, hiddenCount } = timelineWindow(timeline, showAll);
+
   return (
     <View className="px-3 pb-8">
-      {timeline.map((ev, idx) => {
-        if (ev.eventType === 'period_divider') {
-          const p = (ev as PeriodDividerEvent).period;
-          const pLabel =
-            p === 1
-              ? t('match_states.first_half')
-              : p === 2
-                ? t('match_states.second_half')
-                : p > 2
-                  ? `${t('match_states.overtime')} ${p - 2}`
-                  : `Periodo ${p}`;
+      {/* Tarjeta contenedora con eje central simétrico */}
+      <View className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white px-2 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        {/* Eje central vertical que conecta cronológicamente los eventos */}
+        <View
+          style={{ left: '50%', transform: [{ translateX: -0.5 }] }}
+          className="absolute top-3 bottom-3 w-px bg-slate-100 dark:bg-slate-800"
+          pointerEvents="none"
+        />
+
+        {visible.map((ev, i) => {
+          const prev = visible[i - 1];
+          const prevClock = (prev as { clock?: string | null })?.clock;
+          const evClock = (ev as { clock?: string | null })?.clock;
+
+          const sameInstant =
+            !!prev &&
+            !!evClock &&
+            prevClock === evClock &&
+            prev.period === ev.period &&
+            prev.eventType !== 'period_divider';
 
           return (
-            <View key={ev.id || `p-${idx}`} className="my-4 flex-row items-center gap-3">
-              <View className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-              <View className="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">
-                <Text className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                  {pLabel}
-                </Text>
-              </View>
-              <View className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-            </View>
+            <TimelineRow
+              key={ev.id || `ev-${i}`}
+              ev={ev}
+              homeName={homeTeamName}
+              awayName={awayTeamName}
+              sameInstantAsPrev={sameInstant}
+            />
           );
-        }
+        })}
 
-        if (ev.eventType === 'accumulated_foul') {
-          const acc = ev as AccumulatedFoulEvent;
-          return (
-            <View key={ev.id || `acc-${idx}`} className="my-2 items-center">
-              <View className="flex-row items-center gap-2 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-1.5 dark:border-amber-700/50 dark:bg-amber-950/40">
-                <Text className="text-xs">⚠️</Text>
-                <Text className="text-xs font-semibold text-amber-800 dark:text-amber-200">
-                  {acc.foulNumber}ª Falta de equipo ·{' '}
-                  {acc.isHomeTeam ? homeTeamName : awayTeamName}
-                </Text>
-                <Text className="text-[10px] text-amber-600 dark:text-amber-400 tabular-nums">
-                  {fmtEventClock(acc)}
-                </Text>
-              </View>
-            </View>
-          );
-        }
-
-        // Evento ordinario de partido
-        const isHome = ev.isHomeTeam;
-        const clock = fmtEventClock(ev);
-        const player = 'player' in ev && ev.player ? playerFullName(ev.player) : null;
-
-        let icon = '•';
-        let eventTitle = ev.eventType;
-        let badgeColor = 'bg-slate-100 dark:bg-slate-800';
-
-        if (ev.eventType === 'goal') {
-          icon = '🏑';
-          eventTitle = '¡GOL!';
-          badgeColor = 'bg-emerald-500/15 border-emerald-500/30';
-        } else if (ev.eventType === 'blue_card') {
-          icon = '🟦';
-          eventTitle = 'Tarjeta azul';
-          badgeColor = 'bg-blue-500/15 border-blue-500/30';
-        } else if (ev.eventType === 'red_card') {
-          icon = '🟥';
-          eventTitle = 'Tarjeta roja';
-          badgeColor = 'bg-rose-500/15 border-rose-500/30';
-        } else if (ev.eventType === 'penalty') {
-          icon = '🥅';
-          eventTitle = 'Penalti';
-        } else if (ev.eventType === 'direct_foul') {
-          icon = '🎯';
-          eventTitle = 'Falta directa';
-        } else if (ev.eventType === 'timeout') {
-          icon = '⏱️';
-          eventTitle = 'Tiempo muerto';
-        } else if (ev.eventType === 'foul') {
-          icon = '•';
-          eventTitle = 'Falta';
-        }
-
-        return (
-          <View
-            key={ev.id || `ev-${idx}`}
-            className={`my-1.5 flex-row items-center ${isHome ? 'justify-start' : 'justify-end'}`}
+        {hiddenCount > 0 && (
+          <Pressable
+            onPress={() => setShowAll(true)}
+            className="mt-3 w-full items-center justify-center rounded-xl border border-slate-200 py-2.5 active:bg-slate-50 dark:border-slate-800 dark:active:bg-slate-800/60"
           >
-            {isHome ? (
-              <View className="max-w-[85%] flex-row items-center gap-2">
-                {/* Minuto / Reloj */}
-                <View className="min-w-[42px] items-center rounded-md bg-slate-200/80 px-1.5 py-0.5 dark:bg-slate-800">
-                  <Text className="text-[10px] font-bold text-slate-700 dark:text-slate-300 tabular-nums">
-                    {clock}
-                  </Text>
-                </View>
+            <Text className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+              {interpolate(t('match_detail.show_all_events'), { n: hiddenCount })}
+            </Text>
+          </Pressable>
+        )}
+      </View>
 
-                {/* Tarjeta de evento */}
-                <View
-                  className={`rounded-2xl border px-3.5 py-2 shadow-sm ${badgeColor} bg-white dark:bg-slate-900 border-slate-200/70 dark:border-slate-800`}
-                >
-                  <View className="flex-row items-center gap-1.5">
-                    <Text className="text-sm">{icon}</Text>
-                    <Text className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                      {eventTitle}
-                    </Text>
-                  </View>
-                  {player ? (
-                    <Text className="mt-0.5 text-xs text-slate-700 dark:text-slate-300">
-                      {player}
-                    </Text>
-                  ) : ev.detail ? (
-                    <Text className="mt-0.5 text-xs text-slate-500">{ev.detail}</Text>
-                  ) : null}
-                </View>
-              </View>
-            ) : (
-              <View className="max-w-[85%] flex-row items-center gap-2">
-                {/* Tarjeta de evento */}
-                <View
-                  className={`rounded-2xl border px-3.5 py-2 shadow-sm ${badgeColor} bg-white dark:bg-slate-900 border-slate-200/70 dark:border-slate-800`}
-                >
-                  <View className="flex-row items-center justify-end gap-1.5">
-                    <Text className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                      {eventTitle}
-                    </Text>
-                    <Text className="text-sm">{icon}</Text>
-                  </View>
-                  {player ? (
-                    <Text className="mt-0.5 text-right text-xs text-slate-700 dark:text-slate-300">
-                      {player}
-                    </Text>
-                  ) : ev.detail ? (
-                    <Text className="mt-0.5 text-right text-xs text-slate-500">{ev.detail}</Text>
-                  ) : null}
-                </View>
-
-                {/* Minuto / Reloj */}
-                <View className="min-w-[42px] items-center rounded-md bg-slate-200/80 px-1.5 py-0.5 dark:bg-slate-800">
-                  <Text className="text-[10px] font-bold text-slate-700 dark:text-slate-300 tabular-nums">
-                    {clock}
-                  </Text>
-                </View>
-              </View>
-            )}
-          </View>
-        );
-      })}
-
+      {/* Tanda de penaltis al final del tiempo reglamentario / prórroga */}
       {penaltyShootout &&
       (penaltyShootout.home.length > 0 || penaltyShootout.away.length > 0) ? (
         <View className="mt-4">

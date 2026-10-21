@@ -3,6 +3,7 @@ import {
   calcEfficiency,
   halfPositions,
   placeRinkPlayers,
+  timelineWindow,
   type RinkPlayer,
 } from '@/src/lib/match-helpers';
 
@@ -67,6 +68,22 @@ describe('PenaltyShootout and StartingFiveRink helpers', () => {
       expect(placedHome[0]?.x).toBe(11);
       expect(placedAway[0]?.x).toBe(89);
       expect(placedHome[0]?.y).toBe(placedAway[0]?.y);
+    });
+  });
+
+  describe('timelineWindow', () => {
+    it('returns all when showAll is true', () => {
+      const items = Array.from({ length: 70 }, (_, i) => ({ id: `e${i}` }));
+      const { visible, hiddenCount } = timelineWindow(items, true);
+      expect(visible).toHaveLength(70);
+      expect(hiddenCount).toBe(0);
+    });
+
+    it('limits to 60 and counts hidden when showAll is false', () => {
+      const items = Array.from({ length: 70 }, (_, i) => ({ id: `e${i}` }));
+      const { visible, hiddenCount } = timelineWindow(items, false);
+      expect(visible).toHaveLength(60);
+      expect(hiddenCount).toBe(10);
     });
   });
 });

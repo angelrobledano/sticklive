@@ -100,6 +100,17 @@ export interface PeriodDividerEvent {
   player: null;
 }
 
+export const TIMELINE_PREVIEW = 60;
+
+export function timelineWindow<T>(
+  events: readonly T[],
+  showAll: boolean,
+  limit: number = TIMELINE_PREVIEW
+): { visible: T[]; hiddenCount: number } {
+  const visible = showAll ? events.slice() : events.slice(0, limit);
+  return { visible, hiddenCount: events.length - visible.length };
+}
+
 export type TimelineEvent =
   | MatchDetail['events'][number]
   | AccumulatedFoulEvent
