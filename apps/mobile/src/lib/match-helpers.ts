@@ -205,6 +205,93 @@ export function compareTimelineEvents(
   return ma - mb;
 }
 
+export function calcEfficiency(scored: number, total: number): number {
+  if (total <= 0) return 0;
+  return Math.round((scored / total) * 100);
+}
+
+export interface RinkPlayer {
+  jerseyNumber: number | null;
+  playerName: string;
+  playerId?: string | null;
+  isGoalkeeper: boolean;
+  isCaptain: boolean;
+  isStarter?: boolean;
+  photoUrl?: string | null;
+}
+
+export interface PlacedRinkPlayer {
+  p: RinkPlayer;
+  x: number;
+  y: number;
+  isAway: boolean;
+}
+
+/**
+ * Posiciones tácticas reglamentarias del hockey sobre patines en media pista (0 a 100).
+ * Formación estándar 2-2: dos defensas cerca del área y dos delanteros adelantados.
+ */
+export function halfPositions(fieldCount: number): { x: number; y: number }[] {
+  switch (fieldCount) {
+    case 4:
+      return [
+        { x: 42, y: 28 },
+        { x: 42, y: 72 },
+        { x: 74, y: 34 },
+        { x: 74, y: 66 },
+      ];
+    case 3:
+      return [
+        { x: 42, y: 50 },
+        { x: 72, y: 28 },
+        { x: 72, y: 72 },
+      ];
+    case 2:
+      return [
+        { x: 55, y: 32 },
+        { x: 55, y: 68 },
+      ];
+    case 1:
+      return [{ x: 55, y: 50 }];
+    default:
+      return [];
+  }
+}
+
+/**
+ * Posiciona al quinteto inicial (portero + 4 jugadores de campo) en coordenadas absolutas de la pista (0% a 100%).
+ * Local ocupa la mitad izquierda (x de 0 a 50%).
+ * Visitante ocupa la mitad derecha espejada (x de 50 a 100%).
+ */
+export function placeRinkPlayers(players: RinkPlayer[], isAway: boolean): PlacedRinkPlayer[] {
+  const gk = players.find((p) => p.isGoalkeeper) ?? null;
+  const field = players.filter((p) => p !== gk);
+  const spots = halfPositions(Math.min(field.length, 4));
+  const out: PlacedRinkPlayer[] = [];
+
+  if (gk) {
+    const gx = 22; // dentro del área de portería pero separado de la línea de fondo
+    out.push({
+      p: gk,
+      x: isAway ? 100 - gx / 2 : gx / 2,
+      y: 50,
+      isAway,
+    });
+  }
+
+  field.slice(0, 4).forEach((p, i) => {
+    const s = spots[i]!;
+    out.push({
+      p,
+      x: isAway ? 100 - s.x / 2 : s.x / 2,
+      y: s.y,
+      isAway,
+    });
+  });
+
+  return out;
+}
+
 export function visibleTabsFor(data: MatchDetail): Tab[] {
   const isStarted = data.match.status === 'live' || data.match.status === 'finished';
   const hasLineups =

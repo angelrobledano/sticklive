@@ -1,10 +1,10 @@
-import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { EmptyState } from '@/src/components/shared/EmptyState';
+import { StartingFiveRink } from '@/src/components/match/StartingFiveRink';
 import { displayLineupName } from '@/src/lib/match-helpers';
 import { clubName } from '@/src/lib/names';
 import type { MatchDetail } from '@/src/lib/api/types';
@@ -15,18 +15,19 @@ interface LineupsTabProps {
   awayTeam: MatchDetail['match']['awayTeam'];
 }
 
-type TeamSide = 'home' | 'away';
-
 export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
   const router = useRouter();
   const { t } = useLocale();
-  const [activeSide, setActiveSide] = useState<TeamSide>('home');
 
-  const activePlayers = activeSide === 'home' ? lineups.home : lineups.away;
-  const starters = activePlayers.filter((p) => p.isStarter);
-  const bench = activePlayers.filter((p) => !p.isStarter);
+  const homeLabel = clubName(homeTeam.name) || homeTeam.shortName || homeTeam.name;
+  const awayLabel = clubName(awayTeam.name) || awayTeam.shortName || awayTeam.name;
 
-  if (activePlayers.length === 0) {
+  const homeStarters = lineups.home.filter((p) => p.isStarter);
+  const awayStarters = lineups.away.filter((p) => p.isStarter);
+
+  const hasAnyPlayers = lineups.home.length > 0 || lineups.away.length > 0;
+
+  if (!hasAnyPlayers) {
     return (
       <View className="items-center justify-center px-6 py-12">
         <EmptyState title={t('match_detail.lineup_unavailable')} />
@@ -34,26 +35,41 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
     );
   }
 
-  const renderPlayer = (p: typeof activePlayers[number]) => {
+  const teams = [
+    {
+      team: homeTeam,
+      label: t('match_detail.local'),
+      players: lineups.home,
+      isHome: true,
+    },
+    {
+      team: awayTeam,
+      label: t('match_detail.visitor'),
+      players: lineups.away,
+      isHome: false,
+    },
+  ].filter(({ players }) => players.length > 0);
+
+  const renderPlayerRow = (p: typeof lineups.home[number]) => {
     const formattedName = displayLineupName(p.playerName);
     const content = (
-      <View className="flex-row items-center justify-between py-2.5 px-3 border-b border-slate-100 dark:border-slate-800">
+      <View className="flex-row items-center justify-between py-2 px-3 border-b border-slate-100 dark:border-slate-800">
         <View className="flex-row items-center gap-2.5 flex-1 pr-2">
+          {/* Dorsal */}
+          <View className="w-7 items-center justify-center rounded bg-slate-100 py-1 dark:bg-slate-800">
+            <Text className="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">
+              {p.jerseyNumber ?? '–'}
+            </Text>
+          </View>
+
           {/* Avatar con foto o silueta */}
           <Avatar
             uri={p.playerId ? playerPhotoUri(p.playerId, 64) : p.photoUrl}
             fallbackUri={p.photoUrl}
             name={p.playerName}
-            size={36}
+            size={32}
             variant="player"
           />
-
-          {/* Dorsal */}
-          <View className="min-w-[24px] items-center justify-center rounded bg-slate-200 px-1.5 py-0.5 dark:bg-slate-700">
-            <Text className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
-              {p.jerseyNumber ?? '–'}
-            </Text>
-          </View>
 
           {/* Nombre */}
           <Text
@@ -64,7 +80,7 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
           </Text>
         </View>
 
-        {/* Badges: 5i, C, POR, Goles */}
+        {/* Stats y Badges: Goles, Asistencias, 5i, C, POR */}
         <View className="flex-row items-center gap-1.5 shrink-0">
           {p.goals > 0 ? (
             <View className="flex-row items-center gap-0.5 rounded-full bg-emerald-500/10 px-2 py-0.5">
@@ -75,24 +91,33 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
             </View>
           ) : null}
 
+          {(p.assists ?? 0) > 0 ? (
+            <View className="flex-row items-center gap-0.5 rounded-full bg-amber-500/10 px-2 py-0.5">
+              <Text className="text-[10px]">🅰</Text>
+              <Text className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                {p.assists}
+              </Text>
+            </View>
+          ) : null}
+
           {p.isStarter ? (
             <View
-              className="rounded px-1.5 py-0.5"
+              className="rounded px-1.5 py-0.5 items-center justify-center min-w-[22px]"
               style={{ backgroundColor: BRAND.granate }}
             >
-              <Text className="text-[10px] font-bold text-white">5i</Text>
+              <Text className="text-[10px] font-bold text-white leading-none">5i</Text>
             </View>
           ) : null}
 
           {p.isCaptain ? (
-            <View className="rounded bg-slate-700 px-1.5 py-0.5 dark:bg-slate-600">
-              <Text className="text-[10px] font-bold text-white">C</Text>
+            <View className="rounded bg-slate-700 px-1.5 py-0.5 items-center justify-center min-w-[22px] dark:bg-slate-600">
+              <Text className="text-[10px] font-bold text-white leading-none">C</Text>
             </View>
           ) : null}
 
           {p.isGoalkeeper ? (
-            <View className="rounded bg-slate-200 px-1.5 py-0.5 dark:bg-slate-700">
-              <Text className="text-[10px] font-bold text-slate-700 dark:text-slate-200">
+            <View className="rounded bg-slate-200 px-1.5 py-0.5 items-center justify-center min-w-[22px] dark:bg-slate-700">
+              <Text className="text-[10px] font-bold text-slate-700 dark:text-slate-200 leading-none">
                 POR
               </Text>
             </View>
@@ -118,84 +143,94 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
 
   return (
     <View className="px-3 pb-8">
-      {/* Selector de equipo Local / Visitante */}
-      <View className="flex-row rounded-xl bg-slate-200/70 p-1 mb-3 dark:bg-slate-800">
-        <Pressable
-          onPress={() => setActiveSide('home')}
-          className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg py-2 ${
-            activeSide === 'home'
-              ? 'bg-white shadow-sm dark:bg-slate-900'
-              : 'active:opacity-70'
-          }`}
-        >
-          <Avatar
-            uri={teamLogoUri(homeTeam.id, 64)}
-            fallbackUri={homeTeam.logoUrl}
-            name={homeTeam.name}
-            size={18}
-          />
-          <Text
-            className={`text-xs font-bold ${
-              activeSide === 'home'
-                ? 'text-slate-900 dark:text-slate-100'
-                : 'text-slate-500 dark:text-slate-400'
-            }`}
-            numberOfLines={1}
-          >
-            {clubName(homeTeam.name) || homeTeam.shortName || homeTeam.name}
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => setActiveSide('away')}
-          className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg py-2 ${
-            activeSide === 'away'
-              ? 'bg-white shadow-sm dark:bg-slate-900'
-              : 'active:opacity-70'
-          }`}
-        >
-          <Avatar
-            uri={teamLogoUri(awayTeam.id, 64)}
-            fallbackUri={awayTeam.logoUrl}
-            name={awayTeam.name}
-            size={18}
-          />
-          <Text
-            className={`text-xs font-bold ${
-              activeSide === 'away'
-                ? 'text-slate-900 dark:text-slate-100'
-                : 'text-slate-500 dark:text-slate-400'
-            }`}
-            numberOfLines={1}
-          >
-            {clubName(awayTeam.name) || awayTeam.shortName || awayTeam.name}
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* 5 Inicial */}
-      {starters.length > 0 ? (
-        <View className="mb-4 rounded-2xl bg-white shadow-sm overflow-hidden dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-          <View className="bg-slate-50 px-4 py-2 border-b border-slate-100 dark:bg-slate-800/60 dark:border-slate-800">
-            <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              {t('match_detail.starter')} (5 Inicial)
-            </Text>
-          </View>
-          {starters.map(renderPlayer)}
-        </View>
+      {/* 1. Quinteto inicial sobre la pista de hockey */}
+      {homeStarters.length > 0 || awayStarters.length > 0 ? (
+        <StartingFiveRink
+          home={homeStarters}
+          away={awayStarters}
+          homeName={homeLabel}
+          awayName={awayLabel}
+        />
       ) : null}
 
-      {/* Suplentes */}
-      {bench.length > 0 ? (
-        <View className="rounded-2xl bg-white shadow-sm overflow-hidden dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-          <View className="bg-slate-50 px-4 py-2 border-b border-slate-100 dark:bg-slate-800/60 dark:border-slate-800">
-            <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Banquillo
+      {/* 2. Listado completo de ambos equipos */}
+      {teams.map(({ team, label, players }) => (
+        <View
+          key={team.id}
+          className="mb-4 rounded-2xl bg-white shadow-sm overflow-hidden dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+        >
+          {/* Cabecera del equipo */}
+          <View className="flex-row items-center gap-2 p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
+            <Avatar
+              uri={teamLogoUri(team.id, 64)}
+              fallbackUri={team.logoUrl}
+              name={team.name}
+              size={24}
+            />
+            <Text
+              className="text-sm font-bold text-slate-900 dark:text-slate-100 flex-1"
+              numberOfLines={1}
+            >
+              {clubName(team.name) || team.shortName || team.name}
             </Text>
+            <View className="rounded bg-slate-200/80 px-2 py-0.5 dark:bg-slate-700">
+              <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                {label}
+              </Text>
+            </View>
           </View>
-          {bench.map(renderPlayer)}
+
+          {/* Leyenda de badges */}
+          <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
+            <View className="flex-row items-center gap-1">
+              <View
+                className="rounded px-1 py-0.5"
+                style={{ backgroundColor: BRAND.granate }}
+              >
+                <Text className="text-[9px] font-bold text-white">5i</Text>
+              </View>
+              <Text className="text-[10px] text-slate-500 dark:text-slate-400">
+                {t('match_detail.starter')}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-1">
+              <View className="rounded bg-slate-700 px-1 py-0.5 dark:bg-slate-600">
+                <Text className="text-[9px] font-bold text-white">C</Text>
+              </View>
+              <Text className="text-[10px] text-slate-500 dark:text-slate-400">
+                {t('match_detail.captain')}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-1">
+              <View className="rounded bg-slate-200 px-1 py-0.5 dark:bg-slate-700">
+                <Text className="text-[9px] font-bold text-slate-700 dark:text-slate-200">POR</Text>
+              </View>
+              <Text className="text-[10px] text-slate-500 dark:text-slate-400">
+                {t('match_detail.goalkeeper')}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-1">
+              <Text className="text-[10px]">🏑</Text>
+              <Text className="text-[10px] text-slate-500 dark:text-slate-400">
+                {t('hockey_stats.goals')}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-1">
+              <Text className="text-[10px]">🅰</Text>
+              <Text className="text-[10px] text-slate-500 dark:text-slate-400">
+                {t('hockey_stats.assists')}
+              </Text>
+            </View>
+          </View>
+
+          {/* Jugadores */}
+          {players.map(renderPlayerRow)}
         </View>
-      ) : null}
+      ))}
     </View>
   );
 }

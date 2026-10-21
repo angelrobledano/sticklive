@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Text, View } from 'react-native';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { EmptyState } from '@/src/components/shared/EmptyState';
+import { PenaltyShootout } from '@/src/components/match/PenaltyShootout';
 import {
   compareTimelineEvents,
   fmtEventClock,
@@ -19,6 +20,7 @@ interface TimelineTabProps {
   homeTeamName: string;
   awayTeamName: string;
   isScheduled: boolean;
+  penaltyShootout?: MatchDetail['match']['penaltyShootout'];
 }
 
 export function TimelineTab({
@@ -27,6 +29,7 @@ export function TimelineTab({
   homeTeamName,
   awayTeamName,
   isScheduled,
+  penaltyShootout,
 }: TimelineTabProps) {
   const { t } = useLocale();
 
@@ -204,6 +207,17 @@ export function TimelineTab({
           </View>
         );
       })}
+
+      {penaltyShootout &&
+      (penaltyShootout.home.length > 0 || penaltyShootout.away.length > 0) ? (
+        <View className="mt-4">
+          <PenaltyShootout
+            shootout={penaltyShootout}
+            homeName={homeTeamName}
+            awayName={awayTeamName}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }

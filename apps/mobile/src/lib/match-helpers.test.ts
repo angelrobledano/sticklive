@@ -13,6 +13,9 @@ import {
   visibleTabsFor,
   formatTime,
   formatDate,
+  calcEfficiency,
+  halfPositions,
+  placeRinkPlayers,
 } from './match-helpers';
 import type { MatchDetail, MatchStats } from './api/types';
 
@@ -117,6 +120,62 @@ describe('match-helpers', () => {
       const c = { period: 2, clock: '24:00', minute: 1 };
       expect(compareTimelineEvents(a, b)).toBeLessThan(0); // 20:00 left is earlier than 15:00 left
       expect(compareTimelineEvents(a, c)).toBeLessThan(0); // period 1 before period 2
+    });
+  });
+
+  describe('efficiency and rink positioning', () => {
+    it('calcEfficiency handles normal and edge cases', () => {
+      expect(calcEfficiency(1, 2)).toBe(50);
+      expect(calcEfficiency(2, 3)).toBe(67);
+      expect(calcEfficiency(0, 0)).toBe(0);
+      expect(calcEfficiency(0, 5)).toBe(0);
+    });
+
+    it('halfPositions provides positions for standard 4 field players', () => {
+      const pos = halfPositions(4);
+      expect(pos).toHaveLength(4);
+      expect(pos[0]).toEqual({ x: 42, y: 28 });
+      expect(pos[1]).toEqual({ x: 42, y: 72 });
+      expect(pos[2]).toEqual({ x: 74, y: 34 });
+      expect(pos[3]).toEqual({ x: 74, y: 66 });
+    });
+
+    it('placeRinkPlayers positions home players in left half (x < 50%)', () => {
+      const players = [
+        { playerName: 'GK', isGoalkeeper: true, isStarter: true, isCaptain: false, jerseyNumber: 1 },
+        { playerName: 'D1', isGoalkeeper: false, isStarter: true, isCaptain: false, jerseyNumber: 2 },
+        { playerName: 'D2', isGoalkeeper: false, isStarter: true, isCaptain: false, jerseyNumber: 3 },
+        { playerName: 'F1', isGoalkeeper: false, isStarter: true, isCaptain: false, jerseyNumber: 4 },
+        { playerName: 'F2', isGoalkeeper: false, isStarter: true, isCaptain: false, jerseyNumber: 5 },
+      ];
+      const placed = placeRinkPlayers(players, false);
+      expect(placed).toHaveLength(5);
+      const gk = placed.find((p) => p.p.isGoalkeeper);
+      expect(gk?.x).toBe(11); // 22 / 2
+      expect(gk?.y).toBe(50);
+      for (const p of placed) {
+        expect(p.x).toBeLessThan(50);
+        expect(p.isAway).toBe(false);
+      }
+    });
+
+    it('placeRinkPlayers positions away players mirrored in right half (x > 50%)', () => {
+      const players = [
+        { playerName: 'GK', isGoalkeeper: true, isStarter: true, isCaptain: false, jerseyNumber: 1 },
+        { playerName: 'D1', isGoalkeeper: false, isStarter: true, isCaptain: false, jerseyNumber: 2 },
+        { playerName: 'D2', isGoalkeeper: false, isStarter: true, isCaptain: false, jerseyNumber: 3 },
+        { playerName: 'F1', isGoalkeeper: false, isStarter: true, isCaptain: false, jerseyNumber: 4 },
+        { playerName: 'F2', isGoalkeeper: false, isStarter: true, isCaptain: false, jerseyNumber: 5 },
+      ];
+      const placed = placeRinkPlayers(players, true);
+      expect(placed).toHaveLength(5);
+      const gk = placed.find((p) => p.p.isGoalkeeper);
+      expect(gk?.x).toBe(89); // 100 - 22/2
+      expect(gk?.y).toBe(50);
+      for (const p of placed) {
+        expect(p.x).toBeGreaterThan(50);
+        expect(p.isAway).toBe(true);
+      }
     });
   });
 

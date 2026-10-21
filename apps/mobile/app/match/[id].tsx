@@ -144,9 +144,10 @@ export default function MatchScreen() {
           <TimelineTab
             events={current.events}
             homeTeamId={m.homeTeam.id}
-            homeTeamName={m.homeTeam.shortName ?? m.homeTeam.name}
-            awayTeamName={m.awayTeam.shortName ?? m.awayTeam.name}
+            homeTeamName={homeLabel}
+            awayTeamName={awayLabel}
             isScheduled={isScheduled}
+            penaltyShootout={m.penaltyShootout}
           />
         )}
 

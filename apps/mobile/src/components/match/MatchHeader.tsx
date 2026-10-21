@@ -6,6 +6,7 @@ import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
+import { PenaltyShootout } from '@/src/components/match/PenaltyShootout';
 import { clubName } from '@/src/lib/names';
 import {
   eventSurname,
@@ -201,7 +202,7 @@ export function MatchHeader({ data, liveStale = false, staleSeconds = 0 }: Match
             <Text className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               {t('match_states.winner')}:{' '}
               <Text className="font-bold text-slate-800 dark:text-slate-200">
-                {match.winnerTeamId === ht.id ? (ht.shortName ?? ht.name) : (at.shortName ?? at.name)}
+                {match.winnerTeamId === ht.id ? homeName : awayName}
               </Text>
             </Text>
           ) : null}
@@ -286,6 +287,17 @@ export function MatchHeader({ data, liveStale = false, staleSeconds = 0 }: Match
             </View>
           </View>
         </View>
+      ) : null}
+
+      {/* Tanda de penaltis lanzador a lanzador */}
+      {isFinished &&
+      match.penaltyShootout &&
+      (match.penaltyShootout.home.length > 0 || match.penaltyShootout.away.length > 0) ? (
+        <PenaltyShootout
+          shootout={match.penaltyShootout}
+          homeName={homeName}
+          awayName={awayName}
+        />
       ) : null}
 
       {/* Faltas de equipo */}
