@@ -98,10 +98,16 @@ export default function StandingsScreen() {
                 onPress={() => setSelectedId(item.id)}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
-                className={`min-h-[44px] justify-center rounded-full px-3 active:opacity-70 ${
+                className={`min-h-[44px] flex-row items-center gap-2 rounded-full px-3 py-1.5 active:opacity-70 ${
                   active ? 'bg-rink-passion' : 'bg-slate-100 dark:bg-slate-800'
                 }`}
               >
+                <Avatar
+                  uri={item.logoUrl}
+                  name={item.name}
+                  size={20}
+                  variant="competition"
+                />
                 <Text
                   numberOfLines={1}
                   className={`text-sm font-semibold ${active ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}
@@ -151,7 +157,12 @@ export default function StandingsScreen() {
                   {item.row.position ?? '–'}
                 </Text>
                 <View className="flex-1 flex-row items-center pr-2">
-                  <Avatar uri={teamLogoUri(item.row.team_id)} name={item.row.team_name} size={24} />
+                  <Avatar
+                    uri={teamLogoUri(item.row.team_id, 48)}
+                    fallbackUri={item.row.team_logo_url}
+                    name={item.row.team_name}
+                    size={24}
+                  />
                   <Text numberOfLines={1} className="ml-2 flex-1 text-sm font-medium">
                     {item.row.team_short_name ?? item.row.team_name}
                   </Text>

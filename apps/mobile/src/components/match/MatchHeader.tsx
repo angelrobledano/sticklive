@@ -149,7 +149,12 @@ export function MatchHeader({ data, liveStale = false, staleSeconds = 0 }: Match
             onPress={() => router.push(`/team/${ht.id}`)}
             className="items-center active:opacity-75"
           >
-            <Avatar uri={teamLogoUri(ht.id, 96)} name={ht.name} size={54} />
+            <Avatar
+              uri={teamLogoUri(ht.id, 96)}
+              fallbackUri={ht.logoUrl}
+              name={ht.name}
+              size={54}
+            />
             <Text
               className="mt-2 text-center text-sm font-bold text-slate-900 dark:text-slate-100"
               numberOfLines={2}
@@ -204,7 +209,12 @@ export function MatchHeader({ data, liveStale = false, staleSeconds = 0 }: Match
             onPress={() => router.push(`/team/${at.id}`)}
             className="items-center active:opacity-75"
           >
-            <Avatar uri={teamLogoUri(at.id, 96)} name={at.name} size={54} />
+            <Avatar
+              uri={teamLogoUri(at.id, 96)}
+              fallbackUri={at.logoUrl}
+              name={at.name}
+              size={54}
+            />
             <Text
               className="mt-2 text-center text-sm font-bold text-slate-900 dark:text-slate-100"
               numberOfLines={2}

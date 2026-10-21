@@ -87,13 +87,23 @@ export default function CompetitionScreen() {
       <Stack.Screen options={{ title: compTitle }} />
       <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
         {/* Cabecera de competición */}
-        <View className="mx-3 mt-2 rounded-xl bg-white p-4 dark:bg-slate-900">
+        <View className="mx-3 mt-2 rounded-xl bg-white p-4 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
           <View className="flex-row items-center justify-between">
-            <View className="flex-1 pr-3">
-              <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">{compTitle}</Text>
-              {overview?.season.name ? (
-                <Text className="text-xs text-slate-500">{overview.season.name}</Text>
-              ) : null}
+            <View className="flex-row items-center gap-3 flex-1 pr-3">
+              <Avatar
+                uri={overview?.season.competitionLogoUrl ?? competitionMeta?.logoUrl}
+                name={compTitle}
+                size={44}
+                variant="competition"
+              />
+              <View className="flex-1">
+                <Text className="text-xl font-bold text-slate-900 dark:text-slate-100" numberOfLines={2}>
+                  {compTitle}
+                </Text>
+                {overview?.season.name ? (
+                  <Text className="text-xs text-slate-500">{overview.season.name}</Text>
+                ) : null}
+              </View>
             </View>
             {competitionId ? <FollowButton kind="league" refId={competitionId} /> : null}
           </View>
@@ -195,7 +205,12 @@ export default function CompetitionScreen() {
                       {row.position ?? '–'}
                     </Text>
                     <View className="flex-1 flex-row items-center pr-2">
-                      <Avatar uri={teamLogoUri(row.team_id)} name={row.team_name} size={20} />
+                      <Avatar
+                        uri={teamLogoUri(row.team_id, 48)}
+                        fallbackUri={row.team_logo_url}
+                        name={row.team_name}
+                        size={20}
+                      />
                       <Text numberOfLines={1} className="ml-2 text-sm font-medium">
                         {row.team_short_name ?? row.team_name}
                       </Text>
@@ -313,7 +328,12 @@ export default function CompetitionScreen() {
 
                       <View className="mt-2 flex-row items-center justify-between">
                         <View className="flex-1 flex-row items-center">
-                          <Avatar uri={teamLogoUri(m.homeTeam.id)} name={m.homeTeam.name} size={24} />
+                          <Avatar
+                            uri={teamLogoUri(m.homeTeam.id, 64)}
+                            fallbackUri={m.homeTeam.logoUrl}
+                            name={m.homeTeam.name}
+                            size={24}
+                          />
                           <Text numberOfLines={1} className="ml-2 flex-1 font-semibold">
                             {m.homeTeam.shortName ?? m.homeTeam.name}
                           </Text>
@@ -327,7 +347,12 @@ export default function CompetitionScreen() {
                           <Text numberOfLines={1} className="mr-2 flex-1 text-right font-semibold">
                             {m.awayTeam.shortName ?? m.awayTeam.name}
                           </Text>
-                          <Avatar uri={teamLogoUri(m.awayTeam.id)} name={m.awayTeam.name} size={24} />
+                          <Avatar
+                            uri={teamLogoUri(m.awayTeam.id, 64)}
+                            fallbackUri={m.awayTeam.logoUrl}
+                            name={m.awayTeam.name}
+                            size={24}
+                          />
                         </View>
                       </View>
                     </Pressable>

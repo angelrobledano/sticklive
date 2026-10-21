@@ -5,7 +5,7 @@ import { useTeam } from '@/src/hooks/queries';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { BrandLoader } from '@/src/components/shared/BrandLoader';
-import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
+import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { formatDayLabel, formatKickoff, isEffectivelyLive } from '@/src/lib/time';
 
 /**
@@ -102,16 +102,32 @@ export default function TeamScreen() {
                     </View>
                   ) : null}
                 </View>
-                <View className="mt-1 flex-row items-center justify-between">
-                  <Text numberOfLines={1} className="flex-1 text-base font-semibold">
-                    {m.homeTeam.shortName ?? m.homeTeam.name}
-                  </Text>
-                  <Text className="px-2 font-mono text-lg font-bold">
+                <View className="mt-2 flex-row items-center justify-between">
+                  <View className="flex-1 flex-row items-center gap-2 pr-1">
+                    <Avatar
+                      uri={teamLogoUri(m.homeTeam.id, 64)}
+                      fallbackUri={m.homeTeam.logoUrl}
+                      name={m.homeTeam.shortName ?? m.homeTeam.name}
+                      size={22}
+                    />
+                    <Text numberOfLines={1} className="flex-1 text-sm font-semibold">
+                      {m.homeTeam.shortName ?? m.homeTeam.name}
+                    </Text>
+                  </View>
+                  <Text className="px-2 font-mono text-base font-bold">
                     {showScore ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : 'vs'}
                   </Text>
-                  <Text numberOfLines={1} className="flex-1 text-right text-base font-semibold">
-                    {m.awayTeam.shortName ?? m.awayTeam.name}
-                  </Text>
+                  <View className="flex-1 flex-row items-center justify-end gap-2 pl-1">
+                    <Text numberOfLines={1} className="flex-1 text-right text-sm font-semibold">
+                      {m.awayTeam.shortName ?? m.awayTeam.name}
+                    </Text>
+                    <Avatar
+                      uri={teamLogoUri(m.awayTeam.id, 64)}
+                      fallbackUri={m.awayTeam.logoUrl}
+                      name={m.awayTeam.shortName ?? m.awayTeam.name}
+                      size={22}
+                    />
+                  </View>
                 </View>
               </Pressable>
             );
@@ -130,10 +146,16 @@ export default function TeamScreen() {
                 onPress={() => router.push(`/player/${p.playerId}`)}
                 className="flex-row items-center border-b border-slate-100 px-3 py-2.5 active:opacity-70 last:border-b-0 dark:border-slate-800"
               >
-                <Text className="w-8 text-sm font-semibold text-slate-500">
+                <Text className="w-6 text-sm font-semibold text-slate-500">
                   {p.jerseyNumber != null ? p.jerseyNumber : ''}
                 </Text>
-                <Text numberOfLines={1} className="flex-1 text-sm font-medium">
+                <Avatar
+                  uri={playerPhotoUri(p.playerId, 64)}
+                  name={`${p.firstName} ${p.lastName}`}
+                  size={26}
+                  variant="player"
+                />
+                <Text numberOfLines={1} className="ml-2.5 flex-1 text-sm font-medium">
                   {p.firstName} {p.lastName}
                   {p.isGoalkeeper ? <Text className="text-xs text-slate-500"> · {t('team.gk_short')}</Text> : null}
                 </Text>

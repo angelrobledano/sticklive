@@ -90,11 +90,12 @@ function FavoriteRow({
   return (
     <View className="flex-row items-center border-b border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900">
       <Pressable onPress={onPress} className="min-h-[44px] flex-1 flex-row items-center px-4 py-2 active:opacity-70">
-        {kind === 'team' ? <Avatar uri={teamLogoUri(refId)} name={name} size={28} /> : null}
-        {kind === 'player' ? <Avatar uri={playerPhotoUri(refId)} name={name} size={28} /> : null}
+        {kind === 'team' ? <Avatar uri={teamLogoUri(refId, 64)} name={name} size={28} /> : null}
+        {kind === 'player' ? <Avatar uri={playerPhotoUri(refId, 64)} name={name} size={28} variant="player" /> : null}
+        {kind === 'league' ? <Avatar uri={null} name={name} size={28} variant="competition" /> : null}
         <Text
           numberOfLines={1}
-          className={`${kind === 'league' ? '' : 'ml-3 '}flex-1 text-base font-medium`}
+          className="ml-3 flex-1 text-base font-medium"
         >
           {name}
         </Text>

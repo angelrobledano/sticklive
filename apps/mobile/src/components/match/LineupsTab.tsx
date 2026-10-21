@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { Avatar, playerPhotoUri } from '@/src/components/shared/Avatar';
+import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { displayLineupName } from '@/src/lib/match-helpers';
 import type { MatchDetail } from '@/src/lib/api/types';
@@ -38,11 +38,13 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
     const content = (
       <View className="flex-row items-center justify-between py-2.5 px-3 border-b border-slate-100 dark:border-slate-800">
         <View className="flex-row items-center gap-2.5 flex-1 pr-2">
-          {/* Avatar con foto o iniciales */}
+          {/* Avatar con foto o silueta */}
           <Avatar
             uri={p.playerId ? playerPhotoUri(p.playerId, 64) : p.photoUrl}
+            fallbackUri={p.photoUrl}
             name={p.playerName}
             size={36}
+            variant="player"
           />
 
           {/* Dorsal */}
@@ -119,12 +121,18 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
       <View className="flex-row rounded-xl bg-slate-200/70 p-1 mb-3 dark:bg-slate-800">
         <Pressable
           onPress={() => setActiveSide('home')}
-          className={`flex-1 items-center justify-center rounded-lg py-2 ${
+          className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg py-2 ${
             activeSide === 'home'
               ? 'bg-white shadow-sm dark:bg-slate-900'
               : 'active:opacity-70'
           }`}
         >
+          <Avatar
+            uri={teamLogoUri(homeTeam.id, 64)}
+            fallbackUri={homeTeam.logoUrl}
+            name={homeTeam.name}
+            size={18}
+          />
           <Text
             className={`text-xs font-bold ${
               activeSide === 'home'
@@ -139,12 +147,18 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
 
         <Pressable
           onPress={() => setActiveSide('away')}
-          className={`flex-1 items-center justify-center rounded-lg py-2 ${
+          className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg py-2 ${
             activeSide === 'away'
               ? 'bg-white shadow-sm dark:bg-slate-900'
               : 'active:opacity-70'
           }`}
         >
+          <Avatar
+            uri={teamLogoUri(awayTeam.id, 64)}
+            fallbackUri={awayTeam.logoUrl}
+            name={awayTeam.name}
+            size={18}
+          />
           <Text
             className={`text-xs font-bold ${
               activeSide === 'away'

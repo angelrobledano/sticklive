@@ -175,6 +175,7 @@ export interface CompetitionSummary {
   name: string;
   nameI18n: Record<string, string> | null;
   shortName: string | null;
+  logoUrl?: string | null;
   slug: string;
   gender: string | null;
   category: string | null;

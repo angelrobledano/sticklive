@@ -41,7 +41,12 @@ export default function PlayerScreen() {
       <ScrollView className="bg-rink-floor dark:bg-rink-floor-dark">
         {/* Cabecera */}
         <View className="items-center rounded-xl bg-white p-4 mx-3 mt-2 dark:bg-slate-900">
-          <Avatar uri={playerPhotoUri(player.id, 192)} name={`${player.firstName} ${player.lastName}`} size={80} />
+          <Avatar
+            uri={playerPhotoUri(player.id, 192)}
+            name={`${player.firstName} ${player.lastName}`}
+            size={80}
+            variant="player"
+          />
           <Text className="mt-2 text-center text-lg font-bold">
             {player.firstName} {player.lastName}
           </Text>

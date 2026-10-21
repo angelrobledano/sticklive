@@ -3,14 +3,14 @@ import { initials, playerPhotoUri, teamLogoUri } from './Avatar';
 
 describe('Avatar utilities', () => {
   describe('teamLogoUri and playerPhotoUri', () => {
-    it('construye la URI del proxy del API con width por defecto', () => {
-      expect(teamLogoUri('team-1')).toContain('/teams/team-1/logo?w=64');
-      expect(playerPhotoUri('player-1')).toContain('/players/player-1/photo?w=64');
+    it('construye la URI del proxy del API con width por defecto y format=png', () => {
+      expect(teamLogoUri('team-1')).toContain('/teams/team-1/logo?w=64&format=png');
+      expect(playerPhotoUri('player-1')).toContain('/players/player-1/photo?w=64&format=png');
     });
 
-    it('respeta ancho personalizado', () => {
-      expect(teamLogoUri('team-1', 192)).toContain('/teams/team-1/logo?w=192');
-      expect(playerPhotoUri('player-1', 128)).toContain('/players/player-1/photo?w=128');
+    it('respeta ancho personalizado y mantiene format=png', () => {
+      expect(teamLogoUri('team-1', 192)).toContain('/teams/team-1/logo?w=192&format=png');
+      expect(playerPhotoUri('player-1', 128)).toContain('/players/player-1/photo?w=128&format=png');
     });
   });
 
