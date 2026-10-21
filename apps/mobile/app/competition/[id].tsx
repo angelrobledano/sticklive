@@ -10,7 +10,7 @@ import { EmptyState } from '@/src/components/shared/EmptyState';
 import { BrandLoader } from '@/src/components/shared/BrandLoader';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { formatDayLabel, formatKickoff, isEffectivelyLive } from '@/src/lib/time';
-import type { SeasonOverviewMatch, StandingsRow } from '@/src/lib/api/types';
+import type { SeasonOverviewMatch, SeasonOverviewStandingRow } from '@/src/lib/api/types';
 
 const COL_WIDTHS = 'w-7' as const;
 
@@ -183,22 +183,22 @@ export default function CompetitionScreen() {
             ) : (
               <View className="mx-3 mt-3 overflow-hidden rounded-xl bg-white dark:bg-slate-900">
                 {/* Cabecera tabla */}
-                <View className="flex-row border-b border-slate-100 px-3 py-2 text-xs font-semibold text-slate-500 dark:border-slate-800">
-                  <Text className="w-6 text-center text-xs text-slate-500">#</Text>
-                  <Text className="flex-1 text-xs text-slate-500">{t('standings.col_team')}</Text>
-                  <Text className={`${COL_WIDTHS} text-center text-xs text-slate-500`}>{t('standings.col_played')}</Text>
-                  <Text className={`${COL_WIDTHS} text-center text-xs text-slate-500`}>{t('standings.col_won')}</Text>
-                  <Text className={`${COL_WIDTHS} text-center text-xs text-slate-500`}>{t('standings.col_drawn')}</Text>
-                  <Text className={`${COL_WIDTHS} text-center text-xs text-slate-500`}>{t('standings.col_lost')}</Text>
+                <View className="flex-row items-center border-b border-slate-100 px-3 py-2 text-xs font-semibold text-slate-500 dark:border-slate-800">
+                  <Text className="w-6 text-center text-xs font-bold text-slate-500">#</Text>
+                  <Text className="flex-1 text-xs font-bold uppercase text-slate-500">{t('standings.team')}</Text>
+                  <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-500`}>{t('standings.cols.played')}</Text>
+                  <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-500`}>{t('standings.cols.won')}</Text>
+                  <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-500`}>{t('standings.cols.drawn')}</Text>
+                  <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-500`}>{t('standings.cols.lost')}</Text>
                   <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-900 dark:text-slate-100`}>
-                    {t('standings.col_points')}
+                    {t('standings.cols.pts')}
                   </Text>
                 </View>
                 {/* Filas */}
-                {overview.standings.map((row: StandingsRow) => (
+                {overview.standings.map((row: SeasonOverviewStandingRow) => (
                   <Pressable
                     key={row.id}
-                    onPress={() => router.push(`/team/${row.team_id}`)}
+                    onPress={() => router.push(`/team/${row.teamId}`)}
                     className="flex-row items-center border-b border-slate-100 px-3 py-2.5 active:opacity-70 dark:border-slate-800"
                   >
                     <Text className="w-6 text-center text-sm font-semibold text-slate-500">
@@ -206,13 +206,13 @@ export default function CompetitionScreen() {
                     </Text>
                     <View className="flex-1 flex-row items-center pr-2">
                       <Avatar
-                        uri={teamLogoUri(row.team_id, 48)}
-                        fallbackUri={row.team_logo_url}
-                        name={row.team_name}
-                        size={20}
+                        uri={teamLogoUri(row.teamId, 48)}
+                        fallbackUri={row.teamLogoUrl}
+                        name={row.teamName}
+                        size={22}
                       />
                       <Text numberOfLines={1} className="ml-2 text-sm font-medium">
-                        {row.team_short_name ?? row.team_name}
+                        {row.teamShortName ?? row.teamName}
                       </Text>
                     </View>
                     <Text className={`${COL_WIDTHS} text-center text-sm text-slate-600 dark:text-slate-300`}>

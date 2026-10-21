@@ -420,6 +420,26 @@ export interface SeasonOverviewMatch {
   };
 }
 
+export interface SeasonOverviewStandingRow {
+  id: string;
+  teamId: string;
+  teamName: string;
+  teamShortName: string | null;
+  teamLogoUrl: string | null;
+  groupName: string | null;
+  position: number | null;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDiff: number;
+  points: number;
+  form?: string[];
+  penalizationPoints?: number;
+}
+
 export interface SeasonOverview {
   season: {
     id: string;
@@ -439,7 +459,7 @@ export interface SeasonOverview {
     competitionTimezone: string | null;
     competitionFormat: string | null;
   };
-  standings: StandingsRow[];
+  standings: SeasonOverviewStandingRow[];
   rounds: {
     id: string;
     number: number;
