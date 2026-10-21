@@ -70,23 +70,7 @@ export default function CompetitionScreen() {
     competitionMeta?.name ??
     t('search.section_competitions');
 
-  if (overviewQuery.isPending && !overview) {
-    return (
-      <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
-        <BrandLoader />
-      </View>
-    );
-  }
-
-  if (overviewQuery.isError && !overview) {
-    return (
-      <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
-        <ErrorState onRetry={() => void overviewQuery.refetch()} />
-      </View>
-    );
-  }
-
-  const displayTitle = clubName(compTitle) || compTitle;
+  const displayTitle = compTitle ? clubName(compTitle) || compTitle : '';
 
   const handleShare = () => {
     void Share.share({
@@ -96,27 +80,53 @@ export default function CompetitionScreen() {
     });
   };
 
+  const headerElement = (
+    <Stack.Screen
+      options={{
+        title: displayTitle,
+        headerRight: () => (
+          <Pressable
+            onPress={handleShare}
+            accessibilityLabel="Compartir competición"
+            hitSlop={8}
+            className="p-1 active:opacity-60"
+          >
+            <Ionicons
+              name="share-outline"
+              size={20}
+              color={colorScheme === 'dark' ? '#f8fafc' : '#0f172a'}
+            />
+          </Pressable>
+        ),
+      }}
+    />
+  );
+
+  if (overviewQuery.isPending && !overview) {
+    return (
+      <>
+        {headerElement}
+        <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
+          <BrandLoader />
+        </View>
+      </>
+    );
+  }
+
+  if (overviewQuery.isError && !overview) {
+    return (
+      <>
+        {headerElement}
+        <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
+          <ErrorState onRetry={() => void overviewQuery.refetch()} />
+        </View>
+      </>
+    );
+  }
+
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: displayTitle,
-          headerRight: () => (
-            <Pressable
-              onPress={handleShare}
-              accessibilityLabel="Compartir competición"
-              hitSlop={8}
-              className="p-1 active:opacity-60"
-            >
-              <Ionicons
-                name="share-outline"
-                size={20}
-                color={colorScheme === 'dark' ? '#f8fafc' : '#0f172a'}
-              />
-            </Pressable>
-          ),
-        }}
-      />
+      {headerElement}
       <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
         {/* Cabecera de competición */}
         <View className="mx-3 mt-2 rounded-xl bg-white p-4 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">

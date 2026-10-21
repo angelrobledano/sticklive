@@ -23,38 +23,24 @@ export default function PlayerScreen() {
   const { colorScheme } = useColorScheme();
   const query = usePlayer(playerId ?? '');
 
-  if (!query.data) {
-    return query.isError ? (
-      <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
-        <ErrorState onRetry={() => void query.refetch()} />
-      </View>
-    ) : (
-      <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
-        <BrandLoader />
-      </View>
-    );
-  }
-
-  const { player, currentTeam, seasonTotals, career } = query.data;
-  const sectionTitle = 'px-4 pb-1 pt-4 text-xs font-bold uppercase text-slate-500';
-  const statBox = 'flex-1 items-center rounded-xl bg-white p-3 dark:bg-slate-900';
-
-  const displayName = playerDisplayName(player.firstName, player.lastName);
+  const rawPlayer = query.data?.player;
+  const displayName = rawPlayer ? playerDisplayName(rawPlayer.firstName, rawPlayer.lastName) : '';
 
   const handleShare = () => {
+    if (!rawPlayer) return;
     void Share.share({
-      message: `${displayName} | Stick Live\nhttps://sticklive.eu/players/${player.id}`,
-      url: `https://sticklive.eu/players/${player.id}`,
+      message: `${displayName} | Stick Live\nhttps://sticklive.eu/players/${rawPlayer.id}`,
+      url: `https://sticklive.eu/players/${rawPlayer.id}`,
       title: displayName,
     });
   };
 
-  return (
-    <>
-      <Stack.Screen
-        options={{
-          title: displayName,
-          headerRight: () => (
+  const headerElement = (
+    <Stack.Screen
+      options={{
+        title: displayName,
+        headerRight: () =>
+          displayName ? (
             <Pressable
               onPress={handleShare}
               accessibilityLabel="Compartir jugador"
@@ -67,9 +53,35 @@ export default function PlayerScreen() {
                 color={colorScheme === 'dark' ? '#f8fafc' : '#0f172a'}
               />
             </Pressable>
-          ),
-        }}
-      />
+          ) : null,
+      }}
+    />
+  );
+
+  if (!query.data) {
+    return (
+      <>
+        {headerElement}
+        {query.isError ? (
+          <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
+            <ErrorState onRetry={() => void query.refetch()} />
+          </View>
+        ) : (
+          <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
+            <BrandLoader />
+          </View>
+        )}
+      </>
+    );
+  }
+
+  const { player, currentTeam, seasonTotals, career } = query.data;
+  const sectionTitle = 'px-4 pb-1 pt-4 text-xs font-bold uppercase text-slate-500';
+  const statBox = 'flex-1 items-center rounded-xl bg-white p-3 dark:bg-slate-900';
+
+  return (
+    <>
+      {headerElement}
       <ScrollView className="bg-rink-floor dark:bg-rink-floor-dark">
         {/* Cabecera */}
         <View className="items-center rounded-xl bg-white p-4 mx-3 mt-2 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">

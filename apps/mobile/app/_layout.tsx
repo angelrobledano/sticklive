@@ -145,10 +145,10 @@ function RootNavigator() {
     <NavigationThemeProvider value={navTheme}>
       <Stack screenOptions={{ headerShown: true, headerTitleStyle: { fontWeight: '700' } }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="match/[id]" />
-        <Stack.Screen name="team/[id]" />
-        <Stack.Screen name="player/[id]" />
-        <Stack.Screen name="competition/[id]" />
+        <Stack.Screen name="match/[id]" options={{ title: '' }} />
+        <Stack.Screen name="team/[id]" options={{ title: '' }} />
+        <Stack.Screen name="player/[id]" options={{ title: '' }} />
+        <Stack.Screen name="competition/[id]" options={{ title: '' }} />
         <Stack.Screen name="settings/notifications" options={{ title: t('settings.notif_title') }} />
         <Stack.Screen name="settings/premium" options={{ title: t('premium.title') }} />
         <Stack.Screen name="settings/ads-privacy" options={{ title: t('ads.privacy_title') }} />

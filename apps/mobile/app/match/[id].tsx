@@ -50,44 +50,31 @@ export default function MatchScreen() {
   const [selectedTab, setSelectedTab] = useState<Tab>('Resumen');
   const activeTab = visibleTabs.includes(selectedTab) ? selectedTab : (visibleTabs[0] ?? 'Resumen');
 
-  if (!current) {
-    return query.isError ? (
-      <ErrorState onRetry={() => void query.refetch()} />
-    ) : (
-      <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
-        <BrandLoader />
-      </View>
-    );
-  }
-
-  const m = current.match;
-  const isScheduled = m.status === 'scheduled' || m.status === 'postponed';
-  const staleSeconds =
-    live.stale && live.staleAt != null ? Math.max(0, Math.round((now - live.staleAt) / 1000)) : 0;
-
-  const homeLabel = clubName(m.homeTeam.name) || m.homeTeam.shortName || m.homeTeam.name;
-  const awayLabel = clubName(m.awayTeam.name) || m.awayTeam.shortName || m.awayTeam.name;
-  const title = `${homeLabel} - ${awayLabel}`;
+  const rawMatch = current?.match;
+  const homeLabel = rawMatch ? clubName(rawMatch.homeTeam.name) || rawMatch.homeTeam.shortName || rawMatch.homeTeam.name : '';
+  const awayLabel = rawMatch ? clubName(rawMatch.awayTeam.name) || rawMatch.awayTeam.shortName || rawMatch.awayTeam.name : '';
+  const title = rawMatch ? `${homeLabel} - ${awayLabel}` : '';
 
   const handleShare = () => {
+    if (!rawMatch) return;
     const scoreText =
-      m.status === 'live' || m.status === 'finished'
-        ? `${m.score.home ?? 0} - ${m.score.away ?? 0}`
+      rawMatch.status === 'live' || rawMatch.status === 'finished'
+        ? `${rawMatch.score.home ?? 0} - ${rawMatch.score.away ?? 0}`
         : 'vs';
     void Share.share({
-      message: `${homeLabel} ${scoreText} ${awayLabel} | Stick Live\nhttps://sticklive.eu/matches/${m.id}`,
-      url: `https://sticklive.eu/matches/${m.id}`,
+      message: `${homeLabel} ${scoreText} ${awayLabel} | Stick Live\nhttps://sticklive.eu/matches/${rawMatch.id}`,
+      url: `https://sticklive.eu/matches/${rawMatch.id}`,
       title: `${homeLabel} vs ${awayLabel}`,
     });
   };
 
-  return (
-    <>
-      <Stack.Screen
-        options={{
-          title,
-          headerBackTitle: 'Atrás',
-          headerRight: () => (
+  const headerElement = (
+    <Stack.Screen
+      options={{
+        title,
+        headerBackTitle: 'Atrás',
+        headerRight: () =>
+          title ? (
             <Pressable
               onPress={handleShare}
               accessibilityLabel="Compartir partido"
@@ -100,9 +87,34 @@ export default function MatchScreen() {
                 color={colorScheme === 'dark' ? '#f8fafc' : '#0f172a'}
               />
             </Pressable>
-          ),
-        }}
-      />
+          ) : null,
+      }}
+    />
+  );
+
+  if (!current) {
+    return (
+      <>
+        {headerElement}
+        {query.isError ? (
+          <ErrorState onRetry={() => void query.refetch()} />
+        ) : (
+          <View className="flex-1 items-center justify-center bg-rink-floor dark:bg-rink-floor-dark">
+            <BrandLoader />
+          </View>
+        )}
+      </>
+    );
+  }
+
+  const m = current.match;
+  const isScheduled = m.status === 'scheduled' || m.status === 'postponed';
+  const staleSeconds =
+    live.stale && live.staleAt != null ? Math.max(0, Math.round((now - live.staleAt) / 1000)) : 0;
+
+  return (
+    <>
+      {headerElement}
       <ScrollView
         contentContainerStyle={{ paddingBottom: 32 }}
         className="flex-1 bg-rink-floor dark:bg-rink-floor-dark"
