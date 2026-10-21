@@ -14,19 +14,29 @@ export const teamLogoUri = (teamId: string, width = 64) =>
 export const playerPhotoUri = (playerId: string, width = 64) =>
   `${API_URL}/players/${playerId}/photo?w=${width}`;
 
-const initials = (name: string): string =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
+export const initials = (name?: string | null): string => {
+  if (!name || typeof name !== 'string') return '?';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  return parts
     .slice(0, 2)
     .map((w) => w.charAt(0).toUpperCase())
     .join('');
+};
 
 /**
  * Imagen remota de escudo/foto con dimensiones FIJAS y fallback a iniciales si
  * el API responde 404 (equipo/jugador sin imagen) o falla la carga.
  */
-export function Avatar({ uri, name, size = 28 }: { uri: string | null; name: string; size?: number }) {
+export function Avatar({
+  uri,
+  name,
+  size = 28,
+}: {
+  uri: string | null | undefined;
+  name?: string | null;
+  size?: number;
+}) {
   // Estado derivado, no boolean: al cambiar la uri el componente reintenta solo
   // (listas recicladas de FlatList incluidas) sin useEffect + setState, que el
   // lint prohíbe (react-hooks/set-state-in-effect).

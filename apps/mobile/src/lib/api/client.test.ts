@@ -11,16 +11,22 @@ afterEach(() => {
 });
 
 describe('resolveDefaultApiUrl', () => {
-  it('resuelve 10.0.2.2 en Android (emulador host)', () => {
-    expect(resolveDefaultApiUrl('android')).toBe('http://10.0.2.2:3000');
+  it('resuelve 10.0.2.2 en Android en modo desarrollo (emulador host)', () => {
+    expect(resolveDefaultApiUrl('android', true)).toBe('http://10.0.2.2:3000');
   });
 
-  it('resuelve localhost en iOS (simulador host)', () => {
-    expect(resolveDefaultApiUrl('ios')).toBe('http://localhost:3000');
+  it('resuelve localhost en iOS en modo desarrollo (simulador host)', () => {
+    expect(resolveDefaultApiUrl('ios', true)).toBe('http://localhost:3000');
   });
 
-  it('resuelve localhost para otras plataformas (web, etc.)', () => {
-    expect(resolveDefaultApiUrl('web')).toBe('http://localhost:3000');
+  it('resuelve localhost para otras plataformas en modo desarrollo (web, etc.)', () => {
+    expect(resolveDefaultApiUrl('web', true)).toBe('http://localhost:3000');
+  });
+
+  it('resuelve la API de producción en modo no-desarrollo (!isDev) para cualquier plataforma', () => {
+    expect(resolveDefaultApiUrl('android', false)).toBe('https://sticklive.eu/api');
+    expect(resolveDefaultApiUrl('ios', false)).toBe('https://sticklive.eu/api');
+    expect(resolveDefaultApiUrl('web', false)).toBe('https://sticklive.eu/api');
   });
 });
 
