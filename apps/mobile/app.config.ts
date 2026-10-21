@@ -95,10 +95,11 @@ export default {
         'expo-notifications',
         { icon: './assets/notification-icon.png', color: BRAND.granate, defaultChannel: 'live' },
       ],
-      // Sentry (Task 5.1): plugin nativo (el init de JS vive en app/_layout.tsx).
-      // Publicar source maps además requiere sentryCli authToken como secret de
-      // EAS en build — paso de release (5.3/5.4), no de esta tarea.
-      ['@sentry/react-native/expo', {}],
+      // Sentry (Task 5.1): el plugin de build inyecta tareas Gradle/Xcode de subida de sourcemaps.
+      // Solo se activa si SENTRY_AUTH_TOKEN existe en los secrets de EAS para evitar
+      // que sentry-cli falle el build si no hay credenciales configuradas.
+      // El reporte de errores de JS vive en app/_layout.tsx y no requiere este plugin.
+      ...(process.env['SENTRY_AUTH_TOKEN'] ? [['@sentry/react-native/expo', {}]] : []),
       // OTA (Task 5.3): la URL de updates aún es placeholder hasta `eas init`
       // (mismo prerequisito humano de Task 4.2): sustituir <projectId> por el
       // ID real que devuelve `npx eas init`.

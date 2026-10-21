@@ -13,13 +13,19 @@
       "channel": "preview",
       "android": { "buildType": "app-bundle" },
       "ios": { "simulator": false },
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      }
     },
     "preview-apk": {
       "distribution": "internal",
       "channel": "preview",
       "android": { "buildType": "apk" },
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      }
     },
     "production": {
       "channel": "production",
