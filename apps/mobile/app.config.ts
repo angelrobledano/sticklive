@@ -70,8 +70,8 @@ export default {
       'expo-updates',
       // AdMob (docs/monetizacion.md §6). El plugin inyecta el App ID en el
       // AndroidManifest y en Info.plist; requiere recompilar la app nativa (CNG/dev build).
-      // iosAppId: usa variable de entorno en producción o el ID de prueba oficial de Google
-      // (ca-app-pub-3940256099942544~1458002511) para desarrollo/staging.
+      // androidAppId e iosAppId: usan variable de entorno en build si está definida o
+      // los IDs de producción oficiales de Stick Live en AdMob.
       // delayAppMeasurementInit: doc del SDK (european-user-consent) — la
       // medición de Google arranca al abrir la app; con true espera a
       // initialize() o primera carga de ad, así un premium (que nunca llega a
@@ -79,10 +79,12 @@ export default {
       [
         'react-native-google-mobile-ads',
         {
-          androidAppId: 'ca-app-pub-2994866776026136~4595623578',
+          androidAppId:
+            process.env['EXPO_PUBLIC_ADMOB_ANDROID_APP_ID'] ||
+            'ca-app-pub-2994866776026136~4595623578',
           iosAppId:
             process.env['EXPO_PUBLIC_ADMOB_IOS_APP_ID'] ||
-            'ca-app-pub-3940256099942544~1458002511',
+            'ca-app-pub-2994866776026136~6476786071',
           delayAppMeasurementInit: true,
         },
       ],
