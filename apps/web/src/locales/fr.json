@@ -267,6 +267,7 @@
     "bracket_title": "Tableau des playoffs",
     "series_wins": "Victoires de la série",
     "final_four": "Final Four",
+    "no_data": "Aucun match programmé pour cette phase",
     "champion": "Champion",
     "pens_short": "tab",
     "ot_short": "prol.",

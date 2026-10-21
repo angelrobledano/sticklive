@@ -283,18 +283,33 @@ export function PlayoffsTab({ matches }: { matches: SeasonOverviewMatch[] }) {
     return availablePhases[0]?.key ?? 'Cuartos';
   }, [phases, availablePhases]);
 
-  const [selectedPhase, setSelectedPhase] = useState<string>(defaultPhaseKey);
+  const [userSelectedPhase, setUserSelectedPhase] = useState<string | null>(null);
+
+  // La fase activa respeta la selección manual del usuario si existe en las fases de estos partidos;
+  // si el usuario no ha seleccionado o la fase ya no existe (ej. cambio de temporada), usa la más avanzada disponible.
+  const activePhaseKey = useMemo(() => {
+    if (userSelectedPhase && availablePhases.some((p) => p.key === userSelectedPhase)) {
+      return userSelectedPhase;
+    }
+    return defaultPhaseKey;
+  }, [userSelectedPhase, availablePhases, defaultPhaseKey]);
 
   const currentSeries = useMemo(() => {
-    if (selectedPhase === 'Cuartos') return phases.Cuartos;
-    if (selectedPhase === 'Semis') return phases.Semis;
-    if (selectedPhase === 'Final') return phases.Final;
-    if (selectedPhase === 'Placement') return phases.Placement;
+    if (activePhaseKey === 'Cuartos') return phases.Cuartos;
+    if (activePhaseKey === 'Semis') return phases.Semis;
+    if (activePhaseKey === 'Final') return phases.Final;
+    if (activePhaseKey === 'Placement') return phases.Placement;
     return [];
-  }, [phases, selectedPhase]);
+  }, [phases, activePhaseKey]);
 
-  const activePhaseObj = availablePhases.find((p) => p.key === selectedPhase);
-  const phaseLabel = activePhaseObj ? activePhaseObj.label : selectedPhase;
+  const activePhaseObj = availablePhases.find((p) => p.key === activePhaseKey);
+  const phaseLabel = activePhaseObj ? activePhaseObj.label : activePhaseKey;
+
+  const noDataText = t('playoffs.no_data');
+  const emptyMessage =
+    noDataText && noDataText !== 'playoffs.no_data'
+      ? noDataText
+      : 'No hay partidos programados para esta fase';
 
   return (
     <View className="px-3 pt-3">
@@ -305,11 +320,11 @@ export function PlayoffsTab({ matches }: { matches: SeasonOverviewMatch[] }) {
       {availablePhases.length > 1 ? (
         <View className="mb-3 flex-row flex-wrap gap-2">
           {availablePhases.map((phase) => {
-            const isSelected = selectedPhase === phase.key;
+            const isSelected = activePhaseKey === phase.key;
             return (
               <Pressable
                 key={phase.key}
-                onPress={() => setSelectedPhase(phase.key)}
+                onPress={() => setUserSelectedPhase(phase.key)}
                 className={`rounded-full px-4 py-1.5 active:opacity-80 ${
                   isSelected
                     ? 'bg-rink-passion dark:bg-accent'
@@ -334,9 +349,7 @@ export function PlayoffsTab({ matches }: { matches: SeasonOverviewMatch[] }) {
       {/* Listado de series de la fase seleccionada */}
       {currentSeries.length === 0 ? (
         <View className="rounded-xl bg-white p-6 items-center justify-center dark:bg-slate-900">
-          <Text className="text-xs text-slate-500">
-            {t('playoffs.no_data') ?? 'No hay partidos programados para esta fase'}
-          </Text>
+          <Text className="text-xs text-slate-500">{emptyMessage}</Text>
         </View>
       ) : (
         currentSeries.map((serie, idx) => (
@@ -344,7 +357,7 @@ export function PlayoffsTab({ matches }: { matches: SeasonOverviewMatch[] }) {
             key={idx}
             serie={serie}
             label={currentSeries.length > 1 ? `${phaseLabel} · Serie ${idx + 1}` : phaseLabel}
-            isFinal={selectedPhase === 'Final'}
+            isFinal={activePhaseKey === 'Final'}
           />
         ))
       )}

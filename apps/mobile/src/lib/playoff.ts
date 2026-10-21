@@ -85,11 +85,35 @@ const STAGE_BUCKET: Partial<Record<string, PlayoffPhase>> = {
  */
 export function groupByPhase(matches: SeasonOverviewMatch[]): Record<PlayoffPhase, SeasonOverviewMatch[]> {
   const buckets: Record<PlayoffPhase, SeasonOverviewMatch[]> = { Cuartos: [], Semis: [], Final: [] };
-  for (const m of matches) {
-    if (m.roundType !== 'playoff') continue;
+  const playoffMatches = matches.filter((m) => m.roundType === 'playoff');
+
+  // Si no hay stages explícitos, verificar si es un formato Final Four (2 semifinales y 1 final entre 4 equipos)
+  // donde la fuente haya etiquetado todos los partidos bajo la misma ronda o roundNumber
+  const needsFinalFourInference =
+    playoffMatches.length === 3 && playoffMatches.every((m) => !m.stage);
+
+  if (needsFinalFourInference) {
+    const sorted = [...playoffMatches].sort((a, b) =>
+      (a.scheduledAt ?? '') < (b.scheduledAt ?? '') ? -1 : 1,
+    );
+    buckets.Semis.push(sorted[0]!, sorted[1]!);
+    buckets.Final.push(sorted[2]!);
+    return buckets;
+  }
+
+  for (const m of playoffMatches) {
     if (m.stage) {
       const b = STAGE_BUCKET[m.stage];
       if (b) buckets[b].push(m);
+      continue;
+    }
+    const name = (m.roundName ?? '').toLowerCase();
+    if (name.includes('cuarto') || name.includes('1/4')) {
+      buckets.Cuartos.push(m);
+      continue;
+    }
+    if (name.includes('semi') || name.includes('1/2')) {
+      buckets.Semis.push(m);
       continue;
     }
     const rn = m.roundNumber ?? 1;

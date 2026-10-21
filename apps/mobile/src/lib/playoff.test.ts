@@ -127,6 +127,43 @@ describe('playoff helpers', () => {
       expect(placements).toHaveLength(1);
       expect(placements[0].id).toBe('p1');
     });
+
+    it('infers Semis and Final for a 3-match Final Four without explicit stages', () => {
+      const semi1 = createMatch({
+        id: 's1',
+        stage: null,
+        roundNumber: 4,
+        roundName: 'FINAL',
+        scheduledAt: '2025-09-20T14:15:00Z',
+        homeTeam: { id: 'team-a', name: 'Team A', shortName: 'A', logoUrl: null },
+        awayTeam: { id: 'team-b', name: 'Team B', shortName: 'B', logoUrl: null },
+      });
+      const semi2 = createMatch({
+        id: 's2',
+        stage: null,
+        roundNumber: 4,
+        roundName: 'FINAL',
+        scheduledAt: '2025-09-20T16:45:00Z',
+        homeTeam: { id: 'team-c', name: 'Team C', shortName: 'C', logoUrl: null },
+        awayTeam: { id: 'team-d', name: 'Team D', shortName: 'D', logoUrl: null },
+      });
+      const finalMatch = createMatch({
+        id: 'f1',
+        stage: null,
+        roundNumber: 4,
+        roundName: 'FINAL',
+        scheduledAt: '2025-09-21T10:15:00Z',
+        homeTeam: { id: 'team-b', name: 'Team B', shortName: 'B', logoUrl: null },
+        awayTeam: { id: 'team-c', name: 'Team C', shortName: 'C', logoUrl: null },
+      });
+
+      const grouped = groupByPhase([semi1, semi2, finalMatch]);
+      expect(grouped.Cuartos).toHaveLength(0);
+      expect(grouped.Semis).toHaveLength(2);
+      expect(grouped.Semis.map((m) => m.id)).toEqual(['s1', 's2']);
+      expect(grouped.Final).toHaveLength(1);
+      expect(grouped.Final[0]!.id).toBe('f1');
+    });
   });
 
   describe('advancedFrom', () => {
