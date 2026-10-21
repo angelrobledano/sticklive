@@ -202,3 +202,22 @@ export function nextMatchday<T extends MatchSummary>(
   }
   return next === null ? null : buildDayView(matches, { ...opts, dayKey: next, filter: 'all' });
 }
+
+/**
+ * Calcula el desplazamiento horizontal (offset) para centrar un elemento
+ * en el centro exacto de la pantalla.
+ */
+export function computeCenterOffset(
+  index: number,
+  containerWidth: number,
+  itemWidth = 58,
+  itemMargin = 6,
+  horizontalPadding = 12,
+): number {
+  if (index < 0 || containerWidth <= 0) return 0;
+  const totalItemWidth = itemWidth + itemMargin;
+  const itemCenter = horizontalPadding + index * totalItemWidth + itemWidth / 2;
+  const targetOffset = itemCenter - containerWidth / 2;
+  return Math.max(0, targetOffset);
+}
+

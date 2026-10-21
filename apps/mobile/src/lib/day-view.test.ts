@@ -3,6 +3,7 @@ import {
   addDaysToKey,
   buildDateKeys,
   buildDayView,
+  computeCenterOffset,
   dayDiff,
   daysWithMatches,
   getRelativeKey,
@@ -141,5 +142,26 @@ describe('buildDayView', () => {
     const next = nextMatchday(matches, '2026-10-21');
     expect(next?.dayKey).toBe('2026-10-24');
     expect(next?.total).toBe(1);
+  });
+
+  describe('computeCenterOffset', () => {
+    it('centra el elemento en el medio exacto del ancho de pantalla', () => {
+      // Ancho pantalla 400. TotalItemWidth = 64 (58+6). Padding = 12.
+      // Index 7 (Hoy): center = 12 + 7 * 64 + 29 = 489.
+      // Offset = 489 - 200 = 289.
+      expect(computeCenterOffset(7, 400, 58, 6, 12)).toBe(289);
+    });
+
+    it('devuelve 0 si el elemento está tan cerca del inicio que el offset sería negativo', () => {
+      // Index 0: center = 12 + 0 + 29 = 41. Offset = 41 - 200 = -159 => 0
+      expect(computeCenterOffset(0, 400, 58, 6, 12)).toBe(0);
+      expect(computeCenterOffset(1, 400, 58, 6, 12)).toBe(0);
+    });
+
+    it('devuelve 0 con inputs inválidos o contenedor sin medir', () => {
+      expect(computeCenterOffset(-1, 400)).toBe(0);
+      expect(computeCenterOffset(7, 0)).toBe(0);
+      expect(computeCenterOffset(7, -100)).toBe(0);
+    });
   });
 });

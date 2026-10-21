@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { FlatList, Pressable, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { FlatList, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import {
   buildDateKeys,
+  computeCenterOffset,
   dayAbbr,
   getRelativeKey,
   labelDate,
@@ -18,44 +19,82 @@ interface DateSelectorProps {
 
 const ITEM_WIDTH = 58;
 const ITEM_MARGIN = 6;
+const HORIZONTAL_PADDING = 12;
 const TOTAL_ITEM_WIDTH = ITEM_WIDTH + ITEM_MARGIN;
 
 export function DateSelector({ selected, onSelect, markedDays }: DateSelectorProps) {
   const { t, locale } = useLocale();
+  const { width: windowWidth } = useWindowDimensions();
+  const [containerWidth, setContainerWidth] = useState(windowWidth);
+
   const todayKey = madridTodayKey();
   const listRef = useRef<FlatList<string>>(null);
   const dateKeys = useMemo(() => buildDateKeys(todayKey, 7, 14), [todayKey]);
 
   const selectedIndex = Math.max(0, dateKeys.indexOf(selected));
 
+  // Offset inicial calculado para que el día de hoy aparezca centrado en el primer render
+  const initialOffset = useMemo(
+    () =>
+      computeCenterOffset(
+        selectedIndex,
+        windowWidth,
+        ITEM_WIDTH,
+        ITEM_MARGIN,
+        HORIZONTAL_PADDING,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  // Centra automáticamente el día seleccionado cuando cambia la fecha o el ancho
   useEffect(() => {
-    if (selectedIndex >= 0) {
-      listRef.current?.scrollToIndex({
-        index: selectedIndex,
+    if (selectedIndex >= 0 && containerWidth > 0) {
+      const offset = computeCenterOffset(
+        selectedIndex,
+        containerWidth,
+        ITEM_WIDTH,
+        ITEM_MARGIN,
+        HORIZONTAL_PADDING,
+      );
+      listRef.current?.scrollToOffset({
+        offset,
         animated: true,
-        viewPosition: 0.5,
       });
     }
-  }, [selectedIndex]);
+  }, [selectedIndex, containerWidth]);
 
   return (
-    <View className="border-b border-slate-200 bg-white py-2 dark:border-slate-800 dark:bg-slate-900">
+    <View
+      onLayout={(e) => {
+        const w = e.nativeEvent.layout.width;
+        if (w > 0 && w !== containerWidth) setContainerWidth(w);
+      }}
+      className="border-b border-slate-200 bg-white py-2 dark:border-slate-800 dark:bg-slate-900"
+    >
       <FlatList
         ref={listRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         data={dateKeys}
         keyExtractor={(k) => k}
+        contentOffset={{ x: initialOffset, y: 0 }}
         getItemLayout={(_, index) => ({
           length: TOTAL_ITEM_WIDTH,
-          offset: TOTAL_ITEM_WIDTH * index,
+          offset: HORIZONTAL_PADDING + TOTAL_ITEM_WIDTH * index,
           index,
         })}
-        initialScrollIndex={selectedIndex > 0 ? selectedIndex : undefined}
-        onScrollToIndexFailed={() => {
-          // Fallback silencioso si el layout no ha terminado de medir
+        onScrollToIndexFailed={(info) => {
+          const offset = computeCenterOffset(
+            info.index,
+            containerWidth,
+            ITEM_WIDTH,
+            ITEM_MARGIN,
+            HORIZONTAL_PADDING,
+          );
+          listRef.current?.scrollToOffset({ offset, animated: false });
         }}
-        contentContainerStyle={{ paddingHorizontal: 12 }}
+        contentContainerStyle={{ paddingHorizontal: HORIZONTAL_PADDING }}
         renderItem={({ item: key }) => {
           const isActive = key === selected;
           const date = labelDate(key);
