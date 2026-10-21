@@ -1,8 +1,12 @@
-import { useEffect, useMemo } from 'react';
-import { FlatList, RefreshControl, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useAdsConfig, useCurrentMatches } from '@/src/hooks/queries';
+import { useSession } from '@/src/context/AuthContext';
+import { useFavorites, useLocalFavorites } from '@/src/hooks/favorites';
 import { MatchCard } from '@/src/components/match/MatchCard';
+import { DateSelector } from '@/src/components/home/DateSelector';
+import { DayChips } from '@/src/components/home/DayChips';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { NativeFeedAd } from '@/src/components/ads/NativeFeedAd';
 import { insertNativeAdPositions } from '@/src/lib/ads/nativeFeed';
@@ -10,7 +14,14 @@ import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { BrandLoader } from '@/src/components/shared/BrandLoader';
 import { capture } from '@/src/lib/analytics';
-import { formatDayKey, formatDayLabel, isEffectivelyLive } from '@/src/lib/time';
+import { formatDayLabel } from '@/src/lib/time';
+import {
+  buildDayView,
+  daysWithMatches,
+  madridTodayKey,
+  nextMatchday,
+  type DayFilter,
+} from '@/src/lib/day-view';
 import type { MatchSummary } from '@/src/lib/api/types';
 
 interface Section {
@@ -19,12 +30,6 @@ interface Section {
   matches: MatchSummary[];
 }
 
-/**
- * Items de la FlatList (Plan D Task 6): la lista se aplana a nivel de
- * partido para poder intercalar el native in-feed "cada N items de datos"
- * (un punto de inserción v1, calculado con insertNativeAdPositions) — con
- * secciones como celdas, el anuncio no podría caer en mitad de un día.
- */
 type FeedItem =
   | { kind: 'header'; key: string; title: string }
   | { kind: 'match'; key: string; match: MatchSummary }
@@ -33,41 +38,71 @@ type FeedItem =
 export default function LiveScreen() {
   const { data, isPending, isError, refetch, isRefetching } = useCurrentMatches();
   const { data: adsConfig } = useAdsConfig();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
-  // Analítica (Task 5.1): vista de la pestaña "En directo" (la home de la app).
+  // Favoritos del usuario (con o sin sesión) para destacar partidos en "Siguiendo"
+  const { session } = useSession();
+  const token = session?.token;
+  const local = useLocalFavorites(!token);
+  const server = useFavorites(token);
+  const favData = token ? server.data : local.data;
+  const teamIds = useMemo(() => favData?.teams ?? [], [favData?.teams]);
+  const leagueIds = useMemo(() => favData?.leagues ?? [], [favData?.leagues]);
+
+  const todayKey = madridTodayKey();
+  const [selectedDate, setSelectedDate] = useState<string>(todayKey);
+  const [filter, setFilter] = useState<DayFilter>('all');
+
+  // Analítica (Task 5.1): vista de la pestaña home
   useEffect(() => {
     capture('live_tab_viewed');
   }, []);
 
-  const sections = useMemo<Section[]>(() => {
-    const list = data ?? [];
-    const live = list.filter((m) => isEffectivelyLive(m.status, m.scheduledAt));
-    // Clave de sección = fecha ISO (formatDayKey, Task 5.2): estable y sin
-    // colisiones con '__live__' ni con etiquetas localizadas. La etiqueta
-    // humanizada va aparte (todos los partidos del bucket comparten día).
-    const byDay = new Map<string, MatchSummary[]>();
-    for (const m of list.filter((x) => !isEffectivelyLive(x.status, x.scheduledAt))) {
-      const key = formatDayKey(m.scheduledAt) || 'nodate';
-      const bucket = byDay.get(key) ?? [];
-      bucket.push(m);
-      byDay.set(key, bucket);
-    }
-    return [
-      ...(live.length ? [{ key: '__live__', title: t('match_states.live'), matches: live }] : []),
-      ...[...byDay.entries()].map(([key, matches]) => ({
-        key,
-        title: key === 'nodate' ? '—' : formatDayLabel(matches[0]?.scheduledAt ?? null),
-        matches,
-      })),
-    ];
-  }, [data, t]);
+  const markedDays = useMemo(() => daysWithMatches(data ?? []), [data]);
 
-  // Native in-feed (Plan D Task 6): items sintéticos SOLO con la config
-  // cargada y el formato enabled (fail-safe: sin config ⇒ sin items). Un
-  // único punto de inserción (v1): tras el `everyNItems`-ésimo partido.
+  const dayView = useMemo(
+    () =>
+      buildDayView(data ?? [], {
+        dayKey: selectedDate,
+        teamIds,
+        leagueIds,
+        filter,
+        locale,
+      }),
+    [data, selectedDate, teamIds, leagueIds, filter, locale],
+  );
+
+  const next = useMemo(
+    () =>
+      dayView.total === 0 && selectedDate >= todayKey
+        ? nextMatchday(data ?? [], selectedDate, { teamIds, leagueIds, locale })
+        : null,
+    [dayView.total, selectedDate, todayKey, data, teamIds, leagueIds, locale],
+  );
+
+  const sections = useMemo<Section[]>(() => {
+    const list: Section[] = [];
+    if (dayView.myTeams.length > 0) {
+      list.push({
+        key: '__following__',
+        title: 'Siguiendo',
+        matches: dayView.myTeams,
+      });
+    }
+    for (const comp of dayView.competitions) {
+      list.push({
+        key: comp.key,
+        title: comp.name ?? 'Otras competiciones',
+        matches: comp.matches,
+      });
+    }
+    return list;
+  }, [dayView]);
+
+  // Native in-feed (Plan D Task 6): items sintéticos intercalados cada N partidos
   const everyNItems =
     adsConfig?.nativeFeed.enabled === true ? adsConfig.nativeFeed.everyNItems : undefined;
+
   const feed = useMemo<FeedItem[]>(() => {
     const items: FeedItem[] = [];
     for (const s of sections) {
@@ -93,32 +128,70 @@ export default function LiveScreen() {
       </View>
     );
   }
-  // Con datos previos (fallo de refetch en segundo plano) se CONSERVA la lista:
-  // el ErrorState solo sustituye la pantalla si no hay nada que mostrar.
+
   if (isError && !data) return <ErrorState onRetry={() => void refetch()} />;
 
   return (
-    <FlatList
-      className="bg-rink-floor dark:bg-rink-floor-dark"
-      contentContainerStyle={{ flexGrow: 1 }}
-      data={feed}
-      keyExtractor={(item) => item.key}
-      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
-      renderItem={({ item }) => {
-        if (item.kind === 'header') {
-          return (
-            <Text className="px-4 pb-1 pt-3 text-xs font-bold uppercase text-slate-500">
-              {item.title}
-            </Text>
-          );
+    <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
+      {/* Selector de fecha horizontal (carrusel días ±) */}
+      <DateSelector
+        selected={selectedDate}
+        onSelect={(key) => {
+          setSelectedDate(key);
+          setFilter('all');
+        }}
+        markedDays={markedDays}
+      />
+
+      {/* Filtros de jornada (En directo / Siguiendo) */}
+      <DayChips
+        liveCount={dayView.liveCount}
+        followingCount={dayView.followingCount}
+        filter={dayView.filter}
+        onChange={setFilter}
+      />
+
+      {/* Lista de partidos de la jornada agrupados por competición */}
+      <FlatList
+        contentContainerStyle={{ flexGrow: 1 }}
+        data={feed}
+        keyExtractor={(item) => item.key}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
+        renderItem={({ item }) => {
+          if (item.kind === 'header') {
+            return (
+              <Text className="px-4 pb-1 pt-3 text-xs font-bold uppercase tracking-wider text-slate-500">
+                {item.title}
+              </Text>
+            );
+          }
+          if (item.kind === 'ad') return <NativeFeedAd />;
+          return <MatchCard match={item.match} />;
+        }}
+        ListEmptyComponent={
+          <View className="flex-1 items-center justify-center px-8 py-16">
+            <EmptyState
+              title={
+                selectedDate === todayKey
+                  ? t('common.no_matches_today')
+                  : t('common.no_matches_this_day')
+              }
+              hint={t('common.no_matches_hint')}
+            />
+            {next ? (
+              <Pressable
+                onPress={() => setSelectedDate(next.dayKey)}
+                className="mt-4 rounded-xl bg-rink-passion px-4 py-2.5 active:opacity-80 dark:bg-rose-700"
+              >
+                <Text className="text-sm font-semibold text-white">
+                  Ver jornada: {formatDayLabel(next.dayKey)}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
         }
-        if (item.kind === 'ad') return <NativeFeedAd />;
-        return <MatchCard match={item.match} />;
-      }}
-      ListEmptyComponent={
-        <EmptyState title={t('common.no_matches_today')} hint={t('common.no_matches_hint')} />
-      }
-      ListFooterComponent={<AdBanner variant="list" />}
-    />
+        ListFooterComponent={<AdBanner variant="list" />}
+      />
+    </View>
   );
 }

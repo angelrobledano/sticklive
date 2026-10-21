@@ -26,7 +26,14 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colorScheme === 'dark' ? BRAND.accent : BRAND.granate,
       }}
     >
-      <Tabs.Screen name="index" options={{ title: t('nav.live'), tabBarIcon: ({ color, size }) => <Ionicons name={ICONS.index} color={color} size={size} /> }} />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: t('nav.live'),
+          headerTitle: 'Stick Live',
+          tabBarIcon: ({ color, size }) => <Ionicons name={ICONS.index} color={color} size={size} />,
+        }}
+      />
       <Tabs.Screen name="standings" options={{ title: t('nav.standings'), tabBarIcon: ({ color, size }) => <Ionicons name={ICONS.standings} color={color} size={size} /> }} />
       <Tabs.Screen name="search" options={{ title: t('nav.search'), tabBarIcon: ({ color, size }) => <Ionicons name={ICONS.search} color={color} size={size} /> }} />
       <Tabs.Screen name="favorites" options={{ title: t('nav.favorites'), tabBarIcon: ({ color, size }) => <Ionicons name={ICONS.favorites} color={color} size={size} /> }} />
