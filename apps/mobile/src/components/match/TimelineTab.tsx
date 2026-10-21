@@ -300,13 +300,17 @@ function TimelineRow({
   } else {
     // Nivel Medio: Penaltis y Faltas directas con desenlace destacado (MARCADA / FALLADA)
     cellContent = (
-      <View className={`min-w-0 ${isHome ? 'items-end' : 'items-start'}`}>
-        <View className="flex-row items-center gap-1">
-          <Text className="text-[13px] font-semibold text-slate-800 dark:text-slate-200">
+      <View className={`min-w-0 max-w-full ${isHome ? 'items-end' : 'items-start'}`}>
+        <View className={`flex-row flex-wrap items-center gap-x-1 ${isHome ? 'justify-end' : 'justify-start'}`}>
+          <Text
+            numberOfLines={1}
+            className="text-xs font-semibold text-slate-800 dark:text-slate-200"
+          >
             {eventTitle(ev, t)}
           </Text>
           {outcomeText ? (
             <Text
+              numberOfLines={1}
               className={`text-xs font-bold uppercase tracking-wide ${
                 outcomeIsScored
                   ? 'text-emerald-600 dark:text-emerald-400'
@@ -358,7 +362,7 @@ function TimelineRow({
       <View className="flex-1 items-end justify-center pr-1.5 min-h-[26px]">
         {isHome ? (
           <View className="flex-row items-center justify-end gap-2 max-w-full">
-            {cellContent}
+            <View className="flex-1 items-end min-w-0">{cellContent}</View>
             <TimelineEventIcon type={ev.eventType} />
           </View>
         ) : null}
@@ -386,7 +390,7 @@ function TimelineRow({
         {!isHome ? (
           <View className="flex-row items-center justify-start gap-2 max-w-full">
             <TimelineEventIcon type={ev.eventType} />
-            {cellContent}
+            <View className="flex-1 items-start min-w-0">{cellContent}</View>
           </View>
         ) : null}
       </View>
