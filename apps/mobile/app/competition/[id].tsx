@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useCompetitions, useCompetitionSeasons, useSeasonOverview } from '@/src/hooks/queries';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
@@ -10,6 +11,7 @@ import { EmptyState } from '@/src/components/shared/EmptyState';
 import { BrandLoader } from '@/src/components/shared/BrandLoader';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { formatDayLabel, formatKickoff, isEffectivelyLive } from '@/src/lib/time';
+import { clubName } from '@/src/lib/names';
 import type { SeasonOverviewMatch, SeasonOverviewStandingRow } from '@/src/lib/api/types';
 
 const COL_WIDTHS = 'w-7' as const;
@@ -82,9 +84,33 @@ export default function CompetitionScreen() {
     );
   }
 
+  const displayTitle = clubName(compTitle) || compTitle;
+
+  const handleShare = () => {
+    void Share.share({
+      message: `${displayTitle} | Stick Live\nhttps://sticklive.eu/competitions/${competitionId}`,
+      url: `https://sticklive.eu/competitions/${competitionId}`,
+      title: displayTitle,
+    });
+  };
+
   return (
     <>
-      <Stack.Screen options={{ title: compTitle }} />
+      <Stack.Screen
+        options={{
+          title: displayTitle,
+          headerRight: () => (
+            <Pressable
+              onPress={handleShare}
+              accessibilityLabel="Compartir competición"
+              hitSlop={8}
+              className="p-1 active:opacity-60"
+            >
+              <Ionicons name="share-outline" size={20} color="#0f172a" />
+            </Pressable>
+          ),
+        }}
+      />
       <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
         {/* Cabecera de competición */}
         <View className="mx-3 mt-2 rounded-xl bg-white p-4 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
@@ -211,8 +237,8 @@ export default function CompetitionScreen() {
                         name={row.teamName}
                         size={22}
                       />
-                      <Text numberOfLines={1} className="ml-2 text-sm font-medium">
-                        {row.teamShortName ?? row.teamName}
+                      <Text numberOfLines={1} className="ml-2 flex-1 text-sm font-medium">
+                        {clubName(row.teamName) || row.teamShortName || row.teamName}
                       </Text>
                     </View>
                     <Text className={`${COL_WIDTHS} text-center text-sm text-slate-600 dark:text-slate-300`}>
@@ -327,25 +353,25 @@ export default function CompetitionScreen() {
                       </View>
 
                       <View className="mt-2 flex-row items-center justify-between">
-                        <View className="flex-1 flex-row items-center">
+                        <View className="flex-1 flex-row items-center pr-1">
                           <Avatar
                             uri={teamLogoUri(m.homeTeam.id, 64)}
                             fallbackUri={m.homeTeam.logoUrl}
                             name={m.homeTeam.name}
                             size={24}
                           />
-                          <Text numberOfLines={1} className="ml-2 flex-1 font-semibold">
-                            {m.homeTeam.shortName ?? m.homeTeam.name}
+                          <Text numberOfLines={1} className="ml-2 flex-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                            {clubName(m.homeTeam.name) || m.homeTeam.shortName || m.homeTeam.name}
                           </Text>
                         </View>
-                        <Text className="px-3 font-mono text-base font-bold">
+                        <Text className="px-3 font-mono text-base font-extrabold tabular-nums text-slate-900 dark:text-slate-50">
                           {live || isFinal
                             ? `${m.score.home ?? 0} - ${m.score.away ?? 0}`
                             : 'vs'}
                         </Text>
-                        <View className="flex-1 flex-row items-center justify-end">
-                          <Text numberOfLines={1} className="mr-2 flex-1 text-right font-semibold">
-                            {m.awayTeam.shortName ?? m.awayTeam.name}
+                        <View className="flex-1 flex-row items-center justify-end pl-1">
+                          <Text numberOfLines={1} className="mr-2 flex-1 text-right text-sm font-semibold text-slate-800 dark:text-slate-100">
+                            {clubName(m.awayTeam.name) || m.awayTeam.shortName || m.awayTeam.name}
                           </Text>
                           <Avatar
                             uri={teamLogoUri(m.awayTeam.id, 64)}

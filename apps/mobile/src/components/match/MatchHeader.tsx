@@ -6,6 +6,7 @@ import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
+import { clubName } from '@/src/lib/names';
 import {
   eventSurname,
   finalLabelKey,
@@ -28,6 +29,9 @@ export function MatchHeader({ data, liveStale = false, staleSeconds = 0 }: Match
   const { match, stats, events } = data;
   const ht = match.homeTeam;
   const at = match.awayTeam;
+
+  const homeName = clubName(ht.name) || ht.shortName || ht.name;
+  const awayName = clubName(at.name) || at.shortName || at.name;
 
   const isLive =
     match.status === 'live' ||
@@ -159,7 +163,7 @@ export function MatchHeader({ data, liveStale = false, staleSeconds = 0 }: Match
               className="mt-2 text-center text-sm font-bold text-slate-900 dark:text-slate-100"
               numberOfLines={2}
             >
-              {ht.shortName ?? ht.name}
+              {homeName}
             </Text>
           </Pressable>
           <View className="mt-0.5">
@@ -219,7 +223,7 @@ export function MatchHeader({ data, liveStale = false, staleSeconds = 0 }: Match
               className="mt-2 text-center text-sm font-bold text-slate-900 dark:text-slate-100"
               numberOfLines={2}
             >
-              {at.shortName ?? at.name}
+              {awayName}
             </Text>
           </Pressable>
           <View className="mt-0.5">

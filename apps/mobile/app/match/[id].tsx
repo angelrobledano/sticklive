@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Share, View } from 'react-native';
 import { Stack, useIsFocused, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useMatchDetail } from '@/src/hooks/queries';
 import { useMatchLive } from '@/src/hooks/useMatchLive';
 import { useInterstitialOnLeave } from '@/src/hooks/ads/useInterstitialOnLeave';
@@ -15,6 +16,7 @@ import { StatsTab } from '@/src/components/match/StatsTab';
 import { capture } from '@/src/lib/analytics';
 import { isAdQuietTime } from '@/src/lib/time';
 import { visibleTabsFor, type Tab } from '@/src/lib/match-helpers';
+import { clubName } from '@/src/lib/names';
 
 export default function MatchScreen() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -61,7 +63,21 @@ export default function MatchScreen() {
   const staleSeconds =
     live.stale && live.staleAt != null ? Math.max(0, Math.round((now - live.staleAt) / 1000)) : 0;
 
-  const title = `${m.homeTeam.shortName ?? m.homeTeam.name} - ${m.awayTeam.shortName ?? m.awayTeam.name}`;
+  const homeLabel = clubName(m.homeTeam.name) || m.homeTeam.shortName || m.homeTeam.name;
+  const awayLabel = clubName(m.awayTeam.name) || m.awayTeam.shortName || m.awayTeam.name;
+  const title = `${homeLabel} - ${awayLabel}`;
+
+  const handleShare = () => {
+    const scoreText =
+      m.status === 'live' || m.status === 'finished'
+        ? `${m.score.home ?? 0} - ${m.score.away ?? 0}`
+        : 'vs';
+    void Share.share({
+      message: `${homeLabel} ${scoreText} ${awayLabel} | Stick Live\nhttps://sticklive.eu/matches/${m.id}`,
+      url: `https://sticklive.eu/matches/${m.id}`,
+      title: `${homeLabel} vs ${awayLabel}`,
+    });
+  };
 
   return (
     <>
@@ -69,6 +85,16 @@ export default function MatchScreen() {
         options={{
           title,
           headerBackTitle: 'Atrás',
+          headerRight: () => (
+            <Pressable
+              onPress={handleShare}
+              accessibilityLabel="Compartir partido"
+              hitSlop={8}
+              className="p-1 active:opacity-60"
+            >
+              <Ionicons name="share-outline" size={20} color="#0f172a" />
+            </Pressable>
+          ),
         }}
       />
       <ScrollView

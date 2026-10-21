@@ -8,6 +8,7 @@ import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { AdBanner } from '@/src/components/ads/AdBanner';
+import { clubName, playerDisplayName } from '@/src/lib/names';
 
 /**
  * Tab de búsqueda (Task 2.5): TextInput con debounce de 300 ms → useSearch.
@@ -77,7 +78,7 @@ export default function SearchScreen() {
                   <Avatar uri={teamLogoUri(team.id)} name={team.name} size={28} />
                   <View className="ml-3 flex-1">
                     <Text numberOfLines={1} className="text-base font-medium">
-                      {team.name}
+                      {clubName(team.name) || team.name}
                     </Text>
                     {team.country ? <Text className="text-xs text-slate-500">{team.country}</Text> : null}
                   </View>
@@ -103,9 +104,13 @@ export default function SearchScreen() {
                   />
                   <View className="ml-3 flex-1">
                     <Text numberOfLines={1} className="text-base font-medium">
-                      {player.firstName} {player.lastName}
+                      {playerDisplayName(player.firstName, player.lastName)}
                     </Text>
-                    {player.teamName ? <Text className="text-xs text-slate-500">{player.teamName}</Text> : null}
+                    {player.teamName ? (
+                      <Text className="text-xs text-slate-500">
+                        {clubName(player.teamName) || player.teamName}
+                      </Text>
+                    ) : null}
                   </View>
                 </Pressable>
               ))}
@@ -129,7 +134,7 @@ export default function SearchScreen() {
                   />
                   <View className="ml-3 flex-1">
                     <Text numberOfLines={1} className="text-base font-medium">
-                      {competition.name}
+                      {clubName(competition.name) || competition.name}
                     </Text>
                     {competition.seasonName ? (
                       <Text className="text-xs text-slate-500">{competition.seasonName}</Text>

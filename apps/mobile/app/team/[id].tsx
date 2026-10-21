@@ -1,5 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useTeam } from '@/src/hooks/queries';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
@@ -7,6 +8,7 @@ import { ErrorState } from '@/src/components/shared/ErrorState';
 import { BrandLoader } from '@/src/components/shared/BrandLoader';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { formatDayLabel, formatKickoff, isEffectivelyLive } from '@/src/lib/time';
+import { clubName, playerDisplayName } from '@/src/lib/names';
 
 /**
  * Ficha de equipo (Task 2.5) — `GET /teams/:id` (TeamDetail en types.ts, shape
@@ -36,17 +38,41 @@ export default function TeamScreen() {
   const { team, standing, matches, squad } = query.data;
   const sectionTitle = 'px-4 pb-1 pt-4 text-xs font-bold uppercase text-slate-500';
 
+  const displayName = clubName(team.name) || team.shortName || team.name;
+
+  const handleShare = () => {
+    void Share.share({
+      message: `${displayName} | Stick Live\nhttps://sticklive.eu/teams/${team.id}`,
+      url: `https://sticklive.eu/teams/${team.id}`,
+      title: displayName,
+    });
+  };
+
   return (
     <>
-      <Stack.Screen options={{ title: team.shortName ?? team.name }} />
+      <Stack.Screen
+        options={{
+          title: displayName,
+          headerRight: () => (
+            <Pressable
+              onPress={handleShare}
+              accessibilityLabel="Compartir equipo"
+              hitSlop={8}
+              className="p-1 active:opacity-60"
+            >
+              <Ionicons name="share-outline" size={20} color="#0f172a" />
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView className="bg-rink-floor dark:bg-rink-floor-dark">
         {/* Cabecera (la estrella de seguir es un favorito del EQUIPO, no del partido) */}
-        <View className="relative items-center rounded-xl bg-white p-4 mx-3 mt-2 dark:bg-slate-900">
-          <View className="absolute right-1 top-1">
+        <View className="relative items-center rounded-xl bg-white p-4 mx-3 mt-2 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+          <View className="absolute right-2 top-2">
             <FollowButton kind="team" refId={team.id} />
           </View>
-          <Avatar uri={teamLogoUri(team.id, 192)} name={team.name} size={72} />
-          <Text className="mt-2 text-center text-lg font-bold">{team.name}</Text>
+          <Avatar uri={teamLogoUri(team.id, 192)} name={displayName} size={72} />
+          <Text className="mt-2 text-center text-lg font-bold text-slate-900 dark:text-slate-100">{displayName}</Text>
           {team.sectionSuffix ? <Text className="text-xs text-slate-500">{team.sectionSuffix}</Text> : null}
         </View>
 
@@ -107,11 +133,11 @@ export default function TeamScreen() {
                     <Avatar
                       uri={teamLogoUri(m.homeTeam.id, 64)}
                       fallbackUri={m.homeTeam.logoUrl}
-                      name={m.homeTeam.shortName ?? m.homeTeam.name}
+                      name={m.homeTeam.name}
                       size={22}
                     />
                     <Text numberOfLines={1} className="flex-1 text-sm font-semibold">
-                      {m.homeTeam.shortName ?? m.homeTeam.name}
+                      {clubName(m.homeTeam.name) || m.homeTeam.shortName || m.homeTeam.name}
                     </Text>
                   </View>
                   <Text className="px-2 font-mono text-base font-bold">
@@ -119,12 +145,12 @@ export default function TeamScreen() {
                   </Text>
                   <View className="flex-1 flex-row items-center justify-end gap-2 pl-1">
                     <Text numberOfLines={1} className="flex-1 text-right text-sm font-semibold">
-                      {m.awayTeam.shortName ?? m.awayTeam.name}
+                      {clubName(m.awayTeam.name) || m.awayTeam.shortName || m.awayTeam.name}
                     </Text>
                     <Avatar
                       uri={teamLogoUri(m.awayTeam.id, 64)}
                       fallbackUri={m.awayTeam.logoUrl}
-                      name={m.awayTeam.shortName ?? m.awayTeam.name}
+                      name={m.awayTeam.name}
                       size={22}
                     />
                   </View>
@@ -156,7 +182,7 @@ export default function TeamScreen() {
                   variant="player"
                 />
                 <Text numberOfLines={1} className="ml-2.5 flex-1 text-sm font-medium">
-                  {p.firstName} {p.lastName}
+                  {playerDisplayName(p.firstName, p.lastName)}
                   {p.isGoalkeeper ? <Text className="text-xs text-slate-500"> · {t('team.gk_short')}</Text> : null}
                 </Text>
                 {p.goals > 0 ? (

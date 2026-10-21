@@ -10,6 +10,7 @@ import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { NativeFeedAd } from '@/src/components/ads/NativeFeedAd';
 import { insertNativeAdPositions } from '@/src/lib/ads/nativeFeed';
+import { clubName } from '@/src/lib/names';
 import type { StandingsRow } from '@/src/lib/api/types';
 
 /**
@@ -164,7 +165,7 @@ export default function StandingsScreen() {
                     size={24}
                   />
                   <Text numberOfLines={1} className="ml-2 flex-1 text-sm font-medium">
-                    {item.row.team_short_name ?? item.row.team_name}
+                    {clubName(item.row.team_name) || item.row.team_short_name || item.row.team_name}
                   </Text>
                 </View>
                 <Text className={`${COL_WIDTHS} text-center text-sm tabular-nums`}>{item.row.played}</Text>

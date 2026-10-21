@@ -4,7 +4,8 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 import { useAdsConfig, useCurrentMatches } from '@/src/hooks/queries';
 import { useSession } from '@/src/context/AuthContext';
 import { useFavorites, useLocalFavorites } from '@/src/hooks/favorites';
-import { MatchCard } from '@/src/components/match/MatchCard';
+import { MatchGroupCard } from '@/src/components/home/MatchGroupCard';
+import { MatchRow } from '@/src/components/home/MatchRow';
 import { DateSelector } from '@/src/components/home/DateSelector';
 import { DayChips } from '@/src/components/home/DayChips';
 import { AdBanner } from '@/src/components/ads/AdBanner';
@@ -27,12 +28,13 @@ import type { MatchSummary } from '@/src/lib/api/types';
 interface Section {
   key: string;
   title: string;
+  competitionId?: string | null;
+  followed?: boolean;
   matches: MatchSummary[];
 }
 
 type FeedItem =
-  | { kind: 'header'; key: string; title: string }
-  | { kind: 'match'; key: string; match: MatchSummary }
+  | { kind: 'group'; key: string; section: Section }
   | { kind: 'ad'; key: string };
 
 export default function LiveScreen() {
@@ -53,7 +55,7 @@ export default function LiveScreen() {
   const [selectedDate, setSelectedDate] = useState<string>(todayKey);
   const [filter, setFilter] = useState<DayFilter>('all');
 
-  // Analítica (Task 5.1): vista de la pestaña home
+  // Analítica: vista de la pestaña home
   useEffect(() => {
     capture('live_tab_viewed');
   }, []);
@@ -85,7 +87,9 @@ export default function LiveScreen() {
     if (dayView.myTeams.length > 0) {
       list.push({
         key: '__following__',
-        title: 'Siguiendo',
+        title: t('favorites.following_section') || 'Siguiendo',
+        competitionId: null,
+        followed: true,
         matches: dayView.myTeams,
       });
     }
@@ -93,31 +97,28 @@ export default function LiveScreen() {
       list.push({
         key: comp.key,
         title: comp.name ?? 'Otras competiciones',
+        competitionId: comp.id,
+        followed: comp.followed,
         matches: comp.matches,
       });
     }
     return list;
-  }, [dayView]);
+  }, [dayView, t]);
 
-  // Native in-feed (Plan D Task 6): items sintéticos intercalados cada N partidos
+  // Native in-feed: intercalados tras el grupo correspondiente
   const everyNItems =
     adsConfig?.nativeFeed.enabled === true ? adsConfig.nativeFeed.everyNItems : undefined;
 
   const feed = useMemo<FeedItem[]>(() => {
-    const items: FeedItem[] = [];
-    for (const s of sections) {
-      items.push({ kind: 'header', key: `header:${s.key}`, title: s.title });
-      for (const m of s.matches) items.push({ kind: 'match', key: `match:${m.id}`, match: m });
-    }
-    const matchCount = items.reduce((n, it) => (it.kind === 'match' ? n + 1 : n), 0);
-    const [position] = insertNativeAdPositions(matchCount, everyNItems);
+    const items: FeedItem[] = sections.map((s) => ({
+      kind: 'group',
+      key: `group:${s.key}`,
+      section: s,
+    }));
+    const [position] = insertNativeAdPositions(items.length, everyNItems);
     if (position === undefined) return items;
-    const out: FeedItem[] = [];
-    let seen = 0;
-    for (const it of items) {
-      out.push(it);
-      if (it.kind === 'match' && ++seen === position) out.push({ kind: 'ad', key: 'native-ad' });
-    }
+    const out = [...items];
+    out.splice(position, 0, { kind: 'ad', key: 'native-ad' });
     return out;
   }, [sections, everyNItems]);
 
@@ -153,20 +154,30 @@ export default function LiveScreen() {
 
       {/* Lista de partidos de la jornada agrupados por competición */}
       <FlatList
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
         data={feed}
         keyExtractor={(item) => item.key}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
         renderItem={({ item }) => {
-          if (item.kind === 'header') {
-            return (
-              <Text className="px-4 pb-1 pt-3 text-xs font-bold uppercase tracking-wider text-slate-500">
-                {item.title}
-              </Text>
-            );
-          }
           if (item.kind === 'ad') return <NativeFeedAd />;
-          return <MatchCard match={item.match} />;
+          const { section } = item;
+          return (
+            <MatchGroupCard
+              key={section.key}
+              title={section.title}
+              competitionId={section.competitionId}
+              count={section.matches.length}
+              followed={section.followed}
+            >
+              {section.matches.map((m) => (
+                <MatchRow
+                  key={m.id}
+                  match={m}
+                  showCompetition={section.key === '__following__'}
+                />
+              ))}
+            </MatchGroupCard>
+          );
         }}
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center px-8 py-16">
@@ -181,10 +192,10 @@ export default function LiveScreen() {
             {next ? (
               <Pressable
                 onPress={() => setSelectedDate(next.dayKey)}
-                className="mt-4 rounded-xl bg-rink-passion px-4 py-2.5 active:opacity-80 dark:bg-rose-700"
+                className="mt-4 rounded-xl bg-rink-passion px-5 py-2.5 active:opacity-80 dark:bg-rose-700"
               >
                 <Text className="text-sm font-semibold text-white">
-                  Ver jornada: {formatDayLabel(next.dayKey)}
+                  Ver próxima jornada: {formatDayLabel(next.dayKey)}
                 </Text>
               </Pressable>
             ) : null}

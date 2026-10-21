@@ -13,6 +13,7 @@ import { BrandLoader } from '@/src/components/shared/BrandLoader';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { authErrorKey } from '@/src/lib/auth-errors';
+import { clubName } from '@/src/lib/names';
 
 /**
  * Tab de favoritos (Task 3.3). Con sesión la fuente es `GET /auth/favorites`;
@@ -97,7 +98,7 @@ function FavoriteRow({
           numberOfLines={1}
           className="ml-3 flex-1 text-base font-medium"
         >
-          {name}
+          {kind === 'player' ? name : clubName(name) || name}
         </Text>
       </Pressable>
       <FollowButton kind={kind} refId={refId} />

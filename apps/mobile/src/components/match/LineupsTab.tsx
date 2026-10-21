@@ -6,6 +6,7 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { displayLineupName } from '@/src/lib/match-helpers';
+import { clubName } from '@/src/lib/names';
 import type { MatchDetail } from '@/src/lib/api/types';
 
 interface LineupsTabProps {
@@ -141,7 +142,7 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
             }`}
             numberOfLines={1}
           >
-            {homeTeam.shortName ?? homeTeam.name}
+            {clubName(homeTeam.name) || homeTeam.shortName || homeTeam.name}
           </Text>
         </Pressable>
 
@@ -167,7 +168,7 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
             }`}
             numberOfLines={1}
           >
-            {awayTeam.shortName ?? awayTeam.name}
+            {clubName(awayTeam.name) || awayTeam.shortName || awayTeam.name}
           </Text>
         </Pressable>
       </View>
