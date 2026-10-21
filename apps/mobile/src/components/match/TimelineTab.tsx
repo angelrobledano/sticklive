@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { EmptyState } from '@/src/components/shared/EmptyState';
-import { PenaltyShootout } from '@/src/components/match/PenaltyShootout';
 import {
   compareTimelineEvents,
   eventSurname,
@@ -25,7 +24,6 @@ interface TimelineTabProps {
   homeTeamName: string;
   awayTeamName: string;
   isScheduled: boolean;
-  penaltyShootout?: MatchDetail['match']['penaltyShootout'];
 }
 
 function interpolate(template: string, params?: Record<string, string | number>): string {
@@ -404,7 +402,6 @@ export function TimelineTab({
   homeTeamName,
   awayTeamName,
   isScheduled,
-  penaltyShootout,
 }: TimelineTabProps) {
   const { t } = useLocale();
   const [showAll, setShowAll] = useState(false);
@@ -485,18 +482,6 @@ export function TimelineTab({
           </Pressable>
         )}
       </View>
-
-      {/* Tanda de penaltis al final del tiempo reglamentario / prórroga */}
-      {penaltyShootout &&
-      (penaltyShootout.home.length > 0 || penaltyShootout.away.length > 0) ? (
-        <View className="mt-4">
-          <PenaltyShootout
-            shootout={penaltyShootout}
-            homeName={homeTeamName}
-            awayName={awayTeamName}
-          />
-        </View>
-      ) : null}
     </View>
   );
 }

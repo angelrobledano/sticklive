@@ -135,7 +135,6 @@ export default function MatchScreen() {
             homeTeamName={homeLabel}
             awayTeamName={awayLabel}
             isScheduled={isScheduled}
-            penaltyShootout={m.penaltyShootout}
           />
         )}
 
