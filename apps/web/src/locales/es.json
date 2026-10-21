@@ -462,6 +462,7 @@
     "quiet_desc": "Los partidos tardíos no te despiertan: te llega el resumen por la mañana",
     "vapid_note": "Las notificaciones push requieren configurar las claves VAPID y el Service Worker. Tu configuración queda guardada y se activará cuando el sistema esté listo.",
     "appearance": "Apariencia",
+    "theme_system": "Sistema",
     "theme_light": "Claro",
     "theme_dark": "Oscuro",
     "theme": "Tema",

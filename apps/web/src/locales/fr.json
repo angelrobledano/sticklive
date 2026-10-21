@@ -414,6 +414,7 @@
     "quiet_desc": "Les matchs tardifs ne vous réveillent pas : le résumé arrive au matin",
     "vapid_note": "Les notifications push nécessitent des clés VAPID et un Service Worker. Votre configuration est enregistrée et s’activera dès que le système sera prêt.",
     "appearance": "Apparence",
+    "theme_system": "Système",
     "theme_light": "Clair",
     "theme_dark": "Sombre",
     "theme": "Thème",

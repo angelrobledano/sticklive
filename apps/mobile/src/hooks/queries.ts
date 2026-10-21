@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { apiFetch } from '@/src/lib/api/client';
+import { apiFetch, ApiError } from '@/src/lib/api/client';
 import { isAdfreeActive } from '@/src/lib/ads/adfree';
 import type {
   AdsConfig,
@@ -111,7 +111,14 @@ export async function fetchSeasonOverview(seasonId: string): Promise<SeasonOverv
 }
 
 export async function fetchStandings(seasonId: string): Promise<StandingsResponse> {
-  return apiFetch<StandingsResponse>(`/seasons/${seasonId}/standings`);
+  try {
+    return await apiFetch<StandingsResponse>(`/seasons/${seasonId}/standings`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      return { seasonId, group: null, count: 0, standings: [] };
+    }
+    throw err;
+  }
 }
 
 export async function fetchSearch(q: string): Promise<SearchResults> {

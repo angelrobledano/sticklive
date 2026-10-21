@@ -21,6 +21,12 @@ const LOCALE_NAMES: Record<Locale, string> = {
   en: 'English', es: 'Español', fr: 'Français', it: 'Italiano', pt: 'Português',
 };
 
+const THEME_FALLBACK: Record<ThemePref, Record<Locale, string>> = {
+  system: { es: 'Sistema', en: 'System', fr: 'Système', it: 'Sistema', pt: 'Sistema' },
+  light: { es: 'Claro', en: 'Light', fr: 'Clair', it: 'Chiaro', pt: 'Claro' },
+  dark: { es: 'Oscuro', en: 'Dark', fr: 'Sombre', it: 'Scuro', pt: 'Escuro' },
+};
+
 /** Opciones de apariencia: valor del ThemePref + clave i18n de la etiqueta. */
 const THEME_OPTIONS: { value: ThemePref; labelKey: string }[] = [
   { value: 'system', labelKey: 'settings.theme_system' },
@@ -164,14 +170,18 @@ export default function SettingsScreen() {
           {t('settings.appearance')}
         </Text>
         <View className="mt-3 flex-row flex-wrap gap-2">
-          {THEME_OPTIONS.map((o) => (
-            <OptionChip
-              key={o.value}
-              label={t(o.labelKey)}
-              active={pref === o.value}
-              onPress={() => setPref(o.value)}
-            />
-          ))}
+          {THEME_OPTIONS.map((o) => {
+            const raw = t(o.labelKey);
+            const label = raw !== o.labelKey ? raw : THEME_FALLBACK[o.value]?.[locale] ?? o.value;
+            return (
+              <OptionChip
+                key={o.value}
+                label={label}
+                active={pref === o.value}
+                onPress={() => setPref(o.value)}
+              />
+            );
+          })}
         </View>
       </View>
 

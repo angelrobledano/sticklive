@@ -11,6 +11,7 @@ import { AdBanner } from '@/src/components/ads/AdBanner';
 import { NativeFeedAd } from '@/src/components/ads/NativeFeedAd';
 import { insertNativeAdPositions } from '@/src/lib/ads/nativeFeed';
 import { clubName } from '@/src/lib/names';
+import { importanceRank } from '@/src/lib/competition-importance';
 import type { StandingsRow } from '@/src/lib/api/types';
 
 /**
@@ -34,8 +35,12 @@ export default function StandingsScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Sólo competiciones con temporada activa: sin `season` no hay standings.
+  // Ordenadas por importancia (paridad con la web: ligas principales primero).
   const withSeason = useMemo(
-    () => (competitions.data ?? []).filter((c) => c.season != null),
+    () =>
+      (competitions.data ?? [])
+        .filter((c) => c.season != null)
+        .sort((a, b) => importanceRank(a.slug) - importanceRank(b.slug)),
     [competitions.data],
   );
 

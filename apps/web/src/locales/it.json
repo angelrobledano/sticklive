@@ -414,6 +414,7 @@
     "quiet_desc": "Le partite tardive non ti svegliano: il riepilogo arriva al mattino",
     "vapid_note": "Le notifiche push richiedono chiavi VAPID e Service Worker. La tua configurazione resta salvata e si attiverà quando il sistema sarà pronto.",
     "appearance": "Aspetto",
+    "theme_system": "Sistema",
     "theme_light": "Chiaro",
     "theme_dark": "Scuro",
     "theme": "Tema",
