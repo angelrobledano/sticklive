@@ -16,7 +16,12 @@ export default {
     ios: {
       bundleIdentifier: 'eu.sticklive.app',
       supportsTablet: false,
-      associatedDomains: ['applinks:sticklive.eu'],
+      // Associated Domains (Universal Links): requiere que la cuenta de Apple Developer
+      // tenga la capacidad activada en developer.apple.com.
+      // Se desactiva si ENABLE_IOS_ASSOCIATED_DOMAINS='0' (para cuentas de prueba sin capability).
+      ...(process.env['ENABLE_IOS_ASSOCIATED_DOMAINS'] !== '0'
+        ? { associatedDomains: ['applinks:sticklive.eu'] }
+        : {}),
       // iOS 18+: el sistema elige la variante según el aspecto de la pantalla de inicio.
       icon: {
         light: './assets/icon.png',

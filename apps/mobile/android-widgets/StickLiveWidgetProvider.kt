@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.RemoteViews
+import eu.sticklive.app.R
 
 /**
  * StickLiveWidgetProvider: Proveedor nativo de Home Screen Widget para Android.
