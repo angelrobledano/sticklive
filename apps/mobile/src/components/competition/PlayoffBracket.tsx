@@ -32,7 +32,7 @@ function MicroSeries({
   ];
 
   return (
-    <View className="w-32 rounded-lg border border-slate-200 bg-white p-2 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+    <View className="w-32 justify-center rounded-lg border border-slate-200 bg-white p-2 shadow-xs dark:border-slate-800 dark:bg-slate-900">
       {rows.map(({ team, wins, score }, idx) => {
         const isChampion = championId === team.id;
         const qualified = advanced.has(team.id) || isChampion;
@@ -95,6 +95,12 @@ export function PlayoffBracket({ matches }: { matches: SeasonOverviewMatch[] }) 
   const activePhases = PLAYOFF_PHASES.filter((p) => phases[p].length > 0);
   if (activePhases.length === 0) return null;
 
+  // Altura calculada para que todas las columnas de fases (Cuartos, Semis, Final)
+  // tengan la misma altura y sus tarjetas se centren verticalmente de forma armónica.
+  const maxSeriesCount = Math.max(...activePhases.map((p) => phases[p].length), 1);
+  const minBracketHeight =
+    maxSeriesCount > 1 ? maxSeriesCount * 58 + (maxSeriesCount - 1) * 8 : undefined;
+
   return (
     <View className="mb-3 rounded-2xl border border-slate-100 bg-white p-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <View className="mb-2.5 flex-row items-center gap-1.5">
@@ -106,14 +112,21 @@ export function PlayoffBracket({ matches }: { matches: SeasonOverviewMatch[] }) 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 14, paddingBottom: 2 }}
+        contentContainerStyle={{ gap: 14, paddingBottom: 2, alignItems: 'stretch' }}
       >
         {activePhases.map((phase) => (
-          <View key={phase} className="gap-2">
-            <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <View key={phase} style={{ alignSelf: 'stretch' }}>
+            <Text className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               {phase}
             </Text>
-            <View className="gap-2">
+            <View
+              style={{
+                flex: 1,
+                minHeight: minBracketHeight,
+                justifyContent: 'space-around',
+                gap: 8,
+              }}
+            >
               {phases[phase].map((serie, i) => (
                 <MicroSeries
                   key={i}
