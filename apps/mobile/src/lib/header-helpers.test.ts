@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { shouldShowTodayButton } from './header-helpers';
+import { getShareIconName, shouldShowTodayButton } from './header-helpers';
 
 describe('Header helpers', () => {
   describe('shouldShowTodayButton', () => {
@@ -17,6 +17,21 @@ describe('Header helpers', () => {
       expect(shouldShowTodayButton('2026-10-21', '')).toBe(false);
       expect(shouldShowTodayButton(undefined, '2026-10-21')).toBe(false);
       expect(shouldShowTodayButton('2026-10-21', null)).toBe(false);
+    });
+  });
+
+  describe('getShareIconName', () => {
+    it('returns share-social for android', () => {
+      expect(getShareIconName('android')).toBe('share-social');
+    });
+
+    it('returns share-outline for ios', () => {
+      expect(getShareIconName('ios')).toBe('share-outline');
+    });
+
+    it('defaults to share-outline for other platforms', () => {
+      expect(getShareIconName('web')).toBe('share-outline');
+      expect(getShareIconName('windows')).toBe('share-outline');
     });
   });
 });

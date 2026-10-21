@@ -1,8 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Share, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useColorScheme } from 'nativewind';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useCompetitions, useCompetitionSeasons, useSeasonOverview } from '@/src/hooks/queries';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
@@ -10,6 +8,7 @@ import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { CompetitionDetailSkeleton } from '@/src/components/shared/Skeleton';
+import { ShareHeaderButton } from '@/src/components/shared/ShareHeaderButton';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { formatDayLabel, formatKickoff, isEffectivelyLive } from '@/src/lib/time';
 import { clubName } from '@/src/lib/names';
@@ -22,7 +21,6 @@ export default function CompetitionScreen() {
   const competitionId = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
   const { t } = useLocale();
-  const { colorScheme } = useColorScheme();
 
   // Buscar metadatos básicos de la competición en la lista en caché o fetch
   const competitionsQuery = useCompetitions();
@@ -85,18 +83,10 @@ export default function CompetitionScreen() {
       options={{
         title: displayTitle,
         headerRight: () => (
-          <Pressable
+          <ShareHeaderButton
             onPress={handleShare}
             accessibilityLabel="Compartir competición"
-            hitSlop={8}
-            className="p-1 active:opacity-60"
-          >
-            <Ionicons
-              name="share-outline"
-              size={20}
-              color={colorScheme === 'dark' ? '#f8fafc' : '#0f172a'}
-            />
-          </Pressable>
+          />
         ),
       }}
     />
