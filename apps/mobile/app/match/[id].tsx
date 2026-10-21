@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, Share, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, RefreshControl, ScrollView, Share, View } from 'react-native';
 import { Stack, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useMatchDetail } from '@/src/hooks/queries';
 import { useMatchLive } from '@/src/hooks/useMatchLive';
@@ -131,26 +131,28 @@ export default function MatchScreen() {
           onChange={setSelectedTab}
         />
 
-        {/* Contenido de la pestaña activa */}
-        {activeTab === 'Resumen' && (
-          <TimelineTab
-            events={current.events}
-            homeTeamId={m.homeTeam.id}
-            homeTeamName={homeLabel}
-            awayTeamName={awayLabel}
-            isScheduled={isScheduled}
-          />
-        )}
+        {/* Contenido de la pestaña activa con transición suave */}
+        <AnimatedTabContent activeKey={activeTab}>
+          {activeTab === 'Resumen' && (
+            <TimelineTab
+              events={current.events}
+              homeTeamId={m.homeTeam.id}
+              homeTeamName={homeLabel}
+              awayTeamName={awayLabel}
+              isScheduled={isScheduled}
+            />
+          )}
 
-        {activeTab === 'Alineaciones' && (
-          <LineupsTab
-            lineups={current.lineups}
-            homeTeam={m.homeTeam}
-            awayTeam={m.awayTeam}
-          />
-        )}
+          {activeTab === 'Alineaciones' && (
+            <LineupsTab
+              lineups={current.lineups}
+              homeTeam={m.homeTeam}
+              awayTeam={m.awayTeam}
+            />
+          )}
 
-        {activeTab === 'Estadísticas' && <StatsTab data={current} />}
+          {activeTab === 'Estadísticas' && <StatsTab data={current} />}
+        </AnimatedTabContent>
 
         {/* Banner publicitario si está fuera de quiet time */}
         {!isAdQuietTime(m.status, m.scheduledAt) ? (
@@ -160,5 +162,44 @@ export default function MatchScreen() {
         ) : null}
       </ScrollView>
     </>
+  );
+}
+
+/** Contenedor con transición fluida de opacidad y desplazamiento sutil entre pestañas. */
+function AnimatedTabContent({
+  activeKey,
+  children,
+}: {
+  activeKey: string;
+  children: React.ReactNode;
+}) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    anim.setValue(0);
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [activeKey, anim]);
+
+  return (
+    <Animated.View
+      style={{
+        opacity: anim,
+        transform: [
+          {
+            translateY: anim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [6, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      {children}
+    </Animated.View>
   );
 }
