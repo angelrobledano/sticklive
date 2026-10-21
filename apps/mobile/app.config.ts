@@ -22,6 +22,10 @@ export default {
         dark: './assets/ios-icon-dark.png',
         tinted: './assets/ios-icon-tinted.png',
       },
+      infoPlist: {
+        NSUserTrackingUsageDescription:
+          'Stick Live utiliza identificadores para personalizar anuncios y ofrecer resultados deportivos adaptados a tus preferencias.',
+      },
     },
     android: {
       package: 'eu.sticklive.app',
@@ -65,9 +69,9 @@ export default {
       // ID real que devuelve `npx eas init`.
       'expo-updates',
       // AdMob (docs/monetizacion.md §6). El plugin inyecta el App ID en el
-      // AndroidManifest; requiere recompilar la app nativa (CNG/dev build).
-      // iOS pendiente de publicación: sin `iosAppId` el plugin SOLO avisa
-      // (crashearía en un build iOS, que este hito Android-first no genera).
+      // AndroidManifest y en Info.plist; requiere recompilar la app nativa (CNG/dev build).
+      // iosAppId: usa variable de entorno en producción o el ID de prueba oficial de Google
+      // (ca-app-pub-3940256099942544~1458002511) para desarrollo/staging.
       // delayAppMeasurementInit: doc del SDK (european-user-consent) — la
       // medición de Google arranca al abrir la app; con true espera a
       // initialize() o primera carga de ad, así un premium (que nunca llega a
@@ -76,6 +80,9 @@ export default {
         'react-native-google-mobile-ads',
         {
           androidAppId: 'ca-app-pub-2994866776026136~4595623578',
+          iosAppId:
+            process.env['EXPO_PUBLIC_ADMOB_IOS_APP_ID'] ||
+            'ca-app-pub-3940256099942544~1458002511',
           delayAppMeasurementInit: true,
         },
       ],

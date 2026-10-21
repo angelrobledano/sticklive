@@ -1,11 +1,27 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, apiFetch } from './client';
+import { ApiError, apiFetch, resolveDefaultApiUrl } from './client';
+
+vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
 
 const ok = (body: unknown) =>
   new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe('resolveDefaultApiUrl', () => {
+  it('resuelve 10.0.2.2 en Android (emulador host)', () => {
+    expect(resolveDefaultApiUrl('android')).toBe('http://10.0.2.2:3000');
+  });
+
+  it('resuelve localhost en iOS (simulador host)', () => {
+    expect(resolveDefaultApiUrl('ios')).toBe('http://localhost:3000');
+  });
+
+  it('resuelve localhost para otras plataformas (web, etc.)', () => {
+    expect(resolveDefaultApiUrl('web')).toBe('http://localhost:3000');
+  });
 });
 
 describe('apiFetch', () => {
