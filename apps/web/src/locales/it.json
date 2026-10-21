@@ -375,6 +375,7 @@
     "notif_error": "Impossibile salvare le impostazioni. Controlla la connessione e riprova.",
     "notif_requires_device": "Le notifiche push richiedono un dispositivo fisico (non funzionano su emulatore).",
     "notif_requires_dev_build": "Le notifiche push richiedono l'installazione dell'app (development build): Expo Go non le supporta.",
+    "notif_fcm_setup": "Le notifiche push su Android richiedono le credenziali Firebase (google-services.json) nella build nativa.",
     "notif_enable_hint": "Attivale qui sopra per configurare questi avvisi.",
     "notif_activate_btn": "Attiva le notifiche su questo dispositivo",
     "notif_test_btn": "Invia una notifica di prova",

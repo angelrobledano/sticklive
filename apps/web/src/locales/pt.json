@@ -375,6 +375,7 @@
     "notif_error": "Não foi possível guardar as definições. Verifica a ligação e tenta novamente.",
     "notif_requires_device": "As notificações push exigem um dispositivo físico (não funcionam no emulador).",
     "notif_requires_dev_build": "As notificações push exigem instalar a app (development build): o Expo Go não as suporta.",
+    "notif_fcm_setup": "As notificações push no Android exigem credenciais do Firebase (google-services.json) na compilação nativa.",
     "notif_enable_hint": "Ativa-as acima para configurar estes alertas.",
     "notif_activate_btn": "Ativar as notificações neste dispositivo",
     "notif_test_btn": "Enviar notificação de teste",

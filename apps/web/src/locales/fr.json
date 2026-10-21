@@ -375,6 +375,7 @@
     "notif_error": "Impossible d'enregistrer les réglages. Vérifiez votre connexion et réessayez.",
     "notif_requires_device": "Les notifications push nécessitent un appareil physique (elles ne fonctionnent pas sur un émulateur).",
     "notif_requires_dev_build": "Les notifications push nécessitent d'installer l'app (development build) : Expo Go ne les prend pas en charge.",
+    "notif_fcm_setup": "Les notifications push sur Android nécessitent des identifiants Firebase (google-services.json) dans la version native.",
     "notif_enable_hint": "Activez-les ci-dessus pour configurer ces alertes.",
     "notif_activate_btn": "Activer les notifications sur cet appareil",
     "notif_test_btn": "Envoyer une notification de test",

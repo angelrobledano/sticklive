@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Switch, Text, View, useColorScheme } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
+import { useCompetitions, usePlayer, useTeam } from '@/src/hooks/queries';
+import { clubName } from '@/src/lib/names';
 import { getDeviceId } from '@/src/lib/device';
 import { PLACEHOLDER_KEY, resolveFavoriteName } from '@/src/lib/favorite-names';
 import {
@@ -76,24 +78,47 @@ function PresetChip({ label, active, onPress }: { label: string; active: boolean
   );
 }
 
-/** Fila de entidad seguida: nombre + selector de preset (chips). */
+/** Fila de entidad seguida: nombre + selector de preset (chips) + explicación. */
 function EntityRow({
   kind,
   id,
-  name,
+  fallbackName,
   preset,
   onPreset,
 }: {
   kind: FavoriteKind;
   id: string;
-  name: string;
+  fallbackName: string;
   preset: NotificationPreset;
   onPreset: (kind: FavoriteKind, id: string, preset: NotificationPreset) => void;
 }) {
   const { t } = useLocale();
+  const teamQuery = useTeam(kind === 'team' ? id : '');
+  const playerQuery = usePlayer(kind === 'player' ? id : '');
+  const compsQuery = useCompetitions();
+
+  const name = useMemo(() => {
+    if (kind === 'team' && teamQuery.data?.team.name) {
+      return clubName(teamQuery.data.team.name) || teamQuery.data.team.name;
+    }
+    if (kind === 'player' && playerQuery.data?.player) {
+      return `${playerQuery.data.player.firstName} ${playerQuery.data.player.lastName}`;
+    }
+    if (kind === 'league' && compsQuery.data) {
+      const comp = compsQuery.data.find((c) => c.id === id);
+      if (comp) return clubName(comp.name) || comp.name;
+    }
+    return fallbackName;
+  }, [kind, id, teamQuery.data, playerQuery.data, compsQuery.data, fallbackName]);
+
+  const presetDesc =
+    kind === 'player'
+      ? t(`notif_presets.player.${preset}.desc`)
+      : t(`notif_presets.${preset}.desc`);
+
   return (
     <View className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-      <Text numberOfLines={1} className="text-sm font-medium text-slate-800 dark:text-slate-200">
+      <Text numberOfLines={1} className="text-sm font-semibold text-slate-800 dark:text-slate-200">
         {name}
       </Text>
       <View className="mt-2 flex-row flex-wrap gap-2">
@@ -106,6 +131,9 @@ function EntityRow({
           />
         ))}
       </View>
+      <Text className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+        {presetDesc}
+      </Text>
     </View>
   );
 }
@@ -342,6 +370,50 @@ export default function NotificationsScreen() {
         </View>
       ) : null}
 
+      {/* Guía explicativa de tipos de notificaciones */}
+      <View className="mx-4 mt-3 rounded-xl bg-white p-4 dark:bg-slate-900">
+        <Text className="text-sm font-bold text-slate-900 dark:text-slate-100">
+          {t('notif_presets.title')}
+        </Text>
+        <View className="mt-3">
+          <View className="flex-row items-start">
+            <View className="mr-2 mt-1.5 h-2 w-2 rounded-full bg-rink-passion" />
+            <View className="flex-1">
+              <Text className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                {t('notif_presets.key_events.label')} (Goles en directo)
+              </Text>
+              <Text className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                {t('notif_presets.key_events.desc')}
+              </Text>
+            </View>
+          </View>
+
+          <View className="mt-2.5 flex-row items-start">
+            <View className="mr-2 mt-1.5 h-2 w-2 rounded-full bg-slate-400" />
+            <View className="flex-1">
+              <Text className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                {t('notif_presets.results.label')}
+              </Text>
+              <Text className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                {t('notif_presets.results.desc')}
+              </Text>
+            </View>
+          </View>
+
+          <View className="mt-2.5 flex-row items-start">
+            <View className="mr-2 mt-1.5 h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600" />
+            <View className="flex-1">
+              <Text className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                {t('notif_presets.silent.label')}
+              </Text>
+              <Text className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                {t('notif_presets.silent.desc')}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
       {/* `favs` puede ser undefined mientras cargan los favoritos: sin ese
           check, el estado vacío de "no sigues nada" hace flash durante la carga. */}
       {prefs && favs && total === 0 ? (
@@ -368,7 +440,7 @@ export default function NotificationsScreen() {
                     key={id}
                     kind={s.kind}
                     id={id}
-                    name={resolveFavoriteName(queryClient, s.kind, id) ?? t(PLACEHOLDER_KEY[s.kind])}
+                    fallbackName={resolveFavoriteName(queryClient, s.kind, id) ?? t(PLACEHOLDER_KEY[s.kind])}
                     preset={uiPreset(prefs.presets[presetKey(s.kind, id)] ?? 'key_events')}
                     onPreset={setEntityPreset}
                   />
