@@ -181,6 +181,10 @@ export default function CompetitionScreen() {
     <Stack.Screen
       options={{
         title: displayTitle,
+        headerTitleStyle: {
+          fontWeight: '700',
+          fontSize: displayTitle.length > 24 ? 15 : 17,
+        },
         headerRight: () => (
           <ShareHeaderButton
             onPress={handleShare}

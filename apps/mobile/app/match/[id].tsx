@@ -70,6 +70,10 @@ export default function MatchScreen() {
     <Stack.Screen
       options={{
         title,
+        headerTitleStyle: {
+          fontWeight: '700',
+          fontSize: title.length > 24 ? 15 : 17,
+        },
         headerBackTitle: 'Atrás',
         headerRight: () =>
           title ? (

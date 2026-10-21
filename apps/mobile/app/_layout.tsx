@@ -1,4 +1,5 @@
 import { Stack, router, ThemeProvider as NavigationThemeProvider } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
@@ -143,10 +144,12 @@ function RootNavigator() {
 
   return (
     <NavigationThemeProvider value={navTheme}>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: true,
-          headerTitleStyle: { fontWeight: '700' },
+          headerTitleStyle: { fontWeight: '700', fontSize: 17 },
+          headerShadowVisible: false,
           animation: 'slide_from_right',
           animationDuration: 220,
           gestureEnabled: true,

@@ -23,7 +23,9 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: true,
-        headerTitleStyle: { fontWeight: '700' },
+        headerTitleStyle: { fontWeight: '700', fontSize: 18 },
+        headerShadowVisible: false,
+        headerTitleAlign: 'left',
         tabBarActiveTintColor: colorScheme === 'dark' ? BRAND.accent : BRAND.granate,
       }}
     >
@@ -32,7 +34,6 @@ export default function TabsLayout() {
         options={{
           title: t('nav.live'),
           headerTitle: () => <BrandHeaderTitle />,
-          headerTitleAlign: 'left',
           headerRight: () => <SearchHeaderButton />,
           tabBarIcon: ({ color, size }) => <Ionicons name={ICONS.index} color={color} size={size} />,
         }}

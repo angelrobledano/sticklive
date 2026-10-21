@@ -39,6 +39,10 @@ export default function TeamScreen() {
     <Stack.Screen
       options={{
         title: displayName,
+        headerTitleStyle: {
+          fontWeight: '700',
+          fontSize: displayName.length > 24 ? 15 : 17,
+        },
         headerRight: () =>
           displayName ? (
             <ShareHeaderButton
