@@ -70,74 +70,61 @@ export default function SettingsScreen() {
     void signInWithGoogle().finally(() => setSigningIn(false));
   };
 
+  const handleChangeAccount = async () => {
+    await signOut();
+    router.push('/login');
+  };
+
   return (
     <ScrollView
       contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 24, 32) }}
       className="flex-1 bg-rink-floor dark:bg-rink-floor-dark"
     >
-      {/* Cuenta (Task 3.2) */}
-      <View className="mx-4 mt-4 rounded-xl bg-white p-4 dark:bg-slate-900">
-        <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
-          {t('settings.account_login')}
-        </Text>
-        <Text className="mt-0.5 text-sm text-slate-500">{t('settings.account_login_desc')}</Text>
+      {/* Cuenta (anónimo): login al inicio para facilitar el acceso */}
+      {!ready || session ? null : (
+        <View className="mx-4 mt-4 rounded-xl bg-white p-4 dark:bg-slate-900">
+          <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            {t('settings.account_login')}
+          </Text>
+          <Text className="mt-0.5 text-sm text-slate-500">{t('settings.account_login_desc')}</Text>
 
-        {!ready ? null : session ? (
-          <>
-            <Text
-              className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300"
-              accessibilityLabel={session.email ?? undefined}
-            >
-              {session.email}
-            </Text>
-            <Text className="mt-0.5 text-xs text-emerald-600">{t('settings.account_synced')}</Text>
+          <View className="mt-3 flex-row flex-wrap gap-2">
             <Pressable
-              onPress={() => void signOut()}
-              className="mt-3 self-start rounded-lg border border-slate-300 px-4 py-2 active:opacity-70 dark:border-slate-600"
+              onPress={handleSignIn}
+              disabled={signingIn}
+              accessibilityRole="button"
+              className="rounded-lg bg-rink-passion px-4 py-2 active:opacity-80 disabled:opacity-50"
             >
-              <Text className="font-semibold text-slate-700 dark:text-slate-300">
-                {t('settings.logout')}
+              <Text className="font-semibold text-white">
+                {signingIn ? t('auth.opening_account') : t('auth.google')}
               </Text>
             </Pressable>
-          </>
-        ) : (
-          <>
-            <View className="mt-3 flex-row flex-wrap gap-2">
-              <Pressable
-                onPress={handleSignIn}
-                disabled={signingIn}
-                className="rounded-lg bg-rink-passion px-4 py-2 active:opacity-80 disabled:opacity-50"
-              >
-                <Text className="font-semibold text-white">
-                  {signingIn ? t('auth.opening_account') : t('auth.google')}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => router.push('/login')}
-                className="rounded-lg border border-slate-300 px-4 py-2 active:opacity-80 dark:border-slate-700"
-              >
-                <Text className="font-semibold text-slate-700 dark:text-slate-300">
-                  {t('auth.upsell_email')}
-                </Text>
-              </Pressable>
-            </View>
-            {lastAuthError ? (
-              <Text
-                className="mt-2 text-sm text-red-600 dark:text-red-400"
-                accessibilityLiveRegion="polite"
-              >
-                {t(authErrorKey(lastAuthError))}
+            <Pressable
+              onPress={() => router.push('/login')}
+              accessibilityRole="button"
+              className="rounded-lg border border-slate-300 px-4 py-2 active:opacity-80 dark:border-slate-700"
+            >
+              <Text className="font-semibold text-slate-700 dark:text-slate-300">
+                {t('auth.upsell_email')}
               </Text>
-            ) : null}
-          </>
-        )}
-      </View>
+            </Pressable>
+          </View>
+          {lastAuthError ? (
+            <Text
+              className="mt-2 text-sm text-red-600 dark:text-red-400"
+              accessibilityLiveRegion="polite"
+            >
+              {t(authErrorKey(lastAuthError))}
+            </Text>
+          ) : null}
+        </View>
+      )}
 
       {/* Premium (monetización): estado de la cuenta y compra SOLO en la web */}
       <Pressable
         onPress={() => router.push('/settings/premium')}
         accessibilityRole="button"
-        className="mx-4 mt-3 flex-row items-center justify-between rounded-xl bg-white p-4 active:opacity-70 dark:bg-slate-900"
+        className={`mx-4 ${session ? 'mt-4' : 'mt-3'} flex-row items-center justify-between rounded-xl bg-white p-4 active:opacity-70 dark:bg-slate-900`}
       >
         <View className="flex-1 pr-2">
           <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
@@ -217,6 +204,49 @@ export default function SettingsScreen() {
         </View>
         <Ionicons name="chevron-forward" size={20} color="#64748b" />
       </Pressable>
+
+      {/* Cuenta (con sesión activa): al final de los ajustes (salir o cambiar de cuenta) */}
+      {!ready || !session ? null : (
+        <View className="mx-4 mt-3 rounded-xl bg-white p-4 dark:bg-slate-900">
+          <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            {t('settings.section_account')}
+          </Text>
+          <Text
+            className="mt-1 text-sm font-medium text-slate-700 dark:text-slate-300"
+            accessibilityLabel={session.email ?? undefined}
+          >
+            {session.email}
+          </Text>
+          <Text className="mt-0.5 text-xs text-emerald-600 dark:text-emerald-400">
+            {t('settings.account_synced')}
+          </Text>
+
+          <View className="mt-3 flex-row flex-wrap gap-2">
+            <Pressable
+              onPress={() => void signOut()}
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.logout')}
+              hitSlop={8}
+              className="rounded-lg border border-slate-300 px-4 py-2 active:opacity-70 dark:border-slate-600"
+            >
+              <Text className="font-semibold text-slate-700 dark:text-slate-300">
+                {t('settings.logout')}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void handleChangeAccount()}
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.change_account')}
+              hitSlop={8}
+              className="rounded-lg border border-slate-300 px-4 py-2 active:opacity-70 dark:border-slate-600"
+            >
+              <Text className="font-semibold text-slate-700 dark:text-slate-300">
+                {t('settings.change_account')}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
