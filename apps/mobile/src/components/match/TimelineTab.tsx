@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { EmptyState } from '@/src/components/shared/EmptyState';
+import { GoalStickIcon } from '@/src/components/shared/GoalStickIcon';
 import {
   compareTimelineEvents,
   eventSurname,
@@ -31,56 +32,6 @@ function interpolate(template: string, params?: Record<string, string | number>)
   return Object.entries(params).reduce(
     (acc, [k, v]) => acc.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v)),
     template
-  );
-}
-
-/**
- * Icono de Stick de hockey sobre patines + bola (identidad de Stick Live).
- * Dibuja el stick diagonal con pala curva y bola exactamente como el SVG web.
- */
-function GoalStickIcon() {
-  return (
-    <View className="h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 shadow-sm dark:bg-white">
-      <View className="relative h-4 w-4 items-center justify-center">
-        {/* Mango del stick */}
-        <View
-          style={{
-            position: 'absolute',
-            left: 2.5,
-            top: 1,
-            width: 2,
-            height: 11,
-            transform: [{ rotate: '-32deg' }],
-            borderRadius: 1,
-          }}
-          className="bg-white dark:bg-slate-900"
-        />
-        {/* Pala curva del stick */}
-        <View
-          style={{
-            position: 'absolute',
-            left: 6,
-            top: 10,
-            width: 5.5,
-            height: 2.2,
-            borderRadius: 1.1,
-          }}
-          className="bg-white dark:bg-slate-900"
-        />
-        {/* Bola */}
-        <View
-          style={{
-            position: 'absolute',
-            right: 0.5,
-            top: 9,
-            width: 3.5,
-            height: 3.5,
-            borderRadius: 2,
-          }}
-          className="bg-white dark:bg-slate-900"
-        />
-      </View>
-    </View>
   );
 }
 
@@ -273,7 +224,7 @@ function TimelineRow({
                 router.push({ pathname: '/player/[id]', params: { id: playerId } });
               }
             }}
-            hitSlop={4}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Text
               numberOfLines={1}
@@ -326,7 +277,7 @@ function TimelineRow({
                 router.push({ pathname: '/player/[id]', params: { id: playerId } });
               }
             }}
-            hitSlop={4}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Text
               numberOfLines={1}

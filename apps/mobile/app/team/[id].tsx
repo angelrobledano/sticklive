@@ -1,8 +1,10 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useTeam } from '@/src/hooks/queries';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
+import { GoalStickIcon } from '@/src/components/shared/GoalStickIcon';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { TeamDetailSkeleton } from '@/src/components/shared/Skeleton';
 import { ShareHeaderButton } from '@/src/components/shared/ShareHeaderButton';
@@ -17,6 +19,7 @@ import { clubName, playerDisplayName } from '@/src/lib/names';
  * equipo-vs-equipo en vez de forzar MatchCard.
  */
 export default function TeamScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
   const teamId = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
@@ -75,11 +78,14 @@ export default function TeamScreen() {
   return (
     <>
       {headerElement}
-      <ScrollView className="bg-rink-floor dark:bg-rink-floor-dark">
+      <ScrollView
+        className="flex-1 bg-rink-floor dark:bg-rink-floor-dark"
+        contentContainerStyle={{ paddingBottom: Math.max(32, insets.bottom + 16) }}
+      >
         {/* Cabecera (la estrella de seguir es un favorito del EQUIPO, no del partido) */}
         <View className="relative items-center rounded-xl bg-white p-4 mx-3 mt-2 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
           <View className="absolute right-2 top-2">
-            <FollowButton kind="team" refId={team.id} />
+            <FollowButton kind="team" refId={team.id} name={team.name} />
           </View>
           <Avatar uri={teamLogoUri(team.id, 192)} name={displayName} size={72} />
           <Text className="mt-2 text-center text-lg font-bold text-slate-900 dark:text-slate-100">{displayName}</Text>
@@ -196,7 +202,10 @@ export default function TeamScreen() {
                   {p.isGoalkeeper ? <Text className="text-xs text-slate-500"> · {t('team.gk_short')}</Text> : null}
                 </Text>
                 {p.goals > 0 ? (
-                  <Text className="text-xs text-slate-500">{p.goals} 🏑</Text>
+                  <View className="flex-row items-center gap-1">
+                    <Text className="text-xs font-semibold text-slate-600 dark:text-slate-400">{p.goals}</Text>
+                    <GoalStickIcon variant="inline" size={12} />
+                  </View>
                 ) : null}
               </Pressable>
             ))}

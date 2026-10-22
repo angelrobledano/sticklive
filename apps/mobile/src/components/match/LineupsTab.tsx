@@ -5,6 +5,7 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { StartingFiveRink } from '@/src/components/match/StartingFiveRink';
+import { GoalStickIcon } from '@/src/components/shared/GoalStickIcon';
 import { displayLineupName } from '@/src/lib/match-helpers';
 import { clubName } from '@/src/lib/names';
 import type { MatchDetail } from '@/src/lib/api/types';
@@ -84,7 +85,7 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
         <View className="flex-row items-center gap-1.5 shrink-0">
           {p.goals > 0 ? (
             <View className="flex-row items-center gap-0.5 rounded-full bg-emerald-500/10 px-2 py-0.5">
-              <Text className="text-[10px]">🏑</Text>
+              <GoalStickIcon variant="inline" size={11} />
               <Text className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
                 {p.goals}
               </Text>
@@ -213,7 +214,7 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
             </View>
 
             <View className="flex-row items-center gap-1">
-              <Text className="text-[10px]">🏑</Text>
+              <GoalStickIcon variant="inline" size={11} />
               <Text className="text-[10px] text-slate-500 dark:text-slate-400">
                 {t('hockey_stats.goals')}
               </Text>

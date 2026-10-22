@@ -96,15 +96,18 @@ export function MatchTabs({ tabs, activeTab, onChange }: MatchTabsProps) {
           <Pressable
             key={tab}
             onPress={() => onChange(tab)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isActive }}
             accessibilityLabel={t(TAB_I18N[tab])}
-            className="flex-1 items-center justify-center py-2 active:opacity-75"
+            hitSlop={8}
+            className="flex-1 min-h-[44px] items-center justify-center py-2.5 active:opacity-75"
             style={{ zIndex: 1 }}
           >
             <Text
-              style={{ color: isActive ? (isDark ? '#fb7185' : BRAND.granate) : undefined }}
+              style={{ color: isActive ? (isDark ? '#f87171' : BRAND.granate) : undefined }}
               className={`text-xs font-bold ${
                 isActive
-                  ? 'text-rink-passion dark:text-rose-400'
+                  ? 'text-rink-passion dark:text-rink-accent'
                   : 'text-slate-600 dark:text-slate-400'
               }`}
             >

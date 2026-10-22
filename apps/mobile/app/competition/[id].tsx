@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import {
@@ -36,6 +37,7 @@ import type {
 const COL_WIDTHS = 'w-7' as const;
 
 export default function CompetitionScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string; seasonId?: string }>();
   const competitionId = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
@@ -220,7 +222,7 @@ export default function CompetitionScreen() {
       {headerElement}
       <ScrollView
         className="flex-1 bg-rink-floor dark:bg-rink-floor-dark"
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: Math.max(40, insets.bottom + 16) }}
       >
         {/* Cabecera de competición */}
         <View className="mx-3 mt-2 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -246,7 +248,7 @@ export default function CompetitionScreen() {
                 ) : null}
               </View>
             </View>
-            {competitionId ? <FollowButton kind="league" refId={competitionId} /> : null}
+            {competitionId ? <FollowButton kind="league" refId={competitionId} name={compTitle} /> : null}
           </View>
 
           {/* Selector de temporada si hay varias */}

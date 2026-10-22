@@ -97,13 +97,10 @@ export default function LiveScreen() {
             setSelectedDate(todayKey);
             setFilter('all');
           }}
-          liveCount={dayView.liveCount}
-          isLiveFilterActive={dayView.filter === 'live'}
-          onToggleLive={() => setFilter(filter === 'live' ? 'all' : 'live')}
         />
       ),
     });
-  }, [navigation, selectedDate, todayKey, dayView.liveCount, dayView.filter, filter]);
+  }, [navigation, selectedDate, todayKey]);
 
   const next = useMemo(
     () =>

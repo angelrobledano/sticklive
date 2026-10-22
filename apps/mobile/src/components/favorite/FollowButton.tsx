@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable } from 'react-native';
+import { useColorScheme } from 'nativewind';
 import { BRAND } from '@sports/brand';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
+import { saveFavoriteName } from '@/src/lib/favorite-names';
 import {
   PLURAL,
   useAddFavorite,
@@ -12,21 +14,31 @@ import {
   type FavoriteKind,
 } from '@/src/hooks/favorites';
 
-/** Mismos hex que el resto de la app (tab activo en (tabs)/_layout.tsx). */
-const RINK_PASSION = BRAND.granate;
-const SLATE_500 = '#64748b';
-
 /**
  * Estrella seguir/dejar de seguir (Task 3.3). Con sesión la fuente es el
  * servidor (`useFavorites`, gating por token) y las mutaciones van al API;
  * anónimo la fuente es el estado local (AsyncStorage vía `useLocalFavorites`)
  * y las mutaciones persisten allí. El merge anónimo→cuenta lo hace
  * `mergeLocalOnLogin` en el login (AuthContext).
+ *
+ * En modo oscuro se usa `rink-accent` (#f87171) para superar el ratio de contraste
+ * 3:1 WCAG AA sobre el fondo azul-noche (#0B1220), cumpliendo DESIGN.md.
  */
-export function FollowButton({ kind, refId }: { kind: FavoriteKind; refId: string }) {
+export function FollowButton({
+  kind,
+  refId,
+  name,
+}: {
+  kind: FavoriteKind;
+  refId: string;
+  name?: string;
+}) {
   const { session } = useSession();
   const token = session?.token;
   const { t } = useLocale();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   const add = useAddFavorite(token);
   const remove = useRemoveFavorite(token);
 
@@ -43,25 +55,33 @@ export function FollowButton({ kind, refId }: { kind: FavoriteKind; refId: strin
   const pending = add.isPending || remove.isPending;
 
   const toggle = () => {
-    // Fallo explícito, no silencioso (regla del repo): consola del dispositivo
-    // (Sentry la capturará en 5.1); el estado visual no cambia porque sólo se
-    // actualiza con la invalidación tras éxito.
+    // Si conocemos el nombre, lo persistimos localmente para evitar placeholders en frío
+    if (name) saveFavoriteName(refId, name);
+
     void (isFav ? remove : add)
       .mutateAsync({ kind, refId })
       .catch((err: unknown) => console.error('[favorites] no se pudo actualizar el favorito', err));
   };
 
+  // En modo oscuro: rink-accent (#f87171) supera 3:1 de contraste frente a #0B1220
+  const activeColor = isDark ? '#f87171' : BRAND.granate;
+  const inactiveColor = isDark ? '#94a3b8' : '#64748b';
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={isFav ? t('a11y.remove_favorite') : t('a11y.add_favorite')}
-      accessibilityState={{ disabled: pending }}
+      accessibilityState={{ disabled: pending, selected: isFav }}
       disabled={pending}
       onPress={toggle}
-      // Touch target ≥44 (patrón de search.tsx).
-      className="min-h-[44px] min-w-[44px] items-center justify-center rounded-full active:opacity-70"
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      className="min-h-[48px] min-w-[48px] items-center justify-center rounded-full active:opacity-70"
     >
-      <Ionicons name={isFav ? 'star' : 'star-outline'} size={24} color={isFav ? RINK_PASSION : SLATE_500} />
+      <Ionicons
+        name={isFav ? 'star' : 'star-outline'}
+        size={24}
+        color={isFav ? activeColor : inactiveColor}
+      />
     </Pressable>
   );
 }

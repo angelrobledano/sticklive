@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocale } from '@/src/i18n/LocaleContext';
 import {
   PLAYOFF_PHASES,
   type PlayoffPhase,
@@ -73,6 +74,7 @@ function MicroSeries({
 }
 
 export function PlayoffBracket({ matches }: { matches: SeasonOverviewMatch[] }) {
+  const { t } = useLocale();
   const phases = useMemo(() => {
     const byPhase = groupByPhase(matches);
     const series: Record<PlayoffPhase, PlayoffSeries[]> = {
@@ -106,7 +108,7 @@ export function PlayoffBracket({ matches }: { matches: SeasonOverviewMatch[] }) 
       <View className="mb-2.5 flex-row items-center gap-1.5">
         <Ionicons name="git-network-outline" size={14} color="#64748b" />
         <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          Cuadro de eliminatorias
+          {t('playoffs.bracket_title')}
         </Text>
       </View>
       <ScrollView

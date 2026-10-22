@@ -197,10 +197,13 @@ function NotificationShowcaseCard() {
       </View>
 
       {/* Selector de categoría (Equipos, Jugadores, Ligas) */}
-      <View className="mt-3.5 flex-row rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+      <View className="mt-3.5 flex-row rounded-xl bg-slate-100 p-1 dark:bg-slate-800" accessibilityRole="tablist">
         <Pressable
           onPress={() => setActiveTab('teams')}
-          className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg py-2 ${
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'teams' }}
+          hitSlop={8}
+          className={`flex-1 min-h-[48px] flex-row items-center justify-center gap-1.5 rounded-lg py-2.5 ${
             activeTab === 'teams' ? 'bg-white shadow-xs dark:bg-slate-900' : ''
           }`}
         >
@@ -222,7 +225,10 @@ function NotificationShowcaseCard() {
 
         <Pressable
           onPress={() => setActiveTab('players')}
-          className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg py-2 ${
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'players' }}
+          hitSlop={8}
+          className={`flex-1 min-h-[48px] flex-row items-center justify-center gap-1.5 rounded-lg py-2.5 ${
             activeTab === 'players' ? 'bg-white shadow-xs dark:bg-slate-900' : ''
           }`}
         >
@@ -244,7 +250,10 @@ function NotificationShowcaseCard() {
 
         <Pressable
           onPress={() => setActiveTab('leagues')}
-          className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg py-2 ${
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'leagues' }}
+          hitSlop={8}
+          className={`flex-1 min-h-[48px] flex-row items-center justify-center gap-1.5 rounded-lg py-2.5 ${
             activeTab === 'leagues' ? 'bg-white shadow-xs dark:bg-slate-900' : ''
           }`}
         >

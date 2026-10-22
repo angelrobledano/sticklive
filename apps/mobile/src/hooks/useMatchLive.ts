@@ -180,6 +180,7 @@ export function useMatchLive(matchId: string, token: string | null | undefined) 
       const serverError = (ev as { data?: string | null }).data != null;
       closeDeferred(es);
       if (esRef.current === es) esRef.current = null;
+      dispatch({ kind: 'disconnected' });
       if (serverError || !focused.current) return;
       failures.current += 1;
       if (failures.current >= MAX_SSE_FAILURES) {
@@ -212,5 +213,8 @@ export function useMatchLive(matchId: string, token: string | null | undefined) 
     }, [connect, stopAll]),
   );
 
-  return state;
+  return {
+    ...state,
+    reconnect: connect,
+  };
 }

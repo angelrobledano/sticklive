@@ -73,7 +73,7 @@ export function DayChips({ liveCount, followingCount, filter, onChange }: DayChi
               filter === 'following' ? 'text-white' : 'text-slate-700 dark:text-slate-200'
             }`}
           >
-            Siguiendo
+            {t('favorites.filter_following')}
           </Text>
           <View
             className={`rounded-full px-1.5 py-0.2 ${

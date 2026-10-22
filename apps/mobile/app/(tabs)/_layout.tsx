@@ -3,7 +3,7 @@ import { Tabs } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { BrandHeaderTitle, SearchHeaderButton } from '@/src/components/layout/AppHeader';
+import { BrandHeaderTitle } from '@/src/components/layout/AppHeader';
 
 const ICONS = {
   index: 'radio-outline',
@@ -34,7 +34,6 @@ export default function TabsLayout() {
         options={{
           title: t('nav.live'),
           headerTitle: () => <BrandHeaderTitle />,
-          headerRight: () => <SearchHeaderButton />,
           tabBarIcon: ({ color, size }) => <Ionicons name={ICONS.index} color={color} size={size} />,
         }}
       />
@@ -42,7 +41,6 @@ export default function TabsLayout() {
         name="competitions"
         options={{
           title: t('navigation.competitions'),
-          headerRight: () => <SearchHeaderButton />,
           tabBarIcon: ({ color, size }) => <Ionicons name={ICONS.competitions} color={color} size={size} />,
         }}
       />
@@ -64,7 +62,6 @@ export default function TabsLayout() {
         name="favorites"
         options={{
           title: t('nav.favorites'),
-          headerRight: () => <SearchHeaderButton />,
           tabBarIcon: ({ color, size }) => <Ionicons name={ICONS.favorites} color={color} size={size} />,
         }}
       />

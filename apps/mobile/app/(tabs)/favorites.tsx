@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
+import { useCompetitions } from '@/src/hooks/queries';
 import { useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
 import { PLACEHOLDER_KEY, resolveFavoriteName } from '@/src/lib/favorite-names';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
@@ -101,7 +102,7 @@ function FavoriteRow({
           {kind === 'player' ? name : clubName(name) || name}
         </Text>
       </Pressable>
-      <FollowButton kind={kind} refId={refId} />
+      <FollowButton kind={kind} refId={refId} name={name} />
     </View>
   );
 }
@@ -112,6 +113,8 @@ export default function FavoritesScreen() {
   const token = session?.token;
   const router = useRouter();
   const qc = useQueryClient();
+  // Precarga de competiciones para resolver nombres de ligas favoritas de inmediato
+  useCompetitions();
 
   // Ambos hooks montados siempre (regla de hooks): el `enabled` de cada uno
   // hace el gating (servidor sólo con token; AsyncStorage sólo anónimo).

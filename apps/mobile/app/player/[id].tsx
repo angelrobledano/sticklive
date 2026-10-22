@@ -1,11 +1,13 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { usePlayer } from '@/src/hooks/queries';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { PlayerDetailSkeleton } from '@/src/components/shared/Skeleton';
 import { ShareHeaderButton } from '@/src/components/shared/ShareHeaderButton';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
+import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { clubName, playerDisplayName } from '@/src/lib/names';
 
 /**
@@ -15,6 +17,7 @@ import { clubName, playerDisplayName } from '@/src/lib/names';
  * actual, totales de temporada y trayectoria por temporadas/equipos.
  */
 export default function PlayerScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
   const playerId = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
@@ -70,7 +73,10 @@ export default function PlayerScreen() {
   return (
     <>
       {headerElement}
-      <ScrollView className="bg-rink-floor dark:bg-rink-floor-dark">
+      <ScrollView
+        className="flex-1 bg-rink-floor dark:bg-rink-floor-dark"
+        contentContainerStyle={{ paddingBottom: Math.max(32, insets.bottom + 16) }}
+      >
         {/* Cabecera */}
         <View className="items-center rounded-xl bg-white p-4 mx-3 mt-2 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
           <Avatar
@@ -89,6 +95,9 @@ export default function PlayerScreen() {
               </Text>
             ) : null}
             {player.nationality ? <Text className="text-xs text-slate-500">{player.nationality}</Text> : null}
+          </View>
+          <View className="mt-2">
+            <FollowButton kind="player" refId={player.id} name={displayName} />
           </View>
         </View>
 

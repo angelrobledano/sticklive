@@ -27,7 +27,8 @@ export type StreamPatch =
   | { kind: 'snapshot'; detail: MatchDetail }
   | { kind: 'update'; detail: MatchDetail }
   | { kind: 'transport'; transport: Transport }
-  | { kind: 'stale'; staleAt: number };
+  | { kind: 'stale'; staleAt: number }
+  | { kind: 'disconnected' };
 
 /** Backoff exponencial 1s, 2s, 4s... tope 30s. */
 export function backoffDelay(attempt: number): number {
@@ -54,5 +55,7 @@ export function applyStreamPatch(state: MatchState, patch: StreamPatch): MatchSt
     case 'stale':
       // El canal SSE sigue abierto: lo congelado son los datos, no el transporte.
       return { ...state, stale: true, staleAt: patch.staleAt };
+    case 'disconnected':
+      return { ...state, connected: false };
   }
 }

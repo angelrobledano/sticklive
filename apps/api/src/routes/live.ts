@@ -47,6 +47,8 @@ interface LiveMatchRow {
   round_id: string | null;
   home_score: number | null;
   away_score: number | null;
+  home_fouls: number | null;
+  away_fouls: number | null;
   status: string;
   scheduled_at: Date | null;
   started_at: Date | null;
@@ -101,6 +103,9 @@ function mapLiveRow(row: LiveMatchRow) {
       home: row.home_score,
       away: row.away_score,
     },
+    fouls: (row.home_fouls != null || row.away_fouls != null)
+      ? { home: row.home_fouls, away: row.away_fouls }
+      : null,
     homeTeam: {
       id:        row.home_team_id,
       name:      row.home_team_name,
@@ -131,6 +136,8 @@ liveRouter.get('/live', async (c) => {
         m.round_id,
         m.home_score,
         m.away_score,
+        m.home_fouls,
+        m.away_fouls,
         m.status,
         m.live_is_halftime,
         m.win_type, m.winner_team_id, m.home_pen, m.away_pen,
@@ -223,7 +230,7 @@ liveRouter.get('/current', async (c) => {
     const result = await db.query<LiveMatchRow>(`
       SELECT
         m.id, m.season_id, m.round_id,
-        m.home_score, m.away_score, m.status, m.live_is_halftime,
+        m.home_score, m.away_score, m.home_fouls, m.away_fouls, m.status, m.live_is_halftime,
         m.win_type, m.winner_team_id, m.home_pen, m.away_pen,
         m.scheduled_at, m.started_at, m.venue_name, m.venue_city, m.source_ref,
         comp.id AS competition_id, comp.name AS competition_name,

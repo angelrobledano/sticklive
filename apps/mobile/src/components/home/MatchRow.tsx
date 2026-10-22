@@ -62,12 +62,26 @@ export function MatchRow({ match, showCompetition = false }: MatchRowProps) {
                 {match.score.home ?? 0} - {match.score.away ?? 0}
               </Text>
               {live ? (
-                <View className="mt-0.5 flex-row items-center gap-1 rounded-full bg-live-deep px-1.5 py-0.2">
-                  <View className="h-1.5 w-1.5 rounded-full bg-white" />
-                  <Text className="text-[9px] font-black uppercase text-white">
-                    {t('match_states.live')}
-                  </Text>
-                </View>
+                <>
+                  <View className="mt-0.5 flex-row items-center gap-1 rounded-full bg-live-deep px-1.5 py-0.2">
+                    <View className="h-1.5 w-1.5 rounded-full bg-white" />
+                    <Text className="text-[9px] font-black uppercase text-white">
+                      {t('match_states.live')}
+                    </Text>
+                  </View>
+                  {match.fouls && (match.fouls.home != null || match.fouls.away != null) ? (
+                    <Text
+                      className={`mt-0.5 font-mono text-[10px] font-bold tabular-nums ${
+                        (match.fouls.home ?? 0) >= 9 || (match.fouls.away ?? 0) >= 9
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : 'text-slate-500 dark:text-slate-400'
+                      }`}
+                      accessibilityLabel={`Faltas: ${match.fouls.home ?? 0} a ${match.fouls.away ?? 0}`}
+                    >
+                      F: {match.fouls.home ?? 0} - {match.fouls.away ?? 0}
+                    </Text>
+                  ) : null}
+                </>
               ) : (
                 <Text className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
                   {t('match_states.final')}

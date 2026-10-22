@@ -63,6 +63,8 @@ export interface MatchSummary {
   /** live.ts:94-96 — null si el partido no tiene `venue_name`. */
   venue: { name: string; city: string | null } | null;
   score: { home: number | null; away: number | null };
+  /** Faltas de equipo acumuladas (live.ts:114): null si el partido no está en vivo o no hay registro. */
+  fouls?: { home: number | null; away: number | null } | null;
   homeTeam: { id: string; name: string; shortName: string | null; logoUrl: string | null };
   awayTeam: { id: string; name: string; shortName: string | null; logoUrl: string | null };
 }

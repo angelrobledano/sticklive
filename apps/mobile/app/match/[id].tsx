@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Animated, Easing, RefreshControl, ScrollView, Share, View } from 'react-native';
 import { Stack, useIsFocused, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMatchDetail } from '@/src/hooks/queries';
 import { useMatchLive } from '@/src/hooks/useMatchLive';
 import { useInterstitialOnLeave } from '@/src/hooks/ads/useInterstitialOnLeave';
@@ -19,6 +20,7 @@ import { visibleTabsFor, type Tab } from '@/src/lib/match-helpers';
 import { clubName } from '@/src/lib/names';
 
 export default function MatchScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
   const matchId = Array.isArray(params.id) ? params.id[0] : params.id;
   const query = useMatchDetail(matchId ?? '');
@@ -108,7 +110,7 @@ export default function MatchScreen() {
     <>
       {headerElement}
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: Math.max(32, insets.bottom + 16) }}
         className="flex-1 bg-rink-floor dark:bg-rink-floor-dark"
         refreshControl={
           <RefreshControl
@@ -122,6 +124,9 @@ export default function MatchScreen() {
           data={current}
           liveStale={live.stale}
           staleSeconds={staleSeconds}
+          connected={live.connected}
+          transport={live.transport}
+          onReconnect={live.reconnect}
         />
 
         {/* Pestañas de contenido */}

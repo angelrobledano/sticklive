@@ -7,6 +7,7 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { PenaltyShootout } from '@/src/components/match/PenaltyShootout';
+import { GoalStickIcon } from '@/src/components/shared/GoalStickIcon';
 import { clubName } from '@/src/lib/names';
 import {
   eventSurname,
@@ -22,9 +23,19 @@ interface MatchHeaderProps {
   data: MatchDetail;
   liveStale?: boolean;
   staleSeconds?: number;
+  connected?: boolean;
+  transport?: 'sse' | 'poll';
+  onReconnect?: () => void;
 }
 
-export function MatchHeader({ data, liveStale = false, staleSeconds = 0 }: MatchHeaderProps) {
+export function MatchHeader({
+  data,
+  liveStale = false,
+  staleSeconds = 0,
+  connected = true,
+  transport = 'sse',
+  onReconnect,
+}: MatchHeaderProps) {
   const router = useRouter();
   const { t, locale } = useLocale();
   const { match, stats, events } = data;
@@ -42,9 +53,11 @@ export function MatchHeader({ data, liveStale = false, staleSeconds = 0 }: Match
   const isFinished = match.status === 'finished';
   const showScore = isLive || isFinished;
 
-  // Crono en vivo descendente local
+  // Crono en vivo descendente local: solo corre si la conexión está viva (evita tiempo fantasma en pabellón)
   const live = match.live;
-  const isClockRunning = Boolean(live && !live.isHalftime && live.clockSeconds != null && live.clockAt);
+  const isClockRunning = Boolean(
+    live && !live.isHalftime && live.clockSeconds != null && live.clockAt && connected
+  );
   const [remaining, setRemaining] = useState<number | null>(null);
 
   const clockSeconds = live?.clockSeconds;
@@ -107,31 +120,53 @@ export function MatchHeader({ data, liveStale = false, staleSeconds = 0 }: Match
       {/* Estado del partido */}
       <View className="items-center min-h-[22px] justify-center mb-3">
         {isLive ? (
-          <View className="flex-row items-center gap-2">
-            {live?.isHalftime ? (
-              <View className="flex-row items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-0.5">
+          <View className="items-center gap-1.5">
+            <View className="flex-row items-center gap-2">
+              {live?.isHalftime ? (
+                <View className="flex-row items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-0.5">
+                  <View className="h-2 w-2 rounded-full bg-amber-500" />
+                  <Text className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                    {t('match_states.half_time')}
+                  </Text>
+                </View>
+              ) : (
+                <View className="flex-row items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-0.5">
+                  <View className="h-2 w-2 rounded-full bg-rose-500" />
+                  <Text className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                    {t('match_states.live')}
+                  </Text>
+                  {periodLabel ? (
+                    <Text className="text-xs font-medium text-rose-600 dark:text-rose-400">
+                      · {periodLabel} {mmss ? `· ${mmss}` : ''}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+              {liveStale && connected ? (
+                <Text className="text-[10px] text-amber-600 dark:text-amber-400">
+                  · {t('match_detail.freshness_stale').replace('{s}', String(staleSeconds))}
+                </Text>
+              ) : null}
+            </View>
+
+            {/* Aviso visible de desconexión en pabellón con botón de reintento manual */}
+            {!connected ? (
+              <Pressable
+                onPress={onReconnect}
+                className="flex-row items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 active:opacity-70"
+                accessibilityRole="button"
+                accessibilityLabel={`${t('match_detail.freshness_down').replace(' · última actualización hace {s} s', '')} - ${t('errors.retry')}`}
+              >
                 <View className="h-2 w-2 rounded-full bg-amber-500" />
-                <Text className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                  {t('match_states.half_time')}
+                <Text className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                  {t('match_detail.freshness_down').replace(' · última actualización hace {s} s', '')}
                 </Text>
-              </View>
-            ) : (
-              <View className="flex-row items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-0.5">
-                <View className="h-2 w-2 rounded-full bg-rose-500" />
-                <Text className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
-                  {t('match_states.live')}
-                </Text>
-                {periodLabel ? (
-                  <Text className="text-xs font-medium text-rose-600 dark:text-rose-400">
-                    · {periodLabel} {mmss ? `· ${mmss}` : ''}
+                {onReconnect ? (
+                  <Text className="text-xs font-bold text-amber-800 underline dark:text-amber-200">
+                    · {t('errors.retry')}
                   </Text>
                 ) : null}
-              </View>
-            )}
-            {liveStale ? (
-              <Text className="text-[10px] text-amber-600 dark:text-amber-400">
-                · {t('match_detail.freshness_stale').replace('{s}', String(staleSeconds))}
-              </Text>
+              </Pressable>
             ) : null}
           </View>
         ) : isFinished ? (
@@ -168,7 +203,7 @@ export function MatchHeader({ data, liveStale = false, staleSeconds = 0 }: Match
             </Text>
           </Pressable>
           <View className="mt-0.5">
-            <FollowButton kind="team" refId={ht.id} />
+            <FollowButton kind="team" refId={ht.id} name={homeName} />
           </View>
         </View>
 
@@ -228,7 +263,7 @@ export function MatchHeader({ data, liveStale = false, staleSeconds = 0 }: Match
             </Text>
           </Pressable>
           <View className="mt-0.5">
-            <FollowButton kind="team" refId={at.id} />
+            <FollowButton kind="team" refId={at.id} name={awayName} />
           </View>
         </View>
       </View>
@@ -250,7 +285,7 @@ export function MatchHeader({ data, liveStale = false, staleSeconds = 0 }: Match
                       {fmtEventClock(e)}
                     </Text>
                     {e.eventType === 'goal' ? (
-                      <Text className="text-xs">🏑</Text>
+                      <GoalStickIcon variant="inline" size={13} />
                     ) : (
                       <View
                         className={`h-2.5 w-1.5 rounded-sm ${e.eventType === 'blue_card' ? 'bg-blue-500' : 'bg-red-500'}`}
@@ -270,7 +305,7 @@ export function MatchHeader({ data, liveStale = false, staleSeconds = 0 }: Match
                 .map((e) => (
                   <View key={e.id} className="flex-row items-center gap-1 my-0.5">
                     {e.eventType === 'goal' ? (
-                      <Text className="text-xs">🏑</Text>
+                      <GoalStickIcon variant="inline" size={13} />
                     ) : (
                       <View
                         className={`h-2.5 w-1.5 rounded-sm ${e.eventType === 'blue_card' ? 'bg-blue-500' : 'bg-red-500'}`}
