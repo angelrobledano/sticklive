@@ -13,8 +13,8 @@ type Theme = 'dark' | 'light';
  * `imagePath` (?format=&theme=); aquí se pre-descarga para que navigator.share
  * se llame dentro del gesto del usuario (iOS). Lo usan equipo y partido.
  */
-export function ShareImageButton({
-  imagePath, name, kind, entityId, className = '', compact = false,
+export function ShareImageDialog({
+  imagePath, name, kind, entityId, open, onClose,
 }: {
   /** Sin prefijo de idioma, p. ej. `/teams/{id}/share-image`. */
   imagePath: string;
@@ -22,13 +22,11 @@ export function ShareImageButton({
   name: string;
   kind: 'team' | 'match' | 'player';
   entityId: string;
-  className?: string;
-  /** Solo icono también en escritorio (cabecera del partido). */
-  compact?: boolean;
+  open: boolean;
+  onClose: () => void;
 }) {
   const { t } = useT();
   const locale = useLocale();
-  const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<Format>('story');
   const [theme, setTheme] = useState<Theme>('dark');
   const [loading, setLoading] = useState(true);
@@ -59,10 +57,10 @@ export function ShareImageButton({
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  }, [open, onClose]);
 
   const download = async () => {
     const file = fileRef.current ?? (await fetchFile());
@@ -95,24 +93,8 @@ export function ShareImageButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label={t(kind === 'match' ? 'share_image.title_match' : kind === 'player' ? 'share_image.title_player' : 'share_image.title')}
-        className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full text-sm font-semibold dark:hover:bg-slate-800 ${
-          compact
-            ? 'h-11 w-11 text-slate-500 hover:bg-slate-100 hover:text-rink-passion dark:text-slate-400'
-            : 'h-11 min-w-11 px-2 text-slate-700 hover:bg-slate-50 dark:text-slate-200 sm:h-auto sm:border sm:border-slate-200 sm:px-3 sm:py-1.5 sm:dark:border-slate-700'
-        } ${className}`}
-      >
-        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="9" cy="9" r="2" /><path d="m21 15-5-5L5 21" />
-        </svg>
-        <span className={compact ? 'sr-only' : 'hidden sm:inline'}>{t('share_image.button')}</span>
-      </button>
-
       {open ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 sm:items-center" onClick={() => onClose()}>
           <div
             role="dialog"
             aria-modal="true"
@@ -122,7 +104,7 @@ export function ShareImageButton({
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t(kind === 'match' ? 'share_image.title_match' : kind === 'player' ? 'share_image.title_player' : 'share_image.title')}</h2>
-              <button type="button" onClick={() => setOpen(false)} aria-label={t('share_image.close')} className="text-2xl leading-none text-slate-400">×</button>
+              <button type="button" onClick={() => onClose()} aria-label={t('share_image.close')} className="text-2xl leading-none text-slate-400">×</button>
             </div>
 
             <div className="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800" role="group" aria-label={t('share_image.format')}>
@@ -158,6 +140,21 @@ export function ShareImageButton({
           </div>
         </div>
       ) : null}
+    </>
+  );
+}
+
+/** Botón suelto que abre el diálogo (se mantiene para usos fuera de la cabecera). */
+export function ShareImageButton(props: Omit<Parameters<typeof ShareImageDialog>[0], 'open' | 'onClose'>) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-rink-passion dark:text-slate-400 dark:hover:bg-slate-800" aria-label="Imagen">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="9" cy="9" r="2" /><path d="m21 15-5-5L5 21" />
+        </svg>
+      </button>
+      <ShareImageDialog {...props} open={open} onClose={() => setOpen(false)} />
     </>
   );
 }
