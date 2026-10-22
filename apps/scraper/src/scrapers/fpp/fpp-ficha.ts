@@ -96,7 +96,8 @@ async function upsertPlayer(t: FppFichaTarget, l: FppLineupEntry): Promise<strin
 
 /** Descarga y persiste la ficha de UN partido. Devuelve nº de eventos. */
 export async function processFppFicha(t: FppFichaTarget): Promise<{ events: number; lineup: number }> {
-  const path = t.sourceUrl.replace(FPP_BASE_URL, '');
+  const u = new URL(t.sourceUrl);
+  const path = u.pathname + u.search;
   const jogo = parseFppJogo(await fppGet(path));
   if (jogo.lineup.length === 0 && !jogo.timelineQuery) {
     log.info({ match: t.sourceRef }, 'Ficha FPP sin alineación ni timeline todavía');

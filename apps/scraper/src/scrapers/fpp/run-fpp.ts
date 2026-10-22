@@ -92,6 +92,24 @@ export async function runFpp(ctx: FppCtx, makePipeline: FppPipelineFactory): Pro
     return { ok: false, upserted: 0 };
   }
 
+  // El directo es dueño del estado mientras un partido está EN JUEGO: el
+  // calendario lo daría por terminado a los 150 min aunque siguiera la prórroga
+  // (y el feed lo volvería a poner en juego → avisos de final duplicados).
+  const live = await db.query<{ source_ref: string }>(
+    `SELECT source_ref FROM matches WHERE season_id = $1 AND status = 'live' AND source_ref LIKE 'fpp\\_match\\_%'`,
+    [ctx.seasonId],
+  );
+  if (live.rows.length > 0) {
+    const liveRefs = new Set(live.rows.map((r) => r.source_ref));
+    for (const m of out.matches.data) {
+      if (m.sourceRef && liveRefs.has(m.sourceRef)) {
+        (m as { status?: unknown }).status = undefined;
+        m.homeScore = undefined;
+        m.awayScore = undefined;
+      }
+    }
+  }
+
   const pipeline = makePipeline(ctx.seasonId);
   // Rondas antes que partidos: la estructura existe aunque falten cruces.
   const r = await pipeline.runRounds(out.rounds);

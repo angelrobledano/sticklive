@@ -9,7 +9,7 @@ es un PHP propio renderizado en servidor, sin API.
 | `/Classificacao/{id}` | clasificación (P J V E D GM GS DG) y escudo `CLUBE_{clubId}.png` |
 | `/jogo/{id}` · `/jogoTaca/{id}` | ficha (liga · copas): alineaciones con foto, técnicos, árbitros, faltas de equipo |
 | `/Views/ajax_jogo.php?…&token=` | timeline: goles, penaltis, libres directos, tarjetas, faltas, tiempos muertos (el token sale de la ficha) |
-| `/Direto` | partidos del día, se refresca cada 15 s (v3, directo) |
+| `/Direto` | partidos del día con estado y marcador, la web lo recarga cada 15 s |
 
 ## Alcance
 
@@ -17,7 +17,9 @@ es un PHP propio renderizado en servidor, sin API.
   agrupadas en 10 competiciones de Stick Live.
 - **v2 (ficha):** alineaciones con foto y titulares, técnicos, árbitros, faltas
   de equipo y timeline completo de cada partido terminado.
-- Sin directo todavía (v3).
+- **v3 (directo):** estado y marcador desde `/Direto` dentro del ciclo de
+  cron-live (~45 s), con timeline y alineación en el mismo ciclo → avisos push
+  de inicio, gol, tarjeta y final como en la FEP.
 
 | Competición | ids FPP |
 |---|---|
@@ -75,6 +77,38 @@ es un PHP propio renderizado en servidor, sin API.
 - **source_url:** el upsert común de partidos no reescribe `source_url`, así que
   `run-fpp` la actualiza él mismo cuando aparece la ficha.
 
+## Directo (v3)
+
+`fpp-live.parser.ts` (puro) + `fpp-live.ts` (E/S), llamados desde `cron-live.ts`
+(`runFppScores` junto a World Skate; las fichas, entre el snapshot y el diff de
+goles para que salgan los avisos).
+
+- **Coste:** sin partidos FPP en ventana (en juego, o con inicio entre −5 h y
+  +30 min) no hay ninguna petición. Con partidos: 1 GET a `/Direto` + 2 por
+  partido en juego por ciclo.
+- **Emparejado:** por la ficha enlazada en el item y, si no la trae, por los
+  nombres de los equipos (sin acentos ni signos).
+- **Estado:** solo con señal explícita de la fuente: el texto de `.estado-jogo`
+  ("1ª/2ª Parte", "Intervalo", "Prolongamento", "Terminado"…) o el punto rojo
+  parpadeante (`.fa-circle`). Un texto desconocido NO toca el partido y se
+  manda a Sentry con su texto literal (`fpp-direto-state`).
+- **Calendario vs directo:** mientras un partido está `live`, la pasada de
+  calendario no toca su estado ni su marcador. Si el directo se queda colgado,
+  `stale-live-watchdog` lo devuelve a `scheduled` a las 5 h y el calendario lo cierra.
+
+### ⚠️ Primer directo real (sábado 24/10, 2ª y 3ª Divisão)
+
+El parser de `/Direto` se escribió **sin una captura con partidos en juego**
+(el 23/10 no había ninguno): la estructura sale del CSS de la página y el test
+usa un fixture sintético. Durante los primeros partidos:
+
+1. Guardar el HTML real: `curl -s https://hp.fpp.pt/Direto > apps/scraper/src/scrapers/fpp/__fixtures__/direto-real.html`
+   (una vez en juego y otra al descanso), sustituir el fixture sintético de `fpp-live.test.ts`.
+2. Revisar Sentry (`fpp-direto-state`, `fpp-direto-parse`) y los logs
+   `FPP directo` (`matched` vs `items`).
+3. Si algo no casa, el calendario sigue cerrando los partidos con su resultado
+   (150 min), así que en el peor caso se pierde el "en juego", no el resultado.
+
 ## Despliegue (primera vez)
 
 El orden no importa: sin la migración, `--run-once fpp` no encuentra
@@ -118,5 +152,4 @@ Para ver los ids de la temporada: `https://hp.fpp.pt/` (menú "Competições 202
   Si la FPP publica la hora local de la pista y no la de Lisboa, esos partidos
   quedan desplazados 1 h. Hay que contrastarlo con un partido real en las Azores.
   Madeira tiene la misma hora que Lisboa.
-- v3: directo con `/Direto` dentro de cron-live.
 - Histórico (`/Historico`, épocas 2024/25 y 2025/26 accesibles).

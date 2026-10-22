@@ -47,6 +47,9 @@ import {
 import {
   sourceForMatchRef, idpFromMatchRef, idcFromCompetitionRef, matchRef, currentSource,
 } from '../../scraper/src/core/sources.js';
+// Portugal (FPP): feed /Direto + ficha/timeline de los partidos en juego.
+import { runFppLiveScores, fppLiveCandidates } from '../../scraper/src/scrapers/fpp/fpp-live.js';
+import { processFppFicha, type FppFichaTarget } from '../../scraper/src/scrapers/fpp/fpp-ficha.js';
 import {
   snapshotMatches, snapshotRounds, snapshotGoals, snapshotEventsByType,
   snapshotExtraPhases, snapshotResults,
@@ -403,6 +406,27 @@ async function runWorldskateScores(playingNow: Set<string>): Promise<void> {
 }
 
 /**
+ * Portugal (FPP): estado y marcador desde /Direto (un GET por ciclo, y ninguno
+ * si no hay partidos FPP en ventana). Snapshot→diff por temporada para que
+ * salgan los avisos de inicio y final. Devuelve las fichas a cargar después,
+ * dentro de la ventana de snapshot de goles/tarjetas del ciclo.
+ */
+async function runFppScores(playingNow: Set<string>): Promise<FppFichaTarget[]> {
+  const seasons = [...new Set((await fppLiveCandidates()).map((c) => c.season_id))];
+  if (seasons.length === 0) return [];
+  const prev = new Map<string, { m: Awaited<ReturnType<typeof snapshotMatches>>; r: Awaited<ReturnType<typeof snapshotRounds>> }>();
+  if (pushEnabled) for (const sid of seasons) prev.set(sid, { m: await snapshotMatches(sid), r: await snapshotRounds(sid) });
+  const cycle = await runFppLiveScores();
+  for (const ref of cycle.liveRefs) playingNow.add(ref);
+  for (const [sid, p] of prev) {
+    try { await diffAndNotify(p.m, p.r, sid); } catch (err) {
+      log.warn({ err, seasonId: sid }, 'push (FPP) fallo — sigue');
+    }
+  }
+  return cycle.fichas;
+}
+
+/**
  * live → finished por la señal explícita del acta (periodo_fin), salvo que un
  * feed en vivo lo siga dando en juego en este mismo ciclo. Snapshot→diff por
  * temporada para que el push de final salga igual que con el feed.
@@ -429,7 +453,7 @@ async function finalizeEndedByActa(ended: EndedByActa[], playingNow: ReadonlySet
 }
 
 /**
- * Un ciclo completo: marcadores de TODAS las fuentes (FEP + World Skate) y,
+ * Un ciclo completo: marcadores de TODAS las fuentes (FEP + World Skate + FPP) y,
  * después, actas y notificaciones. Cada fuente tiene su propio scraper y va
  * aislada: que una caiga no impide que las demás se actualicen.
  */
@@ -450,6 +474,13 @@ async function runOneCycle(seasonIds: string[]): Promise<number> {
     log.warn({ err }, 'marcadores World Skate fallaron — el ciclo sigue');
   }
 
+  let fppFichas: FppFichaTarget[] = [];
+  try {
+    fppFichas = await runFppScores(playingNow);
+  } catch (err) {
+    log.warn({ err }, 'marcadores FPP fallaron — el ciclo sigue');
+  }
+
   // Goles: las fichas traen goleador y minuto, así que snapshot ANTES de
   // refrescarlas y diff DESPUÉS, sobre TODAS las temporadas activas.
   const prevGoals = pushEnabled ? await snapshotGoals(seasonIds) : new Map();
@@ -465,6 +496,13 @@ async function runOneCycle(seasonIds: string[]): Promise<number> {
     endedByActa = await runFichasForActiveMatches(seasonIds);
   } catch (err) {
     log.warn({ err }, 'runFichasForActiveMatches fallo — ciclo de scores sigue OK');
+  }
+  // Timeline FPP de los partidos en juego/recién terminados: va aquí, entre el
+  // snapshot y el diff, para que sus goles y tarjetas generen los avisos.
+  for (const t of fppFichas) {
+    try { await processFppFicha(t); } catch (err) {
+      log.warn({ err, match: t.sourceRef }, 'ficha FPP en directo fallo — sigue');
+    }
   }
   // Final EXPLÍCITO por acta (con snapshot→diff para que salga el aviso de final).
   try { await finalizeEndedByActa(endedByActa, playingNow); } catch (err) {

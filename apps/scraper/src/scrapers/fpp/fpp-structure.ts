@@ -18,7 +18,8 @@ import {
 } from './fpp-catalog.js';
 import { isPlaceholderTeam, type FppCalendarRow, type FppStandingRow } from './fpp.parser.js';
 
-export const FPP_BASE_URL = 'https://hp.fpp.pt';
+/** Base de la web. Configurable SOLO para pruebas locales (servidor falso). */
+export const FPP_BASE_URL = process.env['FPP_BASE_URL'] ?? 'https://hp.fpp.pt';
 
 /**
  * Margen tras la hora de inicio para dar por bueno un marcador del calendario.
