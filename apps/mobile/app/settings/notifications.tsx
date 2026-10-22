@@ -269,16 +269,16 @@ function NotificationShowcaseCard() {
       {activeTab === 'teams' && (
         <View className="mt-1">
           <MockPushCard
-            time="Ahora"
-            badge="EN DIRECTO"
+            time={t('notif_presets.showcase.time_now')}
+            badge={t('notif_presets.showcase.badge_live')}
             title={t('notif_presets.showcase.team_goal_title')}
             body={t('notif_presets.showcase.team_goal_body')}
             liveScore="BAR 1 - 0 LIC · Min. 14'"
             icon="shield"
           />
           <MockPushCard
-            time="Hace 5m"
-            badge="FINAL"
+            time={t('notif_presets.showcase.time_5m')}
+            badge={t('notif_presets.showcase.badge_final')}
             title={t('notif_presets.showcase.team_final_title')}
             body={t('notif_presets.showcase.team_final_body')}
             icon="flag"
@@ -294,16 +294,16 @@ function NotificationShowcaseCard() {
       {activeTab === 'players' && (
         <View className="mt-1">
           <MockPushCard
-            time="Ahora"
-            badge="GOL"
+            time={t('notif_presets.showcase.time_now')}
+            badge={t('notif_presets.showcase.badge_goal')}
             title={t('notif_presets.showcase.player_goal_title')}
             body={t('notif_presets.showcase.player_goal_body')}
             liveScore="BAR 2 - 1 NOI · Min. 32'"
             icon="person"
           />
           <MockPushCard
-            time="Hace 10m"
-            badge="TARJETA AZUL"
+            time={t('notif_presets.showcase.time_10m')}
+            badge={t('notif_presets.showcase.badge_blue_card')}
             title={t('notif_presets.showcase.player_card_title')}
             body={t('notif_presets.showcase.player_card_body')}
             icon="alert-circle"
@@ -319,15 +319,15 @@ function NotificationShowcaseCard() {
       {activeTab === 'leagues' && (
         <View className="mt-1">
           <MockPushCard
-            time="Viernes 20:00"
-            badge="JORNADA"
+            time={t('notif_presets.showcase.time_friday')}
+            badge={t('notif_presets.showcase.badge_matchday')}
             title={t('notif_presets.showcase.league_start_title')}
             body={t('notif_presets.showcase.league_start_body')}
             icon="trophy"
           />
           <MockPushCard
-            time="Domingo 22:30"
-            badge="RESULTADOS"
+            time={t('notif_presets.showcase.time_sunday')}
+            badge={t('notif_presets.showcase.badge_results')}
             title={t('notif_presets.showcase.league_end_title')}
             body={t('notif_presets.showcase.league_end_body')}
             icon="stats-chart"
@@ -348,10 +348,10 @@ function NotificationShowcaseCard() {
             <Text className="text-xs font-semibold text-slate-800 dark:text-slate-200">
               {t('notif_presets.key_events.label')}
               {activeTab === 'teams'
-                ? ' (Goles en directo)'
+                ? t('notif_presets.showcase.suffix_teams')
                 : activeTab === 'players'
-                ? ' (Goles y tarjetas)'
-                : ' (Toda la jornada)'}
+                ? t('notif_presets.showcase.suffix_players')
+                : t('notif_presets.showcase.suffix_leagues')}
             </Text>
             <Text className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
               {activeTab === 'players'
