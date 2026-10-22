@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { ScrollView, Share, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTeam } from '@/src/hooks/queries';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { TeamDetailSkeleton } from '@/src/components/shared/Skeleton';
 import { ShareHeaderButton } from '@/src/components/shared/ShareHeaderButton';
+import { ShareImageModal } from '@/src/components/shared/ShareImageModal';
 import { clubName } from '@/src/lib/names';
 import { TeamHeader } from '@/src/components/team/TeamHeader';
 import { OtherClubTeams } from '@/src/components/team/OtherClubTeams';
@@ -27,6 +28,7 @@ export default function TeamScreen() {
   const initialSeason = Array.isArray(params.season) ? params.season[0] : params.season;
 
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | undefined>(initialSeason);
+  const [shareImageModalOpen, setShareImageModalOpen] = useState(false);
 
   const query = useTeam(teamId ?? '', selectedSeasonId);
 
@@ -35,11 +37,7 @@ export default function TeamScreen() {
 
   const handleShare = () => {
     if (!rawTeam) return;
-    void Share.share({
-      message: `${displayName} | Stick Live\nhttps://sticklive.eu/teams/${rawTeam.id}`,
-      url: `https://sticklive.eu/teams/${rawTeam.id}`,
-      title: displayName,
-    });
+    setShareImageModalOpen(true);
   };
 
   const headerElement = (
@@ -93,6 +91,16 @@ export default function TeamScreen() {
 
         <TeamCenterClient data={query.data} />
       </ScrollView>
+
+      {rawTeam ? (
+        <ShareImageModal
+          visible={shareImageModalOpen}
+          onClose={() => setShareImageModalOpen(false)}
+          imagePath={`/teams/${rawTeam.id}/share-image`}
+          name={displayName}
+          kind="team"
+        />
+      ) : null}
     </>
   );
 }

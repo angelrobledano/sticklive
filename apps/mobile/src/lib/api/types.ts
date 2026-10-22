@@ -451,11 +451,24 @@ export interface TeamDetail {
  * (CareerSeason :62-73, CareerStats :40-47). Ídem: sólo lo pintado — el JSON
  * trae además sourceRef/birthDate/statsByCompetition.
  */
+export interface PlayerCompStats {
+  competitionId: string;
+  competitionName: string;
+  competitionShort: string | null;
+  pj: number;
+  goals: number;
+  blueCards: number;
+  redCards: number;
+  penaltiesTotal: number;
+  penaltiesScored: number;
+}
+
 export interface PlayerDetail {
   player: {
     id: string;
     firstName: string;
     lastName: string;
+    birthDate?: string | null;
     nationality: string | null;
     isGoalkeeper: boolean;
     photoUrl: string | null;
@@ -468,7 +481,16 @@ export interface PlayerDetail {
     jerseyNumber: number | null;
   } | null;
   /** Suma de la temporada activa (player-detail.ts:263-274). */
-  seasonTotals: { pj: number; goals: number; assists: number };
+  seasonTotals: {
+    pj: number;
+    goals: number;
+    assists: number;
+    blueCards: number;
+    redCards: number;
+    penaltiesTotal: number;
+    penaltiesScored: number;
+  };
+  statsByCompetition?: PlayerCompStats[];
   career: {
     seasons: {
       seasonId: string;

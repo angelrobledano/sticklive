@@ -15,6 +15,7 @@ import {
   seriesWinnerId,
 } from '@/src/lib/playoff';
 import { PlayoffBracket } from './PlayoffBracket';
+import { ChampionBlock } from './ChampionBlock';
 import type { SeasonOverviewMatch } from '@/src/lib/api/types';
 
 function SeriesCard({
@@ -251,7 +252,7 @@ function SeriesCard({
 }
 
 export function PlayoffsTab({ matches }: { matches: SeasonOverviewMatch[] }) {
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
 
   const phases = useMemo(() => {
     const byPhase = groupByPhase(matches);
@@ -311,8 +312,24 @@ export function PlayoffsTab({ matches }: { matches: SeasonOverviewMatch[] }) {
       ? noDataText
       : 'No hay partidos programados para esta fase';
 
+  const championTeam = useMemo(() => {
+    if (phases.Final.length === 0) return null;
+    const finalSeries = phases.Final[0];
+    if (!finalSeries) return null;
+    const winnerId = seriesWinnerId(finalSeries);
+    if (!winnerId) return null;
+    for (const g of finalSeries.games) {
+      if (g.homeTeam.id === winnerId) return g.homeTeam;
+      if (g.awayTeam.id === winnerId) return g.awayTeam;
+    }
+    return null;
+  }, [phases.Final]);
+
   return (
     <View className="px-3 pt-3">
+      {/* Campeón si la final ya ha terminado */}
+      {championTeam ? <ChampionBlock team={championTeam} /> : null}
+
       {/* Bracket resumido arriba */}
       <PlayoffBracket matches={matches} />
 

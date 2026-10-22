@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Animated, Easing, RefreshControl, ScrollView, Share, View } from 'react-native';
+import { Animated, Easing, RefreshControl, ScrollView, View } from 'react-native';
 import { Stack, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMatchDetail, useSeasonOverview, useTeam } from '@/src/hooks/queries';
@@ -8,6 +8,7 @@ import { useInterstitialOnLeave } from '@/src/hooks/ads/useInterstitialOnLeave';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { MatchDetailSkeleton } from '@/src/components/shared/Skeleton';
 import { ShareHeaderButton } from '@/src/components/shared/ShareHeaderButton';
+import { ShareImageModal } from '@/src/components/shared/ShareImageModal';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { MatchHeader } from '@/src/components/match/MatchHeader';
 import { MatchTabs } from '@/src/components/match/MatchTabs';
@@ -62,6 +63,7 @@ export default function MatchScreen() {
   const seasonOverviewQuery = useSeasonOverview(rawMatch?.seasonId);
   const homeTeamQuery = useTeam(rawMatch?.homeTeam.id ?? '', rawMatch?.seasonId);
   const awayTeamQuery = useTeam(rawMatch?.awayTeam.id ?? '', rawMatch?.seasonId);
+  const [shareImageModalOpen, setShareImageModalOpen] = useState(false);
 
   const preview = useMemo(() => {
     if (!rawMatch || !seasonOverviewQuery.data || !rawMatch.homeTeam.id || !rawMatch.awayTeam.id) {
@@ -96,15 +98,7 @@ export default function MatchScreen() {
 
   const handleShare = () => {
     if (!rawMatch) return;
-    const scoreText =
-      rawMatch.status === 'live' || rawMatch.status === 'finished'
-        ? `${rawMatch.score.home ?? 0} - ${rawMatch.score.away ?? 0}`
-        : 'vs';
-    void Share.share({
-      message: `${homeLabel} ${scoreText} ${awayLabel} | Stick Live\nhttps://sticklive.eu/matches/${rawMatch.id}`,
-      url: `https://sticklive.eu/matches/${rawMatch.id}`,
-      title: `${homeLabel} vs ${awayLabel}`,
-    });
+    setShareImageModalOpen(true);
   };
 
   const headerElement = (
@@ -211,6 +205,16 @@ export default function MatchScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      {rawMatch ? (
+        <ShareImageModal
+          visible={shareImageModalOpen}
+          onClose={() => setShareImageModalOpen(false)}
+          imagePath={`/matches/${rawMatch.id}/share-image`}
+          name={`${homeLabel} vs ${awayLabel}`}
+          kind="match"
+        />
+      ) : null}
     </>
   );
 }

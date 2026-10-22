@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { useCompetitions } from '@/src/hooks/queries';
+import { useCompetitions, useCurrentMatches } from '@/src/hooks/queries';
 import { useFavoriteName, useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { EmptyState } from '@/src/components/shared/EmptyState';
@@ -11,6 +11,7 @@ import { ErrorState } from '@/src/components/shared/ErrorState';
 import { BrandLoader } from '@/src/components/shared/BrandLoader';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { AdBanner } from '@/src/components/ads/AdBanner';
+import { MiGrada } from '@/src/components/home/MiGrada';
 import { authErrorKey } from '@/src/lib/auth-errors';
 import { clubName } from '@/src/lib/names';
 
@@ -114,6 +115,7 @@ export default function FavoritesScreen() {
   const router = useRouter();
   // Precarga de competiciones para resolver nombres de ligas favoritas de inmediato
   useCompetitions();
+  const currentMatchesQuery = useCurrentMatches();
 
   // Ambos hooks montados siempre (regla de hooks): el `enabled` de cada uno
   // hace el gating (servidor sólo con token; AsyncStorage sólo anónimo).
@@ -159,21 +161,33 @@ export default function FavoritesScreen() {
         ) : total === 0 ? (
           <EmptyState title={t('favorites.onboarding_title')} hint={t('favorites.onboarding_body')} />
         ) : (
-          sections
-            .filter((s) => s.ids.length > 0)
-            .map((s) => (
-              <View key={s.kind}>
-                <Text className="px-4 pb-1 pt-4 text-xs font-bold uppercase text-slate-500">{s.title}</Text>
-                {s.ids.map((id) => (
-                  <FavoriteRow
-                    key={id}
-                    kind={s.kind}
-                    refId={id}
-                    onPress={() => openFavorite(s.kind, id)}
-                  />
-                ))}
+          <>
+            {favs && (favs.teams.length > 0 || favs.leagues.length > 0) && currentMatchesQuery.data ? (
+              <View className="px-4 mt-4">
+                <MiGrada
+                  matches={currentMatchesQuery.data}
+                  teamIds={favs.teams}
+                  leagueIds={favs.leagues}
+                />
               </View>
-            ))
+            ) : null}
+
+            {sections
+              .filter((s) => s.ids.length > 0)
+              .map((s) => (
+                <View key={s.kind}>
+                  <Text className="px-4 pb-1 pt-4 text-xs font-bold uppercase text-slate-500">{s.title}</Text>
+                  {s.ids.map((id) => (
+                    <FavoriteRow
+                      key={id}
+                      kind={s.kind}
+                      refId={id}
+                      onPress={() => openFavorite(s.kind, id)}
+                    />
+                  ))}
+                </View>
+              ))}
+          </>
         )}
 
         {/* Pie del contenido: banner (el gating premium/consentimiento vive en AdBanner). */}
