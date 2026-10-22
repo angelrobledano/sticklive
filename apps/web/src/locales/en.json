@@ -1,4 +1,31 @@
 {
+  "team_story": {
+    "kicker": "The season",
+    "results": "Results",
+    "attack_defense": "Attack and defence",
+    "scored_pm": "Scored per game",
+    "conceded_pm": "Conceded per game",
+    "points_pct": "{n}% pts",
+    "fouls_pm": "Fouls/game",
+    "more": "See all the numbers"
+  },
+  "team_calendar": {
+    "all": "All",
+    "played": "Played",
+    "upcoming": "Upcoming",
+    "home": "Home",
+    "away": "Away",
+    "no_matches": "No matches with these filters.",
+    "clear": "Clear filters",
+    "round_short": "R{n}",
+    "res_W": "W",
+    "res_D": "D",
+    "res_L": "L",
+    "res_W_full": "Wins",
+    "res_D_full": "Draws",
+    "res_L_full": "Defeats",
+    "label": "Filter fixtures"
+  },
   "share_image": {
     "button": "Image",
     "title": "Share the team",
