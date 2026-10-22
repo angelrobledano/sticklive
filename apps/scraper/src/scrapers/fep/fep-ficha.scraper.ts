@@ -19,7 +19,7 @@ import { FepBaseScraper } from './fep-base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { SidgadClient, SIDGAD_LANG } from './sidgad-client.js';
 import { currentSource, eventPrefix, playerPrefix, playerIdFromRef, type SourceDef } from '../../core/sources.js';
-import { db, fixPlayerNameSplit, replaceMatchEvents, replaceMatchLineups, withTransaction } from '@sports/db';
+import { db, fixPlayerNameSplit, replaceMatchEvents, replaceMatchLineups, withTransaction, findPlayerIdBySourceRef, addPlayerSourceRef, refreshEventCoverage } from '@sports/db';
 // Los parsers viven en fep-ficha.parser.ts (puros, sin E/S) para poder testearlos
 // con HTML congelado sin necesidad de entorno ni base de datos.
 import {
@@ -366,10 +366,8 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
     // y el segundo PISABA el source_ref del primero, fusionando sus carreras.
     // Si el slug existe con OTRA ref, se desambigua el slug con el id de
     // fuente (slug-idFuente) y queda el aviso para revisión.
-    const found = await db.query<{ id: string }>(
-      `SELECT id FROM players WHERE source_ref = $1`, [playerSourceRef]
-    );
-    let playerId = found.rows[0]?.id;
+    // B1: la ref puede ser una más de una persona enlazada entre portales.
+    let playerId = (await findPlayerIdBySourceRef(playerSourceRef)) ?? undefined;
     if (playerId && givenName) {
       // Corrige el reparto de los dados de alta antes de leer el nombre de pila (C1).
       await fixPlayerNameSplit(playerId, firstName, lastName);
@@ -399,6 +397,7 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
         [ctx.sport_id, firstName, lastName, finalSlug, playerSourceRef]
       );
       playerId = ins.rows[0]!.id;
+      await addPlayerSourceRef(playerId, playerSourceRef, 'scraper').catch(() => {});
     }
 
     // Pertenencia equipo/temporada (si conocemos el equipo sidgad).
@@ -519,13 +518,8 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
       // recuperar el acta y 364 partidos mantenían el timeline oculto con los
       // eventos YA en la base. Mismo guardado anti-acta-vacía de #149: si la
       // ficha vino vacía no hay eventos y no se toca la bandera.
-      if (input.length > 0) {
-        await client.query(
-          `UPDATE matches SET event_coverage = 'full', updated_at = NOW()
-            WHERE id = $1 AND event_coverage IS DISTINCT FROM 'full'`,
-          [matchId]
-        );
-      }
+      // B5: 'full' solo si el acta cuadra con el marcador; si no, 'partial'.
+      if (input.length > 0) await refreshEventCoverage(matchId, client);
     });
     this.log.info(
       { matchId, inserted: input.length, types: [...new Set(events.map(e => e.eventType))] },

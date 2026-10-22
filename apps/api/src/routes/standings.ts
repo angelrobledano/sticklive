@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
-import { db, getStandings } from '@sports/db';
+import { db, getStandings, getStandingsZones } from '@sports/db';
+import { zoneForPosition } from '@sports/shared-types';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 import { seasonVisible } from '../lib/visibility.js';
@@ -40,11 +41,18 @@ standingsRouter.get('/:id/standings', async (c) => {
       );
     }
 
+    // B2: zona de cada fila (ascenso, descenso…) según standings_zones.
+    const zones = await getStandingsZones(seasonId);
+    const withZones = rows.map((r) => {
+      const z = zoneForPosition(zones, r.position, { phaseId: r.phase_id ?? null, groupName: r.group_name ?? null });
+      return { ...r, zone: z ? { kind: z.kind, target: z.target } : null };
+    });
+
     return c.json({
       seasonId,
       group: group ?? null,
       count: rows.length,
-      standings: rows,
+      standings: withZones,
     });
   } catch (err) {
     captureRouteError(err, 'standings] GET /:id/standings error');
