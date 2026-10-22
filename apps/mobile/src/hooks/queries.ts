@@ -34,7 +34,7 @@ export const qk = {
   standings: (seasonId: string) => ['standings', seasonId] as const,
   search: (q: string) => ['search', q] as const,
   favorites: ['favorites'] as const,
-  team: (id: string) => ['teams', id] as const,
+  team: (id: string, seasonId?: string) => seasonId ? (['teams', id, seasonId] as const) : (['teams', id] as const),
   player: (id: string) => ['players', id] as const,
   premium: ['premium'] as const,
   adsConfig: ['adsConfig'] as const,
@@ -226,11 +226,12 @@ export function useFavorites(token: string | null | undefined) {
   });
 }
 
-/** Ficha de equipo (Task 2.5): estable → staleTime generoso. */
-export function useTeam(id: string) {
+/** Ficha de equipo (Task 2.5): estable → staleTime generoso. Soporta filtrar por ?season=. */
+export function useTeam(id: string, seasonId?: string) {
+  const query = seasonId ? `?season=${seasonId}` : '';
   return useQuery({
-    queryKey: qk.team(id),
-    queryFn: () => apiFetch<TeamDetail>(`/teams/${id}`),
+    queryKey: qk.team(id, seasonId),
+    queryFn: () => apiFetch<TeamDetail>(`/teams/${id}${query}`),
     enabled: Boolean(id),
     staleTime: 5 * 60_000,
   });
