@@ -1,7 +1,9 @@
 {
-  "team_share": {
+  "share_image": {
     "button": "Immagine",
     "title": "Condividi la squadra",
+    "title_match": "Condividi il risultato",
+    "title_player": "Condividi il giocatore",
     "close": "Chiudi",
     "format": "Formato",
     "story": "Storia 9:16",
@@ -9,7 +11,7 @@
     "theme": "Tema",
     "dark": "Scuro",
     "light": "Chiaro",
-    "preview": "Anteprima di {team}",
+    "preview": "Anteprima di {name}",
     "download": "Scarica",
     "share": "Condividi"
   },

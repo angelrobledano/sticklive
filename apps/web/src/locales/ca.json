@@ -1,7 +1,9 @@
 {
-  "team_share": {
+  "share_image": {
     "button": "Imatge",
     "title": "Comparteix l'equip",
+    "title_match": "Comparteix el resultat",
+    "title_player": "Comparteix el jugador",
     "close": "Tanca",
     "format": "Format",
     "story": "Història 9:16",
@@ -9,7 +11,7 @@
     "theme": "Tema",
     "dark": "Fosc",
     "light": "Clar",
-    "preview": "Previsualització de {team}",
+    "preview": "Previsualització de {name}",
     "download": "Baixa",
     "share": "Comparteix"
   },

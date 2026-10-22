@@ -1,7 +1,9 @@
 {
-  "team_share": {
+  "share_image": {
     "button": "Image",
     "title": "Share the team",
+    "title_match": "Share the result",
+    "title_player": "Share the player",
     "close": "Close",
     "format": "Format",
     "story": "Story 9:16",
@@ -9,7 +11,7 @@
     "theme": "Theme",
     "dark": "Dark",
     "light": "Light",
-    "preview": "Preview of {team}",
+    "preview": "Preview of {name}",
     "download": "Download",
     "share": "Share"
   },
