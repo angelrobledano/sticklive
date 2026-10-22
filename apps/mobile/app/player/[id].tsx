@@ -191,17 +191,23 @@ export default function PlayerScreen() {
             <Text className="font-mono text-xl font-bold tabular-nums text-blue-500">
               {seasonTotals.blueCards > 0 ? seasonTotals.blueCards : '—'}
             </Text>
-            <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              {t('player.col_az') || 'Az'}
-            </Text>
+            <View className="flex-row items-center gap-1 mt-0.5">
+              <View className="w-2 h-2.5 rounded-[1px] bg-blue-500 shadow-2xs" />
+              <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {t('player.col_az') || 'Az'}
+              </Text>
+            </View>
           </View>
           <View className={statBox}>
             <Text className="font-mono text-xl font-bold tabular-nums text-red-500">
               {seasonTotals.redCards > 0 ? seasonTotals.redCards : '—'}
             </Text>
-            <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              {t('player.col_rj') || 'Rj'}
-            </Text>
+            <View className="flex-row items-center gap-1 mt-0.5">
+              <View className="w-2 h-2.5 rounded-[1px] bg-red-500 shadow-2xs" />
+              <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {t('player.col_rj') || 'Rj'}
+              </Text>
+            </View>
           </View>
         </View>
 

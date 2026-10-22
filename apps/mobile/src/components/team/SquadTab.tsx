@@ -3,18 +3,20 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { TeamDetail } from '@/src/lib/api/types';
 import { Avatar, playerPhotoUri } from '@/src/components/shared/Avatar';
-import { GoalStickIcon } from '@/src/components/shared/GoalStickIcon';
 import { playerDisplayName } from '@/src/lib/names';
 import { STAFF_ROLE_LABELS, staffDisplayName } from '@/src/lib/team-section';
+import { goalsWord } from '@/src/lib/squad-helpers';
 import { useLocale } from '@/src/i18n/LocaleContext';
 
 interface Props {
   data: TeamDetail;
 }
 
+type SquadPlayer = TeamDetail['squad'][number];
+
 export function SquadTab({ data }: Props) {
   const router = useRouter();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { squad, staff } = data;
 
   if (squad.length === 0) {
@@ -29,16 +31,34 @@ export function SquadTab({ data }: Props) {
 
   const goalkeepers = squad.filter((p) => p.isGoalkeeper);
   const outfield = squad.filter((p) => !p.isGoalkeeper);
+  const hasAnyCards = squad.some(
+    (p) => (p.blueCards && p.blueCards > 0) || (p.redCards && p.redCards > 0),
+  );
 
-  const renderPlayer = (p: (typeof squad)[0]) => {
-    const hasStats = (p.goals > 0) || (p.blueCards != null && p.blueCards > 0) || (p.redCards != null && p.redCards > 0);
+  const renderPlayer = (p: SquadPlayer) => {
+    const hasStats =
+      p.goals > 0 ||
+      (p.blueCards != null && p.blueCards > 0) ||
+      (p.redCards != null && p.redCards > 0);
+
+    const goalLabel = p.goals > 0 ? `${p.goals} ${goalsWord(p.goals, locale)}` : '';
+    const blueCardLabel =
+      p.blueCards && p.blueCards > 0
+        ? `${p.blueCards} ${t('blue_cards') || 'tarjetas azules'}`
+        : '';
+    const redCardLabel =
+      p.redCards && p.redCards > 0
+        ? `${p.redCards} ${t('red_cards') || 'tarjetas rojas'}`
+        : '';
+
+    const statsDescription = [goalLabel, blueCardLabel, redCardLabel].filter(Boolean).join(', ');
 
     return (
       <Pressable
         key={p.playerId}
         onPress={() => router.push(`/player/${p.playerId}`)}
         accessibilityRole="button"
-        accessibilityLabel={`${playerDisplayName(p.firstName, p.lastName)}, dorsal ${p.jerseyNumber ?? '–'}, ${t(p.isGoalkeeper ? 'team.gk_pos' : 'team.player_pos')}`}
+        accessibilityLabel={`${playerDisplayName(p.firstName, p.lastName)}, dorsal ${p.jerseyNumber ?? '–'}, ${t(p.isGoalkeeper ? 'team.gk_pos' : 'team.player_pos')}${statsDescription ? `, ${statsDescription}` : ''}`}
         className="min-h-[48px] flex-row items-center gap-3 px-4 py-3 active:bg-slate-50 dark:active:bg-slate-800/60"
       >
         {/* Dorsal */}
@@ -56,7 +76,7 @@ export function SquadTab({ data }: Props) {
         />
 
         {/* Nombre y posición */}
-        <View className="flex-1 min-w-0">
+        <View className="flex-1 min-w-0 pr-2">
           <Text numberOfLines={1} className="text-sm font-semibold text-slate-800 dark:text-slate-100">
             {playerDisplayName(p.firstName, p.lastName)}
           </Text>
@@ -65,34 +85,35 @@ export function SquadTab({ data }: Props) {
           </Text>
         </View>
 
-        {/* Badge portero */}
-        {p.isGoalkeeper ? (
-          <View className="rounded bg-slate-100 px-1.5 py-0.5 border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
-            <Text className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-              {t('team.gk_short') || 'PO'}
-            </Text>
-          </View>
-        ) : null}
-
-        {/* Estadísticas del jugador */}
+        {/* Estadísticas del jugador: Goles y Tarjetas visuales */}
         {hasStats ? (
-          <View className="flex-row items-center gap-2 px-1">
+          <View className="flex-row items-center gap-1.5 shrink-0">
             {p.goals > 0 ? (
-              <View className="flex-row items-center gap-1">
-                <Text className="font-bold text-xs text-slate-800 dark:text-slate-200">{p.goals}</Text>
-                <GoalStickIcon variant="inline" size={11} />
+              <View className="flex-row items-center gap-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/50 px-2 py-0.5">
+                <Text className="text-xs font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                  {p.goals}
+                </Text>
+                <Text className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  {goalsWord(p.goals, locale)}
+                </Text>
               </View>
             ) : null}
+
             {p.blueCards && p.blueCards > 0 ? (
-              <View className="items-center">
-                <Text className="font-bold text-xs text-blue-600 dark:text-blue-400">{p.blueCards}</Text>
-                <Text className="text-[9px] text-slate-400">{t('player.col_az') || 'Az'}</Text>
+              <View className="flex-row items-center gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-800/50 px-2 py-0.5">
+                <View className="w-2.5 h-3.5 rounded-[2px] bg-blue-500 shadow-2xs" />
+                <Text className="text-xs font-bold text-blue-700 dark:text-blue-300 tabular-nums">
+                  {p.blueCards}
+                </Text>
               </View>
             ) : null}
+
             {p.redCards && p.redCards > 0 ? (
-              <View className="items-center">
-                <Text className="font-bold text-xs text-red-600 dark:text-red-400">{p.redCards}</Text>
-                <Text className="text-[9px] text-slate-400">{t('player.col_rj') || 'Rj'}</Text>
+              <View className="flex-row items-center gap-1.5 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200/70 dark:border-red-800/50 px-2 py-0.5">
+                <View className="w-2.5 h-3.5 rounded-[2px] bg-red-500 shadow-2xs" />
+                <Text className="text-xs font-bold text-red-700 dark:text-red-300 tabular-nums">
+                  {p.redCards}
+                </Text>
               </View>
             ) : null}
           </View>
@@ -110,7 +131,7 @@ export function SquadTab({ data }: Props) {
         <View className="mx-3 overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900">
           <View className="px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
             <Text className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-              {t('team.gk_pos') || 'Porters'}
+              {locale === 'ca' ? 'Porters' : locale === 'en' ? 'Goalkeepers' : 'Porteros'}
             </Text>
           </View>
           <View className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -124,11 +145,29 @@ export function SquadTab({ data }: Props) {
         <View className="mx-3 overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900">
           <View className="px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
             <Text className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-              {t('team.players') || 'Jugadors de camp'}
+              {t('team.players') || (locale === 'ca' ? 'Jugadors' : 'Jugadores')}
             </Text>
           </View>
           <View className="divide-y divide-slate-100 dark:divide-slate-800/60">
             {outfield.map(renderPlayer)}
+          </View>
+        </View>
+      ) : null}
+
+      {/* Leyenda de tarjetas */}
+      {hasAnyCards ? (
+        <View className="mx-3 flex-row items-center justify-center gap-4 py-2">
+          <View className="flex-row items-center gap-1.5">
+            <View className="w-2.5 h-3.5 rounded-[2px] bg-blue-500 shadow-2xs" />
+            <Text className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              {t('blue_card') || 'Tarjeta azul'}
+            </Text>
+          </View>
+          <View className="flex-row items-center gap-1.5">
+            <View className="w-2.5 h-3.5 rounded-[2px] bg-red-500 shadow-2xs" />
+            <Text className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              {t('red_card') || 'Tarjeta roja'}
+            </Text>
           </View>
         </View>
       ) : null}
