@@ -7,9 +7,22 @@ import type { SeasonStandingRow } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
+import { rowZones, zoneChangesAfter, zoneLegend, type RowZone, type ZoneKind } from '@/lib/standings-zones-view';
 
-const PLAYOFF_SPOTS = 8;
-const RELEGATION_SPOTS = 2; // últimos 2 descienden en OK Liga
+/**
+ * Estilo por tipo de zona (B2): borde izquierdo + fondo suave + punto de la
+ * leyenda. Ascenso en verde, play-off/fase final con el color de marca,
+ * descenso en naranja (como antes) y play-out en un naranja más claro.
+ */
+const ZONE_STYLE: Record<ZoneKind, { row: string; dot: string; cut: string }> = {
+  champion:          { row: 'border-l-amber-500 bg-amber-50/50 dark:bg-amber-400/[0.07]', dot: 'bg-amber-500', cut: 'border-b-amber-500/40' },
+  promotion:         { row: 'border-l-emerald-500 bg-emerald-50/40 dark:bg-emerald-400/[0.06]', dot: 'bg-emerald-500', cut: 'border-b-emerald-500/40' },
+  promotion_playoff: { row: 'border-l-rink-passion dark:border-l-rink-accent bg-rink-passion/[0.03] dark:bg-rink-accent/[0.06]', dot: 'bg-rink-passion dark:bg-rink-accent', cut: 'border-b-rink-passion/30 dark:border-b-rink-accent/40' },
+  final_phase:       { row: 'border-l-rink-passion dark:border-l-rink-accent bg-rink-passion/[0.03] dark:bg-rink-accent/[0.06]', dot: 'bg-rink-passion dark:bg-rink-accent', cut: 'border-b-rink-passion/30 dark:border-b-rink-accent/40' },
+  placement:         { row: 'border-l-slate-400 bg-slate-50/60 dark:bg-slate-400/[0.05]', dot: 'bg-slate-400', cut: 'border-b-slate-400/40' },
+  playout:           { row: 'border-l-orange-300 bg-orange-50/30 dark:bg-orange-300/[0.05]', dot: 'bg-orange-300', cut: 'border-b-orange-300/50' },
+  relegation:        { row: 'border-l-orange-500 dark:border-l-orange-400 bg-orange-50/40 dark:bg-orange-400/[0.06]', dot: 'bg-orange-500 dark:bg-orange-400', cut: 'border-b-orange-400/50' },
+};
 
 // Rejilla compartida por cabecera y filas. En móvil solo caben 3 columnas de
 // dato (PT, PJ, DG) para que el nombre del equipo sea legible; desde sm se
@@ -64,14 +77,14 @@ export function StandingsTab({ standings }: { standings: SeasonStandingRow[] }) 
           <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1 mb-1.5">
             {name ? `${t('standings.group')} ${name}` : ''}
           </h3>
-          <StandingsTable rows={rows} showZones={false} />
+          <StandingsTable rows={rows} legacyZones={false} />
         </div>
       ))}
     </div>
   ) : (
-    // Zonas de playoff/descenso solo en ligas grandes (OK Liga). En un grupo
-    // único pequeño (Europeo femenino: 6 selecciones) no aplican.
-    <StandingsTable rows={standings} showZones={standings.length > PLAYOFF_SPOTS} />
+    // Zonas: las declaradas en standings_zones (B2). Sin ninguna, el 8/2 de
+    // antes solo en ligas de más de 8 equipos (ver standings-zones-view).
+    <StandingsTable rows={standings} legacyZones />
   );
 
   return (
@@ -114,14 +127,22 @@ function ColumnsLegend() {
 
 // ── Tabla individual (un grupo o la liga completa) ────────────────────────────
 
+function zoneLabel(t: (k: string, v?: Record<string, string | number>) => string, z: RowZone): string {
+  const zone = t(`standings.zones.${z.kind}`);
+  return z.target ? t('standings.zones.to', { zone, target: z.target }) : zone;
+}
+
 function StandingsTable({
   rows,
-  showZones,
+  legacyZones,
 }: {
   rows: SeasonStandingRow[];
-  showZones: boolean;
+  legacyZones: boolean;
 }) {
   const { t } = useT();
+  const zones = rowZones(rows, { legacyFallback: legacyZones });
+  const cuts = zoneChangesAfter(zones);
+  const legend = zoneLegend(zones);
 
   return (
     <div className="card overflow-hidden">
@@ -146,12 +167,10 @@ function StandingsTable({
       <div role="rowgroup" className="divide-y divide-slate-100 dark:divide-slate-800/60">
         {rows.map((row, idx) => {
           const pos = row.position ?? idx + 1;
-          const total = rows.length;
-          const isPlayoff    = showZones && pos <= PLAYOFF_SPOTS;
-          const isRelegation = showZones && total > 0 && pos > total - RELEGATION_SPOTS;
-          const isLast       = idx === total - 1;
-          const showPlayoffBorder    = isPlayoff    && pos === PLAYOFF_SPOTS    && !isLast;
-          const showRelegationBorder = isRelegation && pos === total - RELEGATION_SPOTS + 1;
+          const zone = zones[idx] ?? null;
+          const style = zone ? ZONE_STYLE[zone.kind] : null;
+          // Línea de corte con el color de la zona que termina (o de la que empieza).
+          const cutStyle = cuts[idx] ? (style ?? (zones[idx + 1] ? ZONE_STYLE[zones[idx + 1]!.kind] : null)) : null;
 
           // Celdas centrales en orden: PJ (móvil) + PG/PE/PP/GF/GC (desde sm).
           const midCells: { key: string; value: number; mobile: boolean }[] = [
@@ -168,15 +187,14 @@ function StandingsTable({
               key={row.id}
               role="row"
               className={`${GRID} px-3 py-2 items-center border-l-2
-                ${showPlayoffBorder    ? 'border-b-2 border-dashed border-b-rink-passion/30 dark:border-b-rink-accent/40' : ''}
-                ${showRelegationBorder ? 'border-t-2 border-dashed border-t-orange-400/50 dark:border-t-orange-400/40' : ''}
-                ${isPlayoff            ? 'border-l-rink-passion dark:border-l-rink-accent bg-rink-passion/[0.03] dark:bg-rink-accent/[0.06]' :
-                  isRelegation         ? 'border-l-orange-500 dark:border-l-orange-400 bg-orange-50/40 dark:bg-orange-400/[0.06]' :
-                                         'border-l-transparent'}
+                ${cutStyle ? `border-b-2 border-dashed ${cutStyle.cut}` : ''}
+                ${style ? style.row : 'border-l-transparent'}
               `}
             >
-              <span role="cell" className="text-xs font-semibold text-center tabular-nums text-slate-500 dark:text-slate-400">
+              <span role="cell" className="text-xs font-semibold text-center tabular-nums text-slate-500 dark:text-slate-400"
+                    {...(zone ? { title: zoneLabel(t, zone) } : {})}>
                 {pos}
+                {zone && <span className="sr-only">, {zoneLabel(t, zone)}</span>}
               </span>
 
               {/* Estrella FUERA del Link: un <button> dentro de un <a> es HTML
@@ -237,17 +255,22 @@ function StandingsTable({
       </div>
       </div>
 
-      {showZones && (
-        <div className="px-3 py-1.5 flex flex-wrap gap-x-3 gap-y-0.5 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-rink-passion dark:bg-rink-accent shrink-0" />
-            <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('standings.playoffs_zone')}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 dark:bg-orange-400 shrink-0" />
-            <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('standings.relegation_zone')}</span>
-          </div>
-        </div>
+      {legend.length > 0 && (
+        <ul className="px-3 py-1.5 flex flex-wrap gap-x-3 gap-y-0.5 border-t border-slate-100 dark:border-slate-800">
+          {legend.map((z) => (
+            <li key={`${z.kind}|${z.target ?? ''}`} className="flex items-center gap-1">
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ZONE_STYLE[z.kind].dot}`} aria-hidden="true" />
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                {/* Sin zonas declaradas se conservan los textos de antes ("Playoffs (1º–8º)"). */}
+                {z.kind === 'promotion_playoff' && !z.target && !rows.some((r) => r.zone)
+                  ? t('standings.playoffs_zone')
+                  : z.kind === 'relegation' && !z.target && !rows.some((r) => r.zone)
+                    ? t('standings.relegation_zone')
+                    : zoneLabel(t, z)}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

@@ -6,6 +6,7 @@ import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { toTitleCase } from '@/lib/names';
 import { useT } from '@/lib/i18n';
 import { ShareButton } from '@/components/shared/ShareButton';
+import { ShareImageButton } from '@/components/shared/ShareImageButton';
 import { CountryFlag } from '@/components/shared/CountryFlag';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
@@ -99,6 +100,13 @@ function PlayerHeader({ data }: { data: PlayerDetail }) {
 
         {/* Seguir + compartir jugador */}
         <div className="absolute top-0 right-0 flex items-center gap-0.5">
+          <ShareImageButton
+            kind="player"
+            entityId={player.id}
+            name={toTitleCase(`${player.firstName} ${player.lastName}`)}
+            imagePath={`/players/${player.id}/share-image`}
+            compact
+          />
           <ShareButton
             kind="player"
             title={toTitleCase(`${player.firstName} ${player.lastName}`)}

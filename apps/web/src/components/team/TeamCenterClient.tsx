@@ -11,6 +11,7 @@ import { playerDisplayName, toTitleCase, clubName } from '@/lib/names';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
 import { ShareButton } from '@/components/shared/ShareButton';
+import { ShareImageButton } from '@/components/shared/ShareImageButton';
 import { useLocale, useT } from '@/lib/i18n';
 import { withLocaleHref } from '@/lib/locale-links';
 import { APP_TZ } from '@/lib/match-time';
@@ -202,6 +203,7 @@ function TeamHeader({ data }: { data: TeamDetailView }) {
 
         {/* Compartir + Seguir/Siguiendo */}
         <div className="flex items-center gap-1 shrink-0 self-start">
+          <ShareImageButton kind="team" entityId={team.id} name={clubName(team.name)} imagePath={`/teams/${team.id}/share-image`} />
           <ShareButton kind="team" title={clubName(team.name)} />
           <FavoriteStar
             id={team.id}

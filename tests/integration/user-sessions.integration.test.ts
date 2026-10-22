@@ -110,9 +110,16 @@ describe('sesiones multi-dispositivo', () => {
     // Casi caducada: tras usarla, renueva a ~90 días.
     const porCaducar = await sembrarSesion('dev-slide', '2 hours');
     expect((await me(porCaducar)).status).toBe(200);
-    const dias = await diasRestantes(porCaducar);
-    expect(dias).toBeGreaterThan(89);
-    expect(dias).toBeLessThanOrEqual(90);
+    // Se compara con NOW() + 90 días calculado por Postgres, no con 90×24 h:
+    // si el plazo cruza un cambio de hora, 90 días de calendario son 90 días
+    // ±1 h y el test fallaba cada año en las semanas previas al cambio.
+    const renovada = await db.query<{ ok: boolean }>(
+      `SELECT expires_at BETWEEN NOW() + INTERVAL '90 days' - INTERVAL '5 minutes'
+                             AND NOW() + INTERVAL '90 days' AS ok
+         FROM user_sessions WHERE token_hash = $1`,
+      [hash(porCaducar)]
+    );
+    expect(renovada.rows[0]!.ok).toBe(true);
 
     // Recién creada (89,5 días): el uso NO renueva aún (escritura como mucho
     // una vez al día).
