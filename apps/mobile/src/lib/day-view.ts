@@ -221,3 +221,31 @@ export function computeCenterOffset(
   return Math.max(0, targetOffset);
 }
 
+export const SWIPE_THRESHOLD_DX = 50;
+export const SWIPE_VELOCITY_THRESHOLD = 0.3;
+
+/**
+ * Determina si un gesto táctil debe ser capturado para navegación horizontal de días,
+ * garantizando que el scroll vertical de la lista de partidos tenga absoluta prioridad.
+ */
+export function isHorizontalSwipeGesture(dx: number, dy: number): boolean {
+  return Math.abs(dx) > 20 && Math.abs(dx) > Math.abs(dy) * 2;
+}
+
+/**
+ * Resuelve el cambio de días (-1, 0, +1) según la distancia y velocidad del gesto horizontal:
+ * - Arrastre a la izquierda (dx < 0): avanza al día siguiente (+1)
+ * - Arrastre a la derecha (dx > 0): retrocede al día anterior (-1)
+ * - Gesto insuficiente: 0 (sin cambio)
+ */
+export function resolveDaySwipeDelta(dx: number, vx: number): -1 | 0 | 1 {
+  if (dx < -SWIPE_THRESHOLD_DX || (dx < -25 && vx < -SWIPE_VELOCITY_THRESHOLD)) {
+    return 1;
+  }
+  if (dx > SWIPE_THRESHOLD_DX || (dx > 25 && vx > SWIPE_VELOCITY_THRESHOLD)) {
+    return -1;
+  }
+  return 0;
+}
+
+

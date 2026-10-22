@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
+import { FlatList, PanResponder, Pressable, RefreshControl, Text, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useAdsConfig, useCurrentMatches } from '@/src/hooks/queries';
@@ -19,10 +19,13 @@ import { BrandHeaderTitle, HomeHeaderRight } from '@/src/components/layout/AppHe
 import { capture } from '@/src/lib/analytics';
 import { formatDayLabel } from '@/src/lib/time';
 import {
+  addDaysToKey,
   buildDayView,
   daysWithMatches,
+  isHorizontalSwipeGesture,
   madridTodayKey,
   nextMatchday,
+  resolveDaySwipeDelta,
   type DayFilter,
 } from '@/src/lib/day-view';
 import type { MatchSummary } from '@/src/lib/api/types';
@@ -150,6 +153,25 @@ export default function LiveScreen() {
     return out;
   }, [sections, everyNItems]);
 
+  // Gestos táctiles de deslizamiento horizontal para cambiar de día
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          isHorizontalSwipeGesture(gestureState.dx, gestureState.dy),
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderRelease: (_, gestureState) => {
+          const delta = resolveDaySwipeDelta(gestureState.dx, gestureState.vx);
+          if (delta !== 0) {
+            setSelectedDate((prev) => addDaysToKey(prev, delta));
+            setFilter('all');
+          }
+        },
+      }),
+    [],
+  );
+
   if (isPending) {
     return <FeedSkeleton />;
   }
@@ -168,65 +190,68 @@ export default function LiveScreen() {
         markedDays={markedDays}
       />
 
-      {/* Filtros de jornada (En directo / Siguiendo) */}
-      <DayChips
-        liveCount={dayView.liveCount}
-        followingCount={dayView.followingCount}
-        filter={dayView.filter}
-        onChange={setFilter}
-      />
+      {/* Contenedor del feed con soporte para deslizar horizontalmente y cambiar de día */}
+      <View className="flex-1" {...panResponder.panHandlers}>
+        {/* Filtros de jornada (En directo / Siguiendo) */}
+        <DayChips
+          liveCount={dayView.liveCount}
+          followingCount={dayView.followingCount}
+          filter={dayView.filter}
+          onChange={setFilter}
+        />
 
-      {/* Lista de partidos de la jornada agrupados por competición */}
-      <FlatList
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
-        data={feed}
-        keyExtractor={(item) => item.key}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
-        renderItem={({ item }) => {
-          if (item.kind === 'ad') return <NativeFeedAd />;
-          const { section } = item;
-          return (
-            <MatchGroupCard
-              key={section.key}
-              title={section.title}
-              competitionId={section.competitionId}
-              count={section.matches.length}
-              followed={section.followed}
-            >
-              {section.matches.map((m) => (
-                <MatchRow
-                  key={m.id}
-                  match={m}
-                  showCompetition={section.key === '__following__'}
-                />
-              ))}
-            </MatchGroupCard>
-          );
-        }}
-        ListEmptyComponent={
-          <View className="flex-1 items-center justify-center px-8 py-16">
-            <EmptyState
-              title={
-                selectedDate === todayKey
-                  ? t('common.no_matches_today')
-                  : t('common.no_matches_this_day')
-              }
-              hint={t('common.no_matches_hint')}
-            />
-            {next ? (
-              <Pressable
-                onPress={() => setSelectedDate(next.dayKey)}
-                className="mt-4 rounded-xl bg-rink-passion px-5 py-2.5 active:opacity-80 dark:bg-rose-700"
+        {/* Lista de partidos de la jornada agrupados por competición */}
+        <FlatList
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
+          data={feed}
+          keyExtractor={(item) => item.key}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
+          renderItem={({ item }) => {
+            if (item.kind === 'ad') return <NativeFeedAd />;
+            const { section } = item;
+            return (
+              <MatchGroupCard
+                key={section.key}
+                title={section.title}
+                competitionId={section.competitionId}
+                count={section.matches.length}
+                followed={section.followed}
               >
-                <Text className="text-sm font-semibold text-white">
-                  {t('home.next_matchday').replace('{day}', formatDayLabel(next.dayKey, locale))}
-                </Text>
-              </Pressable>
-            ) : null}
-          </View>
-        }
-        ListFooterComponent={<AdBanner variant="list" />}
-      />
+                {section.matches.map((m) => (
+                  <MatchRow
+                    key={m.id}
+                    match={m}
+                    showCompetition={section.key === '__following__'}
+                  />
+                ))}
+              </MatchGroupCard>
+            );
+          }}
+          ListEmptyComponent={
+            <View className="flex-1 items-center justify-center px-8 py-16">
+              <EmptyState
+                title={
+                  selectedDate === todayKey
+                    ? t('common.no_matches_today')
+                    : t('common.no_matches_this_day')
+                }
+                hint={t('common.no_matches_hint')}
+              />
+              {next ? (
+                <Pressable
+                  onPress={() => setSelectedDate(next.dayKey)}
+                  className="mt-4 rounded-xl bg-rink-passion px-5 py-2.5 active:opacity-80 dark:bg-rose-700"
+                >
+                  <Text className="text-sm font-semibold text-white">
+                    {t('home.next_matchday').replace('{day}', formatDayLabel(next.dayKey, locale))}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          }
+          ListFooterComponent={<AdBanner variant="list" />}
+        />
+      </View>
     </View>
   );
 }

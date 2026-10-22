@@ -7,8 +7,10 @@ import {
   dayDiff,
   daysWithMatches,
   getRelativeKey,
+  isHorizontalSwipeGesture,
   madridDateKey,
   nextMatchday,
+  resolveDaySwipeDelta,
 } from './day-view';
 import type { MatchSummary } from './api/types';
 
@@ -164,4 +166,42 @@ describe('buildDayView', () => {
       expect(computeCenterOffset(7, -100)).toBe(0);
     });
   });
+
+  describe('swipe gesture navigation', () => {
+    it('isHorizontalSwipeGesture solo intercepta gestos predominantemente horizontales', () => {
+      // Movimiento horizontal claro
+      expect(isHorizontalSwipeGesture(30, 5)).toBe(true);
+      expect(isHorizontalSwipeGesture(-40, 10)).toBe(true);
+
+      // Movimiento vertical (scroll normal del feed de partidos)
+      expect(isHorizontalSwipeGesture(5, 30)).toBe(false);
+      expect(isHorizontalSwipeGesture(15, 20)).toBe(false);
+
+      // Movimiento diagonal
+      expect(isHorizontalSwipeGesture(30, 25)).toBe(false);
+
+      // Movimiento diminuto / temblor por debajo del umbral mínimo
+      expect(isHorizontalSwipeGesture(15, 2)).toBe(false);
+      expect(isHorizontalSwipeGesture(-10, 0)).toBe(false);
+    });
+
+    it('resolveDaySwipeDelta resuelve correctamente navegación de día siguiente o anterior', () => {
+      // Desplazamiento a la izquierda -> siguiente día (+1)
+      expect(resolveDaySwipeDelta(-60, 0)).toBe(1);
+      // Flick rápido a la izquierda -> siguiente día (+1)
+      expect(resolveDaySwipeDelta(-30, -0.4)).toBe(1);
+
+      // Desplazamiento a la derecha -> día anterior (-1)
+      expect(resolveDaySwipeDelta(60, 0)).toBe(-1);
+      // Flick rápido a la derecha -> día anterior (-1)
+      expect(resolveDaySwipeDelta(30, 0.4)).toBe(-1);
+
+      // Desplazamiento insuficiente o velocidad neutra -> sin cambio (0)
+      expect(resolveDaySwipeDelta(15, 0.1)).toBe(0);
+      expect(resolveDaySwipeDelta(-20, 0)).toBe(0);
+      // Desplazamiento a la izquierda pero velocidad opuesta
+      expect(resolveDaySwipeDelta(-30, 0.2)).toBe(0);
+    });
+  });
 });
+

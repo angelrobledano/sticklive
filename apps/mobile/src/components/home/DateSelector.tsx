@@ -5,6 +5,7 @@ import {
   buildDateKeys,
   computeCenterOffset,
   dayAbbr,
+  dayDiff,
   getRelativeKey,
   labelDate,
   madridTodayKey,
@@ -29,7 +30,12 @@ export function DateSelector({ selected, onSelect, markedDays }: DateSelectorPro
 
   const todayKey = madridTodayKey();
   const listRef = useRef<FlatList<string>>(null);
-  const dateKeys = useMemo(() => buildDateKeys(todayKey, 7, 14), [todayKey]);
+  const dateKeys = useMemo(() => {
+    const diff = dayDiff(selected, todayKey);
+    const before = Math.max(7, -diff + 3);
+    const after = Math.max(14, diff + 3);
+    return buildDateKeys(todayKey, before, after);
+  }, [selected, todayKey]);
 
   const selectedIndex = Math.max(0, dateKeys.indexOf(selected));
 
