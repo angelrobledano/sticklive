@@ -1,4 +1,13 @@
 {
+  "squad_table": {
+    "played": "Partite giocate",
+    "goals": "Gol",
+    "assists": "Assist",
+    "blue": "Cartellini blu",
+    "red": "Cartellini rossi",
+    "direct_fouls": "Tiri diretti",
+    "penalties": "Rigori"
+  },
   "team_story": {
     "kicker": "La stagione",
     "results": "Risultati",

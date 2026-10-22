@@ -128,8 +128,158 @@ const T: Record<string, Record<InsightKind, Template>> = {
 };
 
 /** Frase de un insight en el idioma dado, con enlaces a las fichas que cita. */
-export function renderInsight(insight: Insight, data: SeasonInsights, locale: string): InsightPart[] {
-  const tpl = (T[locale] ?? T['en']!)[insight.kind];
+// Catalán (presente): sin él, la web en catalán caía al inglés.
+T['ca'] = {
+  only_unbeaten: (c) => [c.team(0), ` és l'únic invicte: ${c.v('won')} victòries i ${c.v('drawn')} empats en ${c.v('played')} partits.`],
+  win_streak: (c) => [c.team(0), ` encadena ${c.v('n')} victòries seguides.`],
+  losing_streak: (c) => [c.team(0), ` suma ${c.v('n')} derrotes seguides.`],
+  best_attack: (c) => [c.team(0), ` és l'equip més golejador: ${c.v('goals')} gols en ${c.v('played')} partits (${c.v('perMatch')} per partit).`],
+  best_defense: (c) => [c.team(0), ` és el menys golejat: ${c.v('conceded')} gols encaixats en ${c.v('played')} partits.`],
+  perfect_home: (c) => [c.team(0), ` ha guanyat els seus ${c.v('played')} partits a casa.`],
+  home_win_pct: (c) => [`L'equip local guanya el ${c.v('pct')} % dels partits d'aquesta lliga.`],
+  second_half_goals: (c) => [`El ${c.v('pct')} % dels gols de la lliga arriben a la segona part.`],
+  team_second_half: (c) => [c.team(0), ` marca el ${c.v('pct')} % dels seus gols a la segona part.`],
+  late_goals: (c) => [c.team(0), ` és qui més gols marca en els darrers cinc minuts: ${c.v('goals')} dels seus ${c.v('teamGoals')}.`],
+  penalty_pct: (c) => [`En aquesta lliga es marca el ${c.v('pct')} % dels penals (${c.v('scored')} de ${c.v('total')}).`],
+  direct_foul_pct: (c) => [`El ${c.v('pct')} % de les faltes directes acaben en gol (${c.v('scored')} de ${c.v('total')}).`],
+  penalty_drought: (c) => [c.team(0), ` no ha marcat cap dels seus ${c.v('total')} penals.`],
+  scorer_share: (c) => [c.player(0), ` ha marcat ${c.v('goals')} dels ${c.v('teamGoals')} gols de l'`, c.team(0), ` (${c.v('pct')} %).`],
+  biggest_win: (c) => ['La golejada més gran de la temporada: ', c.match, '.'],
+  highest_scoring: (c) => ['El partit amb més gols de la temporada: ', c.match, '.'],
+  first_goal_wins: (c) => [`Qui marca primer guanya el ${c.v('pct')} % dels partits.`],
+  most_blue_cards: (c) => [c.team(0), ` és l'equip amb més targetes blaves: ${c.v('n')}.`],
+  most_red_cards: (c) => [c.team(0), ` és l'equip amb més expulsions: ${c.v('n')} targetes vermelles.`],
+};
+
+/**
+ * Pasado: una temporada terminada se cuenta como historia ("fue el único
+ * invicto", "acabó con 5 victorias seguidas"), no como si siguiera en juego.
+ * Los tipos sin variante en pasado (récords de un partido) caen al presente.
+ */
+const PAST: Record<string, Partial<Record<InsightKind, Template>>> = {
+  es: {
+    only_unbeaten: (c) => [c.team(0), ` fue el único invicto: ${c.v('won')} victorias y ${c.v('drawn')} empates en ${c.v('played')} partidos.`],
+    win_streak: (c) => [c.team(0), ` cerró la temporada con ${c.v('n')} victorias seguidas.`],
+    losing_streak: (c) => [c.team(0), ` acabó la temporada con ${c.v('n')} derrotas seguidas.`],
+    best_attack: (c) => [c.team(0), ` fue el equipo más goleador: ${c.v('goals')} goles en ${c.v('played')} partidos (${c.v('perMatch')} por partido).`],
+    best_defense: (c) => [c.team(0), ` fue el menos goleado: encajó ${c.v('conceded')} goles en ${c.v('played')} partidos.`],
+    perfect_home: (c) => [c.team(0), ` ganó sus ${c.v('played')} partidos en casa.`],
+    home_win_pct: (c) => [`El equipo local ganó el ${c.v('pct')} % de los partidos.`],
+    second_half_goals: (c) => [`El ${c.v('pct')} % de los goles llegaron en la segunda parte.`],
+    team_second_half: (c) => [c.team(0), ` marcó el ${c.v('pct')} % de sus goles en la segunda parte.`],
+    late_goals: (c) => [c.team(0), ` fue el que más marcó en los últimos cinco minutos: ${c.v('goals')} de sus ${c.v('teamGoals')} goles.`],
+    penalty_pct: (c) => [`Se marcaron el ${c.v('pct')} % de los penaltis (${c.v('scored')} de ${c.v('total')}).`],
+    direct_foul_pct: (c) => [`El ${c.v('pct')} % de las faltas directas acabaron en gol (${c.v('scored')} de ${c.v('total')}).`],
+    penalty_drought: (c) => [c.team(0), ` no marcó ninguno de sus ${c.v('total')} penaltis.`],
+    scorer_share: (c) => [c.player(0), ` marcó ${c.v('goals')} de los ${c.v('teamGoals')} goles de `, c.team(0), ` (${c.v('pct')} %).`],
+    first_goal_wins: (c) => [`Quien marcó primero ganó el ${c.v('pct')} % de los partidos.`],
+    most_blue_cards: (c) => [c.team(0), ` fue el equipo con más tarjetas azules: ${c.v('n')}.`],
+    most_red_cards: (c) => [c.team(0), ` fue el equipo con más expulsiones: ${c.v('n')} tarjetas rojas.`],
+  },
+  ca: {
+    only_unbeaten: (c) => [c.team(0), ` va ser l'únic invicte: ${c.v('won')} victòries i ${c.v('drawn')} empats en ${c.v('played')} partits.`],
+    win_streak: (c) => [c.team(0), ` va tancar la temporada amb ${c.v('n')} victòries seguides.`],
+    losing_streak: (c) => [c.team(0), ` va acabar la temporada amb ${c.v('n')} derrotes seguides.`],
+    best_attack: (c) => [c.team(0), ` va ser l'equip més golejador: ${c.v('goals')} gols en ${c.v('played')} partits (${c.v('perMatch')} per partit).`],
+    best_defense: (c) => [c.team(0), ` va ser el menys golejat: va encaixar ${c.v('conceded')} gols en ${c.v('played')} partits.`],
+    perfect_home: (c) => [c.team(0), ` va guanyar els seus ${c.v('played')} partits a casa.`],
+    home_win_pct: (c) => [`L'equip local va guanyar el ${c.v('pct')} % dels partits.`],
+    second_half_goals: (c) => [`El ${c.v('pct')} % dels gols van arribar a la segona part.`],
+    team_second_half: (c) => [c.team(0), ` va marcar el ${c.v('pct')} % dels seus gols a la segona part.`],
+    late_goals: (c) => [c.team(0), ` va ser qui més va marcar en els darrers cinc minuts: ${c.v('goals')} dels seus ${c.v('teamGoals')} gols.`],
+    penalty_pct: (c) => [`Es van marcar el ${c.v('pct')} % dels penals (${c.v('scored')} de ${c.v('total')}).`],
+    direct_foul_pct: (c) => [`El ${c.v('pct')} % de les faltes directes van acabar en gol (${c.v('scored')} de ${c.v('total')}).`],
+    penalty_drought: (c) => [c.team(0), ` no va marcar cap dels seus ${c.v('total')} penals.`],
+    scorer_share: (c) => [c.player(0), ` va marcar ${c.v('goals')} dels ${c.v('teamGoals')} gols de l'`, c.team(0), ` (${c.v('pct')} %).`],
+    first_goal_wins: (c) => [`Qui va marcar primer va guanyar el ${c.v('pct')} % dels partits.`],
+    most_blue_cards: (c) => [c.team(0), ` va ser l'equip amb més targetes blaves: ${c.v('n')}.`],
+    most_red_cards: (c) => [c.team(0), ` va ser l'equip amb més expulsions: ${c.v('n')} targetes vermelles.`],
+  },
+  en: {
+    only_unbeaten: (c) => [c.team(0), ` were the only unbeaten side: ${c.v('won')} wins and ${c.v('drawn')} draws in ${c.v('played')} matches.`],
+    win_streak: (c) => [c.team(0), ` finished the season with ${c.v('n')} wins in a row.`],
+    losing_streak: (c) => [c.team(0), ` ended the season with ${c.v('n')} defeats in a row.`],
+    best_attack: (c) => [c.team(0), ` were the top scorers: ${c.v('goals')} goals in ${c.v('played')} matches (${c.v('perMatch')} per match).`],
+    best_defense: (c) => [c.team(0), ` had the best defence: ${c.v('conceded')} goals conceded in ${c.v('played')} matches.`],
+    perfect_home: (c) => [c.team(0), ` won all ${c.v('played')} of their home matches.`],
+    home_win_pct: (c) => [`The home side won ${c.v('pct')}% of the matches.`],
+    second_half_goals: (c) => [`${c.v('pct')}% of the goals came in the second half.`],
+    team_second_half: (c) => [c.team(0), ` scored ${c.v('pct')}% of their goals in the second half.`],
+    late_goals: (c) => [c.team(0), ` scored the most goals in the last five minutes: ${c.v('goals')} of their ${c.v('teamGoals')}.`],
+    penalty_pct: (c) => [`${c.v('pct')}% of penalties were scored (${c.v('scored')} of ${c.v('total')}).`],
+    direct_foul_pct: (c) => [`${c.v('pct')}% of direct free hits ended in a goal (${c.v('scored')} of ${c.v('total')}).`],
+    penalty_drought: (c) => [c.team(0), ` missed all ${c.v('total')} of their penalties.`],
+    scorer_share: (c) => [c.player(0), ` scored ${c.v('goals')} of `, c.team(0), `'s ${c.v('teamGoals')} goals (${c.v('pct')}%).`],
+    first_goal_wins: (c) => [`The team that scored first won ${c.v('pct')}% of matches.`],
+    most_blue_cards: (c) => [c.team(0), ` picked up the most blue cards: ${c.v('n')}.`],
+    most_red_cards: (c) => [c.team(0), ` had the most red cards: ${c.v('n')}.`],
+  },
+  pt: {
+    only_unbeaten: (c) => [c.team(0), ` foi a única equipa invicta: ${c.v('won')} vitórias e ${c.v('drawn')} empates em ${c.v('played')} jogos.`],
+    win_streak: (c) => [c.team(0), ` fechou a época com ${c.v('n')} vitórias seguidas.`],
+    losing_streak: (c) => [c.team(0), ` terminou a época com ${c.v('n')} derrotas seguidas.`],
+    best_attack: (c) => [c.team(0), ` foi o melhor ataque: ${c.v('goals')} golos em ${c.v('played')} jogos (${c.v('perMatch')} por jogo).`],
+    best_defense: (c) => [c.team(0), ` foi a melhor defesa: sofreu ${c.v('conceded')} golos em ${c.v('played')} jogos.`],
+    perfect_home: (c) => [c.team(0), ` venceu os ${c.v('played')} jogos em casa.`],
+    home_win_pct: (c) => [`A equipa da casa venceu ${c.v('pct')} % dos jogos.`],
+    second_half_goals: (c) => [`${c.v('pct')} % dos golos surgiram na segunda parte.`],
+    team_second_half: (c) => [c.team(0), ` marcou ${c.v('pct')} % dos seus golos na segunda parte.`],
+    late_goals: (c) => [c.team(0), ` foi quem mais marcou nos últimos cinco minutos: ${c.v('goals')} dos seus ${c.v('teamGoals')} golos.`],
+    penalty_pct: (c) => [`Marcaram-se ${c.v('pct')} % dos penáltis (${c.v('scored')} de ${c.v('total')}).`],
+    direct_foul_pct: (c) => [`${c.v('pct')} % dos livres diretos acabaram em golo (${c.v('scored')} de ${c.v('total')}).`],
+    penalty_drought: (c) => [c.team(0), ` não marcou nenhum dos seus ${c.v('total')} penáltis.`],
+    scorer_share: (c) => [c.player(0), ` marcou ${c.v('goals')} dos ${c.v('teamGoals')} golos de `, c.team(0), ` (${c.v('pct')} %).`],
+    first_goal_wins: (c) => [`Quem marcou primeiro venceu ${c.v('pct')} % dos jogos.`],
+    most_blue_cards: (c) => [c.team(0), ` foi a equipa com mais cartões azuis: ${c.v('n')}.`],
+    most_red_cards: (c) => [c.team(0), ` foi a equipa com mais expulsões: ${c.v('n')} cartões vermelhos.`],
+  },
+  fr: {
+    only_unbeaten: (c) => [c.team(0), ` a été la seule équipe invaincue : ${c.v('won')} victoires et ${c.v('drawn')} nuls en ${c.v('played')} matchs.`],
+    win_streak: (c) => [c.team(0), ` a fini la saison sur ${c.v('n')} victoires de suite.`],
+    losing_streak: (c) => [c.team(0), ` a fini la saison sur ${c.v('n')} défaites de suite.`],
+    best_attack: (c) => [c.team(0), ` a eu la meilleure attaque : ${c.v('goals')} buts en ${c.v('played')} matchs (${c.v('perMatch')} par match).`],
+    best_defense: (c) => [c.team(0), ` a eu la meilleure défense : ${c.v('conceded')} buts encaissés en ${c.v('played')} matchs.`],
+    perfect_home: (c) => [c.team(0), ` a gagné ses ${c.v('played')} matchs à domicile.`],
+    home_win_pct: (c) => [`L'équipe qui recevait a gagné ${c.v('pct')} % des matchs.`],
+    second_half_goals: (c) => [`${c.v('pct')} % des buts ont été marqués en seconde période.`],
+    team_second_half: (c) => [c.team(0), ` a marqué ${c.v('pct')} % de ses buts en seconde période.`],
+    late_goals: (c) => [c.team(0), ` a été l'équipe la plus efficace dans les cinq dernières minutes : ${c.v('goals')} de ses ${c.v('teamGoals')} buts.`],
+    penalty_pct: (c) => [`${c.v('pct')} % des penalties ont été transformés (${c.v('scored')} sur ${c.v('total')}).`],
+    direct_foul_pct: (c) => [`${c.v('pct')} % des coups francs directs ont fini au fond (${c.v('scored')} sur ${c.v('total')}).`],
+    penalty_drought: (c) => [c.team(0), ` n'a transformé aucun de ses ${c.v('total')} penalties.`],
+    scorer_share: (c) => [c.player(0), ` a marqué ${c.v('goals')} des ${c.v('teamGoals')} buts de `, c.team(0), ` (${c.v('pct')} %).`],
+    first_goal_wins: (c) => [`L'équipe qui a marqué en premier a gagné ${c.v('pct')} % des matchs.`],
+    most_blue_cards: (c) => [c.team(0), ` a reçu le plus de cartons bleus : ${c.v('n')}.`],
+    most_red_cards: (c) => [c.team(0), ` a eu le plus d'exclusions : ${c.v('n')} cartons rouges.`],
+  },
+  it: {
+    only_unbeaten: (c) => [c.team(0), ` è stata l'unica imbattuta: ${c.v('won')} vittorie e ${c.v('drawn')} pareggi in ${c.v('played')} partite.`],
+    win_streak: (c) => [c.team(0), ` ha chiuso la stagione con ${c.v('n')} vittorie di fila.`],
+    losing_streak: (c) => [c.team(0), ` ha chiuso la stagione con ${c.v('n')} sconfitte di fila.`],
+    best_attack: (c) => [c.team(0), ` è stato il miglior attacco: ${c.v('goals')} gol in ${c.v('played')} partite (${c.v('perMatch')} a partita).`],
+    best_defense: (c) => [c.team(0), ` è stata la miglior difesa: ${c.v('conceded')} gol subiti in ${c.v('played')} partite.`],
+    perfect_home: (c) => [c.team(0), ` ha vinto tutte le ${c.v('played')} partite in casa.`],
+    home_win_pct: (c) => [`La squadra di casa ha vinto il ${c.v('pct')}% delle partite.`],
+    second_half_goals: (c) => [`Il ${c.v('pct')}% dei gol è arrivato nel secondo tempo.`],
+    team_second_half: (c) => [c.team(0), ` ha segnato il ${c.v('pct')}% dei suoi gol nel secondo tempo.`],
+    late_goals: (c) => [c.team(0), ` è stata la più pericolosa negli ultimi cinque minuti: ${c.v('goals')} dei suoi ${c.v('teamGoals')} gol.`],
+    penalty_pct: (c) => [`È stato segnato il ${c.v('pct')}% dei rigori (${c.v('scored')} su ${c.v('total')}).`],
+    direct_foul_pct: (c) => [`Il ${c.v('pct')}% dei tiri diretti è finito in gol (${c.v('scored')} su ${c.v('total')}).`],
+    penalty_drought: (c) => [c.team(0), ` non ha segnato nessuno dei suoi ${c.v('total')} rigori.`],
+    scorer_share: (c) => [c.player(0), ` ha segnato ${c.v('goals')} dei ${c.v('teamGoals')} gol di `, c.team(0), ` (${c.v('pct')}%).`],
+    first_goal_wins: (c) => [`Chi ha segnato per primo ha vinto il ${c.v('pct')}% delle partite.`],
+    most_blue_cards: (c) => [c.team(0), ` è stata la squadra con più cartellini blu: ${c.v('n')}.`],
+    most_red_cards: (c) => [c.team(0), ` è stata la squadra con più espulsioni: ${c.v('n')} cartellini rossi.`],
+  },
+};
+
+export type InsightTense = 'present' | 'past';
+
+export function renderInsight(
+  insight: Insight, data: SeasonInsights, locale: string, tense: InsightTense = 'present',
+): InsightPart[] {
+  const lang = T[locale] ? locale : 'en';
+  const tpl = (tense === 'past' ? PAST[lang]?.[insight.kind] : undefined) ?? T[lang]![insight.kind];
   const num = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
   const teamName = (id: string) => clubName(data.teams[id]?.name ?? '');
   const match = insight.matchId ? data.matches[insight.matchId] : undefined;

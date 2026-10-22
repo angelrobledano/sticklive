@@ -96,6 +96,19 @@ const scorers = {
 describe('buildCompetitionSummary', () => {
   const now = new Date('2026-10-09T00:00:00Z');
 
+  it('una liga con jornadas es "league"; final four, cuadro o grupos son "tournament"', () => {
+    expect(buildCompetitionSummary(liga({ pending: true }), scorers, now).kind).toBe('league');
+    const ff = liga({ pending: true });
+    (ff.season as { competitionFormat?: string }).competitionFormat = 'final_four';
+    expect(buildCompetitionSummary(ff, scorers, now).kind).toBe('tournament');
+    const grupos = liga({ pending: true });
+    grupos.standings = grupos.standings.map((r, i) => ({ ...r, groupName: i < 2 ? 'A' : 'B' }));
+    expect(buildCompetitionSummary(grupos, scorers, now).kind).toBe('tournament');
+    const cuadro = liga({ pending: true });
+    cuadro.rounds = cuadro.rounds.map((r) => ({ ...r, roundType: 'playoff' }));
+    expect(buildCompetitionSummary(cuadro, scorers, now).kind).toBe('tournament');
+  });
+
   it('jornada en curso sobre el total de jornadas de liga', () => {
     const s = buildCompetitionSummary(liga({ pending: true }), scorers, now);
     expect(s.status).toBe('in_progress');

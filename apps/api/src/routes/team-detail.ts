@@ -125,6 +125,9 @@ interface SquadRow {
   blue_cards: string;
   red_cards: string;
   penalties: string;
+  direct_fouls: string;
+  played: number;
+  assists: number;
 }
 
 /**
@@ -356,22 +359,36 @@ teamDetailRouter.get('/:id', async (c) => {
             COUNT(DISTINCT me.id) FILTER (WHERE me.event_type = 'goal'      AND mx.id IS NOT NULL) AS goals,
             COUNT(DISTINCT me.id) FILTER (WHERE me.event_type = 'blue_card' AND mx.id IS NOT NULL) AS blue_cards,
             COUNT(DISTINCT me.id) FILTER (WHERE me.event_type = 'red_card'  AND mx.id IS NOT NULL) AS red_cards,
-            COUNT(DISTINCT me.id) FILTER (WHERE me.event_type = 'penalty'   AND mx.id IS NOT NULL) AS penalties
+            COUNT(DISTINCT me.id) FILTER (WHERE me.event_type = 'penalty'   AND mx.id IS NOT NULL) AS penalties,
+            COUNT(DISTINCT me.id) FILTER (WHERE me.event_type = 'direct_foul' AND mx.id IS NOT NULL) AS direct_fouls,
+            -- PJ y asistencias salen de las actas (match_lineups) del equipo en
+            -- la temporada: un jugador que juega sin marcar también suma PJ.
+            la.played,
+            la.assists
           FROM team_players tp
           JOIN players p ON p.id = tp.player_id
+          LEFT JOIN LATERAL (
+            SELECT COUNT(DISTINCT ml.match_id)::int AS played, COALESCE(SUM(ml.assists), 0)::int AS assists
+              FROM match_lineups ml
+              JOIN matches m2 ON m2.id = ml.match_id
+             WHERE ml.player_id = p.id
+               AND m2.season_id = ANY($1)
+               AND m2.status = 'finished'
+               AND ((ml.is_home AND m2.home_team_id = tp.team_id) OR (NOT ml.is_home AND m2.away_team_id = tp.team_id))
+          ) la ON TRUE
           -- Un ÚNICO LEFT JOIN a los eventos relevantes. Antes había cuatro
           -- joins (goal/blue/red/penalty) con su propio EXISTS a matches:
           -- cuatro pasadas por jugador y por evento. La temporada se filtra
           -- en el join a mx y los agregados ignoran las filas fuera de ella.
           LEFT JOIN match_events me ON me.player_id = p.id
             AND me.team_id = tp.team_id
-            AND me.event_type IN ('goal', 'blue_card', 'red_card', 'penalty')
+            AND me.event_type IN ('goal', 'blue_card', 'red_card', 'penalty', 'direct_foul')
           LEFT JOIN matches mx ON mx.id = me.match_id
             AND mx.season_id = ANY($1)
           WHERE tp.team_id = $2
             AND tp.season_id = ANY($1)
             AND tp.is_active = TRUE
-          GROUP BY p.id, p.first_name, p.last_name, p.photo_url, tp.jersey_number
+          GROUP BY p.id, p.first_name, p.last_name, p.photo_url, tp.jersey_number, la.played, la.assists
           ORDER BY
             is_goalkeeper DESC,          -- porteros primero (ahora sí: dato real)
             tp.jersey_number NULLS LAST,
@@ -617,6 +634,9 @@ teamDetailRouter.get('/:id', async (c) => {
       blueCards:    Number(p.blue_cards),
       redCards:     Number(p.red_cards),
       penalties:    Number(p.penalties),
+      directFouls:  Number(p.direct_fouls),
+      played:       Number(p.played ?? 0),
+      assists:      Number(p.assists ?? 0),
     }));
 
     // #197: otras secciones del club (club × género × categoría × filial) para

@@ -108,6 +108,7 @@ const OPERATIVOS = [
   'apps/etl/src/split-merged-players.ts',      // A2: separa jugadores fusionados entre portales
   'apps/etl/src/backfill-clubs-by-crest.ts',   // A4: clubes por escudo + género/categoría
   'apps/etl/src/attach-competition-phase.ts',  // B4: cuelga una competición como fase/grupo de otra
+  'apps/etl/src/declare-standings-zones.ts',   // B2: zonas de clasificación desde las bases
   'apps/etl/src/plan-federation-coverage.ts',  // B3: plan de altas de un portal autonómico
   'apps/etl/src/download-logos.ts',
   'apps/etl/src/normalize-logos.ts',

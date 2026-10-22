@@ -89,7 +89,7 @@ export function ClosedSeasonHighlights({ summary, stats, insights, standings, lo
         <div className="card p-4 sm:col-span-2">
           <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{c.records}</h2>
           <ul className="space-y-1.5 text-sm text-slate-700 dark:text-slate-300">
-            {records.map((i) => <li key={i.id}><Sentence parts={renderInsight(i, insights, locale)} /></li>)}
+            {records.map((i) => <li key={i.id}><Sentence parts={renderInsight(i, insights, locale, 'past')} /></li>)}
           </ul>
         </div>
       )}

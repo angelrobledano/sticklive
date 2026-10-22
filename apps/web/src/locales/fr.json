@@ -1,4 +1,13 @@
 {
+  "squad_table": {
+    "played": "Matchs joués",
+    "goals": "Buts",
+    "assists": "Passes décisives",
+    "blue": "Cartons bleus",
+    "red": "Cartons rouges",
+    "direct_fouls": "Coups francs directs tirés",
+    "penalties": "Penaltys tirés"
+  },
   "team_story": {
     "kicker": "La saison",
     "results": "Résultats",

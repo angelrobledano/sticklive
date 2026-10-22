@@ -1,4 +1,13 @@
 {
+  "squad_table": {
+    "played": "Partits jugats",
+    "goals": "Gols",
+    "assists": "Assistències",
+    "blue": "Targetes blaves",
+    "red": "Targetes vermelles",
+    "direct_fouls": "Faltes directes llançades",
+    "penalties": "Penals llançats"
+  },
   "team_story": {
     "kicker": "La temporada",
     "results": "Resultats",
