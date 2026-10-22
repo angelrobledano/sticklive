@@ -5,8 +5,8 @@ import {
   Pressable,
   Text,
   View,
-  useColorScheme,
 } from 'react-native';
+import { useColorScheme } from 'nativewind';
 import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import type { Tab } from '@/src/lib/match-helpers';
@@ -25,7 +25,7 @@ const TAB_I18N: Record<Tab, string> = {
 
 export function MatchTabs({ tabs, activeTab, onChange }: MatchTabsProps) {
   const { t } = useLocale();
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
 
   const [containerWidth, setContainerWidth] = useState(0);
@@ -108,7 +108,7 @@ export function MatchTabs({ tabs, activeTab, onChange }: MatchTabsProps) {
               className={`text-xs font-bold ${
                 isActive
                   ? 'text-rink-passion dark:text-rink-accent'
-                  : 'text-slate-600 dark:text-slate-400'
+                  : 'text-slate-600 dark:text-slate-300'
               }`}
             >
               {t(TAB_I18N[tab])}

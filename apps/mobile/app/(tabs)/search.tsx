@@ -34,7 +34,7 @@ export default function SearchScreen() {
   const tooShort = !searchEnabled(clean);
   const results = search.data;
 
-  const sectionTitle = 'px-4 pb-1 pt-4 text-xs font-bold uppercase text-slate-500';
+  const sectionTitle = 'px-4 pb-1 pt-4 text-xs font-bold uppercase text-slate-500 dark:text-slate-400';
 
   return (
     <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
@@ -100,10 +100,10 @@ export default function SearchScreen() {
                 >
                   <Avatar uri={teamLogoUri(team.id)} name={team.name} size={28} />
                   <View className="ml-3 flex-1">
-                    <Text numberOfLines={1} className="text-base font-medium">
+                    <Text numberOfLines={1} className="text-base font-medium text-slate-900 dark:text-slate-100">
                       {clubName(team.name) || team.name}
                     </Text>
-                    {team.country ? <Text className="text-xs text-slate-500">{team.country}</Text> : null}
+                    {team.country ? <Text className="text-xs text-slate-500 dark:text-slate-400">{team.country}</Text> : null}
                   </View>
                 </Pressable>
               ))}
@@ -126,11 +126,11 @@ export default function SearchScreen() {
                     variant="player"
                   />
                   <View className="ml-3 flex-1">
-                    <Text numberOfLines={1} className="text-base font-medium">
+                    <Text numberOfLines={1} className="text-base font-medium text-slate-900 dark:text-slate-100">
                       {playerDisplayName(player.firstName, player.lastName)}
                     </Text>
                     {player.teamName ? (
-                      <Text className="text-xs text-slate-500">
+                      <Text className="text-xs text-slate-500 dark:text-slate-400">
                         {clubName(player.teamName) || player.teamName}
                       </Text>
                     ) : null}
@@ -156,11 +156,11 @@ export default function SearchScreen() {
                     variant="competition"
                   />
                   <View className="ml-3 flex-1">
-                    <Text numberOfLines={1} className="text-base font-medium">
+                    <Text numberOfLines={1} className="text-base font-medium text-slate-900 dark:text-slate-100">
                       {clubName(competition.name) || competition.name}
                     </Text>
                     {competition.seasonName ? (
-                      <Text className="text-xs text-slate-500">{competition.seasonName}</Text>
+                      <Text className="text-xs text-slate-500 dark:text-slate-400">{competition.seasonName}</Text>
                     ) : null}
                   </View>
                 </Pressable>

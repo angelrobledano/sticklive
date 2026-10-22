@@ -43,7 +43,7 @@ export function MatchRow({ match, showCompetition = false }: MatchRowProps) {
       {showCompetition && match.competitionName ? (
         <Text
           numberOfLines={1}
-          className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500"
+          className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400"
         >
           {match.competitionName}
         </Text>
@@ -95,7 +95,7 @@ export function MatchRow({ match, showCompetition = false }: MatchRowProps) {
                   ) : null}
                 </>
               ) : (
-                <Text className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                <Text className="text-[10px] font-semibold text-slate-400 dark:text-slate-400">
                   {t('match_states.final')}
                 </Text>
               )}

@@ -210,7 +210,7 @@ function SeriesCard({
                     : 'bg-slate-50 dark:bg-slate-800/40'
               }`}
             >
-              <Text className="text-[9px] font-bold text-slate-400 dark:text-slate-500">
+              <Text className="text-[9px] font-bold text-slate-400 dark:text-slate-400">
                 {i + 1}
               </Text>
               {played ? (

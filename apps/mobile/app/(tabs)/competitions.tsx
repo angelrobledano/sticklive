@@ -77,7 +77,7 @@ function CompetitionRowItem({
         <View
           className={`h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ${
             hasLogo
-              ? 'border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-800'
+              ? 'border border-slate-200 bg-white p-0.5 dark:border-slate-700'
               : hasFlag
                 ? 'bg-slate-100 dark:bg-slate-800'
                 : 'border border-rose-200 bg-rose-50 dark:border-rose-900/40 dark:bg-rose-950/40'

@@ -82,7 +82,7 @@ export function CompetitionSummary({
           </Text>
         </View>
         {!isFinished && matchday ? (
-          <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+          <Text className="text-xs font-semibold text-slate-500 dark:text-slate-300">
             {`Jornada ${matchday.current} de ${matchday.total}`}
           </Text>
         ) : null}
@@ -142,7 +142,7 @@ export function CompetitionSummary({
           >
             <Text
               numberOfLines={1}
-              className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+              className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300"
             >
               {leaderLabel}
             </Text>
@@ -163,10 +163,10 @@ export function CompetitionSummary({
               <Text className="font-mono text-xl font-extrabold text-slate-900 dark:text-slate-100">
                 {leader.points}
               </Text>
-              <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400">pts</Text>
+              <Text className="text-xs font-semibold text-slate-500 dark:text-slate-300">pts</Text>
             </View>
             {leader.gap !== null && leader.secondTeamName ? (
-              <Text numberOfLines={1} className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              <Text numberOfLines={1} className="mt-0.5 text-xs text-slate-500 dark:text-slate-300">
                 {leader.gap > 0
                   ? `+${leader.gap} sobre ${clubName(leader.secondTeamName)}`
                   : `Empatado con ${clubName(leader.secondTeamName)}`}
@@ -183,7 +183,7 @@ export function CompetitionSummary({
           >
             <Text
               numberOfLines={1}
-              className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+              className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300"
             >
               Máximo goleador
             </Text>
@@ -202,7 +202,7 @@ export function CompetitionSummary({
                   {topScorer.displayName}
                 </Text>
                 {topScorer.teamName ? (
-                  <Text numberOfLines={1} className="text-[10px] text-slate-500 dark:text-slate-400">
+                  <Text numberOfLines={1} className="text-[10px] text-slate-500 dark:text-slate-300">
                     {clubName(topScorer.teamName)}
                   </Text>
                 ) : null}
@@ -212,10 +212,10 @@ export function CompetitionSummary({
               <Text className="font-mono text-xl font-extrabold text-slate-900 dark:text-slate-100">
                 {topScorer.value}
               </Text>
-              <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400">goles</Text>
+              <Text className="text-xs font-semibold text-slate-500 dark:text-slate-300">goles</Text>
             </View>
             {topScorer.gap !== null ? (
-              <Text numberOfLines={1} className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              <Text numberOfLines={1} className="mt-0.5 text-xs text-slate-500 dark:text-slate-300">
                 {topScorer.gap > 0
                   ? topScorer.secondName
                     ? `+${topScorer.gap} sobre ${topScorer.secondName}`
@@ -234,7 +234,7 @@ export function CompetitionSummary({
           >
             <Text
               numberOfLines={1}
-              className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+              className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300"
             >
               Partido destacado
             </Text>
@@ -266,7 +266,7 @@ export function CompetitionSummary({
                 </Text>
               </View>
             </View>
-            <Text className="mt-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+            <Text className="mt-2 text-[10px] font-semibold text-slate-500 dark:text-slate-300">
               {featured.roundNumber ? `Jornada ${featured.roundNumber}` : 'Próximo partido'}
             </Text>
           </Pressable>

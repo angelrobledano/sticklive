@@ -67,8 +67,8 @@ export default function PlayerScreen() {
   }
 
   const { player, currentTeam, seasonTotals, career } = query.data;
-  const sectionTitle = 'px-4 pb-1 pt-4 text-xs font-bold uppercase text-slate-500';
-  const statBox = 'flex-1 items-center rounded-xl bg-white p-3 dark:bg-slate-900';
+  const sectionTitle = 'px-4 pb-1 pt-4 text-xs font-bold uppercase text-slate-500 dark:text-slate-400';
+  const statBox = 'flex-1 items-center rounded-xl bg-white p-3 dark:bg-slate-900 border border-slate-100 dark:border-slate-800';
 
   return (
     <>
@@ -114,7 +114,7 @@ export default function PlayerScreen() {
                 name={currentTeam.name}
                 size={28}
               />
-              <Text numberOfLines={1} className="ml-3 flex-1 text-base font-medium">
+              <Text numberOfLines={1} className="ml-3 flex-1 text-base font-medium text-slate-900 dark:text-slate-100">
                 {clubName(currentTeam.name) || currentTeam.name}
                 {currentTeam.jerseyNumber != null ? ` · #${currentTeam.jerseyNumber}` : ''}
               </Text>
@@ -125,35 +125,35 @@ export default function PlayerScreen() {
         {/* Totales de la temporada activa */}
         <View className="mx-3 mt-3 flex-row gap-2">
           <View className={statBox}>
-            <Text className="text-xl font-bold">{seasonTotals.pj}</Text>
-            <Text className="text-[11px] uppercase text-slate-500">{t('player.col_pj')}</Text>
+            <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">{seasonTotals.pj}</Text>
+            <Text className="text-[11px] uppercase text-slate-500 dark:text-slate-400">{t('player.col_pj')}</Text>
           </View>
           <View className={statBox}>
-            <Text className="text-xl font-bold">{seasonTotals.goals}</Text>
-            <Text className="text-[11px] uppercase text-slate-500">{t('player.col_g')}</Text>
+            <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">{seasonTotals.goals}</Text>
+            <Text className="text-[11px] uppercase text-slate-500 dark:text-slate-400">{t('player.col_g')}</Text>
           </View>
           <View className={statBox}>
-            <Text className="text-xl font-bold">{seasonTotals.assists}</Text>
-            <Text className="text-[11px] uppercase text-slate-500">{t('player.col_as')}</Text>
+            <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">{seasonTotals.assists}</Text>
+            <Text className="text-[11px] uppercase text-slate-500 dark:text-slate-400">{t('player.col_as')}</Text>
           </View>
         </View>
 
         {/* Trayectoria: campañas de más reciente a más antigua */}
         <Text className={sectionTitle}>{t('player.career')}</Text>
         {career.seasons.length === 0 ? (
-          <Text className="px-4 pb-6 text-sm text-slate-500">{t('player.no_comp_records')}</Text>
+          <Text className="px-4 pb-6 text-sm text-slate-500 dark:text-slate-400">{t('player.no_comp_records')}</Text>
         ) : (
-          <View className="mx-3 mb-6 overflow-hidden rounded-xl bg-white dark:bg-slate-900">
+          <View className="mx-3 mb-6 overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
             {career.seasons.map((season) => (
               <View key={season.seasonId} className="border-b border-slate-100 px-3 py-2.5 last:border-b-0 dark:border-slate-800">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-sm font-bold">
+                  <Text className="text-sm font-bold text-slate-900 dark:text-slate-100">
                     {season.seasonName}
                     {season.isCurrent ? (
                       <Text className="ml-2 text-xs font-normal text-rink-passion"> · {t('player.career_current')}</Text>
                     ) : null}
                   </Text>
-                  <Text className="text-xs text-slate-500">{season.competitionName}</Text>
+                  <Text className="text-xs text-slate-500 dark:text-slate-400">{season.competitionName}</Text>
                 </View>
                 {season.teams.map((team) => (
                   <Pressable
@@ -167,7 +167,7 @@ export default function PlayerScreen() {
                     <Text numberOfLines={1} className="flex-1 text-sm text-slate-700 dark:text-slate-300">
                       {clubName(team.teamName) || team.teamName}
                     </Text>
-                    <Text className="ml-2 text-xs tabular-nums text-slate-500">
+                    <Text className="ml-2 text-xs tabular-nums text-slate-500 dark:text-slate-400">
                       {team.pj === 0 && team.goals === 0 ? '' : `${team.pj} ${t('player.col_pj')} · ${team.goals} ${t('player.col_g')}`}
                     </Text>
                   </Pressable>
@@ -175,8 +175,8 @@ export default function PlayerScreen() {
               </View>
             ))}
             <View className="flex-row items-center justify-between bg-slate-50 px-3 py-2.5 dark:bg-slate-800">
-              <Text className="text-sm font-semibold">{t('player.career_totals')}</Text>
-              <Text className="text-xs tabular-nums text-slate-500">
+              <Text className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('player.career_totals')}</Text>
+              <Text className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
                 {career.totals.pj} {t('player.col_pj')} · {career.totals.goals} {t('player.col_g')}
               </Text>
             </View>

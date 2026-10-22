@@ -104,13 +104,13 @@ export function MatchHeader({
               onPress={() => router.push(`/competition/${match.competitionId}`)}
               className="flex-row items-center gap-1 active:opacity-70"
             >
-              <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
                 {match.competitionName}
               </Text>
-              <Ionicons name="chevron-forward" size={12} color="#64748b" />
+              <Ionicons name="chevron-forward" size={12} color="#94a3b8" />
             </Pressable>
           ) : (
-            <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
               {match.competitionName}
             </Text>
           )}
@@ -170,7 +170,7 @@ export function MatchHeader({
             ) : null}
           </View>
         ) : isFinished ? (
-          <Text className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <Text className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-300">
             {t(finalLabelKey(match.winType))}
           </Text>
         ) : (
@@ -214,7 +214,7 @@ export function MatchHeader({
               <Text className="font-mono text-4xl font-extrabold tabular-nums text-slate-900 dark:text-slate-50">
                 {match.score.home ?? 0}
               </Text>
-              <Text className="mx-2 text-3xl font-light text-slate-300 dark:text-slate-600">:</Text>
+              <Text className="mx-2 text-3xl font-light text-slate-300 dark:text-slate-400">:</Text>
               <Text className="font-mono text-4xl font-extrabold tabular-nums text-slate-900 dark:text-slate-50">
                 {match.score.away ?? 0}
               </Text>
@@ -281,7 +281,7 @@ export function MatchHeader({
                     <Text className="text-xs font-medium text-slate-700 dark:text-slate-300">
                       {eventSurname(e.player!)}
                     </Text>
-                    <Text className="text-[10px] text-slate-500 tabular-nums">
+                    <Text className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums">
                       {fmtEventClock(e)}
                     </Text>
                     {e.eventType === 'goal' ? (
@@ -314,7 +314,7 @@ export function MatchHeader({
                     <Text className="text-xs font-medium text-slate-700 dark:text-slate-300">
                       {eventSurname(e.player!)}
                     </Text>
-                    <Text className="text-[10px] text-slate-500 tabular-nums">
+                    <Text className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums">
                       {fmtEventClock(e)}
                     </Text>
                   </View>
@@ -342,13 +342,13 @@ export function MatchHeader({
             <Text className="font-mono text-base font-extrabold text-slate-800 dark:text-slate-200">
               {stats.homeFouls}
             </Text>
-            <Text className="text-xs text-slate-500">{t('match_detail.fouls')}</Text>
+            <Text className="text-xs text-slate-500 dark:text-slate-400">{t('match_detail.fouls')}</Text>
           </View>
-          <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+          <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
             {t('match_detail.team_fouls_header')}
           </Text>
           <View className="flex-row items-baseline gap-1">
-            <Text className="text-xs text-slate-500">{t('match_detail.fouls')}</Text>
+            <Text className="text-xs text-slate-500 dark:text-slate-400">{t('match_detail.fouls')}</Text>
             <Text className="font-mono text-base font-extrabold text-slate-800 dark:text-slate-200">
               {stats.awayFouls}
             </Text>
