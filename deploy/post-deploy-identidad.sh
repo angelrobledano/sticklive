@@ -18,7 +18,7 @@ psql_q() {
 }
 
 echo "== Migraciones aplicadas (últimas)"
-psql_q "SELECT name FROM _migrations ORDER BY name DESC LIMIT 6;"
+psql_q "SELECT filename FROM _migrations ORDER BY id DESC LIMIT 6;"
 
 echo "== A1: jugadores que siguen en varios portales (a separar con A2)"
 psql_q "SELECT players_mixed FROM apply_portal_namespacing();"
