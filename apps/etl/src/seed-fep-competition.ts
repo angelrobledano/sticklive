@@ -19,10 +19,12 @@
  *     --idc=3568 --name="OK LIGA MASCULINA" --short="OK Liga" \
  *     --gender=male --season=2026/27 --temp=40 --write
  */
+import { currentSource, competitionSourceRefForSeed, clubRef } from '../../scraper/src/core/sources.js';
+import { clubKeyFromLogo } from '../../scraper/src/core/sidgad-club.js';
 import {
   db, closeDb,
   findTeamBySourceRef, findTeamBySlug, addTeamAltRef, upsertCompetitionSource,
-  findTeamByNormalizedAlias, findSimilarTeamNames, enqueueResolution, upsertSourceEntityMapTeam,
+  findTeamByNormalizedAlias, findSimilarTeamNames, enqueueResolution, upsertSourceEntityMapTeam, ensureClubForTeam, recordSeasonTeamRef,
 } from '@sports/db';
 import { normalizeTeamName } from './transformers/normalize.js';
 import { deriveShortName } from './derive-short-name.js';
@@ -86,7 +88,7 @@ function slugify(s: string): string {
     .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
-interface DiscTeam { ref: string; name: string; abbr: string; }
+interface DiscTeam { ref: string; name: string; abbr: string; logo?: string; }
 
 // La fuente mete un pseudo-equipo 'DESCANSO' como bye en ligas de nº impar (Bronce N/S).
 const isBye = (n: string): boolean => /^\s*descanso\s*$/i.test(n || '');
@@ -97,8 +99,8 @@ function parseTeamsArray(html: string): DiscTeam[] {
     ?? $('input[id^="teams_array_"]').first().attr('value') ?? '';
   // "logo.png,ref,abbr,NAME;logo.png,ref,abbr,NAME;..."
   return val.split(';').filter(Boolean).map((chunk) => {
-    const [, ref = '', abbr = '', ...nameParts] = chunk.split(',');
-    return { ref: ref.trim(), abbr: abbr.trim(), name: nameParts.join(',').trim() };
+    const [logo = '', ref = '', abbr = '', ...nameParts] = chunk.split(',');
+    return { ref: ref.trim(), abbr: abbr.trim(), name: nameParts.join(',').trim(), logo: logo.trim() };
   }).filter((t) => t.ref && t.name && !isBye(t.name));
 }
 
@@ -289,7 +291,7 @@ async function main() {
        age_category=EXCLUDED.age_category, scope=EXCLUDED.scope, organizer=EXCLUDED.organizer,
        region=EXCLUDED.region, source_ref=EXCLUDED.source_ref, updated_at=NOW()
      RETURNING id`,
-    [sportId, NAME, SHORT, compSlug, GENDER, CATEGORY, AGE, SCOPE, ORGANIZER, REGION, COUNTRY, sourceId, IDC],
+    [sportId, NAME, SHORT, compSlug, GENDER, CATEGORY, AGE, SCOPE, ORGANIZER, REGION, COUNTRY, sourceId, competitionSourceRefForSeed(currentSource(), IDC)],
   )).rows[0]!;
 
   // ── Temporada (is_current) ──
@@ -395,10 +397,20 @@ async function main() {
       created++;
     }
 
-    await db.query(
-      `INSERT INTO season_teams (season_id, team_id) VALUES ($1,$2) ON CONFLICT (season_id, team_id) DO NOTHING`,
-      [season.id, teamId],
-    );
+    // A4: el escudo del teams_array ES el id de club sidgad. Se cuelga el
+    // equipo de su club (creándolo si hace falta) por esa clave estable.
+    const clubKey = clubKeyFromLogo(t.logo);
+    if (clubKey && teamId) {
+      await ensureClubForTeam({
+        teamId, sourceId, clubRef: clubRef(currentSource(), clubKey), name: t.name,
+      }).catch((err) => log.warn({ err, team: t.name }, 'No se pudo enlazar el club (A4)'));
+    }
+
+    // A5: la ref de inscripción va en la inscripción (temporada), no solo en
+    // el array global alt_source_refs.
+    if (!(await recordSeasonTeamRef(season.id, teamId!, t.ref))) {
+      log.warn({ team: t.name, ref: t.ref }, 'Ref de inscripción ya asignada a OTRO equipo en esta temporada (A5) — revisar');
+    }
   }
 
   // ── competition_sources ──

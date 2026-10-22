@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   photoCandidates, idNumFromSourceRef, resolvePlayerPhoto, resolvePlayerPhotoIfNeeded,
-  photoAreaForTeamRefs, PHOTO_CDNS, MAX_PHOTO_INDEX,
+  photoAreaForTeamRefs, PHOTO_CDNS, MAX_PHOTO_INDEX, photoTargetFromRef,
 } from './player-photo-url.js';
 
 const RFEP = PHOTO_CDNS.rfep;
@@ -135,5 +135,27 @@ describe('resolvePlayerPhotoIfNeeded (pasada rápida)', () => {
     const existing = new Set([`${RFEP}/28150_1.jpg`, `${RFEP}/7733.jpg`]);
     const got = await resolvePlayerPhotoIfNeeded('7733', 'rfep', `${RFEP}/28150_1.jpg`, async (u) => existing.has(u));
     expect(got).toBe(`${RFEP}/7733.jpg`);
+  });
+});
+
+/**
+ * A1/A3: con refs por portal, la carpeta del CDN sale de la propia ref. Antes
+ * todo lo que no era `wse_*` iba a /rfep/: Martí Serra Molist (FECAPA 14782)
+ * mostraba la foto del jugador 14782 de RFEP, otra persona.
+ */
+describe('photoTargetFromRef (A1/A3)', () => {
+  it('FECAPA va a su propia carpeta', () => {
+    expect(photoTargetFromRef('fecapa_player_14782', [])).toEqual({ idNum: '14782', area: 'fecapa' });
+    expect(photoCandidates('14782', 'fecapa')[0]!).toContain('/fecapa/images/fichas/14782_');
+  });
+  it('wse_player_ va a worldskate', () => {
+    expect(photoTargetFromRef('wse_player_192', [])).toEqual({ idNum: '192', area: 'worldskate' });
+  });
+  it('fep_player_ heredado sigue decidiendo por los equipos', () => {
+    expect(photoTargetFromRef('fep_player_192', ['wse_1130'])).toEqual({ idNum: '192', area: 'worldskate' });
+    expect(photoTargetFromRef('fep_player_4646', ['3408'])).toEqual({ idNum: '4646', area: 'rfep' });
+  });
+  it('una ref que no es de jugador no se toca', () => {
+    expect(photoTargetFromRef('basura', [])).toBeNull();
   });
 });

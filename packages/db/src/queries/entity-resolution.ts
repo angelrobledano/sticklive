@@ -483,3 +483,77 @@ export async function getSourceClubTeams(
   );
   return new Map(rows.map((r) => [r.club_ref, r.team_id]));
 }
+
+/** Slug ASCII simple para clubes nuevos ("CP Calafell Tot l'Any" → "cp-calafell-tot-l-any"). */
+function clubSlug(name: string): string {
+  return name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'club';
+}
+
+/**
+ * A4 — Enlaza un equipo a su CLUB por el id de club de la fuente (escudo
+ * sidgad, `fep_club_calafell`, `fecapa_club_322`), creando el club si no
+ * existe. Es la clave estable: sobrevive a patrocinios e inscripciones.
+ *
+ * Reglas (todas conservadoras, ver tests/integration/club-by-sidgad-key):
+ *   · un equipo que ya cuelga de un club NO se reasigna aunque la ref apunte a
+ *     otro: eso es una fusión y va por revisión humana,
+ *   · si el equipo ya tenía club y la ref es nueva, se aprende la ref,
+ *   · si la ref ya está mapeada, el equipo se cuelga de ese club,
+ *   · si no, se crea el club (slug único) y su ref.
+ */
+export async function ensureClubForTeam(args: {
+  teamId: string;
+  sourceId: string;
+  clubRef: string;
+  name: string;
+  crestUrl?: string | null;
+  client?: Ejecutor;
+}): Promise<string> {
+  const c = args.client ?? db;
+  const team = (await c.query<{ club_id: string | null; sport_id: string; country: string | null }>(
+    `SELECT club_id, sport_id, country FROM teams WHERE id = $1`, [args.teamId],
+  )).rows[0];
+  if (!team) throw new Error(`ensureClubForTeam: equipo inexistente ${args.teamId}`);
+
+  const mapped = (await c.query<{ club_id: string }>(
+    `SELECT club_id FROM source_entity_map
+      WHERE source_id = $1 AND source_ref = $2 AND club_id IS NOT NULL`,
+    [args.sourceId, args.clubRef],
+  )).rows[0]?.club_id;
+
+  if (team.club_id) {
+    if (!mapped) {
+      await c.query(
+        `INSERT INTO source_entity_map (source_id, source_ref, club_id) VALUES ($1, $2, $3)
+         ON CONFLICT (source_id, source_ref) DO NOTHING`,
+        [args.sourceId, args.clubRef, team.club_id],
+      );
+    }
+    return team.club_id;
+  }
+
+  let clubId = mapped;
+  if (!clubId) {
+    const base = clubSlug(args.name);
+    const refSuffix = clubSlug(args.clubRef);
+    for (const slug of [base, `${base}-${refSuffix}`]) {
+      const ins = await c.query<{ id: string }>(
+        `INSERT INTO clubs (sport_id, canonical_name, slug, country, crest_url)
+         VALUES ($1, $2, $3, COALESCE($4, 'ES'), $5)
+         ON CONFLICT (sport_id, slug) DO NOTHING RETURNING id`,
+        [team.sport_id, args.name, slug, team.country, args.crestUrl ?? null],
+      );
+      if (ins.rows[0]) { clubId = ins.rows[0].id; break; }
+    }
+    if (!clubId) throw new Error(`ensureClubForTeam: no hay slug libre para ${args.name}`);
+    await c.query(
+      `INSERT INTO source_entity_map (source_id, source_ref, club_id) VALUES ($1, $2, $3)
+       ON CONFLICT (source_id, source_ref) DO NOTHING`,
+      [args.sourceId, args.clubRef, clubId],
+    );
+  }
+
+  await c.query(`UPDATE teams SET club_id = $1, updated_at = NOW() WHERE id = $2 AND club_id IS NULL`, [clubId, args.teamId]);
+  return clubId;
+}

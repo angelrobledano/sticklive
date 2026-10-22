@@ -45,7 +45,7 @@ import {
   resolveWorldskate, runWorldskate, reportDormantWorldskate,
 } from '../../scraper/src/scrapers/worldskate/run-worldskate.js';
 import {
-  sourceForMatchRef, idpFromMatchRef, idcFromCompetitionRef,
+  sourceForMatchRef, idpFromMatchRef, idcFromCompetitionRef, matchRef, currentSource,
 } from '../../scraper/src/core/sources.js';
 import {
   snapshotMatches, snapshotRounds, snapshotGoals, snapshotEventsByType,
@@ -244,10 +244,12 @@ async function finalizeMissingFepLive(seasonIds: string[], feed: ScrapedMatch[])
     `SELECT source_ref FROM matches
       WHERE season_id = ANY($1)
         AND status = 'live'
-        AND source_ref LIKE 'fep_match_%'
+        AND source_ref LIKE $2
         AND home_score IS NOT NULL
         AND away_score IS NOT NULL`,
-    [seasonIds]
+    // Solo los partidos del portal del feed (A1): el feed de RFEP no
+    // puede cerrar partidos de otro portal.
+    [seasonIds, `${matchRef(currentSource(), '')}%`]
   );
 
   const refs = missingLiveTracker.observe(liveRes.rows.map((r) => r.source_ref), seen);

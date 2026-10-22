@@ -96,7 +96,7 @@ export class FepStandingsScraper extends FepBaseScraper<ScrapedStanding> {
         const cells = $row.find('td');
         if (cells.length < 10) return;
         try {
-          const standing = this.parseStandingRow($, $row, cells, { groupName, sourceUrl, scrapedAt });
+          const standing = this.parseStandingRow($, $row, cells, { groupName, phaseTitle: entry.phaseTitle, sourceUrl, scrapedAt });
           if (standing) standings.push(standing);
         } catch (err) {
           this.captureError(this.parseErrors, err, { entityRef: `row_${cells.eq(2).text().trim() || 'unknown'}` });
@@ -115,7 +115,7 @@ export class FepStandingsScraper extends FepBaseScraper<ScrapedStanding> {
     $: cheerio.CheerioAPI,
     $row: cheerio.Cheerio<Element>,
     cells: cheerio.Cheerio<Element>,
-    ctx: { groupName?: string; sourceUrl: string; scrapedAt: Date }
+    ctx: { groupName?: string; phaseTitle?: string; sourceUrl: string; scrapedAt: Date }
   ): ScrapedStanding | null {
     const positionText = cells.eq(0).text().trim();
     const position = positionText ? parseInt(positionText, 10) : undefined;
@@ -153,6 +153,7 @@ export class FepStandingsScraper extends FepBaseScraper<ScrapedStanding> {
     return {
       teamRef,
       groupName: ctx.groupName,
+      ...(ctx.phaseTitle ? { phaseTitle: ctx.phaseTitle } : {}),
       position,
       played,
       won,

@@ -228,6 +228,8 @@ export type ScrapedStanding = Omit<Standing, 'id' | 'seasonId' | 'teamId'> & Scr
   logoUrl?: string;
   /** Abreviatura del equipo que trae la tabla (`.mobile`). Rellena `teams.short_name`. */
   abbreviation?: string | null;
+  /** Título de la fase que publica la fuente sobre la tabla (A7): liga la clasificación a su fase. */
+  phaseTitle?: string;
 };
 
 /**

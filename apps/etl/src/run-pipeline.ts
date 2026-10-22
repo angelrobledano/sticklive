@@ -36,7 +36,7 @@ import { FepStandingsScraper } from '../../scraper/src/scrapers/fep/fep-standing
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import { resolveWorldskate } from '../../scraper/src/scrapers/worldskate/run-worldskate.js';
-import { resolveMatchSourceIds } from '../../scraper/src/core/sources.js';
+import { resolveMatchSourceIds, matchRefLikePatterns } from '../../scraper/src/core/sources.js';
 
 const log = createLogger({ service: 'run-pipeline' });
 
@@ -427,10 +427,10 @@ async function mainInner() {
        JOIN competitions comp ON comp.id = s.competition_id
        WHERE m.season_id = ANY($1)
          AND m.status IN ('finished', 'live')
-         AND (m.source_ref LIKE 'fep_match_%' OR m.source_ref LIKE 'wse_match_%')
+         AND m.source_ref LIKE ANY($3)
          AND ($2 OR NOT EXISTS (SELECT 1 FROM match_events e WHERE e.match_id = m.id))
        ORDER BY m.scheduled_at ASC`,
-      [seasons, entity === 'refichas']
+      [seasons, entity === 'refichas', matchRefLikePatterns()]
     );
 
     log.info({ pending: pending.length }, '→ Fichas pendientes encontradas');

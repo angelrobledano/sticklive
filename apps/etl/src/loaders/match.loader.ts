@@ -7,6 +7,7 @@
  * 3. Procesar en batches para no sobrecargar la DB
  * 4. Usar transacciones por batch (no por partido individual — más eficiente)
  */
+import { isClubRef } from '../../../scraper/src/core/sources.js';
 import { upsertMatch, insertScrapeLog, getSeasonSignals, upsertRound, db, learnSourceClub, ensurePhase, ensurePhaseRound } from '@sports/db';
 import type { ScrapedMatch, ScrapeResult } from '@sports/shared-types';
 import { resolveStatusTransition } from '@sports/shared-types';
@@ -98,7 +99,7 @@ async function registrarDatosDeFeed(
 
   // Mapa ref de club → equipo, acotado por competición.
   if (!sourceId) return;
-  const clubs = lados.filter((l) => l.ref.startsWith('fep_club_'));
+  const clubs = lados.filter((l) => isClubRef(l.ref));
   if (clubs.length === 0) return;
 
   const season = await db.query<{ competition_id: string }>(
@@ -242,8 +243,8 @@ export async function loadMatches(
           // temporada para la auto-confirmación del escalón 3, Fase 3).
           const signals = await signalsFor(input.seasonId);
           const [homeTeamId, awayTeamId] = await Promise.all([
-            resolver.resolveTeam(homeTeamRef, raw.sourceId, signals),
-            resolver.resolveTeam(awayTeamRef, raw.sourceId, signals),
+            resolver.resolveTeam(homeTeamRef, raw.sourceId, signals, input.seasonId),
+            resolver.resolveTeam(awayTeamRef, raw.sourceId, signals, input.seasonId),
           ]);
 
           // Escudo del calendario: rellena `teams.logo_url` si está vacío (la

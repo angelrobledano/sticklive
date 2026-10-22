@@ -202,3 +202,24 @@ export async function pruneStaleRounds(
   );
   return res.rowCount ?? 0;
 }
+
+/**
+ * A7 — Fase de una temporada por su título tal como lo publica la fuente
+ * (`div_titulo_fase_idc`), sin distinguir mayúsculas ni espacios. null si no
+ * hay título o no casa con ninguna fase: la tabla queda sin fase, como antes.
+ */
+export async function findPhaseIdByTitle(
+  seasonId: string,
+  title: string | null | undefined,
+  client: Client = db,
+): Promise<string | null> {
+  const norm = (title ?? '').replace(/\s+/g, ' ').trim();
+  if (!norm) return null;
+  const r = await client.query<{ id: string }>(
+    `SELECT id FROM phases
+      WHERE season_id = $1 AND upper(regexp_replace(trim(name), '\\s+', ' ', 'g')) = upper($2)
+      ORDER BY ordinal LIMIT 1`,
+    [seasonId, norm],
+  );
+  return r.rows[0]?.id ?? null;
+}

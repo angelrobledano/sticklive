@@ -47,6 +47,54 @@ export const SOURCES: SourceDef[] = [
       referer: 'https://wse.sidgad.com/',
     },
   },
+  // Federaciones autonómicas (mismo registro que apps/etl/src/federations.ts).
+  // Antes se cargaban con SIDGAD_PORTAL y la fuente `fep`: sus refs nacían
+  // `fep_*` y chocaban con los ids de RFEP (A1, análisis OKMob 22/10/2026).
+  {
+    key: 'fecapa',
+    name: 'FECAPA — Hoquei Patins (Catalunya)',
+    client: {
+      baseUrl: 'https://www.server2.sidgad.es/fecapa',
+      portalPrefix: 'fecapa',
+      referer: 'https://www.fecapa.cat/',
+    },
+  },
+  {
+    key: 'fmp',
+    name: 'FMP — Hockey Patines (Madrid)',
+    client: {
+      baseUrl: 'https://www.server2.sidgad.es/fmp',
+      portalPrefix: 'fmp',
+      referer: 'https://www.hockeypatines.fmp.es/',
+    },
+  },
+  {
+    key: 'fap',
+    name: 'FAP — Hockey Patines (Andalucía)',
+    client: {
+      baseUrl: 'https://www.server2.sidgad.es/fap',
+      portalPrefix: 'fap',
+      referer: 'https://www.hockeypatines.fapatinaje.org/',
+    },
+  },
+  {
+    key: 'fpcv',
+    name: 'FPCV — Hockey Patines (C. Valenciana)',
+    client: {
+      baseUrl: 'https://www.server2.sidgad.es/fpcv',
+      portalPrefix: 'fpcv',
+      referer: 'https://www.fpcv.es/',
+    },
+  },
+  {
+    key: 'fgp',
+    name: 'FGP — Hockey Patines (Galicia)',
+    client: {
+      baseUrl: 'https://www.server2.sidgad.es/fgpatinaxe',
+      portalPrefix: 'fgpatinaxe',
+      referer: 'https://www.hockeypatines.fgpatinaxe.gal/',
+    },
+  },
 ];
 
 /** Fuente a la que pertenece un `matches.source_ref`, o null si no la conocemos. */
@@ -110,4 +158,70 @@ export function resolveMatchSourceIds(
   const idp = idpFromMatchRef(sourceRef!, source);
   if (!idp) return null;
   return { source, idp, idc: idcFromCompetitionRef(compRef, source) };
+}
+
+/** Fuente de un portal sidgad (`rfep`, `fecapa`, `worldskate`…). Lanza si no la conocemos. */
+export function sourceForPortal(portal: string): SourceDef {
+  const s = SOURCES.find((x) => x.client.portalPrefix === portal);
+  if (!s) throw new Error(`Portal sidgad desconocido: ${portal}. Añádelo en core/sources.ts`);
+  return s;
+}
+
+/**
+ * Fuente del proceso actual: la marca `SIDGAD_PORTAL` (rfep por defecto). Los
+ * scrapers que corren "por portal" (calendario, directo, fichas) la usan para
+ * que sus refs lleven el portal correcto.
+ */
+export function currentSource(env: Record<string, string | undefined> = process.env): SourceDef {
+  return sourceForPortal(env['SIDGAD_PORTAL'] ?? 'rfep');
+}
+
+/**
+ * Prefijo de los `source_ref` de JUGADOR. RFEP conserva `fep_player_` (lo ya
+ * cargado). El resto lleva su clave: cada portal numera a sus jugadores por
+ * separado y sin prefijo propio dos personas distintas comparten fila.
+ */
+export function playerPrefix(source: SourceDef): string {
+  return `${source.key}_player_`;
+}
+
+/** `matchRef(fecapa, '164291')` → `fecapa_match_164291`. */
+export function matchRef(source: SourceDef, idp: string): string {
+  return `${matchPrefix(source)}${idp}`;
+}
+
+/** `competitionRef(fecapa, '4858')` → `fecapa_competition_4858`. */
+export function competitionRef(source: SourceDef, idc: string): string {
+  return `${compPrefix(source)}${idc}`;
+}
+
+/** Prefijos de partido de todas las fuentes, para filtros SQL (`LIKE ANY`). */
+export function matchRefLikePatterns(): string[] {
+  return SOURCES.map((s) => `${matchPrefix(s)}%`);
+}
+
+/** `fecapa_player_14782` → `{ sourceKey: 'fecapa', id: '14782' }`. */
+export function playerIdFromRef(ref: string | null | undefined): { sourceKey: string; id: string } | null {
+  const m = /^([a-z]+)_player_([A-Za-z0-9]+)$/.exec(ref ?? '');
+  if (!m || !SOURCES.some((s) => s.key === m[1])) return null;
+  return { sourceKey: m[1]!, id: m[2]! };
+}
+
+/** `clubRef(rfep, '69')` → `fep_club_69`. Id de CLUB sidgad (estable), no de inscripción. */
+export function clubRef(source: SourceDef, id: string): string {
+  return `${source.key}_club_${id}`;
+}
+
+/** ¿Es una ref de club sidgad de alguna fuente conocida? */
+export function isClubRef(ref: string): boolean {
+  return SOURCES.some((s) => ref.startsWith(`${s.key}_club_`));
+}
+
+/**
+ * `competitions.source_ref` que escribe el seed. RFEP conserva el idc tal cual
+ * (es lo sembrado desde el principio); el resto lleva su portal para que un
+ * idc de FECAPA no se confunda con uno de RFEP o World Skate (`260`).
+ */
+export function competitionSourceRefForSeed(source: SourceDef, idc: string): string {
+  return source.key === 'fep' ? idc : competitionRef(source, idc);
 }
