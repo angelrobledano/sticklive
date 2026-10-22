@@ -370,6 +370,13 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
       >
         {latest ? eventAnnouncement(latest, t, homeName, awayName) : ''}
       </div>
+      {/* B5: acta terminada que no cuadra con el marcador. */}
+      {data.match.status === 'finished' && data.match.eventCoverage === 'partial' && (
+        <p role="note" className="relative z-10 mb-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800
+                                  dark:bg-amber-950/40 dark:text-amber-300">
+          {t('match_detail.partial_acta')}
+        </p>
+      )}
       {/* Eje central del timeline */}
       <div className="absolute left-1/2 top-3 bottom-3 w-px -translate-x-1/2
                       bg-slate-100 dark:bg-slate-800" aria-hidden="true" />

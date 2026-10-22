@@ -27,6 +27,8 @@ import {
   findCompetitionBySourceRef,
   findCompetitionBySlug,
   findSeasonBySourceRef,
+  findTeamIdBySeasonRef,
+  recordSeasonTeamRef,
   type DbTeam,
 } from '@sports/db';
 import { createLogger } from '@sports/logger';
@@ -70,6 +72,11 @@ export function pickUnambiguousTeam<T>(
   return { team: null, ambiguous: false };
 }
 
+/** ¿Es un id de inscripción de equipo (teamId sidgad, `wse_1130`…) y no un club/abreviatura/nombre? */
+function isInscriptionRef(ref: string): boolean {
+  return /^(?:[a-z]+_)?\d+$/.test(ref) && !/_club_|abbr/.test(ref);
+}
+
 export class RefResolver {
   // Caché: ref → UUID
   private teamCache = new Map<string, string>();
@@ -104,10 +111,22 @@ export class RefResolver {
     teamRef: string,
     sourceId?: string,
     signals?: { gender?: string | null; ageCategory?: string | null },
+    seasonId?: string,
   ): Promise<string> {
-    const cacheKey = `${sourceId ?? ''}|${teamRef}`;
+    const cacheKey = `${sourceId ?? ''}|${seasonId ?? ''}|${teamRef}`;
     const cached = this.teamCache.get(cacheKey);
     if (cached) return cached;
+
+    // 0. Ref de inscripción en ESTA temporada (A5). Una temporada es de un
+    //    solo portal: (temporada, ref) es determinista aunque la ref choque
+    //    entre portales (#228) o cambie de una temporada a otra.
+    if (seasonId) {
+      const bySeason = await findTeamIdBySeasonRef(seasonId, teamRef);
+      if (bySeason) {
+        this.teamCache.set(cacheKey, bySeason);
+        return bySeason;
+      }
+    }
 
     // 1. source_entity_map (escalón 1 determinista)
     let teamId = await resolveTeamViaSourceMap(teamRef, sourceId);
@@ -252,6 +271,13 @@ export class RefResolver {
       );
     }
 
+    // A5: aprende la ref de inscripción para esta temporada (solo ids de
+    // inscripción: ni refs de club ni abreviaturas, que no son de temporada).
+    if (seasonId && isInscriptionRef(teamRef)) {
+      await recordSeasonTeamRef(seasonId, teamId, teamRef).catch((err) => {
+        log.debug({ teamRef, seasonId, err }, 'No se pudo registrar la ref de inscripción');
+      });
+    }
     this.teamCache.set(cacheKey, teamId);
     return teamId;
   }

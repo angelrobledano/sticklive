@@ -11,6 +11,9 @@ import { playerDisplayName, toTitleCase, clubName } from '@/lib/names';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
 import { ShareButton } from '@/components/shared/ShareButton';
+import { ShareImageButton } from '@/components/shared/ShareImageButton';
+import { TeamCalendar } from '@/components/team/TeamCalendar';
+import { TeamStatsStory } from '@/components/team/TeamStatsStory';
 import { useLocale, useT } from '@/lib/i18n';
 import { withLocaleHref } from '@/lib/locale-links';
 import { APP_TZ } from '@/lib/match-time';
@@ -202,6 +205,7 @@ function TeamHeader({ data }: { data: TeamDetailView }) {
 
         {/* Compartir + Seguir/Siguiendo */}
         <div className="flex items-center gap-1 shrink-0 self-start">
+          <ShareImageButton kind="team" entityId={team.id} name={clubName(team.name)} imagePath={`/teams/${team.id}/share-image`} />
           <ShareButton kind="team" title={clubName(team.name)} />
           <FavoriteStar
             id={team.id}
@@ -457,7 +461,7 @@ function SummaryTab({ data }: { data: TeamDetail }) {
 // ─── Tab B: Calendario ───────────────────────────────────────────────
 
 function CalendarTab({ data }: { data: TeamDetail }) {
-  const { t, locale } = useT();
+  const { t } = useT();
   const { matches, team } = data;
 
   // En eliminatorias, cada partido se etiqueta con su ronda (semis/final…):
@@ -477,41 +481,14 @@ function CalendarTab({ data }: { data: TeamDetail }) {
     );
   }
 
-  // Agrupar por mes. El encabezado de mes se ancla en Madrid a propósito: el mes
-  // no cambia por 1 h de zona y así el agrupado es estable entre competiciones.
-  const groups = new Map<string, TeamMatchSummary[]>();
-  for (const m of matches) {
-    const date = new Date(m.scheduledAt ?? m.finishedAt ?? '');
-    const key = isNaN(date.getTime()) ? t('team.no_date') :
-      date.toLocaleDateString(locale, { month: 'long', year: 'numeric', timeZone: 'Europe/Madrid' });
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(m);
-  }
-
   return (
-    <div className="space-y-4">
-      {Array.from(groups.entries()).map(([month, group]) => (
-        <div key={month} className="card overflow-hidden">
-          <div className="px-4 pt-4 pb-2">
-            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest capitalize">
-              {month}
-            </p>
-          </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-            {group.map((m) => (
-              <MiniMatchCard
-                key={m.id}
-                match={m}
-                teamId={team.id}
-                roundLabel={koSummary?.phaseByMatch.get(m.id)
-                  ? knockoutPhaseLabel(koSummary.phaseByMatch.get(m.id)!, t)
-                  : null}
-              />
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
+    <TeamCalendar
+      matches={matches}
+      teamId={team.id}
+      roundLabelFor={koSummary
+        ? (m) => (koSummary.phaseByMatch.get(m.id) ? knockoutPhaseLabel(koSummary.phaseByMatch.get(m.id)!, t) : null)
+        : undefined}
+    />
   );
 }
 
@@ -689,16 +666,6 @@ function StaffSection({ staff }: { staff: TeamDetail['staff'] }) {
 
 // ─── Tab D: Estadísticas del equipo ──────────────────────────────────
 
-function StatTile({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
-  return (
-    <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 px-3 py-2.5 text-center">
-      <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-50 leading-tight">{value}</p>
-      <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide leading-tight mt-0.5">{label}</p>
-      {sub && <p className="text-[10px] text-slate-500 dark:text-slate-400">{sub}</p>}
-    </div>
-  );
-}
-
 function TeamStatsTab({ data }: { data: TeamDetail }) {
   const s = data.stats;
   const { t } = useT();
@@ -712,66 +679,7 @@ function TeamStatsTab({ data }: { data: TeamDetail }) {
     );
   }
 
-  const fmtPct = (p: { total: number; scored: number; pct: number | null }) =>
-    p.total > 0 ? `${p.scored}/${p.total} · ${p.pct}%` : '—';
-
-  return (
-    <div className="space-y-4">
-      {/* Balance */}
-      <div className="card p-4 space-y-3">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-          {t('team.balance')}
-        </p>
-        <div className="grid grid-cols-4 gap-2">
-          <StatTile label={t('team.played')} value={s.played} />
-          <StatTile label={t('team.won')} value={s.won} />
-          <StatTile label={t('team.drawn')} value={s.drawn} />
-          <StatTile label={t('team.lost')} value={s.lost} />
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <StatTile label={t('team.goals_for')} value={s.goalsFor} />
-          <StatTile label={t('team.goals_against')} value={s.goalsAgainst} />
-          <StatTile label={t('hockey_stats.assists')} value={s.assists} />
-        </div>
-      </div>
-
-      {/* Disciplina */}
-      <div className="card p-4 space-y-3">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-          {t('team.discipline')}
-        </p>
-        <div className="grid grid-cols-4 gap-2">
-          <StatTile label={t('hockey_stats.team_fouls')} value={s.teamFouls} />
-          <StatTile label={t('hockey_stats.blue_cards')} value={s.blueCards} />
-          <StatTile label={t('hockey_stats.red_cards')} value={s.redCards} />
-          <StatTile label={t('hockey_stats.time_outs')} value={s.timeouts} />
-        </div>
-      </div>
-
-      {/* Bola parada */}
-      <div className="card p-4 space-y-2">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-          {t('team.set_pieces')}
-        </p>
-        <div className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-          <span className="text-sm text-slate-700 dark:text-slate-300">{t('team.direct_fouls')}</span>
-          <span className={`text-sm font-bold tabular-nums ${
-            (s.directFouls.pct ?? 0) >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-50'
-          }`}>
-            {fmtPct(s.directFouls)}
-          </span>
-        </div>
-        <div className="flex items-center justify-between py-1.5">
-          <span className="text-sm text-slate-700 dark:text-slate-300">{t('team.penalties')}</span>
-          <span className={`text-sm font-bold tabular-nums ${
-            (s.penalties.pct ?? 0) >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-50'
-          }`}>
-            {fmtPct(s.penalties)}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
+  return <TeamStatsStory stats={s} matches={data.matches} teamId={data.team.id} />;
 }
 
 // ─── Componente principal ──────────────────────────────────────────

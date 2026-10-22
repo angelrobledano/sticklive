@@ -37,9 +37,27 @@ export interface ParseOptions {
    * Las fuentes nuevas pasan el suyo (`wse_event_`…) y nacen ya separadas.
    */
   eventPrefix?: string;
+  /**
+   * Prefijo de los `source_ref` de jugador. Cada portal sidgad numera a sus
+   * jugadores por separado (Martí Serra Molist es 4095 en RFEP y 14782 en
+   * FECAPA, y el 14782 de RFEP es otra persona), así que el prefijo tiene que
+   * ser el del portal. Por defecto `fep_player_`: lo que hay cargado de RFEP.
+   */
+  playerPrefix?: string;
 }
 
 const DEFAULT_EVENT_PREFIX = 'fep_event_';
+const DEFAULT_PLAYER_PREFIX = 'fep_player_';
+
+/**
+ * Texto visible de una celda de nombre, sin la categoría de licencia que
+ * FECAPA mete en un `<spam>` (sic) delante: `<spam>OKL </spam>SERRA MOLIST`.
+ */
+function nameCellText($: cheerio.CheerioAPI, el: Element): string {
+  const $c = $(el).clone();
+  $c.find('spam').remove();
+  return $c.text().replace(/\s+/g, ' ').trim();
+}
 
 /**
  * Referencia estable de un evento, derivada de su CONTENIDO.
@@ -218,7 +236,7 @@ interface SetPieceInfo {
  *   <a id="4775" team_id="3373" class="nombre_ficha_jugador_plus">XAUS MOLINARI <span>ARNAU</span></a>
  *   <span class="lang_es">NO HAY GOL</span>   (o "GOL")
  */
-function readSetPiece($: cheerio.CheerioAPI, $tr: cheerio.Cheerio<Element>): SetPieceInfo {
+function readSetPiece($: cheerio.CheerioAPI, $tr: cheerio.Cheerio<Element>, playerPrefix: string): SetPieceInfo {
   const info: SetPieceInfo = {};
   const results = $tr.find('span.lang_es').map((_, el) => $(el).text().trim().toUpperCase()).get();
   if (results.includes('NO HAY GOL')) info.scored = false;
@@ -232,7 +250,7 @@ function readSetPiece($: cheerio.CheerioAPI, $tr: cheerio.Cheerio<Element>): Set
     if (!id || id === '0' || !/^\d+$/.test(id) || !name) return;
     const teamRef = $a.attr('team_id') || undefined;
     const firstName = givenNameOf($, $a);
-    info.shooter = { name, sourceRef: `fep_player_${id}`, ...(firstName ? { firstName } : {}), ...(teamRef ? { teamRef } : {}) };
+    info.shooter = { name, sourceRef: `${playerPrefix}${id}`, ...(firstName ? { firstName } : {}), ...(teamRef ? { teamRef } : {}) };
   });
   return info;
 }
@@ -243,6 +261,7 @@ export function parseFicha(
   opts: ParseOptions = {},
 ): ScrapedMatchEvent[] {
   const log = opts.log ?? SILENT_LOG;
+  const playerPrefix = opts.playerPrefix ?? DEFAULT_PLAYER_PREFIX;
   const $ = cheerio.load(html);
   const events: ScrapedMatchEvent[] = [];
 
@@ -310,7 +329,7 @@ export function parseFicha(
       const playerName = $playerLink.text().replace(/\s+/g, ' ').trim() || undefined;
       const playerFirstName = givenNameOf($, $playerLink);
       const idPlayerAttr = $playerLink.attr('id_player');
-      const playerSourceRef = idPlayerAttr && idPlayerAttr !== '0' ? `fep_player_${idPlayerAttr}` : undefined;
+      const playerSourceRef = idPlayerAttr && idPlayerAttr !== '0' ? `${playerPrefix}${idPlayerAttr}` : undefined;
       const playerTeamRef = $playerLink.attr('team_id') || undefined;
       const dorsalText = $tr.find('.game_view_incidencias_dorsal').first().text().trim();
       const jerseyNumber = dorsalText ? parseInt(dorsalText, 10) : undefined;
@@ -351,7 +370,7 @@ export function parseFicha(
       events.push(ev);
       rawInstant.set(ev, `${isHome}|${periodText} ${timeText}`);
       if (eventType === 'direct_foul' || eventType === 'penalty') {
-        setPieceInfo.set(ev, readSetPiece($, $tr));
+        setPieceInfo.set(ev, readSetPiece($, $tr, playerPrefix));
       }
     });
 
@@ -704,7 +723,12 @@ export function parseLiveHeader(html: string): LiveHeader | null {
  *   col G: goles del jugador en el partido
  * La primera tabla es el equipo local (coincide con .nombre1), la segunda el visitante.
  */
-export function parseLineups(html: string, idp: string): UpsertMatchLineupInput[] {
+export function parseLineups(
+  html: string,
+  idp: string,
+  opts: Pick<ParseOptions, 'playerPrefix'> = {},
+): UpsertMatchLineupInput[] {
+  const playerPrefix = opts.playerPrefix ?? DEFAULT_PLAYER_PREFIX;
   const $ = cheerio.load(html);
   const lineups: UpsertMatchLineupInput[] = [];
   const scrapedAt = new Date();
@@ -767,7 +791,7 @@ export function parseLineups(html: string, idp: string): UpsertMatchLineupInput[
       let nameIdx = -1;
       cells.each((i, c) => {
         if (rawName || i < NAME_MIN_IDX) return;
-        const t = $(c).text().replace(/\s+/g, ' ').trim();
+        const t = nameCellText($, c);
         // Al menos dos letras seguidas: descarta "5", "-", "P" y celdas vacías.
         if (t.length >= 3 && /\p{L}{2,}/u.test(t)) { rawName = t; nameIdx = i; }
       });
@@ -790,7 +814,7 @@ export function parseLineups(html: string, idp: string): UpsertMatchLineupInput[
       if (nameIdx >= 0) {
         const $nameEl = $(cells[nameIdx]).find('[id_player]').first();
         const idPlayer = $nameEl.attr('id_player');
-        if (idPlayer && idPlayer !== '0') playerSourceRef = `fep_player_${idPlayer}`;
+        if (idPlayer && idPlayer !== '0') playerSourceRef = `${playerPrefix}${idPlayer}`;
         if ($nameEl.length) playerFirstName = givenNameOf($, $nameEl as cheerio.Cheerio<Element>);
       }
 

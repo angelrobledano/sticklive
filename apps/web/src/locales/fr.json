@@ -1,4 +1,47 @@
 {
+  "team_story": {
+    "kicker": "La saison",
+    "results": "Résultats",
+    "attack_defense": "Attaque et défense",
+    "scored_pm": "Marqués par match",
+    "conceded_pm": "Encaissés par match",
+    "points_pct": "{n} % pts",
+    "fouls_pm": "Fautes/match",
+    "more": "Voir tous les chiffres"
+  },
+  "team_calendar": {
+    "all": "Tous",
+    "played": "Joués",
+    "upcoming": "À venir",
+    "home": "Domicile",
+    "away": "Extérieur",
+    "no_matches": "Aucun match avec ces filtres.",
+    "clear": "Effacer les filtres",
+    "round_short": "J{n}",
+    "res_W": "V",
+    "res_D": "N",
+    "res_L": "D",
+    "res_W_full": "Victoires",
+    "res_D_full": "Nuls",
+    "res_L_full": "Défaites",
+    "label": "Filtrer le calendrier"
+  },
+  "share_image": {
+    "button": "Image",
+    "title": "Partager l'équipe",
+    "title_match": "Partager le résultat",
+    "title_player": "Partager le joueur",
+    "close": "Fermer",
+    "format": "Format",
+    "story": "Story 9:16",
+    "post": "Publication 16:9",
+    "theme": "Thème",
+    "dark": "Sombre",
+    "light": "Clair",
+    "preview": "Aperçu de {name}",
+    "download": "Télécharger",
+    "share": "Partager"
+  },
   "nav": {
     "live": "En direct",
     "standings": "Classement",
@@ -213,6 +256,7 @@
     "waiting_start_body": "Les buts, fautes et cartons apparaîtront ici dès que la balle roulera sur la piste.",
     "historic_title": "Match d'archive",
     "historic_body": "Pour ce match, nous conservons le résultat officiel. La feuille détaillée (buts, cartons, compositions) n'est pas disponible pour les matchs d'archive.",
+    "partial_acta": "La feuille de match officielle est incomplète : les buts enregistrés ne correspondent pas au score final.",
     "report_pending_title": "Feuille de match en attente de synchronisation",
     "report_pending_body": "La feuille de match détaillée est en attente de synchronisation. Le score global est officiel et définitif.",
     "overtime": "Prolongation {n}",
@@ -288,6 +332,16 @@
     "placement_range": "Places {from}-{to}"
   },
   "standings": {
+    "zones": {
+      "champion": "Champion",
+      "promotion": "Montée",
+      "promotion_playoff": "Play-offs",
+      "final_phase": "Phase finale",
+      "placement": "Classement",
+      "playout": "Play-out",
+      "relegation": "Relégation",
+      "to": "{zone} · {target}"
+    },
     "team": "Équipe",
     "group": "Groupe",
     "playoffs_zone": "Playoffs (1er–8e)",

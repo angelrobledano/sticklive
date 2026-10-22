@@ -663,3 +663,8 @@ export async function reconcileSyntheticMatches(seasonId: string | null = null):
   );
   return (dupes.rows[0]?.n ?? 0) + (synDupes.rows[0]?.n ?? 0) + (stale.rowCount ?? 0);
 }
+
+/** B5 — Recalcula `event_coverage` del partido contra su marcador (migración 086). */
+export async function refreshEventCoverage(matchId: string, client: pg.PoolClient | typeof db = db): Promise<void> {
+  await client.query(`SELECT refresh_event_coverage($1)`, [matchId]);
+}

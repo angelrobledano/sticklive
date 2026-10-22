@@ -37,26 +37,61 @@ async function jugadorEn(matchId: string, teamId: string, sportId: string): Prom
   const playerId = rows[0]!.id;
   await db.query(
     `INSERT INTO match_lineups (match_id, team_id, is_home, player_name, player_id, goals)
-     VALUES ($1, $2, TRUE, 'Nombre Apellido', $3, 0)`,
+     VALUES ($1, $2, TRUE, 'Jugador ' || $3::text, $3::uuid, 0)`,
     [matchId, teamId, playerId]
   );
   return playerId;
+}
+
+/**
+ * Umbrales vigentes (b1f008c, 19/10/2026, "para reducir volumen"): un equipo
+ * entra con 3 partidos en temporadas visibles y un jugador con 8 alineaciones
+ * en competiciones top_tier. Una ficha con menos es una ficha casi vacía.
+ */
+async function masPartidos(base: { seasonId: string; homeTeamId: string; awayTeamId: string }, n: number): Promise<string[]> {
+  const out: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO matches (season_id, home_team_id, away_team_id, status, scheduled_at, source_ref)
+       VALUES ($1, $2, $3, 'finished', NOW() - INTERVAL '2 days', 'extra-' || gen_random_uuid()::text) RETURNING id`,
+      [base.seasonId, base.homeTeamId, base.awayTeamId],
+    );
+    out.push(rows[0]!.id);
+  }
+  return out;
+}
+
+async function alinear(playerId: string, matchIds: string[], teamId: string) {
+  for (const m of matchIds) {
+    await db.query(
+      `INSERT INTO match_lineups (match_id, team_id, is_home, player_name, player_id, goals)
+       VALUES ($1, $2, TRUE, 'Jugador ' || $3::text, $3::uuid, 0)`,
+      [m, teamId, playerId],
+    );
+  }
 }
 
 beforeEach(limpiar);
 afterAll(closeDb);
 
 describe('GET /meta/sitemap — jugadores', () => {
-  it('solo jugadores con alineación en una competición top_tier', async () => {
+  it('solo jugadores con al menos 8 alineaciones en una competición top_tier', async () => {
     const top = await crearPartido({ status: 'finished', horasDesdeInicio: 48 });
     await db.query(`UPDATE competitions SET top_tier = TRUE WHERE id = $1`, [top.competitionId]);
+    const extra = await masPartidos(top, 7);
     const bajo = await crearPartido({ status: 'finished', horasDesdeInicio: 48 });
+    const extraBajo = await masPartidos(bajo, 7);
 
     const enTop = await jugadorEn(top.matchId, top.homeTeamId, top.sportId);
+    await alinear(enTop, extra, top.homeTeamId);                         // 8 alineaciones
+    const pocoTop = await jugadorEn(top.matchId, top.homeTeamId, top.sportId);
+    await alinear(pocoTop, extra.slice(1), top.homeTeamId);              // 7 alineaciones
     const enBajo = await jugadorEn(bajo.matchId, bajo.homeTeamId, bajo.sportId);
+    await alinear(enBajo, extraBajo, bajo.homeTeamId);                   // 8, pero no top_tier
 
     const body = await sitemap();
     expect(ids(body.players)).toContain(enTop);
+    expect(ids(body.players)).not.toContain(pocoTop);
     expect(ids(body.players)).not.toContain(enBajo);
   });
 
@@ -71,12 +106,16 @@ describe('GET /meta/sitemap — jugadores', () => {
 });
 
 describe('GET /meta/sitemap — equipos', () => {
-  it('solo equipos con algún partido en una temporada visible', async () => {
-    const { homeTeamId, awayTeamId, sportId } = await crearPartido();
-    const sinPartidos = await crearEquipo(sportId);
+  it('solo equipos con al menos 3 partidos en temporadas visibles', async () => {
+    const tres = await crearPartido();
+    await masPartidos(tres, 2);
+    const dos = await crearPartido();
+    await masPartidos(dos, 1);
+    const sinPartidos = await crearEquipo(tres.sportId);
 
     const body = await sitemap();
-    expect(ids(body.teams)).toEqual(expect.arrayContaining([homeTeamId, awayTeamId]));
+    expect(ids(body.teams)).toEqual(expect.arrayContaining([tres.homeTeamId, tres.awayTeamId]));
+    expect(ids(body.teams)).not.toContain(dos.homeTeamId);
     expect(ids(body.teams)).not.toContain(sinPartidos);
   });
 

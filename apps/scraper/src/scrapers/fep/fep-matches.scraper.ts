@@ -37,6 +37,7 @@ import { FepBaseScraper } from './fep-base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { sidgadPost } from './sidgad-client.js';
 import { parseShortDatetime } from './match-datetime.js';
+import { currentSource, matchRef, clubRef, type SourceDef } from '../../core/sources.js';
 import type { ScrapedMatch, MatchStatus } from '@sports/shared-types';
 
 const BASE_URL = 'https://www.server2.sidgad.es/rfep';
@@ -50,10 +51,13 @@ export interface MatchesScraperConfig {
    * de partidos ya existentes el ON CONFLICT preserva el season_id original.
    */
   seasonId: string;
+  /** Portal de origen (A1). Por defecto el de SIDGAD_PORTAL. */
+  source?: SourceDef;
 }
 
 export class FepMatchesScraper extends FepBaseScraper<ScrapedMatch> {
   private matchesConfig: MatchesScraperConfig;
+  private readonly source: SourceDef;
 
   constructor(config: MatchesScraperConfig) {
     super({
@@ -62,6 +66,7 @@ export class FepMatchesScraper extends FepBaseScraper<ScrapedMatch> {
       sourceId: SOURCE_ID,
     });
     this.matchesConfig = config;
+    this.source = config.source ?? currentSource();
   }
 
   protected async scrape(): Promise<ScrapedMatch[]> {
@@ -159,10 +164,10 @@ export class FepMatchesScraper extends FepBaseScraper<ScrapedMatch> {
 
     // teamRef: preferimos club ID numérico, fallback a abreviatura
     const homeTeamRef = homeClubRef
-      ? `fep_club_${homeClubRef}`
+      ? clubRef(this.source, homeClubRef)
       : `fep_abbr_${homeAbbr}`;
     const awayTeamRef = awayClubRef
-      ? `fep_club_${awayClubRef}`
+      ? clubRef(this.source, awayClubRef)
       : `fep_abbr_${awayAbbr}`;
 
     if (this.log.isLevelEnabled('debug')) {
@@ -184,7 +189,7 @@ export class FepMatchesScraper extends FepBaseScraper<ScrapedMatch> {
       status,
       scheduledAt: scheduledAt?.toISOString(),
       sourceId: SOURCE_ID,
-      sourceRef: `fep_match_${idp}`,
+      sourceRef: matchRef(this.source, idp),
       sourceUrl: `${BASE_URL}/acta_1_${idp}.php`,
       scrapedAt,
     } as ScrapedMatch;

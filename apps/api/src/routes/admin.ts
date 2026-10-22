@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, type DataQuality } from '@sports/db';
+import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, type DataQuality } from '@sports/db';
 import { logger } from '@sports/logger';
+import type { StandingsZone } from '@sports/shared-types';
 import { isUuid } from '../lib/uuid.js';
 import { captureRouteError } from '../lib/route-error.js';
 
@@ -494,6 +495,141 @@ adminRouter.post('/resolution-queue/:id/reject', async (c) => {
   } catch (err) {
     captureRouteError(err, 'admin] reject error');
     logger.error({ err }, '[admin] reject error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+// ── A4: clubes por escudo (revisión antes del backfill) ─────────────────────
+
+/** GET /admin/club-crests?issues=1 — equipos agrupados por escudo, con su club. Solo lectura. */
+adminRouter.get('/club-crests', async (c) => {
+  try {
+    const groups = await listCrestReviewGroups({ onlyIssues: c.req.query('issues') === '1' });
+    const counts = { merge: 0, pending: 0, ok: 0 };
+    for (const g of groups) counts[g.status]++;
+    return c.json({ count: groups.length, counts, groups });
+  } catch (err) {
+    captureRouteError(err, 'admin] club-crests error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+// ── B1: crosswalk de jugadores entre portales ────────────────────────────────
+
+/** GET /admin/player-links?status=pending — candidatos a misma persona. */
+adminRouter.get('/player-links', async (c) => {
+  const status = c.req.query('status') ?? 'pending';
+  try {
+    const items = await listPlayerLinkCandidates(status);
+    return c.json({ status, count: items.length, items });
+  } catch (err) {
+    captureRouteError(err, 'admin] player-links error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/** POST /admin/player-links/generate — propone candidatos nuevos (nunca enlaza). */
+adminRouter.post('/player-links/generate', async (c) => {
+  try {
+    return c.json({ created: await generatePlayerLinkCandidates() });
+  } catch (err) {
+    captureRouteError(err, 'admin] player-links generate error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/** POST /admin/player-links/:id/accept — enlaza las dos fichas (redirección 308 de la absorbida). */
+adminRouter.post('/player-links/:id/accept', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Candidate not found or not pending' }, 404);
+  try {
+    const r = await acceptPlayerLinkCandidate(id, 'human:admin');
+    if (!r) return c.json({ error: 'Candidate not found or not pending' }, 404);
+    return c.json({ ok: true, ...r });
+  } catch (err) {
+    if (err instanceof Error && /prohibid/i.test(err.message)) return c.json({ error: err.message }, 409);
+    captureRouteError(err, 'admin] player-links accept error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/** POST /admin/player-links/:id/reject — descarta y prohíbe el par para que no vuelva. */
+adminRouter.post('/player-links/:id/reject', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Candidate not found or not pending' }, 404);
+  try {
+    if (!(await rejectPlayerLinkCandidate(id))) return c.json({ error: 'Candidate not found or not pending' }, 404);
+    return c.json({ ok: true });
+  } catch (err) {
+    captureRouteError(err, 'admin] player-links reject error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+// ── B2: zonas de clasificación (reglamento como datos) ───────────────────────
+
+const ZONE_KINDS = new Set(['champion', 'promotion', 'promotion_playoff', 'final_phase', 'placement', 'playout', 'relegation']);
+
+/** Valida una zona del body; devuelve null si está mal formada. */
+function parseZone(z: unknown): StandingsZone | null {
+  if (!z || typeof z !== 'object') return null;
+  const o = z as Record<string, unknown>;
+  const posFrom = Number(o['posFrom']);
+  const posTo = Number(o['posTo']);
+  if (typeof o['kind'] !== 'string' || !ZONE_KINDS.has(o['kind'])) return null;
+  if (!Number.isInteger(posFrom) || !Number.isInteger(posTo) || posFrom < 1 || posTo < posFrom) return null;
+  const phaseId = o['phaseId'] == null ? null : String(o['phaseId']);
+  if (phaseId && !isUuid(phaseId)) return null;
+  return {
+    kind: o['kind'] as StandingsZone['kind'],
+    posFrom, posTo,
+    target: o['target'] == null ? null : String(o['target']),
+    phaseId,
+    groupName: o['groupName'] == null ? null : String(o['groupName']),
+  };
+}
+
+/** GET /admin/seasons/:id/zones */
+adminRouter.get('/seasons/:id/zones', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Season not found' }, 404);
+  try {
+    return c.json({ seasonId: id, zones: await getStandingsZones(id) });
+  } catch (err) {
+    captureRouteError(err, 'admin] zones get error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/** PUT /admin/seasons/:id/zones  Body: { sourceNote, zones: StandingsZone[] } — reemplaza todas. */
+adminRouter.put('/seasons/:id/zones', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Season not found' }, 404);
+  const body = await c.req.json().catch(() => ({})) as { sourceNote?: unknown; zones?: unknown };
+  if (typeof body.sourceNote !== 'string' || !body.sourceNote.trim()) {
+    return c.json({ error: 'sourceNote (fuente normativa) es obligatoria' }, 400);
+  }
+  if (!Array.isArray(body.zones)) return c.json({ error: 'zones debe ser un array' }, 400);
+  const zones = body.zones.map(parseZone);
+  if (zones.some((z) => z === null)) return c.json({ error: 'Zona mal formada' }, 400);
+  try {
+    await replaceStandingsZones(id, zones as StandingsZone[], body.sourceNote);
+    return c.json({ ok: true, count: zones.length });
+  } catch (err) {
+    captureRouteError(err, 'admin] zones put error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/** POST /admin/seasons/:id/zones/copy-from/:fromId — punto de partida desde otra temporada. */
+adminRouter.post('/seasons/:id/zones/copy-from/:fromId', async (c) => {
+  const id = c.req.param('id');
+  const fromId = c.req.param('fromId');
+  if (!isUuid(id) || !isUuid(fromId)) return c.json({ error: 'Season not found' }, 404);
+  try {
+    return c.json({ ok: true, copied: await copyStandingsZones(fromId, id) });
+  } catch (err) {
+    captureRouteError(err, 'admin] zones copy error');
     return c.json({ error: 'Database error' }, 500);
   }
 });

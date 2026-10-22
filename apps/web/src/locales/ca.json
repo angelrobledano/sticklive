@@ -1,4 +1,47 @@
 {
+  "team_story": {
+    "kicker": "La temporada",
+    "results": "Resultats",
+    "attack_defense": "Atac i defensa",
+    "scored_pm": "Marca per partit",
+    "conceded_pm": "Encaixa per partit",
+    "points_pct": "{n} % pts",
+    "fouls_pm": "Faltes/partit",
+    "more": "Veure tots els números"
+  },
+  "team_calendar": {
+    "all": "Tots",
+    "played": "Jugats",
+    "upcoming": "Propers",
+    "home": "A casa",
+    "away": "Fora",
+    "no_matches": "Cap partit amb aquests filtres.",
+    "clear": "Treu els filtres",
+    "round_short": "J{n}",
+    "res_W": "V",
+    "res_D": "E",
+    "res_L": "D",
+    "res_W_full": "Victòries",
+    "res_D_full": "Empats",
+    "res_L_full": "Derrotes",
+    "label": "Filtra el calendari"
+  },
+  "share_image": {
+    "button": "Imatge",
+    "title": "Comparteix l'equip",
+    "title_match": "Comparteix el resultat",
+    "title_player": "Comparteix el jugador",
+    "close": "Tanca",
+    "format": "Format",
+    "story": "Història 9:16",
+    "post": "Publicació 16:9",
+    "theme": "Tema",
+    "dark": "Fosc",
+    "light": "Clar",
+    "preview": "Previsualització de {name}",
+    "download": "Baixa",
+    "share": "Comparteix"
+  },
   "nav": {
     "live": "En directe",
     "standings": "Classificació",
@@ -302,6 +345,7 @@
     "waiting_start_body": "Els gols, faltes i targetes apareixeran aquí tan bon punt comenci a rodar la bola a la pista.",
     "historic_title": "Partit històric",
     "historic_body": "D'aquest partit en guardem el resultat oficial. L'acta detallada (gols, targetes, alineacions) no està disponible per a partits d'arxiu.",
+    "partial_acta": "L'acta oficial d'aquest partit és incompleta: els gols registrats no sumen el resultat final.",
     "report_pending_title": "Acta pendent de sincronització",
     "report_pending_body": "L'acta digital detallada d'aquest partit està pendent de sincronització. El marcador global és oficial i definitiu.",
     "overtime": "Pròrroga {n}",
@@ -377,6 +421,16 @@
     "placement_range": "Llocs {from}è-{to}è"
   },
   "standings": {
+    "zones": {
+      "champion": "Campió",
+      "promotion": "Ascens",
+      "promotion_playoff": "Play-off",
+      "final_phase": "Fase final",
+      "placement": "Classificació",
+      "playout": "Play-out",
+      "relegation": "Descens",
+      "to": "{zone} · {target}"
+    },
     "team": "Equip",
     "group": "Grup",
     "playoffs_zone": "Playoffs (1r–8è)",

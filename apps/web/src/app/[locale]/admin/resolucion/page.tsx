@@ -164,6 +164,10 @@ export default function ResolucionPage() {
         </button>
       </div>
 
+      <a href="./jugadores" className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-rink-passion">
+        Jugadores entre federaciones →
+      </a>
+
       <p className="text-xs text-slate-500 dark:text-slate-400">
         Refs que el ETL no resolvió, por impacto. Asignar escribe un alias: ese nombre se resuelve solo a partir de ahora.
       </p>

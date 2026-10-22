@@ -1,4 +1,47 @@
 {
+  "team_story": {
+    "kicker": "La stagione",
+    "results": "Risultati",
+    "attack_defense": "Attacco e difesa",
+    "scored_pm": "Segnati a partita",
+    "conceded_pm": "Subiti a partita",
+    "points_pct": "{n}% pt",
+    "fouls_pm": "Falli/partita",
+    "more": "Vedi tutti i numeri"
+  },
+  "team_calendar": {
+    "all": "Tutte",
+    "played": "Giocate",
+    "upcoming": "Prossime",
+    "home": "In casa",
+    "away": "Fuori",
+    "no_matches": "Nessuna partita con questi filtri.",
+    "clear": "Rimuovi filtri",
+    "round_short": "G{n}",
+    "res_W": "V",
+    "res_D": "N",
+    "res_L": "S",
+    "res_W_full": "Vittorie",
+    "res_D_full": "Pareggi",
+    "res_L_full": "Sconfitte",
+    "label": "Filtra calendario"
+  },
+  "share_image": {
+    "button": "Immagine",
+    "title": "Condividi la squadra",
+    "title_match": "Condividi il risultato",
+    "title_player": "Condividi il giocatore",
+    "close": "Chiudi",
+    "format": "Formato",
+    "story": "Storia 9:16",
+    "post": "Post 16:9",
+    "theme": "Tema",
+    "dark": "Scuro",
+    "light": "Chiaro",
+    "preview": "Anteprima di {name}",
+    "download": "Scarica",
+    "share": "Condividi"
+  },
   "nav": {
     "live": "In diretta",
     "standings": "Classifica",
@@ -213,6 +256,7 @@
     "waiting_start_body": "Gol, falli e cartellini appariranno qui non appena la palla inizierà a rotolare in pista.",
     "historic_title": "Partita d'archivio",
     "historic_body": "Di questa partita conserviamo il risultato ufficiale. Il referto dettagliato (gol, cartellini, formazioni) non è disponibile per le partite d'archivio.",
+    "partial_acta": "Il referto ufficiale è incompleto: i gol registrati non corrispondono al risultato finale.",
     "report_pending_title": "Referto in attesa di sincronizzazione",
     "report_pending_body": "Il referto digitale dettagliato di questa partita è in attesa di sincronizzazione. Il punteggio complessivo è ufficiale e definitivo.",
     "overtime": "Supplementare {n}",
@@ -288,6 +332,16 @@
     "placement_range": "Posti {from}º-{to}º"
   },
   "standings": {
+    "zones": {
+      "champion": "Campione",
+      "promotion": "Promozione",
+      "promotion_playoff": "Play-off",
+      "final_phase": "Fase finale",
+      "placement": "Piazzamento",
+      "playout": "Play-out",
+      "relegation": "Retrocessione",
+      "to": "{zone} · {target}"
+    },
     "team": "Squadra",
     "group": "Girone",
     "playoffs_zone": "Playoff (1°–8°)",

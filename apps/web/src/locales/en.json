@@ -1,4 +1,47 @@
 {
+  "team_story": {
+    "kicker": "The season",
+    "results": "Results",
+    "attack_defense": "Attack and defence",
+    "scored_pm": "Scored per game",
+    "conceded_pm": "Conceded per game",
+    "points_pct": "{n}% pts",
+    "fouls_pm": "Fouls/game",
+    "more": "See all the numbers"
+  },
+  "team_calendar": {
+    "all": "All",
+    "played": "Played",
+    "upcoming": "Upcoming",
+    "home": "Home",
+    "away": "Away",
+    "no_matches": "No matches with these filters.",
+    "clear": "Clear filters",
+    "round_short": "R{n}",
+    "res_W": "W",
+    "res_D": "D",
+    "res_L": "L",
+    "res_W_full": "Wins",
+    "res_D_full": "Draws",
+    "res_L_full": "Defeats",
+    "label": "Filter fixtures"
+  },
+  "share_image": {
+    "button": "Image",
+    "title": "Share the team",
+    "title_match": "Share the result",
+    "title_player": "Share the player",
+    "close": "Close",
+    "format": "Format",
+    "story": "Story 9:16",
+    "post": "Post 16:9",
+    "theme": "Theme",
+    "dark": "Dark",
+    "light": "Light",
+    "preview": "Preview of {name}",
+    "download": "Download",
+    "share": "Share"
+  },
   "nav": {
     "live": "Live",
     "standings": "Standings",
@@ -286,6 +329,7 @@
     "waiting_start_body": "Goals, fouls and cards will show up here as soon as the ball starts rolling on the rink.",
     "historic_title": "Historic match",
     "historic_body": "We keep the official result for this match. The detailed report (goals, cards, lineups) isn't available for archived matches.",
+    "partial_acta": "The official match report is incomplete: the recorded goals do not add up to the final score.",
     "report_pending_title": "Match report pending sync",
     "report_pending_body": "The detailed digital report for this match is pending synchronisation. The overall score is official and final.",
     "overtime": "Overtime {n}",
@@ -361,6 +405,16 @@
     "placement_range": "Places {from}-{to}"
   },
   "standings": {
+    "zones": {
+      "champion": "Champion",
+      "promotion": "Promotion",
+      "promotion_playoff": "Play-offs",
+      "final_phase": "Final phase",
+      "placement": "Placement",
+      "playout": "Play-out",
+      "relegation": "Relegation",
+      "to": "{zone} · {target}"
+    },
     "team": "Team",
     "group": "Group",
     "playoffs_zone": "Playoffs (1st–8th)",

@@ -1,4 +1,47 @@
 {
+  "team_story": {
+    "kicker": "La temporada",
+    "results": "Resultados",
+    "attack_defense": "Ataque y defensa",
+    "scored_pm": "Marca por partido",
+    "conceded_pm": "Encaja por partido",
+    "points_pct": "{n} % pts",
+    "fouls_pm": "Faltas/partido",
+    "more": "Ver todos los números"
+  },
+  "team_calendar": {
+    "all": "Todos",
+    "played": "Jugados",
+    "upcoming": "Próximos",
+    "home": "En casa",
+    "away": "Fuera",
+    "no_matches": "Ningún partido con estos filtros.",
+    "clear": "Quitar filtros",
+    "round_short": "J{n}",
+    "res_W": "V",
+    "res_D": "E",
+    "res_L": "D",
+    "res_W_full": "Victorias",
+    "res_D_full": "Empates",
+    "res_L_full": "Derrotas",
+    "label": "Filtrar calendario"
+  },
+  "share_image": {
+    "button": "Imagen",
+    "title": "Comparte el equipo",
+    "title_match": "Comparte el resultado",
+    "title_player": "Comparte el jugador",
+    "close": "Cerrar",
+    "format": "Formato",
+    "story": "Historia 9:16",
+    "post": "Publicación 16:9",
+    "theme": "Tema",
+    "dark": "Oscuro",
+    "light": "Claro",
+    "preview": "Vista previa de {name}",
+    "download": "Descargar",
+    "share": "Compartir"
+  },
   "nav": {
     "live": "En directo",
     "standings": "Clasificación",
@@ -302,6 +345,7 @@
     "waiting_start_body": "Los goles, faltas y tarjetas aparecerán aquí en cuanto comience a rodar la bola en la pista.",
     "historic_title": "Partido histórico",
     "historic_body": "De este partido guardamos el resultado oficial. El acta detallada (goles, tarjetas, alineaciones) no está disponible para partidos de archivo.",
+    "partial_acta": "El acta oficial de este partido está incompleta: los goles registrados no suman el resultado final.",
     "report_pending_title": "Acta pendiente de sincronización",
     "report_pending_body": "El acta digital detallada de este encuentro está pendiente de sincronización. El marcador global es oficial y definitivo.",
     "overtime": "Prórroga {n}",
@@ -377,6 +421,16 @@
     "placement_range": "Puestos {from}º-{to}º"
   },
   "standings": {
+    "zones": {
+      "champion": "Campeón",
+      "promotion": "Ascenso",
+      "promotion_playoff": "Play-off",
+      "final_phase": "Fase final",
+      "placement": "Clasificación",
+      "playout": "Play-out",
+      "relegation": "Descenso",
+      "to": "{zone} · {target}"
+    },
     "team": "Equipo",
     "group": "Grupo",
     "playoffs_zone": "Playoffs (1º–8º)",

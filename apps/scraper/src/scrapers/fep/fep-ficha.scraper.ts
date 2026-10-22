@@ -18,8 +18,8 @@
 import { FepBaseScraper } from './fep-base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { SidgadClient, SIDGAD_LANG } from './sidgad-client.js';
-import { sourceByKey, eventPrefix, type SourceDef } from '../../core/sources.js';
-import { db, fixPlayerNameSplit, replaceMatchEvents, replaceMatchLineups, withTransaction } from '@sports/db';
+import { currentSource, eventPrefix, playerPrefix, playerIdFromRef, type SourceDef } from '../../core/sources.js';
+import { db, fixPlayerNameSplit, replaceMatchEvents, replaceMatchLineups, withTransaction, findPlayerIdBySourceRef, addPlayerSourceRef, refreshEventCoverage } from '@sports/db';
 // Los parsers viven en fep-ficha.parser.ts (puros, sin E/S) para poder testearlos
 // con HTML congelado sin necesidad de entorno ni base de datos.
 import {
@@ -74,7 +74,7 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
   public liveHeader: ReturnType<typeof parseLiveHeader> = null;
 
   constructor(config: FichaScraperConfig) {
-    const source = config.source ?? sourceByKey('fep');
+    const source = config.source ?? currentSource();
     super({
       scraperKey: source.key === 'fep' ? 'fep_hockey' : `${source.key}_hockey`,
       entityType: 'match_event',
@@ -147,6 +147,7 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
               ...(this.cfg.homeTeamName ? { homeTeamName: this.cfg.homeTeamName } : {}),
               log: this.log,
               eventPrefix: eventPrefix(this.source),
+              playerPrefix: playerPrefix(this.source),
             });
             // Jugadores: upsert en players/team_players desde los links de la
             // ficha (id_player). Devuelve mapa nombre→UUID para vincular
@@ -197,7 +198,7 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
               this.log.info({ matchId: this.cfg.matchId, ...pens }, '🥅 Tanda de penaltis actualizada');
             }
             // Alineaciones: vienen en el mismo HTML (tablas competiciones_tabla_basic)
-            const lineups = parseLineups(html, idp);
+            const lineups = parseLineups(html, idp, { playerPrefix: playerPrefix(this.source) });
             // Vinculación (#219): REF del acta primero (exacta — la tabla de
             // alineación SÍ trae id_player), luego mapa nombre (fallback), y
             // para jugadores de alineación SIN evento: alta por ref (un
@@ -307,6 +308,7 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
       ...(this.cfg.homeTeamName ? { homeTeamName: this.cfg.homeTeamName } : {}),
       log: this.log,
       eventPrefix: eventPrefix(this.source),
+              playerPrefix: playerPrefix(this.source),
     });
   }
 
@@ -355,7 +357,7 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
     // Id de fuente (para desambiguar el slug de homónimos). La FOTO no se
     // inventa aquí: `photo_url` lo fija el verificador `update-player-photos`
     // (comprueba qué patrón existe de verdad en el CDN; ver player-photo-url.ts).
-    const idNum = playerSourceRef.replace('fep_player_', '');
+    const idNum = playerIdFromRef(playerSourceRef)?.id ?? playerSourceRef;
 
     // Upsert por source_ref; si no existe, insert con slug único por sport.
     // HOMÓNIMOS (#176): el viejo ON CONFLICT (sport_id, slug) DO UPDATE SET
@@ -364,10 +366,8 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
     // y el segundo PISABA el source_ref del primero, fusionando sus carreras.
     // Si el slug existe con OTRA ref, se desambigua el slug con el id de
     // fuente (slug-idFuente) y queda el aviso para revisión.
-    const found = await db.query<{ id: string }>(
-      `SELECT id FROM players WHERE source_ref = $1`, [playerSourceRef]
-    );
-    let playerId = found.rows[0]?.id;
+    // B1: la ref puede ser una más de una persona enlazada entre portales.
+    let playerId = (await findPlayerIdBySourceRef(playerSourceRef)) ?? undefined;
     if (playerId && givenName) {
       // Corrige el reparto de los dados de alta antes de leer el nombre de pila (C1).
       await fixPlayerNameSplit(playerId, firstName, lastName);
@@ -397,6 +397,7 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
         [ctx.sport_id, firstName, lastName, finalSlug, playerSourceRef]
       );
       playerId = ins.rows[0]!.id;
+      await addPlayerSourceRef(playerId, playerSourceRef, 'scraper').catch(() => {});
     }
 
     // Pertenencia equipo/temporada (si conocemos el equipo sidgad).
@@ -517,13 +518,8 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
       // recuperar el acta y 364 partidos mantenían el timeline oculto con los
       // eventos YA en la base. Mismo guardado anti-acta-vacía de #149: si la
       // ficha vino vacía no hay eventos y no se toca la bandera.
-      if (input.length > 0) {
-        await client.query(
-          `UPDATE matches SET event_coverage = 'full', updated_at = NOW()
-            WHERE id = $1 AND event_coverage IS DISTINCT FROM 'full'`,
-          [matchId]
-        );
-      }
+      // B5: 'full' solo si el acta cuadra con el marcador; si no, 'partial'.
+      if (input.length > 0) await refreshEventCoverage(matchId, client);
     });
     this.log.info(
       { matchId, inserted: input.length, types: [...new Set(events.map(e => e.eventType))] },
