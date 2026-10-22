@@ -575,6 +575,33 @@
       "key_events": { "desc": "I suoi gol, cartellini e falli diretti." },
       "silent": { "desc": "Nessun avviso. Segui le sue partite nell’app." }
     },
+    "league": {
+      "key_events": { "desc": "Gol, cartellini e risultati finali di tutte le partite della lega." },
+      "results": { "desc": "Calcio d'inizio e fischio finale di ogni partita e riepilogo giornata." },
+      "silent": { "desc": "Nessun avviso. Segui la classifica nell'app." }
+    },
+    "showcase": {
+      "title": "Esempi di notifiche",
+      "subtitle": "Ecco come appariranno sul tuo schermo in base a cosa segui:",
+      "tab_teams": "Squadre",
+      "tab_players": "Giocatori",
+      "tab_leagues": "Leghe",
+      "team_goal_title": "Gol del Barça! 🏑 (14')",
+      "team_goal_body": "Pau Bargalló segna l'1 - 0 contro il Liceo",
+      "team_final_title": "Fischio finale 🏁",
+      "team_final_body": "Barça 3 - 2 Liceo. Guarda il riassunto e le statistiche.",
+      "player_goal_title": "🏑 Gol di Pau Bargalló!",
+      "player_goal_body": "Barça 2 - 1 Noia Freixenet (Min. 32')",
+      "player_card_title": "🔵 Cartellino blu per Pau Bargalló (18')",
+      "player_card_body": "Tiro diretto avversario · Barça vs Liceo",
+      "league_start_title": "🏆 Inizia la 18ª giornata!",
+      "league_start_body": "OK Liga Masculina: Segui 7 partite in diretta questo fine settimana.",
+      "league_end_title": "📊 18ª giornata completata",
+      "league_end_body": "Risultati finali e classifica aggiornata disponibili.",
+      "note_teams": "Ricevi gol ed eventi in tempo reale o solo il risultato finale.",
+      "note_players": "Riceverai avvisi solo quando il tuo giocatore è protagonista diretto (gol e cartellini).",
+      "note_leagues": "Perfetto per seguire intere competizioni senza dover aggiungere ogni singola squadra."
+    },
     "push_offer_title": "Attiva le notifiche",
     "push_offer_desc": "Consenti le notifiche su questo dispositivo per ricevere gli avvisi che scegli.",
     "push_offer_cta": "Attiva avvisi",

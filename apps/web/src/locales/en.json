@@ -63,6 +63,33 @@
       "key_events": { "desc": "Their goals, cards and direct fouls." },
       "silent": { "desc": "No alerts. Follow their matches in the app." }
     },
+    "league": {
+      "key_events": { "desc": "Goals, cards, and full-time scores for all league matches." },
+      "results": { "desc": "Kick-off and full-time for each match, plus round summaries." },
+      "silent": { "desc": "No alerts. Follow the standings in the app." }
+    },
+    "showcase": {
+      "title": "Notification examples",
+      "subtitle": "Here is how they appear on your lock screen:",
+      "tab_teams": "Teams",
+      "tab_players": "Players",
+      "tab_leagues": "Leagues",
+      "team_goal_title": "Barça Goal! 🏑 (14')",
+      "team_goal_body": "Pau Bargalló scores for 1 - 0 vs Liceo",
+      "team_final_title": "Full time 🏁",
+      "team_final_body": "Barça 3 - 2 Liceo. View summary and stats.",
+      "player_goal_title": "🏑 Goal by Pau Bargalló!",
+      "player_goal_body": "Barça 2 - 1 Noia Freixenet (Min. 32')",
+      "player_card_title": "🔵 Blue card for Pau Bargalló (18')",
+      "player_card_body": "Opponent direct foul · Barça vs Liceo",
+      "league_start_title": "🏆 Matchday 18 starts now!",
+      "league_start_body": "OK Liga Masculina: Follow 7 matches live this weekend.",
+      "league_end_title": "📊 Matchday 18 completed",
+      "league_end_body": "Final scores and updated standings available.",
+      "note_teams": "Receive goals and key moments in real time, or just the full-time result.",
+      "note_players": "You will only be alerted when your player is directly involved (goals and cards), with no noise from other players.",
+      "note_leagues": "Perfect for following entire tournaments without having to favorite every single team."
+    },
     "push_offer_title": "Turn on notifications",
     "push_offer_desc": "Allow notifications on this device to get the alerts you choose.",
     "push_offer_cta": "Enable alerts"

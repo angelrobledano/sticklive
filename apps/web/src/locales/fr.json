@@ -575,6 +575,33 @@
       "key_events": { "desc": "Ses buts, cartons et fautes directes." },
       "silent": { "desc": "Aucune alerte. Suivez ses matchs dans l’app." }
     },
+    "league": {
+      "key_events": { "desc": "Buts, cartons et scores finaux de tous les matchs de la ligue." },
+      "results": { "desc": "Coup d'envoi et score final de chaque match, et bilan de journée." },
+      "silent": { "desc": "Sans alertes. Suivez le classement dans l'application." }
+    },
+    "showcase": {
+      "title": "Exemples de notifications",
+      "subtitle": "Voici comment elles apparaissent sur votre écran selon ce que vous suivez :",
+      "tab_teams": "Équipes",
+      "tab_players": "Joueurs",
+      "tab_leagues": "Ligues",
+      "team_goal_title": "But du Barça ! 🏑 (14')",
+      "team_goal_body": "Pau Bargalló marque pour le 1 - 0 contre Liceo",
+      "team_final_title": "Fin du match 🏁",
+      "team_final_body": "Barça 3 - 2 Liceo. Voir le résumé et les statistiques.",
+      "player_goal_title": "🏑 But de Pau Bargalló !",
+      "player_goal_body": "Barça 2 - 1 Noia Freixenet (Min. 32')",
+      "player_card_title": "🔵 Carton bleu pour Pau Bargalló (18')",
+      "player_card_body": "Coup franc direct adverse · Barça vs Liceo",
+      "league_start_title": "🏆 Début de la 18e journée !",
+      "league_start_body": "OK Liga Masculina : Suivez 7 matchs en direct ce week-end.",
+      "league_end_title": "📊 18e journée terminée",
+      "league_end_body": "Scores finaux et classement mis à jour disponibles.",
+      "note_teams": "Recevez les buts et temps forts en direct, ou uniquement le score final.",
+      "note_players": "Vous ne recevrez d'alerte que lorsque votre joueur intervient directement (buts et cartons).",
+      "note_leagues": "Idéal pour suivre des championnats entiers sans devoir ajouter chaque équipe une par une."
+    },
     "push_offer_title": "Activer les notifications",
     "push_offer_desc": "Autorisez les notifications sur cet appareil pour recevoir les alertes de votre choix.",
     "push_offer_cta": "Activer les alertes",

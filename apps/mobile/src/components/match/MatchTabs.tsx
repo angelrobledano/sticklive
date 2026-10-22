@@ -29,7 +29,7 @@ export function MatchTabs({ tabs, activeTab, onChange }: MatchTabsProps) {
   const isDark = colorScheme === 'dark';
 
   const [containerWidth, setContainerWidth] = useState(0);
-  const translateX = useRef(new Animated.Value(0)).current;
+  const [translateX] = useState(() => new Animated.Value(0));
   const isInitialized = useRef(false);
 
   const activeIndex = Math.max(0, tabs.indexOf(activeTab));

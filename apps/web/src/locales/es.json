@@ -63,6 +63,33 @@
       "key_events": { "desc": "Sus goles, tarjetas y faltas directas." },
       "silent": { "desc": "Sin avisos. Sigue sus partidos en la app." }
     },
+    "league": {
+      "key_events": { "desc": "Goles, tarjetas y finales de todos los partidos de la liga." },
+      "results": { "desc": "Inicio y final de cada partido, y aviso de fin de jornada." },
+      "silent": { "desc": "Sin avisos. Sigue la clasificación en la app." }
+    },
+    "showcase": {
+      "title": "Ejemplos de notificaciones",
+      "subtitle": "Así se verán en tu pantalla según lo que sigas:",
+      "tab_teams": "Equipos",
+      "tab_players": "Jugadores",
+      "tab_leagues": "Ligas",
+      "team_goal_title": "¡Gol de Barça! 🏑 (14')",
+      "team_goal_body": "Pau Bargalló pone el 1 - 0 contra Liceo",
+      "team_final_title": "Final del partido 🏁",
+      "team_final_body": "Barça 3 - 2 Liceo. Ver resumen y estadísticas.",
+      "player_goal_title": "🏑 ¡Gol de Pau Bargalló!",
+      "player_goal_body": "Barça 2 - 1 Noia Freixenet (Min. 32')",
+      "player_card_title": "🔵 Tarjeta azul para Pau Bargalló (18')",
+      "player_card_body": "Falta directa rival · Barça vs Liceo",
+      "league_start_title": "🏆 ¡Arranca la Jornada 18!",
+      "league_start_body": "OK Liga Masculina: Sigue 7 partidos en directo este fin de semana.",
+      "league_end_title": "📊 Jornada 18 completada",
+      "league_end_body": "Resultados finales y clasificación actualizada.",
+      "note_teams": "Recibe goles y eventos en tiempo real o solo el resultado final del partido.",
+      "note_players": "Solo te avisará cuando tu jugador sea protagonista directo (goles y tarjetas). No recibirás alertas del resto de jugadas.",
+      "note_leagues": "Ideal para seguir competiciones enteras sin necesidad de marcar todos los equipos uno a uno."
+    },
     "push_offer_title": "Activa los avisos",
     "push_offer_desc": "Permite las notificaciones en este dispositivo para recibir los avisos que elijas.",
     "push_offer_cta": "Activar avisos"

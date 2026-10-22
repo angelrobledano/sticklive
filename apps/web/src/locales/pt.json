@@ -575,6 +575,33 @@
       "key_events": { "desc": "Os seus golos, cartões e faltas diretas." },
       "silent": { "desc": "Sem avisos. Segue os seus jogos na app." }
     },
+    "league": {
+      "key_events": { "desc": "Golos, cartões e resultados finais de todos os jogos da liga." },
+      "results": { "desc": "Início e apito final de cada jogo e resumo da jornada." },
+      "silent": { "desc": "Sem alertas. Segue a classificação na aplicação." }
+    },
+    "showcase": {
+      "title": "Exemplos de notificações",
+      "subtitle": "Eis como vão aparecer no teu ecrã conforme o que seguires:",
+      "tab_teams": "Equipas",
+      "tab_players": "Jogadores",
+      "tab_leagues": "Ligas",
+      "team_goal_title": "Golo do Barça! 🏑 (14')",
+      "team_goal_body": "Pau Bargalló marca o 1 - 0 contra o Liceo",
+      "team_final_title": "Fim do jogo 🏁",
+      "team_final_body": "Barça 3 - 2 Liceo. Ver resumo e estatísticas.",
+      "player_goal_title": "🏑 Golo de Pau Bargalló!",
+      "player_goal_body": "Barça 2 - 1 Noia Freixenet (Min. 32')",
+      "player_card_title": "🔵 Cartão azul para Pau Bargalló (18')",
+      "player_card_body": "Livre direto adversário · Barça vs Liceo",
+      "league_start_title": "🏆 Começa a 18ª Jornada!",
+      "league_start_body": "OK Liga Masculina: Segue 7 jogos em direto este fim de semana.",
+      "league_end_title": "📊 18ª Jornada concluída",
+      "league_end_body": "Resultados finais e classificação atualizada disponíveis.",
+      "note_teams": "Recebe golos e lances em tempo real ou apenas o resultado final.",
+      "note_players": "Apenas receberás avisos quando o teu jogador for protagonista direto (golos e cartões).",
+      "note_leagues": "Ideal para seguir ligas completas sem ter de adicionar cada equipa individualmente."
+    },
     "push_offer_title": "Ativa os avisos",
     "push_offer_desc": "Permite as notificações neste dispositivo para receberes os avisos que escolheres.",
     "push_offer_cta": "Ativar avisos",
