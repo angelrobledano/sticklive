@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import type { TeamDetail } from '@/src/lib/api/types';
 import { Avatar, playerPhotoUri } from '@/src/components/shared/Avatar';
 import { GoalStickIcon } from '@/src/components/shared/GoalStickIcon';
@@ -36,7 +37,9 @@ export function SquadTab({ data }: Props) {
       <Pressable
         key={p.playerId}
         onPress={() => router.push(`/player/${p.playerId}`)}
-        className="flex-row items-center gap-3 px-4 py-3 active:bg-slate-50 dark:active:bg-slate-800/60"
+        accessibilityRole="button"
+        accessibilityLabel={`${playerDisplayName(p.firstName, p.lastName)}, dorsal ${p.jerseyNumber ?? '–'}, ${t(p.isGoalkeeper ? 'team.gk_pos' : 'team.player_pos')}`}
+        className="min-h-[48px] flex-row items-center gap-3 px-4 py-3 active:bg-slate-50 dark:active:bg-slate-800/60"
       >
         {/* Dorsal */}
         <Text className="w-6 text-center font-mono text-xs font-bold text-slate-400">
@@ -95,7 +98,7 @@ export function SquadTab({ data }: Props) {
           </View>
         ) : null}
 
-        <Text className="text-slate-400">›</Text>
+        <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
       </Pressable>
     );
   };

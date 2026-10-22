@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
@@ -28,6 +29,7 @@ export default function PremiumScreen() {
   const { premium, premiumLifetime, refresh } = usePremiumStatus();
   const router = useRouter();
   const [openError, setOpenError] = useState(false);
+  const insets = useSafeAreaInsets();
 
   // Funnel premium (Task 5.1): la cima del funnel solo la cuentan PROSPECTOS —
   // paridad con la web, donde el banner solo se renderiza (y solo emite) siendo
@@ -53,7 +55,10 @@ export default function PremiumScreen() {
   const sessionUnknown = !ready;
 
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 24 }} className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
+    <ScrollView
+      contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 24, 32) }}
+      className="flex-1 bg-rink-floor dark:bg-rink-floor-dark"
+    >
       {sessionUnknown ? null : session ? (
         <>
           {premium === undefined ? (

@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import type { ClubTeamSummary } from '@/src/lib/api/types';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { useLocale } from '@/src/i18n/LocaleContext';
@@ -26,7 +27,9 @@ export function OtherClubTeams({ clubTeams }: Props) {
           <Pressable
             key={ct.id}
             onPress={() => router.push(`/team/${ct.id}`)}
-            className="flex-row items-center gap-3 px-4 py-3 active:bg-slate-50 dark:active:bg-slate-800/60"
+            accessibilityRole="button"
+            accessibilityLabel={`${ct.name}${ct.sectionSuffix ? `, ${ct.sectionSuffix}` : ''}`}
+            className="min-h-[48px] flex-row items-center gap-3 px-4 py-3 active:bg-slate-50 dark:active:bg-slate-800/60"
           >
             <Avatar uri={teamLogoUri(ct.id, 64)} name={ct.name} size={28} />
             <View className="flex-1 min-w-0">
@@ -37,7 +40,7 @@ export function OtherClubTeams({ clubTeams }: Props) {
                 <Text className="text-xs text-slate-500">{ct.sectionSuffix}</Text>
               ) : null}
             </View>
-            <Text className="text-slate-400">›</Text>
+            <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
           </Pressable>
         ))}
       </View>

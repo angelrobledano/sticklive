@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { FlatList, PanResponder, Pressable, RefreshControl, Text, View } from 'react-native';
+import { FlatList, PanResponder, Pressable, RefreshControl, Text, useWindowDimensions, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useAdsConfig, useCurrentMatches } from '@/src/hooks/queries';
@@ -23,6 +23,7 @@ import {
   buildDayView,
   daysWithMatches,
   isHorizontalSwipeGesture,
+  isOutsideEdgeGuard,
   madridTodayKey,
   nextMatchday,
   resolveDaySwipeDelta,
@@ -153,15 +154,21 @@ export default function LiveScreen() {
     return out;
   }, [sections, everyNItems]);
 
+  const { width: screenWidth } = useWindowDimensions();
+
   // Gestos táctiles de deslizamiento horizontal para cambiar de día
+  // Se protegen 32dp en ambos bordes laterales para no interferir con el gesto
+  // nativo Atrás de Android 15 (Predictive Back Gesture).
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => false,
         onStartShouldSetPanResponderCapture: () => false,
         onMoveShouldSetPanResponder: (_, gestureState) =>
+          isOutsideEdgeGuard(gestureState.x0, screenWidth) &&
           isHorizontalSwipeGesture(gestureState.dx, gestureState.dy),
         onMoveShouldSetPanResponderCapture: (_, gestureState) =>
+          isOutsideEdgeGuard(gestureState.x0, screenWidth) &&
           isHorizontalSwipeGesture(gestureState.dx, gestureState.dy),
         onPanResponderTerminationRequest: () => false,
         onPanResponderRelease: (_, gestureState) => {
@@ -172,7 +179,7 @@ export default function LiveScreen() {
           }
         },
       }),
-    [],
+    [screenWidth],
   );
 
   if (isPending) {

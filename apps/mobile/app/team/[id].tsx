@@ -87,7 +87,6 @@ export default function TeamScreen() {
           data={query.data}
           selectedSeasonId={selectedSeasonId}
           onSelectSeason={(sid) => setSelectedSeasonId(sid)}
-          onShare={handleShare}
         />
 
         <OtherClubTeams clubTeams={query.data.clubTeams} />

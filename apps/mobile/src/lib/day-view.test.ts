@@ -8,6 +8,7 @@ import {
   daysWithMatches,
   getRelativeKey,
   isHorizontalSwipeGesture,
+  isOutsideEdgeGuard,
   madridDateKey,
   nextMatchday,
   resolveDaySwipeDelta,
@@ -201,6 +202,24 @@ describe('buildDayView', () => {
       expect(resolveDaySwipeDelta(-20, 0)).toBe(0);
       // Desplazamiento a la izquierda pero velocidad opuesta
       expect(resolveDaySwipeDelta(-30, 0.2)).toBe(0);
+    });
+
+    it('isOutsideEdgeGuard protege los bordes para el gesto Atrás de Android 15', () => {
+      const screenWidth = 390;
+      // Toque en el borde izquierdo (0..31dp) -> en zona de guarda (false)
+      expect(isOutsideEdgeGuard(0, screenWidth)).toBe(false);
+      expect(isOutsideEdgeGuard(15, screenWidth)).toBe(false);
+      expect(isOutsideEdgeGuard(31, screenWidth)).toBe(false);
+
+      // Toque en el borde derecho (359..390dp) -> en zona de guarda (false)
+      expect(isOutsideEdgeGuard(359, screenWidth)).toBe(false);
+      expect(isOutsideEdgeGuard(380, screenWidth)).toBe(false);
+      expect(isOutsideEdgeGuard(390, screenWidth)).toBe(false);
+
+      // Toques en el cuerpo central -> permitidos para swiping (true)
+      expect(isOutsideEdgeGuard(32, screenWidth)).toBe(true);
+      expect(isOutsideEdgeGuard(195, screenWidth)).toBe(true);
+      expect(isOutsideEdgeGuard(358, screenWidth)).toBe(true);
     });
   });
 });

@@ -43,6 +43,9 @@ export function MatchGroupCard({
       <View className="flex-row items-center border-b border-slate-100 bg-slate-50/80 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-800/40">
         <Pressable
           onPress={handleHeaderPress}
+          accessibilityRole={competitionId ? 'button' : 'header'}
+          accessibilityLabel={`${displayTitle}, ${count} ${count === 1 ? 'partido' : 'partidos'}`}
+          accessibilityHint={competitionId ? 'Abre la competición' : undefined}
           className="flex-1 flex-row items-center gap-2 active:opacity-70"
         >
           <Avatar
@@ -75,8 +78,11 @@ export function MatchGroupCard({
           {collapsible ? (
             <Pressable
               onPress={() => setOpen((v) => !v)}
-              hitSlop={8}
-              className="p-1 active:opacity-60"
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityRole="button"
+              accessibilityLabel={open ? 'Plegar grupo de partidos' : 'Desplegar grupo de partidos'}
+              accessibilityState={{ expanded: open }}
+              className="p-1.5 active:opacity-60"
             >
               <Ionicons
                 name={open ? 'chevron-up' : 'chevron-down'}

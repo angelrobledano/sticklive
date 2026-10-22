@@ -248,4 +248,25 @@ export function resolveDaySwipeDelta(dx: number, vx: number): -1 | 0 | 1 {
   return 0;
 }
 
+/**
+ * Ancho en dp de la zona de guarda lateral para no interceptar los gestos
+ * nativos del sistema en Android 15 (Predictive Back Gesture de ambos bordes).
+ */
+export const ANDROID_BACK_GUARD_DP = 32;
+
+/**
+ * Comprueba si el origen del toque (x0) está fuera de las zonas de guarda de los bordes.
+ * Si x0 está dentro de los primeros o últimos guardDp píxeles, devuelve false para que
+ * el PanResponder ceda el gesto al sistema operativo (Back predictivo en Android 15).
+ */
+export function isOutsideEdgeGuard(
+  x0: number,
+  screenWidth: number,
+  guardDp: number = ANDROID_BACK_GUARD_DP,
+): boolean {
+  if (screenWidth <= guardDp * 2) return true;
+  return x0 >= guardDp && x0 <= screenWidth - guardDp;
+}
+
+
 

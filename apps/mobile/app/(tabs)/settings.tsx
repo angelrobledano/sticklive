@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/src/context/AuthContext';
@@ -60,6 +61,7 @@ export default function SettingsScreen() {
   const { session, ready, lastAuthError, signInWithGoogle, signOut } = useSession();
   const [signingIn, setSigningIn] = useState(false);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const handleSignIn = () => {
     setSigningIn(true);
@@ -69,7 +71,10 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 24 }} className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
+    <ScrollView
+      contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 24, 32) }}
+      className="flex-1 bg-rink-floor dark:bg-rink-floor-dark"
+    >
       {/* Cuenta (Task 3.2) */}
       <View className="mx-4 mt-4 rounded-xl bg-white p-4 dark:bg-slate-900">
         <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">

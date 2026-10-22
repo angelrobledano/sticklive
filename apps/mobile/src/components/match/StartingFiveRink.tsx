@@ -18,7 +18,7 @@ interface StartingFiveRinkProps {
   awayName: string;
 }
 
-function RinkChip({ placed }: { placed: PlacedRinkPlayer }) {
+function RinkChip({ placed, teamName }: { placed: PlacedRinkPlayer; teamName: string }) {
   const router = useRouter();
   const { p, x, y, isAway } = placed;
   const surname = displayLineupName(p.playerName).split(' ').slice(-1)[0] ?? p.playerName;
@@ -54,6 +54,7 @@ function RinkChip({ placed }: { placed: PlacedRinkPlayer }) {
           <Text
             className="font-mono text-[9px] font-bold"
             style={{ color: isAway ? '#1e293b' : '#ffffff' }}
+            maxFontSizeMultiplier={1.4}
           >
             {p.jerseyNumber ?? '–'}
           </Text>
@@ -62,7 +63,9 @@ function RinkChip({ placed }: { placed: PlacedRinkPlayer }) {
         {/* Badge Capitán en la esquina superior derecha */}
         {p.isCaptain ? (
           <View className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-slate-800 items-center justify-center">
-            <Text className="text-[8px] font-black text-white">C</Text>
+            <Text className="text-[8px] font-black text-white" maxFontSizeMultiplier={1.4}>
+              C
+            </Text>
           </View>
         ) : null}
       </View>
@@ -72,6 +75,7 @@ function RinkChip({ placed }: { placed: PlacedRinkPlayer }) {
         <Text
           className="text-[9px] font-semibold text-white text-center leading-tight"
           numberOfLines={1}
+          maxFontSizeMultiplier={1.4}
         >
           {surname}
         </Text>
@@ -93,8 +97,11 @@ function RinkChip({ placed }: { placed: PlacedRinkPlayer }) {
       {p.playerId ? (
         <Pressable
           onPress={() => router.push(`/player/${p.playerId}`)}
+          accessibilityRole="button"
+          accessibilityLabel={`${p.playerName}, dorsal ${p.jerseyNumber ?? '–'}, ${teamName}${p.isCaptain ? ', capitán' : ''}`}
+          accessibilityHint="Abre la ficha del jugador"
           className="active:scale-95 items-center"
-          hitSlop={6}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           {content}
         </Pressable>
@@ -122,7 +129,10 @@ export function StartingFiveRink({ home, away, homeName, awayName }: StartingFiv
     <View className="rounded-2xl bg-white p-3 shadow-sm dark:bg-slate-900 border border-slate-100 dark:border-slate-800 mb-3">
       {/* Cabecera del 5 inicial */}
       <View className="flex-row items-center justify-between pb-2.5">
-        <Text className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+        <Text
+          className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400"
+          maxFontSizeMultiplier={1.4}
+        >
           {t('match_detail.starter')}
         </Text>
         <View className="flex-row items-center gap-3">
@@ -134,6 +144,7 @@ export function StartingFiveRink({ home, away, homeName, awayName }: StartingFiv
             <Text
               className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 max-w-[90px]"
               numberOfLines={1}
+              maxFontSizeMultiplier={1.4}
             >
               {homeName}
             </Text>
@@ -143,6 +154,7 @@ export function StartingFiveRink({ home, away, homeName, awayName }: StartingFiv
             <Text
               className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 max-w-[90px]"
               numberOfLines={1}
+              maxFontSizeMultiplier={1.4}
             >
               {awayName}
             </Text>
@@ -286,7 +298,11 @@ export function StartingFiveRink({ home, away, homeName, awayName }: StartingFiv
 
         {/* Jugadores del 5 inicial sobre la pista */}
         {positionedPlayers.map((placed, i) => (
-          <RinkChip key={`${placed.p.playerName}-${i}`} placed={placed} />
+          <RinkChip
+            key={`${placed.p.playerName}-${i}`}
+            placed={placed}
+            teamName={placed.isAway ? awayName : homeName}
+          />
         ))}
       </View>
     </View>

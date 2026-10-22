@@ -111,6 +111,9 @@ export function DateSelector({ selected, onSelect, markedDays }: DateSelectorPro
           return (
             <Pressable
               onPress={() => onSelect(key)}
+              accessibilityRole="button"
+              accessibilityLabel={`${relLabel ? `${relLabel}, ` : ''}${date.getDate()} ${monthAbbr(date, locale)}${hasMatches ? ' (con partidos)' : ''}`}
+              accessibilityState={{ selected: isActive }}
               style={{ width: ITEM_WIDTH, marginRight: ITEM_MARGIN }}
               className={`items-center justify-center rounded-xl py-1.5 ${
                 isActive
@@ -125,6 +128,7 @@ export function DateSelector({ selected, onSelect, markedDays }: DateSelectorPro
                     : 'text-slate-500 dark:text-slate-400'
                 }`}
                 numberOfLines={1}
+                maxFontSizeMultiplier={1.4}
               >
                 {relLabel ?? dayAbbr(date, locale)}
               </Text>
@@ -134,6 +138,7 @@ export function DateSelector({ selected, onSelect, markedDays }: DateSelectorPro
                     ? 'text-rink-passion dark:text-rink-accent'
                     : 'text-slate-800 dark:text-slate-200'
                 }`}
+                maxFontSizeMultiplier={1.4}
               >
                 {date.getDate()}
               </Text>
@@ -143,6 +148,7 @@ export function DateSelector({ selected, onSelect, markedDays }: DateSelectorPro
                     ? 'text-rink-passion/80 dark:text-rink-accent/80'
                     : 'text-slate-400 dark:text-slate-500'
                 }`}
+                maxFontSizeMultiplier={1.4}
               >
                 {monthAbbr(date, locale)}
               </Text>

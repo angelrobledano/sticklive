@@ -93,8 +93,8 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
           ) : null}
 
           {(p.assists ?? 0) > 0 ? (
-            <View className="flex-row items-center gap-0.5 rounded-full bg-amber-500/10 px-2 py-0.5">
-              <Text className="text-[10px]">🅰</Text>
+            <View className="flex-row items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5">
+              <Text className="font-mono text-[10px] font-black text-amber-700 dark:text-amber-400">A</Text>
               <Text className="text-xs font-bold text-amber-700 dark:text-amber-400">
                 {p.assists}
               </Text>
@@ -221,7 +221,9 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
             </View>
 
             <View className="flex-row items-center gap-1">
-              <Text className="text-[10px]">🅰</Text>
+              <View className="h-3.5 w-3.5 items-center justify-center rounded bg-amber-500/15">
+                <Text className="font-mono text-[9px] font-black text-amber-700 dark:text-amber-400">A</Text>
+              </View>
               <Text className="text-[10px] text-slate-500 dark:text-slate-400">
                 {t('hockey_stats.assists')}
               </Text>

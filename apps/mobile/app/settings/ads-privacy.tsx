@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { resetAdsConsent } from '@/src/components/ads/AdBanner';
 import { usePremiumStatus } from '@/src/hooks/usePremiumStatus';
@@ -37,6 +38,7 @@ export default function AdsPrivacyScreen() {
   const { premium } = usePremiumStatus();
   const [phase, setPhase] = useState<Phase>('idle');
   const [result, setResult] = useState<AdsConsentState | null>(null);
+  const insets = useSafeAreaInsets();
 
   const handleManage = useCallback(() => {
     // Guard doble-tap: el botón ya se deshabilita en 'managing', pero un tap
@@ -60,7 +62,10 @@ export default function AdsPrivacyScreen() {
   }, [phase]);
 
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 24 }} className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
+    <ScrollView
+      contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 24, 32) }}
+      className="flex-1 bg-rink-floor dark:bg-rink-floor-dark"
+    >
       <View className="mx-4 mt-3 rounded-xl bg-white p-4 dark:bg-slate-900">
         <Text className="text-sm text-slate-500">{t('ads.privacy_desc')}</Text>
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Switch, Text, View, useColorScheme } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/src/context/AuthContext';
@@ -487,6 +488,7 @@ export default function NotificationsScreen() {
   const { t, locale } = useLocale();
   const router = useRouter();
   const { session } = useSession();
+  const insets = useSafeAreaInsets();
   const authToken = session?.token;
 
   // Favoritos con el mismo gating que FollowButton: servidor con sesión,
@@ -626,7 +628,10 @@ export default function NotificationsScreen() {
   const total = sections.reduce((n, s) => n + s.ids.length, 0);
 
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 24 }} className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
+    <ScrollView
+      contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 24, 32) }}
+      className="flex-1 bg-rink-floor dark:bg-rink-floor-dark"
+    >
       {syncError ? (
         <Text
           className="mx-4 mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/50 dark:text-red-400"

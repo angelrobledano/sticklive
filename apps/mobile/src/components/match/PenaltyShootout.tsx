@@ -20,6 +20,8 @@ export function PenaltyShootout({ shootout, homeName, awayName }: PenaltyShootou
 
   const renderKick = (k: ShootoutKick, right = false) => (
     <View
+      accessibilityRole="text"
+      accessibilityLabel={`${k.player}: ${k.scored ? 'Gol' : 'Fallo'}`}
       className={`my-1 flex-row items-center gap-1.5 ${right ? 'flex-row-reverse justify-start' : 'justify-start'}`}
     >
       <View
@@ -31,6 +33,7 @@ export function PenaltyShootout({ shootout, homeName, awayName }: PenaltyShootou
           className={`text-xs font-black ${
             k.scored ? 'text-white' : 'text-slate-500 dark:text-slate-400'
           }`}
+          maxFontSizeMultiplier={1.4}
         >
           {k.scored ? '✓' : '✗'}
         </Text>
@@ -42,6 +45,7 @@ export function PenaltyShootout({ shootout, homeName, awayName }: PenaltyShootou
             : 'text-slate-500 dark:text-slate-400'
         }`}
         numberOfLines={1}
+        maxFontSizeMultiplier={1.4}
       >
         {k.player}
       </Text>
@@ -50,7 +54,10 @@ export function PenaltyShootout({ shootout, homeName, awayName }: PenaltyShootou
 
   return (
     <View className="mt-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
-      <Text className="mb-2 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+      <Text
+        className="mb-2 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400"
+        maxFontSizeMultiplier={1.4}
+      >
         {t('match_states.penalties_label')}
       </Text>
       <View className="flex-row gap-3">
@@ -59,6 +66,7 @@ export function PenaltyShootout({ shootout, homeName, awayName }: PenaltyShootou
           <Text
             className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
             numberOfLines={1}
+            maxFontSizeMultiplier={1.4}
           >
             {homeName}
           </Text>
@@ -75,6 +83,7 @@ export function PenaltyShootout({ shootout, homeName, awayName }: PenaltyShootou
           <Text
             className="mb-1.5 text-right text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
             numberOfLines={1}
+            maxFontSizeMultiplier={1.4}
           >
             {awayName}
           </Text>

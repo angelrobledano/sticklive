@@ -22,10 +22,22 @@ export function MatchRow({ match, showCompetition = false }: MatchRowProps) {
   const homeName = clubName(match.homeTeam.name) || match.homeTeam.shortName || match.homeTeam.name;
   const awayName = clubName(match.awayTeam.name) || match.awayTeam.shortName || match.awayTeam.name;
 
+  const stateLabel = live
+    ? `${t('match_states.live')}, ${match.score.home ?? 0} a ${match.score.away ?? 0}`
+    : isFinished
+    ? `${t('match_states.final')}, ${match.score.home ?? 0} a ${match.score.away ?? 0}`
+    : `${formatKickoff(match.scheduledAt)}`;
+
+  const a11yLabel = `${homeName} contra ${awayName}, ${stateLabel}${
+    showCompetition && match.competitionName ? `, ${match.competitionName}` : ''
+  }`;
+
   return (
     <Pressable
       onPress={() => router.push(`/match/${match.id}`)}
       accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+      accessibilityHint={t('a11y.open_match_detail') || 'Abre el detalle del partido'}
       className="px-3.5 py-3 active:bg-slate-50 dark:active:bg-slate-800/60"
     >
       {showCompetition && match.competitionName ? (
