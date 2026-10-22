@@ -111,6 +111,48 @@ export function playerGoalAlert(playerName: string, m: MatchRef): string {
   return `🏑 ¡Gol de ${playerName}! ${m.homeShort} ${m.homeScore} - ${m.awayScore} ${m.awayShort}${min}`;
 }
 
+/**
+ * Contexto deportivo del gol: empate, ventaja, remontada, recorte o ampliación.
+ * Aporta personalidad deportiva clara y fidedigna al evento real sin duplicar alertas.
+ */
+export function goalContextText(
+  scoringTeamSide: 'home' | 'away',
+  m: MatchRef,
+  prevHomeScore?: number,
+  prevAwayScore?: number,
+): string {
+  if (m.homeScore === m.awayScore) {
+    return '¡Empate en el marcador!';
+  }
+
+  const isHomeScorer = scoringTeamSide === 'home';
+  const scorerScore = isHomeScorer ? m.homeScore : m.awayScore;
+  const rivalScore = isHomeScorer ? m.awayScore : m.homeScore;
+
+  if (prevHomeScore !== undefined && prevAwayScore !== undefined) {
+    const prevScorerScore = isHomeScorer ? prevHomeScore : prevAwayScore;
+    const prevRivalScore = isHomeScorer ? prevAwayScore : prevHomeScore;
+
+    // Si antes iba perdiendo y ahora pasa a ganar: remontada
+    if (prevScorerScore < prevRivalScore && scorerScore > rivalScore) {
+      return '¡Remontada en el marcador!';
+    }
+  }
+
+  // Si pasa de empate a ganar por 1 gol: se adelanta
+  if (scorerScore === rivalScore + 1) {
+    return 'Se adelanta en el marcador';
+  }
+
+  // Si ya iba ganando y aumenta el margen
+  if (scorerScore > rivalScore) {
+    return 'Amplía la ventaja';
+  }
+
+  // Si iba perdiendo y anota
+  return 'Recorta distancias';
+}
+
 /** Cuerpo de la notificación viva del partido: `[LIVE] BAR 3 - 1 IHC (Min. 34')` */
 export function liveBody(m: MatchRef): string {
   const min = m.minute != null ? ` (Min. ${m.minute}')` : '';

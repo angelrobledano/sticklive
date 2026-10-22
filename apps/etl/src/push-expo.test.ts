@@ -47,20 +47,64 @@ beforeEach(() => {
 });
 
 describe('toExpoMessage', () => {
-  it('mapea el payload web al mensaje de Expo Push con canal, collapseId y TTL 1h', () => {
+  it('mapea el payload web al mensaje de Expo Push con canal de gol a favor, collapseId y TTL 1h', () => {
     const msg = toExpoMessage(
-      { id: 'tok-1', expo_push_token: 'ExponentPushToken[abc]' } as never,
-      { ...PAYLOAD },
+      { id: 'tok-1', expo_push_token: 'ExponentPushToken[abc]', fav_teams: ['team-barca'] } as never,
+      { ...PAYLOAD, scorerTeamId: 'team-barca', opponentTeamId: 'team-liceo' },
     );
     expect(msg).toMatchObject({
       to: 'ExponentPushToken[abc]',
       title: 'GOL',
       body: 'A 1-0 B',
-      channelId: 'live',
-      sound: 'default',
+      channelId: 'sticklive_goals_fav_v1',
+      sound: 'gol_favor.wav',
       ttl: 3600, // paridad con el TTL del canal web: un gol tardío no interesa
       collapseId: 'match:1',
       data: { type: 'goal', urlPath: '/match/1' },
+    });
+  });
+
+  it('mapea a gol en contra cuando el usuario sigue al rival', () => {
+    const msg = toExpoMessage(
+      { id: 'tok-1', expo_push_token: 'ExponentPushToken[abc]', fav_teams: ['team-liceo'] } as never,
+      { ...PAYLOAD, scorerTeamId: 'team-barca', opponentTeamId: 'team-liceo' },
+    );
+    expect(msg).toMatchObject({
+      channelId: 'sticklive_goals_against_v1',
+      sound: 'gol_contra.wav',
+    });
+  });
+
+  it('asigna canal de inicio para eventos start o jornada_start', () => {
+    const msg = toExpoMessage(
+      { expo_push_token: 'ExponentPushToken[abc]' },
+      { ...PAYLOAD, type: 'start' },
+    );
+    expect(msg).toMatchObject({
+      channelId: 'sticklive_match_start_v1',
+      sound: 'partido_inicio.wav',
+    });
+  });
+
+  it('asigna canal de final para eventos final, overtime o penalties', () => {
+    const msg = toExpoMessage(
+      { expo_push_token: 'ExponentPushToken[abc]' },
+      { ...PAYLOAD, type: 'final' },
+    );
+    expect(msg).toMatchObject({
+      channelId: 'sticklive_match_final_v1',
+      sound: 'partido_final.wav',
+    });
+  });
+
+  it('permite override explícito de canal y sonido', () => {
+    const msg = toExpoMessage(
+      { expo_push_token: 'ExponentPushToken[abc]' },
+      { ...PAYLOAD, channelId: 'live', sound: 'default' },
+    );
+    expect(msg).toMatchObject({
+      channelId: 'live',
+      sound: 'default',
     });
   });
 

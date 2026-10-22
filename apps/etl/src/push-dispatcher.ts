@@ -228,6 +228,10 @@ interface PushPayload {
   url: string;
   /** Tipo de notificación (para analítica notification_opened en el SW). */
   type: string;
+  scorerTeamId?: string | null;
+  opponentTeamId?: string | null;
+  channelId?: string;
+  sound?: string;
 }
 
 interface SubRow {
@@ -730,12 +734,16 @@ function goalPayload(g: GoalSnap): PushPayload {
     homeScore: g.homeScore, awayScore: g.awayScore,
     minute: g.minute,
   };
+  const opponentTeamId = g.scorerTeamId === g.homeTeamId ? g.awayTeamId : g.homeTeamId;
+
   return {
     title: branded(playerGoalAlert(g.playerName, ref)),
     body: liveBody(ref),
     tag: matchTag(g.matchId), // un único tag por partido → sin duplicar
     url: `${WEB_BASE}/matches/${g.matchId}`,
     type: 'goal',
+    scorerTeamId: g.scorerTeamId,
+    opponentTeamId,
   };
 }
 

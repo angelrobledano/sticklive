@@ -4,29 +4,137 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import { Platform, Vibration } from 'react-native';
 import type { FavoriteKind, LocalFavorites } from '@/src/hooks/favorites';
 import { apiFetch } from '@/src/lib/api/client';
 import { BRAND } from '@sports/brand';
 import type { NotificationPreset } from '@sports/shared-types';
 
 /**
- * Push nativo (Task 4.2): registro del token Expo Push, canal Android 'live' y
- * sincronización de preferencias con `POST/DELETE /push/native/subscribe`.
+ * Push nativo (Task 4.2): registro del token Expo Push, canales Android especializados
+ * con sonidos y patrones de vibración propios, y sincronización de preferencias.
  *
  * El contrato lo fija el ETL (push-segmentation.ts, SubPrefs): favoritos por
- * tipo, presets "<tipo>:<id>" → NotificationPreset (ojo: la LIGA es favorito
- * kind 'league' pero clave 'competition:<id>') y config {master, quietNight}
- * donde `false` excluye (master de todo; quietNight del resumen matinal).
+ * tipo, presets "<tipo>:<id>" → NotificationPreset y config {master, quietNight,
+ * soundEnabled, vibrationEnabled, remindersEnabled}.
  */
 
 const PUSH_TOKEN_KEY = 'sticklive.push.token';
 const PREFS_KEY = 'sticklive.notif.prefs';
 
-/** Canal Android de los avisos en directo (se crea antes de pedir permiso:
- * en Android 13 el prompt del sistema no aparece sin un canal, doc expo-
- * notifications v57). El emisor (Task 4.3) debe dirigir aquí los envíos. */
+/** Canal Android histórico de respaldo */
 export const LIVE_CHANNEL_ID = 'live';
+
+/**
+ * Canales de notificación Android especializados con sonidos propios de Stick Live
+ * y patrones de vibración háptica reconocibles según la importancia deportiva.
+ */
+export const NOTIFICATION_CHANNELS = {
+  /** Gol de un equipo seguido: prioridad máxima (Heads-Up), sonido de celebración, vibración doble pulso */
+  goalFav: {
+    id: 'sticklive_goals_fav_v1',
+    name: 'Goles a favor (equipo favorito)',
+    importance: Notifications.AndroidImportance.MAX,
+    sound: 'gol_favor.wav',
+    vibrationPattern: [0, 150, 100, 250],
+  },
+  /** Gol del rival: prioridad alta, sonido de aviso sobrio, vibración pulso largo */
+  goalAgainst: {
+    id: 'sticklive_goals_against_v1',
+    name: 'Goles en contra (rival)',
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: 'gol_contra.wav',
+    vibrationPattern: [0, 400],
+  },
+  /** Comienzo de partido o periodo: silbato deportivo, dos pulsos suaves */
+  matchStart: {
+    id: 'sticklive_match_start_v1',
+    name: 'Comienzo de partido y periodos',
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: 'partido_inicio.wav',
+    vibrationPattern: [0, 120, 80, 120],
+  },
+  /** Final del partido o descanso: bocina de pabellón, tres pulsos cortos */
+  matchFinal: {
+    id: 'sticklive_match_final_v1',
+    name: 'Final de partido y descansos',
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: 'partido_final.wav',
+    vibrationPattern: [0, 150, 100, 150, 100, 250],
+  },
+  /** Recordatorio previo al partido: sonido sutil de aviso, pulso único */
+  reminders: {
+    id: 'sticklive_reminders_v1',
+    name: 'Recordatorios y previa de partido',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    sound: 'aviso_recordatorio.wav',
+    vibrationPattern: [0, 100],
+  },
+  /** Canal general / legacy */
+  live: {
+    id: 'live',
+    name: 'En directo (general)',
+    importance: Notifications.AndroidImportance.MAX,
+    sound: 'default',
+    vibrationPattern: [0, 250, 250, 250],
+  },
+} as const;
+
+export type NotificationChannelKey = keyof typeof NOTIFICATION_CHANNELS;
+
+/**
+ * Registra o actualiza todos los canales nativos de Android con sus sonidos y
+ * patrones de vibración específicos. En Android 13+ se ejecuta antes de solicitar
+ * permisos para que el diálogo del sistema se muestre correctamente.
+ */
+export async function registerNotificationChannels(options?: {
+  soundEnabled?: boolean;
+  vibrationEnabled?: boolean;
+}): Promise<void> {
+  if (Platform.OS !== 'android') return;
+
+  const sound = options?.soundEnabled !== false;
+  const vibrate = options?.vibrationEnabled !== false;
+
+  for (const ch of Object.values(NOTIFICATION_CHANNELS)) {
+    await Notifications.setNotificationChannelAsync(ch.id, {
+      name: ch.name,
+      importance: ch.importance,
+      sound: sound ? ch.sound : undefined,
+      enableVibrate: vibrate,
+      vibrationPattern: vibrate ? (ch.vibrationPattern as unknown as number[]) : undefined,
+      lightColor: BRAND.granate,
+      enableLights: true,
+      showBadge: false,
+    });
+  }
+}
+
+/**
+ * Prueba local interactiva de sonido y vibración háptica para la pantalla de ajustes.
+ */
+export async function previewNotificationSoundAndVibration(
+  channelKey: NotificationChannelKey,
+  title: string,
+  body: string,
+): Promise<void> {
+  const channel = NOTIFICATION_CHANNELS[channelKey];
+  if (!channel) return;
+
+  if (channel.vibrationPattern && channel.vibrationPattern.length > 0) {
+    Vibration.vibrate(channel.vibrationPattern as unknown as number[]);
+  }
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      sound: channel.sound,
+      color: BRAND.granate,
+    },
+    trigger: Platform.OS === 'android' ? { channelId: channel.id } : null,
+  });
+}
 
 /**
  * Motivos de error del registro push (strings estables, en español y con
@@ -73,8 +181,14 @@ const VALID_PRESETS: ReadonlySet<string> = new Set([
 export interface PushPrefs {
   /** Mapa presetKey(kind, id) → preset. Entidad seguida sin entrada = key_events. */
   presets: Record<string, NotificationPreset>;
-  /** `false` excluye: master de TODO, quietNight del resumen matinal (ETL). */
-  config: { master?: boolean; quietNight?: boolean };
+  /** Configuración global */
+  config: {
+    master?: boolean;
+    quietNight?: boolean;
+    soundEnabled?: boolean;
+    vibrationEnabled?: boolean;
+    remindersEnabled?: boolean;
+  };
 }
 
 /** Clave de preset del contrato ("<tipo>:<id>"): kind 'league' → 'competition'. */
@@ -83,7 +197,16 @@ export function presetKey(kind: FavoriteKind, id: string): string {
 }
 
 export function defaultPushPrefs(): PushPrefs {
-  return { presets: {}, config: { master: true, quietNight: true } };
+  return {
+    presets: {},
+    config: {
+      master: true,
+      quietNight: true,
+      soundEnabled: true,
+      vibrationEnabled: true,
+      remindersEnabled: true,
+    },
+  };
 }
 
 /**
@@ -108,6 +231,9 @@ export function parsePushPrefs(raw: string | null): PushPrefs {
     config: {
       master: cfg['master'] !== false,
       quietNight: cfg['quietNight'] !== false,
+      soundEnabled: cfg['soundEnabled'] !== false,
+      vibrationEnabled: cfg['vibrationEnabled'] !== false,
+      remindersEnabled: cfg['remindersEnabled'] !== false,
     },
   };
 }
@@ -132,7 +258,13 @@ export function buildSubscribeBody(input: {
   locale: string;
   favorites: LocalFavorites;
   presets: Record<string, NotificationPreset>;
-  config: { master?: boolean; quietNight?: boolean };
+  config: {
+    master?: boolean;
+    quietNight?: boolean;
+    soundEnabled?: boolean;
+    vibrationEnabled?: boolean;
+    remindersEnabled?: boolean;
+  };
 }) {
   return {
     expoPushToken: input.expoPushToken,
@@ -171,13 +303,9 @@ export async function registerForPushNotifications(): Promise<string> {
 
   if (Platform.OS === 'android') {
     // ANTES de pedir permiso: en Android 13 el prompt del sistema no aparece
-    // hasta que existe un canal (doc expo-notifications v57).
-    await Notifications.setNotificationChannelAsync(LIVE_CHANNEL_ID, {
-      name: 'En directo',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: BRAND.granate,
-    });
+    // hasta que existe un canal (doc expo-notifications v57). Creamos todos
+    // los canales nativos con sus sonidos y vibraciones.
+    await registerNotificationChannels();
   }
 
   const existing = await Notifications.getPermissionsAsync();

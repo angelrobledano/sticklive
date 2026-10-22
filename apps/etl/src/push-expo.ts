@@ -38,7 +38,17 @@ export interface NativeSubRow {
   presets: Record<string, string>;
 }
 
-export interface ExpoPayload { title: string; body: string; tag: string; url: string; type: string }
+export interface ExpoPayload {
+  title: string;
+  body: string;
+  tag: string;
+  url: string;
+  type: string;
+  scorerTeamId?: string | null;
+  opponentTeamId?: string | null;
+  channelId?: string;
+  sound?: string;
+}
 
 /** Convierte la URL web (…/matches/<id>) en ruta de deep link de la app:
  *  la ficha vive en `app/match/[id]` → `/match/<id>` (SIN la s de la web).
@@ -49,22 +59,72 @@ function toUrlPath(url: string): string {
   return m ? `/match/${m[1]}` : '/';
 }
 
-/** Mensaje del API v2: channelId 'live' (lo crea la app antes de pedir
- *  permiso), collapseId = tag del partido (smart bundling: la notificación
- *  viva se REEMPLAZA en la pantalla de bloqueo en vez de apilarse) y TTL de
- *  1 h (paridad con el canal web: un gol entregado horas después no vale nada). */
-export function toExpoMessage(sub: { expo_push_token: string }, payload: ExpoPayload) {
+/**
+ * Mapea el tipo de evento y los favoritos de la suscripción al canal Android y
+ * archivo de audio correspondiente de Stick Live.
+ */
+export function resolveExpoChannelAndSound(
+  type: string,
+  sub?: { fav_teams?: string[] },
+  scorerTeamId?: string | null,
+  opponentTeamId?: string | null,
+): { channelId: string; sound: string } {
+  let effectiveType = type;
+
+  if (type === 'goal' && sub?.fav_teams) {
+    if (scorerTeamId && sub.fav_teams.includes(scorerTeamId)) {
+      effectiveType = 'goal_fav';
+    } else if (opponentTeamId && sub.fav_teams.includes(opponentTeamId)) {
+      effectiveType = 'goal_against';
+    }
+  }
+
+  switch (effectiveType) {
+    case 'goal_fav':
+      return { channelId: 'sticklive_goals_fav_v1', sound: 'gol_favor.wav' };
+    case 'goal_against':
+      return { channelId: 'sticklive_goals_against_v1', sound: 'gol_contra.wav' };
+    case 'goal':
+      return { channelId: 'sticklive_goals_fav_v1', sound: 'gol_favor.wav' };
+    case 'start':
+    case 'jornada_start':
+      return { channelId: 'sticklive_match_start_v1', sound: 'partido_inicio.wav' };
+    case 'final':
+    case 'jornada_end':
+    case 'overtime':
+    case 'penalties':
+    case 'halftime':
+    case 'second_half':
+      return { channelId: 'sticklive_match_final_v1', sound: 'partido_final.wav' };
+    case 'reminder':
+      return { channelId: 'sticklive_reminders_v1', sound: 'aviso_recordatorio.wav' };
+    default:
+      return { channelId: 'live', sound: 'default' };
+  }
+}
+
+/** Mensaje del API v2: asigna el canal especializado con su sonido correspondiente,
+ *  collapseId = tag del partido (smart bundling: la notificación viva se REEMPLAZA
+ *  en la pantalla de bloqueo en vez de apilarse) y TTL de 1 h. */
+export function toExpoMessage(sub: { expo_push_token: string; fav_teams?: string[] }, payload: ExpoPayload) {
+  const { channelId, sound } = payload.channelId
+    ? { channelId: payload.channelId, sound: payload.sound ?? 'default' }
+    : resolveExpoChannelAndSound(payload.type, sub, payload.scorerTeamId, payload.opponentTeamId);
+
   return {
     to: sub.expo_push_token,
     // El aviso nativo va SIN la firma [Stick Live]: el sistema ya muestra el
     // nombre de la app. El canal web conserva la firma (branded()).
     title: stripBrand(payload.title),
     body: payload.body,
-    channelId: 'live',
-    sound: 'default',
+    channelId,
+    sound,
     ttl: 3600,
     collapseId: payload.tag,
-    data: { type: payload.type, urlPath: toUrlPath(payload.url) },
+    data: {
+      type: payload.type,
+      urlPath: toUrlPath(payload.url),
+    },
   };
 }
 

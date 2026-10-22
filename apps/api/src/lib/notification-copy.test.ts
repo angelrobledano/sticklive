@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   isQuietHours, isMorningHours, madridDateKey, morningSummary, morningSummaryTag,
-  playerGoalAlert, stripBrand, BRAND_PREFIX,
+  playerGoalAlert, stripBrand, BRAND_PREFIX, goalContextText,
   type MorningResult,
 } from './notification-copy.js';
 
@@ -89,5 +89,37 @@ describe('stripBrand — firma fuera del canal nativo', () => {
 
   it('no toca un mensaje que no lleva la firma', () => {
     expect(stripBrand('⭐ Hoy hay partido')).toBe('⭐ Hoy hay partido');
+  });
+});
+
+describe('goalContextText — adaptabilidad deportiva del texto', () => {
+  it('detecta empate', () => {
+    expect(
+      goalContextText('home', { homeShort: 'BAR', awayShort: 'LIC', homeScore: 2, awayScore: 2, minute: 15 }),
+    ).toBe('¡Empate en el marcador!');
+  });
+
+  it('detecta cuando se adelanta en el marcador', () => {
+    expect(
+      goalContextText('home', { homeShort: 'BAR', awayShort: 'LIC', homeScore: 1, awayScore: 0, minute: 5 }),
+    ).toBe('Se adelanta en el marcador');
+  });
+
+  it('detecta cuando amplía la ventaja', () => {
+    expect(
+      goalContextText('home', { homeShort: 'BAR', awayShort: 'LIC', homeScore: 3, awayScore: 1, minute: 20 }),
+    ).toBe('Amplía la ventaja');
+  });
+
+  it('detecta cuando recorta distancias', () => {
+    expect(
+      goalContextText('away', { homeShort: 'BAR', awayShort: 'LIC', homeScore: 3, awayScore: 1, minute: 22 }),
+    ).toBe('Recorta distancias');
+  });
+
+  it('detecta remontada cuando antes perdía y ahora gana', () => {
+    expect(
+      goalContextText('home', { homeShort: 'BAR', awayShort: 'LIC', homeScore: 3, awayScore: 2, minute: 38 }, 1, 2),
+    ).toBe('¡Remontada en el marcador!');
   });
 });

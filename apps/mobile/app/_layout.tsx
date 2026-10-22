@@ -16,6 +16,7 @@ import { ApiError } from '@/src/lib/api/client';
 import { capture, getPostHogClient } from '@/src/lib/analytics';
 import { markPushInteraction } from '@/src/lib/ads/session-context';
 import { useAppOpenAd } from '@/src/hooks/ads/useAppOpenAd';
+import { registerNotificationChannels } from '@/src/lib/push';
 
 // Sentry (Task 5.1): init a nivel de módulo, ANTES de renderizar nada, y SOLO
 // si hay DSN (en desarrollo sin DSN no se inicializa y no hay overhead). El
@@ -112,6 +113,10 @@ function AppOpenAdGate() {
 
 function AppTree() {
   useNotificationDeepLink();
+
+  useEffect(() => {
+    void registerNotificationChannels();
+  }, []);
 
   return (
     // AuthProvider lo más externo: no depende de tema/idioma (solo de la red y

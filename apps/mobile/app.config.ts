@@ -87,13 +87,21 @@ export default {
       'expo-status-bar',
       'expo-web-browser',
       'expo-secure-store',
-      // expo-notifications: icono (blanco sobre transparente) y color del aviso
-      // en Android, y canal por defecto de FCMv1 (el canal 'live' se crea en
-      // runtime al registrarse). Requiere recompilar la app nativa (CNG) para
-      // aplicar cambios.
+      // expo-notifications: icono, color, canal por defecto y sonidos deportivos propios
       [
         'expo-notifications',
-        { icon: './assets/notification-icon.png', color: BRAND.granate, defaultChannel: 'live' },
+        {
+          icon: './assets/notification-icon.png',
+          color: BRAND.granate,
+          defaultChannel: 'live',
+          sounds: [
+            './assets/sounds/gol_favor.wav',
+            './assets/sounds/gol_contra.wav',
+            './assets/sounds/partido_inicio.wav',
+            './assets/sounds/partido_final.wav',
+            './assets/sounds/aviso_recordatorio.wav',
+          ],
+        },
       ],
       // Sentry (Task 5.1): el plugin de build inyecta tareas Gradle/Xcode de subida de sourcemaps.
       // Solo se activa si SENTRY_AUTH_TOKEN existe en los secrets de EAS para evitar

@@ -5,20 +5,27 @@ import {
   presetKey,
   pushErrorKey,
   registerForPushNotifications,
+  registerNotificationChannels,
+  NOTIFICATION_CHANNELS,
 } from './push';
 
 // Los módulos NATIVOS no existen en vitest (node): mocks mínimos para que la
 // importación de './push' no explote (patrón del repo: session.test.ts).
 // expo-constants es MUTABLE para simular Expo Go vs development build.
-const { expoConstants, storage } = vi.hoisted(() => ({
+const { expoConstants, storage, notificationChannelsMock } = vi.hoisted(() => ({
   expoConstants: {
     expoConfig: null,
     easConfig: null,
     appOwnership: 'bare',
   },
   storage: new Map<string, string>(),
+  notificationChannelsMock: vi.fn(async () => undefined),
 }));
-vi.mock('expo-notifications', () => ({ AndroidImportance: { MAX: 5 } }));
+vi.mock('expo-notifications', () => ({
+  AndroidImportance: { MAX: 5, HIGH: 4, DEFAULT: 3 },
+  setNotificationChannelAsync: notificationChannelsMock,
+  scheduleNotificationAsync: vi.fn(async () => 'mock-id'),
+}));
 vi.mock('expo-device', () => ({ isDevice: true }));
 // Versión nativa que buildSubscribeBody manda al API (appVersion del body).
 vi.mock('expo-application', () => ({ nativeApplicationVersion: '1.2.3' }));
@@ -27,7 +34,10 @@ vi.mock('expo-secure-store', () => ({
   getItemAsync: vi.fn(async () => null),
   setItemAsync: vi.fn(async () => undefined),
 }));
-vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
+vi.mock('react-native', () => ({
+  Platform: { OS: 'android' },
+  Vibration: { vibrate: vi.fn() },
+}));
 vi.mock('@react-native-async-storage/async-storage', () => ({
   default: {
     getItem: vi.fn(async (k: string) => storage.get(k) ?? null),
@@ -92,7 +102,13 @@ describe('loadPushPrefs', () => {
   it('sin datos guardados devuelve los valores por defecto (todo activado)', async () => {
     expect(await loadPushPrefs()).toEqual({
       presets: {},
-      config: { master: true, quietNight: true },
+      config: {
+        master: true,
+        quietNight: true,
+        soundEnabled: true,
+        vibrationEnabled: true,
+        remindersEnabled: true,
+      },
     });
   });
 
@@ -103,7 +119,13 @@ describe('loadPushPrefs', () => {
     );
     expect(await loadPushPrefs()).toEqual({
       presets: { 'team:x': 'silent' },
-      config: { master: false, quietNight: true },
+      config: {
+        master: false,
+        quietNight: true,
+        soundEnabled: true,
+        vibrationEnabled: true,
+        remindersEnabled: true,
+      },
     });
   });
 
@@ -144,5 +166,38 @@ describe('registerForPushNotifications en Expo Go', () => {
     } finally {
       expoConstants.appOwnership = 'bare';
     }
+  });
+});
+
+describe('NOTIFICATION_CHANNELS & registerNotificationChannels', () => {
+  it('define los 5 canales deportivos especializados con sonidos y patrones diferenciados', () => {
+    expect(NOTIFICATION_CHANNELS.goalFav.id).toBe('sticklive_goals_fav_v1');
+    expect(NOTIFICATION_CHANNELS.goalFav.sound).toBe('gol_favor.wav');
+    expect(NOTIFICATION_CHANNELS.goalFav.vibrationPattern).toEqual([0, 150, 100, 250]);
+
+    expect(NOTIFICATION_CHANNELS.goalAgainst.id).toBe('sticklive_goals_against_v1');
+    expect(NOTIFICATION_CHANNELS.goalAgainst.sound).toBe('gol_contra.wav');
+    expect(NOTIFICATION_CHANNELS.goalAgainst.vibrationPattern).toEqual([0, 400]);
+
+    expect(NOTIFICATION_CHANNELS.matchStart.id).toBe('sticklive_match_start_v1');
+    expect(NOTIFICATION_CHANNELS.matchStart.sound).toBe('partido_inicio.wav');
+
+    expect(NOTIFICATION_CHANNELS.matchFinal.id).toBe('sticklive_match_final_v1');
+    expect(NOTIFICATION_CHANNELS.matchFinal.sound).toBe('partido_final.wav');
+
+    expect(NOTIFICATION_CHANNELS.reminders.id).toBe('sticklive_reminders_v1');
+    expect(NOTIFICATION_CHANNELS.reminders.sound).toBe('aviso_recordatorio.wav');
+  });
+
+  it('registra todos los canales en Android al invocar registerNotificationChannels', async () => {
+    notificationChannelsMock.mockClear();
+    await registerNotificationChannels({ soundEnabled: true, vibrationEnabled: true });
+    expect(notificationChannelsMock).toHaveBeenCalledTimes(Object.keys(NOTIFICATION_CHANNELS).length);
+    expect(notificationChannelsMock).toHaveBeenCalledWith('sticklive_goals_fav_v1', expect.objectContaining({
+      name: expect.any(String),
+      sound: 'gol_favor.wav',
+      enableVibrate: true,
+      vibrationPattern: [0, 150, 100, 250],
+    }));
   });
 });

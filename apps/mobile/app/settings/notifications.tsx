@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, View, useColorScheme } from 'react-native';
+import { Linking, Pressable, ScrollView, Switch, Text, View, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
@@ -13,8 +14,10 @@ import {
   getSavedPushToken,
   loadPushPrefs,
   presetKey,
+  previewNotificationSoundAndVibration,
   pushErrorKey,
   registerForPushNotifications,
+  registerNotificationChannels,
   savePushPrefs,
   syncPushSubscription,
   type PushPrefs,
@@ -385,6 +388,72 @@ function NotificationShowcaseCard() {
           </View>
         </View>
       </View>
+
+      {/* Probador interactivo de sonidos deportivos y vibración */}
+      <View className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <View className="mb-2.5 flex-row items-center justify-between">
+          <Text className="text-xs font-bold text-slate-800 dark:text-slate-200">
+            {t('settings.test_sounds_title')}
+          </Text>
+          <Ionicons name="volume-medium-outline" size={14} color="#64748b" />
+        </View>
+        <View className="flex-row flex-wrap gap-2">
+          <Pressable
+            onPress={() => void previewNotificationSoundAndVibration('goalFav', '¡GOL DE BARÇA!', 'Pablo Álvarez pone el 2 - 1 (14\')')}
+            accessibilityRole="button"
+            className="flex-row items-center gap-1.5 rounded-full bg-rose-50 px-3 py-2 active:opacity-70 dark:bg-rose-950/40"
+          >
+            <Ionicons name="volume-high" size={12} color={BRAND.granate} />
+            <Text className="text-xs font-semibold text-rink-passion dark:text-rose-400">
+              {t('settings.test_sound_goal_fav')}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => void previewNotificationSoundAndVibration('goalAgainst', '¡Gol de Liceo!', 'Dava Torres pone el 2 - 2 (18\')')}
+            accessibilityRole="button"
+            className="flex-row items-center gap-1.5 rounded-full bg-slate-100 px-3 py-2 active:opacity-70 dark:bg-slate-800"
+          >
+            <Ionicons name="volume-low" size={12} color="#64748b" />
+            <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+              {t('settings.test_sound_goal_against')}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => void previewNotificationSoundAndVibration('matchStart', '¡Comienza el partido!', 'Barça vs Deportivo Liceo')}
+            accessibilityRole="button"
+            className="flex-row items-center gap-1.5 rounded-full bg-slate-100 px-3 py-2 active:opacity-70 dark:bg-slate-800"
+          >
+            <Ionicons name="play" size={12} color="#64748b" />
+            <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+              {t('settings.test_sound_start')}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => void previewNotificationSoundAndVibration('matchFinal', 'FINAL · OK Liga', 'Barça 3 - 2 Deportivo Liceo')}
+            accessibilityRole="button"
+            className="flex-row items-center gap-1.5 rounded-full bg-slate-100 px-3 py-2 active:opacity-70 dark:bg-slate-800"
+          >
+            <Ionicons name="flag" size={12} color="#64748b" />
+            <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+              {t('settings.test_sound_final')}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => void previewNotificationSoundAndVibration('reminders', 'Recordatorio de partido', 'Barça vs Reus en 15 minutos')}
+            accessibilityRole="button"
+            className="flex-row items-center gap-1.5 rounded-full bg-slate-100 px-3 py-2 active:opacity-70 dark:bg-slate-800"
+          >
+            <Ionicons name="time-outline" size={12} color="#64748b" />
+            <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+              {t('settings.test_sound_reminder')}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
     </View>
   );
 }
@@ -505,10 +574,16 @@ export default function NotificationsScreen() {
   const [registering, setRegistering] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [syncError, setSyncError] = useState(false);
+  const [systemStatus, setSystemStatus] = useState<Notifications.PermissionStatus | null>(null);
 
-  // Carga inicial: token persistido, deviceId y copia local de prefs.
+  // Carga inicial: token persistido, deviceId, estado de permisos y copia local de prefs.
   useEffect(() => {
     let alive = true;
+    void Notifications.getPermissionsAsync()
+      .then((p) => {
+        if (alive) setSystemStatus(p.status);
+      })
+      .catch((err) => console.error('[push] no se pudo leer permiso del sistema', err));
     void getSavedPushToken()
       .then((tok) => {
         if (alive) setPushToken(tok);
@@ -545,6 +620,7 @@ export default function NotificationsScreen() {
     registerForPushNotifications()
       .then((tok) => {
         setPushToken(tok);
+        setSystemStatus(Notifications.PermissionStatus.GRANTED);
         // Analítica (Task 5.1): alta de push nativo (adopción).
         capture('push_registered');
       })
@@ -565,6 +641,10 @@ export default function NotificationsScreen() {
   /** Escribe prefs (estado + storage). El sync lo dispara el effect de abajo. */
   const updatePrefs = useCallback((next: PushPrefs) => {
     setPrefs(next);
+    void registerNotificationChannels({
+      soundEnabled: next.config.soundEnabled,
+      vibrationEnabled: next.config.vibrationEnabled,
+    });
     void savePushPrefs(next).catch((err) =>
       console.error('[push] no se pudieron guardar las preferencias localmente', err),
     );
@@ -632,6 +712,27 @@ export default function NotificationsScreen() {
       contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 24, 32) }}
       className="flex-1 bg-rink-floor dark:bg-rink-floor-dark"
     >
+      {systemStatus === 'denied' ? (
+        <View className="mx-4 mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/40">
+          <View className="flex-row items-center gap-2">
+            <Ionicons name="alert-circle" size={16} color="#d97706" />
+            <Text className="flex-1 text-xs font-semibold text-amber-900 dark:text-amber-200">
+              {t('settings.notif_denied_app')}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => void Linking.openSettings()}
+            className="mt-2.5 flex-row items-center gap-1.5 self-start rounded-lg bg-amber-600 px-3 py-1.5 active:opacity-80"
+            accessibilityRole="button"
+          >
+            <Ionicons name="open-outline" size={12} color="#ffffff" />
+            <Text className="text-xs font-semibold text-white">
+              {t('settings.android_channels_btn')}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       {syncError ? (
         <Text
           className="mx-4 mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/50 dark:text-red-400"
@@ -678,6 +779,36 @@ export default function NotificationsScreen() {
           />
           <View className="border-t border-slate-100 dark:border-slate-800">
             <SettingRow
+              label={t('settings.sound')}
+              description={t('settings.sound_desc')}
+              value={prefs.config.soundEnabled !== false}
+              onChange={(next) =>
+                updatePrefs({ presets: prefs.presets, config: { ...prefs.config, soundEnabled: next } })
+              }
+            />
+          </View>
+          <View className="border-t border-slate-100 dark:border-slate-800">
+            <SettingRow
+              label={t('settings.vibration')}
+              description={t('settings.vibration_desc')}
+              value={prefs.config.vibrationEnabled !== false}
+              onChange={(next) =>
+                updatePrefs({ presets: prefs.presets, config: { ...prefs.config, vibrationEnabled: next } })
+              }
+            />
+          </View>
+          <View className="border-t border-slate-100 dark:border-slate-800">
+            <SettingRow
+              label={t('settings.reminders')}
+              description={t('settings.reminders_desc')}
+              value={prefs.config.remindersEnabled !== false}
+              onChange={(next) =>
+                updatePrefs({ presets: prefs.presets, config: { ...prefs.config, remindersEnabled: next } })
+              }
+            />
+          </View>
+          <View className="border-t border-slate-100 dark:border-slate-800">
+            <SettingRow
               label={t('settings.quiet')}
               description={t('settings.quiet_desc')}
               value={prefs.config.quietNight !== false}
@@ -691,6 +822,29 @@ export default function NotificationsScreen() {
 
       {/* Muestra interactiva de notificaciones (Equipos, Jugadores, Ligas) */}
       <NotificationShowcaseCard />
+
+      {/* Canales y permisos del sistema Android */}
+      <View className="mx-4 mt-3 rounded-xl bg-white p-4 dark:bg-slate-900">
+        <View className="flex-row items-center gap-2">
+          <Ionicons name="settings-outline" size={16} color="#64748b" />
+          <Text className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            {t('settings.android_channels_title')}
+          </Text>
+        </View>
+        <Text className="mt-1.5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+          {t('settings.android_channels_desc')}
+        </Text>
+        <Pressable
+          onPress={() => void Linking.openSettings()}
+          className="mt-3 flex-row items-center gap-1.5 self-start rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 active:opacity-70 dark:border-slate-700 dark:bg-slate-800"
+          accessibilityRole="button"
+        >
+          <Ionicons name="open-outline" size={13} color="#64748b" />
+          <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+            {t('settings.android_channels_btn')}
+          </Text>
+        </Pressable>
+      </View>
 
       {/* `favs` puede ser undefined mientras cargan los favoritos: sin ese
           check, el estado vacío de "no sigues nada" hace flash durante la carga. */}
