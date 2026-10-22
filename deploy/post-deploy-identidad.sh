@@ -32,6 +32,9 @@ $DC exec -T etl node dist/apps/etl/src/split-merged-players.js 2>&1 | grep -vE '
 echo "== A4 (dry-run): clubes por escudo y género/categoría"
 $DC exec -T etl node dist/apps/etl/src/backfill-clubs-by-crest.js 2>&1 | grep -vE '^\s+(service|module|pid|hostname)' | tail -60
 
+echo "== B2 (dry-run): zonas de clasificación desde las bases 2026/27 (OK Liga e Iberdrola)"
+$DC exec -T etl node dist/apps/etl/src/declare-standings-zones.js 2>&1 | tail -10
+
 echo "== B5: partidos con acta que pasarían a 'partial' al recalcular"
 psql_q "SELECT count(*) FROM matches m WHERE m.event_coverage = 'full' AND m.status = 'finished'
           AND EXISTS (SELECT 1 FROM match_events e WHERE e.match_id = m.id)

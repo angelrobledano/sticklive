@@ -9,7 +9,10 @@ import { clubName, playerDisplayName } from '@/lib/names';
 import { fmtDate, fmtTime } from './format';
 
 interface Copy {
-  live: string; done: string; matchday: (c: number, t: number) => string;
+  live: string; done: string;
+  /** Torneo (final four, cuadro, grupos) y competición sin arrancar. */
+  liveT: string; doneT: string; startL: string; startT: string; moreT: (n: number) => string;
+  matchday: (c: number, t: number) => string;
   leader: string; finalFirst: string; pts: string;
   ahead: (n: number, team: string) => string; tied: (team: string) => string;
   featured: string; next: string; versus: (h: string, a: string) => string; round: (n: number) => string;
@@ -24,6 +27,7 @@ interface Copy {
 
 const COPY: Record<string, Copy> = {
   es: {
+    liveT: 'Así va el torneo', doneT: 'Así terminó el torneo', startL: 'Así arranca la liga', startT: 'Así arranca el torneo', moreT: (n) => `Más datos del torneo (${n})`,
     live: 'Así va la liga', done: 'Así terminó', matchday: (c, t) => `Jornada ${c} de ${t}`,
     leader: 'Líder', finalFirst: '1.º en la clasificación final', pts: 'pts',
     ahead: (n, team) => `+${n} sobre ${team}`, tied: (team) => `Empatado a puntos con ${team}`,
@@ -38,6 +42,7 @@ const COPY: Record<string, Copy> = {
     medals: 'Medallero', gold: 'Oro', silver: 'Plata', bronze: 'Bronce',
   },
   en: {
+    liveT: 'The tournament so far', doneT: 'How the tournament ended', startL: 'The league kicks off', startT: 'The tournament kicks off', moreT: (n) => `More tournament facts (${n})`,
     live: 'The league so far', done: 'How it ended', matchday: (c, t) => `Matchday ${c} of ${t}`,
     leader: 'Leader', finalFirst: '1st in the final standings', pts: 'pts',
     ahead: (n, team) => `+${n} over ${team}`, tied: (team) => `Level on points with ${team}`,
@@ -55,6 +60,7 @@ const COPY: Record<string, Copy> = {
     medals: 'Medal table', gold: 'Gold', silver: 'Silver', bronze: 'Bronze',
   },
   pt: {
+    liveT: 'Assim vai o torneio', doneT: 'Assim terminou o torneio', startL: 'Assim arranca a liga', startT: 'Assim arranca o torneio', moreT: (n) => `Mais dados do torneio (${n})`,
     live: 'Assim vai a liga', done: 'Assim terminou', matchday: (c, t) => `Jornada ${c} de ${t}`,
     leader: 'Líder', finalFirst: '1.º na classificação final', pts: 'pts',
     ahead: (n, team) => `+${n} sobre ${team}`, tied: (team) => `Empatado em pontos com ${team}`,
@@ -69,6 +75,7 @@ const COPY: Record<string, Copy> = {
     medals: 'Medalheiro', gold: 'Ouro', silver: 'Prata', bronze: 'Bronze',
   },
   fr: {
+    liveT: 'Le tournoi en cours', doneT: 'Bilan du tournoi', startL: 'Le championnat commence', startT: 'Le tournoi commence', moreT: (n) => `Plus de chiffres du tournoi (${n})`,
     live: 'Le championnat en cours', done: 'Bilan de la saison', matchday: (c, t) => `Journée ${c} sur ${t}`,
     leader: 'Leader', finalFirst: '1er du classement final', pts: 'pts',
     ahead: (n, team) => `+${n} sur ${team}`, tied: (team) => `À égalité de points avec ${team}`,
@@ -83,6 +90,7 @@ const COPY: Record<string, Copy> = {
     medals: 'Tableau des médailles', gold: 'Or', silver: 'Argent', bronze: 'Bronze',
   },
   it: {
+    liveT: 'Il torneo finora', doneT: 'Com’è finito il torneo', startL: 'Si parte: il campionato', startT: 'Si parte: il torneo', moreT: (n) => `Altri dati del torneo (${n})`,
     live: 'Il campionato finora', done: 'Com’è finita', matchday: (c, t) => `Giornata ${c} di ${t}`,
     leader: 'Capolista', finalFirst: '1º nella classifica finale', pts: 'pt',
     ahead: (n, team) => `+${n} su ${team}`, tied: (team) => `A pari punti con ${team}`,
@@ -96,6 +104,22 @@ const COPY: Record<string, Copy> = {
     sentOff: 'Espulsi nell’ultima giornata', sentOffRound: (n) => `Giornata ${n}`, matchLink: 'Vedi partita',
     medals: 'Medagliere', gold: 'Oro', silver: 'Argento', bronze: 'Bronzo',
   },
+};
+
+COPY['ca'] = {
+  live: 'Així va la lliga', done: 'Així va acabar', matchday: (c, t) => `Jornada ${c} de ${t}`,
+  liveT: 'Així va el torneig', doneT: 'Així va acabar el torneig', startL: 'Així arrenca la lliga', startT: 'Així arrenca el torneig', moreT: (n) => `Més dades del torneig (${n})`,
+  leader: 'Líder', finalFirst: '1r a la classificació final', pts: 'pts',
+  ahead: (n, team) => `+${n} sobre ${team}`, tied: (team) => `Empatat a punts amb ${team}`,
+  featured: 'Partit destacat', next: 'Proper partit', versus: (h, a) => `${h} contra ${a}`, round: (n) => `Jornada ${n}`,
+  scorer: 'Màxim golejador', goals: 'gols', team: 'Equip',
+  scorerAhead: (n, name) => name ? `+${n} sobre ${name} (2n)` : `+${n} sobre el 2n`,
+  scorerTied: (name) => name ? `Empatat amb ${name} (2n)` : 'Empatat amb el 2n',
+  matches: (n) => `${n} partits`, gpm: (n) => `${n} gols per partit`, homeWins: (n) => `${n} % de victòries locals`,
+  ordinal: (n) => (n === 1 ? '1r' : n === 2 ? '2n' : n === 3 ? '3r' : n === 4 ? '4t' : `${n}è`),
+  didYouKnow: 'Sabies que…?', more: (n) => `Més dades de la lliga (${n})`,
+  sentOff: 'Expulsats a la darrera jornada', sentOffRound: (n) => `Jornada ${n}`, matchLink: 'Veure el partit',
+  medals: 'Medaller', gold: 'Or', silver: 'Plata', bronze: 'Bronze',
 };
 
 function Sentence({ parts }: { parts: InsightPart[] }) {
@@ -163,7 +187,9 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
     <section className="card space-y-3 p-4" aria-labelledby="competition-summary-title">
       <div className="flex items-baseline justify-between gap-3">
         <h2 id="competition-summary-title" className="text-base font-bold text-slate-900 dark:text-slate-50">
-          {data.status === 'finished' ? c.done : c.live}
+          {data.kind === 'tournament'
+            ? (data.status === 'finished' ? c.doneT : data.status === 'not_started' ? c.startT : c.liveT)
+            : (data.status === 'finished' ? c.done : data.status === 'not_started' ? c.startL : c.live)}
         </h2>
         {data.status !== 'finished' && matchday && (
           <p className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -278,11 +304,16 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
       </ul>
 
       {daily && insights && (
-        <div className="rounded-lg bg-slate-50 px-3 py-2.5 dark:bg-white/[0.03]">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{c.didYouKnow}</p>
-          <p className="mt-1 text-sm leading-snug text-slate-700 dark:text-slate-300">
-            <Sentence parts={renderInsight(daily, insights, locale)} />
-          </p>
+        <div className="flex gap-3 rounded-lg border-l-4 border-rink-passion bg-rink-passion/[0.06] px-3 py-3 dark:bg-rink-passion/15">
+          <svg aria-hidden="true" viewBox="0 0 24 24" className="mt-0.5 h-5 w-5 shrink-0 text-rink-passion dark:text-rose-400" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z" />
+          </svg>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-rink-passion dark:text-rose-400">{c.didYouKnow}</p>
+            <p className="mt-1 text-[15px] font-medium leading-snug text-slate-800 dark:text-slate-100">
+              <Sentence parts={renderInsight(daily, insights, locale, data.status === 'finished' ? 'past' : 'present')} />
+            </p>
+          </div>
         </div>
       )}
 
@@ -330,11 +361,11 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
       {rest.length > 0 && insights && (
         <details className="group text-sm">
           <summary className="cursor-pointer select-none text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50">
-            {c.more(rest.length)}
+            {data.kind === 'tournament' ? c.moreT(rest.length) : c.more(rest.length)}
           </summary>
           <ul className="mt-2 space-y-1.5 text-slate-700 dark:text-slate-300">
             {rest.map((i) => (
-              <li key={i.id} className="leading-snug"><Sentence parts={renderInsight(i, insights, locale)} /></li>
+              <li key={i.id} className="leading-snug"><Sentence parts={renderInsight(i, insights, locale, data.status === 'finished' ? 'past' : 'present')} /></li>
             ))}
           </ul>
         </details>

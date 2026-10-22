@@ -358,6 +358,10 @@ export interface SquadPlayer {
   blueCards: number;
   redCards: number;
   penalties: number;
+  /** Faltas directas lanzadas, PJ (actas del equipo) y asistencias. Opcionales: payloads antiguos. */
+  directFouls?: number;
+  played?: number;
+  assists?: number;
 }
 
 export interface TeamStaffMember {

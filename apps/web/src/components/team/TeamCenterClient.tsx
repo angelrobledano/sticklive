@@ -3,17 +3,17 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useRouter } from 'next/navigation';
-import type { TeamDetail, TeamMatchSummary, SquadPlayer, TeamSeason } from '@/lib/api/client';
+import type { TeamDetail, TeamMatchSummary, TeamSeason } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName } from '@/components/shared/TeamName';
-import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
-import { playerDisplayName, toTitleCase, clubName } from '@/lib/names';
+import { clubName } from '@/lib/names';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { ShareImageButton } from '@/components/shared/ShareImageButton';
 import { TeamCalendar } from '@/components/team/TeamCalendar';
 import { TeamStatsStory } from '@/components/team/TeamStatsStory';
+import { SquadTable } from '@/components/team/SquadTable';
 import { useLocale, useT } from '@/lib/i18n';
 import { withLocaleHref } from '@/lib/locale-links';
 import { APP_TZ } from '@/lib/match-time';
@@ -494,80 +494,6 @@ function CalendarTab({ data }: { data: TeamDetail }) {
 
 // ─── Tab C: Plantilla ───────────────────────────────────────────────
 
-/** Clave i18n de la posición según el flag de portero (traducir con t()). */
-function positionKey(isGK: boolean): string {
-  return isGK ? 'team.gk_pos' : 'team.player_pos';
-}
-
-function PlayerRow({ player }: { player: SquadPlayer }) {
-  const { t } = useT();
-  const gk = player.isGoalkeeper;
-  const hasStats = player.goals > 0 || player.blueCards > 0 || player.redCards > 0;
-
-  return (
-    <Link
-      href={`/players/${player.playerId}`}
-      className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group"
-    >
-      {/* Número */}
-      <span className="w-6 text-center text-xs font-mono text-slate-500 dark:text-slate-400 shrink-0">
-        {player.jerseyNumber ?? '—'}
-      </span>
-
-      {/* Avatar — foto real con fallback a silueta */}
-      <PlayerAvatar
-        photoUrl={player.photoUrl}
-        name={`${player.firstName} ${player.lastName}`}
-        className="w-8 h-8 rounded-full shrink-0"
-      />
-
-      {/* Nombre + posición */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 group-hover:text-rink-passion transition-colors truncate"
-           title={toTitleCase(`${player.firstName} ${player.lastName}`)}>
-          {playerDisplayName(player.firstName, player.lastName)}
-        </p>
-        <p className="text-[11px] text-slate-500 dark:text-slate-400">{t(positionKey(player.isGoalkeeper))}</p>
-      </div>
-
-      {/* Badge portero */}
-      {gk && (
-        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shrink-0">
-          {tt(t, 'team.gk_short', 'PO')}
-        </span>
-      )}
-
-      {/* Stats */}
-      {hasStats && (
-        <div className="flex gap-3 shrink-0">
-          {player.goals > 0 && (
-            <div className="text-center">
-              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">{player.goals}</p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">{t('player.col_g')}</p>
-            </div>
-          )}
-          {player.blueCards > 0 && (
-            <div className="text-center">
-              <p className="text-xs font-bold text-blue-600 dark:text-blue-400 tabular-nums">{player.blueCards}</p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">{t('player.col_az')}</p>
-            </div>
-          )}
-          {player.redCards > 0 && (
-            <div className="text-center">
-              <p className="text-xs font-bold text-red-600 dark:text-red-400 tabular-nums">{player.redCards}</p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">{t('player.col_rj')}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Flecha */}
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-slate-300 dark:text-slate-700 shrink-0">
-        <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </Link>
-  );
-}
 
 function SquadTab({ data }: { data: TeamDetail }) {
   const { squad } = data;
@@ -586,27 +512,8 @@ function SquadTab({ data }: { data: TeamDetail }) {
 
   return (
     <div className="space-y-4">
-      {goalkeepers.length > 0 && (
-        <div className="card overflow-hidden">
-          <div className="px-4 pt-3 pb-2">
-            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('team.gk_pos')}</p>
-          </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-            {goalkeepers.map((p) => <PlayerRow key={p.playerId} player={p} />)}
-          </div>
-        </div>
-      )}
-
-      {outfield.length > 0 && (
-        <div className="card overflow-hidden">
-          <div className="px-4 pt-3 pb-2">
-            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('team.players')}</p>
-          </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-            {outfield.map((p) => <PlayerRow key={p.playerId} player={p} />)}
-          </div>
-        </div>
-      )}
+      {outfield.length > 0 && <SquadTable players={outfield} title={t('team.players')} />}
+      {goalkeepers.length > 0 && <SquadTable players={goalkeepers} title={t('team.gk_pos')} />}
 
       {/* Cuerpo técnico — del último acta procesada */}
       <StaffSection staff={data.staff} />
