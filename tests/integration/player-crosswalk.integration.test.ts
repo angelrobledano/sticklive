@@ -126,3 +126,30 @@ describe('B1 — revisión de candidatos', () => {
     await expect(generatePlayerLinkCandidates()).resolves.toBe(0);
   });
 });
+
+describe('B1 — contexto de cada candidato para el panel', () => {
+  it('cada lado trae sus refs, su foto y sus equipos por temporada y competición', async () => {
+    const sportId = await crearDeporte();
+    const rfep = await jugador(sportId, 'MARTÍ', 'SERRA MOLIST', 'fep_player_4095');
+    const fecapa = await jugador(sportId, 'MARTÍ', 'SERRA MOLIST', 'fecapa_player_14782');
+    await db.query(`UPDATE players SET photo_url = 'https://x/4095_1.jpg' WHERE id = $1`, [rfep]);
+    const comp = (await db.query<{ id: string }>(
+      `INSERT INTO competitions (sport_id, name, slug) VALUES ($1,'OK LIGA MASCULINA','okl') RETURNING id`, [sportId])).rows[0]!.id;
+    const season = (await db.query<{ id: string }>(
+      `INSERT INTO seasons (competition_id, name, slug) VALUES ($1,'2025/26','2025-26') RETURNING id`, [comp])).rows[0]!.id;
+    const calafell = await crearEquipo(sportId, 'CALAFELL LA MENORQUINA');
+    await db.query(`INSERT INTO team_players (season_id, team_id, player_id) VALUES ($1,$2,$3)`, [season, calafell, rfep]);
+
+    await generatePlayerLinkCandidates();
+    const [c] = await listPlayerLinkCandidates('pending');
+    const lado = c!.a.id === rfep ? c!.a : c!.b;
+    const otro = c!.a.id === rfep ? c!.b : c!.a;
+    expect(lado).toMatchObject({
+      name: 'MARTÍ SERRA MOLIST',
+      refs: ['fep_player_4095'],
+      photoUrl: 'https://x/4095_1.jpg',
+      teams: [{ team: 'CALAFELL LA MENORQUINA', season: '2025/26', competition: 'OK LIGA MASCULINA' }],
+    });
+    expect(otro).toMatchObject({ id: fecapa, refs: ['fecapa_player_14782'], teams: [] });
+  });
+});

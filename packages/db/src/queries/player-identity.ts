@@ -144,25 +144,52 @@ export async function generatePlayerLinkCandidates(): Promise<number> {
   return r.rowCount ?? 0;
 }
 
+/** Un lado del candidato, con lo necesario para decidir en el panel. */
+export interface PlayerLinkSide {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  refs: string[];
+  /** Equipos por temporada y competición, de la más reciente a la más antigua. */
+  teams: { team: string; season: string; competition: string }[];
+}
+
 export interface PlayerLinkCandidate {
   id: string;
   playerA: string;
   playerB: string;
-  nameA: string;
-  nameB: string;
   score: number;
   evidence: Record<string, unknown>;
   status: string;
+  a: PlayerLinkSide;
+  b: PlayerLinkSide;
 }
+
+const SIDE_SQL = (col: string) => `
+  (SELECT jsonb_build_object(
+      'id', p.id,
+      'name', p.first_name || ' ' || p.last_name,
+      'photoUrl', p.photo_url,
+      'refs', COALESCE((SELECT jsonb_agg(r.source_ref ORDER BY r.source_ref) FROM player_source_refs r WHERE r.player_id = p.id), '[]'::jsonb),
+      'teams', COALESCE((
+        SELECT jsonb_agg(jsonb_build_object('team', x.team, 'season', x.season, 'competition', x.competition)
+                         ORDER BY x.start_date DESC NULLS LAST, x.season DESC)
+          FROM (SELECT DISTINCT COALESCE(t.display_name, t.name) AS team, se.name AS season,
+                       co.name AS competition, se.start_date
+                  FROM team_players tp
+                  JOIN teams t ON t.id = tp.team_id
+                  JOIN seasons se ON se.id = tp.season_id
+                  JOIN competitions co ON co.id = se.competition_id
+                 WHERE tp.player_id = p.id) x), '[]'::jsonb))
+     FROM players p WHERE p.id = c.${col})`;
 
 export async function listPlayerLinkCandidates(status = 'pending', limit = 200): Promise<PlayerLinkCandidate[]> {
   const r = await db.query<PlayerLinkCandidate>(
     `SELECT c.id, c.player_a AS "playerA", c.player_b AS "playerB",
-            pa.first_name || ' ' || pa.last_name AS "nameA", pb.first_name || ' ' || pb.last_name AS "nameB",
-            c.score::float AS score, c.evidence, c.status
+            c.score::float AS score, c.evidence, c.status,
+            ${SIDE_SQL('player_a')} AS a,
+            ${SIDE_SQL('player_b')} AS b
        FROM player_link_candidates c
-       JOIN players pa ON pa.id = c.player_a
-       JOIN players pb ON pb.id = c.player_b
       WHERE c.status = $1
       ORDER BY c.score DESC, c.created_at
       LIMIT $2`,
