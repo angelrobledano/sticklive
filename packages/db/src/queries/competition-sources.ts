@@ -21,6 +21,19 @@ export interface ExternalIds {
    *  numeración canónica semi=1/final=2). Por defecto `league`. Sustituye a la
    *  lista CUP_IDCS hardcodeada de run-pipeline (#166). */
   format?: 'league' | 'bracket' | 'final_four';
+  /**
+   * Fuente FPP (Portugal, no sidgad): una competición de Stick Live agrupa
+   * varios ids de la FPP (uno por fase y zona). Lo escribe `seed-fpp.ts` desde
+   * `apps/scraper/src/scrapers/fpp/fpp-catalog.ts` y lo lee `run-fpp.ts`.
+   */
+  fpp?: {
+    key: string;
+    gender: 'male' | 'female';
+    teamAge: string;
+    sections: Array<{
+      fppId: string; phase: string; phaseTitle: string; group: string | null; hasStandings: boolean;
+    }>;
+  };
 }
 
 /** Política de sondeo en directo. NULL en BD = usar los defaults de cron-live. */
