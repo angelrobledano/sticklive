@@ -1,4 +1,20 @@
 {
+  "share_image": {
+    "button": "Image",
+    "title": "Share the team",
+    "title_match": "Share the result",
+    "title_player": "Share the player",
+    "close": "Close",
+    "format": "Format",
+    "story": "Story 9:16",
+    "post": "Post 16:9",
+    "theme": "Theme",
+    "dark": "Dark",
+    "light": "Light",
+    "preview": "Preview of {name}",
+    "download": "Download",
+    "share": "Share"
+  },
   "nav": {
     "live": "Live",
     "standings": "Standings",
@@ -362,6 +378,16 @@
     "placement_range": "Places {from}-{to}"
   },
   "standings": {
+    "zones": {
+      "champion": "Champion",
+      "promotion": "Promotion",
+      "promotion_playoff": "Play-offs",
+      "final_phase": "Final phase",
+      "placement": "Placement",
+      "playout": "Play-out",
+      "relegation": "Relegation",
+      "to": "{zone} · {target}"
+    },
     "team": "Team",
     "group": "Group",
     "playoffs_zone": "Playoffs (1st–8th)",

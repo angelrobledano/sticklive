@@ -1,4 +1,20 @@
 {
+  "share_image": {
+    "button": "Imagem",
+    "title": "Partilhar a equipa",
+    "title_match": "Partilhar o resultado",
+    "title_player": "Partilhar o jogador",
+    "close": "Fechar",
+    "format": "Formato",
+    "story": "História 9:16",
+    "post": "Publicação 16:9",
+    "theme": "Tema",
+    "dark": "Escuro",
+    "light": "Claro",
+    "preview": "Pré-visualização de {name}",
+    "download": "Descarregar",
+    "share": "Partilhar"
+  },
   "nav": {
     "live": "Em direto",
     "standings": "Classificação",
@@ -289,6 +305,16 @@
     "placement_range": "Lugares {from}º-{to}º"
   },
   "standings": {
+    "zones": {
+      "champion": "Campeão",
+      "promotion": "Subida",
+      "promotion_playoff": "Play-off",
+      "final_phase": "Fase final",
+      "placement": "Classificação",
+      "playout": "Play-out",
+      "relegation": "Descida",
+      "to": "{zone} · {target}"
+    },
     "team": "Equipa",
     "group": "Grupo",
     "playoffs_zone": "Playoffs (1º–8º)",
