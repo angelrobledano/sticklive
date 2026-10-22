@@ -8,14 +8,17 @@ interface Props {
 
 function StatTile({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <View className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 items-center justify-center">
+    <View className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-2.5 items-center justify-center">
       <Text className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-50">
         {value}
       </Text>
-      <Text numberOfLines={1} className="text-[10px] uppercase font-bold text-slate-400 mt-1">
+      <Text
+        numberOfLines={2}
+        className="text-[9px] uppercase font-semibold text-slate-500 dark:text-slate-400 mt-1 text-center leading-3 min-h-[24px]"
+      >
         {label}
       </Text>
-      {sub ? <Text className="text-[10px] text-slate-400">{sub}</Text> : null}
+      {sub ? <Text className="text-[9px] text-slate-400">{sub}</Text> : null}
     </View>
   );
 }
