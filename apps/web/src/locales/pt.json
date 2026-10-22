@@ -1,4 +1,31 @@
 {
+  "team_story": {
+    "kicker": "A temporada",
+    "results": "Resultados",
+    "attack_defense": "Ataque e defesa",
+    "scored_pm": "Marca por jogo",
+    "conceded_pm": "Sofre por jogo",
+    "points_pct": "{n} % pts",
+    "fouls_pm": "Faltas/jogo",
+    "more": "Ver todos os números"
+  },
+  "team_calendar": {
+    "all": "Todos",
+    "played": "Jogados",
+    "upcoming": "Próximos",
+    "home": "Em casa",
+    "away": "Fora",
+    "no_matches": "Nenhum jogo com estes filtros.",
+    "clear": "Limpar filtros",
+    "round_short": "J{n}",
+    "res_W": "V",
+    "res_D": "E",
+    "res_L": "D",
+    "res_W_full": "Vitórias",
+    "res_D_full": "Empates",
+    "res_L_full": "Derrotas",
+    "label": "Filtrar calendário"
+  },
   "share_image": {
     "button": "Imagem",
     "title": "Partilhar a equipa",

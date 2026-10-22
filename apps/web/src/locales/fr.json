@@ -1,4 +1,31 @@
 {
+  "team_story": {
+    "kicker": "La saison",
+    "results": "Résultats",
+    "attack_defense": "Attaque et défense",
+    "scored_pm": "Marqués par match",
+    "conceded_pm": "Encaissés par match",
+    "points_pct": "{n} % pts",
+    "fouls_pm": "Fautes/match",
+    "more": "Voir tous les chiffres"
+  },
+  "team_calendar": {
+    "all": "Tous",
+    "played": "Joués",
+    "upcoming": "À venir",
+    "home": "Domicile",
+    "away": "Extérieur",
+    "no_matches": "Aucun match avec ces filtres.",
+    "clear": "Effacer les filtres",
+    "round_short": "J{n}",
+    "res_W": "V",
+    "res_D": "N",
+    "res_L": "D",
+    "res_W_full": "Victoires",
+    "res_D_full": "Nuls",
+    "res_L_full": "Défaites",
+    "label": "Filtrer le calendrier"
+  },
   "share_image": {
     "button": "Image",
     "title": "Partager l'équipe",

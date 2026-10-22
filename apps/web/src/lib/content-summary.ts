@@ -55,6 +55,9 @@ export interface PreviewExtra {
 export interface HeadToHeadMatch {
   id: string;
   date: string | null;
+  /** Ids para escudos y para atribuir victorias (opcionales: payloads antiguos). */
+  homeTeamId?: string;
+  awayTeamId?: string;
   homeName: string;
   awayName: string;
   homeScore: number | null;
@@ -230,6 +233,8 @@ export function buildMatchPreview(
     .map((m) => ({
       id: m.id,
       date: matchDate(m),
+      homeTeamId: m.homeTeam.id,
+      awayTeamId: m.awayTeam.id,
       homeName: m.homeTeam.name,
       awayName: m.awayTeam.name,
       homeScore: m.score.home,
