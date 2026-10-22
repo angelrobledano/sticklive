@@ -41,9 +41,7 @@ export default function LoginScreen() {
     signInWithMagicLinkToken(token)
       .then((ok) => {
         if (!active) return;
-        if (ok) {
-          router.replace('/');
-        } else {
+        if (!ok) {
           setVerifyFailed(true);
         }
       })
@@ -54,7 +52,18 @@ export default function LoginScreen() {
     return () => {
       active = false;
     };
-  }, [token, session, signInWithMagicLinkToken, router]);
+  }, [token, session, signInWithMagicLinkToken]);
+
+  // Si la sesión pasa a estar activa (por Google, magic link o callback), cerramos el modal de login
+  useEffect(() => {
+    if (session) {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)/settings');
+      }
+    }
+  }, [session, router]);
 
   const handleSendEmail = useCallback(async () => {
     const clean = email.trim().toLowerCase();
@@ -73,11 +82,10 @@ export default function LoginScreen() {
     setSigningInGoogle(true);
     try {
       await signInWithGoogle();
-      if (session) router.replace('/');
     } finally {
       setSigningInGoogle(false);
     }
-  }, [signInWithGoogle, session, router]);
+  }, [signInWithGoogle]);
 
   // Si está canjeando el token del magic link
   if (verifying) {

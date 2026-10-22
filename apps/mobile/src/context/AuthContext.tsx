@@ -1,5 +1,5 @@
 import * as WebBrowser from 'expo-web-browser';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { API_URL, apiFetch, ApiError } from '@/src/lib/api/client';
 import { capture, identifyUser, resetIdentity } from '@/src/lib/analytics';
 import { getDeviceId } from '@/src/lib/device';
@@ -34,7 +34,9 @@ interface AuthCtx {
    * exitoso. Nunca se traga un fallo en silencio (regla del repo).
    */
   lastAuthError: string | null;
+  setLastAuthError: (error: string | null) => void;
   signInWithGoogle: () => Promise<void>;
+  exchangeAuthCode: (code: string, emailHint?: string | null) => Promise<Session | null>;
   requestMagicLink: (email: string) => Promise<{ ok: boolean; error?: string; devLink?: string }>;
   signInWithMagicLinkToken: (token: string) => Promise<boolean>;
   signOut: () => Promise<void>;
@@ -46,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
   const [lastAuthError, setLastAuthError] = useState<string | null>(null);
+  const pendingExchangeRef = useRef<Map<string, Promise<Session | null>>>(new Map());
 
   useEffect(() => {
     // Fail-closed: si SecureStore es ilegible (storage corrupto, permiso
@@ -58,6 +61,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(null);
       })
       .finally(() => setReady(true));
+  }, []);
+
+  /**
+   * Canje de código single-use contra POST /auth/exchange con deduplicación
+   * atómica en vuelo: si WebBrowser.openAuthSessionAsync y el deep link del
+   * sistema operativo (sticklive://auth/callback) intentan canjear el mismo
+   * código a la vez, el segundo reutiliza la Promise del primero sin hacer un
+   * segundo POST (que fallaría con 400 invalid_code porque el código ya se usó).
+   */
+  const exchangeAuthCode = useCallback(async (code: string, emailHint?: string | null): Promise<Session | null> => {
+    const existing = pendingExchangeRef.current.get(code);
+    if (existing) {
+      return existing;
+    }
+
+    const exchangePromise = (async () => {
+      try {
+        const deviceId = await getDeviceId();
+        const data = await apiFetch<{ session: string; email: string | null }>('/auth/exchange', {
+          method: 'POST',
+          body: { code, deviceId },
+        });
+        const s: Session = { token: data.session, email: data.email ?? emailHint ?? null };
+        await saveSession(s);
+        if (s.email) identifyUser(s.email);
+        capture('login_completed', { method: 'google' });
+        try {
+          await mergeLocalOnLogin(s.token);
+        } catch (mergeErr) {
+          console.error('[auth] no se pudieron fusionar los favoritos locales con la cuenta', mergeErr);
+        }
+        setSession(s);
+        setLastAuthError(null);
+        return s;
+      } catch (err) {
+        const reason = err instanceof ApiError ? err.code : 'unknown';
+        setLastAuthError(reason);
+        return null;
+      }
+    })();
+
+    pendingExchangeRef.current.set(code, exchangePromise);
+    return exchangePromise;
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
@@ -85,44 +131,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLastAuthError('unexpected_redirect');
         return;
       }
-      // Canje: el código single-use vale 120 s; la sesión viaja por HTTPS y
-      // se guarda en SecureStore (nunca por el scheme ni en AsyncStorage). El
-      // body lleva el deviceId del login: el código quedó LIGADO a él (068) y
-      // sin él el canje siempre fallaría.
-      const data = await apiFetch<{ session: string; email: string | null }>('/auth/exchange', {
-        method: 'POST',
-        body: { code: parsed.code, deviceId },
-      });
-      const s: Session = { token: data.session, email: data.email ?? parsed.email };
-      await saveSession(s);
-      // Analítica (Task 5.1): identificar con el email ANTES del capture de
-      // login_completed (así el evento ya cae en la persona de la cuenta; el
-      // SDK fusiona la persona anónima del deviceId con la del email). Sin
-      // email en el canje no hay identify: la persona sigue siendo el deviceId.
-      // identifyUser no lanza (try/catch interno) y el capture tampoco: la
-      // analítica no puede romper un login correcto.
-      if (s.email) identifyUser(s.email);
-      capture('login_completed', { method: 'google' });
-      // Fusión de favoritos anónimos → cuenta (merge idempotente, Task 3.3).
-      // ANTES de setSession: la primera lectura de favoritos ya ve el estado
-      // fusionado y no hay flash de "0 favoritos". Si falla (red) el login NO
-      // se rompe: los locales sobreviven intactos y el merge se reintenta con
-      // el próximo login. Tocar la estrella también dispara su propio merge,
-      // pero recupera SOLO ese favorito (merge de 1 elemento); el resto del
-      // estado local se recupera con el próximo login.
-      // Fallo explícito no silencioso por consola (mismo canal que signOut;
-      // Sentry lo capturará en 5.1): meterlo en lastAuthError mostraría un
-      // error de Google cuando el login ha IDO BIEN.
-      try {
-        await mergeLocalOnLogin(s.token);
-      } catch (mergeErr) {
-        console.error('[auth] no se pudieron fusionar los favoritos locales con la cuenta', mergeErr);
-      }
-      setSession(s);
+      // Canje seguro y deduplicado con el intent de Android
+      await exchangeAuthCode(parsed.code, parsed.email);
     } catch (err) {
       setLastAuthError(err instanceof ApiError ? err.code : 'unknown');
     }
-  }, []);
+  }, [exchangeAuthCode]);
 
   const requestMagicLink = useCallback(async (email: string) => {
     setLastAuthError(null);
@@ -193,7 +207,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       ready,
       lastAuthError,
+      setLastAuthError,
       signInWithGoogle,
+      exchangeAuthCode,
       requestMagicLink,
       signInWithMagicLinkToken,
       signOut,
@@ -202,7 +218,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       ready,
       lastAuthError,
+      setLastAuthError,
       signInWithGoogle,
+      exchangeAuthCode,
       requestMagicLink,
       signInWithMagicLinkToken,
       signOut,

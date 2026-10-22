@@ -172,6 +172,8 @@ function RootNavigator() {
             presentation: 'modal',
           }}
         />
+        <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+        <Stack.Screen name="+not-found" options={{ title: '' }} />
       </Stack>
     </NavigationThemeProvider>
   );

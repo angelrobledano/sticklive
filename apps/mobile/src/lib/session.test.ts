@@ -25,6 +25,14 @@ describe('parseAuthRedirect', () => {
     expect(parseAuthRedirect(url)).toEqual({ code: 'abc123', email: 'a@b.com' });
   });
 
+  it('extrae code y email del callback de Google en Android', () => {
+    const url = 'sticklive://auth/callback?code=6ue0U5NmvjzeOuWZA789Ulejfbq7zw1&email=robledano@gmail.com';
+    expect(parseAuthRedirect(url)).toEqual({
+      code: '6ue0U5NmvjzeOuWZA789Ulejfbq7zw1',
+      email: 'robledano@gmail.com',
+    });
+  });
+
   it('acepta un redirect sin email (el API puede no devolverlo)', () => {
     expect(parseAuthRedirect('sticklive://auth/callback?code=solo')).toEqual({
       code: 'solo',
