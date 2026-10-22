@@ -158,7 +158,10 @@ export default function LiveScreen() {
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => false,
+        onStartShouldSetPanResponderCapture: () => false,
         onMoveShouldSetPanResponder: (_, gestureState) =>
+          isHorizontalSwipeGesture(gestureState.dx, gestureState.dy),
+        onMoveShouldSetPanResponderCapture: (_, gestureState) =>
           isHorizontalSwipeGesture(gestureState.dx, gestureState.dy),
         onPanResponderTerminationRequest: () => false,
         onPanResponderRelease: (_, gestureState) => {
