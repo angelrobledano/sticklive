@@ -331,6 +331,29 @@ export interface ClubTeamSummary {
   sectionSuffix?: string;
 }
 
+export interface TeamRecentMatch {
+  id: string;
+  date: string | null;
+  homeTeamId: string;
+  homeName: string;
+  homeShortName: string | null;
+  homeLogoUrl: string | null;
+  awayTeamId: string;
+  awayName: string;
+  awayShortName: string | null;
+  awayLogoUrl: string | null;
+  homeScore: number;
+  awayScore: number;
+  competitionId: string;
+  competitionName: string;
+  competitionShortName: string | null;
+  roundNumber: number | null;
+}
+
+export interface TeamRecentResponse {
+  matches: TeamRecentMatch[];
+}
+
 export interface TeamMatchSummary {
   id: string;
   status: string;
@@ -582,6 +605,7 @@ export interface SeasonOverviewStandingRow {
   points: number;
   form?: string[];
   penalizationPoints?: number;
+  zone?: { kind: import('@/src/lib/standings-zones-view').ZoneKind; target: string | null } | null;
 }
 
 export interface SeasonOverview {

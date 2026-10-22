@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Animated, Easing, RefreshControl, ScrollView, Share, View } from 'react-native';
 import { Stack, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useMatchDetail } from '@/src/hooks/queries';
+import { useMatchDetail, useSeasonOverview, useTeam } from '@/src/hooks/queries';
 import { useMatchLive } from '@/src/hooks/useMatchLive';
 import { useInterstitialOnLeave } from '@/src/hooks/ads/useInterstitialOnLeave';
 import { ErrorState } from '@/src/components/shared/ErrorState';
@@ -14,15 +14,19 @@ import { MatchTabs } from '@/src/components/match/MatchTabs';
 import { TimelineTab } from '@/src/components/match/TimelineTab';
 import { LineupsTab } from '@/src/components/match/LineupsTab';
 import { StatsTab } from '@/src/components/match/StatsTab';
+import { MatchPreview } from '@/src/components/match/MatchPreview';
 import { capture } from '@/src/lib/analytics';
 import { isAdQuietTime } from '@/src/lib/time';
 import { visibleTabsFor, type Tab } from '@/src/lib/match-helpers';
+import { buildMatchPreview } from '@/src/lib/content-summary';
 import { clubName } from '@/src/lib/names';
+import { useLocale } from '@/src/i18n/LocaleContext';
 
 export default function MatchScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
   const matchId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const { locale } = useLocale();
   const query = useMatchDetail(matchId ?? '');
   const live = useMatchLive(matchId ?? '', undefined);
 
@@ -54,6 +58,41 @@ export default function MatchScreen() {
   const homeLabel = rawMatch ? clubName(rawMatch.homeTeam.name) || rawMatch.homeTeam.shortName || rawMatch.homeTeam.name : '';
   const awayLabel = rawMatch ? clubName(rawMatch.awayTeam.name) || rawMatch.awayTeam.shortName || rawMatch.awayTeam.name : '';
   const title = rawMatch ? `${homeLabel} - ${awayLabel}` : '';
+
+  const seasonOverviewQuery = useSeasonOverview(rawMatch?.seasonId);
+  const homeTeamQuery = useTeam(rawMatch?.homeTeam.id ?? '', rawMatch?.seasonId);
+  const awayTeamQuery = useTeam(rawMatch?.awayTeam.id ?? '', rawMatch?.seasonId);
+
+  const preview = useMemo(() => {
+    if (!rawMatch || !seasonOverviewQuery.data || !rawMatch.homeTeam.id || !rawMatch.awayTeam.id) {
+      return null;
+    }
+    try {
+      return buildMatchPreview(
+        seasonOverviewQuery.data,
+        {
+          matchId: rawMatch.id,
+          homeTeamId: rawMatch.homeTeam.id,
+          awayTeamId: rawMatch.awayTeam.id,
+          homeName: homeLabel,
+          awayName: awayLabel,
+        },
+        {
+          homeStats: homeTeamQuery.data?.stats,
+          awayStats: awayTeamQuery.data?.stats,
+        },
+      );
+    } catch {
+      return null;
+    }
+  }, [
+    rawMatch,
+    seasonOverviewQuery.data,
+    homeTeamQuery.data,
+    awayTeamQuery.data,
+    homeLabel,
+    awayLabel,
+  ]);
 
   const handleShare = () => {
     if (!rawMatch) return;
@@ -129,6 +168,9 @@ export default function MatchScreen() {
           onReconnect={live.reconnect}
         />
 
+        {/* Previa visual destacada en partidos programados */}
+        {isScheduled && preview ? <MatchPreview data={preview} locale={locale} /> : null}
+
         {/* Pestañas de contenido */}
         <MatchTabs
           tabs={visibleTabs}
@@ -158,6 +200,9 @@ export default function MatchScreen() {
 
           {activeTab === 'Estadísticas' && <StatsTab data={current} />}
         </AnimatedTabContent>
+
+        {/* En directo/finalizado la previa y balance H2H van al final */}
+        {!isScheduled && preview ? <MatchPreview data={preview} locale={locale} /> : null}
 
         {/* Banner publicitario si está fuera de quiet time */}
         {!isAdQuietTime(m.status, m.scheduledAt) ? (

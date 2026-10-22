@@ -29,11 +29,10 @@ import { CompetitionSummary } from '@/src/components/competition/CompetitionSumm
 import { GameweeksTab } from '@/src/components/competition/GameweeksTab';
 import { PlayoffsTab } from '@/src/components/competition/PlayoffsTab';
 import { StatsLeadersTab } from '@/src/components/competition/StatsLeadersTab';
+import { StandingsTable } from '@/src/components/competition/StandingsTable';
 import type {
   SeasonOverviewStandingRow,
 } from '@/src/lib/api/types';
-
-const COL_WIDTHS = 'w-7' as const;
 
 export default function CompetitionScreen() {
   const insets = useSafeAreaInsets();
@@ -313,92 +312,15 @@ export default function CompetitionScreen() {
               <EmptyState title={t('standings.no_data') ?? 'No hay datos de clasificación'} />
             ) : (
               standingsByGroup.map(({ groupName, rows }) => (
-                <View
-                  key={groupName}
-                  className="mb-3 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900"
-                >
-                  {/* Título de grupo si hay más de 1 grupo */}
+                <View key={groupName || 'sin-grupo'}>
                   {groupName ? (
-                    <View className="border-b border-slate-100 bg-slate-50/70 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/40">
+                    <View className="mb-1.5 px-1">
                       <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         {groupName}
                       </Text>
                     </View>
                   ) : null}
-
-                  {/* Cabecera tabla */}
-                  <View className="flex-row items-center border-b border-slate-100 px-3 py-2 dark:border-slate-800">
-                    <Text className="w-6 text-center text-xs font-bold text-slate-400 dark:text-slate-400">#</Text>
-                    <Text className="flex-1 text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
-                      {t('standings.team')}
-                    </Text>
-                    <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-400 dark:text-slate-400`}>
-                      {t('standings.cols.played')}
-                    </Text>
-                    <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-400 dark:text-slate-400`}>
-                      {t('standings.cols.won')}
-                    </Text>
-                    <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-400 dark:text-slate-400`}>
-                      {t('standings.cols.drawn')}
-                    </Text>
-                    <Text className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-400 dark:text-slate-400`}>
-                      {t('standings.cols.lost')}
-                    </Text>
-                    <Text
-                      className={`${COL_WIDTHS} text-center text-xs font-bold text-slate-900 dark:text-slate-100`}
-                    >
-                      {t('standings.cols.pts')}
-                    </Text>
-                  </View>
-
-                  {/* Filas */}
-                  {rows.map((row: SeasonOverviewStandingRow) => (
-                    <Pressable
-                      key={row.id}
-                      onPress={() => router.push(`/team/${row.teamId}`)}
-                      className="flex-row items-center border-b border-slate-100 px-3 py-2.5 active:opacity-70 dark:border-slate-800"
-                    >
-                      <Text className="w-6 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
-                        {row.position ?? '–'}
-                      </Text>
-                      <View className="flex-1 flex-row items-center pr-2">
-                        <Avatar
-                          uri={teamLogoUri(row.teamId, 48)}
-                          fallbackUri={row.teamLogoUrl}
-                          name={row.teamName}
-                          size={22}
-                        />
-                        <Text numberOfLines={1} className="ml-2 flex-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                          {clubName(row.teamName) || row.teamShortName || row.teamName}
-                        </Text>
-                      </View>
-                      <Text
-                        className={`${COL_WIDTHS} text-center text-sm text-slate-600 dark:text-slate-300`}
-                      >
-                        {row.played}
-                      </Text>
-                      <Text
-                        className={`${COL_WIDTHS} text-center text-sm text-slate-600 dark:text-slate-300`}
-                      >
-                        {row.won}
-                      </Text>
-                      <Text
-                        className={`${COL_WIDTHS} text-center text-sm text-slate-600 dark:text-slate-300`}
-                      >
-                        {row.drawn}
-                      </Text>
-                      <Text
-                        className={`${COL_WIDTHS} text-center text-sm text-slate-600 dark:text-slate-300`}
-                      >
-                        {row.lost}
-                      </Text>
-                      <Text
-                        className={`${COL_WIDTHS} text-center text-sm font-bold text-slate-900 dark:text-slate-100`}
-                      >
-                        {row.points}
-                      </Text>
-                    </Pressable>
-                  ))}
+                  <StandingsTable rows={rows} legacyZones={!groupName} />
                 </View>
               ))
             )}

@@ -57,7 +57,9 @@ export function TeamCenterClient({ data }: Props) {
       {activeTab === 'Resumen' && <SummaryTab data={data} />}
       {activeTab === 'Calendario' && <CalendarTab data={data} />}
       {activeTab === 'Plantilla' && <SquadTab data={data} />}
-      {activeTab === 'Estadísticas' && <TeamStatsTab stats={data.stats} />}
+      {activeTab === 'Estadísticas' && (
+        <TeamStatsTab stats={data.stats} matches={data.matches} teamId={data.team.id} />
+      )}
     </View>
   );
 }
