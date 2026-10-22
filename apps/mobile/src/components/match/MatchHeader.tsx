@@ -130,13 +130,13 @@ export function MatchHeader({
                   </Text>
                 </View>
               ) : (
-                <View className="flex-row items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-0.5">
-                  <View className="h-2 w-2 rounded-full bg-rose-500" />
-                  <Text className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                <View className="flex-row items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 dark:bg-emerald-950/40">
+                  <View className="h-2 w-2 rounded-full bg-emerald-500" />
+                  <Text className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                     {t('match_states.live')}
                   </Text>
                   {periodLabel ? (
-                    <Text className="text-xs font-medium text-rose-600 dark:text-rose-400">
+                    <Text className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
                       · {periodLabel} {mmss ? `· ${mmss}` : ''}
                     </Text>
                   ) : null}
@@ -155,11 +155,11 @@ export function MatchHeader({
                 onPress={onReconnect}
                 className="flex-row items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 active:opacity-70"
                 accessibilityRole="button"
-                accessibilityLabel={`${t('match_detail.freshness_down').replace(' · última actualización hace {s} s', '')} - ${t('errors.retry')}`}
+                accessibilityLabel={`${t('match_detail.freshness_down').split('·')[0]?.trim() ?? 'Sin señal'} - ${t('errors.retry')}`}
               >
                 <View className="h-2 w-2 rounded-full bg-amber-500" />
                 <Text className="text-xs font-semibold text-amber-700 dark:text-amber-300">
-                  {t('match_detail.freshness_down').replace(' · última actualización hace {s} s', '')}
+                  {t('match_detail.freshness_down').split('·')[0]?.trim() ?? 'Sin señal'}
                 </Text>
                 {onReconnect ? (
                   <Text className="text-xs font-bold text-amber-800 underline dark:text-amber-200">

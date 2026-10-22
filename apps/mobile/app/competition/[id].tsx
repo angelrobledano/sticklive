@@ -241,9 +241,13 @@ export default function CompetitionScreen() {
                     <Pressable
                       key={s.id}
                       onPress={() => setSelectedSeasonId(s.id)}
-                      className={`rounded-full px-3 py-1 ${
+                      hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      accessibilityLabel={s.name}
+                      className={`rounded-full px-3 py-1.5 ${
                         isSelected
-                          ? 'bg-rink-passion dark:bg-accent'
+                          ? 'bg-rink-passion dark:bg-rink-accent'
                           : 'bg-slate-100 dark:bg-slate-800'
                       }`}
                     >

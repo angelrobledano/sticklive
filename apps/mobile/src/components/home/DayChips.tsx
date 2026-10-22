@@ -1,5 +1,6 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import type { DayFilter } from '@/src/lib/day-view';
 
@@ -12,14 +13,22 @@ interface DayChipsProps {
 
 export function DayChips({ liveCount, followingCount, filter, onChange }: DayChipsProps) {
   const { t } = useLocale();
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
 
   if (liveCount === 0 && followingCount === 0) return null;
+
+  const starColor = filter === 'following' ? '#ffffff' : (isDark ? BRAND.accent : BRAND.granate);
 
   return (
     <View className="flex-row items-center gap-2 px-3 py-2">
       {liveCount > 0 && (
         <Pressable
           onPress={() => onChange(filter === 'live' ? 'all' : 'live')}
+          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+          accessibilityRole="button"
+          accessibilityState={{ selected: filter === 'live' }}
+          accessibilityLabel={`${t('match_states.live')} (${liveCount})`}
           className={`h-8 flex-row items-center gap-1.5 rounded-full border px-3 ${
             filter === 'live'
               ? 'border-live-deep bg-live-deep'
@@ -57,6 +66,10 @@ export function DayChips({ liveCount, followingCount, filter, onChange }: DayChi
       {followingCount > 0 && (
         <Pressable
           onPress={() => onChange(filter === 'following' ? 'all' : 'following')}
+          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+          accessibilityRole="button"
+          accessibilityState={{ selected: filter === 'following' }}
+          accessibilityLabel={`${t('home.filter_following')} (${followingCount})`}
           className={`h-8 flex-row items-center gap-1.5 rounded-full border px-3 ${
             filter === 'following'
               ? 'border-rink-passion bg-rink-passion'
@@ -66,7 +79,7 @@ export function DayChips({ liveCount, followingCount, filter, onChange }: DayChi
           <Ionicons
             name="star"
             size={12}
-            color={filter === 'following' ? '#ffffff' : '#eab308'}
+            color={starColor}
           />
           <Text
             className={`text-xs font-semibold ${

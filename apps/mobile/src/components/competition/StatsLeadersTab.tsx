@@ -4,6 +4,7 @@ import { Pressable, Text, View } from 'react-native';
 import { Avatar } from '@/src/components/shared/Avatar';
 import { clubName, playerDisplayName, playerNameFromRaw } from '@/src/lib/names';
 import type { SeasonLeader, SeasonStats } from '@/src/lib/api/types';
+import { useLocale } from '@/src/i18n/LocaleContext';
 
 const LEADERBOARD_PREVIEW = 5;
 
@@ -25,12 +26,16 @@ function LeaderBoard({
   extraLabel?: string;
 }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [expanded, setExpanded] = useState(false);
 
   if (!leaders || leaders.length === 0) return null;
 
   const visible = expanded ? leaders : leaders.slice(0, LEADERBOARD_PREVIEW);
   const hiddenCount = leaders.length - LEADERBOARD_PREVIEW;
+
+  const showMoreText = (t('common.show_more') || 'Mostrar más ({n})').replace('{n}', String(hiddenCount));
+  const showLessText = t('common.show_less') || 'Mostrar menos';
 
   return (
     <View className="mb-3 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
@@ -92,8 +97,8 @@ function LeaderBoard({
           onPress={() => setExpanded((e) => !e)}
           className="border-t border-slate-100 py-3 active:opacity-70 dark:border-slate-800"
         >
-          <Text className="text-center text-xs font-bold text-rink-passion dark:text-accent">
-            {expanded ? 'Mostrar menos' : `Mostrar más (${hiddenCount})`}
+          <Text className="text-center text-xs font-bold text-rink-passion dark:text-rink-accent">
+            {expanded ? showLessText : showMoreText}
           </Text>
         </Pressable>
       ) : null}

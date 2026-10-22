@@ -15,6 +15,8 @@ export default {
           light:   BRAND.granateLight,  // #B91C1C
           dark:    BRAND.granateDark,   // #7F1D1D
         },
+        // Acento de marca sobre superficie oscura: #F87171 (≥3:1 sobre fondo noche)
+        'rink-accent': BRAND.accent,
         // Verde SOLO para «en directo» (Live-Only Color Rule): punto y estado.
         'live': { DEFAULT: BRAND.live, deep: BRAND.liveDeep },
         // Ámbar de descanso/avisos.

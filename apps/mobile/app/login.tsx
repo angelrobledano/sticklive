@@ -108,7 +108,7 @@ export default function LoginScreen() {
         </Text>
         <Pressable
           onPress={() => router.replace('/login')}
-          className="mt-6 rounded-xl bg-granate px-6 py-3 active:opacity-90"
+          className="mt-6 rounded-xl bg-rink-passion px-6 py-3 active:opacity-90"
         >
           <Text className="font-semibold text-white">{t('auth.login_title')}</Text>
         </Pressable>
@@ -165,7 +165,7 @@ export default function LoginScreen() {
               <Pressable
                 onPress={handleSendEmail}
                 disabled={submitting || !email.trim().includes('@')}
-                className={`mt-4 items-center justify-center rounded-xl bg-granate py-3 active:opacity-90 ${
+                className={`mt-4 items-center justify-center rounded-xl bg-rink-passion py-3 active:opacity-90 ${
                   submitting || !email.trim().includes('@') ? 'opacity-50' : ''
                 }`}
               >
