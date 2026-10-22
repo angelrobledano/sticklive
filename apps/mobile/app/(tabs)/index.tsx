@@ -22,6 +22,7 @@ import {
   addDaysToKey,
   buildDayView,
   daysWithMatches,
+  extractGestureStartX,
   isHorizontalSwipeGesture,
   isOutsideEdgeGuard,
   madridTodayKey,
@@ -164,12 +165,20 @@ export default function LiveScreen() {
       PanResponder.create({
         onStartShouldSetPanResponder: () => false,
         onStartShouldSetPanResponderCapture: () => false,
-        onMoveShouldSetPanResponder: (_, gestureState) =>
-          isOutsideEdgeGuard(gestureState.x0, screenWidth) &&
-          isHorizontalSwipeGesture(gestureState.dx, gestureState.dy),
-        onMoveShouldSetPanResponderCapture: (_, gestureState) =>
-          isOutsideEdgeGuard(gestureState.x0, screenWidth) &&
-          isHorizontalSwipeGesture(gestureState.dx, gestureState.dy),
+        onMoveShouldSetPanResponder: (evt, gestureState) => {
+          const startX = extractGestureStartX(evt, gestureState);
+          return (
+            isOutsideEdgeGuard(startX, screenWidth) &&
+            isHorizontalSwipeGesture(gestureState.dx, gestureState.dy)
+          );
+        },
+        onMoveShouldSetPanResponderCapture: (evt, gestureState) => {
+          const startX = extractGestureStartX(evt, gestureState);
+          return (
+            isOutsideEdgeGuard(startX, screenWidth) &&
+            isHorizontalSwipeGesture(gestureState.dx, gestureState.dy)
+          );
+        },
         onPanResponderTerminationRequest: () => false,
         onPanResponderRelease: (_, gestureState) => {
           const delta = resolveDaySwipeDelta(gestureState.dx, gestureState.vx);

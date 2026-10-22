@@ -255,16 +255,40 @@ export function resolveDaySwipeDelta(dx: number, vx: number): -1 | 0 | 1 {
 export const ANDROID_BACK_GUARD_DP = 32;
 
 /**
+ * Extrae el punto de inicio X del gesto táctil en coordenadas de pantalla.
+ * En React Native, PanResponder.gestureState.x0 es 0 antes de que el responder sea concedido
+ * (onResponderGrant), por lo que durante la fase de captura/evaluación (onMoveShouldSetPanResponderCapture)
+ * se debe derivar del evento nativo (evt.nativeEvent.pageX - gestureState.dx) o moveX.
+ */
+export function extractGestureStartX(
+  evt?: { nativeEvent?: { pageX?: number } } | null,
+  gestureState?: { dx?: number; moveX?: number; x0?: number } | null,
+): number | undefined {
+  if (typeof evt?.nativeEvent?.pageX === 'number') {
+    return evt.nativeEvent.pageX - (gestureState?.dx ?? 0);
+  }
+  if (typeof gestureState?.moveX === 'number' && gestureState.moveX > 0) {
+    return gestureState.moveX - (gestureState?.dx ?? 0);
+  }
+  if (typeof gestureState?.x0 === 'number' && gestureState.x0 > 0) {
+    return gestureState.x0;
+  }
+  return undefined;
+}
+
+/**
  * Comprueba si el origen del toque (x0) está fuera de las zonas de guarda de los bordes.
  * Si x0 está dentro de los primeros o últimos guardDp píxeles, devuelve false para que
  * el PanResponder ceda el gesto al sistema operativo (Back predictivo en Android 15).
+ * Si no se puede determinar x0 (undefined/null), devuelve true para no impedir el swipe.
  */
 export function isOutsideEdgeGuard(
-  x0: number,
+  x0: number | undefined | null,
   screenWidth: number,
   guardDp: number = ANDROID_BACK_GUARD_DP,
 ): boolean {
   if (screenWidth <= guardDp * 2) return true;
+  if (x0 === undefined || x0 === null || Number.isNaN(x0)) return true;
   return x0 >= guardDp && x0 <= screenWidth - guardDp;
 }
 

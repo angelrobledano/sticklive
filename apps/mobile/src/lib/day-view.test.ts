@@ -6,6 +6,7 @@ import {
   computeCenterOffset,
   dayDiff,
   daysWithMatches,
+  extractGestureStartX,
   getRelativeKey,
   isHorizontalSwipeGesture,
   isOutsideEdgeGuard,
@@ -220,6 +221,25 @@ describe('buildDayView', () => {
       expect(isOutsideEdgeGuard(32, screenWidth)).toBe(true);
       expect(isOutsideEdgeGuard(195, screenWidth)).toBe(true);
       expect(isOutsideEdgeGuard(358, screenWidth)).toBe(true);
+
+      // Si no se pudo determinar x0 (undefined / null), ser permisivo para no romper navegación
+      expect(isOutsideEdgeGuard(undefined, screenWidth)).toBe(true);
+      expect(isOutsideEdgeGuard(null, screenWidth)).toBe(true);
+    });
+
+    it('extractGestureStartX deriva x0 fielmente a partir de pageX y dx', () => {
+      // Evento nativo con pageX y dx
+      expect(extractGestureStartX({ nativeEvent: { pageX: 180 } }, { dx: -30 })).toBe(210);
+      expect(extractGestureStartX({ nativeEvent: { pageX: 180 } }, { dx: 40 })).toBe(140);
+
+      // Fallback a moveX si no hay pageX
+      expect(extractGestureStartX(null, { moveX: 200, dx: -20 })).toBe(220);
+
+      // Fallback a x0 concedido si moveX es 0
+      expect(extractGestureStartX(null, { x0: 150 })).toBe(150);
+
+      // Indefinido si no hay datos de coordenadas
+      expect(extractGestureStartX(null, { x0: 0, moveX: 0 })).toBeUndefined();
     });
   });
 });
