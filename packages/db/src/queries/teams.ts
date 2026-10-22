@@ -150,3 +150,31 @@ export async function findTeamInSeasonByName(
   );
   return result.rows[0]?.id ?? null;
 }
+
+/**
+ * A5 — Registra la ref de inscripción de la fuente (teamId sidgad) de un
+ * equipo en una temporada. Crea la inscripción si no existe. No pisa una ref
+ * ya asignada a OTRO equipo en esa temporada (devuelve false: es un conflicto
+ * que hay que revisar, no resolver en silencio).
+ */
+export async function recordSeasonTeamRef(seasonId: string, teamId: string, sourceRef: string): Promise<boolean> {
+  const owner = await db.query<{ team_id: string }>(
+    `SELECT team_id FROM season_teams WHERE season_id = $1 AND source_ref = $2`, [seasonId, sourceRef],
+  );
+  if (owner.rows[0]) return owner.rows[0].team_id === teamId;
+  await db.query(
+    `INSERT INTO season_teams (season_id, team_id, source_ref) VALUES ($1, $2, $3)
+     ON CONFLICT (season_id, team_id) DO UPDATE
+       SET source_ref = COALESCE(season_teams.source_ref, EXCLUDED.source_ref)`,
+    [seasonId, teamId, sourceRef],
+  );
+  return true;
+}
+
+/** A5 — Equipo inscrito en `seasonId` con la ref de fuente `sourceRef`, o null. */
+export async function findTeamIdBySeasonRef(seasonId: string, sourceRef: string): Promise<string | null> {
+  const r = await db.query<{ team_id: string }>(
+    `SELECT team_id FROM season_teams WHERE season_id = $1 AND source_ref = $2`, [seasonId, sourceRef],
+  );
+  return r.rows[0]?.team_id ?? null;
+}

@@ -296,7 +296,10 @@ teamDetailRouter.get('/:id', async (c) => {
           FROM standings s
           JOIN seasons se ON se.id = s.season_id
           JOIN competitions c ON c.id = se.competition_id
+          LEFT JOIN phases ph ON ph.id = s.phase_id
           WHERE s.team_id = $1 AND s.season_id = $2
+          -- A7: con varias fases con tabla, la de la última fase (como getStandings).
+          ORDER BY ph.ordinal DESC NULLS LAST
           LIMIT 1
         `, [id, selectedSeasonId]),
 

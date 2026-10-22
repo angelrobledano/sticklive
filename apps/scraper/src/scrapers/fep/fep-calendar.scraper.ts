@@ -23,6 +23,7 @@ import { isByeTeamName } from './bye-team.js';
 import type { ScrapedMatch, MatchStatus, StructureRow } from '@sports/shared-types';
 import { zonedToUtc } from '../../core/eu-timezone.js';
 import { collectCalendarRows } from '../../core/sidgad-structure.js';
+import { currentSource, matchRef, type SourceDef } from '../../core/sources.js';
 
 // La estructura del calendario (fases y cabeceras de ronda) es común a todos
 // los portales sidgad (FEP, World Skate, FECAPA…): vive en core/.
@@ -77,6 +78,11 @@ export interface CalendarScraperConfig {
    * Sin indicar = Europe/Madrid (comportamiento histórico).
    */
   timezone?: string;
+  /**
+   * Portal de origen (A1). Por defecto el de SIDGAD_PORTAL: las refs de
+   * partido y fase llevan su clave para no chocar con las de RFEP.
+   */
+  source?: SourceDef;
 }
 
 export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
@@ -95,7 +101,10 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
       sourceId: SOURCE_ID,
     });
     this.calendarConfig = config;
+    this.source = config.source ?? currentSource();
   }
+
+  private readonly source: SourceDef;
 
   protected async scrape(): Promise<ScrapedMatch[]> {
     const { idc, seasonId, competitionName } = this.calendarConfig;
@@ -126,7 +135,7 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
     // Recorrer el calendario asociando cada fila con su FASE explícita (bloque
     // content_fase_X + título) y su cabecera de ronda (ver collectCalendarRows).
     this.calendarRows = [];
-    for (const { structure, row } of collectCalendarRows($, 'fep')) {
+    for (const { structure, row } of collectCalendarRows($, this.source.key)) {
       let match: ScrapedMatch | null = null;
       try {
         match = this.parseMatchRow($, $(row), {
@@ -200,7 +209,7 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
     const $gameReport = $row.find('i.game_report, a.link_ficha_partido, [idp]');
     const idp = $gameReport.attr('idp') ?? $gameReport.attr('id')?.replace('fichapartido_', '');
 
-    const sourceRef = idp ? `fep_match_${idp}` : undefined;
+    const sourceRef = idp ? matchRef(this.source, idp) : undefined;
     const sourceUrl = idp
       ? `${BASE_URL}/acta_1_${idp}.php`
       : undefined;

@@ -18,8 +18,7 @@
 import { db, closeDb } from '@sports/db';
 import { forEachLimited } from './concurrency.js';
 import {
-  idNumFromSourceRef,
-  photoAreaForTeamRefs,
+  photoTargetFromRef,
   resolvePlayerPhotoIfNeeded,
 } from './player-photo-url.js';
 
@@ -58,7 +57,7 @@ void (async () => {
        FROM players p
        LEFT JOIN team_players tp ON tp.player_id = p.id
        LEFT JOIN teams t ON t.id = tp.team_id
-      WHERE p.source_ref LIKE 'fep_player_%'
+      WHERE p.source_ref LIKE '%\\_player\\_%'
       GROUP BY p.id, p.source_ref, p.photo_url`
   );
   console.log(`${rows.length} jugadores a comprobar (concurrencia ${CONCURRENCY})\n`);
@@ -66,11 +65,11 @@ void (async () => {
   let updated = 0, cleared = 0, unchanged = 0, skipped = 0, failed = 0;
 
   await forEachLimited(rows, CONCURRENCY, async (p) => {
-    const idNum = idNumFromSourceRef(p.source_ref);
-    if (!idNum) { skipped++; return; }
+    const target = photoTargetFromRef(p.source_ref, p.team_refs ?? []);
+    if (!target) { skipped++; return; }
+    const { idNum, area } = target;
 
     try {
-      const area = photoAreaForTeamRefs(p.team_refs ?? []);
       const best = await resolvePlayerPhotoIfNeeded(idNum, area, p.photo_url, exists);
       if (best === p.photo_url) { unchanged++; return; }
 

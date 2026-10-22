@@ -213,6 +213,7 @@
     "waiting_start_body": "Gol, falli e cartellini appariranno qui non appena la palla inizierà a rotolare in pista.",
     "historic_title": "Partita d'archivio",
     "historic_body": "Di questa partita conserviamo il risultato ufficiale. Il referto dettagliato (gol, cartellini, formazioni) non è disponibile per le partite d'archivio.",
+    "partial_acta": "Il referto ufficiale è incompleto: i gol registrati non corrispondono al risultato finale.",
     "report_pending_title": "Referto in attesa di sincronizzazione",
     "report_pending_body": "Il referto digitale dettagliato di questa partita è in attesa di sincronizzazione. Il punteggio complessivo è ufficiale e definitivo.",
     "overtime": "Supplementare {n}",

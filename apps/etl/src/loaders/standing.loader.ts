@@ -1,4 +1,4 @@
-﻿import { upsertStanding, updateTeamLogoUrl, withTransaction, insertScrapeLog, findTeamInSeasonByName, getSeasonSignals, type EntitySignals } from '@sports/db';
+﻿import { upsertStanding, updateTeamLogoUrl, withTransaction, insertScrapeLog, findTeamInSeasonByName, getSeasonSignals, findPhaseIdByTitle, type EntitySignals } from '@sports/db';
 import type { ScrapedStanding, ScrapeResult } from '@sports/shared-types';
 import { createLogger } from '@sports/logger';
 import { RefResolver } from './ref-resolver.js';
@@ -57,6 +57,13 @@ export async function loadStandings(
   // el resolver podía aceptar un equipo homónimo de OTRO género/categoría por
   // slug — fusión silenciosa. El loader de partidos ya las pasaba; standings no.
   const signals: EntitySignals = await getSeasonSignals(seasonId);
+  // A7: la tabla se liga a la fase cuyo título publica la fuente encima.
+  const phaseCache = new Map<string, string | null>();
+  const phaseFor = async (title: string | undefined): Promise<string | null> => {
+    if (!title) return null;
+    if (!phaseCache.has(title)) phaseCache.set(title, await findPhaseIdByTitle(seasonId, title));
+    return phaseCache.get(title) ?? null;
+  };
 
   // Agrupar por group_name para transacciones por grupo
   const groups = new Map<string, typeof items>();
@@ -73,7 +80,7 @@ export async function loadStandings(
       // teams en distinto orden son la receta del deadlock; con el mismo orden,
       // el segundo espera en fila en vez de bloquearse mutuamente. Además saca
       // las queries de resolución fuera del lock de escritura.
-      const resolved: Array<{ raw: ScrapedStanding; teamId: string }> = [];
+      const resolved: Array<{ raw: ScrapedStanding; teamId: string; phaseId: string | null }> = [];
       for (const raw of groupItems) {
         // "DESCANSO" no es un equipo: es el bye de las ligas impares. Si se
         // intenta resolver, el grupo entero falla y la tabla no se refresca.
@@ -87,7 +94,7 @@ export async function loadStandings(
         // cascada normal del resolver (ahora con señales y fuente, #194).
         const teamId = (await findTeamInSeasonByName(seasonId, raw.teamRef, raw.abbreviation))
           ?? await resolver.resolveTeam(raw.teamRef, raw.sourceId, signals);
-        resolved.push({ raw, teamId });
+        resolved.push({ raw, teamId, phaseId: await phaseFor(raw.phaseTitle) });
       }
       resolved.sort((a, b) => a.teamId.localeCompare(b.teamId));
       if (resolved.length === 0) {
@@ -101,7 +108,7 @@ export async function loadStandings(
         let attempted = 0;
         try {
           await withTransaction(async (client) => {
-            for (const { raw, teamId } of resolved) {
+            for (const { raw, teamId, phaseId } of resolved) {
               // La tabla trae la abreviatura del equipo (`.mobile`): rellena
               // `short_name` si está vacío (es lo que ve el usuario en listas).
               const abbr = (raw.abbreviation ?? '').trim();
@@ -119,6 +126,7 @@ export async function loadStandings(
                 seasonId,
                 teamId,
                 groupName: raw.groupName,
+                phaseId,
                 position: raw.position,
                 played: raw.played,
                 won: raw.won,
@@ -145,13 +153,19 @@ export async function loadStandings(
             // temporada anterior (a veces con otro team_id para el mismo
             // nombre). Sin este borrado quedan duplicados visibles.
             const groupKey = groupName === '_default' ? null : groupName;
-            await client.query(
-              `DELETE FROM standings
-                WHERE season_id = $1
-                  AND COALESCE(group_name, '') = COALESCE($2, '')
-                  AND NOT (team_id = ANY($3::uuid[]))`,
-              [seasonId, groupKey, resolved.map((r) => r.teamId)],
-            );
+            // A7: la limpieza se acota a las FASES que trae esta pasada. Una
+            // fase que la fuente ya no publica conserva su tabla.
+            const phases = [...new Set(resolved.map((r) => r.phaseId ?? ''))];
+            for (const ph of phases) {
+              await client.query(
+                `DELETE FROM standings
+                  WHERE season_id = $1
+                    AND COALESCE(group_name, '') = COALESCE($2, '')
+                    AND COALESCE(phase_id::text, '') = $4
+                    AND NOT (team_id = ANY($3::uuid[]))`,
+                [seasonId, groupKey, resolved.filter((r) => (r.phaseId ?? '') === ph).map((r) => r.teamId), ph],
+              );
+            }
           });
           upserted += attempted;
           break;

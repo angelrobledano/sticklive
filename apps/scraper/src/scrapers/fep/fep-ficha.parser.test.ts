@@ -568,3 +568,54 @@ describe('parseLineups — la FEP no cambia', () => {
     }
   });
 });
+
+/**
+ * Espacio de nombres por portal (A1, análisis OKMob 22/10/2026).
+ *
+ * Cada portal sidgad numera a sus jugadores por separado: Martí Serra Molist
+ * es 4095 en RFEP y 14782 en FECAPA, y el 14782 de RFEP es OTRA persona. Con
+ * `fep_player_` para todos los portales, el alta por ref fusionaba personas.
+ */
+describe('refs de jugador por portal (A1)', () => {
+  const html = load('fecapa-acta-164291');
+
+  it('el acta usa el prefijo de jugador del portal que se le pasa', () => {
+    const events = parseFicha(html, '164291', { playerPrefix: 'fecapa_player_' });
+    const refs = events.map((e) => e.playerSourceRef).filter(Boolean) as string[];
+    expect(refs.length).toBeGreaterThan(0);
+    expect(refs.every((r) => /^fecapa_player_\d+$/.test(r))).toBe(true);
+  });
+
+  it('las alineaciones también', () => {
+    const lineups = parseLineups(html, '164291', { playerPrefix: 'fecapa_player_' });
+    const refs = lineups.map((l) => l.playerSourceRef).filter(Boolean) as string[];
+    expect(refs).toContain('fecapa_player_14782');
+    expect(refs.every((r) => r.startsWith('fecapa_player_'))).toBe(true);
+  });
+
+  it('sin prefijo explícito se conserva fep_player_ (refs RFEP ya cargadas)', () => {
+    const lineups = parseLineups(html, '164291');
+    expect(lineups.map((l) => l.playerSourceRef)).toContain('fep_player_14782');
+  });
+});
+
+/**
+ * FECAPA mete la categoría de licencia en un <spam> dentro del nombre del
+ * jugador de la tabla de incidencias: `<spam>OKL </spam>SERRA MOLIST`. Se
+ * colaba en el apellido ("MARTÍ OKL SERRA MOLIST") (A3).
+ */
+describe('nombre sin la etiqueta de licencia de FECAPA (A3)', () => {
+  it('las alineaciones no arrastran la licencia al nombre', () => {
+    const lineups = parseLineups(load('fecapa-acta-164291'), '164291');
+    const players = lineups.filter((l) => l.playerSourceRef);
+    expect(players.length).toBeGreaterThan(0);
+    expect(players.map((l) => l.playerName)).toContain('SERRA MOLIST MARTÍ');
+    expect(players.some((l) => /^(OKL|JUNU|NACC)\s/.test(l.playerName))).toBe(false);
+  });
+
+  it('el nombre de pila sigue saliendo del acta', () => {
+    const lineups = parseLineups(load('fecapa-acta-164291'), '164291');
+    const serra = lineups.find((l) => l.playerSourceRef?.endsWith('_14782'));
+    expect(serra?.playerFirstName).toBe('MARTÍ');
+  });
+});

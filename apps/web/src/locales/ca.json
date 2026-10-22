@@ -302,6 +302,7 @@
     "waiting_start_body": "Els gols, faltes i targetes apareixeran aquí tan bon punt comenci a rodar la bola a la pista.",
     "historic_title": "Partit històric",
     "historic_body": "D'aquest partit en guardem el resultat oficial. L'acta detallada (gols, targetes, alineacions) no està disponible per a partits d'arxiu.",
+    "partial_acta": "L'acta oficial d'aquest partit és incompleta: els gols registrats no sumen el resultat final.",
     "report_pending_title": "Acta pendent de sincronització",
     "report_pending_body": "L'acta digital detallada d'aquest partit està pendent de sincronització. El marcador global és oficial i definitiu.",
     "overtime": "Pròrroga {n}",

@@ -20,13 +20,13 @@
  */
 
 /** Portal del CDN de fichas. */
-export type PhotoArea = 'rfep' | 'worldskate';
+import { playerIdFromRef, sourceByKey } from '../../scraper/src/core/sources.js';
+export type PhotoArea = string;
 
-/** Base del CDN de fichas por portal (mismo host, carpeta distinta). */
-export const PHOTO_CDNS: Record<PhotoArea, string> = {
-  rfep: 'https://sidgad.cloud/rfep/images/fichas',
-  worldskate: 'https://sidgad.cloud/worldskate/images/fichas',
-};
+/** Base del CDN de fichas por portal (mismo host, carpeta = portal sidgad). */
+export const PHOTO_CDNS = new Proxy({} as Record<string, string> & { rfep: string; worldskate: string }, {
+  get: (_t, portal: string) => `https://sidgad.cloud/${portal}/images/fichas`,
+});
 
 /** Índice máximo de variante `{id}_{n}.jpg` que se sondea. */
 export const MAX_PHOTO_INDEX = 6;
@@ -73,6 +73,21 @@ export function photoAreaForTeamRefs(teamRefs: readonly (string | null | undefin
 export function idNumFromSourceRef(sourceRef: string): string | null {
   const m = /^fep_player_([A-Za-z0-9]+)$/.exec(sourceRef);
   return m?.[1] ?? null;
+}
+
+/**
+ * Id y carpeta del CDN de un jugador a partir de su ref (A1). Con refs por
+ * portal (`fecapa_player_14782`) la carpeta sale de la propia ref. Las
+ * `fep_player_` heredadas siguen decidiendo por sus equipos (World Skate).
+ */
+export function photoTargetFromRef(
+  sourceRef: string,
+  teamRefs: readonly (string | null | undefined)[],
+): { idNum: string; area: PhotoArea } | null {
+  const parsed = playerIdFromRef(sourceRef);
+  if (!parsed) return null;
+  if (parsed.sourceKey === 'fep') return { idNum: parsed.id, area: photoAreaForTeamRefs(teamRefs) };
+  return { idNum: parsed.id, area: sourceByKey(parsed.sourceKey).client.portalPrefix };
 }
 
 /** Comprueba si una URL de foto existe (inyectable: red en producción, fake en test). */

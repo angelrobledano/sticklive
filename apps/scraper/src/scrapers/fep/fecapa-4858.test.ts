@@ -67,6 +67,10 @@ describe('FECAPA 4858 — clasificación', () => {
     expect(standings.filter((s) => s.groupName === 'C')).toHaveLength(4);
   });
 
+  it('cada fila lleva el título de su fase, para ligarla a ella (A7)', () => {
+    expect(new Set(standings.map((s) => s.phaseTitle))).toEqual(new Set(['FASE DE GRUPS FRIT RAVICH LLIGA CATALANA']));
+  });
+
   it('extrae posición, puntos y goles del primer clasificado del grupo A', () => {
     const igualada = standings.find((s) => s.teamRef === 'IGUALADA HC');
     expect(igualada).toMatchObject({
@@ -86,5 +90,25 @@ describe('FECAPA 4858 — clasificación', () => {
     const withLogo = standings.find((s) => s.logoUrl);
     expect(withLogo?.logoUrl).toContain('/fecapa/images/logos_clubes/');
     expect(withLogo?.logoUrl).not.toContain('//logos_clubes');
+  });
+});
+
+/**
+ * A1: el calendario de un portal autonómico emite refs con SU portal. Antes
+ * la final de la Lliga Catalana entró como `fep_match_164291` y el directo y
+ * el barrido de fichas la habrían pedido al portal de RFEP.
+ */
+describe('FECAPA 4858 — refs del calendario con el portal FECAPA (A1)', () => {
+  it('partidos y fases llevan el prefijo fecapa_', async () => {
+    const { FepCalendarScraper } = await import('./fep-calendar.scraper.js');
+    const { sourceForPortal } = await import('../../core/sources.js');
+    const scraper = new FepCalendarScraper({ idc: '4858', seasonId: 's', source: sourceForPortal('fecapa') });
+    const matches = (scraper as unknown as {
+      parseCalendar(h: string, idc: string, s: string): Array<{ sourceRef?: string; phaseRef?: string }>;
+    }).parseCalendar(calendarHtml, '4858', 's');
+    const refs = matches.map((m) => m.sourceRef).filter(Boolean) as string[];
+    expect(refs.length).toBeGreaterThan(0);
+    expect(refs.every((r) => r.startsWith('fecapa_match_'))).toBe(true);
+    expect(matches.every((m) => !m.phaseRef || m.phaseRef.startsWith('fecapa_fase_'))).toBe(true);
   });
 });

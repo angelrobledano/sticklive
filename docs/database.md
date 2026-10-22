@@ -52,6 +52,10 @@ players ──< team_players
 - **`competition_sources`** — configuración por fuente/competición (`idc`, portal, timezone). Es lo que itera el cron en producción: alta de liga = un INSERT.
 - **Entity Resolution** — `source_entity_map` (ID de fuente → club o equipo, FK polimórfica), `team_aliases` (nombre normalizado → team, índice GIN de trigramas), `resolution_queue` (cola HITL). `teams.source_ref`/`alt_source_refs` coexisten con el mapa.
 - **`players` / `team_players`** — jugadores y plantillas; las plantillas se reconstruyen desde las actas.
+- **Refs por portal (081, A1)** — cada portal sidgad numera aparte: las refs llevan el portal (`fecapa_player_`, `wse_player_`, `fecapa_match_`, `fecapa_competition_`). RFEP conserva `fep_`. `apply_portal_namespacing()` renombra lo ya cargado y es re-ejecutable. Ver [runbook-identidad-por-portal.md](./runbook-identidad-por-portal.md).
+- **`season_teams.source_ref` (082, A5)** — id de inscripción de la fuente (`teamId` sidgad) de ESA temporada, único por temporada. El `RefResolver` lo consulta antes que `alt_source_refs`.
+- **`standings.phase_id` (083, A7)** — la clasificación se liga a su fase por el título de la fuente. Unicidad `(season_id, team_id, phase_id, group_name)`. Sin `phaseId`, `getStandings` sirve la última fase.
+- **Clubes (A4)** — `ensureClubForTeam` cuelga cada equipo de su club por el id de club sidgad (el fichero del escudo, `logos_clubes/322.png`), registrado en `source_entity_map`. Backfill: `backfill-clubs-by-crest.ts`.
 
 ## Calidad de datos / visibilidad (migraciones 064 y 067)
 

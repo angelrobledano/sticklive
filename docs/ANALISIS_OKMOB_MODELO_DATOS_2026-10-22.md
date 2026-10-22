@@ -1,6 +1,6 @@
 # OKMob frente a Stick Live: modelo de datos, identidad y scraping
 
-**Fecha:** 22/10/2026
+**Fecha:** 22/10/2026 · **Estado:** A1–A5 y A7 implementados en la rama `feat/identidad-por-portal` (ver [runbook](./runbook-identidad-por-portal.md)). A6 descartado: ya existía.
 **Alcance:** diagnóstico y propuesta. No se ha modificado código, esquema, migraciones ni datos.
 **Fuentes de evidencia:**
 
@@ -264,7 +264,7 @@ Stick Live tiene un sistema más robusto en transporte (SSE + LISTEN/NOTIFY), en
 
 | Riesgo | Evidencia | Confianza |
 |---|---|---|
-| **Eventos huérfanos tras una corrección del acta.** La ref de evento se deriva de periodo, crono, tipo y lado. Si el árbitro corrige el minuto o el autor de un gol, entra una ref nueva y la vieja se queda: no hay ningún `DELETE` ni marca de "ya no está en el acta" en scraper o ETL (solo `UPDATE` en `repair-section-teams.ts` y `cleanup-intruder-team-events.ts`). Resultado posible: gol duplicado en cronología, estadísticas y push. | Código | V el mecanismo, H la frecuencia |
+| ~~Eventos huérfanos tras una corrección del acta~~. **Corregido el 22/10:** no es un riesgo. `replaceMatchEvents` (`packages/db/src/queries/matches.ts`) borra los eventos del partido que la última acta ya no lista, con test de integración (`borra los eventos que el acta ya no lista`). En el análisis solo se buscó en `apps/`. | Código | V |
 | **Eventos asociados al jugador equivocado** por la colisión de refs de jugador (sección 5.3). Afecta a goleadores, tarjetas y push de favoritos en competiciones World Skate y FECAPA. | Datos de producción | V |
 | **Pertenencias de plantilla espurias.** Marc Grau "juega" con Argentina en el Mundial (`jerseyNumber` null, 0 PJ). La guarda #216 compara `teams.source_ref` con la ref del acta, que tampoco lleva portal. | Datos de producción | V el síntoma, H la causa |
 | Incoherencia de PJ: la ficha de Marc Grau da 4 PJ en `career` y 6 en `statsByCompetition` | API | V, causa no investigada |
@@ -298,7 +298,7 @@ El desajuste club/equipo del feed `rfep_mc_1.php` (incidencia del 21/06) está r
 | Competiciones y fases | Plano por títulos | `calendar`, `standings` | `phases` explícitas (072) | Ventaja nuestra | Positivo | — | Mantener | — | V |
 | Clasificaciones | Por título/grupo, zonas por regex en cliente | `standings.json`, `rules.json` | Por temporada y grupo, sin fase ni zonas | Faltan zonas y fase | Sin ascenso/descenso visibles, dos liguillas seguidas imposibles | Falta concepto | `standings.phase_id` + reglas por competición/temporada | P2 | V |
 | Estadísticas | Por competición y grupo | `profiles`, `scorers` | Por temporada y competición | Contaminadas en WS/FECAPA | Rankings falsos | Fusión de jugadores | Se arregla con P0 | P0 | V |
-| Directo | Snapshots versionados con `ev`/`stale` | `board.json`, `live/x` | SSE + NOTIFY, estados por fuente | Sin poda de eventos corregidos, sin señal de exhaustividad | Posibles goles duplicados | Refs de contenido sin reconciliación | Marcar eventos ausentes en la última acta | P2 | V mecanismo, H frecuencia |
+| Directo | Snapshots versionados con `ev`/`stale` | `board.json`, `live/x` | SSE + NOTIFY, estados por fuente, poda de eventos corregidos | Sin señal de exhaustividad visible | Bajo | — | Señal de exhaustividad (B5) | P3 | V |
 | Históricos | Arxiu por `temp` | `comps.temps` 39/41 | Volcado v1 en temporada "Histórico" + temporadas recientes | Temporada artificial | Mezcla de épocas en ficha | Volcado sin fechas ni temporadas | Reprocesar solo tras P1 de identidad | P3 | V |
 | Fuentes | 4 portales Sidgad | `comps`, `ticker?f=fisr` | 2 `SourceDef` + 5 portales vía env | Portales sin namespace | Riesgo en cada alta | `SourceDef` ausente para autonómicas | Un `SourceDef` por portal | **P0** | V |
 | Scraping y ETL | Worker + CDN | Estudio 03 | Staging, batches, redirects | Ventaja nuestra en recuperación | — | — | Mantener | — | V |
@@ -337,9 +337,7 @@ Coste: 4–6 días incluyendo panel. Riesgo: medio, por las fusiones (se hacen c
 Mover el `teamId` de Sidgad de `teams.alt_source_refs` a una ref scoped por temporada (en `season_teams` o en `source_entity_map` con `season_id`). `RefResolver` resuelve primero por (portal, temporada, teamId), luego por club + sección. Esto cierra #228 sin heurística.
 Coste: 3–4 días. Riesgo: medio, toca el camino caliente del ETL, conviene detrás de flag y con la suite de integración.
 
-**A6 · Reconciliar eventos que desaparecen del acta (P2, validar antes con V4).**
-Al procesar un acta completa, los eventos del partido cuya ref no esté en la captura se marcan como `superseded` (columna nueva o tabla de auditoría), se excluyen de API y estadísticas y no se borran. Solo para actas con `period_end` final, nunca a mitad de partido si la captura es parcial.
-Coste: 2 días. Riesgo: medio (directo), por eso va detrás de la medición.
+**A6 · Eventos que desaparecen del acta.** Descartado tras revisar `packages/db`: ya está resuelto (ver §7.2).
 
 **A7 · `standings.phase_id` (P2).** Limitación ya documentada. Necesaria para reglamento (B2) y para formatos con dos liguillas. Coste: 1–2 días.
 

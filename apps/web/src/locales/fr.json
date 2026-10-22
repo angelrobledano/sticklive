@@ -213,6 +213,7 @@
     "waiting_start_body": "Les buts, fautes et cartons apparaîtront ici dès que la balle roulera sur la piste.",
     "historic_title": "Match d'archive",
     "historic_body": "Pour ce match, nous conservons le résultat officiel. La feuille détaillée (buts, cartons, compositions) n'est pas disponible pour les matchs d'archive.",
+    "partial_acta": "La feuille de match officielle est incomplète : les buts enregistrés ne correspondent pas au score final.",
     "report_pending_title": "Feuille de match en attente de synchronisation",
     "report_pending_body": "La feuille de match détaillée est en attente de synchronisation. Le score global est officiel et définitif.",
     "overtime": "Prolongation {n}",
