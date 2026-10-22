@@ -17,7 +17,6 @@ import { EmptyState } from '@/src/components/shared/EmptyState';
 import { CompetitionDetailSkeleton } from '@/src/components/shared/Skeleton';
 import { ShareHeaderButton } from '@/src/components/shared/ShareHeaderButton';
 import { AdBanner } from '@/src/components/ads/AdBanner';
-import { formatDayLabel, formatKickoff, isEffectivelyLive } from '@/src/lib/time';
 import { clubName } from '@/src/lib/names';
 import {
   type MainTab,
@@ -27,10 +26,10 @@ import {
 } from '@/src/lib/season-phases';
 import { buildCompetitionSummary } from '@/src/lib/content-summary';
 import { CompetitionSummary } from '@/src/components/competition/CompetitionSummary';
+import { GameweeksTab } from '@/src/components/competition/GameweeksTab';
 import { PlayoffsTab } from '@/src/components/competition/PlayoffsTab';
 import { StatsLeadersTab } from '@/src/components/competition/StatsLeadersTab';
 import type {
-  SeasonOverviewMatch,
   SeasonOverviewStandingRow,
 } from '@/src/lib/api/types';
 
@@ -41,7 +40,7 @@ export default function CompetitionScreen() {
   const params = useLocalSearchParams<{ id: string; seasonId?: string }>();
   const competitionId = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
 
   // Metadatos básicos de la competición
   const competitionsQuery = useCompetitions();
@@ -102,25 +101,6 @@ export default function CompetitionScreen() {
     }
     return visibleTabs[0] ?? 'Clasificación';
   }, [selectedTab, visibleTabs]);
-
-  // Filtro de jornada en pestaña Jornadas
-  const [selectedRound, setSelectedRound] = useState<number | null>(null);
-
-  const overviewRounds = overview?.rounds;
-  const regularRounds = useMemo(() => {
-    if (!overviewRounds) return [];
-    return overviewRounds
-      .filter((r) => r.roundType === 'regular')
-      .sort((a, b) => a.number - b.number);
-  }, [overviewRounds]);
-
-  const overviewMatches = overview?.matches;
-  const regularMatches = useMemo(() => {
-    if (!overviewMatches) return [];
-    const regs = overviewMatches.filter((m) => m.roundType === 'regular');
-    if (selectedRound === null) return regs;
-    return regs.filter((m) => m.roundNumber === selectedRound);
-  }, [overviewMatches, selectedRound]);
 
   // Equipos participantes para la sección final
   const participatingTeams = useMemo(() => {
@@ -422,137 +402,8 @@ export default function CompetitionScreen() {
         ) : null}
 
         {/* PESTAÑA: JORNADAS */}
-        {activeTab === 'Jornadas' ? (
-          <View className="pt-2">
-            {/* Filtro de jornadas */}
-            {regularRounds.length > 1 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mx-3 mt-1 mb-2">
-                <View className="flex-row gap-1.5">
-                  <Pressable
-                    onPress={() => setSelectedRound(null)}
-                    className={`rounded-full px-3 py-1 ${
-                      selectedRound === null
-                        ? 'bg-rink-passion dark:bg-accent'
-                        : 'border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-semibold ${
-                        selectedRound === null
-                          ? 'text-white dark:text-slate-900'
-                          : 'text-slate-600 dark:text-slate-300'
-                      }`}
-                    >
-                      {t('competitions.tab_all') ?? 'Todas'}
-                    </Text>
-                  </Pressable>
-                  {regularRounds.map((r) => {
-                    const isSelected = selectedRound === r.number;
-                    return (
-                      <Pressable
-                        key={r.id}
-                        onPress={() => setSelectedRound(r.number)}
-                        className={`rounded-full px-3 py-1 ${
-                          isSelected
-                            ? 'bg-rink-passion dark:bg-accent'
-                            : 'border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
-                        }`}
-                      >
-                        <Text
-                          className={`text-xs font-semibold ${
-                            isSelected
-                              ? 'text-white dark:text-slate-900'
-                              : 'text-slate-600 dark:text-slate-300'
-                          }`}
-                        >
-                          {r.name ?? `J${r.number}`}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </ScrollView>
-            ) : null}
-
-            {regularMatches.length === 0 ? (
-              <EmptyState title={t('team.no_season_matches')} />
-            ) : (
-              <View className="px-3">
-                {regularMatches.map((m: SeasonOverviewMatch) => {
-                  const live = isEffectivelyLive(m.status, m.scheduledAt);
-                  const isFinal = m.status === 'finished';
-                  const dateLabel = formatDayLabel(m.scheduledAt, locale);
-                  const when = isFinal
-                    ? dateLabel
-                      ? `${t('match_states.final')} · ${dateLabel}`
-                      : t('match_states.final')
-                    : live
-                      ? ''
-                      : formatKickoff(m.scheduledAt);
-
-                  return (
-                    <Pressable
-                      key={m.id}
-                      onPress={() => router.push(`/match/${m.id}`)}
-                      className="mb-2 rounded-xl border border-slate-100 bg-white p-3 shadow-xs active:opacity-75 dark:border-slate-800 dark:bg-slate-900"
-                    >
-                      <View className="flex-row items-center justify-between">
-                        <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                          {m.roundName ?? (m.roundNumber ? `Jornada ${m.roundNumber}` : when)}
-                        </Text>
-                        {live ? (
-                          <View className="flex-row items-center gap-1 rounded-full bg-live-deep px-2 py-0.5">
-                            <View className="h-1.5 w-1.5 rounded-full bg-white" />
-                            <Text className="text-xs font-bold text-white">
-                              {t('match_states.live')}
-                            </Text>
-                          </View>
-                        ) : (
-                          <Text className="text-xs text-slate-500">{when}</Text>
-                        )}
-                      </View>
-
-                      <View className="mt-2 flex-row items-center justify-between">
-                        <View className="flex-1 flex-row items-center pr-1">
-                          <Avatar
-                            uri={teamLogoUri(m.homeTeam.id, 64)}
-                            fallbackUri={m.homeTeam.logoUrl}
-                            name={m.homeTeam.name}
-                            size={24}
-                          />
-                          <Text
-                            numberOfLines={1}
-                            className="ml-2 flex-1 text-sm font-semibold text-slate-800 dark:text-slate-100"
-                          >
-                            {clubName(m.homeTeam.name) || m.homeTeam.shortName || m.homeTeam.name}
-                          </Text>
-                        </View>
-                        <Text className="px-3 font-mono text-base font-extrabold tabular-nums text-slate-900 dark:text-slate-50">
-                          {live || isFinal
-                            ? `${m.score.home ?? 0} - ${m.score.away ?? 0}`
-                            : 'vs'}
-                        </Text>
-                        <View className="flex-1 flex-row items-center justify-end pl-1">
-                          <Text
-                            numberOfLines={1}
-                            className="mr-2 flex-1 text-right text-sm font-semibold text-slate-800 dark:text-slate-100"
-                          >
-                            {clubName(m.awayTeam.name) || m.awayTeam.shortName || m.awayTeam.name}
-                          </Text>
-                          <Avatar
-                            uri={teamLogoUri(m.awayTeam.id, 64)}
-                            fallbackUri={m.awayTeam.logoUrl}
-                            name={m.awayTeam.name}
-                            size={24}
-                          />
-                        </View>
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-          </View>
+        {activeTab === 'Jornadas' && overview ? (
+          <GameweeksTab rounds={overview.rounds} matches={overview.matches} />
         ) : null}
 
         {/* PESTAÑA: ESTADÍSTICAS */}
