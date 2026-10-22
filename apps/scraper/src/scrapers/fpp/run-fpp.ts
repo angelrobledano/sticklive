@@ -13,6 +13,7 @@ import * as Sentry from '@sentry/node';
 import { createLogger } from '@sports/logger';
 import type { FppCompetition } from './fpp-catalog.js';
 import { scrapeFppCompetition, FPP_SCRAPER_KEY, type FppScrapeOutput } from './fpp.scraper.js';
+import { runFppFichas } from './fpp-ficha.js';
 
 const log = createLogger({ service: 'fpp' });
 
@@ -96,6 +97,18 @@ export async function runFpp(ctx: FppCtx, makePipeline: FppPipelineFactory): Pro
   const r = await pipeline.runRounds(out.rounds);
   const m = await pipeline.runMatches(out.matches);
   const s = out.standings.data.length > 0 ? await pipeline.runStandings(out.standings) : { upserted: 0 };
+  // La ficha (/jogo, /jogoTaca) aparece cuando se juega el partido, pero el
+  // upsert común de partidos NO reescribe source_url en conflicto (lo fija el
+  // alta). Sin esto, un partido creado antes de jugarse nunca descubre su ficha.
+  const withFicha = out.matches.data.filter((x) => x.sourceRef && /\/jogo(Taca)?\/\d+$/.test(x.sourceUrl ?? ''));
+  if (withFicha.length > 0) {
+    await db.query(
+      `UPDATE matches m SET source_url = v.url, updated_at = NOW()
+         FROM unnest($1::text[], $2::text[]) AS v(ref, url)
+        WHERE m.source_ref = v.ref AND m.source_url IS DISTINCT FROM v.url`,
+      [withFicha.map((x) => x.sourceRef!), withFicha.map((x) => x.sourceUrl!)],
+    );
+  }
   log.info(
     { competition: ctx.comp.name, rounds: r.upserted, matchesFound: out.matches.data.length,
       matchesUpserted: m.upserted, standingsUpserted: s.upserted },
@@ -118,6 +131,13 @@ export async function runAllFpp(makePipeline: FppPipelineFactory): Promise<numbe
       log.warn({ err, competition: ctx.comp.name }, 'FPP falló — sigue con la siguiente');
       Sentry.captureException(err, { fingerprint: ['fpp-run-fail', ctx.comp.key], tags: { source: 'fpp' } });
     }
+  }
+  // Fichas (alineación + timeline) de los terminados, después del calendario:
+  // así un partido que acaba de pasar a 'finished' tiene su ficha en la misma pasada.
+  try {
+    await runFppFichas();
+  } catch (err) {
+    log.warn({ err }, 'Fichas FPP fallaron (el calendario ya está cargado)');
   }
   return total;
 }

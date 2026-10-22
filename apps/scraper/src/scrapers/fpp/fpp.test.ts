@@ -18,7 +18,7 @@ describe('parseFppCalendar', () => {
     expect(rows[0]).toMatchObject({
       numero: '3', roundLabel: '1ª Jornada', date: '2026-11-08', time: '16:00',
       homeName: 'J. Pacense / Des Compagnons', awayName: 'AJ Viana',
-      homeScore: null, awayScore: null, jogoId: null,
+      homeScore: null, awayScore: null, jogoPath: null,
     });
     expect(rows[0]!.homeEquipaId).toMatch(/^\d+$/);
   });
@@ -28,7 +28,7 @@ describe('parseFppCalendar', () => {
     expect(rows[0]).toMatchObject({
       numero: '3', date: '2024-10-20', time: '18:00',
       homeName: 'UD Oliveirense / Simoldes', awayName: "Riba d' Ave HC / CSJ Group",
-      homeScore: 2, awayScore: 0, jogoId: '10522', homeEquipaId: '248', awayEquipaId: '423',
+      homeScore: 2, awayScore: 0, jogoPath: '/jogo/10522', homeEquipaId: '248', awayEquipaId: '423',
     });
     expect(rows.every((r) => r.homeScore !== null)).toBe(true);
   });
@@ -89,7 +89,7 @@ describe('buildFppCompetition', () => {
       section: section(c), standings: [],
       calendar: [{ numero: '1', roundLabel: '1ª Jornada', date: '2026-09-20', time: '18:00',
         homeName: 'A', awayName: 'B', homeEquipaId: null, awayEquipaId: null,
-        homeScore: null, awayScore: null, jogoId: null, docIndex: 0 }],
+        homeScore: null, awayScore: null, jogoPath: null, docIndex: 0 }],
     }], ctx);
     expect(out.matches[0]!.scheduledAt).toBe('2026-09-20T17:00:00.000Z');
   });
@@ -98,7 +98,7 @@ describe('buildFppCompetition', () => {
     const c = comp('campeonato-placard');
     const row = { numero: '1', roundLabel: '1ª Jornada', date: '2026-10-22', time: '19:00',
       homeName: 'A', awayName: 'B', homeEquipaId: null, awayEquipaId: null,
-      homeScore: 3, awayScore: 2, jogoId: null, docIndex: 0 };
+      homeScore: 3, awayScore: 2, jogoPath: null, docIndex: 0 };
     const mk = (now: string) => buildFppCompetition(c, [{ section: section(c), standings: [], calendar: [row] }],
       { ...ctx, now: new Date(now) }).matches[0]!;
     // En juego (marcador provisional en el calendario) → sin señal ni marcador.

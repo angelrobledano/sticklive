@@ -33,8 +33,8 @@ export interface FppCalendarRow {
   awayEquipaId: string | null;
   homeScore: number | null;
   awayScore: number | null;
-  /** id de la ficha (/jogo/{id}) cuando existe. */
-  jogoId: string | null;
+  /** Ruta de la ficha cuando existe: `/jogo/{id}` (liga) o `/jogoTaca/{id}` (copas). */
+  jogoPath: string | null;
   /** Orden en el documento. */
   docIndex: number;
 }
@@ -104,7 +104,7 @@ export function parseFppCalendar(html: string): FppCalendarRow[] {
     const awayName = cleanName(away.find('p').first().text());
 
     const res = /(\d+)\s*-\s*(\d+)/.exec($tr.find('td.coluna-resultado').text());
-    const jogo = /\/jogo\/(\d+)/i.exec($tr.find('td.coluna-opcoes a').attr('href') ?? '');
+    const jogo = /\/jogo(?:Taca)?\/\d+/i.exec($tr.find('td.coluna-opcoes a').attr('href') ?? '');
 
     rows.push({
       numero,
@@ -117,7 +117,7 @@ export function parseFppCalendar(html: string): FppCalendarRow[] {
       awayEquipaId: equipaIdOf(away.find('a').attr('href')),
       homeScore: res ? Number(res[1]) : null,
       awayScore: res ? Number(res[2]) : null,
-      jogoId: jogo ? jogo[1]! : null,
+      jogoPath: jogo ? jogo[0] : null,
       docIndex: docIndex++,
     });
   });

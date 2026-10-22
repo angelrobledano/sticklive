@@ -7,14 +7,17 @@ es un PHP propio renderizado en servidor, sin API.
 |---|---|
 | `/Competicao/{id}` | calendario completo (jornadas, fecha y hora local, marcador, enlace a la ficha) |
 | `/Classificacao/{id}` | clasificación (P J V E D GM GS DG) y escudo `CLUBE_{clubId}.png` |
-| `/jogo/{id}` | ficha: alineaciones con foto, técnicos y árbitros (v2) |
-| `/Views/ajax_jogo.php?…&token=` | timeline: goles, tarjetas, faltas, tiempos muertos (v2; el token sale de `/jogo/{id}`) |
+| `/jogo/{id}` · `/jogoTaca/{id}` | ficha (liga · copas): alineaciones con foto, técnicos, árbitros, faltas de equipo |
+| `/Views/ajax_jogo.php?…&token=` | timeline: goles, penaltis, libres directos, tarjetas, faltas, tiempos muertos (el token sale de la ficha) |
 | `/Direto` | partidos del día, se refresca cada 15 s (v3, directo) |
 
-## Alcance v1
+## Alcance
 
-Calendario, resultados y clasificación de las 18 secciones de 2026/27,
-agrupadas en 10 competiciones de Stick Live. Sin ficha, sin timeline, sin directo.
+- **v1:** calendario, resultados y clasificación de las 18 secciones de 2026/27,
+  agrupadas en 10 competiciones de Stick Live.
+- **v2 (ficha):** alineaciones con foto y titulares, técnicos, árbitros, faltas
+  de equipo y timeline completo de cada partido terminado.
+- Sin directo todavía (v3).
 
 | Competición | ids FPP |
 |---|---|
@@ -45,6 +48,32 @@ agrupadas en 10 competiciones de Stick Live. Sin ficha, sin timeline, sin direct
   (`FINISHED_GRACE_MIN`). Nunca se declara "en juego" por reloj.
 - **Cruces sin decidir** ("Vencedor Jogo 1557"): no generan partido. La ronda se
   crea igualmente y el partido aparece cuando la FPP publica los equipos.
+
+## Ficha y timeline (v2)
+
+`fpp-ficha.parser.ts` (puro) + `fpp-ficha.ts` (E/S). Corre al final de cada
+`--run-once fpp`, después del calendario.
+
+- **Qué partidos:** los FPP `finished` con ficha publicada que aún no tienen
+  alineación, y los de las últimas 36 h como mucho cada 2 h (la FPP corrige
+  actas). Máximo `FPP_FICHAS_MAX` (120) por pasada, 2 GET por partido.
+- **Jugador = id federativo** de su foto (`FED_85963.jpg` → `fpp_player_85963`),
+  el mismo en alineación y timeline: vinculación exacta, sin nombres. La foto
+  se guarda tal cual: el verificador `update-player-photos` no toca las refs `fpp_`.
+- **Lado:** visitante = fila alineada a la derecha (`justify-content-end`). El
+  `alt` "Jogador Equipa 1/2" miente en las tarjetas a técnicos.
+- **Crono:** tiempo restante de la parte, como en la FEP. Las partes que vienen
+  tras "Prolongamento" son los periodos 3 y 4.
+- **Tipos:** `Golo` → gol · `Golo Penalti` → gol + penalti marcado ·
+  `Golo Livre Direto` → gol + libre directo marcado · `Penalti/Livre Direto
+  Falhado` · `Cartão Azul/Vermelho` · `Falta N` (falta de equipo, sin jugador) ·
+  `Desconto de Tempo`. El amarillo y la advertencia verbal no tienen equivalente.
+- **Calidad de la fuente:** sobre 299 partidos de 2025/26, los goles del timeline
+  cuadran con el marcador en el 93%. El resto son actas incompletas o goles
+  duplicados en origen (los duplicados exactos se quitan). `refresh_event_coverage`
+  marca esos partidos como `partial`.
+- **source_url:** el upsert común de partidos no reescribe `source_url`, así que
+  `run-fpp` la actualiza él mismo cuando aparece la ficha.
 
 ## Despliegue (primera vez)
 
@@ -89,6 +118,5 @@ Para ver los ids de la temporada: `https://hp.fpp.pt/` (menú "Competições 202
   Si la FPP publica la hora local de la pista y no la de Lisboa, esos partidos
   quedan desplazados 1 h. Hay que contrastarlo con un partido real en las Azores.
   Madeira tiene la misma hora que Lisboa.
-- v2: ficha (`/jogo`) y timeline AJAX → alineaciones, goleadores y tarjetas.
 - v3: directo con `/Direto` dentro de cron-live.
 - Histórico (`/Historico`, épocas 2024/25 y 2025/26 accesibles).

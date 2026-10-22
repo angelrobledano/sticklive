@@ -128,7 +128,7 @@ export function buildFppCompetition(
       competitionName: comp.name,
       sourceId: ctx.sourceId,
       sourceRef: fppMatchRef(section.fppId, row.numero),
-      sourceUrl: row.jogoId ? `${FPP_BASE_URL}/jogo/${row.jogoId}` : `${FPP_BASE_URL}/Competicao/${section.fppId}`,
+      sourceUrl: row.jogoPath ? `${FPP_BASE_URL}${row.jogoPath}` : `${FPP_BASE_URL}/Competicao/${section.fppId}`,
       scrapedAt,
       ...phaseFields(a.phaseRef),
       stage: round.stage,
