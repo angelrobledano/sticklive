@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, type DataQuality } from '@sports/db';
+import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, type DataQuality } from '@sports/db';
 import { logger } from '@sports/logger';
 import type { StandingsZone } from '@sports/shared-types';
 import { isUuid } from '../lib/uuid.js';
@@ -434,8 +434,19 @@ adminRouter.get('/resolution-queue', async (c) => {
   const status = c.req.query('status') ?? 'pending';
   const limit = Math.min(500, Math.max(1, parseInt(c.req.query('limit') ?? '100', 10) || 100));
   try {
-    const items = await listResolutionQueue(status, limit);
-    return c.json({ status, count: items.length, items });
+    const raw = await listResolutionQueue(status, limit);
+    // Cada ítem dice qué se pregunta: un nombre de la fuente sin equipo
+    // ("¿qué equipo es X?") o un par de equipos parecidos ("¿son el mismo?").
+    // Los candidatos llevan su ficha (escudo, sección, última temporada) para
+    // decidir sin abrir cada equipo.
+    const ids = [...new Set(raw.flatMap((i) => (i.candidates ?? []).map((cnd) => cnd.teamId)))]
+      .filter((x) => isUuid(x));
+    const teams = await describeTeams(ids);
+    const items = raw.map((i) => ({
+      ...i,
+      kind: (i.context as { kind?: string } | null)?.kind === 'team-duplicate' ? 'duplicate' : 'name',
+    }));
+    return c.json({ status, count: items.length, items, teams });
   } catch (err) {
     captureRouteError(err, 'admin] resolution-queue error');
     logger.error({ err }, '[admin] resolution-queue error');

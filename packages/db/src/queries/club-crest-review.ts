@@ -82,3 +82,36 @@ export async function listCrestReviewGroups(opts: { onlyIssues?: boolean } = {})
   }
   return out.sort((a, b) => ORDER[a.status] - ORDER[b.status] || b.teams.length - a.teams.length || a.key.localeCompare(b.key));
 }
+
+/** Ficha corta de equipos para los paneles de revisión (cola de equipos). */
+export interface TeamBrief {
+  id: string; name: string; logoUrl: string | null; gender: string | null; ageCategory: string | null;
+  clubName: string | null; matches: number; lastSeason: string | null; lastCompetition: string | null;
+}
+
+export async function describeTeams(ids: string[]): Promise<Record<string, TeamBrief>> {
+  if (ids.length === 0) return {};
+  const { rows } = await db.query<{
+    id: string; name: string; logo_url: string | null; gender: string | null; age_category: string | null;
+    club_name: string | null; matches: number; last_season: string | null; last_competition: string | null;
+  }>(`
+    SELECT t.id, t.name, t.logo_url, t.gender, t.age_category, cl.canonical_name AS club_name,
+           (SELECT count(*)::int FROM matches m WHERE m.home_team_id = t.id OR m.away_team_id = t.id) AS matches,
+           ls.name AS last_season, ls.competition AS last_competition
+      FROM teams t
+      LEFT JOIN clubs cl ON cl.id = t.club_id
+      LEFT JOIN LATERAL (
+        SELECT s.name, c.name AS competition
+          FROM matches m
+          JOIN seasons s ON s.id = m.season_id
+          JOIN competitions c ON c.id = s.competition_id
+         WHERE m.home_team_id = t.id OR m.away_team_id = t.id
+         ORDER BY m.scheduled_at DESC NULLS LAST
+         LIMIT 1
+      ) ls ON TRUE
+     WHERE t.id = ANY($1::uuid[])`, [ids]);
+  return Object.fromEntries(rows.map((r) => [r.id, {
+    id: r.id, name: r.name, logoUrl: r.logo_url, gender: r.gender, ageCategory: r.age_category, clubName: r.club_name,
+    matches: r.matches, lastSeason: r.last_season, lastCompetition: r.last_competition,
+  }]));
+}
