@@ -1,4 +1,12 @@
 {
+  "share_sheet": {
+    "button": "Compartir",
+    "title": "Compartir",
+    "image": "Imagen para redes",
+    "image_sub": "Historia o publicación para Instagram, WhatsApp…",
+    "link": "Enviar enlace",
+    "link_sub": "WhatsApp, Telegram o copiar"
+  },
   "squad_table": {
     "played": "Partidos jugados",
     "goals": "Goles",

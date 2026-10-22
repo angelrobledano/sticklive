@@ -9,8 +9,7 @@ import { TeamName } from '@/components/shared/TeamName';
 import { clubName } from '@/lib/names';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
-import { ShareButton } from '@/components/shared/ShareButton';
-import { ShareImageButton } from '@/components/shared/ShareImageButton';
+import { ShareSheet } from '@/components/shared/ShareSheet';
 import { TeamCalendar } from '@/components/team/TeamCalendar';
 import { TeamStatsStory } from '@/components/team/TeamStatsStory';
 import { SquadTable } from '@/components/team/SquadTable';
@@ -203,18 +202,17 @@ function TeamHeader({ data }: { data: TeamDetailView }) {
           )}
         </div>
 
-        {/* Compartir + Seguir/Siguiendo */}
-        <div className="flex items-center gap-1 shrink-0 self-start">
-          <ShareImageButton kind="team" entityId={team.id} name={clubName(team.name)} imagePath={`/teams/${team.id}/share-image`} />
-          <ShareButton kind="team" title={clubName(team.name)} />
-          <FavoriteStar
-            id={team.id}
-            kind="team"
-            name={team.shortName ?? team.name}
-            variant="button"
-          />
-          <ManageNotificationsButton kind="team" id={team.id} name={team.shortName ?? team.name} />
-        </div>
+      </div>
+
+      {/* Acciones: seguir (con su campana) y un único compartir. Antes eran
+          cuatro iconos sueltos montados sobre el nombre. */}
+      <div className="flex items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <FavoriteStar id={team.id} kind="team" name={team.shortName ?? team.name} variant="button" />
+        <ManageNotificationsButton kind="team" id={team.id} name={team.shortName ?? team.name} />
+        <ShareSheet
+          kind="team" entityId={team.id} name={clubName(team.name)} title={clubName(team.name)}
+          imagePath={`/teams/${team.id}/share-image`} className="ml-auto"
+        />
       </div>
 
       {/* Racha de últimos resultados */}
