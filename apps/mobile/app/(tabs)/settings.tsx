@@ -135,23 +135,6 @@ export default function SettingsScreen() {
         <Ionicons name="star-outline" size={20} color="#64748b" />
       </Pressable>
 
-      {/* Publicidad y privacidad (Plan D Task 3): re-consentimiento UMP —
-          la política pre-tráfico de Google exige un punto de gestión de las
-          opciones; funciona también para premium. */}
-      <Pressable
-        onPress={() => router.push('/settings/ads-privacy')}
-        accessibilityRole="button"
-        className="mx-4 mt-3 flex-row items-center justify-between rounded-xl bg-white p-4 active:opacity-70 dark:bg-slate-900"
-      >
-        <View className="flex-1 pr-2">
-          <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
-            {t('ads.privacy_entry_title')}
-          </Text>
-          <Text className="mt-0.5 text-sm text-slate-500">{t('ads.privacy_entry_desc')}</Text>
-        </View>
-        <Ionicons name="shield-outline" size={20} color="#64748b" />
-      </Pressable>
-
       {/* Apariencia: sistema/claro/oscuro (persistencia en ThemeContext) */}
       <View className="mx-4 mt-3 rounded-xl bg-white p-4 dark:bg-slate-900">
         <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
@@ -247,6 +230,22 @@ export default function SettingsScreen() {
           </View>
         </View>
       )}
+
+      {/* Publicidad y privacidad (Plan D Task 3): re-consentimiento UMP —
+          siempre al final de los ajustes (para usuarios anónimos y registrados). */}
+      <Pressable
+        onPress={() => router.push('/settings/ads-privacy')}
+        accessibilityRole="button"
+        className="mx-4 mt-3 flex-row items-center justify-between rounded-xl bg-white p-4 active:opacity-70 dark:bg-slate-900"
+      >
+        <View className="flex-1 pr-2">
+          <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            {t('ads.privacy_entry_title')}
+          </Text>
+          <Text className="mt-0.5 text-sm text-slate-500">{t('ads.privacy_entry_desc')}</Text>
+        </View>
+        <Ionicons name="shield-outline" size={20} color="#64748b" />
+      </Pressable>
     </ScrollView>
   );
 }
