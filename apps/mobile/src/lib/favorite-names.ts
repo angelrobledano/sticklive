@@ -4,15 +4,19 @@ import { qk } from '@/src/hooks/queries';
 import type { FavoriteKind } from '@/src/hooks/favorites';
 import type {
   CompetitionsResponse,
+  CompetitionSummary,
+  CurrentMatchesResponse,
   PlayerDetail,
   SearchResults,
+  SeasonOverview,
+  SeasonStats,
   StandingsResponse,
   TeamDetail,
 } from '@/src/lib/api/types';
 
 /**
  * Nombre visible de un favorito desde la CACHÉ persistida y queries ya visitadas
- * (fichas team/player, standings, competitions, search).
+ * (fichas team/player, standings, competitions, matches current, search).
  *
  * Los nombres resueltos se persisten en AsyncStorage bajo `favorites_names_cache_v1`
  * para garantizar que tras un reinicio de la app (arranque en frío) no se muestren
@@ -58,6 +62,8 @@ export const PLACEHOLDER_KEY: Record<FavoriteKind, string> = {
 };
 
 export function resolveFavoriteName(qc: QueryClient, kind: FavoriteKind, id: string): string | null {
+  if (!id) return null;
+
   // 1. Si ya se resolvió y persistió, responder inmediatamente (evita "Equipo"/"Jugador" en frío)
   const cached = memoryNameCache[id];
   if (cached) return cached;
@@ -65,36 +71,114 @@ export function resolveFavoriteName(qc: QueryClient, kind: FavoriteKind, id: str
   let resolved: string | null = null;
   if (kind === 'team') {
     const detail = qc.getQueryData<TeamDetail>(qk.team(id));
-    if (detail) resolved = detail.team.name;
+    if (detail?.team?.name) resolved = detail.team.name;
+
+    // Buscar en partidos actuales / home / away
     if (!resolved) {
-      for (const q of qc.getQueryCache().findAll({ queryKey: ['search'] })) {
-        const hit = (q.state.data as SearchResults | undefined)?.teams.find((x) => x.id === id);
-        if (hit) { resolved = hit.name; break; }
+      const current = qc.getQueryData<CurrentMatchesResponse>(qk.current);
+      if (current?.matches) {
+        for (const m of current.matches) {
+          if (m.homeTeam?.id === id && m.homeTeam.name) {
+            resolved = m.homeTeam.name;
+            break;
+          }
+          if (m.awayTeam?.id === id && m.awayTeam.name) {
+            resolved = m.awayTeam.name;
+            break;
+          }
+        }
       }
     }
+
+    // Buscar en standings
     if (!resolved) {
       for (const q of qc.getQueryCache().findAll({ queryKey: ['standings'] })) {
         const row = (q.state.data as StandingsResponse | undefined)?.standings.find((r) => r.team_id === id);
-        if (row) { resolved = row.team_short_name ?? row.team_name; break; }
+        if (row) {
+          resolved = row.team_short_name ?? row.team_name;
+          break;
+        }
+      }
+    }
+
+    // Buscar en season overview (standings o partidos)
+    if (!resolved) {
+      for (const q of qc.getQueryCache().findAll({ queryKey: ['seasons'] })) {
+        const overview = q.state.data as SeasonOverview | undefined;
+        const row = overview?.standings?.find((s) => s.teamId === id);
+        if (row) {
+          resolved = row.teamShortName ?? row.teamName;
+          break;
+        }
+      }
+    }
+
+    // Buscar en search
+    if (!resolved) {
+      for (const q of qc.getQueryCache().findAll({ queryKey: ['search'] })) {
+        const hit = (q.state.data as SearchResults | undefined)?.teams.find((x) => x.id === id);
+        if (hit?.name) {
+          resolved = hit.name;
+          break;
+        }
       }
     }
   } else if (kind === 'player') {
     const detail = qc.getQueryData<PlayerDetail>(qk.player(id));
-    if (detail) resolved = `${detail.player.firstName} ${detail.player.lastName}`;
+    if (detail?.player) resolved = `${detail.player.firstName ?? ''} ${detail.player.lastName ?? ''}`.trim();
+
+    // Buscar en plantillas de equipos en caché
+    if (!resolved) {
+      for (const q of qc.getQueryCache().findAll({ queryKey: ['teams'] })) {
+        const teamDetail = q.state.data as TeamDetail | undefined;
+        const p = teamDetail?.squad?.find((x) => x.playerId === id);
+        if (p) {
+          resolved = `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim();
+          break;
+        }
+      }
+    }
+
+    // Buscar en estadísticas de temporada (goleadores, asistencias, tarjetas)
+    if (!resolved) {
+      for (const q of qc.getQueryCache().findAll({ queryKey: ['seasons'] })) {
+        const stats = q.state.data as SeasonStats | undefined;
+        if (stats) {
+          const hit =
+            stats.topScorers?.find((x) => x.playerId === id) ??
+            stats.topAssists?.find((x) => x.playerId === id) ??
+            stats.topCards?.find((x) => x.playerId === id);
+          if (hit?.playerName) {
+            resolved = hit.playerName;
+            break;
+          }
+        }
+      }
+    }
+
+    // Buscar en search
     if (!resolved) {
       for (const q of qc.getQueryCache().findAll({ queryKey: ['search'] })) {
         const hit = (q.state.data as SearchResults | undefined)?.players.find((x) => x.id === id);
-        if (hit) { resolved = `${hit.firstName} ${hit.lastName}`; break; }
+        if (hit) {
+          resolved = `${hit.firstName ?? ''} ${hit.lastName ?? ''}`.trim();
+          break;
+        }
       }
     }
   } else if (kind === 'league') {
-    const comps = qc.getQueryData<CompetitionsResponse>(qk.competitions);
-    const comp = comps?.competitions.find((c) => c.id === id);
-    if (comp) resolved = comp.name;
+    const compsData = qc.getQueryData<CompetitionsResponse | CompetitionSummary[]>(qk.competitions);
+    const comps = Array.isArray(compsData) ? compsData : compsData?.competitions;
+    const comp = comps?.find((c) => c.id === id);
+    if (comp?.name) resolved = comp.name;
+
     if (!resolved) {
       for (const q of qc.getQueryCache().findAll({ queryKey: ['search'] })) {
         const hit = (q.state.data as SearchResults | undefined)?.competitions.find((x) => x.id === id);
-        if (hit) { resolved = hit.name; break; }
+        if (hit?.name) {
+          resolved = hit.name;
+          break;
+        }
       }
     }
   }

@@ -2,15 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Switch, Text, View, useColorScheme } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
-import { useCompetitions, usePlayer, useTeam } from '@/src/hooks/queries';
+import { useFavoriteName, useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { clubName } from '@/src/lib/names';
 import { getDeviceId } from '@/src/lib/device';
-import { PLACEHOLDER_KEY, resolveFavoriteName } from '@/src/lib/favorite-names';
 import {
   getSavedPushToken,
   loadPushPrefs,
@@ -84,41 +81,24 @@ function PresetChip({ label, active, onPress }: { label: string; active: boolean
 function EntityRow({
   kind,
   id,
-  fallbackName,
   preset,
   onPreset,
 }: {
   kind: FavoriteKind;
   id: string;
-  fallbackName: string;
   preset: NotificationPreset;
   onPreset: (kind: FavoriteKind, id: string, preset: NotificationPreset) => void;
 }) {
   const { t } = useLocale();
-  const teamQuery = useTeam(kind === 'team' ? id : '');
-  const playerQuery = usePlayer(kind === 'player' ? id : '');
-  const compsQuery = useCompetitions();
-
-  const name = useMemo(() => {
-    if (kind === 'team' && teamQuery.data?.team.name) {
-      return clubName(teamQuery.data.team.name) || teamQuery.data.team.name;
-    }
-    if (kind === 'player' && playerQuery.data?.player) {
-      return `${playerQuery.data.player.firstName} ${playerQuery.data.player.lastName}`;
-    }
-    if (kind === 'league' && compsQuery.data) {
-      const comp = compsQuery.data.find((c) => c.id === id);
-      if (comp) return clubName(comp.name) || comp.name;
-    }
-    return fallbackName;
-  }, [kind, id, teamQuery.data, playerQuery.data, compsQuery.data, fallbackName]);
+  const { name } = useFavoriteName(kind, id);
+  const displayName = kind === 'player' ? name : clubName(name) || name;
 
   const avatar = useMemo(() => {
     if (kind === 'team') {
       return (
         <Avatar
           uri={id ? teamLogoUri(id, 48) : undefined}
-          name={name}
+          name={displayName}
           size={26}
           variant="team"
         />
@@ -128,7 +108,7 @@ function EntityRow({
       return (
         <Avatar
           uri={id ? playerPhotoUri(id, 48) : undefined}
-          name={name}
+          name={displayName}
           size={26}
           variant="player"
         />
@@ -139,7 +119,7 @@ function EntityRow({
         <Ionicons name="trophy-outline" size={14} color="#eab308" />
       </View>
     );
-  }, [kind, id, name]);
+  }, [kind, id, displayName]);
 
   const presetDesc =
     kind === 'player'
@@ -153,7 +133,7 @@ function EntityRow({
       <View className="flex-row items-center gap-2.5">
         {avatar}
         <Text numberOfLines={1} className="flex-1 text-sm font-semibold text-slate-800 dark:text-slate-200">
-          {name}
+          {displayName}
         </Text>
       </View>
       <View className="mt-2.5 flex-row flex-wrap gap-2">
@@ -506,7 +486,6 @@ function SettingRow({
 export default function NotificationsScreen() {
   const { t, locale } = useLocale();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { session } = useSession();
   const authToken = session?.token;
 
@@ -734,7 +713,6 @@ export default function NotificationsScreen() {
                     key={id}
                     kind={s.kind}
                     id={id}
-                    fallbackName={resolveFavoriteName(queryClient, s.kind, id) ?? t(PLACEHOLDER_KEY[s.kind])}
                     preset={uiPreset(prefs.presets[presetKey(s.kind, id)] ?? 'key_events')}
                     onPreset={setEntityPreset}
                   />

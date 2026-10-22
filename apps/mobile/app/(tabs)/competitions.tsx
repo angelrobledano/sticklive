@@ -124,7 +124,7 @@ function CompetitionRowItem({
 
       {/* Botón de seguir / favoritos */}
       <View className="pr-1.5 shrink-0">
-        <FollowButton kind="league" refId={comp.id} />
+        <FollowButton kind="league" refId={comp.id} name={comp.name} />
       </View>
     </View>
   );

@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useCompetitions } from '@/src/hooks/queries';
-import { useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
-import { PLACEHOLDER_KEY, resolveFavoriteName } from '@/src/lib/favorite-names';
+import { useFavoriteName, useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
@@ -81,14 +79,14 @@ function LoginCard() {
 function FavoriteRow({
   kind,
   refId,
-  name,
   onPress,
 }: {
   kind: FavoriteKind;
   refId: string;
-  name: string;
   onPress: () => void;
 }) {
+  const { name, isResolved } = useFavoriteName(kind, refId);
+
   return (
     <View className="flex-row items-center border-b border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900">
       <Pressable onPress={onPress} className="min-h-[44px] flex-1 flex-row items-center px-4 py-2 active:opacity-70">
@@ -97,12 +95,14 @@ function FavoriteRow({
         {kind === 'league' ? <Avatar uri={null} name={name} size={28} variant="competition" /> : null}
         <Text
           numberOfLines={1}
-          className="ml-3 flex-1 text-base font-medium"
+          className={`ml-3 flex-1 text-base font-medium ${
+            isResolved ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'
+          }`}
         >
           {kind === 'player' ? name : clubName(name) || name}
         </Text>
       </Pressable>
-      <FollowButton kind={kind} refId={refId} name={name} />
+      <FollowButton kind={kind} refId={refId} name={isResolved ? name : undefined} />
     </View>
   );
 }
@@ -112,7 +112,6 @@ export default function FavoritesScreen() {
   const { session, ready } = useSession();
   const token = session?.token;
   const router = useRouter();
-  const qc = useQueryClient();
   // Precarga de competiciones para resolver nombres de ligas favoritas de inmediato
   useCompetitions();
 
@@ -170,7 +169,6 @@ export default function FavoritesScreen() {
                     key={id}
                     kind={s.kind}
                     refId={id}
-                    name={resolveFavoriteName(qc, s.kind, id) ?? t(PLACEHOLDER_KEY[s.kind])}
                     onPress={() => openFavorite(s.kind, id)}
                   />
                 ))}
