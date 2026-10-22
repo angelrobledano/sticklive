@@ -17,5 +17,6 @@ export * from './queries/users.js';
 export * from './queries/redirects.js';
 export * from './queries/player-identity.js';
 export * from './queries/standings-zones.js';
+export * from './queries/club-crest-review.js';
 export * from './queries/competition-lineage.js';
 export * from './queries/players.js';

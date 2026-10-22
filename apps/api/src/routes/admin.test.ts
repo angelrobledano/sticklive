@@ -83,6 +83,11 @@ describe('admin — ids malformados no llegan a la BD (#321)', () => {
     expect(res.status).toBe(404);
   });
 
+  it('el panel de clubes por escudo exige el token (A4)', async () => {
+    const res = await adminRouter.request('/club-crests', {});
+    expect(res.status).toBe(401);
+  });
+
   it('las rutas de candidatos de jugador exigen el token (B1)', async () => {
     const res = await adminRouter.request('/player-links', {});
     expect(res.status).toBe(401);

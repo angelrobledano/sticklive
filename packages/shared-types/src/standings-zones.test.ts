@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { zoneForPosition, type StandingsZone } from './standings-zones.js';
+import { zoneForPosition, type StandingsZone } from './index.js';
 
 /**
  * B2 — reglamento como datos. Las zonas se declaran por temporada (y fase y

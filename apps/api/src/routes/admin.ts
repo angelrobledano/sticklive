@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, type DataQuality } from '@sports/db';
+import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, type DataQuality } from '@sports/db';
 import { logger } from '@sports/logger';
 import type { StandingsZone } from '@sports/shared-types';
 import { isUuid } from '../lib/uuid.js';
@@ -495,6 +495,21 @@ adminRouter.post('/resolution-queue/:id/reject', async (c) => {
   } catch (err) {
     captureRouteError(err, 'admin] reject error');
     logger.error({ err }, '[admin] reject error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+// ── A4: clubes por escudo (revisión antes del backfill) ─────────────────────
+
+/** GET /admin/club-crests?issues=1 — equipos agrupados por escudo, con su club. Solo lectura. */
+adminRouter.get('/club-crests', async (c) => {
+  try {
+    const groups = await listCrestReviewGroups({ onlyIssues: c.req.query('issues') === '1' });
+    const counts = { merge: 0, pending: 0, ok: 0 };
+    for (const g of groups) counts[g.status]++;
+    return c.json({ count: groups.length, counts, groups });
+  } catch (err) {
+    captureRouteError(err, 'admin] club-crests error');
     return c.json({ error: 'Database error' }, 500);
   }
 });
