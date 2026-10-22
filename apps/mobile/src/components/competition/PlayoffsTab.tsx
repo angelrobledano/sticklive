@@ -27,7 +27,7 @@ function SeriesCard({
   isFinal?: boolean;
 }) {
   const router = useRouter();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   const isSingle = serie.games.length === 1;
   const single = isSingle ? serie.games[0]! : null;
@@ -39,7 +39,7 @@ function SeriesCard({
     const isFinished = single.status === 'finished';
     const showScore = isFinished || live;
     const winnerId = isFinished ? gameWinnerId(single) : null;
-    const dateLabel = formatDayLabel(single.scheduledAt);
+    const dateLabel = formatDayLabel(single.scheduledAt, locale);
     const when = isFinished
       ? dateLabel
         ? `${t('match_states.final')} · ${dateLabel}`
@@ -251,7 +251,7 @@ function SeriesCard({
 }
 
 export function PlayoffsTab({ matches }: { matches: SeasonOverviewMatch[] }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   const phases = useMemo(() => {
     const byPhase = groupByPhase(matches);

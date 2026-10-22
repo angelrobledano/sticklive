@@ -703,7 +703,7 @@
     "filters": "Filtrar partits",
     "filter_live": "En directe",
     "filter_following": "Seguint",
-    "next_matchday": "Proper jornada: {day}",
+    "next_matchday": "Propera jornada: {day}",
     "go_to_day": "Veure el {day}",
     "collapse": "Plegar {name}",
     "expand": "Desplegar {name}",

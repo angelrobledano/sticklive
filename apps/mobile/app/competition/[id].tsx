@@ -39,7 +39,7 @@ export default function CompetitionScreen() {
   const params = useLocalSearchParams<{ id: string; seasonId?: string }>();
   const competitionId = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   // Metadatos básicos de la competición
   const competitionsQuery = useCompetitions();
@@ -479,7 +479,7 @@ export default function CompetitionScreen() {
                 {regularMatches.map((m: SeasonOverviewMatch) => {
                   const live = isEffectivelyLive(m.status, m.scheduledAt);
                   const isFinal = m.status === 'finished';
-                  const dateLabel = formatDayLabel(m.scheduledAt);
+                  const dateLabel = formatDayLabel(m.scheduledAt, locale);
                   const when = isFinal
                     ? dateLabel
                       ? `${t('match_states.final')} · ${dateLabel}`

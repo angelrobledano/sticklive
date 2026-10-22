@@ -20,7 +20,7 @@ export default function TeamScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const teamId = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const query = useTeam(teamId ?? '');
 
   const rawTeam = query.data?.team;
@@ -115,7 +115,7 @@ export default function TeamScreen() {
             const showScore = live || m.status === 'finished';
             // En finished, la fecha distingue filas del calendario (formatDayLabel
             // devuelve '' si no hay fecha → sin separador colgante).
-            const dateLabel = formatDayLabel(m.scheduledAt);
+            const dateLabel = formatDayLabel(m.scheduledAt, locale);
             const when = m.status === 'finished'
               ? dateLabel
                 ? `${t('match_states.final')} · ${dateLabel}`

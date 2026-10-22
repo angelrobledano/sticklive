@@ -222,7 +222,7 @@ export default function LiveScreen() {
                 className="mt-4 rounded-xl bg-rink-passion px-5 py-2.5 active:opacity-80 dark:bg-rose-700"
               >
                 <Text className="text-sm font-semibold text-white">
-                  Ver próxima jornada: {formatDayLabel(next.dayKey)}
+                  {t('home.next_matchday').replace('{day}', formatDayLabel(next.dayKey, locale))}
                 </Text>
               </Pressable>
             ) : null}
