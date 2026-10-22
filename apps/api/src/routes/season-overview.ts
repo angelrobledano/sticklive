@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
-import { db } from '@sports/db';
+import { db, getStandingsZones } from '@sports/db';
+import { zoneForPosition } from '@sports/shared-types';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 import { captureRouteError } from '../lib/route-error.js';
@@ -105,6 +106,7 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
     // (metadata, clasificación, jornadas, partidos). En serie sumaban cuatro
     // round-trips; en paralelo el payload tarda el máximo. Si la temporada no
     // existe, las demás devuelven vacío y se responde 404 igualmente.
+    const zones = await getStandingsZones(seasonId);
     const [seasonRes, standingsRes, roundsRes, matchesRes, phasesRes] = await Promise.all([
       // 1) Season + competition info
       db.query<SeasonRow>(`
@@ -267,6 +269,11 @@ seasonOverviewRouter.get('/:id/overview', async (c) => {
         points:             r.points,
         form:               r.form ?? [],
         penalizationPoints: r.penalization_points ?? 0,
+        // B2: zona reglamentaria (ascenso, descenso…) de standings_zones.
+        zone: (() => {
+          const z = zoneForPosition(zones, r.position, { groupName: r.group_name ?? null });
+          return z ? { kind: z.kind, target: z.target } : null;
+        })(),
       })),
       rounds: roundsRes.rows.filter((r) => structure.visibleRoundIds.has(r.id)).map((r) => ({
         id:        r.id,

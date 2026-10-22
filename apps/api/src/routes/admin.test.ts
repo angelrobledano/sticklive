@@ -51,6 +51,43 @@ describe('admin — ids malformados no llegan a la BD (#321)', () => {
     expect(res.status).toBe(404);
   });
 
+  it('PUT /seasons/:id/zones con id no-UUID → 404 (B2)', async () => {
+    const res = await adminRouter.request('/seasons/xyz/zones', {
+      method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify({ sourceNote: 'x', zones: [] }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('PUT /seasons/:id/zones sin fuente normativa → 400 (B2)', async () => {
+    const res = await adminRouter.request('/seasons/00000000-0000-4000-8000-000000000000/zones', {
+      method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify({ zones: [] }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('PUT /seasons/:id/zones con una zona mal formada → 400 (B2)', async () => {
+    const res = await adminRouter.request('/seasons/00000000-0000-4000-8000-000000000000/zones', {
+      method: 'PUT', headers: JSON_HEADERS,
+      body: JSON.stringify({ sourceNote: 'Bases', zones: [{ kind: 'ascenso', posFrom: 1, posTo: 2 }] }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /player-links/:id/accept → 404 (B1)', async () => {
+    const res = await adminRouter.request('/player-links/xyz/accept', { method: 'POST', headers: AUTH });
+    expect(res.status).toBe(404);
+  });
+
+  it('POST /player-links/:id/reject → 404 (B1)', async () => {
+    const res = await adminRouter.request('/player-links/xyz/reject', { method: 'POST', headers: AUTH });
+    expect(res.status).toBe(404);
+  });
+
+  it('las rutas de candidatos de jugador exigen el token (B1)', async () => {
+    const res = await adminRouter.request('/player-links', {});
+    expect(res.status).toBe(401);
+  });
+
   it('POST /competitions/merge con ids no-UUID → 400', async () => {
     const res = await adminRouter.request('/competitions/merge', {
       method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ keepId: 'xyz', mergeId: 'abc' }),

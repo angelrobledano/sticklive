@@ -6,6 +6,7 @@ export interface DbStanding {
   season_id: string;
   team_id: string;
   group_name: string | null;
+  phase_id?: string | null;
   position: number | null;
   played: number;
   won: number;

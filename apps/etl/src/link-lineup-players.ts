@@ -20,11 +20,11 @@ void (async () => {
   // scrapeadas ANTES de que el scraper guardara la ref.
   const porRef = await db.query(
     `UPDATE match_lineups ml
-        SET player_id = p.id
-       FROM players p
+        SET player_id = r.player_id
+       FROM player_source_refs r
       WHERE ml.player_id IS NULL
         AND ml.player_source_ref IS NOT NULL
-        AND p.source_ref = ml.player_source_ref`
+        AND r.source_ref = ml.player_source_ref`  // B1: cualquier ref de la persona (084)
   );
   console.log(`🎯 ${porRef.rowCount ?? 0} vinculadas por ref exacta del acta (#219)`);
 

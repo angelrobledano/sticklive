@@ -113,6 +113,12 @@ export async function splitMergedPlayers(opts: { write: boolean }): Promise<Spli
         );
         const newId = ins.rows[0]!.id;
         created++;
+        // B1: la ref del otro portal es de la persona nueva (084).
+        await client.query(
+          `INSERT INTO player_source_refs (player_id, source_ref, created_by) VALUES ($1, $2, 'split-merged-players')
+           ON CONFLICT (source_ref) DO UPDATE SET player_id = EXCLUDED.player_id`,
+          [newId, newRef],
+        );
 
         await client.query(
           `UPDATE team_players tp SET player_id = $2, updated_at = NOW()
