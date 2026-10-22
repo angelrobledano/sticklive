@@ -1,4 +1,18 @@
 {
+  "team_share": {
+    "button": "Image",
+    "title": "Partager l'équipe",
+    "close": "Fermer",
+    "format": "Format",
+    "story": "Story 9:16",
+    "post": "Publication 16:9",
+    "theme": "Thème",
+    "dark": "Sombre",
+    "light": "Clair",
+    "preview": "Aperçu de {team}",
+    "download": "Télécharger",
+    "share": "Partager"
+  },
   "nav": {
     "live": "En direct",
     "standings": "Classement",
@@ -289,6 +303,16 @@
     "placement_range": "Places {from}-{to}"
   },
   "standings": {
+    "zones": {
+      "champion": "Champion",
+      "promotion": "Montée",
+      "promotion_playoff": "Play-offs",
+      "final_phase": "Phase finale",
+      "placement": "Classement",
+      "playout": "Play-out",
+      "relegation": "Relégation",
+      "to": "{zone} · {target}"
+    },
     "team": "Équipe",
     "group": "Groupe",
     "playoffs_zone": "Playoffs (1er–8e)",

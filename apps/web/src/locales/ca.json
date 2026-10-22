@@ -1,4 +1,18 @@
 {
+  "team_share": {
+    "button": "Imatge",
+    "title": "Comparteix l'equip",
+    "close": "Tanca",
+    "format": "Format",
+    "story": "Història 9:16",
+    "post": "Publicació 16:9",
+    "theme": "Tema",
+    "dark": "Fosc",
+    "light": "Clar",
+    "preview": "Previsualització de {team}",
+    "download": "Baixa",
+    "share": "Comparteix"
+  },
   "nav": {
     "live": "En directe",
     "standings": "Classificació",
@@ -378,6 +392,16 @@
     "placement_range": "Llocs {from}è-{to}è"
   },
   "standings": {
+    "zones": {
+      "champion": "Campió",
+      "promotion": "Ascens",
+      "promotion_playoff": "Play-off",
+      "final_phase": "Fase final",
+      "placement": "Classificació",
+      "playout": "Play-out",
+      "relegation": "Descens",
+      "to": "{zone} · {target}"
+    },
     "team": "Equip",
     "group": "Grup",
     "playoffs_zone": "Playoffs (1r–8è)",

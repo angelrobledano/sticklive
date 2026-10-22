@@ -1,4 +1,18 @@
 {
+  "team_share": {
+    "button": "Immagine",
+    "title": "Condividi la squadra",
+    "close": "Chiudi",
+    "format": "Formato",
+    "story": "Storia 9:16",
+    "post": "Post 16:9",
+    "theme": "Tema",
+    "dark": "Scuro",
+    "light": "Chiaro",
+    "preview": "Anteprima di {team}",
+    "download": "Scarica",
+    "share": "Condividi"
+  },
   "nav": {
     "live": "In diretta",
     "standings": "Classifica",
@@ -289,6 +303,16 @@
     "placement_range": "Posti {from}º-{to}º"
   },
   "standings": {
+    "zones": {
+      "champion": "Campione",
+      "promotion": "Promozione",
+      "promotion_playoff": "Play-off",
+      "final_phase": "Fase finale",
+      "placement": "Piazzamento",
+      "playout": "Play-out",
+      "relegation": "Retrocessione",
+      "to": "{zone} · {target}"
+    },
     "team": "Squadra",
     "group": "Girone",
     "playoffs_zone": "Playoff (1°–8°)",

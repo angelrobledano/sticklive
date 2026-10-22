@@ -471,6 +471,8 @@ export interface SeasonStandingRow {
   points: number;
   form: string[];
   penalizationPoints: number;
+  /** B2: zona reglamentaria de la fila (standings_zones). null o ausente = sin zona declarada. */
+  zone?: { kind: import('@/lib/standings-zones-view').ZoneKind; target: string | null } | null;
 }
 
 /** Fase eliminatoria canónica (ronda de una fase `knockout`). */
