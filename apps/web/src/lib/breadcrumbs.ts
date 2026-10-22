@@ -3,6 +3,7 @@ import type { Locale } from './locales';
 /** Etiquetas comunes de las migas, por idioma. */
 export const BREADCRUMB_LABELS: Record<Locale, { home: string; competitions: string }> = {
   es: { home: 'Inicio', competitions: 'Competiciones' },
+  ca: { home: 'Inici', competitions: 'Competicions' },
   en: { home: 'Home', competitions: 'Competitions' },
   pt: { home: 'Início', competitions: 'Competições' },
   fr: { home: 'Accueil', competitions: 'Compétitions' },

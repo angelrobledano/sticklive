@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lowercaseUuidPath } from '@/lib/uuid-path';
-import { FALLBACK_LOCALE } from '@/lib/locales';
+import { FALLBACK_LOCALE, SUPPORTED_LOCALES, type Locale } from '@/lib/locales';
 
 /**
  * Middleware de localización.
@@ -16,13 +16,11 @@ import { FALLBACK_LOCALE } from '@/lib/locales';
  * son siempre las prefijadas (con hreflang declarado vía metadata).
  */
 
-const LOCALES = ['es', 'en', 'pt', 'fr', 'it'] as const;
-type Locale = (typeof LOCALES)[number];
 const FALLBACK: Locale = FALLBACK_LOCALE;
 const COOKIE = 'sticklive_locale';
 
 function isLocale(v: string | undefined | null): v is Locale {
-  return !!v && (LOCALES as readonly string[]).includes(v);
+  return !!v && (SUPPORTED_LOCALES as readonly string[]).includes(v);
 }
 
 function detectLocale(req: NextRequest): Locale {

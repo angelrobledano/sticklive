@@ -18,13 +18,13 @@ import { authErrorKey } from '@/src/lib/auth-errors';
 /** Endónimos: el nombre del idioma en sí mismo no se traduce (paridad con
  * LOCALE_NAMES de la web, src/lib/locales.ts). */
 const LOCALE_NAMES: Record<Locale, string> = {
-  en: 'English', es: 'Español', fr: 'Français', it: 'Italiano', pt: 'Português',
+  ca: 'Català', en: 'English', es: 'Español', fr: 'Français', it: 'Italiano', pt: 'Português',
 };
 
 const THEME_FALLBACK: Record<ThemePref, Record<Locale, string>> = {
-  system: { es: 'Sistema', en: 'System', fr: 'Système', it: 'Sistema', pt: 'Sistema' },
-  light: { es: 'Claro', en: 'Light', fr: 'Clair', it: 'Chiaro', pt: 'Claro' },
-  dark: { es: 'Oscuro', en: 'Dark', fr: 'Sombre', it: 'Scuro', pt: 'Escuro' },
+  system: { es: 'Sistema', ca: 'Sistema', en: 'System', fr: 'Système', it: 'Sistema', pt: 'Sistema' },
+  light: { es: 'Claro', ca: 'Clar', en: 'Light', fr: 'Clair', it: 'Chiaro', pt: 'Claro' },
+  dark: { es: 'Oscuro', ca: 'Fosc', en: 'Dark', fr: 'Sombre', it: 'Scuro', pt: 'Escuro' },
 };
 
 /** Opciones de apariencia: valor del ThemePref + clave i18n de la etiqueta. */

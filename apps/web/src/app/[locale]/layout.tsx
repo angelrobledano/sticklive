@@ -21,6 +21,7 @@ import { SUPPORTED_LOCALES, isSupportedLocale, type Locale } from '@/lib/locales
 import { localeAlternates, socialMeta, siteJsonLd, SITE_URL } from '@/lib/seo';
 import { BRAND } from '@sports/brand';
 import esDict from '@/locales/es.json';
+import caDict from '@/locales/ca.json';
 import enDict from '@/locales/en.json';
 import ptDict from '@/locales/pt.json';
 import frDict from '@/locales/fr.json';
@@ -29,10 +30,10 @@ import itDict from '@/locales/it.json';
 /**
  * Diccionarios i18n. Viven en el SERVIDOR: solo el del locale activo (más el de
  * referencia es) viaja al cliente como prop del provider, en vez de mandar los
- * 5 en el bundle (#366).
+ * 6 en el bundle (#366).
  */
 const DICTS: Record<Locale, Record<string, unknown>> = {
-  es: esDict, en: enDict, pt: ptDict, fr: frDict, it: itDict,
+  es: esDict, ca: caDict, en: enDict, pt: ptDict, fr: frDict, it: itDict,
 };
 
 const inter = Inter({
@@ -56,6 +57,10 @@ const SEO_TEXT: Record<Locale, { title: string; description: string }> = {
     title: 'Stick Live — Resultados y estadísticas de hockey patines en directo',
     description: 'Resultados, estadísticas y alineaciones de hockey patines en directo. OK Liga, playoffs y mucho más, al segundo.',
   },
+  ca: {
+    title: "Stick Live — Resultats i estadístiques d'hoquei patins en directe",
+    description: "Resultats, estadístiques i alineacions d'hoquei patins en directe. OK Lliga, playoffs i molt més, al segon.",
+  },
   en: {
     title: 'Stick Live — Live rink hockey scores & stats',
     description: 'Live rink hockey scores, stats and lineups. OK Liga, playoffs and much more, second by second.',
@@ -77,6 +82,7 @@ const SEO_TEXT: Record<Locale, { title: string; description: string }> = {
 /** Título OG corto (< 60 car., sin sufijo de marca para no cortarse). */
 const OG_HOME_TITLE: Record<Locale, string> = {
   es: 'Hockey patines en directo, al segundo',
+  ca: 'Hoquei patins en directe, al segon',
   en: 'Rink hockey live, second by second',
   pt: 'Hóquei em patins ao vivo, ao segundo',
   fr: 'Rink hockey en direct, à la seconde',

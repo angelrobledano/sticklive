@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   sitemapSectionIds,
   sitemapEntries,
@@ -39,8 +39,8 @@ describe('sitemapSectionIds', () => {
     const players = Array.from({ length: SITEMAP_SECTION_SIZE * 2 + 1 }, (_, i) => String(i));
     expect(sitemapSectionIds(ids({ players })))
       .toEqual(['core', 'players-0', 'players-1', 'players-2']);
-    // 5 locales por entrada → el trozo × locales debe caber en 50.000.
-    expect(SITEMAP_SECTION_SIZE * 5).toBeLessThanOrEqual(50_000);
+    // 6 locales por entrada → el trozo × locales debe caber en 50.000.
+    expect(SITEMAP_SECTION_SIZE * 6).toBeLessThanOrEqual(50_000);
   });
 });
 

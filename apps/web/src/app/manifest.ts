@@ -18,6 +18,7 @@ import {
  */
 const SHORTCUT_NAMES: Record<Locale, { favorites: string; competitions: string }> = {
   es: { favorites: 'Favoritos', competitions: 'Competiciones' },
+  ca: { favorites: 'Favorits', competitions: 'Competicions' },
   en: { favorites: 'Favourites', competitions: 'Competitions' },
   pt: { favorites: 'Favoritos', competitions: 'Competições' },
   fr: { favorites: 'Favoris', competitions: 'Compétitions' },

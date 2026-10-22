@@ -1,5 +1,6 @@
 import type { Locale } from '@/lib/locales';
 import es from '@/locales/es.json';
+import ca from '@/locales/ca.json';
 import en from '@/locales/en.json';
 import pt from '@/locales/pt.json';
 import fr from '@/locales/fr.json';
@@ -22,7 +23,7 @@ import it from '@/locales/it.json';
 
 type Dict = Record<string, unknown>;
 
-const DICTS: Record<Locale, Dict> = { es, en, pt, fr, it };
+const DICTS: Record<Locale, Dict> = { es, ca, en, pt, fr, it };
 
 const KNOWN_AGE_CATEGORIES = new Set([
   'senior', 'juvenil', 'junior', 'infantil', 'alevin', 'benjamin', 'prebenjamin', 'veteranos', 'base',

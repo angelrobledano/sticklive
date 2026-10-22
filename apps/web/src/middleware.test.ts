@@ -23,6 +23,14 @@ describe('middleware de idioma', () => {
     expect(res.headers.get('location')).toBe('https://sticklive.eu/pt/teams/t1');
   });
 
+  it('respeta Accept-Language para catalán (ca)', () => {
+    const res = middleware(new NextRequest('https://sticklive.eu/teams/t1', {
+      headers: { 'accept-language': 'ca-ES,ca;q=0.9,es;q=0.8' },
+    }));
+
+    expect(res.headers.get('location')).toBe('https://sticklive.eu/ca/teams/t1');
+  });
+
   it('la cookie manda sobre Accept-Language', () => {
     const res = middleware(new NextRequest('https://sticklive.eu/teams/t1', {
       headers: { cookie: 'sticklive_locale=fr', 'accept-language': 'en-US' },

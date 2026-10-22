@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
  * Se usan escapes unicode para no reintroducir el problema en este mismo fichero.
  */
 
-const LOCALES = ['es', 'en', 'fr', 'it', 'pt'] as const;
+const LOCALES = ['es', 'ca', 'en', 'fr', 'it', 'pt'] as const;
 
 describe('locales — codificación UTF-8', () => {
   for (const loc of LOCALES) {

@@ -98,7 +98,7 @@ export const OG_IMAGE = {
 
 /** Mapea el locale de la app al formato og:locale (idioma_PAÍS). */
 const OG_LOCALE: Record<Locale, string> = {
-  es: 'es_ES', en: 'en_US', pt: 'pt_PT', fr: 'fr_FR', it: 'it_IT',
+  es: 'es_ES', ca: 'ca_ES', en: 'en_US', pt: 'pt_PT', fr: 'fr_FR', it: 'it_IT',
 };
 
 /**
@@ -161,6 +161,10 @@ const TITLE_COPY: Record<
   es: {
     competitionResults: 'clasificación y resultados', competitionCalendar: 'calendario',
     team: 'calendario, resultados y plantilla', playerWithTeam: 'estadísticas con', playerAlone: 'estadísticas',
+  },
+  ca: {
+    competitionResults: 'classificació i resultats', competitionCalendar: 'calendari',
+    team: 'calendari, resultats i plantilla', playerWithTeam: 'estadístiques amb', playerAlone: 'estadístiques',
   },
   en: {
     competitionResults: 'standings and results', competitionCalendar: 'fixtures',
@@ -258,6 +262,7 @@ export function matchMetaTitle({ locale, home, away, status, score, scheduledAt 
 
 const FINISHED_DESC: Record<Locale, (home: string, away: string, score: string) => string> = {
   es: (h, a, s) => `Resultado final del ${h} - ${a}${s ? ` (${s})` : ''}: goles, alineaciones y estadísticas de hockey patines.`,
+  ca: (h, a, s) => `Resultat final del ${h} - ${a}${s ? ` (${s})` : ''}: gols, alineacions i estadístiques d'hoquei patins.`,
   en: (h, a, s) => `Final result of ${h} vs ${a}${s ? ` (${s})` : ''}: goals, lineups and rink hockey stats.`,
   pt: (h, a, s) => `Resultado final do ${h} - ${a}${s ? ` (${s})` : ''}: golos, onzes e estatísticas de hóquei em patins.`,
   fr: (h, a, s) => `Résultat final du ${h} - ${a}${s ? ` (${s})` : ''} : buts, compositions et statistiques de rink hockey.`,
@@ -266,6 +271,7 @@ const FINISHED_DESC: Record<Locale, (home: string, away: string, score: string) 
 
 const LIVE_DESC: Record<Locale, (home: string, away: string) => string> = {
   es: (h, a) => `${h} - ${a}: resultado en directo, goles, alineaciones y estadísticas de hockey patines.`,
+  ca: (h, a) => `${h} - ${a}: resultat en directe, gols, alineacions i estadístiques d'hoquei patins.`,
   en: (h, a) => `${h} vs ${a}: live score, goals, lineups and rink hockey stats.`,
   pt: (h, a) => `${h} - ${a}: resultado em direto, golos, onzes e estatísticas de hóquei em patins.`,
   fr: (h, a) => `${h} - ${a} : score en direct, buts, compositions et statistiques de rink hockey.`,
@@ -274,6 +280,7 @@ const LIVE_DESC: Record<Locale, (home: string, away: string) => string> = {
 
 const UPCOMING_DESC: Record<Locale, (home: string, away: string) => string> = {
   es: (h, a) => `${h} - ${a}: previa, hora, alineaciones y estadísticas del partido de hockey patines.`,
+  ca: (h, a) => `${h} - ${a}: prèvia, hora, alineacions i estadístiques del partit d'hoquei patins.`,
   en: (h, a) => `${h} vs ${a}: preview, time, lineups and rink hockey stats.`,
   pt: (h, a) => `${h} - ${a}: antevisão, hora, onzes e estatísticas do jogo de hóquei em patins.`,
   fr: (h, a) => `${h} - ${a} : avant-match, horaire, compositions et statistiques de rink hockey.`,
@@ -282,6 +289,7 @@ const UPCOMING_DESC: Record<Locale, (home: string, away: string) => string> = {
 
 const POSTPONED_DESC: Record<Locale, (home: string, away: string) => string> = {
   es: (h, a) => `${h} - ${a}: partido aplazado de hockey patines.`,
+  ca: (h, a) => `${h} - ${a}: partit ajornat d'hoquei patins.`,
   en: (h, a) => `${h} vs ${a}: postponed rink hockey match.`,
   pt: (h, a) => `${h} - ${a}: jogo adiado de hóquei em patins.`,
   fr: (h, a) => `${h} - ${a} : match de rink hockey reporté.`,
@@ -290,6 +298,7 @@ const POSTPONED_DESC: Record<Locale, (home: string, away: string) => string> = {
 
 const CANCELLED_DESC: Record<Locale, (home: string, away: string) => string> = {
   es: (h, a) => `${h} - ${a}: partido cancelado de hockey patines.`,
+  ca: (h, a) => `${h} - ${a}: partit cancel·lat d'hoquei patins.`,
   en: (h, a) => `${h} vs ${a}: cancelled rink hockey match.`,
   pt: (h, a) => `${h} - ${a}: jogo cancelado de hóquei em patins.`,
   fr: (h, a) => `${h} - ${a} : match de rink hockey annulé.`,
