@@ -120,7 +120,7 @@ if [ "$SKIP_PULL" -eq 0 ] && [ "$DRY_RUN" -eq 0 ]; then
   BEHIND="$(git -C "$REPO" rev-list --count "HEAD..$REMOTE/$BRANCH")"
   if [ "$BEHIND" -gt 0 ]; then
     log "commits entrantes (${BEHIND}):"
-    git -C "$REPO" log --oneline "HEAD..$REMOTE/$BRANCH" | head -20
+    git -C "$REPO" log --oneline --max-count=20 "HEAD..$REMOTE/$BRANCH"
     log "git pull --ff-only"
     git -C "$REPO" pull --ff-only || die "git pull falló (¿cambios locales en conflicto?)"
   else
