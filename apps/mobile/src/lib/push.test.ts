@@ -126,6 +126,8 @@ describe('pushErrorKey', () => {
     expect(pushErrorKey('push_requiere_dispositivo_fisico')).toBe('settings.notif_requires_device');
     expect(pushErrorKey('push_requiere_development_build')).toBe('settings.notif_requires_dev_build');
     expect(pushErrorKey('permiso_notificaciones_denegado')).toBe('settings.notif_denied_app');
+    expect(pushErrorKey('Unable to get Firebase Messaging instance. Did you configure googleServicesFile?')).toBe('settings.notif_fcm_setup');
+    expect(pushErrorKey('Default FirebaseApp is not initialized')).toBe('settings.notif_fcm_setup');
     // El motivo de projectId viaja con detalle técnico como sufijo: genérico.
     expect(pushErrorKey('falta_projectid_eas_init: falta extra.eas.projectId')).toBe('settings.notif_error');
     expect(pushErrorKey('otro_error_inesperado')).toBe('settings.notif_error');

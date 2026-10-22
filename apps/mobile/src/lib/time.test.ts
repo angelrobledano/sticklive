@@ -41,6 +41,12 @@ describe('time', () => {
     expect(formatDayLabel('no-fecha')).toBe('');
   });
 
+  it('formatDayLabel soporta locale (ca: divendres, es: viernes)', () => {
+    const iso = '2026-10-23T18:00:00.000Z';
+    expect(formatDayLabel(iso, 'es').toLowerCase()).toContain('viernes');
+    expect(formatDayLabel(iso, 'ca').toLowerCase()).toContain('divendres');
+  });
+
   // Task 5.2: clave de sección de la home por fecha ISO (estable, sin
   // colisiones con '__live__' ni entre etiquetas localizadas).
   it('formatDayKey pinta YYYY-MM-DD en Europe/Madrid', () => {

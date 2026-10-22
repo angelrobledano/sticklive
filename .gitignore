@@ -34,8 +34,10 @@ apps/web/seo-crawl-*.json
 
 # Artefactos locales de trabajo (no se versionan; permanecen en disco)
 .tmp-close/
+.tmp-okmob/
 Claude outputs/
 data/
+apps/web/src/app/**/upcoming-preview/
 
 # Worktrees de desarrollo aislado (git worktree, nunca se versionan)
 .worktrees/

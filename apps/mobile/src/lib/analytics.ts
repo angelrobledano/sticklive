@@ -42,7 +42,7 @@ export interface AnalyticsEventProps {
   live_tab_viewed: Record<string, never>;
   favorite_added: { kind: FavoriteKind };
   favorite_removed: { kind: FavoriteKind };
-  login_completed: { method: 'google' };
+  login_completed: { method: 'google' | 'magic_link' };
   push_registered: Record<string, never>;
   push_failed: { reason?: string };
   notification_opened: { notification_type: string };

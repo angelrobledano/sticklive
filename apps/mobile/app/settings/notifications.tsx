@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Switch, Text, View, useColorScheme } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
+import { useFavoriteName, useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
+import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
+import { clubName } from '@/src/lib/names';
 import { getDeviceId } from '@/src/lib/device';
-import { PLACEHOLDER_KEY, resolveFavoriteName } from '@/src/lib/favorite-names';
 import {
   getSavedPushToken,
   loadPushPrefs,
@@ -76,27 +78,66 @@ function PresetChip({ label, active, onPress }: { label: string; active: boolean
   );
 }
 
-/** Fila de entidad seguida: nombre + selector de preset (chips). */
+/** Fila de entidad seguida: avatar/icono + nombre + selector de preset (chips) + explicación. */
 function EntityRow({
   kind,
   id,
-  name,
   preset,
   onPreset,
 }: {
   kind: FavoriteKind;
   id: string;
-  name: string;
   preset: NotificationPreset;
   onPreset: (kind: FavoriteKind, id: string, preset: NotificationPreset) => void;
 }) {
   const { t } = useLocale();
+  const { name } = useFavoriteName(kind, id);
+  const displayName = kind === 'player' ? name : clubName(name) || name;
+
+  const avatar = useMemo(() => {
+    if (kind === 'team') {
+      return (
+        <Avatar
+          uri={id ? teamLogoUri(id, 48) : undefined}
+          name={displayName}
+          size={26}
+          variant="team"
+        />
+      );
+    }
+    if (kind === 'player') {
+      return (
+        <Avatar
+          uri={id ? playerPhotoUri(id, 48) : undefined}
+          name={displayName}
+          size={26}
+          variant="player"
+        />
+      );
+    }
+    return (
+      <View className="h-6.5 w-6.5 items-center justify-center rounded-full bg-amber-500/10">
+        <Ionicons name="trophy-outline" size={14} color="#eab308" />
+      </View>
+    );
+  }, [kind, id, displayName]);
+
+  const presetDesc =
+    kind === 'player'
+      ? t(`notif_presets.player.${preset}.desc`)
+      : kind === 'league'
+      ? t(`notif_presets.league.${preset}.desc`)
+      : t(`notif_presets.${preset}.desc`);
+
   return (
     <View className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-      <Text numberOfLines={1} className="text-sm font-medium text-slate-800 dark:text-slate-200">
-        {name}
-      </Text>
-      <View className="mt-2 flex-row flex-wrap gap-2">
+      <View className="flex-row items-center gap-2.5">
+        {avatar}
+        <Text numberOfLines={1} className="flex-1 text-sm font-semibold text-slate-800 dark:text-slate-200">
+          {displayName}
+        </Text>
+      </View>
+      <View className="mt-2.5 flex-row flex-wrap gap-2">
         {PRESETS_BY_KIND[kind].map((p) => (
           <PresetChip
             key={p}
@@ -106,6 +147,309 @@ function EntityRow({
           />
         ))}
       </View>
+      <Text className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+        {presetDesc}
+      </Text>
+    </View>
+  );
+}
+
+type ShowcaseTab = 'teams' | 'players' | 'leagues';
+
+/** Tarjeta interactiva y atractiva de previsualización de notificaciones tipo lockscreen. */
+function NotificationShowcaseCard() {
+  const { t } = useLocale();
+  const [activeTab, setActiveTab] = useState<ShowcaseTab>('teams');
+
+  return (
+    <View className="mx-4 mt-3 rounded-2xl bg-white p-4 shadow-xs dark:bg-slate-900">
+      <View className="flex-row items-center justify-between">
+        <View className="flex-1 pr-2">
+          <Text className="text-sm font-bold text-slate-900 dark:text-slate-100">
+            {t('notif_presets.showcase.title')}
+          </Text>
+          <Text className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            {t('notif_presets.showcase.subtitle')}
+          </Text>
+        </View>
+        <View className="h-8 w-8 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-950/40">
+          <Ionicons name="notifications" size={16} color={BRAND.granate} />
+        </View>
+      </View>
+
+      {/* Selector de categoría (Equipos, Jugadores, Ligas) */}
+      <View className="mt-3.5 flex-row rounded-xl bg-slate-100 p-1 dark:bg-slate-800" accessibilityRole="tablist">
+        <Pressable
+          onPress={() => setActiveTab('teams')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'teams' }}
+          hitSlop={8}
+          className={`flex-1 min-h-[48px] flex-row items-center justify-center gap-1.5 rounded-lg py-2.5 ${
+            activeTab === 'teams' ? 'bg-white shadow-xs dark:bg-slate-900' : ''
+          }`}
+        >
+          <Ionicons
+            name="shield-outline"
+            size={13}
+            color={activeTab === 'teams' ? BRAND.granate : '#64748b'}
+          />
+          <Text
+            className={`text-xs font-bold ${
+              activeTab === 'teams'
+                ? 'text-rink-passion dark:text-rose-400'
+                : 'text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            {t('notif_presets.showcase.tab_teams')}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => setActiveTab('players')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'players' }}
+          hitSlop={8}
+          className={`flex-1 min-h-[48px] flex-row items-center justify-center gap-1.5 rounded-lg py-2.5 ${
+            activeTab === 'players' ? 'bg-white shadow-xs dark:bg-slate-900' : ''
+          }`}
+        >
+          <Ionicons
+            name="person-outline"
+            size={13}
+            color={activeTab === 'players' ? BRAND.granate : '#64748b'}
+          />
+          <Text
+            className={`text-xs font-bold ${
+              activeTab === 'players'
+                ? 'text-rink-passion dark:text-rose-400'
+                : 'text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            {t('notif_presets.showcase.tab_players')}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => setActiveTab('leagues')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'leagues' }}
+          hitSlop={8}
+          className={`flex-1 min-h-[48px] flex-row items-center justify-center gap-1.5 rounded-lg py-2.5 ${
+            activeTab === 'leagues' ? 'bg-white shadow-xs dark:bg-slate-900' : ''
+          }`}
+        >
+          <Ionicons
+            name="trophy-outline"
+            size={13}
+            color={activeTab === 'leagues' ? BRAND.granate : '#64748b'}
+          />
+          <Text
+            className={`text-xs font-bold ${
+              activeTab === 'leagues'
+                ? 'text-rink-passion dark:text-rose-400'
+                : 'text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            {t('notif_presets.showcase.tab_leagues')}
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Notificaciones de muestra según la pestaña seleccionada */}
+      {activeTab === 'teams' && (
+        <View className="mt-1">
+          <MockPushCard
+            time={t('notif_presets.showcase.time_now')}
+            badge={t('notif_presets.showcase.badge_live')}
+            title={t('notif_presets.showcase.team_goal_title')}
+            body={t('notif_presets.showcase.team_goal_body')}
+            liveScore="BAR 1 - 0 LIC · Min. 14'"
+            icon="shield"
+          />
+          <MockPushCard
+            time={t('notif_presets.showcase.time_5m')}
+            badge={t('notif_presets.showcase.badge_final')}
+            title={t('notif_presets.showcase.team_final_title')}
+            body={t('notif_presets.showcase.team_final_body')}
+            icon="flag"
+          />
+          <View className="mt-2.5 rounded-lg bg-slate-50 p-2.5 dark:bg-slate-800/60">
+            <Text className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+              💡 {t('notif_presets.showcase.note_teams')}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {activeTab === 'players' && (
+        <View className="mt-1">
+          <MockPushCard
+            time={t('notif_presets.showcase.time_now')}
+            badge={t('notif_presets.showcase.badge_goal')}
+            title={t('notif_presets.showcase.player_goal_title')}
+            body={t('notif_presets.showcase.player_goal_body')}
+            liveScore="BAR 2 - 1 NOI · Min. 32'"
+            icon="person"
+          />
+          <MockPushCard
+            time={t('notif_presets.showcase.time_10m')}
+            badge={t('notif_presets.showcase.badge_blue_card')}
+            title={t('notif_presets.showcase.player_card_title')}
+            body={t('notif_presets.showcase.player_card_body')}
+            icon="alert-circle"
+          />
+          <View className="mt-2.5 rounded-lg bg-slate-50 p-2.5 dark:bg-slate-800/60">
+            <Text className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+              💡 {t('notif_presets.showcase.note_players')}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {activeTab === 'leagues' && (
+        <View className="mt-1">
+          <MockPushCard
+            time={t('notif_presets.showcase.time_friday')}
+            badge={t('notif_presets.showcase.badge_matchday')}
+            title={t('notif_presets.showcase.league_start_title')}
+            body={t('notif_presets.showcase.league_start_body')}
+            icon="trophy"
+          />
+          <MockPushCard
+            time={t('notif_presets.showcase.time_sunday')}
+            badge={t('notif_presets.showcase.badge_results')}
+            title={t('notif_presets.showcase.league_end_title')}
+            body={t('notif_presets.showcase.league_end_body')}
+            icon="stats-chart"
+          />
+          <View className="mt-2.5 rounded-lg bg-slate-50 p-2.5 dark:bg-slate-800/60">
+            <Text className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+              💡 {t('notif_presets.showcase.note_leagues')}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Explicación de los 3 tipos para la categoría actual */}
+      <View className="mt-3.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <View className="flex-row items-start">
+          <View className="mr-2 mt-1.5 h-2 w-2 rounded-full bg-rink-passion" />
+          <View className="flex-1">
+            <Text className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+              {t('notif_presets.key_events.label')}
+              {activeTab === 'teams'
+                ? t('notif_presets.showcase.suffix_teams')
+                : activeTab === 'players'
+                ? t('notif_presets.showcase.suffix_players')
+                : t('notif_presets.showcase.suffix_leagues')}
+            </Text>
+            <Text className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              {activeTab === 'players'
+                ? t('notif_presets.player.key_events.desc')
+                : activeTab === 'leagues'
+                ? t('notif_presets.league.key_events.desc')
+                : t('notif_presets.key_events.desc')}
+            </Text>
+          </View>
+        </View>
+
+        {activeTab !== 'players' && (
+          <View className="mt-2.5 flex-row items-start">
+            <View className="mr-2 mt-1.5 h-2 w-2 rounded-full bg-slate-400" />
+            <View className="flex-1">
+              <Text className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                {t('notif_presets.results.label')}
+              </Text>
+              <Text className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                {activeTab === 'leagues'
+                  ? t('notif_presets.league.results.desc')
+                  : t('notif_presets.results.desc')}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        <View className="mt-2.5 flex-row items-start">
+          <View className="mr-2 mt-1.5 h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600" />
+          <View className="flex-1">
+            <Text className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+              {t('notif_presets.silent.label')}
+            </Text>
+            <Text className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              {activeTab === 'players'
+                ? t('notif_presets.player.silent.desc')
+                : activeTab === 'leagues'
+                ? t('notif_presets.league.silent.desc')
+                : t('notif_presets.silent.desc')}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/** Tarjeta individual de previsualización de push notification. */
+function MockPushCard({
+  time,
+  title,
+  body,
+  badge,
+  liveScore,
+  icon = 'shield',
+}: {
+  time: string;
+  title: string;
+  body: string;
+  badge?: string;
+  liveScore?: string;
+  icon?: keyof typeof Ionicons.glyphMap;
+}) {
+  return (
+    <View className="mt-2.5 rounded-2xl border border-slate-200/90 bg-slate-50/90 p-3 shadow-xs dark:border-slate-800 dark:bg-slate-800/80">
+      <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center gap-1.5">
+          <View
+            className="h-4.5 w-4.5 items-center justify-center rounded-[5px]"
+            style={{ backgroundColor: BRAND.granate }}
+          >
+            <Ionicons name={icon} size={10} color="#ffffff" />
+          </View>
+          <Text className="text-[10px] font-black tracking-wider text-slate-500 dark:text-slate-400">
+            STICK LIVE
+          </Text>
+          <Text className="text-[10px] text-slate-400">•</Text>
+          <Text className="text-[10px] font-medium text-slate-400">{time}</Text>
+        </View>
+        {badge ? (
+          <View className="rounded bg-rose-50 px-1.5 py-0.5 dark:bg-rose-950/70">
+            <Text className="text-[9px] font-bold text-rink-passion dark:text-rose-400">
+              {badge}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      <Text className="mt-1.5 text-xs font-bold text-slate-900 dark:text-slate-100">
+        {title}
+      </Text>
+      <Text className="mt-0.5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+        {body}
+      </Text>
+
+      {liveScore ? (
+        <View className="mt-2 flex-row items-center justify-between rounded-lg border border-slate-200/60 bg-white px-2 py-1 dark:border-slate-700/60 dark:bg-slate-900/90">
+          <View className="flex-row items-center gap-1.5">
+            <View className="h-2 w-2 rounded-full bg-emerald-500" />
+            <Text className="font-mono text-[10px] font-bold text-slate-800 dark:text-slate-200">
+              {liveScore}
+            </Text>
+          </View>
+          <Text className="text-[9px] font-semibold text-slate-400">
+            hockey patines
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -143,8 +487,8 @@ function SettingRow({
 export default function NotificationsScreen() {
   const { t, locale } = useLocale();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { session } = useSession();
+  const insets = useSafeAreaInsets();
   const authToken = session?.token;
 
   // Favoritos con el mismo gating que FollowButton: servidor con sesión,
@@ -284,7 +628,10 @@ export default function NotificationsScreen() {
   const total = sections.reduce((n, s) => n + s.ids.length, 0);
 
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 24 }} className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
+    <ScrollView
+      contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 24, 32) }}
+      className="flex-1 bg-rink-floor dark:bg-rink-floor-dark"
+    >
       {syncError ? (
         <Text
           className="mx-4 mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/50 dark:text-red-400"
@@ -342,6 +689,9 @@ export default function NotificationsScreen() {
         </View>
       ) : null}
 
+      {/* Muestra interactiva de notificaciones (Equipos, Jugadores, Ligas) */}
+      <NotificationShowcaseCard />
+
       {/* `favs` puede ser undefined mientras cargan los favoritos: sin ese
           check, el estado vacío de "no sigues nada" hace flash durante la carga. */}
       {prefs && favs && total === 0 ? (
@@ -368,7 +718,6 @@ export default function NotificationsScreen() {
                     key={id}
                     kind={s.kind}
                     id={id}
-                    name={resolveFavoriteName(queryClient, s.kind, id) ?? t(PLACEHOLDER_KEY[s.kind])}
                     preset={uiPreset(prefs.presets[presetKey(s.kind, id)] ?? 'key_events')}
                     onPreset={setEntityPreset}
                   />

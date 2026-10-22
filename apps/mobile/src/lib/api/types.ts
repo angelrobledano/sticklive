@@ -63,6 +63,8 @@ export interface MatchSummary {
   /** live.ts:94-96 — null si el partido no tiene `venue_name`. */
   venue: { name: string; city: string | null } | null;
   score: { home: number | null; away: number | null };
+  /** Faltas de equipo acumuladas (live.ts:114): null si el partido no está en vivo o no hay registro. */
+  fouls?: { home: number | null; away: number | null } | null;
   homeTeam: { id: string; name: string; shortName: string | null; logoUrl: string | null };
   awayTeam: { id: string; name: string; shortName: string | null; logoUrl: string | null };
 }
@@ -175,6 +177,7 @@ export interface CompetitionSummary {
   name: string;
   nameI18n: Record<string, string> | null;
   shortName: string | null;
+  logoUrl?: string | null;
   slug: string;
   gender: string | null;
   category: string | null;
@@ -270,52 +273,152 @@ export interface FavoritesResponse {
   players: string[];
 }
 
+export interface TeamSeason {
+  id: string;
+  name: string;
+  isCurrent: boolean;
+  competitionName: string;
+  competitionShort: string | null;
+}
+
+export interface TeamSeasonInfo {
+  competitionId: string;
+  competitionSlug?: string | null;
+  competitionName: string;
+  competitionShort: string | null;
+  competitionFormat?: string | null;
+  phases?: {
+    id: string;
+    ordinal: number;
+    kind: string;
+    isPlacement: boolean;
+    name: string | null;
+    hasStandings: boolean;
+    stages: string[];
+  }[];
+}
+
+export interface TeamStaffMember {
+  name: string;
+  role: string;
+}
+
+export interface TeamSeasonStats {
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  assists: number;
+  teamFouls: number;
+  blueCards: number;
+  redCards: number;
+  timeouts: number;
+  directFouls: { total: number; scored: number; pct: number | null };
+  penalties: { total: number; scored: number; pct: number | null };
+}
+
+export interface ClubTeamSummary {
+  id: string;
+  name: string;
+  shortName: string | null;
+  logoUrl: string | null;
+  gender?: string | null;
+  ageCategory?: string | null;
+  squadLevel?: number | null;
+  teamType?: string | null;
+  sectionSuffix?: string;
+}
+
+export interface TeamMatchSummary {
+  id: string;
+  status: string;
+  competitionTimezone?: string | null;
+  scheduledAt: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  score: { home: number | null; away: number | null };
+  venue?: { name: string; city: string | null } | null;
+  roundId?: string | null;
+  roundNumber?: number | null;
+  roundName?: string | null;
+  roundType?: string | null;
+  phaseId?: string | null;
+  stage?: string | null;
+  seriesGame?: number | null;
+  winnerTeamId?: string | null;
+  winType?: 'regular' | 'overtime' | 'penalties' | null;
+  homeTeam: { id: string; name: string; shortName: string | null; logoUrl: string | null };
+  awayTeam: { id: string; name: string; shortName: string | null; logoUrl: string | null };
+}
+
 /**
  * Task 2.5 — `GET /teams/:id` → `TeamDetail`, verificado contra
- * apps/api/src/routes/team-detail.ts (c.json en :458). Sólo se declaran los
- * campos que pinta la app (el JSON real trae además club/clubTeams/staff/stats;
- * los campos no declarados se ignoran en runtime).
- *
- * OJO: `matches` NO es `MatchSummary` — es un shape PROPIO (:408-429) sin
- * competitionName/isHalftime/live; `status` es el crudo de la BD. Por eso la
- * ficha de equipo pinta filas locales en vez de reutilizar MatchCard.
- * Timestamps pg → string ISO (ídem scheduledAt en MatchSummary).
+ * apps/api/src/routes/team-detail.ts (c.json en :458).
  */
 export interface TeamDetail {
   team: {
     id: string;
     name: string;
     shortName: string | null;
+    city?: string | null;
+    country?: string | null;
+    logoUrl?: string | null;
+    websiteUrl?: string | null;
+    gender?: string | null;
+    ageCategory?: string | null;
+    squadLevel?: number | null;
+    teamType?: string | null;
     /** #196: sufijo de sección (género/categoría/filial), team-detail.ts:386. */
     sectionSuffix: string | null;
+    club?: {
+      id: string;
+      canonicalName: string | null;
+      slug: string | null;
+      crestUrl: string | null;
+      city: string | null;
+      country: string | null;
+    } | null;
   };
-  /** Standing de la temporada ACTIVA; null sin clasificación (playoffs, etc.). */
+  clubTeams?: ClubTeamSummary[];
+  /** Standing de la temporada activa; null sin clasificación (playoffs, etc.). */
   standing: {
+    seasonId?: string;
+    competitionId?: string;
     competitionName: string;
+    competitionShort?: string | null;
     position: number | null;
     played: number;
     won: number;
     drawn: number;
     lost: number;
+    goalsFor?: number;
+    goalsAgainst?: number;
     goalDiff: number;
     points: number;
+    form?: string[];
+    penalizationPoints?: number;
   } | null;
-  matches: {
-    id: string;
-    status: string;
-    scheduledAt: string | null;
-    score: { home: number | null; away: number | null };
-    homeTeam: { id: string; name: string; shortName: string | null; logoUrl: string | null };
-    awayTeam: { id: string; name: string; shortName: string | null; logoUrl: string | null };
-  }[];
+  season?: TeamSeasonInfo | null;
+  seasons?: TeamSeason[];
+  selectedSeasonId?: string | null;
+  knockoutMatches?: TeamMatchSummary[];
+  matches: TeamMatchSummary[];
   squad: {
     playerId: string;
     firstName: string;
     lastName: string;
+    photoUrl?: string | null;
     isGoalkeeper: boolean;
     jerseyNumber: number | null;
     goals: number;
+    blueCards?: number;
+    redCards?: number;
+    penalties?: number;
   }[];
+  staff?: TeamStaffMember[];
+  stats?: TeamSeasonStats | null;
 }
 
 /**
@@ -383,4 +486,141 @@ export interface AdsConfig {
   interstitial: { enabled: boolean; minIntervalMinutes: number; maxPerHour: number };
   rewarded: { enabled: boolean; adfreeMinutes: number };
   nativeFeed: { enabled: boolean; everyNItems: number };
+}
+
+export type KnockoutStage = 'round_of_16' | 'quarters' | 'semis' | 'final' | 'third_place' | 'placement';
+
+export interface SeasonPhase {
+  id: string;
+  ordinal: number;
+  kind: 'league' | 'group' | 'knockout';
+  isPlacement: boolean;
+  name: string | null;
+  hasStandings: boolean;
+  stages: KnockoutStage[];
+  stagesInferred: boolean;
+  fromSource: boolean;
+}
+
+export interface SeasonLeader {
+  playerId: string | null;
+  playerName: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  photoUrl?: string | null;
+  teamId: string | null;
+  teamShort: string | null;
+  teamName: string | null;
+  value: number;
+  extra: number;
+}
+
+export interface TeamSetPieces {
+  teamId: string;
+  teamShort: string | null;
+  teamName: string | null;
+  directFouls: { total: number; scored: number; pct: number | null };
+  penalties: { total: number; scored: number; pct: number | null };
+}
+
+export interface SeasonStats {
+  topScorers: SeasonLeader[];
+  topAssists: SeasonLeader[];
+  topCards: SeasonLeader[];
+  setPieces?: TeamSetPieces[];
+}
+
+export interface SeasonOverviewMatch {
+  id: string;
+  status: MatchStatus;
+  competitionTimezone: string | null;
+  scheduledAt: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  score: { home: number | null; away: number | null };
+  winnerTeamId: string | null;
+  winType: string | null;
+  penalties: { home: number; away: number } | null;
+  venueName: string | null;
+  roundId: string | null;
+  groupName: string | null;
+  phaseId: string | null;
+  stage: string | null;
+  seriesGame: number | null;
+  roundNumber: number | null;
+  roundName: string | null;
+  roundType: string | null;
+  homeTeam: {
+    id: string;
+    name: string;
+    shortName: string | null;
+    logoUrl: string | null;
+  };
+  awayTeam: {
+    id: string;
+    name: string;
+    shortName: string | null;
+    logoUrl: string | null;
+  };
+}
+
+export interface SeasonOverviewStandingRow {
+  id: string;
+  teamId: string;
+  teamName: string;
+  teamShortName: string | null;
+  teamLogoUrl: string | null;
+  groupName: string | null;
+  position: number | null;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDiff: number;
+  points: number;
+  form?: string[];
+  penalizationPoints?: number;
+}
+
+export interface SeasonOverview {
+  season: {
+    id: string;
+    name: string;
+    slug: string;
+    startDate: string | null;
+    endDate: string | null;
+    competitionId: string;
+    competitionName: string;
+    competitionSlug: string;
+    competitionShortName: string | null;
+    competitionLogoUrl: string | null;
+    competitionOrganizer: string;
+    competitionScope: string;
+    competitionCountry: string | null;
+    competitionRegion: string | null;
+    competitionTimezone: string | null;
+    competitionFormat: string | null;
+    phases?: SeasonPhase[];
+  };
+  standings: SeasonOverviewStandingRow[];
+  rounds: {
+    id: string;
+    number: number;
+    name: string | null;
+    roundType: string;
+    phaseId?: string | null;
+    stage?: string | null;
+  }[];
+  matches: SeasonOverviewMatch[];
+}
+
+export interface CompetitionSeasonsResponse {
+  seasons: {
+    id: string;
+    name: string;
+    slug: string;
+    isCurrent: boolean;
+  }[];
 }

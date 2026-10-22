@@ -32,6 +32,11 @@ export const OG_COPY: Record<Locale, OgCopy> = {
     hockey: 'Hockey patines en directo', competitionSubtitle: 'Clasificación, calendario y resultados',
     goalkeeper: 'Portero', goals: 'goles', dateLocale: 'es-ES',
   },
+  ca: {
+    home: 'Local', away: 'Visitant', live: 'EN DIRECTE', final: 'FINAL',
+    hockey: "Hoquei patins en directe", competitionSubtitle: 'Classificació, calendari i resultats',
+    goalkeeper: 'Porter', goals: 'gols', dateLocale: 'ca-ES',
+  },
   en: {
     home: 'Home', away: 'Away', live: 'LIVE', final: 'FINAL',
     hockey: 'Live rink hockey', competitionSubtitle: 'Standings, fixtures and results',

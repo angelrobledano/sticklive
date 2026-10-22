@@ -7,6 +7,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('.', import.meta.url)),
+      'react-native': fileURLToPath(new URL('./src/test-mocks/react-native.ts', import.meta.url)),
+      '@expo/vector-icons': fileURLToPath(new URL('./src/test-mocks/vector-icons.ts', import.meta.url)),
     },
   },
   test: {

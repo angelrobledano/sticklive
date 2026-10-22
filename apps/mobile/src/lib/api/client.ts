@@ -1,9 +1,31 @@
+import { Platform } from 'react-native';
+
+/**
+ * Resuelve la URL por defecto según la plataforma y el entorno cuando EXPO_PUBLIC_API_URL no está definida:
+ * - En producción o preview (!isDev): fallback seguro a la API de producción https://sticklive.eu/api.
+ * - En desarrollo local (isDev):
+ *   - En Android (emulador): 10.0.2.2 es el alias del host local.
+ *   - En iOS (simulador) y resto: localhost es el host local.
+ */
+export function resolveDefaultApiUrl(
+  platform: string,
+  isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : true,
+): string {
+  if (!isDev) {
+    return 'https://sticklive.eu/api';
+  }
+  if (platform === 'android') return 'http://10.0.2.2:3000';
+  return 'http://localhost:3000';
+}
+
 /**
  * Base del API: única fuente para REST (apiFetch) y para URLs absolutas de
  * imágenes (escudos/fotos se sirven proxied por el API con normalización;
  * ver apps/api/src/routes/team-logo.ts y player-photo.ts).
  */
-export const API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://10.0.2.2:3000';
+export const API_URL =
+  process.env['EXPO_PUBLIC_API_URL'] ??
+  resolveDefaultApiUrl(Platform.OS, typeof __DEV__ !== 'undefined' ? __DEV__ : false);
 
 /** Base de la web para abrir en el navegador del sistema (compra premium). */
 export const WEB_URL = process.env['EXPO_PUBLIC_WEB_URL'] ?? 'https://sticklive.eu';

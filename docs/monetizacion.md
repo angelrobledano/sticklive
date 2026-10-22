@@ -221,20 +221,22 @@ La compra es SOLO en la web: la app lee el premium de su sesión
 Diseño de plazamientos y caps: §7–§8 del
 [spec de monetización](./superpowers/specs/2026-10-06-monetizacion-ads-premium-design.md).*
 
-> Los IDs de app y de bloque **no son secretos**: viajan horneados en el APK.
-> El **App ID** va horneado en `apps/mobile/app.config.ts` (config plugin,
-> Android — el alta iOS es pendiente) y los unit ids de banner viajan como
-> variables `EXPO_PUBLIC_*` de build, nunca hardcode en el repo.
+> Los IDs de app y de bloque **no son secretos**: viajan horneados en el APK / IPA.
+> Los **App IDs** van configurados en `apps/mobile/app.config.ts` (plugin
+> `react-native-google-mobile-ads`: `androidAppId` e `iosAppId`).
+> Los unit IDs de cada plataforma se inyectan en tiempo de compilación mediante
+> EAS Build (`build.production.android.env` y `build.production.ios.env` en `eas.json`)
+> mapeados a variables `EXPO_PUBLIC_*`.
 
-| Variable | Bloque | Superficie | ID | Estado |
+| Variable | Bloque / Superficie | ID Android | ID iOS | Estado |
 |---|---|---|---|---|
-| — (plugin, `app.config.ts`) | App | manifest Android (`~`) | `ca-app-pub-2994866776026136~4595623578` | v1 |
-| `EXPO_PUBLIC_ADMOB_BANNER_LIST` | Banner | Pie de listas (Directo, Clasificación, Búsqueda, Favoritos) | `ca-app-pub-2994866776026136/4268320510` | v1 |
-| `EXPO_PUBLIC_ADMOB_BANNER_MATCH` | Banner | Ficha de partido finalizada/por jugar | `ca-app-pub-2994866776026136/2815638044` | v1 |
-| — | Nativo avanzado | In-feed cada 6–8 items | `ca-app-pub-2994866776026136/8343296898` | Plan D |
-| — | Aplicación abierta | Arranque frío, nunca tras push de gol | `ca-app-pub-2994866776026136/7030215228` | Plan D |
-| — | Intersticial | Al salir de ficha finalizada | `ca-app-pub-2994866776026136/8847613791` | Plan D |
-| — | Vídeo con recompensa | 30 min sin ads (recompensa: `30` × `adfree_min`) | `ca-app-pub-2994866776026136/6371739675` | Plan D |
+| — (plugin, `app.config.ts`) | App ID (`~`) | `ca-app-pub-2994866776026136~4595623578` | `ca-app-pub-2994866776026136~6476786071` | Configurado |
+| `EXPO_PUBLIC_ADMOB_BANNER_LIST` | Banner listas (Directo, Clasificación, Búsqueda, Favoritos) | `ca-app-pub-2994866776026136/4268320510` | `ca-app-pub-2994866776026136/6899282898` | Configurado |
+| `EXPO_PUBLIC_ADMOB_BANNER_MATCH` | Banner ficha de partido (finalizada/por jugar) | `ca-app-pub-2994866776026136/2815638044` | `ca-app-pub-2994866776026136/3275907661` | Configurado |
+| `EXPO_PUBLIC_ADMOB_NATIVE_FEED` | Nativo avanzado in-feed (cada N items) | `ca-app-pub-2994866776026136/8343296898` | `ca-app-pub-2994866776026136/8128604080` | Plan D |
+| `EXPO_PUBLIC_ADMOB_APP_OPEN` | Aplicación abierta (arranque frío, nunca tras push) | `ca-app-pub-2994866776026136/7030215228` | `ca-app-pub-2994866776026136/5518927629` | Plan D |
+| `EXPO_PUBLIC_ADMOB_INTERSTITIAL` | Intersticial al salir de ficha finalizada | `ca-app-pub-2994866776026136/8847613791` | `ca-app-pub-2994866776026136/7007094103` | Plan D |
+| `EXPO_PUBLIC_ADMOB_REWARDED` | Vídeo con recompensa (30 min adfree) | `ca-app-pub-2994866776026136/6371739675` | `ca-app-pub-2994866776026136/6596030569` | Plan D |
 
 Los cuatro formatos **Plan D** tienen su bloque AdMob creado (IDs en la tabla)
 y están IMPLEMENTADOS en la app y en el API (`GET /ads/config`), pero nacen

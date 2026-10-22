@@ -1,8 +1,9 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { apiFetch } from '@/src/lib/api/client';
+import { apiFetch, ApiError } from '@/src/lib/api/client';
 import { isAdfreeActive } from '@/src/lib/ads/adfree';
 import type {
   AdsConfig,
+  CompetitionSeasonsResponse,
   CompetitionSummary,
   CompetitionsResponse,
   CurrentMatchesResponse,
@@ -12,6 +13,8 @@ import type {
   PlayerDetail,
   PremiumStatus,
   SearchResults,
+  SeasonOverview,
+  SeasonStats,
   StandingsResponse,
   StandingsRow,
   TeamDetail,
@@ -25,10 +28,13 @@ export const qk = {
   current: ['matches', 'current'] as const,
   match: (id: string) => ['matches', id] as const,
   competitions: ['competitions'] as const,
+  competitionSeasons: (id: string) => ['competitions', id, 'seasons'] as const,
+  seasonOverview: (seasonId: string) => ['seasons', seasonId, 'overview'] as const,
+  seasonStats: (seasonId: string) => ['seasons', seasonId, 'stats'] as const,
   standings: (seasonId: string) => ['standings', seasonId] as const,
   search: (q: string) => ['search', q] as const,
   favorites: ['favorites'] as const,
-  team: (id: string) => ['teams', id] as const,
+  team: (id: string, seasonId?: string) => seasonId ? (['teams', id, seasonId] as const) : (['teams', id] as const),
   player: (id: string) => ['players', id] as const,
   premium: ['premium'] as const,
   adsConfig: ['adsConfig'] as const,
@@ -98,8 +104,34 @@ export async function fetchCompetitions(): Promise<CompetitionsResponse> {
   return apiFetch<CompetitionsResponse>('/competitions');
 }
 
+export async function fetchCompetitionSeasons(competitionId: string): Promise<CompetitionSeasonsResponse> {
+  return apiFetch<CompetitionSeasonsResponse>(`/competitions/${competitionId}/seasons`);
+}
+
+export async function fetchSeasonOverview(seasonId: string): Promise<SeasonOverview> {
+  return apiFetch<SeasonOverview>(`/seasons/${seasonId}/overview`);
+}
+
+export async function fetchSeasonStats(seasonId: string): Promise<SeasonStats> {
+  try {
+    return await apiFetch<SeasonStats>(`/seasons/${seasonId}/stats`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      return { topScorers: [], topAssists: [], topCards: [] };
+    }
+    throw err;
+  }
+}
+
 export async function fetchStandings(seasonId: string): Promise<StandingsResponse> {
-  return apiFetch<StandingsResponse>(`/seasons/${seasonId}/standings`);
+  try {
+    return await apiFetch<StandingsResponse>(`/seasons/${seasonId}/standings`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      return { seasonId, group: null, count: 0, standings: [] };
+    }
+    throw err;
+  }
 }
 
 export async function fetchSearch(q: string): Promise<SearchResults> {
@@ -194,11 +226,12 @@ export function useFavorites(token: string | null | undefined) {
   });
 }
 
-/** Ficha de equipo (Task 2.5): estable → staleTime generoso. */
-export function useTeam(id: string) {
+/** Ficha de equipo (Task 2.5): estable → staleTime generoso. Soporta filtrar por ?season=. */
+export function useTeam(id: string, seasonId?: string) {
+  const query = seasonId ? `?season=${seasonId}` : '';
   return useQuery({
-    queryKey: qk.team(id),
-    queryFn: () => apiFetch<TeamDetail>(`/teams/${id}`),
+    queryKey: qk.team(id, seasonId),
+    queryFn: () => apiFetch<TeamDetail>(`/teams/${id}${query}`),
     enabled: Boolean(id),
     staleTime: 5 * 60_000,
   });
@@ -210,6 +243,37 @@ export function usePlayer(id: string) {
     queryKey: qk.player(id),
     queryFn: () => apiFetch<PlayerDetail>(`/players/${id}`),
     enabled: Boolean(id),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Temporadas de una competición (histórico). */
+export function useCompetitionSeasons(competitionId: string | undefined) {
+  return useQuery({
+    queryKey: qk.competitionSeasons(competitionId ?? ''),
+    queryFn: () => fetchCompetitionSeasons(competitionId ?? ''),
+    enabled: Boolean(competitionId),
+    staleTime: 30 * 60_000,
+  });
+}
+
+/** Overview completo de una temporada (metadatos, clasificación, partidos y rondas). */
+export function useSeasonOverview(seasonId: string | undefined) {
+  return useQuery({
+    queryKey: qk.seasonOverview(seasonId ?? ''),
+    queryFn: () => fetchSeasonOverview(seasonId ?? ''),
+    enabled: Boolean(seasonId),
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+  });
+}
+
+/** Líderes estadísticos de una temporada (goleadores, asistencias, tarjetas). */
+export function useSeasonStats(seasonId: string | undefined) {
+  return useQuery({
+    queryKey: qk.seasonStats(seasonId ?? ''),
+    queryFn: () => fetchSeasonStats(seasonId ?? ''),
+    enabled: Boolean(seasonId),
     staleTime: 5 * 60_000,
   });
 }

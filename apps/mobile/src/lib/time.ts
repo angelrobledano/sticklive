@@ -11,11 +11,21 @@ export function formatKickoff(iso: string | null): string {
   }).format(d);
 }
 
-export function formatDayLabel(iso: string | null): string {
+const LOCALE_TAGS: Record<string, string> = {
+  ca: 'ca-ES',
+  es: 'es-ES',
+  en: 'en-GB',
+  fr: 'fr-FR',
+  it: 'it-IT',
+  pt: 'pt-PT',
+};
+
+export function formatDayLabel(iso: string | null, locale: string = 'es'): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return ''; // paridad con la web (match-time.ts)
-  return new Intl.DateTimeFormat('es-ES', {
+  const tag = LOCALE_TAGS[locale] ?? locale;
+  return new Intl.DateTimeFormat(tag, {
     weekday: 'long', day: 'numeric', month: 'short', timeZone: MADRID,
   }).format(d);
 }

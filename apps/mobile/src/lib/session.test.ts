@@ -4,6 +4,7 @@ import {
   loadSession,
   parseAuthError,
   parseAuthRedirect,
+  parseMagicLinkToken,
   saveSession,
 } from './session';
 
@@ -22,6 +23,14 @@ describe('parseAuthRedirect', () => {
   it('extrae code y email del redirect del callback', () => {
     const url = 'sticklive://auth/callback?code=abc123&email=a%40b.com';
     expect(parseAuthRedirect(url)).toEqual({ code: 'abc123', email: 'a@b.com' });
+  });
+
+  it('extrae code y email del callback de Google en Android', () => {
+    const url = 'sticklive://auth/callback?code=6ue0U5NmvjzeOuWZA789Ulejfbq7zw1&email=robledano@gmail.com';
+    expect(parseAuthRedirect(url)).toEqual({
+      code: '6ue0U5NmvjzeOuWZA789Ulejfbq7zw1',
+      email: 'robledano@gmail.com',
+    });
   });
 
   it('acepta un redirect sin email (el API puede no devolverlo)', () => {
@@ -69,5 +78,22 @@ describe('sesión', () => {
   it('una sesión sin email guardado carga con email null', async () => {
     await saveSession({ token: 'tok', email: null });
     expect(await loadSession()).toEqual({ token: 'tok', email: null });
+  });
+});
+
+describe('parseMagicLinkToken', () => {
+  it('extrae el token de un scheme sticklive://', () => {
+    expect(parseMagicLinkToken('sticklive://login?token=abc-123')).toBe('abc-123');
+  });
+
+  it('extrae el token de un universal link https://sticklive.eu/login', () => {
+    expect(parseMagicLinkToken('https://sticklive.eu/login?token=xyz-999')).toBe('xyz-999');
+    expect(parseMagicLinkToken('https://sticklive.eu/es/login?token=xyz-999')).toBe('xyz-999');
+  });
+
+  it('devuelve null si no hay token o es inválido', () => {
+    expect(parseMagicLinkToken('https://sticklive.eu/login')).toBeNull();
+    expect(parseMagicLinkToken('https://sticklive.eu/login?token=  ')).toBeNull();
+    expect(parseMagicLinkToken('no-url')).toBeNull();
   });
 });

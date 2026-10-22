@@ -52,6 +52,13 @@ export function pushErrorKey(message: string): string {
   if (message.startsWith(PUSH_ERRORS.requiresPhysicalDevice)) return 'settings.notif_requires_device';
   if (message.startsWith(PUSH_ERRORS.requiresDevelopmentBuild)) return 'settings.notif_requires_dev_build';
   if (message.startsWith(PUSH_ERRORS.permissionDenied)) return 'settings.notif_denied_app';
+  if (
+    message.includes('Firebase') ||
+    message.includes('googleServicesFile') ||
+    message.includes('E_REGISTRATION_FAILED')
+  ) {
+    return 'settings.notif_fcm_setup';
+  }
   return 'settings.notif_error';
 }
 

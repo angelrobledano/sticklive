@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { LOCALES, dictionaries, resolveKey } from './locales';
 
 describe('locales', () => {
-  it('carga los 5 idiomas de la web', () => {
-    expect(LOCALES).toEqual(['en', 'es', 'fr', 'it', 'pt']);
+  it('carga los 6 idiomas de la web', () => {
+    expect(LOCALES).toEqual(['ca', 'en', 'es', 'fr', 'it', 'pt']);
   });
 
   it('todos los diccionarios exponen el mismo conjunto de claves', () => {

@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiFetch } from '@/src/lib/api/client';
 import { capture } from '@/src/lib/analytics';
-import { qk, useFavorites } from './queries';
+import { useLocale } from '@/src/i18n/LocaleContext';
+import { PLACEHOLDER_KEY, resolveFavoriteName, saveFavoriteName } from '@/src/lib/favorite-names';
+import { qk, useCompetitions, useFavorites, usePlayer, useTeam } from './queries';
 
 /**
  * Favoritos (Task 3.3): ANÓNIMOS viven en AsyncStorage; CON SESIÓN en el API
@@ -158,6 +160,54 @@ export async function mergeLocalOnLogin(token: string): Promise<void> {
     body: mergeFavoritesIntoRequest(local),
   });
   await saveLocalFavorites(server);
+}
+
+/**
+ * Resuelve reactivamente el nombre de un favorito.
+ * Si ya está en caché o en memoria, lo devuelve inmediatamente.
+ * Si no está resuelto (p. ej. favorito traído de la cuenta tras login en frío),
+ * dispara la consulta correspondiente (useTeam / usePlayer / useCompetitions)
+ * y al completarse lo persiste en caché local.
+ */
+export function useFavoriteName(kind: FavoriteKind, id: string): {
+  name: string;
+  isResolved: boolean;
+} {
+  const { t } = useLocale();
+  const qc = useQueryClient();
+
+  const cached = resolveFavoriteName(qc, kind, id);
+
+  const shouldFetchTeam = kind === 'team' && !cached && Boolean(id);
+  const shouldFetchPlayer = kind === 'player' && !cached && Boolean(id);
+
+  const teamQuery = useTeam(shouldFetchTeam ? id : '');
+  const playerQuery = usePlayer(shouldFetchPlayer ? id : '');
+  const compsQuery = useCompetitions();
+
+  let resolved: string | null = cached;
+
+  if (!resolved && kind === 'team' && teamQuery.data?.team?.name) {
+    resolved = teamQuery.data.team.name;
+    saveFavoriteName(id, resolved);
+  } else if (!resolved && kind === 'player' && playerQuery.data?.player) {
+    const p = playerQuery.data.player;
+    resolved = `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim();
+    if (resolved) saveFavoriteName(id, resolved);
+  } else if (!resolved && kind === 'league' && compsQuery.data) {
+    const comp = compsQuery.data.find((c) => c.id === id);
+    if (comp?.name) {
+      resolved = comp.name;
+      saveFavoriteName(id, resolved);
+    }
+  }
+
+  const placeholder = t(PLACEHOLDER_KEY[kind]);
+
+  return {
+    name: resolved || placeholder,
+    isResolved: Boolean(resolved),
+  };
 }
 
 export { useFavorites };

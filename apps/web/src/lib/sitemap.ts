@@ -39,7 +39,7 @@ export interface SitemapIds {
   matches: SitemapId[];
 }
 
-/** Entradas por sección. ×5 locales = 40.000 < 50.000 (límite de Google). */
+/** Entradas por sección. ×6 locales = 48.000 < 50.000 (límite de Google). */
 export const SITEMAP_SECTION_SIZE = 8_000;
 
 export interface SitemapEntry {

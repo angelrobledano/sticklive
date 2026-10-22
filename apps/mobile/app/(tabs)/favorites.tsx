@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
-import { PLACEHOLDER_KEY, resolveFavoriteName } from '@/src/lib/favorite-names';
+import { useCompetitions } from '@/src/hooks/queries';
+import { useFavoriteName, useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { ErrorState } from '@/src/components/shared/ErrorState';
@@ -13,6 +12,7 @@ import { BrandLoader } from '@/src/components/shared/BrandLoader';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { authErrorKey } from '@/src/lib/auth-errors';
+import { clubName } from '@/src/lib/names';
 
 /**
  * Tab de favoritos (Task 3.3). Con sesión la fuente es `GET /auth/favorites`;
@@ -30,6 +30,7 @@ import { authErrorKey } from '@/src/lib/auth-errors';
 /** CTA de login anónimo: mismo flujo que settings.tsx (errores visibles igual). */
 function LoginCard() {
   const { t } = useLocale();
+  const router = useRouter();
   const { lastAuthError, signInWithGoogle } = useSession();
   const [signingIn, setSigningIn] = useState(false);
 
@@ -46,15 +47,25 @@ function LoginCard() {
         {t('auth.login_title')}
       </Text>
       <Text className="mt-0.5 text-sm text-slate-500">{t('auth.login_subtitle')}</Text>
-      <Pressable
-        onPress={handleSignIn}
-        disabled={signingIn}
-        className="mt-3 self-start rounded-lg bg-rink-passion px-4 py-2 active:opacity-80 disabled:opacity-50"
-      >
-        <Text className="font-semibold text-white">
-          {signingIn ? t('auth.opening_account') : t('auth.google')}
-        </Text>
-      </Pressable>
+      <View className="mt-3 flex-row flex-wrap gap-2">
+        <Pressable
+          onPress={handleSignIn}
+          disabled={signingIn}
+          className="rounded-lg bg-rink-passion px-4 py-2 active:opacity-80 disabled:opacity-50"
+        >
+          <Text className="font-semibold text-white">
+            {signingIn ? t('auth.opening_account') : t('auth.google')}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push('/login')}
+          className="rounded-lg border border-slate-300 px-4 py-2 active:opacity-80 dark:border-slate-700"
+        >
+          <Text className="font-semibold text-slate-700 dark:text-slate-300">
+            {t('auth.upsell_email')}
+          </Text>
+        </Pressable>
+      </View>
       {lastAuthError ? (
         <Text className="mt-2 text-sm text-red-600 dark:text-red-400" accessibilityLiveRegion="polite">
           {t(authErrorKey(lastAuthError))}
@@ -68,27 +79,30 @@ function LoginCard() {
 function FavoriteRow({
   kind,
   refId,
-  name,
   onPress,
 }: {
   kind: FavoriteKind;
   refId: string;
-  name: string;
   onPress: () => void;
 }) {
+  const { name, isResolved } = useFavoriteName(kind, refId);
+
   return (
     <View className="flex-row items-center border-b border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900">
       <Pressable onPress={onPress} className="min-h-[44px] flex-1 flex-row items-center px-4 py-2 active:opacity-70">
-        {kind === 'team' ? <Avatar uri={teamLogoUri(refId)} name={name} size={28} /> : null}
-        {kind === 'player' ? <Avatar uri={playerPhotoUri(refId)} name={name} size={28} /> : null}
+        {kind === 'team' ? <Avatar uri={teamLogoUri(refId, 64)} name={name} size={28} /> : null}
+        {kind === 'player' ? <Avatar uri={playerPhotoUri(refId, 64)} name={name} size={28} variant="player" /> : null}
+        {kind === 'league' ? <Avatar uri={null} name={name} size={28} variant="competition" /> : null}
         <Text
           numberOfLines={1}
-          className={`${kind === 'league' ? '' : 'ml-3 '}flex-1 text-base font-medium`}
+          className={`ml-3 flex-1 text-base font-medium ${
+            isResolved ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'
+          }`}
         >
-          {name}
+          {kind === 'player' ? name : clubName(name) || name}
         </Text>
       </Pressable>
-      <FollowButton kind={kind} refId={refId} />
+      <FollowButton kind={kind} refId={refId} name={isResolved ? name : undefined} />
     </View>
   );
 }
@@ -98,7 +112,8 @@ export default function FavoritesScreen() {
   const { session, ready } = useSession();
   const token = session?.token;
   const router = useRouter();
-  const qc = useQueryClient();
+  // Precarga de competiciones para resolver nombres de ligas favoritas de inmediato
+  useCompetitions();
 
   // Ambos hooks montados siempre (regla de hooks): el `enabled` de cada uno
   // hace el gating (servidor sólo con token; AsyncStorage sólo anónimo).
@@ -122,7 +137,7 @@ export default function FavoritesScreen() {
   const openFavorite = (kind: FavoriteKind, id: string) => {
     if (kind === 'team') router.push(`/team/${id}`);
     else if (kind === 'player') router.push(`/player/${id}`);
-    else router.push('/standings');
+    else router.push(`/competition/${id}`);
   };
 
   const sections: { kind: FavoriteKind; title: string; ids: string[] }[] = [
@@ -154,7 +169,6 @@ export default function FavoritesScreen() {
                     key={id}
                     kind={s.kind}
                     refId={id}
-                    name={resolveFavoriteName(qc, s.kind, id) ?? t(PLACEHOLDER_KEY[s.kind])}
                     onPress={() => openFavorite(s.kind, id)}
                   />
                 ))}

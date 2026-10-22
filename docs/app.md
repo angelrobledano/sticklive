@@ -8,11 +8,11 @@ Spec: `docs/superpowers/specs/2026-10-05-app-movil-design.md`; plan:
 
 ## Estado (octubre 2026)
 
-Implementada la paridad funcional v1 (directo, ficha SSE, clasificación, búsqueda,
-favoritos, login Google, ajustes, push nativo, analítica y crashes) en Android.
-**No hay aún ningún build EAS ni alta en Google Play**: los builds exigen `eas login`
-humano y el checklist de Play está pendiente (ver más abajo). Todo lo local
-verificable está en verde: typecheck, lint, tests, `expo export` y prebuild.
+Implementada la paridad funcional completa (directo, ficha SSE, clasificación, competición con
+histórico y calendario, búsqueda, favoritos, login Google, ajustes, push nativo, analítica y crashes)
+para **Android e iPhone (iOS)**. Soporte de exportación local en verde (`npm run build:android`,
+`npm run build:ios`) y perfiles EAS configurados en `eas.json` para ambas plataformas. Todo lo local
+verificable está en verde: typecheck, lint, 160 tests unitarios y bundles Hermes compilados sin advertencias.
 
 ## Stack y estructura
 
@@ -21,6 +21,7 @@ apps/mobile/
   app/                  Rutas expo-router (cada fichero es una pantalla)
     (tabs)/             index (directo) · standings · search · favorites · settings
     match/[id].tsx      Ficha de partido (SSE + respaldo)
+    competition/[id].tsx Ficha de competición (clasificación + calendario de jornadas)
     team/[id].tsx · player/[id].tsx
     settings/notifications.tsx   Preferencias de push
     _layout.tsx         Stack raíz: Sentry init, providers, deep link de push
@@ -181,14 +182,22 @@ Prerequisito único (humano): `npm i -g eas-cli` → `eas login` → en `apps/mo
 ```powershell
 cd apps/mobile
 
-# Desarrollo (APK, development client, canal development): Expo Go NO sirve
+# Desarrollo (APK Android o simulador iOS, development client, canal development):
 npx eas build -p android --profile development
+npx eas build -p ios --profile development
 
-# AAB de pruebas internas (canal preview)
+# Builds de prueba interna (canal preview: AAB para Google Play, build para TestFlight)
 npx eas build -p android --profile preview
+npx eas build -p ios --profile preview
 
-# Subida a Google Play (pista "internal" en eas.json; exige play-service-account.json)
+# Subida a tiendas (Google Play interna y Apple App Store / TestFlight)
 npx eas submit -p android --latest
+npx eas submit -p ios --latest
+
+# Compilación y exportación local de bundles (Hermes bytecode)
+npm run build:android
+npm run build:ios
+npm run build # ambas plataformas
 
 # OTA: JS sin revisión de la store (respetando runtimeVersion)
 npx eas update --channel preview -m "mensaje"

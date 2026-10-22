@@ -10,8 +10,11 @@ import type {
 import {
   favoritesEnabled,
   fetchCompetitions,
+  fetchCompetitionSeasons,
   fetchCurrentMatches,
   fetchSearch,
+  fetchSeasonOverview,
+  fetchSeasonStats,
   fetchStandings,
   qk,
   searchEnabled,
@@ -192,5 +195,56 @@ describe('queryFns y selectores (vía QueryClient.fetchQuery con fetch stubeado)
 
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/competitions'), expect.anything());
     expect(selectCompetitions(data)).toEqual([competition()]);
+  });
+
+  it('fetchSeasonOverview pide /seasons/:id/overview', async () => {
+    const envelope = {
+      season: { id: 's1', name: '2025-2026', competitionName: 'OK Liga' },
+      standings: [],
+      rounds: [],
+      matches: [],
+    };
+    const fetchMock = vi.fn(async () => ok(envelope));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const data = await newClient().fetchQuery({
+      queryKey: qk.seasonOverview('s1'),
+      queryFn: () => fetchSeasonOverview('s1'),
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/seasons/s1/overview'), expect.anything());
+    expect(data).toEqual(envelope);
+  });
+
+  it('fetchCompetitionSeasons pide /competitions/:id/seasons', async () => {
+    const envelope = { seasons: [{ id: 's1', name: '2025-2026', slug: '2025-2026', isCurrent: true }] };
+    const fetchMock = vi.fn(async () => ok(envelope));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const data = await newClient().fetchQuery({
+      queryKey: qk.competitionSeasons('c1'),
+      queryFn: () => fetchCompetitionSeasons('c1'),
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/competitions/c1/seasons'), expect.anything());
+    expect(data).toEqual(envelope);
+  });
+
+  it('fetchSeasonStats pide /seasons/:id/stats y maneja 404 seguro', async () => {
+    const statsEnvelope = {
+      topScorers: [],
+      topAssists: [],
+      topCards: [],
+    };
+    const fetchMock = vi.fn(async () => ok(statsEnvelope));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const data = await newClient().fetchQuery({
+      queryKey: qk.seasonStats('s1'),
+      queryFn: () => fetchSeasonStats('s1'),
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/seasons/s1/stats'), expect.anything());
+    expect(data).toEqual(statsEnvelope);
   });
 });

@@ -44,3 +44,19 @@ export async function clearSession(): Promise<void> {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
   await SecureStore.deleteItemAsync(EMAIL_KEY);
 }
+
+/**
+ * Extrae el token de magic link de URLs como:
+ * - `sticklive://login?token=xyz`
+ * - `https://sticklive.eu/login?token=xyz`
+ * - `https://sticklive.eu/es/login?token=xyz`
+ */
+export function parseMagicLinkToken(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const token = parsed.searchParams.get('token');
+    return token && token.trim().length > 0 ? token.trim() : null;
+  } catch {
+    return null;
+  }
+}

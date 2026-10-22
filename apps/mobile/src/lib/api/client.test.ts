@@ -1,11 +1,33 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, apiFetch } from './client';
+import { ApiError, apiFetch, resolveDefaultApiUrl } from './client';
+
+vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
 
 const ok = (body: unknown) =>
   new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe('resolveDefaultApiUrl', () => {
+  it('resuelve 10.0.2.2 en Android en modo desarrollo (emulador host)', () => {
+    expect(resolveDefaultApiUrl('android', true)).toBe('http://10.0.2.2:3000');
+  });
+
+  it('resuelve localhost en iOS en modo desarrollo (simulador host)', () => {
+    expect(resolveDefaultApiUrl('ios', true)).toBe('http://localhost:3000');
+  });
+
+  it('resuelve localhost para otras plataformas en modo desarrollo (web, etc.)', () => {
+    expect(resolveDefaultApiUrl('web', true)).toBe('http://localhost:3000');
+  });
+
+  it('resuelve la API de producción en modo no-desarrollo (!isDev) para cualquier plataforma', () => {
+    expect(resolveDefaultApiUrl('android', false)).toBe('https://sticklive.eu/api');
+    expect(resolveDefaultApiUrl('ios', false)).toBe('https://sticklive.eu/api');
+    expect(resolveDefaultApiUrl('web', false)).toBe('https://sticklive.eu/api');
+  });
 });
 
 describe('apiFetch', () => {

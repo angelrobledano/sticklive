@@ -16,15 +16,54 @@ export default {
     ios: {
       bundleIdentifier: 'eu.sticklive.app',
       supportsTablet: false,
+      // Associated Domains (Universal Links): requiere que la cuenta de Apple Developer
+      // tenga la capacidad activada en developer.apple.com.
+      // Se desactiva si ENABLE_IOS_ASSOCIATED_DOMAINS='0' (para cuentas de prueba sin capability).
+      ...(process.env['ENABLE_IOS_ASSOCIATED_DOMAINS'] !== '0'
+        ? { associatedDomains: ['applinks:sticklive.eu'] }
+        : {}),
       // iOS 18+: el sistema elige la variante según el aspecto de la pantalla de inicio.
       icon: {
         light: './assets/icon.png',
         dark: './assets/ios-icon-dark.png',
         tinted: './assets/ios-icon-tinted.png',
       },
+      infoPlist: {
+        NSUserTrackingUsageDescription:
+          'Stick Live utiliza identificadores para personalizar anuncios y ofrecer resultados deportivos adaptados a tus preferencias.',
+      },
     },
     android: {
       package: 'eu.sticklive.app',
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: [
+            {
+              scheme: 'https',
+              host: 'sticklive.eu',
+              pathPrefix: '/login',
+            },
+            {
+              scheme: 'https',
+              host: 'sticklive.eu',
+              pathPrefix: '/match',
+            },
+            {
+              scheme: 'https',
+              host: 'sticklive.eu',
+              pathPrefix: '/competition',
+            },
+            {
+              scheme: 'https',
+              host: 'sticklive.eu',
+              pathPrefix: '/team',
+            },
+          ],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+      ],
       adaptiveIcon: {
         foregroundImage: './assets/android-icon-foreground.png',
         backgroundColor: BRAND.granate,
@@ -56,18 +95,19 @@ export default {
         'expo-notifications',
         { icon: './assets/notification-icon.png', color: BRAND.granate, defaultChannel: 'live' },
       ],
-      // Sentry (Task 5.1): plugin nativo (el init de JS vive en app/_layout.tsx).
-      // Publicar source maps además requiere sentryCli authToken como secret de
-      // EAS en build — paso de release (5.3/5.4), no de esta tarea.
-      ['@sentry/react-native/expo', {}],
+      // Sentry (Task 5.1): el plugin de build inyecta tareas Gradle/Xcode de subida de sourcemaps.
+      // Solo se activa si SENTRY_AUTH_TOKEN existe en los secrets de EAS para evitar
+      // que sentry-cli falle el build si no hay credenciales configuradas.
+      // El reporte de errores de JS vive en app/_layout.tsx y no requiere este plugin.
+      ...(process.env['SENTRY_AUTH_TOKEN'] ? [['@sentry/react-native/expo', {}]] : []),
       // OTA (Task 5.3): la URL de updates aún es placeholder hasta `eas init`
       // (mismo prerequisito humano de Task 4.2): sustituir <projectId> por el
       // ID real que devuelve `npx eas init`.
       'expo-updates',
       // AdMob (docs/monetizacion.md §6). El plugin inyecta el App ID en el
-      // AndroidManifest; requiere recompilar la app nativa (CNG/dev build).
-      // iOS pendiente de publicación: sin `iosAppId` el plugin SOLO avisa
-      // (crashearía en un build iOS, que este hito Android-first no genera).
+      // AndroidManifest y en Info.plist; requiere recompilar la app nativa (CNG/dev build).
+      // androidAppId e iosAppId: usan variable de entorno en build si está definida o
+      // los IDs de producción oficiales de Stick Live en AdMob.
       // delayAppMeasurementInit: doc del SDK (european-user-consent) — la
       // medición de Google arranca al abrir la app; con true espera a
       // initialize() o primera carga de ad, así un premium (que nunca llega a
@@ -75,10 +115,16 @@ export default {
       [
         'react-native-google-mobile-ads',
         {
-          androidAppId: 'ca-app-pub-2994866776026136~4595623578',
+          androidAppId:
+            process.env['EXPO_PUBLIC_ADMOB_ANDROID_APP_ID'] ||
+            'ca-app-pub-2994866776026136~4595623578',
+          iosAppId:
+            process.env['EXPO_PUBLIC_ADMOB_IOS_APP_ID'] ||
+            'ca-app-pub-2994866776026136~6476786071',
           delayAppMeasurementInit: true,
         },
       ],
+      './plugins/withWidget',
     ],
     experiments: { typedRoutes: true },
     // OTA (Task 5.3): runtime manual (el proyecto tiene directorio nativo para
