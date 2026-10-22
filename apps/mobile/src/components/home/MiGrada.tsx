@@ -5,7 +5,7 @@ import type { MatchSummary } from '@/src/lib/api/types';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { clubName } from '@/src/lib/names';
-import { formatDayLabel, formatKickoff } from '@/src/lib/time';
+import { formatDayShort, formatKickoff } from '@/src/lib/time';
 import { madridDateKey, selectGradaMatches } from '@/src/lib/grada';
 
 interface Props {
@@ -29,7 +29,7 @@ export function MiGrada({ matches, teamIds, leagueIds }: Props) {
   if (upcoming.length === 0 && results.length === 0) return null;
 
   const renderMatchRow = (m: MatchSummary, isResult: boolean) => {
-    const day = formatDayLabel(m.scheduledAt, locale);
+    const day = formatDayShort(m.scheduledAt, locale);
     const hour = formatKickoff(m.scheduledAt);
 
     return (
@@ -40,7 +40,7 @@ export function MiGrada({ matches, teamIds, leagueIds }: Props) {
         className="flex-row items-center border-b border-slate-100 px-3.5 py-2.5 active:bg-slate-50 dark:border-slate-800 dark:active:bg-slate-800/60"
       >
         {/* Fecha y hora */}
-        <View className="w-20 pr-2">
+        <View className="w-[84px] pr-2">
           <Text numberOfLines={1} className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
             {day}
           </Text>

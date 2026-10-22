@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDayKey, formatDayLabel, formatKickoff, isAdQuietTime, isEffectivelyLive } from './time';
+import { formatDayKey, formatDayLabel, formatDayShort, formatKickoff, isAdQuietTime, isEffectivelyLive } from './time';
 import { STALE_LIVE_HOURS } from '@sports/shared-types';
 
 describe('time', () => {
@@ -45,6 +45,12 @@ describe('time', () => {
     const iso = '2026-10-23T18:00:00.000Z';
     expect(formatDayLabel(iso, 'es').toLowerCase()).toContain('viernes');
     expect(formatDayLabel(iso, 'ca').toLowerCase()).toContain('divendres');
+  });
+
+  it('formatDayShort pinta día abreviado y número para no truncar en móviles', () => {
+    const iso = '2026-10-23T18:00:00.000Z';
+    expect(formatDayShort(iso, 'es').toLowerCase()).toMatch(/vie|s[aá]b/);
+    expect(formatDayShort('no-fecha')).toBe('');
   });
 
   // Task 5.2: clave de sección de la home por fecha ISO (estable, sin

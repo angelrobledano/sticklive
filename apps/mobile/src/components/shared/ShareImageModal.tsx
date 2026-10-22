@@ -69,7 +69,11 @@ export function ShareImageModal({ visible, onClose, imagePath, name, kind }: Pro
           <View className="flex-row items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
             <View>
               <Text className="text-base font-bold text-slate-900 dark:text-slate-50">
-                {t('share.title') || 'Compartir tarjeta'}
+                {kind === 'match'
+                  ? t('share_image.title_match')
+                  : kind === 'player'
+                  ? t('share_image.title_player')
+                  : t('share_image.title')}
               </Text>
               <Text numberOfLines={1} className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 {name}
@@ -79,7 +83,7 @@ export function ShareImageModal({ visible, onClose, imagePath, name, kind }: Pro
               onPress={onClose}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Cerrar"
+              accessibilityLabel={t('share_image.close')}
               className="rounded-full bg-slate-100 p-2 active:opacity-70 dark:bg-slate-800"
             >
               <Ionicons name="close" size={18} color="#64748b" />
@@ -104,7 +108,7 @@ export function ShareImageModal({ visible, onClose, imagePath, name, kind }: Pro
                     isStory ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'
                   }`}
                 >
-                  {t('share.format_story') || 'Historia (9:16)'}
+                  {t('share_image.story')}
                 </Text>
               </Pressable>
               <Pressable
@@ -121,7 +125,7 @@ export function ShareImageModal({ visible, onClose, imagePath, name, kind }: Pro
                     !isStory ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'
                   }`}
                 >
-                  {t('share.format_post') || 'Post (16:9)'}
+                  {t('share_image.post')}
                 </Text>
               </Pressable>
             </View>
@@ -149,7 +153,7 @@ export function ShareImageModal({ visible, onClose, imagePath, name, kind }: Pro
                     theme === 'dark' ? 'text-rink-passion' : 'text-slate-500 dark:text-slate-400'
                   }`}
                 >
-                  {t('settings.theme_dark') || 'Oscuro'}
+                  {t('share_image.dark')}
                 </Text>
               </Pressable>
               <Pressable
@@ -173,7 +177,7 @@ export function ShareImageModal({ visible, onClose, imagePath, name, kind }: Pro
                     theme === 'light' ? 'text-rink-passion' : 'text-slate-500 dark:text-slate-400'
                   }`}
                 >
-                  {t('settings.theme_light') || 'Claro'}
+                  {t('share_image.light')}
                 </Text>
               </Pressable>
             </View>
@@ -214,7 +218,7 @@ export function ShareImageModal({ visible, onClose, imagePath, name, kind }: Pro
               >
                 <Ionicons name="share-social" size={18} color="#ffffff" />
                 <Text className="text-sm font-bold text-white">
-                  {t('share.action_share') || 'Compartir'}
+                  {t('share_image.share')}
                 </Text>
               </Pressable>
 
@@ -225,7 +229,7 @@ export function ShareImageModal({ visible, onClose, imagePath, name, kind }: Pro
               >
                 <Ionicons name="download-outline" size={16} color="#64748b" />
                 <Text className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {t('share.open_or_download') || 'Ver / Descargar imagen HD'}
+                  {t('share_image.download')}
                 </Text>
               </Pressable>
             </View>

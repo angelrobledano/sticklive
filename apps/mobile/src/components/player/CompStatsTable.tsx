@@ -15,7 +15,7 @@ export function CompStatsTable({ rows }: Props) {
     <View className="mx-3 mt-3 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
       <View className="border-b border-slate-100 px-3 py-2 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-800/40">
         <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          {t('player.by_competition') || 'Rendimiento por competición'}
+          {t('player.breakdown')}
         </Text>
       </View>
 

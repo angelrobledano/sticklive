@@ -30,6 +30,16 @@ export function formatDayLabel(iso: string | null, locale: string = 'es'): strin
   }).format(d);
 }
 
+export function formatDayShort(iso: string | null, locale: string = 'es'): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const tag = LOCALE_TAGS[locale] ?? locale;
+  return new Intl.DateTimeFormat(tag, {
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: MADRID,
+  }).format(d);
+}
+
 /**
  * Clave estable de sección por día (YYYY-MM-DD en Europe/Madrid), Task 5.2:
  * la home la usa como key de sección (la etiqueta humanizada va aparte y puede
