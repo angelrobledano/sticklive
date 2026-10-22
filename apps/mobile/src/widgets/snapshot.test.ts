@@ -93,4 +93,27 @@ describe('Widget Snapshot', () => {
     expect(snap.featuredMatch?.matchId).toBe('sch-1');
     expect(snap.featuredMatch?.status).toBe('scheduled');
   });
+
+  it('propaga faltas de equipo e indicador de descanso correctamente', () => {
+    const liveWithFouls: MatchInput[] = [
+      {
+        id: 'foul-1',
+        homeTeamName: 'Barça',
+        awayTeamName: 'Liceo',
+        homeScore: 2,
+        awayScore: 1,
+        homeFouls: 8,
+        awayFouls: 9,
+        isLive: true,
+        isHalftime: true,
+        status: 'live',
+        competitionName: 'OK Liga',
+      },
+    ];
+    const snap = buildWidgetSnapshot(liveWithFouls);
+    expect(snap.hasMatches).toBe(true);
+    expect(snap.featuredMatch?.homeFouls).toBe(8);
+    expect(snap.featuredMatch?.awayFouls).toBe(9);
+    expect(snap.featuredMatch?.isHalftime).toBe(true);
+  });
 });

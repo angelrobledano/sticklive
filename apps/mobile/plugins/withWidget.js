@@ -33,6 +33,11 @@ function withWidget(config) {
                     'android:name': 'android.appwidget.action.APPWIDGET_UPDATE',
                   },
                 },
+                {
+                  $: {
+                    'android:name': 'eu.sticklive.app.ACTION_UPDATE_WIDGET',
+                  },
+                },
               ],
             },
           ],

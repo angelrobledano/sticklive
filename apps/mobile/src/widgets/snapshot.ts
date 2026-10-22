@@ -6,11 +6,14 @@ export interface MatchInput {
   awayTeamName: string;
   homeScore?: number | null;
   awayScore?: number | null;
+  homeFouls?: number | null;
+  awayFouls?: number | null;
   status: string; // 'in_progress', 'live', 'finished', 'scheduled', etc.
   minute?: string | null;
   competitionName?: string;
   scheduledAt?: string;
   isLive?: boolean;
+  isHalftime?: boolean;
 }
 
 /**
@@ -103,6 +106,9 @@ export function buildWidgetSnapshot(
     awayTeam: chosen.awayTeamName,
     homeScore: chosen.homeScore ?? null,
     awayScore: chosen.awayScore ?? null,
+    homeFouls: chosen.homeFouls ?? null,
+    awayFouls: chosen.awayFouls ?? null,
+    isHalftime: chosen.isHalftime ?? false,
     status: normStatus,
     minute: chosen.minute ?? null,
     competition: chosen.competitionName ?? 'Stick Live',

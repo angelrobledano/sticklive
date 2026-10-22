@@ -39,6 +39,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:maxLines="1"
         android:text="OK Liga"
         android:textColor="#94A3B8"
         android:textSize="10sp" />
@@ -75,11 +77,11 @@
                 android:id="@+id/widget_home_score"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:minWidth="20dp"
+                android:minWidth="24dp"
                 android:gravity="end"
                 android:text="3"
                 android:textColor="#FFFFFF"
-                android:textSize="14sp"
+                android:textSize="16sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -107,11 +109,11 @@
                 android:id="@+id/widget_away_score"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:minWidth="20dp"
+                android:minWidth="24dp"
                 android:gravity="end"
                 android:text="2"
                 android:textColor="#FFFFFF"
-                android:textSize="14sp"
+                android:textSize="16sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
@@ -121,6 +123,8 @@
         android:id="@+id/widget_minute"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
         android:text="2ª Parte 18'"
         android:textColor="#CBD5E1"
         android:textSize="10sp" />

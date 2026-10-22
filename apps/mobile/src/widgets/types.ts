@@ -10,6 +10,9 @@ export interface WidgetMatchData {
   minute: string | null;
   competition: string;
   deepLinkUrl: string;
+  homeFouls?: number | null;
+  awayFouls?: number | null;
+  isHalftime?: boolean;
 }
 
 export interface WidgetState {
