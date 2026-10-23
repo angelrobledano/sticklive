@@ -94,6 +94,7 @@ const OPERATIVOS = [
   'apps/etl/src/seed-worldskate-asu26.ts',     // WSG Asunción 2026 (idc 325/329/330/331)
   'apps/etl/src/seed-competition-sources.ts',
   'apps/etl/src/seed-fep-competition.ts',      // seed genérico por idc (2026/27)
+  'apps/etl/src/seed-fpp.ts',                  // Portugal (FPP): ligas y copas 2026/27
   'apps/etl/src/sync-competition-logos.ts',    // logos de competición desde el catálogo
   'apps/etl/src/split-filial-teams.ts',        // reparación filiales conflados (one-off)
   'apps/etl/src/repair-section-teams.ts',      // reparación secciones M/F confladas (one-off)
@@ -108,6 +109,7 @@ const OPERATIVOS = [
   'apps/etl/src/split-merged-players.ts',      // A2: separa jugadores fusionados entre portales
   'apps/etl/src/backfill-clubs-by-crest.ts',   // A4: clubes por escudo + género/categoría
   'apps/etl/src/attach-competition-phase.ts',  // B4: cuelga una competición como fase/grupo de otra
+  'apps/etl/src/declare-standings-zones.ts',   // B2: zonas de clasificación desde las bases
   'apps/etl/src/plan-federation-coverage.ts',  // B3: plan de altas de un portal autonómico
   'apps/etl/src/download-logos.ts',
   'apps/etl/src/normalize-logos.ts',

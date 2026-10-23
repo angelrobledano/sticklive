@@ -258,6 +258,11 @@ export function buildMatchPreview(
 export interface CompetitionSummary {
   /** not_started: nadie ha jugado · in_progress · finished: sin partidos pendientes. */
   status: 'not_started' | 'in_progress' | 'finished';
+  /**
+   * league: liga a jornadas con una tabla · tournament: final four, cuadro o
+   * fase de grupos. Decide los títulos ("Así va la liga" / "Así va el torneo").
+   */
+  kind: 'league' | 'tournament';
   /** Jornada de liga más alta con partidos jugados, sobre el total de jornadas de liga. */
   matchday: { current: number; total: number } | null;
   /**
@@ -377,6 +382,10 @@ export function buildCompetitionSummary(
   const first = groups.size === 1 ? sorted.find((s) => s.played > 0) ?? null : null;
   const second = first ? sorted.find((s) => s !== first && s.played > 0) ?? null : null;
 
+  const format = (overview.season as { competitionFormat?: string }).competitionFormat;
+  const kind: CompetitionSummary['kind'] =
+    format === 'bracket' || format === 'final_four' || groups.size > 1 || regularRounds.length === 0 ? 'tournament' : 'league';
+
   const position = new Map(overview.standings.map((s) => [s.teamId, s.position]));
   const upcoming = overview.matches
     .filter((m) => m.status === 'scheduled' && m.scheduledAt && new Date(m.scheduledAt) >= now)
@@ -402,6 +411,7 @@ export function buildCompetitionSummary(
 
   return {
     status,
+    kind,
     matchday,
     podium: buildPodium(overview.matches),
     leader: first

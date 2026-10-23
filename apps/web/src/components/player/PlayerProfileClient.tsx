@@ -5,8 +5,7 @@ import type { PlayerDetail, PlayerCompStats, PlayerSeasonTotals } from '@/lib/ap
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { toTitleCase } from '@/lib/names';
 import { useT } from '@/lib/i18n';
-import { ShareButton } from '@/components/shared/ShareButton';
-import { ShareImageButton } from '@/components/shared/ShareImageButton';
+import { ShareSheet } from '@/components/shared/ShareSheet';
 import { CountryFlag } from '@/components/shared/CountryFlag';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
@@ -98,30 +97,8 @@ function PlayerHeader({ data }: { data: PlayerDetail }) {
           )}
         </div>
 
-        {/* Seguir + compartir jugador */}
-        <div className="absolute top-0 right-0 flex items-center gap-0.5">
-          <ShareImageButton
-            kind="player"
-            entityId={player.id}
-            name={toTitleCase(`${player.firstName} ${player.lastName}`)}
-            imagePath={`/players/${player.id}/share-image`}
-            compact
-          />
-          <ShareButton
-            kind="player"
-            title={toTitleCase(`${player.firstName} ${player.lastName}`)}
-          />
-          <FavoriteStar
-            id={player.id}
-            kind="player"
-            name={toTitleCase(`${player.firstName} ${player.lastName}`)}
-          />
-          <ManageNotificationsButton kind="player" id={player.id} name={toTitleCase(`${player.firstName} ${player.lastName}`)} />
-        </div>
-
-        {/* Datos — pr-20 reserva el hueco de los botones absolutos (compartir +
-            seguir), para que el nombre largo no quede DEBAJO de ellos. */}
-        <div className="flex-1 min-w-0 space-y-1 pr-20">
+        {/* Datos: las acciones van en su propia fila, debajo. */}
+        <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
             {posKey && (
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
@@ -150,6 +127,17 @@ function PlayerHeader({ data }: { data: PlayerDetail }) {
             </p>
           )}
         </div>
+      </div>
+
+      {/* Acciones: seguir (con su campana) y un único compartir. */}
+      <div className="flex items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <FavoriteStar id={player.id} kind="player" name={toTitleCase(`${player.firstName} ${player.lastName}`)} variant="button" />
+        <ManageNotificationsButton kind="player" id={player.id} name={toTitleCase(`${player.firstName} ${player.lastName}`)} />
+        <ShareSheet
+          kind="player" entityId={player.id} name={toTitleCase(`${player.firstName} ${player.lastName}`)}
+          title={toTitleCase(`${player.firstName} ${player.lastName}`)}
+          imagePath={`/players/${player.id}/share-image`} className="ml-auto"
+        />
       </div>
 
       {/* Equipo actual */}

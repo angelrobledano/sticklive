@@ -42,6 +42,7 @@ fi
 LOCK="flock -n $ETL_LOCK"
 
 LAST_HOUR=""
+LAST_FPP=""
 LAST_DAY=""
 
 echo "[scheduler] arrancado $(date -u +%FT%TZ)"
@@ -71,6 +72,20 @@ while true; do
   $LOCK node dist/apps/scraper/src/index.js --run-once worldskate \
     || echo "[scheduler] worldskate saltado o falló (seguimos)"
   touch "$ALIVE"   # latido entre fases (#146)
+
+  # ── Cada 15 min: Portugal (FPP) ─────────────────────────
+  # Fuente propia (hp.fpp.pt, no sidgad), ~30 GET por pasada. Sin directo en
+  # la v1: calendario, resultados y clasificación. Va ANTES de cron-live por
+  # la misma razón que worldskate: detrás no correría durante un directo.
+  MIN=$(date -u +%M); MIN=${MIN#0}
+  NOW_FPP=$(date -u +%Y%m%d%H)$(( MIN / 15 ))
+  if [ "$NOW_FPP" != "$LAST_FPP" ]; then
+    LAST_FPP=$NOW_FPP
+    echo "[scheduler] fpp $(date -u +%T)"
+    $LOCK node dist/apps/scraper/src/index.js --run-once fpp \
+      || echo "[scheduler] fpp saltado o falló (seguimos)"
+    touch "$ALIVE"
+  fi
 
   # ── Cada 5 min: marcadores en vivo ──────────────────────
   # Puede quedarse hasta MAX_RUNTIME_MIN dentro de su bucle activo: todo lo que

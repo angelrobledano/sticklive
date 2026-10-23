@@ -33,6 +33,24 @@ describe('renderInsight', () => {
     expect(parts[1]).toEqual({ href: '/matches/m1', text: "Club D'esports Vendrell 10-1 CP Alcorcón" });
   });
 
+  it('temporada terminada: en pasado', () => {
+    const i = ins('x', 50, { kind: 'only_unbeaten', teamIds: ['t1'], values: { won: 10, drawn: 2, played: 12 } });
+    expect(renderInsight(i, data, 'es', 'past')[1]).toBe(' fue el único invicto: 10 victorias y 2 empates en 12 partidos.');
+    expect(renderInsight(i, data, 'es')[1]).toBe(' es el único invicto: 10 victorias y 2 empates en 12 partidos.');
+    expect(renderInsight(ins('y', 50, { kind: 'win_streak', teamIds: ['t1'], values: { n: 5 } }), data, 'en', 'past')[1])
+      .toBe(' finished the season with 5 wins in a row.');
+  });
+
+  it('sin variante en pasado (récord de un partido) usa el presente', () => {
+    const parts = renderInsight(ins('x', 40, { kind: 'biggest_win', matchId: 'm1', values: { home: 10, away: 1 } }), data, 'es', 'past');
+    expect(parts[0]).toBe('La mayor goleada de la temporada: ');
+  });
+
+  it('catalán con sus propias frases', () => {
+    expect(renderInsight(ins('x', 20, { kind: 'home_win_pct', values: { pct: 47 } }), data, 'ca')[0]).toContain("L'equip local guanya el 47 %");
+    expect(renderInsight(ins('x', 20, { kind: 'home_win_pct', values: { pct: 47 } }), data, 'ca', 'past')[0]).toContain('va guanyar');
+  });
+
   it('idioma desconocido: inglés', () => {
     expect(renderInsight(ins('x', 20, { kind: 'home_win_pct', values: { pct: 47 } }), data, 'de')[0]).toContain('47%');
   });

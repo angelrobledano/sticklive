@@ -1,0 +1,161 @@
+# Runbook — Portugal (FPP): ligas y copas
+
+Fuente: https://hp.fpp.pt (Federação de Patinagem de Portugal). **No es sidgad**:
+es un PHP propio renderizado en servidor, sin API.
+
+| Página | Qué da |
+|---|---|
+| `/Competicao/{id}` | calendario completo (jornadas, fecha y hora local, marcador, enlace a la ficha) |
+| `/Classificacao/{id}` | clasificación (P J V E D GM GS DG) y escudo `CLUBE_{clubId}.png` |
+| `/jogo/{id}` · `/jogoTaca/{id}` | ficha (liga · copas): alineaciones con foto, técnicos, árbitros, faltas de equipo |
+| `/Views/ajax_jogo.php?…&token=` | timeline: goles, penaltis, libres directos, tarjetas, faltas, tiempos muertos (el token sale de la ficha) |
+| `/Direto` | partidos del día con estado y marcador, la web lo recarga cada 15 s |
+
+## Alcance
+
+- **v1:** calendario, resultados y clasificación de las 18 secciones de 2026/27,
+  agrupadas en 10 competiciones de Stick Live.
+- **v2 (ficha):** alineaciones con foto y titulares, técnicos, árbitros, faltas
+  de equipo y timeline completo de cada partido terminado.
+- **v3 (directo):** estado y marcador desde `/Direto` dentro del ciclo de
+  cron-live (~45 s), con timeline y alineación en el mismo ciclo → avisos push
+  de inicio, gol, tarjeta y final como en la FEP.
+
+| Competición | ids FPP |
+|---|---|
+| Campeonato Placard (1ª) | 493 |
+| 2ª Divisão | 494 Norte · 495 Sul |
+| 3ª Divisão | 498 Norte A · 499 Norte B · 500 Sul A · 501 Sul B |
+| CN Feminino | 502 Norte · 503 Centro · 504 Sul |
+| CN Sub-23 | 505 Norte · 506 Centro · 507 Sul |
+| Supertaça / Supertaça F | 496 / 497 |
+| Taça de Portugal | 508 (Pré-Eliminatória) |
+| Elite Cup / Elite Cup F | 509 / 510 |
+
+## Modelo
+
+- **Un id de la FPP por fase y zona.** El catálogo
+  (`apps/scraper/src/scrapers/fpp/fpp-catalog.ts`) agrupa varios ids en una
+  competición: misma fase + distinto grupo = zonas (Norte/Sul…), fase distinta
+  = fases sucesivas. `seed-fpp.ts` lo vuelca a `competition_sources.external_ids.fpp`
+  y `run-fpp.ts` lee de la BD.
+- **Equipos:** la ref es nombre + sección, `fpp_{m|f}_{edad}_{slug}`
+  (`fpp_m_senior_sl-benfica`, `fpp_f_senior_sl-benfica`). Es única globalmente,
+  así que el mismo equipo de liga se reutiliza en las copas. El club sale del
+  escudo (`fpp_club_{id}`), estable entre temporadas.
+- **Partidos:** `fpp_match_{idFPP}_{nº}`. El nº existe desde que se publica el calendario.
+- **Hora:** local de Lisboa → UTC con `zonedToUtc('Europe/Lisbon')`.
+- **Resultado:** la FPP pinta el marcador provisional en el calendario durante el
+  partido. Solo se da por terminado cuando han pasado 150 min desde el inicio
+  (`FINISHED_GRACE_MIN`). Nunca se declara "en juego" por reloj.
+- **Cruces sin decidir** ("Vencedor Jogo 1557"): no generan partido. La ronda se
+  crea igualmente y el partido aparece cuando la FPP publica los equipos.
+
+## Ficha y timeline (v2)
+
+`fpp-ficha.parser.ts` (puro) + `fpp-ficha.ts` (E/S). Corre al final de cada
+`--run-once fpp`, después del calendario.
+
+- **Qué partidos:** los FPP `finished` con ficha publicada que aún no tienen
+  alineación, y los de las últimas 36 h como mucho cada 2 h (la FPP corrige
+  actas). Máximo `FPP_FICHAS_MAX` (120) por pasada, 2 GET por partido.
+- **Jugador = id federativo** de su foto (`FED_85963.jpg` → `fpp_player_85963`),
+  el mismo en alineación y timeline: vinculación exacta, sin nombres. La foto
+  se guarda tal cual: el verificador `update-player-photos` no toca las refs `fpp_`.
+- **Lado:** visitante = fila alineada a la derecha (`justify-content-end`). El
+  `alt` "Jogador Equipa 1/2" miente en las tarjetas a técnicos.
+- **Crono:** tiempo restante de la parte, como en la FEP. Las partes que vienen
+  tras "Prolongamento" son los periodos 3 y 4.
+- **Tipos:** `Golo` → gol · `Golo Penalti` → gol + penalti marcado ·
+  `Golo Livre Direto` → gol + libre directo marcado · `Penalti/Livre Direto
+  Falhado` · `Cartão Azul/Vermelho` · `Falta N` (falta de equipo, sin jugador) ·
+  `Desconto de Tempo`. El amarillo y la advertencia verbal no tienen equivalente.
+- **Calidad de la fuente:** sobre 299 partidos de 2025/26, los goles del timeline
+  cuadran con el marcador en el 93%. El resto son actas incompletas o goles
+  duplicados en origen (los duplicados exactos se quitan). `refresh_event_coverage`
+  marca esos partidos como `partial`.
+- **source_url:** el upsert común de partidos no reescribe `source_url`, así que
+  `run-fpp` la actualiza él mismo cuando aparece la ficha.
+
+## Directo (v3)
+
+`fpp-live.parser.ts` (puro) + `fpp-live.ts` (E/S), llamados desde `cron-live.ts`
+(`runFppScores` junto a World Skate; las fichas, entre el snapshot y el diff de
+goles para que salgan los avisos).
+
+- **Coste:** sin partidos FPP en ventana (en juego, o con inicio entre −5 h y
+  +30 min) no hay ninguna petición. Con partidos: 1 GET a `/Direto` + 2 por
+  partido en juego por ciclo.
+- **Emparejado:** por la ficha enlazada en el item y, si no la trae, por los
+  nombres de los equipos (sin acentos ni signos).
+- **Estado:** solo con señal explícita de la fuente: el texto de `.estado-jogo`
+  ("1ª/2ª Parte", "Intervalo", "Prolongamento", "Terminado"…) o el punto rojo
+  parpadeante (`.fa-circle`). Un texto desconocido NO toca el partido y se
+  manda a Sentry con su texto literal (`fpp-direto-state`).
+- **Calendario vs directo:** mientras un partido está `live`, la pasada de
+  calendario no toca su estado ni su marcador. Si el directo se queda colgado,
+  `stale-live-watchdog` lo devuelve a `scheduled` a las 5 h y el calendario lo cierra.
+
+### ⚠️ Primer directo real (sábado 24/10, 2ª y 3ª Divisão)
+
+El parser de `/Direto` se escribió **sin una captura con partidos en juego**
+(el 23/10 no había ninguno): la estructura sale del CSS de la página y el test
+usa un fixture sintético. Durante los primeros partidos:
+
+1. Guardar el HTML real: `curl -s https://hp.fpp.pt/Direto > apps/scraper/src/scrapers/fpp/__fixtures__/direto-real.html`
+   (una vez en juego y otra al descanso), sustituir el fixture sintético de `fpp-live.test.ts`.
+2. Revisar Sentry (`fpp-direto-state`, `fpp-direto-parse`) y los logs
+   `FPP directo` (`matched` vs `items`).
+3. Si algo no casa, el calendario sigue cerrando los partidos con su resultado
+   (150 min), así que en el peor caso se pierde el "en juego", no el resultado.
+
+## Despliegue (primera vez)
+
+Procedimiento estándar de docs/DEPLOY.md: las migraciones (087) las aplica el
+servicio `migrate` en el `up`, no hay paso manual.
+
+```sh
+cd /opt/sticklive
+DC="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+./deploy/backup-db.sh                       # 087 cambia un CHECK; barato y por si acaso
+./deploy/deploy.sh                          # pull + espacio en disco + up -d --build + smoke
+$DC logs --tail=50 migrate                  # debe listar 087_fpp_source.sql aplicada
+
+# Alta de las 10 competiciones (dry-run primero: revisar equipos)
+$DC exec etl node dist/apps/etl/src/seed-fpp.js
+$DC exec etl node dist/apps/etl/src/seed-fpp.js --write
+
+# Primera carga a mano (con el lock del scheduler); después, cada 15 min solo
+$DC exec etl flock -n /tmp/etl-pipeline.lock node dist/apps/scraper/src/index.js --run-once fpp
+```
+
+Sin el seed, `--run-once fpp` y el directo no encuentran competiciones y no
+hacen nada: el orden despliegue → seed es seguro.
+
+Comprobación (en local salieron 1.561 partidos, 114 rondas, 141 clasificaciones, 141 equipos):
+
+```sql
+SELECT c.short_name, count(m.*) FROM competitions c
+  JOIN seasons s ON s.competition_id = c.id AND s.is_current
+  LEFT JOIN matches m ON m.season_id = s.id
+ WHERE c.organizer = 'FPP' GROUP BY 1 ORDER BY 1;
+```
+
+## Alta de una fase nueva a mitad de temporada
+
+La FPP crea un id nuevo para el playoff de la 1ª (1/4, 1/2, final), para cada
+ronda de la Taça (32 avos, 16 avos…), para la Final Four, etc. Para darlo de alta:
+
+1. Añadir la sección a la competición en `fpp-catalog.ts`. Para una eliminatoria:
+   `cup('5xx', 'play-off', 'Play-Off')` (o una fase nueva en la Taça).
+2. Desplegar y ejecutar `seed-fpp.js --write --only=<key>`. Crea los equipos nuevos y actualiza las secciones.
+
+Para ver los ids de la temporada: `https://hp.fpp.pt/` (menú "Competições 2026/27").
+
+## Pendiente / riesgos
+
+- **Azores (HC Ponta Delgada…):** las Azores van una hora por detrás de Lisboa.
+  Si la FPP publica la hora local de la pista y no la de Lisboa, esos partidos
+  quedan desplazados 1 h. Hay que contrastarlo con un partido real en las Azores.
+  Madeira tiene la misma hora que Lisboa.
+- Histórico (`/Historico`, épocas 2024/25 y 2025/26 accesibles).

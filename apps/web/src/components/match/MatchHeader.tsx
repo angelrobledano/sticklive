@@ -7,8 +7,7 @@ import { tt } from '@/components/search/translate';
 import type { MatchDetail } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
-import { ShareButton } from '@/components/shared/ShareButton';
-import { ShareImageButton } from '@/components/shared/ShareImageButton';
+import { ShareSheet } from '@/components/shared/ShareSheet';
 import { finalLabelKey, penaltyText } from '@/lib/match-result';
 import { teamTitleName } from '@/lib/names';
 import { formatTime, formatDate, eventSurname, fmtEventClock } from './format';
@@ -222,17 +221,12 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
           + (match.competitionName ? ` — ${match.competitionName}` : '')
           + (roundText ? ` · ${roundText}` : '')}
       </h1>
-      <div className="absolute top-3 right-3 flex items-center gap-1">
-        <ShareImageButton
-          kind="match"
-          entityId={match.id}
+      <div className="absolute top-3 right-3">
+        <ShareSheet
+          kind="match" entityId={match.id}
           name={`${teamTitleName(ht.name, ht.shortName)} ${teamTitleName(at.name, at.shortName)}`}
-          imagePath={`/matches/${match.id}/share-image`}
-          compact
-        />
-        <ShareButton
-          kind="match"
           title={`${ht.shortName ?? ht.name} ${match.score.home ?? ''}-${match.score.away ?? ''} ${at.shortName ?? at.name}`}
+          imagePath={`/matches/${match.id}/share-image`} compact
         />
       </div>
       {/* Competición a la que pertenece el partido (#182) */}

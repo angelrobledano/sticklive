@@ -1,4 +1,21 @@
 {
+  "share_sheet": {
+    "button": "Partager",
+    "title": "Partager",
+    "image": "Image pour les réseaux",
+    "image_sub": "Story ou publication pour Instagram, WhatsApp…",
+    "link": "Envoyer le lien",
+    "link_sub": "WhatsApp, Telegram ou copier"
+  },
+  "squad_table": {
+    "played": "Matchs joués",
+    "goals": "Buts",
+    "assists": "Passes décisives",
+    "blue": "Cartons bleus",
+    "red": "Cartons rouges",
+    "direct_fouls": "Coups francs directs tirés",
+    "penalties": "Penaltys tirés"
+  },
   "team_story": {
     "kicker": "La saison",
     "results": "Résultats",
