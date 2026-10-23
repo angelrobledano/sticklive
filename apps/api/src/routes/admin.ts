@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, type DataQuality } from '@sports/db';
+import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, setCompetitionRanking, listFederationsAdmin, listOrphanOrganizers, upsertFederation, type DataQuality, type FederationLevel } from '@sports/db';
 import { logger } from '@sports/logger';
 import type { StandingsZone } from '@sports/shared-types';
 import { isUuid } from '../lib/uuid.js';
 import { captureRouteError } from '../lib/route-error.js';
+import { parseFederationBody, parseRankingBody } from '../lib/federation-input.js';
 
 /**
  * Panel de administracion nivel 1 (token compartido).
@@ -402,6 +403,64 @@ adminRouter.patch('/competitions/:id/quality', async (c) => {
   } catch (err) {
     captureRouteError(err, 'admin] set competition quality error');
     logger.error({ err }, '[admin] set competition quality error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/**
+ * PATCH /admin/competitions/:id/ranking — Body: { tier?: 1-9|null, featuredRank?: 1-999|null }
+ * Orden en Destacadas y nivel deportivo (migración 089). null quita el valor.
+ */
+adminRouter.patch('/competitions/:id/ranking', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Competition not found' }, 404);
+  const parsed = parseRankingBody(await c.req.json().catch(() => ({})));
+  if (!parsed.ok) return c.json({ error: parsed.error }, 400);
+  try {
+    const row = await setCompetitionRanking(id, parsed.patch);
+    if (!row) return c.json({ error: 'Competition not found' }, 404);
+    return c.json({ ok: true, competition: { id: row.id, tier: row.tier, featuredRank: row.featured_rank } });
+  } catch (err) {
+    captureRouteError(err, 'admin] set competition ranking error');
+    logger.error({ err }, '[admin] set competition ranking error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/** GET /admin/federations — federaciones + organizers en uso que no tienen federación. */
+adminRouter.get('/federations', async (c) => {
+  try {
+    const [federations, orphans] = await Promise.all([listFederationsAdmin(), listOrphanOrganizers()]);
+    return c.json({ federations, orphans });
+  } catch (err) {
+    captureRouteError(err, 'admin] federations error');
+    logger.error({ err }, '[admin] federations error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/**
+ * PUT /admin/federations/:code — alta o edición. `code` = competitions.organizer
+ * exacto (URL-encoded). Body: { slug, name, shortName?, level, parentCode?, country?, region?, website?, displayOrder? }
+ */
+adminRouter.put('/federations/:code', async (c) => {
+  const code = decodeURIComponent(c.req.param('code'));
+  const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+  try {
+    const parentCode = typeof body['parentCode'] === 'string' ? body['parentCode'] : null;
+    let parentLevel: FederationLevel | null = null;
+    if (parentCode) {
+      const { rows } = await db.query<{ level: FederationLevel }>('SELECT level FROM federations WHERE code = $1', [parentCode]);
+      parentLevel = rows[0]?.level ?? null;
+    }
+    const parsed = parseFederationBody(code, body, parentLevel);
+    if (!parsed.ok) return c.json({ error: parsed.error }, 400);
+    const fed = await upsertFederation(parsed.input);
+    return c.json({ ok: true, federation: fed });
+  } catch (err) {
+    if ((err as { code?: string }).code === '23505') return c.json({ error: 'slug already in use' }, 409);
+    captureRouteError(err, 'admin] upsert federation error');
+    logger.error({ err }, '[admin] upsert federation error');
     return c.json({ error: 'Database error' }, 500);
   }
 });

@@ -290,6 +290,11 @@ export interface CompetitionQualityRow {
   slug: string;
   data_quality: DataQuality;
   archived_at: Date | null;
+  organizer: string;
+  country: string;
+  age_category: string;
+  tier: number | null;
+  featured_rank: number | null;
   season_count: string;
   visible_season_count: string;
 }
@@ -298,6 +303,7 @@ export interface CompetitionQualityRow {
 export async function listCompetitionsForQuality(): Promise<CompetitionQualityRow[]> {
   const result = await db.query<CompetitionQualityRow>(`
     SELECT c.id, c.name, c.slug, c.data_quality, c.archived_at,
+           c.organizer, c.country, c.age_category, c.tier, c.featured_rank,
            COUNT(s.id)::text AS season_count,
            COUNT(s.id) FILTER (WHERE c.data_quality = 'ok' AND s.data_quality = 'ok')::text AS visible_season_count
       FROM competitions c

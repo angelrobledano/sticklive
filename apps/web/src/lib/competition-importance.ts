@@ -37,40 +37,15 @@ export function hasSeasonYear(c: CompetitionSummary, year: number): boolean {
   return name.includes(String(year));
 }
 
-/**
- * LEGADO: importancia por slug. La fuente de verdad es ya la BD
- * (`competitions.featured_rank` + `competitions.tier`, migración 089), que
- * llega en el listado. Este mapa solo se usa como respaldo cuando el objeto
- * no trae esos campos (bloques de la vista del día, que se construyen desde
- * los partidos). Borrar cuando /matches exponga featured_rank.
- */
-export const IMPORTANCE: Record<string, number> = {
-  'mundial-masculino-worldskate': 1,
-  'mundial-femenino-worldskate': 2,
-  'intercontinental-masculino-worldskate': 3,
-  'mundial-sub19-masculino-worldskate': 4,
-  'ok-liga-masculina': 5,
-  'ok-liga-femenina': 6,
-  'copa-del-rey': 7,
-  'copa-de-la-reina-iberdrola': 8,
-  'supercopa-de-espana-masculina': 9,
-  'supercopa-de-espana-femenina': 10,
-  'ok-liga-plata-norte': 11,
-  'ok-liga-plata-sur': 12,
-  'ok-liga-plata-femenina': 13,
-  'copa-sar-la-princesa-masculina': 14,
-  'copa-sar-la-princesa-femenina': 15,
-  'ok-liga-bronce-masculina-norte': 16,
-  'ok-liga-bronce-masculina-sur': 17,
-  'ok-liga-plata-masculina-eliminatoria': 18,
-  'ok-liga-bronce-eliminatoria': 19,
-};
-
 const RANK_DESCONOCIDA = 1000;
 /** Base del rango por tier: detrás de cualquier destacada (featured_rank < 500). */
 const TIER_BASE = 500;
 
-/** Lo que hace falta para ordenar: slug y, si vienen, los campos de datos. */
+/**
+ * Lo que hace falta para ordenar. La importancia vive en la BD
+ * (`competitions.featured_rank` + `competitions.tier`, migración 089), se
+ * edita desde el admin y llega en /competitions, /matches/current y /live.
+ */
 export interface Rankable {
   slug?: string | null;
   featuredRank?: number | null;
@@ -79,16 +54,14 @@ export interface Rankable {
 
 /**
  * Rango de importancia (menor = más importante):
- *   1. `featuredRank` (curación editorial en BD)
- *   2. mapa legado por slug (solo si el objeto no trae datos)
- *   3. `tier` → 500 + tier·10 (máxima categoría de cada país antes que la 2ª)
- *   4. resto → 1000
+ *   1. `featuredRank` (curación editorial)
+ *   2. `tier` → 500 + tier·10 (máxima categoría de cada país antes que la 2ª)
+ *   3. resto → 1000
  */
-export function importanceRank(item?: Rankable | string | null): number {
-  const it: Rankable = typeof item === 'string' || item == null ? { slug: item ?? null } : item;
-  if (it.featuredRank != null && it.featuredRank > 0) return it.featuredRank;
-  if (it.featuredRank === undefined && it.slug && IMPORTANCE[it.slug]) return IMPORTANCE[it.slug]!;
-  if (it.tier != null && it.tier > 0) return TIER_BASE + it.tier * 10;
+export function importanceRank(item?: Rankable | null): number {
+  if (!item) return RANK_DESCONOCIDA;
+  if (item.featuredRank != null && item.featuredRank > 0) return item.featuredRank;
+  if (item.tier != null && item.tier > 0) return TIER_BASE + item.tier * 10;
   return RANK_DESCONOCIDA;
 }
 

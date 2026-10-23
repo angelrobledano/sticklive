@@ -28,12 +28,9 @@ function comp(slug: string, over: Partial<CompetitionSummary> = {}): Competition
 }
 
 describe('importanceRank con datos (089)', () => {
-  it('featuredRank manda, luego tier, y el mapa legado solo sin datos', () => {
+  it('featuredRank manda y luego tier', () => {
     expect(importanceRank({ slug: 'x', featuredRank: 3 })).toBe(3);
     expect(importanceRank({ slug: 'x', featuredRank: null, tier: 1 })).toBe(510);
-    // featuredRank null explícito (viene de la API) ignora el mapa legado
-    expect(importanceRank({ slug: 'ok-liga-plata-norte', featuredRank: null, tier: 2 })).toBe(520);
-    expect(importanceRank({ slug: 'ok-liga-plata-norte' })).toBe(11);
   });
 
   it('la 1ª de Portugal (tier 1) va antes que la OK Liga Plata (tier 2)', () => {

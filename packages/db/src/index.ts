@@ -20,3 +20,4 @@ export * from './queries/standings-zones.js';
 export * from './queries/club-crest-review.js';
 export * from './queries/competition-lineage.js';
 export * from './queries/players.js';
+export * from './queries/federations.js';

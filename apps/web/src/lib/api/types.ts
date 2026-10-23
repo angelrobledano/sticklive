@@ -58,6 +58,9 @@ export interface Match {
   competitionTimezone?: string | null;
   /** País de la competición (ISO alpha-2, 'W' = mundial). Solo en /matches/current y /live. */
   competitionCountry?: string | null;
+  /** Importancia de la competición (migración 089). Solo en /matches/current y /live. */
+  competitionTier?: number | null;
+  competitionFeaturedRank?: number | null;
   status: MatchStatus;
   /** Solo en directo: true durante el descanso (para badge "Descanso" en listas). */
   isHalftime?: boolean;

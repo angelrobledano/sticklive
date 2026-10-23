@@ -9,7 +9,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { db, closeDb } from '@sports/db';
+import { db, closeDb, setCompetitionRanking, listOrphanOrganizers, upsertFederation } from '@sports/db';
 import { crearDeporte } from './support/factorias.js';
 import { limpiar } from './support/db.js';
 import { FEDERATIONS } from '../../apps/etl/src/federations.js';
@@ -96,5 +96,25 @@ describe('migración 089 — tier y featured_rank', () => {
     await db.query("UPDATE competitions SET tier = 4, featured_rank = 99 WHERE slug = 'ok-liga-plata-norte'");
     await db.query(SQL);
     expect(await row('ok-liga-plata-norte')).toEqual({ tier: 4, featured_rank: 99 });
+  });
+});
+
+describe('admin — ranking y alta de federaciones', () => {
+  it('setCompetitionRanking: undefined no toca, null quita', async () => {
+    const { rows } = await db.query<{ id: string }>("SELECT id FROM competitions WHERE slug = 'ok-liga-masculina'");
+    const id = rows[0]!.id;
+    expect(await setCompetitionRanking(id, { tier: 2 })).toMatchObject({ tier: 2, featured_rank: 5 });
+    expect(await setCompetitionRanking(id, { featuredRank: null })).toMatchObject({ tier: 2, featured_rank: null });
+    expect(await setCompetitionRanking('00000000-0000-4000-8000-000000000000', { tier: 1 })).toBeNull();
+  });
+
+  it('un organizer sin federación sale en huérfanos hasta darlo de alta', async () => {
+    await comp('fcp-liga', 'Liga Canaria', { organizer: 'FCP', scope: 'regional' });
+    expect((await listOrphanOrganizers()).map((o) => o.organizer)).toContain('FCP');
+    await upsertFederation({
+      code: 'FCP', slug: 'fcp', name: 'Federación Canaria de Patinaje', shortName: 'FCP', level: 'regional',
+      parentCode: 'RFEP', country: 'ES', region: 'Canarias', website: null, displayOrder: 190,
+    });
+    expect((await listOrphanOrganizers()).map((o) => o.organizer)).not.toContain('FCP');
   });
 });

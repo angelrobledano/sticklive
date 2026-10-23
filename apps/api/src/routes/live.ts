@@ -66,6 +66,9 @@ interface LiveMatchRow {
   competition_timezone: string | null;
   /** ISO 3166-1 alpha-2 o 'W' (mundial): icono de la tarjeta de la home. */
   competition_country: string | null;
+  /** Importancia (migración 089): ordena los bloques de la home. */
+  competition_tier: number | null;
+  competition_featured_rank: number | null;
   // equipo local
   home_team_id: string;
   home_team_name: string;
@@ -88,6 +91,8 @@ function mapLiveRow(row: LiveMatchRow) {
     competitionSlug: row.competition_slug,
     competitionTimezone: row.competition_timezone,
     competitionCountry:  row.competition_country,
+    competitionTier:         row.competition_tier,
+    competitionFeaturedRank: row.competition_featured_rank,
     status:      row.status,
     isHalftime:  row.live_is_halftime ?? false,
     winType:      row.win_type,
@@ -151,6 +156,8 @@ liveRouter.get('/live', async (c) => {
         comp.slug       AS competition_slug,
         comp.timezone   AS competition_timezone,
         comp.country    AS competition_country,
+        comp.tier       AS competition_tier,
+        comp.featured_rank AS competition_featured_rank,
         -- equipo local
         ht.id           AS home_team_id,
         COALESCE(ht.display_name, ht.name) AS home_team_name,
@@ -237,6 +244,7 @@ liveRouter.get('/current', async (c) => {
         comp.slug AS competition_slug,
         comp.timezone AS competition_timezone,
         comp.country AS competition_country,
+        comp.tier AS competition_tier, comp.featured_rank AS competition_featured_rank,
         ht.id AS home_team_id, COALESCE(ht.display_name, ht.name) AS home_team_name,
         ht.short_name AS home_team_short_name, ht.logo_url AS home_team_logo_url,
         at.id AS away_team_id, COALESCE(at.display_name, at.name) AS away_team_name,

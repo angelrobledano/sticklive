@@ -212,3 +212,26 @@ describe('admin — calidad (guards sin BD)', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('admin — ranking y federaciones validan antes de tocar la BD (089)', () => {
+  it('PATCH /competitions/:id/ranking con id malformado → 404', async () => {
+    const res = await adminRouter.request('/competitions/xyz/ranking', {
+      method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({ tier: 1 }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('PATCH /competitions/:id/ranking con tier inválido → 400', async () => {
+    const res = await adminRouter.request('/competitions/00000000-0000-4000-8000-000000000000/ranking', {
+      method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({ tier: 42 }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('PUT /federations/:code con slug inválido → 400 (sin padre que consultar)', async () => {
+    const res = await adminRouter.request('/federations/X', {
+      method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify({ slug: 'X X', name: 'X', level: 'world' }),
+    });
+    expect(res.status).toBe(400);
+  });
+});

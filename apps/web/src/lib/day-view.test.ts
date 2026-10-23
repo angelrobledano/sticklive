@@ -6,12 +6,12 @@ import { buildDayView, nextMatchday, daysWithMatches, type DayViewMatch } from '
  * Madrid (10:00-20:00 UTC), así que las claves de día no dependen del horario
  * de verano. Equipos 'h*'/'a*'; competiciones por id.
  */
-const COMPS: Record<string, { name: string; slug: string | null; country: string | null }> = {
-  mundial: { name: 'Mundial Masculino', slug: 'mundial-masculino-worldskate', country: 'W' },
-  okliga: { name: 'OK Liga', slug: 'ok-liga-masculina', country: 'ES' },
-  plata: { name: 'OK Liga Plata Sur', slug: 'ok-liga-plata-sur', country: 'ES' },
-  zeta: { name: 'Zeta Cup', slug: null, country: 'PT' },
-  alfa: { name: 'Alfa Cup', slug: null, country: 'IT' },
+const COMPS: Record<string, { name: string; slug: string | null; country: string | null; featuredRank: number | null; tier: number | null }> = {
+  mundial: { name: 'Mundial Masculino', slug: 'mundial-masculino-worldskate', country: 'W', featuredRank: 1, tier: 1 },
+  okliga: { name: 'OK Liga', slug: 'ok-liga-masculina', country: 'ES', featuredRank: 5, tier: 1 },
+  plata: { name: 'OK Liga Plata Sur', slug: 'ok-liga-plata-sur', country: 'ES', featuredRank: null, tier: 2 },
+  zeta: { name: 'Zeta Cup', slug: null, country: 'PT', featuredRank: null, tier: null },
+  alfa: { name: 'Alfa Cup', slug: null, country: 'IT', featuredRank: null, tier: null },
 };
 
 function M(
@@ -32,6 +32,8 @@ function M(
     competitionName: c?.name ?? null,
     competitionSlug: c?.slug ?? null,
     competitionCountry: c?.country ?? null,
+    competitionFeaturedRank: c?.featuredRank ?? null,
+    competitionTier: c?.tier ?? null,
     ...extra,
   };
 }

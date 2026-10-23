@@ -31,6 +31,8 @@ export interface DayViewMatch {
   competitionName?: string | null;
   competitionSlug?: string | null;
   competitionCountry?: string | null;
+  competitionTier?: number | null;
+  competitionFeaturedRank?: number | null;
 }
 
 export interface CompetitionBlock<T> {
@@ -42,6 +44,9 @@ export interface CompetitionBlock<T> {
   slug: string | null;
   /** ISO 3166-1 alpha-2, `'W'` para competiciones mundiales, o null. */
   country: string | null;
+  /** Importancia en datos (migración 089); ordenan los bloques. */
+  tier: number | null;
+  featuredRank: number | null;
   /** El usuario sigue esta competición. */
   followed: boolean;
   matches: T[];
@@ -123,6 +128,8 @@ export function buildDayView<T extends DayViewMatch>(matches: T[], opts: DayView
         name: m.competitionName ?? null,
         slug: m.competitionSlug ?? null,
         country: m.competitionCountry ?? null,
+        tier: m.competitionTier ?? null,
+        featuredRank: m.competitionFeaturedRank ?? null,
         followed: isFollowedLeague(m),
         matches: [],
       };

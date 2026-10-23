@@ -120,8 +120,8 @@ describe('orderSearchResults (#260)', () => {
   });
 
   it('en empate de relevancia desempata por importancia y luego por nombre', () => {
-    const important = comp('Zona Liga', { slug: 'ok-liga-masculina' });
-    const minor = comp('Alfa Liga', { slug: 'copa-del-rey' });
+    const important = comp('Zona Liga', { featuredRank: 5 });
+    const minor = comp('Alfa Liga', { featuredRank: 7 });
     const ordered = orderSearchResults([minor, important], 'liga', 'es');
     expect(ordered.map((c) => c.name)).toEqual(['Zona Liga', 'Alfa Liga']);
   });
@@ -134,8 +134,8 @@ describe('orderSearchResults (#260)', () => {
   });
 
   it('sin término ordena por importancia (delega en orderByImportance)', () => {
-    const minor = comp('Alfa', { slug: 'copa-del-rey' });
-    const important = comp('Zeta', { slug: 'ok-liga-masculina' });
+    const minor = comp('Alfa', { featuredRank: 7 });
+    const important = comp('Zeta', { featuredRank: 5 });
     expect(orderSearchResults([minor, important], '', 'es').map((c) => c.name)).toEqual(['Zeta', 'Alfa']);
   });
 });

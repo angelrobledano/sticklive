@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { AdminCompetitions } from '@/components/admin/AdminCompetitions';
+import { AdminFederations } from '@/components/admin/AdminFederations';
 import { AdminTeams } from '@/components/admin/AdminTeams';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
@@ -57,7 +58,7 @@ export default function AdminPage() {
   const [error, setError]   = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy]     = useState<string | null>(null); // id de usuario en mutación
-  const [tab, setTab]       = useState<'users' | 'competitions' | 'teams'>('users');
+  const [tab, setTab]       = useState<'users' | 'competitions' | 'federations' | 'teams'>('users');
 
   useEffect(() => {
     try {
@@ -161,7 +162,7 @@ export default function AdminPage() {
     <div className="px-4 py-6 max-w-4xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-50">
-          {tab === 'users' ? 'Usuarios' : tab === 'competitions' ? 'Competiciones' : 'Equipos'}
+          {tab === 'users' ? 'Usuarios' : tab === 'competitions' ? 'Competiciones' : tab === 'federations' ? 'Federaciones' : 'Equipos'}
         </h1>
         <button
           onClick={() => { setData(null); setToken(''); try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* noop */ } }}
@@ -172,7 +173,7 @@ export default function AdminPage() {
       </div>
 
       <div className="flex gap-1">
-        {([['users', 'Usuarios'], ['competitions', 'Competiciones'], ['teams', 'Equipos']] as const).map(([key, label]) => (
+        {([['users', 'Usuarios'], ['competitions', 'Competiciones'], ['federations', 'Federaciones'], ['teams', 'Equipos']] as const).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -264,6 +265,7 @@ export default function AdminPage() {
       )}
 
       {tab === 'competitions' && <AdminCompetitions token={token} onError={setError} />}
+      {tab === 'federations' && <AdminFederations token={token} onError={setError} />}
       {tab === 'teams' && <AdminTeams token={token} onError={setError} />}
     </div>
   );

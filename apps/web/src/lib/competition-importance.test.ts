@@ -81,40 +81,29 @@ describe('hasSeasonYear', () => {
   });
 });
 
-describe('importanceRank', () => {
-  it('ordena según la lista de producto (mundiales World Skate encima)', () => {
-    expect(importanceRank('mundial-masculino-worldskate')).toBe(1);
-    expect(importanceRank('mundial-femenino-worldskate')).toBe(2);
-    expect(importanceRank('intercontinental-masculino-worldskate')).toBe(3);
-    expect(importanceRank('mundial-sub19-masculino-worldskate')).toBe(4);
-    expect(importanceRank('ok-liga-masculina')).toBe(5);
-    expect(importanceRank('ok-liga-femenina')).toBe(6);
-    expect(importanceRank('copa-del-rey')).toBe(7);
-    expect(importanceRank('copa-de-la-reina-iberdrola')).toBe(8);
-    expect(importanceRank('supercopa-de-espana-masculina')).toBe(9);
-    expect(importanceRank('supercopa-de-espana-femenina')).toBe(10);
-    expect(importanceRank('ok-liga-plata-norte')).toBe(11);
-    expect(importanceRank('ok-liga-plata-sur')).toBe(12);
-    expect(importanceRank('ok-liga-plata-femenina')).toBe(13);
-    expect(importanceRank('copa-sar-la-princesa-masculina')).toBe(14);
-    expect(importanceRank('copa-sar-la-princesa-femenina')).toBe(15);
-    expect(importanceRank('ok-liga-bronce-masculina-norte')).toBe(16);
-    expect(importanceRank('ok-liga-bronce-masculina-sur')).toBe(17);
-    expect(importanceRank('ok-liga-plata-masculina-eliminatoria')).toBe(18);
-    expect(importanceRank('ok-liga-bronce-eliminatoria')).toBe(19);
-    expect(importanceRank(null)).toBeGreaterThan(19);
-    expect(importanceRank('torneo-desconocido')).toBeGreaterThan(19);
+describe('importanceRank (datos, migración 089)', () => {
+  it('featuredRank manda; luego tier; sin datos al final', () => {
+    expect(importanceRank({ featuredRank: 1, tier: 1 })).toBe(1);
+    expect(importanceRank({ featuredRank: 7 })).toBe(7);
+    expect(importanceRank({ featuredRank: null, tier: 1 })).toBe(510);
+    expect(importanceRank({ tier: 2 })).toBe(520);
+    expect(importanceRank({ slug: 'ok-liga-masculina' })).toBe(1000);
+    expect(importanceRank(null)).toBe(1000);
+  });
+
+  it('cualquier destacada va antes que cualquier tier', () => {
+    expect(importanceRank({ featuredRank: 99 })).toBeLessThan(importanceRank({ tier: 1 }));
   });
 });
 
 describe('orderByImportance', () => {
-  it('ordena competiciones de mayor a menor importancia, con lo no listado al final', () => {
+  it('ordena competiciones de mayor a menor importancia, con lo no clasificado al final', () => {
     const entrada = [
-      comp('ok-liga-bronce-masculina-sur'),
-      comp('supercopa-de-espana-masculina'),
-      comp('ok-liga-femenina'),
+      comp('ok-liga-bronce-masculina-sur', { tier: 3 }),
+      comp('supercopa-de-espana-masculina', { featuredRank: 9, tier: 1 }),
+      comp('ok-liga-femenina', { featuredRank: 6, tier: 1 }),
       comp('torneo-desconocido'),
-      comp('ok-liga-masculina'),
+      comp('ok-liga-masculina', { featuredRank: 5, tier: 1 }),
     ];
     const salida = orderByImportance(entrada, 'es').map((c) => c.slug);
     expect(salida).toEqual([
@@ -126,12 +115,12 @@ describe('orderByImportance', () => {
     ]);
   });
 
-  it('ordena los bloques del día (grupos { name, slug, matches })', () => {
+  it('ordena los bloques del día (grupos { name, featuredRank, tier })', () => {
     const grupos = [
-      { name: 'OK Liga Bronce Masculina Sur', slug: 'ok-liga-bronce-masculina-sur', matches: ['a'] },
-      { name: 'OK Liga Masculina', slug: 'ok-liga-masculina', matches: ['b'] },
-      { name: 'Otras competiciones', slug: null, matches: ['c'] },
-      { name: 'OK Liga Plata Norte', slug: 'ok-liga-plata-norte', matches: ['d'] },
+      { name: 'OK Liga Bronce Masculina Sur', tier: 3, featuredRank: null, matches: ['a'] },
+      { name: 'OK Liga Masculina', tier: 1, featuredRank: 5, matches: ['b'] },
+      { name: 'Otras competiciones', tier: null, featuredRank: null, matches: ['c'] },
+      { name: 'OK Liga Plata Norte', tier: 2, featuredRank: null, matches: ['d'] },
     ];
     const salida = orderByImportance(grupos, 'es').map((g) => g.name);
     expect(salida).toEqual([
