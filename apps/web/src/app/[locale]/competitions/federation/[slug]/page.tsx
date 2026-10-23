@@ -7,6 +7,7 @@ import { localeAlternates, socialMeta, isSupportedLocale, competitionsListJsonLd
 import { competitionName } from '@/lib/names';
 import { federationHubCompetitions } from '@/lib/competition-hubs';
 import { federationHubPath } from '@/lib/competition-groups';
+import { competitionPath } from '@/lib/competition-path';
 
 export const revalidate = 300;
 
@@ -54,7 +55,7 @@ export default async function FederationHubPage(props: Props) {
     <>
       <JsonLd data={competitionsListJsonLd(comps.map((c) => ({
         name: competitionName(c.name, c.nameI18n, locale),
-        url: `${SITE_URL}/${locale}/competitions/${c.id}`,
+        url: `${SITE_URL}/${locale}${competitionPath(c.id, c.slug)}`,
       })))} />
       <CompetitionHub
         title={fed.name}

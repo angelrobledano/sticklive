@@ -38,8 +38,9 @@ describe('CompetitionsList índice enlazado (#339)', () => {
         <CompetitionsList competitions={COMPS} error={null} />
       </I18nProvider>,
     );
-    expect(html).toContain('/competitions/c-ok');
-    expect(html).toContain('/competitions/c-old');
-    expect(html).toContain('/competitions/c-hist');
+    // Plan A de URLs legibles: el índice enlaza por slug, no por UUID.
+    expect(html).toContain('/competitions/ok-liga-masculina');
+    expect(html).toContain('/competitions/plata-2025');
+    expect(html).toContain('/competitions/historico');
   });
 });

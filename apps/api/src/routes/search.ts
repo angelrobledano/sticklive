@@ -66,6 +66,7 @@ export interface SearchPlayerRow {
 
 export interface SearchCompetitionRow {
   id: string;
+  slug?: string | null;
   name: string;
   name_i18n: Record<string, string> | null;
   short_name: string | null;
@@ -81,6 +82,7 @@ export interface SearchResults {
   players: Array<{ id: string; firstName: string; lastName: string; photoUrl: string | null; teamName: string | null }>;
   competitions: Array<{
     id: string;
+    slug: string | null;
     name: string;
     nameI18n: Record<string, string> | null;
     shortName: string | null;
@@ -116,6 +118,7 @@ export function buildSearchResults(
     })),
     competitions: competitionRows.map((r) => ({
       id: r.id,
+      slug: r.slug ?? null,
       name: r.name,
       nameI18n: r.name_i18n,
       shortName: r.short_name,
@@ -170,7 +173,7 @@ export const PLAYER_QUERY = `
 
 export const COMPETITION_QUERY = `
   SELECT
-    comp.id, comp.name, comp.name_i18n, comp.short_name, comp.country, comp.scope,
+    comp.id, comp.slug, comp.name, comp.name_i18n, comp.short_name, comp.country, comp.scope,
     s.name AS season_name
   FROM competitions comp
   JOIN LATERAL (

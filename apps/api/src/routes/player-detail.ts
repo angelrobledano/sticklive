@@ -211,6 +211,7 @@ playerDetailRouter.get('/:id', async (c) => {
         s.start_date    AS season_start,
         s.is_current    AS is_current,
         c.id            AS competition_id,
+        c.slug          AS competition_slug,
         c.name          AS competition_name,
         c.short_name    AS competition_short,
         t.id            AS team_id,
@@ -254,7 +255,7 @@ playerDetailRouter.get('/:id', async (c) => {
 
       SELECT
         s.id, s.name, s.start_date, s.is_current,
-        c.id, c.name, c.short_name,
+        c.id, c.slug, c.name, c.short_name,
         t.id, COALESCE(t.display_name, t.name), t.short_name, t.logo_url,
         NULL::int AS jersey_number,
         COUNT(DISTINCT me.match_id),
@@ -282,7 +283,7 @@ playerDetailRouter.get('/:id', async (c) => {
             AND tp.team_id   = me.team_id
         )
       GROUP BY s.id, s.name, s.start_date, s.is_current,
-               c.id, c.name, c.short_name,
+               c.id, c.slug, c.name, c.short_name,
                t.id, COALESCE(t.display_name, t.name), t.short_name, t.logo_url
 
       ORDER BY season_start DESC NULLS LAST, season_name DESC,

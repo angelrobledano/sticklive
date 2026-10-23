@@ -64,6 +64,22 @@ describe('sitemapEntries', () => {
     }
   });
 
+  it('las competiciones usan el slug si la API lo trae (Plan A)', () => {
+    const entries = sitemapEntries('competitions-0', ids({ competitions: [
+      { id: 'c1', slug: 'ok-liga-masculina' },
+      { id: 'c2' },
+      'c3',
+    ] }));
+    expect(entries.map((e) => e.path)).toEqual([
+      '/competitions/ok-liga-masculina', '/competitions/c2', '/competitions/c3',
+    ]);
+  });
+
+  it('el slug no se aplica a otras entidades', () => {
+    const entries = sitemapEntries('teams-0', ids({ teams: [{ id: 't1', slug: 'liceo' }] }));
+    expect(entries[0]!.path).toBe('/teams/t1');
+  });
+
   it('un trozo de entidad toma su franja de ids', () => {
     const players = Array.from({ length: SITEMAP_SECTION_SIZE + 1 }, (_, i) => `p${i}`);
     const entries = sitemapEntries('players-1', ids({ players }));

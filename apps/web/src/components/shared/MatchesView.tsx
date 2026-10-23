@@ -19,6 +19,7 @@ import { madridDateKey, madridTodayKey, addDaysToKey, dayDiff } from '@/lib/matc
 import { buildDayView, nextMatchday, daysWithMatches, type DayFilter, type DayView } from '@/lib/day-view';
 import { tt } from '@/components/search/translate';
 import { clubName } from '@/lib/names';
+import { competitionPath } from '@/lib/competition-path';
 
 /** Config AdSense (env inyectado en build). */
 const ADS = adsenseConfig();
@@ -230,7 +231,7 @@ function DayCards({ view, followedTeamIds, showDate = false, afterFirst, listAd 
       node: (
         <MatchGroupCard
           title={block.name ? clubName(block.name) : other}
-          href={block.id ? `/competitions/${block.id}` : null}
+          href={block.id ? competitionPath(block.id, block.slug) : null}
           icon={<CompetitionIcon country={block.country} name={block.name} />}
           count={block.matches.length}
           followed={block.followed}

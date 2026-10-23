@@ -337,6 +337,8 @@ export interface SeasonStats {
 export interface TeamStanding {
   seasonId: string;
   competitionId: string;
+  /** Slug de la competición para la URL legible (Plan A). Opcional: API antigua. */
+  competitionSlug?: string | null;
   competitionName: string;
   competitionShort: string | null;
   position: number | null;

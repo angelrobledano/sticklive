@@ -19,6 +19,7 @@ import { APP_TZ } from '@/lib/match-time';
 import { isKnockoutSeason, buildKnockoutSummary, knockoutPhaseLabel } from '@/lib/knockout';
 import { KnockoutSeasonSummary } from './KnockoutSeasonSummary';
 import { tt } from '@/components/search/translate';
+import { competitionPath } from '@/lib/competition-path';
 
 // ─── Sección de club (#196/#197) ───────────────────────────────────────
 // La API `team-detail` ya devuelve los campos de sección (club × género ×
@@ -169,7 +170,7 @@ function TeamHeader({ data }: { data: TeamDetailView }) {
           )}
           {standing && (
             <Link
-              href={`/competitions/${standing.competitionId}?season=${standing.seasonId}`}
+              href={competitionPath(standing.competitionId, standing.competitionSlug, standing.seasonId)}
               className="inline-block mt-1 text-xs font-medium text-rink-passion hover:underline"
             >
               {standing.competitionShort ?? standing.competitionName}
@@ -380,7 +381,7 @@ function SummaryTab({ data }: { data: TeamDetail }) {
               {standing.competitionName}
             </h3>
             <Link
-              href={`/competitions/${standing.competitionId}?season=${standing.seasonId}`}
+              href={competitionPath(standing.competitionId, standing.competitionSlug, standing.seasonId)}
               className="text-xs font-medium text-rink-passion hover:underline"
             >
               {t('team.view_full_table')} →

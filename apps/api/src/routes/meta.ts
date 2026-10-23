@@ -18,8 +18,8 @@ metaRouter.get('/sitemap', async (c) => {
     // `lastmod` real (no el timestamp de generación). El cliente tolera ambas
     // formas (id suelto u objeto) por retrocompatibilidad.
     const [comps, teams, players, matches, seasons] = await Promise.all([
-      db.query<{ id: string; updated_at: Date }>(`
-        SELECT c.id, c.updated_at
+      db.query<{ id: string; slug: string; updated_at: Date }>(`
+        SELECT c.id, c.slug, c.updated_at
           FROM competitions c
           JOIN (
             -- Semi-join: una sola pasada por temporadas/partidos en vez de un
@@ -184,7 +184,7 @@ metaRouter.get('/sitemap', async (c) => {
     c.header('Cache-Control', 'public, max-age=3600');
     return c.json({
       hubs,
-      competitions: comps.rows.map((r) => ({ id: r.id, updatedAt: r.updated_at })),
+      competitions: comps.rows.map((r) => ({ id: r.id, slug: r.slug, updatedAt: r.updated_at })),
       teams:        teams.rows.map((r) => ({ id: r.id, updatedAt: r.updated_at })),
       players:      players.rows.map((r) => ({ id: r.id, updatedAt: r.updated_at })),
       seasons:      seasons.rows.map((r) => ({ id: r.id, updatedAt: r.updated_at })),

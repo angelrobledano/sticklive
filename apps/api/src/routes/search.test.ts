@@ -74,6 +74,7 @@ describe('buildSearchResults', () => {
   const competitionRows = [
     {
       id: 'c1',
+      slug: 'copa-del-rey',
       name: 'Copa del Rey',
       name_i18n: { es: 'Copa del Rey' },
       short_name: 'CDR',
@@ -102,6 +103,7 @@ describe('buildSearchResults', () => {
     });
     expect(out.competitions[0]).toEqual({
       id: 'c1',
+      slug: 'copa-del-rey',
       name: 'Copa del Rey',
       nameI18n: { es: 'Copa del Rey' },
       shortName: 'CDR',

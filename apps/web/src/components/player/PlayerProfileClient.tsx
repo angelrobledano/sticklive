@@ -9,6 +9,7 @@ import { ShareSheet } from '@/components/shared/ShareSheet';
 import { CountryFlag } from '@/components/shared/CountryFlag';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
+import { competitionPath } from '@/lib/competition-path';
 
 // ─── Trayectoria / carrera (#217) ─────────────────────────────────────────────
 //
@@ -39,6 +40,8 @@ export interface PlayerCareerSeason {
   isCurrent: boolean;
   startDate: string | null;
   competitionId: string;
+  /** Slug para la URL legible (Plan A). Opcional: API antigua. */
+  competitionSlug?: string | null;
   competitionName: string;
   competitionShort: string | null;
   totals: PlayerSeasonTotals;
@@ -385,7 +388,7 @@ function CareerSection({ career }: { career: PlayerCareer }) {
             </div>
 
             <Link
-              href={`/competitions/${season.competitionId}?season=${season.seasonId}`}
+              href={competitionPath(season.competitionId, season.competitionSlug, season.seasonId)}
               className="inline-block max-w-full truncate text-[10px] font-semibold text-slate-500 dark:text-slate-400 hover:text-rink-passion dark:hover:text-rink-passion"
             >
               {season.competitionShort ?? season.competitionName}

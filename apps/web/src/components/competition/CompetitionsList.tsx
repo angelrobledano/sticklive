@@ -17,6 +17,7 @@ import {
   buildCompetitionTree, countryHubPath, federationHubPath, featuredCompetitions, filterByGender,
   type CountrySections, type GenderFilter,
 } from '@/lib/competition-groups';
+import { competitionPath } from '@/lib/competition-path';
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -178,7 +179,7 @@ export function CompetitionRow({
     <div className="flex items-center gap-0 group">
       {/* Área principal: navega al detalle */}
       <Link
-        href={`/competitions/${comp.id}`}
+        href={competitionPath(comp.id, comp.slug)}
         onClick={onSelect}
         className="flex items-center gap-2.5 flex-1 py-2.5 px-3 min-w-0 rounded-xl
                    hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
@@ -888,7 +889,7 @@ export function CompetitionsList({
                   {indexGroups.international.map((c) => (
                     <li key={c.id}>
                       <Link
-                        href={`/competitions/${c.id}`}
+                        href={competitionPath(c.id, c.slug)}
                         className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-rink-accent hover:underline"
                       >
                         {clubName(competitionName(c.name, c.nameI18n, locale))}
@@ -907,7 +908,7 @@ export function CompetitionsList({
                   {comps.map((c) => (
                     <li key={c.id}>
                       <Link
-                        href={`/competitions/${c.id}`}
+                        href={competitionPath(c.id, c.slug)}
                         className="text-[12px] text-slate-600 dark:text-slate-300 hover:text-rink-passion dark:hover:text-rink-accent hover:underline"
                       >
                         {clubName(competitionName(c.name, c.nameI18n, locale))}
