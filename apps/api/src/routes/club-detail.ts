@@ -142,7 +142,19 @@ clubDetailRouter.get('/:key', async (c) => {
         WHERE ${key.by === 'id' ? 'id = $1' : 'slug = $1'}`,
       [key.value],
     );
-    const club = clubRes.rows[0];
+    let club = clubRes.rows[0];
+    // Slug antiguo (club renombrado desde /admin, migración 091): se sirve el
+    // club actual y la web responde 308 a su slug vigente.
+    if (!club && key.by === 'slug') {
+      const moved = await db.query<ClubRow>(
+        `SELECT cl.id, cl.slug, cl.canonical_name, cl.city, cl.country, cl.crest_url
+           FROM club_slug_redirects r
+           JOIN clubs cl ON cl.id = r.club_id
+          WHERE r.old_slug = $1`,
+        [key.value],
+      );
+      club = moved.rows[0];
+    }
     if (!club) return c.json({ error: 'Club not found' }, 404);
 
     const [teamsRes, matchesRes] = await Promise.all([
@@ -174,6 +186,8 @@ clubDetailRouter.get('/:key', async (c) => {
              LIMIT 1
           ) st ON TRUE
          WHERE t.club_id = $1
+           -- Las selecciones no son secciones de un club (no van en su ficha).
+           AND t.team_type = 'club'
       `, [club.id]),
       // Ventana acotada (-60/+30 días) para que un club grande no recorra todo
       // su histórico; la ficha solo enseña los 10 últimos y los 10 próximos.
@@ -187,7 +201,7 @@ clubDetailRouter.get('/:key', async (c) => {
           JOIN teams at       ON at.id = m.away_team_id
           JOIN seasons se     ON se.id = m.season_id
           JOIN competitions c ON c.id = se.competition_id
-         WHERE (ht.club_id = $1 OR at.club_id = $1)
+         WHERE ((ht.club_id = $1 AND ht.team_type = 'club') OR (at.club_id = $1 AND at.team_type = 'club'))
            AND se.data_quality = 'ok'
            AND c.data_quality = 'ok'
            AND m.scheduled_at > NOW() - INTERVAL '60 days'

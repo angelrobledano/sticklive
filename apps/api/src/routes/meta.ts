@@ -169,6 +169,7 @@ metaRouter.get('/sitemap', async (c) => {
              JOIN seasons s      ON s.id = m.season_id
              JOIN competitions c ON c.id = s.competition_id
             WHERE t.club_id = cl.id
+              AND t.team_type = 'club'
               AND s.is_current
               AND s.data_quality = 'ok'
               AND c.data_quality = 'ok'
