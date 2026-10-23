@@ -47,8 +47,8 @@ describe('CompetitionsList i18n (#170)', () => {
     const html = render({}, {});
     expect(html).toContain('Buscar liga, país o federación...');
     expect(html).toContain('Mis Ligas');
-    expect(html).toContain('Principales');
-    expect(html).toContain('Todas');
+    expect(html).toContain('Destacadas');
+    expect(html).toContain('Países');
     expect(html).not.toContain('competitions.search_placeholder');
   });
 });

@@ -24,6 +24,7 @@ import type {
   MatchStats,
   MatchLineups,
   CompetitionSummary,
+  Federation,
   CompetitionSeason,
   SeasonStats,
   SeasonInsights,
@@ -356,6 +357,14 @@ export async function getCompetitions(): Promise<CompetitionSummary[]> {
     { next: { revalidate: 300, tags: ['competitions'] } }
   );
   return res.competitions;
+}
+
+export async function getFederations(): Promise<Federation[]> {
+  const res = await apiFetch<{ federations: Federation[] }>(
+    '/federations',
+    { next: { revalidate: 3600, tags: ['federations'] } }
+  );
+  return res.federations;
 }
 
 export async function getCompetitionSeasons(competitionId: string): Promise<CompetitionSeason[]> {

@@ -38,11 +38,13 @@ export function hasSeasonYear(c: CompetitionSummary, year: number): boolean {
 }
 
 /**
- * Importancia por competición (1 = máxima). Lo no listado va detrás de todo
- * (RANK_DESCONOCIDA).
+ * LEGADO: importancia por slug. La fuente de verdad es ya la BD
+ * (`competitions.featured_rank` + `competitions.tier`, migración 089), que
+ * llega en el listado. Este mapa solo se usa como respaldo cuando el objeto
+ * no trae esos campos (bloques de la vista del día, que se construyen desde
+ * los partidos). Borrar cuando /matches exponga featured_rank.
  */
 export const IMPORTANCE: Record<string, number> = {
-  // Mundiales World Skate Games (encima de todo mientras se disputan)
   'mundial-masculino-worldskate': 1,
   'mundial-femenino-worldskate': 2,
   'intercontinental-masculino-worldskate': 3,
@@ -65,21 +67,41 @@ export const IMPORTANCE: Record<string, number> = {
 };
 
 const RANK_DESCONOCIDA = 1000;
+/** Base del rango por tier: detrás de cualquier destacada (featured_rank < 500). */
+const TIER_BASE = 500;
 
-export function importanceRank(slug?: string | null): number {
-  return (slug && IMPORTANCE[slug]) || RANK_DESCONOCIDA;
+/** Lo que hace falta para ordenar: slug y, si vienen, los campos de datos. */
+export interface Rankable {
+  slug?: string | null;
+  featuredRank?: number | null;
+  tier?: number | null;
+}
+
+/**
+ * Rango de importancia (menor = más importante):
+ *   1. `featuredRank` (curación editorial en BD)
+ *   2. mapa legado por slug (solo si el objeto no trae datos)
+ *   3. `tier` → 500 + tier·10 (máxima categoría de cada país antes que la 2ª)
+ *   4. resto → 1000
+ */
+export function importanceRank(item?: Rankable | string | null): number {
+  const it: Rankable = typeof item === 'string' || item == null ? { slug: item ?? null } : item;
+  if (it.featuredRank != null && it.featuredRank > 0) return it.featuredRank;
+  if (it.featuredRank === undefined && it.slug && IMPORTANCE[it.slug]) return IMPORTANCE[it.slug]!;
+  if (it.tier != null && it.tier > 0) return TIER_BASE + it.tier * 10;
+  return RANK_DESCONOCIDA;
 }
 
 /**
  * Ordena por importancia; empate → nombre en el locale. No muta la entrada.
  * Sirve para competiciones y para los bloques `{ slug, name, ... }` del día.
  */
-export function orderByImportance<T extends { slug?: string | null; name: string }>(
+export function orderByImportance<T extends Rankable & { name: string }>(
   list: T[],
   locale: string,
 ): T[] {
   return [...list].sort((a, b) => {
-    const d = importanceRank(a.slug) - importanceRank(b.slug);
+    const d = importanceRank(a) - importanceRank(b);
     return d !== 0 ? d : a.name.localeCompare(b.name, locale);
   });
 }

@@ -154,8 +154,36 @@ metaRouter.get('/sitemap', async (c) => {
       logger.warn({ err }, '[meta] no se pudo registrar el snapshot del sitemap');
     }
 
+    // Hubs de país y federación (migración 089): solo los que tienen
+    // competiciones visibles. Tolerante: si falla, el sitemap sale sin hubs.
+    let hubs: string[] = [];
+    try {
+      const hubRows = await db.query<{ path: string }>(`
+        WITH visible AS (
+          SELECT c.organizer, c.country, c.scope
+            FROM competitions c
+           WHERE c.archived_at IS NULL AND c.data_quality = 'ok'
+             AND EXISTS (SELECT 1 FROM seasons s JOIN matches m ON m.season_id = s.id
+                          WHERE s.competition_id = c.id AND s.data_quality = 'ok')
+        )
+        SELECT DISTINCT '/competitions/country/' || lower(COALESCE(f.country, v.country)) AS path
+          FROM visible v LEFT JOIN federations f ON f.code = v.organizer
+         WHERE v.scope <> 'international'
+           AND COALESCE(f.level, 'national') NOT IN ('world', 'continental')
+           AND COALESCE(f.country, v.country) ~ '^[A-Za-z]{2}$'
+        UNION
+        SELECT DISTINCT '/competitions/federation/' || f.slug
+          FROM visible v JOIN federations f ON f.code = v.organizer
+        ORDER BY 1
+      `);
+      hubs = hubRows.rows.map((r) => r.path);
+    } catch (err) {
+      logger.warn({ err }, '[meta] hubs del sitemap no disponibles');
+    }
+
     c.header('Cache-Control', 'public, max-age=3600');
     return c.json({
+      hubs,
       competitions: comps.rows.map((r) => ({ id: r.id, updatedAt: r.updated_at })),
       teams:        teams.rows.map((r) => ({ id: r.id, updatedAt: r.updated_at })),
       players:      players.rows.map((r) => ({ id: r.id, updatedAt: r.updated_at })),

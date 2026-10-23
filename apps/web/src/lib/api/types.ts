@@ -212,6 +212,25 @@ export interface MatchDetail {
 
 // ─── Competitions ───
 
+export type FederationLevel = 'world' | 'continental' | 'national' | 'regional';
+
+export interface FederationRef {
+  code: string;
+  slug: string;
+  name: string;
+  shortName: string;
+  level: FederationLevel | string;
+  parentCode: string | null;
+  country: string | null;
+  region: string | null;
+}
+
+export interface Federation extends FederationRef {
+  website: string | null;
+  displayOrder: number;
+  competitionCount: number;
+}
+
 export interface CompetitionSummary {
   id: string;
   name: string;
@@ -230,6 +249,12 @@ export interface CompetitionSummary {
   ageCategory: string;
   /** Calidad (#064): el API público solo devuelve competiciones visibles ('ok'). */
   dataQuality?: 'ok' | 'en_revision' | string;
+  /** Nivel deportivo dentro de su federación (1 = máxima). Migración 089. */
+  tier?: number | null;
+  /** Orden en "Destacadas" (curación editorial). null = no destacada. */
+  featuredRank?: number | null;
+  /** Federación organizadora (JOIN por `organizer`). null si no está dada de alta. */
+  federation?: FederationRef | null;
   season: {
     id: string;
     name: string | null;

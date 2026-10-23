@@ -80,7 +80,7 @@ export function orderSearchResults(
   return [...comps].sort((a, b) => {
     const byRelevance = matchRelevance(a, normalizedQuery) - matchRelevance(b, normalizedQuery);
     if (byRelevance !== 0) return byRelevance;
-    const byImportance = importanceRank(a.slug) - importanceRank(b.slug);
+    const byImportance = importanceRank(a) - importanceRank(b);
     return byImportance !== 0 ? byImportance : a.name.localeCompare(b.name, locale);
   });
 }

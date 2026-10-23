@@ -138,7 +138,7 @@ export function buildDayView<T extends DayViewMatch>(matches: T[], opts: DayView
     if (a.followed !== b.followed) return a.followed ? -1 : 1;
     // Sin competición conocida: siempre al final.
     if ((a.name === null) !== (b.name === null)) return a.name === null ? 1 : -1;
-    const d = importanceRank(a.slug) - importanceRank(b.slug);
+    const d = importanceRank(a) - importanceRank(b);
     return d !== 0 ? d : (a.name ?? '').localeCompare(b.name ?? '', locale);
   });
 

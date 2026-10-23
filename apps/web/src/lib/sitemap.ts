@@ -37,6 +37,8 @@ export interface SitemapIds {
   /** Temporadas cerradas con página permanente (F4-5). */
   seasons: SitemapId[];
   matches: SitemapId[];
+  /** Hubs de país/federación como rutas sin locale (migración 089). Opcional: API antigua. */
+  hubs?: string[];
 }
 
 /** Entradas por sección. ×6 locales = 48.000 < 50.000 (límite de Google). */
@@ -120,6 +122,7 @@ export function sitemapSectionIds(ids: SitemapIds): string[] {
   }
   const { recent, upcoming } = splitMatches(ids.matches);
   out.push(...sectionIdsFor('matches-recent', recent), ...sectionIdsFor('matches-upcoming', upcoming));
+  if ((ids.hubs ?? []).length > 0) out.push('hubs-0');
   return out;
 }
 
@@ -140,6 +143,12 @@ export function sitemapEntries(section: string, ids: SitemapIds): SitemapEntry[]
   const dash = section.lastIndexOf('-');
   if (dash < 0) return [];
   const name = section.slice(0, dash);
+
+  if (name === 'hubs') {
+    // Pocas decenas de rutas: un único trozo.
+    return (ids.hubs ?? []).filter((p) => /^\/competitions\/(country|federation)\/[a-z0-9-]+$/.test(p))
+      .map((path) => ({ path }));
+  }
 
   if (name === 'matches-recent' || name === 'matches-upcoming') {
     const chunk = Number(section.slice(dash + 1)) || 0;

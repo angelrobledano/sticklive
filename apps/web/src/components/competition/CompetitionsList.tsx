@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useRouter } from 'next/navigation';
 import * as Sentry from '@sentry/nextjs';
-import type { CompetitionSummary } from '@/lib/api/client';
+import type { CompetitionSummary, Federation } from '@/lib/api/client';
 import { useT } from '@/lib/i18n';
 import { track, searchEventProps } from '@/lib/analytics';
 import { clubName, competitionName } from '@/lib/names';
@@ -13,10 +13,14 @@ import { filterCompetitions, normalizeSearchText, orderSearchResults } from '@/c
 import { tt } from '@/components/search/translate';
 import { useFavorites } from '@/hooks/useFavorites';
 import { currentSeasonYear, hasSeasonYear, orderByImportance } from '@/lib/competition-importance';
+import {
+  buildCompetitionTree, countryHubPath, federationHubPath, featuredCompetitions, filterByGender,
+  type CountrySections, type GenderFilter,
+} from '@/lib/competition-groups';
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 
-type Tab = 'mis-ligas' | 'principales' | 'todas';
+type Tab = 'destacadas' | 'paises' | 'mis-ligas';
 
 /**
  * #358: navegación del patrón ARIA tabs (roving tabindex). Devuelve el índice
@@ -36,7 +40,7 @@ export function nextTabIndex(current: number, key: string, count: number): numbe
 }
 
 /** Orden estable de las tabs (índice → id) para el roving tabindex. */
-const TAB_ORDER = ['mis-ligas', 'principales', 'todas'] as const satisfies readonly Tab[];
+const TAB_ORDER = ['destacadas', 'paises', 'mis-ligas'] as const satisfies readonly Tab[];
 
 // ── Helpers generales ────────────────────────────────────────────────────────
 
@@ -138,7 +142,7 @@ function ChevronDown({ open }: { open: boolean }) {
 
 // ── Tarjeta de competición (compacta) ────────────────────────────────────────
 
-function CompetitionRow({
+export function CompetitionRow({
   comp,
   isFav,
   onToggleFav,
@@ -248,14 +252,20 @@ function RegionAccordion({
   favorites,
   onToggleFav,
   locale,
+  href,
+  defaultOpen = false,
 }: {
   region: string;
   comps: CompetitionSummary[];
   favorites: Set<string>;
   onToggleFav: (id: string) => void;
   locale: string;
+  /** Hub de la federación, si existe. */
+  href?: string;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const { t } = useT();
+  const [open, setOpen] = useState(defaultOpen);
 
   return (
     <div>
@@ -273,6 +283,11 @@ function RegionAccordion({
       </button>
       {open && (
         <div className="pl-3">
+          {href && (
+            <Link href={href} className="block px-3 py-1 text-[11px] font-semibold text-rink-passion dark:text-rink-accent hover:underline">
+              {tt(t, 'competitions.view_federation', 'Ver la federación')}
+            </Link>
+          )}
           {comps.map((c) => (
             <CompetitionRow
               key={c.id}
@@ -288,12 +303,77 @@ function RegionAccordion({
   );
 }
 
+// ── Secciones de un país (listado y hub) ─────────────────────────────────────
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+      {children}
+    </p>
+  );
+}
+
+/**
+ * Ligas sénior · Copas · Base · Federaciones autonómicas. Lo usan el acordeón
+ * del listado y el hub de país (/competitions/country/[code]).
+ * `regionalCollapsed`: en el listado las autonómicas van plegadas; en el hub, abiertas.
+ */
+export function CountrySectionsView({
+  sections,
+  favorites,
+  onToggleFav,
+  locale,
+  regionalCollapsed = true,
+}: {
+  sections: CountrySections;
+  favorites: Set<string>;
+  onToggleFav: (id: string) => void;
+  locale: string;
+  regionalCollapsed?: boolean;
+}) {
+  const { t } = useT();
+  const rows = (list: CompetitionSummary[]) => list.map((c) => (
+    <CompetitionRow key={c.id} comp={c} isFav={favorites.has(c.id)} onToggleFav={onToggleFav} locale={locale} />
+  ));
+  return (
+    <div>
+      {sections.leagues.length > 0 && (
+        <div><SectionTitle>{tt(t, 'competitions.section_leagues', 'Ligas')}</SectionTitle>{rows(sections.leagues)}</div>
+      )}
+      {sections.cups.length > 0 && (
+        <div><SectionTitle>{tt(t, 'competitions.section_cups', 'Copas')}</SectionTitle>{rows(sections.cups)}</div>
+      )}
+      {sections.base.length > 0 && (
+        <div><SectionTitle>{tt(t, 'competitions.section_base', 'Categorías de base')}</SectionTitle>{rows(sections.base)}</div>
+      )}
+      {sections.regional.length > 0 && (
+        <div>
+          <SectionTitle>{tt(t, 'competitions.section_regional', 'Federaciones autonómicas')}</SectionTitle>
+          {sections.regional.map((g) => (
+            <RegionAccordion
+              key={g.key}
+              region={g.federation ? `${g.label} · ${g.federation.shortName}` : (g.label || tt(t, 'competitions.other_region', 'Otras'))}
+              href={g.federation ? federationHubPath(g.federation.slug) : undefined}
+              comps={g.comps}
+              favorites={favorites}
+              onToggleFav={onToggleFav}
+              locale={locale}
+              defaultOpen={!regionalCollapsed}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Acordeón de país ─────────────────────────────────────────────────────────
 
 function CountryAccordion({
   countryCode,
   label,
-  comps,
+  total,
+  sections,
   defaultOpen,
   favorites,
   onToggleFav,
@@ -301,7 +381,8 @@ function CountryAccordion({
 }: {
   countryCode: string | null;
   label: string;
-  comps: CompetitionSummary[];
+  total: number;
+  sections: CountrySections;
   defaultOpen: boolean;
   favorites: Set<string>;
   onToggleFav: (id: string) => void;
@@ -310,89 +391,36 @@ function CountryAccordion({
   const { t } = useT();
   const [open, setOpen] = useState(defaultOpen);
 
-  // Reabrir si hay favoritos dentro
-  useEffect(() => {
-    if (comps.some((c) => favorites.has(c.id))) setOpen(true);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const national = comps.filter((c) => c.scope === 'national');
-  const regional = comps.filter((c) => c.scope === 'regional');
-
-  // Agrupar regionales por región
-  const byRegion = useMemo(() => {
-    const map = new Map<string, CompetitionSummary[]>();
-    for (const c of regional) {
-      const key = c.region ?? tt(t, 'competitions.other_region', 'Otras');
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(c);
-    }
-    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b, locale));
-  }, [regional, locale, t]);
-
   return (
     <div className="border-t border-slate-100 dark:border-slate-800 first:border-t-0">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-1 py-3 text-left group"
-        aria-expanded={open}
-      >
-        <CountryFlag code={countryCode} className="w-5 h-auto rounded-[2px] shrink-0" />
-        <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300 flex-1
-                         group-hover:text-slate-800 dark:group-hover:text-slate-100 transition-colors">
-          {label}
-        </span>
-        <span className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums font-medium mr-1">
-          {comps.length}
-        </span>
-        <ChevronDown open={open} />
-      </button>
-
+      <div className="flex items-center">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex-1 flex items-center gap-2 px-1 py-3 text-left group min-w-0"
+          aria-expanded={open}
+        >
+          <CountryFlag code={countryCode} className="w-5 h-auto rounded-[2px] shrink-0" />
+          <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300 flex-1 truncate
+                           group-hover:text-slate-800 dark:group-hover:text-slate-100 transition-colors">
+            {label}
+          </span>
+          <span className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums font-medium mr-1">
+            {total}
+          </span>
+          <ChevronDown open={open} />
+        </button>
+        {countryCode && (
+          <Link
+            href={countryHubPath(countryCode)}
+            className="ml-1 px-2 py-2 text-[11px] font-semibold text-rink-passion dark:text-rink-accent hover:underline whitespace-nowrap"
+          >
+            {tt(t, 'competitions.view_country', 'Ver todo')}
+          </Link>
+        )}
+      </div>
       {open && (
         <div className="pb-2">
-          {/* Competiciones nacionales directamente */}
-          {national.length > 0 && (
-            <div>
-              {national.map((c) => (
-                <CompetitionRow
-                  key={c.id}
-                  comp={c}
-                  isFav={favorites.has(c.id)}
-                  onToggleFav={onToggleFav}
-                  locale={locale}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Competiciones regionales agrupadas */}
-          {byRegion.length > 0 && (
-            <div className={national.length > 0 ? 'mt-1 border-t border-slate-100 dark:border-slate-800 pt-1' : ''}>
-              {byRegion.length === 1 && byRegion[0] ? (
-                // Una sola región: mostrar directamente sin sub-acordeón
-                byRegion[0][1].map((c) => (
-                  <CompetitionRow
-                    key={c.id}
-                    comp={c}
-                    isFav={favorites.has(c.id)}
-                    onToggleFav={onToggleFav}
-                    locale={locale}
-                  />
-                ))
-              ) : (
-                // Múltiples regiones: sub-acordeones
-                byRegion.map(([region, regionComps]) => (
-                  <RegionAccordion
-                    key={region}
-                    region={region}
-                    comps={regionComps}
-                    favorites={favorites}
-                    onToggleFav={onToggleFav}
-                    locale={locale}
-                  />
-                ))
-              )}
-            </div>
-          )}
+          <CountrySectionsView sections={sections} favorites={favorites} onToggleFav={onToggleFav} locale={locale} />
         </div>
       )}
     </div>
@@ -445,9 +473,12 @@ function FlatList({
 
 export function CompetitionsList({
   competitions,
+  federations,
   error,
 }: {
   competitions: CompetitionSummary[];
+  /** Árbol de federaciones (orden de países y autonómicas). Opcional: sin él se ordena por nombre. */
+  federations?: Federation[];
   error: string | null;
 }) {
   const { t, locale } = useT();
@@ -460,7 +491,8 @@ export function CompetitionsList({
     if (error) Sentry.captureMessage(error, 'error');
   }, [error]);
 
-  const [tab, setTab]     = useState<Tab>('todas');
+  const [tab, setTab]     = useState<Tab>('destacadas');
+  const [gender, setGender] = useState<GenderFilter>('all');
   const [query, setQuery] = useState('');
 
   // #358: patrón ARIA tabs con roving tabindex y navegación por flechas.
@@ -503,10 +535,9 @@ export function CompetitionsList({
   }, [competitions, relevant, q, query, locale]);
 
   // 3) Datos por tab
-  const principales = useMemo(
-    () => orderByImportance(searched.filter((c) => c.scope === 'national'), locale),
-    [searched, locale],
-  );
+  const visible = useMemo(() => filterByGender(searched, gender), [searched, gender]);
+
+  const destacadas = useMemo(() => featuredCompetitions(visible, locale), [visible, locale]);
 
   const misLigas = useMemo(
     () => orderByImportance(searched.filter((c) => favorites.has(c.id)), locale),
@@ -515,9 +546,9 @@ export function CompetitionsList({
 
   // 4) Estructura para "Todas": internacional + por país (orden por importancia
   //    dentro de cada grupo). Reutilizada por el índice enlazado (#339).
-  const { international, byCountry } = useMemo(
-    () => groupCompetitionsForIndex(searched, locale),
-    [searched, locale],
+  const tree = useMemo(
+    () => buildCompetitionTree(visible, locale, federations, (code) => countryDisplayName(code, locale)),
+    [visible, locale, federations],
   );
 
   // #339: índice completo (todas las competiciones, no solo la temporada
@@ -633,9 +664,9 @@ export function CompetitionsList({
           <div role="tablist" aria-label={tt(t, 'a11y.competitions_tabs', 'Secciones de la lista')} onKeyDown={onTabKeyDown} className="flex">
             {(
               [
+                ['destacadas', tt(t, 'competitions.tab_main', 'Destacadas'), null],
+                ['paises', tt(t, 'competitions.tab_all', 'Países'), null],
                 ['mis-ligas', tt(t, 'competitions.tab_my_leagues', 'Mis Ligas'), favorites.size > 0 ? String(favorites.size) : null],
-                ['principales', tt(t, 'competitions.tab_main', 'Principales'), null],
-                ['todas', tt(t, 'competitions.tab_all', 'Todas'), null],
               ] as const
             ).map(([id, label, badge], i) => (
               <button
@@ -669,6 +700,30 @@ export function CompetitionsList({
           </div>
         )}
       </div>
+
+      {/* Filtro de género (no en Mis Ligas: ahí manda lo que sigues) */}
+      {!isSearching && tab !== 'mis-ligas' && (
+        <div className="flex gap-1.5 px-4 pt-3" role="group" aria-label={tt(t, 'competitions.gender_filter', 'Filtrar por género')}>
+          {([
+            ['all', tt(t, 'competitions.gender_all', 'Todas')],
+            ['male', t('common.male')],
+            ['female', t('common.female')],
+          ] as const).map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setGender(id)}
+              aria-pressed={gender === id}
+              className={`px-3 min-h-[32px] rounded-full text-[12px] font-semibold transition-colors ${
+                gender === id
+                  ? 'bg-rink-passion text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Contenido ──────────────────────────────────────────────────────── */}
       <div
@@ -752,10 +807,10 @@ export function CompetitionsList({
           )
         )}
 
-        {/* Tab: Principales (nacionales de todos los países) */}
-        {!isSearching && tab === 'principales' && (
+        {/* Tab: Destacadas (curación en BD: featured_rank, migración 089) */}
+        {!isSearching && tab === 'destacadas' && (
           <FlatList
-            comps={principales}
+            comps={destacadas}
             favorites={favorites}
             onToggleFav={toggleFav}
             locale={locale}
@@ -763,11 +818,10 @@ export function CompetitionsList({
           />
         )}
 
-        {/* Tab: Todas — acordeón jerárquico */}
-        {!isSearching && tab === 'todas' && (
+        {/* Tab: Países — internacional + árbol país → federación */}
+        {!isSearching && tab === 'paises' && (
           <div>
-            {/* Internacional */}
-            {international.length > 0 && (
+            {tree.international.length > 0 && (
               <div className="mb-1">
                 <div className="flex items-center gap-2 px-1 pt-1 pb-2">
                   <span className="text-base leading-none">🌍</span>
@@ -775,10 +829,10 @@ export function CompetitionsList({
                     {tt(t, 'competitions.international', 'Internacional')}
                   </span>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums font-medium">
-                    {international.length}
+                    {tree.international.length}
                   </span>
                 </div>
-                {international.map((c) => (
+                {tree.international.map((c) => (
                   <CompetitionRow
                     key={c.id}
                     comp={c}
@@ -790,14 +844,14 @@ export function CompetitionsList({
               </div>
             )}
 
-            {/* Por país */}
             <div>
-              {byCountry.map(([code, comps], idx) => (
+              {tree.countries.map((g, idx) => (
                 <CountryAccordion
-                  key={code}
-                  countryCode={code === 'ZZ' ? null : code}
-                  label={code === 'ZZ' ? tt(t, 'competitions.unclassified', 'Sin clasificar') : countryDisplayName(code, locale)}
-                  comps={comps}
+                  key={g.code}
+                  countryCode={g.code === 'ZZ' ? null : g.code}
+                  label={g.code === 'ZZ' ? tt(t, 'competitions.unclassified', 'Sin clasificar') : countryDisplayName(g.code, locale)}
+                  total={g.total}
+                  sections={g.sections}
                   defaultOpen={idx === 0}
                   favorites={favorites}
                   onToggleFav={toggleFav}
@@ -806,7 +860,7 @@ export function CompetitionsList({
               ))}
             </div>
 
-            {byCountry.length === 0 && international.length === 0 && (
+            {tree.countries.length === 0 && tree.international.length === 0 && (
               <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-10">
                 {t('common.no_search_results')}
               </p>

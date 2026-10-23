@@ -204,3 +204,20 @@ describe('sitemapLanguages', () => {
     expect(sitemapLanguages('', 'https://sticklive.eu', ['es'])['es']).toBe('https://sticklive.eu/es');
   });
 });
+
+describe('hubs de país y federación (089)', () => {
+  const base = { competitions: [], teams: [], players: [], seasons: [], matches: [] };
+
+  it('declara la sección hubs solo si la API trae hubs', () => {
+    expect(sitemapSectionIds(base)).not.toContain('hubs-0');
+    expect(sitemapSectionIds({ ...base, hubs: ['/competitions/country/es'] })).toContain('hubs-0');
+  });
+
+  it('emite las rutas de hub y descarta las que no lo son', () => {
+    const entries = sitemapEntries('hubs-0', {
+      ...base,
+      hubs: ['/competitions/country/es', '/competitions/federation/fmp', '/admin', '/competitions/country/<x>'],
+    });
+    expect(entries.map((e) => e.path)).toEqual(['/competitions/country/es', '/competitions/federation/fmp']);
+  });
+});

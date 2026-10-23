@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getCompetitions } from '@/lib/api/client';
+import { getCompetitions, getFederations, type Federation } from '@/lib/api/client';
 import { CompetitionsList } from '@/components/competition/CompetitionsList';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { localeAlternates, socialMeta, isSupportedLocale, competitionsListJsonLd, SITE_URL } from '@/lib/seo';
@@ -57,11 +57,13 @@ export default async function CompetitionsPage(props: { params: Promise<{ locale
   let competitions: Awaited<ReturnType<typeof getCompetitions>> = [];
   let fetchError: string | null = null;
 
-  try {
-    competitions = await getCompetitions();
-  } catch (err) {
-    fetchError = err instanceof Error ? err.message : 'API error';
-  }
+  let federations: Federation[] = [];
+
+  // Las federaciones solo ordenan países/autonómicas: si fallan, el listado sale igual.
+  const [compsRes, fedsRes] = await Promise.allSettled([getCompetitions(), getFederations()]);
+  if (compsRes.status === 'fulfilled') competitions = compsRes.value;
+  else fetchError = compsRes.reason instanceof Error ? compsRes.reason.message : 'API error';
+  if (fedsRes.status === 'fulfilled') federations = fedsRes.value;
 
   return (
     <>
@@ -72,7 +74,7 @@ export default async function CompetitionsPage(props: { params: Promise<{ locale
           url: `${SITE_URL}/${locale}/competitions/${c.id}`,
         })))} />
       )}
-      <CompetitionsList competitions={competitions} error={fetchError} />
+      <CompetitionsList competitions={competitions} federations={federations} error={fetchError} />
     </>
   );
 }

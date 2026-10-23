@@ -26,6 +26,7 @@ import { playerPhotoRouter } from './routes/player-photo.js';
 import { playerInsightsRouter } from './routes/player-insights.js';
 import { matchStreamRouter } from './routes/match-stream.js';
 import { competitionsRouter } from './routes/competitions.js';
+import { federationsRouter } from './routes/federations.js';
 import { searchRouter } from './routes/search.js';
 import { seasonStatsRouter } from './routes/season-stats.js';
 import { seasonInsightsRouter } from './routes/season-insights.js';
@@ -142,6 +143,7 @@ app.get('/', (c) => {
 
 // Rutas
 app.route('/competitions', competitionsRouter); // GET /competitions — listado
+app.route('/federations', federationsRouter);   // GET /federations — árbol de federaciones
 app.route('/search', searchRouter);            // GET /search?q= — búsqueda global (#255)
 app.route('/seasons', standingsRouter);
 app.route('/seasons', matchesRouter);

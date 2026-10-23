@@ -21,6 +21,16 @@ interface CompetitionRow {
   region: string | null;
   age_category: string;
   data_quality: string;
+  tier: number | null;
+  featured_rank: number | null;
+  fed_code: string | null;
+  fed_slug: string | null;
+  fed_name: string | null;
+  fed_short_name: string | null;
+  fed_level: string | null;
+  fed_parent_code: string | null;
+  fed_country: string | null;
+  fed_region: string | null;
   season_id: string | null;
   season_name: string | null;
   season_start: string | null;
@@ -80,6 +90,10 @@ competitionsRouter.get('/', async (c) => {
         comp.id, comp.name, comp.name_i18n, comp.short_name, comp.logo_url, comp.slug,
         comp.gender, comp.category, comp.country, comp.data_quality,
         comp.organizer, comp.scope, comp.region, comp.age_category,
+        comp.tier, comp.featured_rank,
+        f.code AS fed_code, f.slug AS fed_slug, f.name AS fed_name,
+        f.short_name AS fed_short_name, f.level AS fed_level,
+        f.parent_code AS fed_parent_code, f.country AS fed_country, f.region AS fed_region,
         s.id         AS season_id,
         s.name       AS season_name,
         s.start_date AS season_start,
@@ -92,6 +106,7 @@ competitionsRouter.get('/', async (c) => {
       JOIN seasons s ON s.id = p.season_id
       LEFT JOIN team_counts tc ON tc.season_id = p.season_id
       LEFT JOIN match_counts mc ON mc.season_id = p.season_id
+      LEFT JOIN federations f ON f.code = comp.organizer
       ORDER BY comp.name ASC
     `);
 
@@ -110,6 +125,18 @@ competitionsRouter.get('/', async (c) => {
       region:     r.region,
       ageCategory: r.age_category,
       dataQuality: r.data_quality,
+      tier:         r.tier,
+      featuredRank: r.featured_rank,
+      federation: r.fed_code ? {
+        code:       r.fed_code,
+        slug:       r.fed_slug,
+        name:       r.fed_name,
+        shortName:  r.fed_short_name,
+        level:      r.fed_level,
+        parentCode: r.fed_parent_code,
+        country:    r.fed_country,
+        region:     r.fed_region,
+      } : null,
       season: r.season_id ? {
         id:         r.season_id,
         name:       r.season_name,
