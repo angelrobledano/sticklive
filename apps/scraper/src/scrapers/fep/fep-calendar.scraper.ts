@@ -18,7 +18,7 @@ import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 import { FepBaseScraper } from './fep-base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
-import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
+import { sidgadPost, SidgadClient, SIDGAD_LANG } from './sidgad-client.js';
 import { isByeTeamName } from './bye-team.js';
 import type { ScrapedMatch, MatchStatus, StructureRow } from '@sports/shared-types';
 import { zonedToUtc } from '../../core/eu-timezone.js';
@@ -115,10 +115,12 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
       'Scrapeando calendario'
     );
 
-    const html = await sidgadPost(endpointPath, {
-      idc,
-      site_lang: SIDGAD_LANG,
-    });
+    // Con una fuente explícita, la petición va a SU portal (FECAPA, autonómicas).
+    // Sin ella, el cliente por defecto del entorno (compatibilidad).
+    const params = { idc, site_lang: SIDGAD_LANG };
+    const html = this.calendarConfig.source
+      ? await new SidgadClient(this.calendarConfig.source.client).post(endpointPath, params)
+      : await sidgadPost(endpointPath, params);
 
     return this.parseCalendar(html, idc, seasonId);
   }

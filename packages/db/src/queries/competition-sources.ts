@@ -122,6 +122,8 @@ export interface ScrapePlanItem {
   /** Formato del calendario (`bracket` = eliminatoria, `final_four` = torneo a 4).
    *  Ver ExternalIds.format. */
   format: 'league' | 'bracket' | 'final_four';
+  /** `competitions.source_ref` (`fecapa_competition_4774`…): de él sale el portal sidgad. */
+  competitionSourceRef: string | null;
   /** Zona IANA en la que la fuente publica los horarios (default Europe/Madrid). */
   timezone: string;
 }
@@ -138,8 +140,9 @@ export async function getActiveScrapePlan(scraperKey: string): Promise<ScrapePla
     season_id: string | null;
     external_ids: ExternalIds;
     timezone: string;
+    competition_source_ref: string | null;
   }>(
-    `SELECT cs.competition_id, c.name AS competition_name,
+    `SELECT cs.competition_id, c.name AS competition_name, c.source_ref AS competition_source_ref,
             s.id AS season_id, cs.external_ids, c.timezone
        FROM competition_sources cs
        JOIN competitions c  ON c.id = cs.competition_id
@@ -157,6 +160,7 @@ export async function getActiveScrapePlan(scraperKey: string): Promise<ScrapePla
     playoffIdcs: r.external_ids.playoff_idcs ?? [],
     format: r.external_ids.format ?? 'league',
     timezone: r.timezone,
+    competitionSourceRef: r.competition_source_ref,
   }));
 }
 

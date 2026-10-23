@@ -170,6 +170,23 @@ export function resolveMatchSourceIds(
   return { source, idp, idc: idcFromCompetitionRef(compRef, source) };
 }
 
+/**
+ * Fuente de una COMPETICIÓN por su `competitions.source_ref`:
+ * `fecapa_competition_4774` → fecapa · `wse_competition_320` → wse.
+ * Lo heredado sin prefijo de portal (`fep_competition_3150` o un idc pelado)
+ * es RFEP. Un prefijo que no está en el registro (`fpp_`…, que no es sidgad)
+ * devuelve null: el llamante no debe pedirlo a ningún portal sidgad.
+ *
+ * Existe porque el cron horario (run-pipeline en modo multi) scrapeaba TODAS
+ * las competiciones con el portal del entorno (SIDGAD_PORTAL = rfep): una
+ * competición FECAPA activa se habría pedido a la RFEP con un idc de FECAPA.
+ */
+export function sourceForCompetitionRef(sourceRef: string | null | undefined): SourceDef | null {
+  const m = /^([a-z]+)_competition_/.exec(sourceRef ?? '');
+  if (!m) return SOURCES.find((x) => x.key === 'fep')!;
+  return SOURCES.find((x) => x.key === m[1]) ?? null;
+}
+
 /** Fuente de un portal sidgad (`rfep`, `fecapa`, `worldskate`…). Lanza si no la conocemos. */
 export function sourceForPortal(portal: string): SourceDef {
   const s = SOURCES.find((x) => x.client.portalPrefix === portal);

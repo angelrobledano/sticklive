@@ -36,7 +36,7 @@ import { FepStandingsScraper } from '../../scraper/src/scrapers/fep/fep-standing
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import { resolveWorldskate } from '../../scraper/src/scrapers/worldskate/run-worldskate.js';
-import { resolveMatchSourceIds, matchRefLikePatterns } from '../../scraper/src/core/sources.js';
+import { resolveMatchSourceIds, matchRefLikePatterns, sourceForCompetitionRef, type SourceDef } from '../../scraper/src/core/sources.js';
 
 const log = createLogger({ service: 'run-pipeline' });
 
@@ -92,6 +92,7 @@ async function processCalendar(
   timezone?: string,
   declaredKind: PhaseKind | null = null,
   dryRun = false,
+  source?: SourceDef,
 ): Promise<void> {
   // 1. Scrape de TODOS los idc de la competición: la estructura se planifica
   //    sobre el conjunto para ordenar sus fases (liga antes que playoff).
@@ -99,7 +100,7 @@ async function processCalendar(
   for (const calIdc of idcs) {
     const calName = IDC_NAMES[calIdc] ?? `idc ${calIdc}`;
     log.info({ idc: calIdc, competitionName: calName }, '→ Scrapeando calendario...');
-    const scraper = new FepCalendarScraper({ idc: calIdc, seasonId, competitionName: calName, timezone });
+    const scraper = new FepCalendarScraper({ idc: calIdc, seasonId, competitionName: calName, timezone, ...(source ? { source } : {}) });
     const result = await scraper.run();
     log.info({ idc: calIdc, found: result.data.length, errors: result.errors.length }, 'Calendario scrapeado');
 
@@ -167,13 +168,14 @@ async function processStandings(
   playoffIdcs: ReadonlySet<string> = LEGACY_PLAYOFF_IDCS,
   expectedEmptyIdcs: ReadonlySet<string> = new Set(),
   dryRun = false,
+  source?: SourceDef,
 ): Promise<void> {
   if (playoffIdcs.has(idc)) {
     log.info('→ Playoff sin clasificación (eliminatorias) — skip standings');
     return;
   }
   log.info({ idc, competitionName }, '→ Scrapeando clasificación...');
-  const scraper = new FepStandingsScraper({ idc, competitionName });
+  const scraper = new FepStandingsScraper({ idc, competitionName, ...(source ? { source } : {}) });
   const result = await scraper.run();
   log.info({ found: result.data.length, errors: result.errors.length }, 'Clasificación scrapeada');
 
@@ -252,6 +254,14 @@ async function runMultiCompetition(
       skipped++;
       return;
     }
+    // Portal sidgad de ESTA competición (RFEP, FECAPA…), no el del entorno.
+    const source = sourceForCompetitionRef(item.competitionSourceRef);
+    if (!source) {
+      log.error({ competition: item.competitionName, ref: item.competitionSourceRef },
+        'Portal sidgad desconocido para la competición — se omite (añádelo en core/sources.ts)');
+      skipped++;
+      return;
+    }
     const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: item.seasonId, dryRun });
     try {
       const playoff = new Set(item.playoffIdcs);
@@ -262,9 +272,9 @@ async function runMultiCompetition(
       const cups = isKnockout ? new Set([item.primaryIdc]) : new Set<string>();
       if (entity === 'calendar') {
         await processCalendar(item.seasonId, [item.primaryIdc, ...item.playoffIdcs], pipeline, item.timezone,
-          declaredKindFromFormat(item.format), dryRun);
+          declaredKindFromFormat(item.format), dryRun, source);
       } else {
-        await processStandings(item.primaryIdc, item.competitionName, pipeline, playoff, cups, dryRun);
+        await processStandings(item.primaryIdc, item.competitionName, pipeline, playoff, cups, dryRun, source);
       }
       done++;
     } catch (err) {

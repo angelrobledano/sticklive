@@ -1,0 +1,105 @@
+#!/bin/bash
+# ============================================================
+# Alta de las competiciones SÉNIOR de FECAPA 2026/27 (portal sidgad `fecapa`).
+# Ver docs/plan-cobertura-fecapa-2026-27.md (catálogo del 22/10/2026).
+#
+#   bash deploy/alta-fecapa-senior.sh            # EN SECO: preflight + dry-run de cada seed
+#   bash deploy/alta-fecapa-senior.sh --write    # alta real + carga inicial de calendario/clasificación
+#   bash deploy/alta-fecapa-senior.sh --write --only=4774,4775
+#
+# Requisitos (el preflight los comprueba y PARA si fallan):
+#   · Desplegado el commit que hace que el cron horario pida cada competición a
+#     SU portal (sourceForCompetitionRef). Sin él, una competición FECAPA activa
+#     se pediría a la RFEP.
+#   · Identidad por portal aplicada (runbook-identidad-por-portal.md):
+#     apply_portal_namespacing() con players_mixed = 0.
+#
+# Qué hace cada alta (seed-fep-competition): descubre los equipos en sidgad,
+# reutiliza los que ya existen (por ref, slug o alias), manda los dudosos a la
+# cola /admin/resolucion y crea el resto; competición + temporada 2026/27 +
+# competition_sources. Revisa en el dry-run la sección de identidad.
+# ============================================================
+set -uo pipefail
+cd "$(dirname "$0")/.."
+DC="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+
+WRITE=0; ONLY=""
+for a in "$@"; do
+  case "$a" in
+    --write) WRITE=1 ;;
+    --only=*) ONLY="${a#--only=}" ;;
+    *) echo "opción desconocida: $a" >&2; exit 2 ;;
+  esac
+done
+
+PORTAL_ENV=(-e SIDGAD_PORTAL=fecapa -e SIDGAD_REFERER=https://www.fecapa.cat/)
+COMMON=(--organizer=FECAPA --region=Cataluña --scope=regional --season=2026/27 --temp=41 --start=2026-09-01 --end=2027-06-30)
+
+# idc | nombre | corto | género | extra
+COMPS=(
+  "4774|NACIONAL CATALANA MASCULINA|Nacional Catalana|male|"
+  "4775|NACIONAL CATALANA FEMENINA|Nacional Catalana F|female|"
+  "4776|PRIMERA CATALANA MASCULINA|Primera Catalana|male|"
+  "4778|PRIMERA CATALANA FEMENINA|Primera Catalana F|female|"
+  "4779|SEGONA CATALANA MASCULINA|Segona Catalana|male|"
+  "4780|SEGONA CATALANA FEMENINA|Segona Catalana F|female|"
+  "4781|TERCERA CATALANA MASCULINA|Tercera Catalana|male|"
+  "4856|LLIGA CATALANA PLATA|Lliga Catalana Plata|male|"
+  "4860|LLIGA CATALANA FEMENINA|Lliga Catalana F|female|"
+  "5014|SUPERCOPA CATALANA MASCULINA|Supercopa Catalana|male|--format=bracket --allow-shared=true"
+  "5015|SUPERCOPA CATALANA FEMENINA|Supercopa Catalana F|female|--format=bracket --allow-shared=true"
+)
+
+psql_q() { $DC exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At' <<< "$1"; }
+
+# ── Preflight ─────────────────────────────────────────────
+echo "== Preflight"
+if ! $DC exec -T etl grep -q "function sourceForCompetitionRef" dist/apps/etl/src/run-pipeline.js 2>/dev/null; then
+  echo "ERROR: el etl desplegado no lleva el arreglo de portal por competición. Despliega main antes (./deploy/deploy.sh)." >&2
+  exit 1
+fi
+MIXED=$(psql_q "SELECT players_mixed FROM apply_portal_namespacing();" | tail -1)
+echo "players_mixed = ${MIXED:-?}"
+if [ "${MIXED:-1}" != "0" ]; then
+  echo "ERROR: hay jugadores mezclados entre portales. Sigue antes docs/runbook-identidad-por-portal.md (paso 3, split-merged-players)." >&2
+  exit 1
+fi
+echo "OK"
+
+# ── Altas ─────────────────────────────────────────────────
+for row in "${COMPS[@]}"; do
+  IFS='|' read -r IDC NAME SHORT GENDER EXTRA <<< "$row"
+  if [ -n "$ONLY" ] && [[ ",$ONLY," != *",$IDC,"* ]]; then continue; fi
+  echo; echo "════════ $IDC · $NAME ════════"
+  # shellcheck disable=SC2086
+  ARGS=(--idc="$IDC" --name="$NAME" --short="$SHORT" --gender="$GENDER" "${COMMON[@]}" $EXTRA)
+
+  if [ "$WRITE" -eq 0 ]; then
+    $DC exec -T "${PORTAL_ENV[@]}" etl node dist/apps/etl/src/seed-fep-competition.js "${ARGS[@]}"
+    continue
+  fi
+
+  OUT=$($DC exec -T "${PORTAL_ENV[@]}" etl node dist/apps/etl/src/seed-fep-competition.js "${ARGS[@]}" --write=true 2>&1)
+  echo "$OUT" | grep -E "Sección|identidad|nuevos|dudoso|SEASON_ID|Equipos:|ERROR|Error" || true
+  SEASON_ID=$(echo "$OUT" | sed -n 's/^SEASON_ID=//p' | tail -1)
+  if [ -z "$SEASON_ID" ]; then echo "  ⚠️  sin SEASON_ID: revisa la salida completa del seed"; continue; fi
+
+  $DC exec -T "${PORTAL_ENV[@]}" etl flock -w 600 /tmp/etl-pipeline.lock \
+    node dist/apps/etl/src/run-pipeline.js --entity=calendar --idc="$IDC" --season-id="$SEASON_ID" >/dev/null 2>&1 \
+    && echo "  calendario ✓" || echo "  calendario ✗ (revisa logs del etl)"
+  if [[ "$EXTRA" != *"--format="* ]]; then
+    $DC exec -T "${PORTAL_ENV[@]}" etl flock -w 600 /tmp/etl-pipeline.lock \
+      node dist/apps/etl/src/run-pipeline.js --entity=standings --idc="$IDC" --season-id="$SEASON_ID" >/dev/null 2>&1 \
+      && echo "  clasificación ✓" || echo "  clasificación ✗ (revisa logs del etl)"
+  fi
+done
+
+echo; echo "== Resumen"
+psql_q "SELECT c.idc_name, count(DISTINCT m.id) AS partidos, count(DISTINCT st.team_id) AS equipos
+          FROM (SELECT c.id, c.name AS idc_name FROM competitions c WHERE c.organizer = 'FECAPA') c
+          JOIN seasons s ON s.competition_id = c.id AND s.is_current
+          LEFT JOIN matches m ON m.season_id = s.id
+          LEFT JOIN season_teams st ON st.season_id = s.id
+         GROUP BY 1 ORDER BY 1;"
+[ "$WRITE" -eq 0 ] && echo && echo "(en seco) Nada escrito. Revisa la identidad de cada liga y repite con --write."
+echo "Dudosos a resolver a mano: /admin/resolucion"
