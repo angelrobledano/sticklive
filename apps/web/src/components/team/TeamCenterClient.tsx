@@ -253,6 +253,14 @@ function ClubSection({ data }: { data: TeamDetailView }) {
               {t('team.other_teams')}
             </p>
           </div>
+          {data.team.club?.slug && (
+            <Link
+              href={`/clubs/${data.team.club.slug}`}
+              className="block px-4 pb-2 text-xs font-semibold text-rink-passion hover:underline"
+            >
+              {t('team.view_club')} →
+            </Link>
+          )}
           <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
             {clubTeams.map((ct) => (
               <Link

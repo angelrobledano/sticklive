@@ -75,6 +75,14 @@ describe('sitemapEntries', () => {
     ]);
   });
 
+  it('las fichas de club entran por slug en su propia sección (Plan B1)', () => {
+    const all = ids({});
+    const withClubs = { ...all, clubs: [{ id: 'cl1', slug: 'cp-voltrega' }] };
+    expect(sitemapSectionIds(withClubs)).toContain('clubs-0');
+    expect(sitemapEntries('clubs-0', withClubs).map((e) => e.path)).toEqual(['/clubs/cp-voltrega']);
+    expect(sitemapSectionIds(all)).not.toContain('clubs-0');
+  });
+
   it('el slug no se aplica a otras entidades', () => {
     const entries = sitemapEntries('teams-0', ids({ teams: [{ id: 't1', slug: 'liceo' }] }));
     expect(entries[0]!.path).toBe('/teams/t1');

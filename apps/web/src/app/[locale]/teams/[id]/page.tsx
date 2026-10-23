@@ -77,6 +77,8 @@ export default async function TeamDetailPage(props: Props) {
     competitionId: data.standing?.competitionId ?? data.season?.competitionId,
     competitionSlug: data.standing?.competitionSlug ?? data.season?.competitionSlug,
     competitionName: data.standing?.competitionName ?? data.season?.competitionName,
+    clubSlug: data.team.club?.slug,
+    clubName: data.team.club ? clubName(data.team.club.canonicalName) : null,
   });
 
   // F5-6: migas visibles + BreadcrumbList (Inicio › Competiciones › Competición › Equipo).

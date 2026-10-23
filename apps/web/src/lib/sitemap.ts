@@ -39,6 +39,8 @@ export interface SitemapIds {
   /** Temporadas cerradas con página permanente (F4-5). */
   seasons: SitemapId[];
   matches: SitemapId[];
+  /** Fichas de club (Plan B1), por slug. Opcional: API antigua. */
+  clubs?: SitemapId[];
   /** Hubs de país/federación como rutas sin locale (migración 089). Opcional: API antigua. */
   hubs?: string[];
 }
@@ -83,6 +85,7 @@ const ENTITY_META: Record<string, { prefix: string }> = {
   teams: { prefix: '/teams' },
   players: { prefix: '/players' },
   seasons: { prefix: '/seasons' },
+  clubs: { prefix: '/clubs' },
 };
 
 /**
@@ -173,7 +176,7 @@ export function sitemapEntries(section: string, ids: SitemapIds): SitemapEntry[]
   const slice = list.slice(chunk * SITEMAP_SECTION_SIZE, (chunk + 1) * SITEMAP_SECTION_SIZE);
   return slice.map((item) => {
     const entry: SitemapEntry = {
-      path: `${meta.prefix}/${name === 'competitions' && typeof item !== 'string' && item.slug ? item.slug : sitemapItemId(item)}`,
+      path: `${meta.prefix}/${(name === 'competitions' || name === 'clubs') && typeof item !== 'string' && item.slug ? item.slug : sitemapItemId(item)}`,
     };
     const lastModified = sitemapLastModified(item);
     if (lastModified) entry.lastModified = lastModified;

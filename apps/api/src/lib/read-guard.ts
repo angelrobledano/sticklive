@@ -64,6 +64,7 @@ const METERED_PATH_RE = [
   /^\/seasons\/[^/]+\/(?:overview|stats|insights|matches|standings)$/,
   /^\/matches\/[^/]+$/,
   /^\/teams\/[^/]+(?:\/recent)?$/,
+  /^\/clubs\/[^/]+$/,
   /^\/players\/[^/]+(?:\/insights)?$/,
   /^\/search$/,
   /^\/meta\/sitemap$/,

@@ -732,3 +732,37 @@ export interface SeasonInsights {
   matches: Record<string, { homeTeamId: string; awayTeamId: string; date: string | null }>;
   discipline?: SeasonDiscipline;
 }
+
+// ─── Club (Plan B1: ficha de club) ───
+
+export interface ClubDetailTeam {
+  id: string;
+  name: string;
+  shortName: string | null;
+  gender: string | null;
+  ageCategory: string | null;
+  squadLevel: number | null;
+  sectionSuffix: string;
+  competition: { id: string; slug: string | null; name: string; seasonId: string | null; isCurrent: boolean } | null;
+  position: number | null;
+}
+
+export interface ClubDetailMatch {
+  id: string;
+  scheduledAt: string | null;
+  status: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  home: { id: string; name: string };
+  away: { id: string; name: string };
+  competition: { id: string; slug: string | null; name: string };
+}
+
+export interface ClubDetail {
+  club: { id: string; slug: string; name: string; city: string | null; country: string | null; crestUrl: string | null };
+  teams: ClubDetailTeam[];
+  recent: ClubDetailMatch[];
+  upcoming: ClubDetailMatch[];
+  /** Alguna sección juega la temporada en curso. Si no, la ficha va con noindex. */
+  indexable: boolean;
+}
