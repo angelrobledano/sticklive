@@ -104,6 +104,16 @@ function slugify(s: string): string {
     .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
+/**
+ * Nombre sin la letra de equipo final y la letra: "CP VIC  B" → { base: "CP VIC", letter: "B" }.
+ * Solo una letra A-H suelta al final (no "HC" ni siglas pegadas).
+ */
+function teamLetter(name: string): { base: string; letter: string | null } {
+  const n = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const m = /^(.*\S)\s+([A-H])$/.exec(n);
+  return m ? { base: m[1]!, letter: m[2]! } : { base: n, letter: null };
+}
+
 interface DiscTeam { ref: string; name: string; abbr: string; logo?: string; }
 
 // La fuente mete un pseudo-equipo 'DESCANSO' como bye en ligas de nº impar (Bronce N/S).
@@ -320,6 +330,21 @@ async function main() {
     }
     // Alta confirmada a mano: se crea aunque haya candidatos por similitud.
     if (FORCE_NEW.includes(t.ref)) { plan.push({ t, accion: 'nuevo' }); continue; }
+    // Letra de equipo (#base): "CP VIC B" frente a "CP VIC A" (o "CP VIC") es
+    // OTRO equipo del mismo club, no un dudoso. Si el candidato más parecido
+    // solo difiere en la letra final, se crea (squad_level sale de la letra).
+    {
+      const sim = (await findSimilarTeamNames(t.name, sportId, { gender: GENDER, ageCategory: AGE }, 3))
+        .filter((c) => c.score >= MIN_SCORE);
+      const mine = teamLetter(t.name);
+      if (sim.length > 0 && sim.some((c) => {
+        const theirs = teamLetter(c.name);
+        return theirs.base === mine.base && theirs.letter !== mine.letter;
+      }) && !sim.some((c) => teamLetter(c.name).base === mine.base && teamLetter(c.name).letter === mine.letter)) {
+        plan.push({ t, accion: 'nuevo' });
+        continue;
+      }
+    }
     const candidatos = (await findSimilarTeamNames(t.name, sportId, { gender: GENDER, ageCategory: AGE }, 3))
       .filter((c) => c.score >= MIN_SCORE);
     const top = candidatos[0];
@@ -480,7 +505,9 @@ async function main() {
       // al final) cuando el flag CLI no lo diga — el seed masivo de ligas no
       // pasa --squad-level y los filiales entraban como primer equipo. Sólo se
       // sube de nivel (nunca se baja el del flag). "B B" ruidoso cuenta una vez.
-      const nivelNombre = / (?:B|II|2)$/i.test(t.name) ? 2 : / C$/i.test(t.name) ? 3 : 1;
+      const letra = teamLetter(t.name).letter;
+      const nivelNombre = / (?:II|2)$/i.test(t.name) ? 2
+        : letra ? Math.max(1, 'ABCDEFGH'.indexOf(letra) + 1) : 1;
       const nivelFinal = Math.max(SQUAD_LEVEL, nivelNombre, nivelFilial);
       if (nivelNombre > 1) {
         console.log(`  ℹ️  ${t.name} → squad_level=${nivelNombre} (derivado del nombre, #198)`);
