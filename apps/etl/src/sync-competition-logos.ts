@@ -17,7 +17,7 @@ import * as cheerio from 'cheerio';
 import { db, closeDb } from '@sports/db';
 import { createLogger } from '@sports/logger';
 import { competitionLogoUrl, idcFromSourceRef } from './competition-logo.js';
-import { FEDERATIONS } from './federations.js';
+import { FEDERATIONS, federationLogoUrl } from './federations.js';
 
 const log = createLogger({ service: 'sync-competition-logos' });
 
@@ -119,7 +119,9 @@ async function main() {
     const logoFile = byIdc.get(idc)?.logo
       ?? LOGO_OVERRIDES[`${PORTAL}:${idc}`]
       ?? logoByName.get(normName(comp.name));
-    const logoUrl = competitionLogoUrl(PORTAL, logoFile);
+    const fedLogo = FEDERATIONS.find((f) => f.prefix === PORTAL)?.logo;
+    // Sin logo propio en el catálogo (solo `default.png`), el de la federación.
+    const logoUrl = competitionLogoUrl(PORTAL, logoFile) ?? (fedLogo ? federationLogoUrl(fedLogo) : null);
     if (!logoUrl) { skipped++; continue; }
 
     if (WRITE) {

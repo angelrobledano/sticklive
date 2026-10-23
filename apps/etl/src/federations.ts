@@ -14,12 +14,23 @@ export interface Federation {
   region: string;    // competitions.region
   prefix: string;    // prefijo sidgad (SIDGAD_PORTAL)
   referer: string;   // home del portal (SIDGAD_REFERER)
+  /**
+   * Logo de la federación (servido por la web en /federaciones/). Reserva para
+   * las competiciones que en sidgad solo tienen `default.png`: sin él la web
+   * pinta la bandera del país.
+   */
+  logo?: string;
+}
+
+/** URL pública de un logo de federación (absoluta: la consume también la app móvil). */
+export function federationLogoUrl(file: string): string {
+  return `${process.env['PUBLIC_WEB_URL'] ?? 'https://sticklive.eu'}/federaciones/${file}`;
 }
 
 export const FEDERATIONS: Federation[] = [
-  { org: 'FMP',    region: 'Madrid',               prefix: 'fmp',    referer: 'https://www.hockeypatines.fmp.es/' },
+  { org: 'FMP',    region: 'Madrid',               prefix: 'fmp',    referer: 'https://www.hockeypatines.fmp.es/', logo: 'fmp.png' },
   { org: 'FAP',    region: 'Andalucía',            prefix: 'fap',    referer: 'https://www.hockeypatines.fapatinaje.org/' },
-  { org: 'FECAPA', region: 'Cataluña',             prefix: 'fecapa', referer: 'https://www.fecapa.cat/' },
+  { org: 'FECAPA', region: 'Cataluña',             prefix: 'fecapa', referer: 'https://www.fecapa.cat/', logo: 'fecapa.png' },
   { org: 'FPCV',   region: 'Comunidad Valenciana', prefix: 'fpcv',   referer: 'https://www.hockeypatines.fpcv.es/' },
   { org: 'FNP',    region: 'Navarra',              prefix: 'fnp',    referer: 'https://www.hockey.fnp.org/' },
   { org: 'FPCYL',  region: 'Castilla y León',      prefix: 'fpcyl',  referer: 'https://www.hockeypatines.fpcyl.es/' },
