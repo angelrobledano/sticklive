@@ -81,6 +81,39 @@ describe('A2 — splitMergedPlayers', () => {
     expect(evR.rows).toEqual([{ player_id: e.player }]);
   });
 
+  it('reutiliza la persona del otro portal si ya existe (caso prod 23/10: slug duplicado)', async () => {
+    const e = await escenario();
+    // Restos de una pasada anterior: la persona wse ya existe con su slug y su ref,
+    // pero una refichas posterior volvió a colgar la alineación wse del jugador RFEP.
+    const previa = (await db.query<{ id: string }>(
+      `INSERT INTO players (sport_id, first_name, last_name, slug, source_ref)
+       SELECT sport_id, 'BRUNO', 'TOGNETTI ANDREA', 'galbas-pedrol-pol-wse', 'wse_player_4716' FROM players WHERE id = $1
+       RETURNING id`, [e.player])).rows[0]!.id;
+    // …y ya tiene su plantilla de World Skate (el UPDATE chocaría con el UNIQUE).
+    await db.query(`INSERT INTO team_players (season_id, team_id, player_id) VALUES ($1,$2,$3)`, [e.ws, e.italia, previa]);
+
+    const r = await splitMergedPlayers({ write: true });
+    expect(r.created).toBe(0);
+    const tp = await db.query(`SELECT player_id FROM team_players WHERE season_id = $1`, [e.ws]);
+    expect(tp.rows).toEqual([{ player_id: previa }]);
+    const ml = await db.query(`SELECT player_id FROM match_lineups WHERE match_id = $1`, [e.mW]);
+    expect(ml.rows).toEqual([{ player_id: previa }]);
+    const n = await db.query(`SELECT count(*)::int AS n FROM players WHERE source_ref = 'wse_player_4716'`);
+    expect(n.rows[0]!.n).toBe(1);
+  });
+
+  it('si el slug lo tiene OTRA persona, desambigua con el id y sigue', async () => {
+    const e = await escenario();
+    await db.query(
+      `INSERT INTO players (sport_id, first_name, last_name, slug, source_ref)
+       SELECT sport_id, 'X', 'Y', 'galbas-pedrol-pol-wse', 'wse_player_999' FROM players WHERE id = $1`, [e.player]);
+
+    const r = await splitMergedPlayers({ write: true });
+    expect(r.created).toBe(1);
+    const nuevo = await db.query<{ slug: string }>(`SELECT slug FROM players WHERE source_ref = 'wse_player_4716'`);
+    expect(nuevo.rows[0]!.slug).toBe('galbas-pedrol-pol-wse-4716');
+  });
+
   it('es idempotente: una segunda pasada no encuentra nada', async () => {
     await escenario();
     await splitMergedPlayers({ write: true });

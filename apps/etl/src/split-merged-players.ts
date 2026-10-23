@@ -89,7 +89,9 @@ export async function splitMergedPlayers(opts: { write: boolean }): Promise<Spli
 
   let created = 0;
   const idNum = (ref: string) => ref.replace(/^fep_player_/, '');
+  let failed = 0;
   for (const c of candidates) {
+    try {
     await withTransaction(async (client) => {
       for (const portal of c.split) {
         // Nombre de la persona en SU portal: el más repetido de sus alineaciones.
@@ -104,15 +106,32 @@ export async function splitMergedPlayers(opts: { write: boolean }): Promise<Spli
           : splitName(c.name);
         const newRef = `${portal}_player_${idNum(c.sourceRef)}`;
 
-        // La foto NO se copia: la de la fila original es del otro portal.
-        const ins = await client.query<{ id: string }>(
-          `INSERT INTO players (sport_id, first_name, last_name, slug, source_ref, scraped_at)
-           SELECT p.sport_id, $2, $3, p.slug || '-' || $4, $5, NOW() FROM players p WHERE p.id = $1
-           RETURNING id`,
-          [c.playerId, firstName, lastName, portal, newRef],
+        // ¿La persona de ese portal ya existe? (pasada anterior cortada, o una
+        // ficha posterior que la creó). Se reutiliza: crearla otra vez chocaba
+        // con el slug `{slug}-{portal}` y abortaba TODA la separación (prod 23/10).
+        const existente = await client.query<{ id: string }>(
+          `SELECT player_id AS id FROM player_source_refs WHERE source_ref = $1
+           UNION ALL SELECT id FROM players WHERE source_ref = $1 LIMIT 1`,
+          [newRef],
         );
-        const newId = ins.rows[0]!.id;
-        created++;
+        let newId = existente.rows[0]?.id;
+        if (!newId) {
+          // Slug `{slug}-{portal}`; si lo tiene OTRA persona, se añade el id de fuente.
+          const base = (await client.query<{ slug: string }>(`SELECT slug FROM players WHERE id = $1`, [c.playerId])).rows[0]!.slug;
+          let slug = `${base}-${portal}`;
+          const ocupado = await client.query(`SELECT 1 FROM players p0 JOIN players p ON p.sport_id = p0.sport_id
+                                                WHERE p0.id = $1 AND p.slug = $2`, [c.playerId, slug]);
+          if ((ocupado.rowCount ?? 0) > 0) slug = `${slug}-${idNum(c.sourceRef)}`;
+          // La foto NO se copia: la de la fila original es del otro portal.
+          const ins = await client.query<{ id: string }>(
+            `INSERT INTO players (sport_id, first_name, last_name, slug, source_ref, scraped_at)
+             SELECT p.sport_id, $2, $3, $4, $5, NOW() FROM players p WHERE p.id = $1
+             RETURNING id`,
+            [c.playerId, firstName, lastName, slug, newRef],
+          );
+          newId = ins.rows[0]!.id;
+          created++;
+        }
         // B1: la ref del otro portal es de la persona nueva (084).
         await client.query(
           `INSERT INTO player_source_refs (player_id, source_ref, created_by) VALUES ($1, $2, 'split-merged-players')
@@ -120,6 +139,15 @@ export async function splitMergedPlayers(opts: { write: boolean }): Promise<Spli
           [newId, newRef],
         );
 
+        // Si la persona ya existía puede tener ya esa plantilla: se quita la
+        // fila duplicada del original en vez de chocar con el UNIQUE.
+        await client.query(
+          `DELETE FROM team_players tp
+            WHERE tp.player_id = $1
+              AND EXISTS (SELECT 1 FROM team_players t2
+                           WHERE t2.player_id = $2 AND t2.season_id = tp.season_id AND t2.team_id = tp.team_id)`,
+          [c.playerId, newId],
+        );
         await client.query(
           `UPDATE team_players tp SET player_id = $2, updated_at = NOW()
             WHERE tp.player_id = $1
@@ -138,8 +166,13 @@ export async function splitMergedPlayers(opts: { write: boolean }): Promise<Spli
         );
       }
     });
+    } catch (err) {
+      // Un jugador que falla no aborta al resto (antes, el primero tumbaba los 15).
+      failed++;
+      log.error({ err, playerId: c.playerId, sourceRef: c.sourceRef, name: c.name }, 'No se pudo separar este jugador — sigue con el siguiente');
+    }
   }
-  log.info({ candidates: candidates.length, created }, 'Separación terminada');
+  log.info({ candidates: candidates.length, created, failed }, 'Separación terminada');
   return { candidates, created };
 }
 
