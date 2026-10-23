@@ -1,11 +1,12 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, setCompetitionRanking, listFederationsAdmin, listOrphanOrganizers, upsertFederation, type DataQuality, type FederationLevel } from '@sports/db';
+import { db, withTransaction, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, setCompetitionRanking, listFederationsAdmin, listOrphanOrganizers, upsertFederation, type DataQuality, type FederationLevel } from '@sports/db';
 import { logger } from '@sports/logger';
 import type { StandingsZone } from '@sports/shared-types';
 import { isUuid } from '../lib/uuid.js';
 import { captureRouteError } from '../lib/route-error.js';
 import { parseFederationBody, parseRankingBody } from '../lib/federation-input.js';
+import { parseClubPatch, slugifyClubName } from '../lib/club-input.js';
 
 /**
  * Panel de administracion nivel 1 (token compartido).
@@ -243,6 +244,122 @@ adminRouter.patch('/teams/:id/display-name', async (c) => {
   } catch (err) {
     captureRouteError(err, 'admin] team display name error');
     logger.error({ err }, '[admin] team display name error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+// ── Clubes (Plan B1: nombre y slug de la ficha /clubs/<slug>) ──────────
+
+/**
+ * GET /admin/clubs?q= — clubes para curar nombre, slug y ciudad. Los que tienen
+ * algún equipo jugando la temporada en curso van primero (son los que se
+ * publican); `suggestedSlug` sale del nombre canónico.
+ */
+adminRouter.get('/clubs', async (c) => {
+  const q = (c.req.query('q') ?? '').trim();
+  if (q.length > MAX_TEAM_QUERY) {
+    return c.json({ error: `q must be at most ${MAX_TEAM_QUERY} characters` }, 400);
+  }
+  try {
+    const result = await db.query<{
+      id: string; slug: string; canonical_name: string; city: string | null;
+      teams: number; active: boolean; team_names: string[] | null;
+    }>(`
+      SELECT cl.id, cl.slug, cl.canonical_name, cl.city,
+             count(t.id)::int AS teams,
+             bool_or(EXISTS (
+               SELECT 1 FROM matches m JOIN seasons s ON s.id = m.season_id
+                WHERE (m.home_team_id = t.id OR m.away_team_id = t.id) AND s.is_current
+             )) AS active,
+             (array_agg(DISTINCT COALESCE(t.display_name, t.name)))[1:5] AS team_names
+        FROM clubs cl
+        LEFT JOIN teams t ON t.club_id = cl.id AND t.team_type = 'club'
+       WHERE $1 = ''
+          OR cl.canonical_name ILIKE '%' || $1 || '%'
+          OR cl.slug ILIKE '%' || $1 || '%'
+          OR EXISTS (SELECT 1 FROM teams t2 WHERE t2.club_id = cl.id
+                      AND COALESCE(t2.display_name, t2.name) ILIKE '%' || $1 || '%')
+       GROUP BY cl.id
+       ORDER BY active DESC NULLS LAST, cl.canonical_name ASC
+       LIMIT 100
+    `, [q]);
+    return c.json({
+      count: result.rows.length,
+      clubs: result.rows.map((r) => ({
+        id: r.id,
+        slug: r.slug,
+        canonicalName: r.canonical_name,
+        city: r.city,
+        teams: r.teams,
+        active: r.active === true,
+        teamNames: r.team_names ?? [],
+        suggestedSlug: slugifyClubName(r.canonical_name),
+      })),
+    });
+  } catch (err) {
+    captureRouteError(err, 'admin] clubs list error');
+    logger.error({ err }, '[admin] clubs list error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/**
+ * PATCH /admin/clubs/:id  { canonicalName?, slug?, city? }
+ * Cambiar el slug guarda el anterior en `club_slug_redirects` (migración 091)
+ * para que la URL vieja responda 308. Slug ocupado por otro club → 409.
+ */
+adminRouter.patch('/clubs/:id', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Club not found' }, 404);
+
+  const parsed = parseClubPatch(await c.req.json().catch(() => null));
+  if (!parsed.ok) return c.json({ error: parsed.error }, 400);
+  const { patch } = parsed;
+
+  try {
+    const outcome = await withTransaction(async (client) => {
+      const current = (await client.query<{ slug: string; sport_id: string }>(
+        'SELECT slug, sport_id FROM clubs WHERE id = $1 FOR UPDATE', [id],
+      )).rows[0];
+      if (!current) return { status: 404 as const };
+
+      if (patch.slug && patch.slug !== current.slug) {
+        const taken = await client.query(
+          `SELECT 1 FROM clubs WHERE sport_id = $1 AND slug = $2 AND id <> $3
+           UNION ALL
+           SELECT 1 FROM club_slug_redirects WHERE old_slug = $2 AND club_id <> $3`,
+          [current.sport_id, patch.slug, id],
+        );
+        if ((taken.rowCount ?? 0) > 0) return { status: 409 as const };
+        // El slug nuevo deja de ser una redirección (volver a un slug antiguo).
+        await client.query('DELETE FROM club_slug_redirects WHERE old_slug = $1', [patch.slug]);
+        await client.query(
+          `INSERT INTO club_slug_redirects (old_slug, club_id) VALUES ($1, $2)
+           ON CONFLICT (old_slug) DO UPDATE SET club_id = EXCLUDED.club_id`,
+          [current.slug, id],
+        );
+      }
+
+      const row = (await client.query<{ id: string; slug: string; canonical_name: string; city: string | null }>(
+        `UPDATE clubs
+            SET canonical_name = COALESCE($2, canonical_name),
+                slug           = COALESCE($3, slug),
+                city           = CASE WHEN $5 THEN $4 ELSE city END,
+                updated_at     = NOW()
+          WHERE id = $1
+          RETURNING id, slug, canonical_name, city`,
+        [id, patch.canonicalName ?? null, patch.slug ?? null, patch.city ?? null, Object.hasOwn(patch, 'city')],
+      )).rows[0]!;
+      return { status: 200 as const, row };
+    });
+
+    if (outcome.status === 404) return c.json({ error: 'Club not found' }, 404);
+    if (outcome.status === 409) return c.json({ error: 'slug already in use' }, 409);
+    const { row } = outcome;
+    return c.json({ ok: true, club: { id: row.id, slug: row.slug, canonicalName: row.canonical_name, city: row.city } });
+  } catch (err) {
+    captureRouteError(err, 'admin] club patch error');
+    logger.error({ err }, '[admin] club patch error');
     return c.json({ error: 'Database error' }, 500);
   }
 });

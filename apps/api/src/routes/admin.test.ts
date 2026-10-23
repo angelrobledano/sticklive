@@ -235,3 +235,35 @@ describe('admin — ranking y federaciones validan antes de tocar la BD (089)', 
     expect(res.status).toBe(400);
   });
 });
+
+describe('admin — clubes (Plan B1, guards sin BD)', () => {
+  const CLUB_ID = '00000000-0000-0000-0000-000000000002';
+
+  it('PATCH /clubs/:id con uuid inválido → 404', async () => {
+    const res = await adminRouter.request('/clubs/xyz', {
+      method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({ canonicalName: 'HC Palau' }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('PATCH /clubs/:id con slug inválido → 400', async () => {
+    const res = await adminRouter.request(`/clubs/${CLUB_ID}`, {
+      method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({ slug: 'HC Palau!' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('PATCH /clubs/:id sin campos → 400', async () => {
+    const res = await adminRouter.request(`/clubs/${CLUB_ID}`, {
+      method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('sin token → 401', async () => {
+    const res = await adminRouter.request(`/clubs/${CLUB_ID}`, {
+      method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ canonicalName: 'x' }),
+    });
+    expect([401, 403]).toContain(res.status);
+  });
+});

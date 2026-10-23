@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AdminCompetitions } from '@/components/admin/AdminCompetitions';
 import { AdminFederations } from '@/components/admin/AdminFederations';
 import { AdminTeams } from '@/components/admin/AdminTeams';
+import { AdminClubs } from '@/components/admin/AdminClubs';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 const TOKEN_KEY = 'sticklive_admin_token';
@@ -58,7 +59,7 @@ export default function AdminPage() {
   const [error, setError]   = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy]     = useState<string | null>(null); // id de usuario en mutación
-  const [tab, setTab]       = useState<'users' | 'competitions' | 'federations' | 'teams'>('users');
+  const [tab, setTab]       = useState<'users' | 'competitions' | 'federations' | 'teams' | 'clubs'>('users');
 
   useEffect(() => {
     try {
@@ -162,7 +163,7 @@ export default function AdminPage() {
     <div className="px-4 py-6 max-w-4xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-50">
-          {tab === 'users' ? 'Usuarios' : tab === 'competitions' ? 'Competiciones' : tab === 'federations' ? 'Federaciones' : 'Equipos'}
+          {tab === 'users' ? 'Usuarios' : tab === 'competitions' ? 'Competiciones' : tab === 'federations' ? 'Federaciones' : tab === 'clubs' ? 'Clubes' : 'Equipos'}
         </h1>
         <button
           onClick={() => { setData(null); setToken(''); try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* noop */ } }}
@@ -172,8 +173,8 @@ export default function AdminPage() {
         </button>
       </div>
 
-      <div className="flex gap-1">
-        {([['users', 'Usuarios'], ['competitions', 'Competiciones'], ['federations', 'Federaciones'], ['teams', 'Equipos']] as const).map(([key, label]) => (
+      <div className="flex gap-1 overflow-x-auto">
+        {([['users', 'Usuarios'], ['competitions', 'Competiciones'], ['federations', 'Federaciones'], ['teams', 'Equipos'], ['clubs', 'Clubes']] as const).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -267,6 +268,7 @@ export default function AdminPage() {
       {tab === 'competitions' && <AdminCompetitions token={token} onError={setError} />}
       {tab === 'federations' && <AdminFederations token={token} onError={setError} />}
       {tab === 'teams' && <AdminTeams token={token} onError={setError} />}
+      {tab === 'clubs' && <AdminClubs token={token} onError={setError} />}
     </div>
   );
 }
