@@ -37,6 +37,7 @@ import { checkWindow } from './live-window.js';
 import { selectFichaCandidates } from './ficha-candidates.js';
 import { actaFinalCandidates, finalizeByActa, type EndedByActa } from './acta-final.js';
 import { touchAlive } from './heartbeat-file.js';
+import { loopDecision, LIVE_YIELD_EXIT_CODE } from './live-yield.js';
 import { ScrapeFailureTracker } from './scrape-health.js';
 import type { ScrapedMatch } from '@sports/shared-types';
 import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.scraper.js';
@@ -105,6 +106,8 @@ function trackerFor(key: string): MissingLiveTracker {
 const POLL_INTERVAL  = Number(process.env['POLL_INTERVAL_S']  ?? 45) * 1000;
 const WINDOW_HOURS   = Number(process.env['WINDOW_HOURS']     ?? 2);
 const MAX_RUNTIME_MS = Number(process.env['MAX_RUNTIME_MIN']  ?? 180) * 60 * 1000;
+// Cesión al scheduler (ver live-yield.ts). 0 = no ceder.
+const LIVE_YIELD_MS  = Number(process.env['LIVE_YIELD_MIN']   ?? 60) * 60 * 1000;
 const SPORT_SLUG     = 'hockey-patines';
 // Fichas en paralelo dentro de un ciclo de directo. Un tope moderado acorta el
 // ciclo cuando hay muchos partidos en juego a la vez (más ligas) sin martillear.
@@ -594,13 +597,13 @@ async function main() {
   }
 
   try {
-    await mainInner();
+    if ((await mainInner()) === 'yield') process.exitCode = LIVE_YIELD_EXIT_CODE;
   } finally {
     await lock.release();
   }
 }
 
-async function mainInner() {
+async function mainInner(): Promise<'done' | 'yield'> {
   heartbeat(); // latido al monitor: "el cron arrancó"
 
   // ── Resumen matinal (#383) ────────────────────────────────────────────────
@@ -630,13 +633,13 @@ async function mainInner() {
       log.info('Partidos atrasados sin resultado — ciclo de recuperacion');
       const upserted = await runOneCycle(seasonIds);
       log.info({ upserted }, 'Recuperacion completada — saliendo.');
-      return;
+      return 'done';
     }
     log.info(
       { windowHours: WINDOW_HOURS, seasonIds },
       'Sin partidos live ni proximos — saliendo sin trabajo.'
     );
-    return;
+    return 'done';
   }
 
   // ── 2. Modo activo: bucle de polling ───────────────────────────────────────
@@ -647,14 +650,23 @@ async function mainInner() {
   );
 
   let cycle = 0;
+  let yielded = false;
 
   while (true) {
     cycle++;
     heartbeat(); // latido en cada ciclo: mantiene el monitor vivo en partidos largos
     const elapsed = Date.now() - startedAt;
 
-    if (elapsed > MAX_RUNTIME_MS) {
+    const decision = loopDecision(elapsed, LIVE_YIELD_MS, MAX_RUNTIME_MS);
+    if (decision === 'stop') {
       log.warn({ elapsedMin: Math.round(elapsed / 60_000) }, 'Tiempo maximo alcanzado — saliendo.');
+      break;
+    }
+    if (decision === 'yield') {
+      // Partidos aún en ventana: se suelta el lock para la pasada horaria y el
+      // scheduler vuelve a lanzar el directo enseguida (sin la pausa de 5 min).
+      log.info({ cycle, elapsedMin: Math.round(elapsed / 60_000) }, 'Cesión al scheduler — el directo vuelve en cuanto acabe la pasada horaria');
+      yielded = true;
       break;
     }
 
@@ -690,7 +702,8 @@ async function mainInner() {
     await sleep(POLL_INTERVAL);
   }
 
-  log.info({ totalCycles: cycle, totalMin: Math.round((Date.now() - startedAt) / 60_000) }, 'Orquestador terminado');
+  log.info({ totalCycles: cycle, totalMin: Math.round((Date.now() - startedAt) / 60_000), yielded }, 'Orquestador terminado');
+  return yielded ? 'yield' : 'done';
 }
 
 main()

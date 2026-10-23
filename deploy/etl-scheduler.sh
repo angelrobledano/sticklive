@@ -6,9 +6,9 @@
 #   · fichas-pendientes:  una vez al día (~06:00 UTC)
 # Sencillo y visible: un loop con marcas de tiempo, sin crond.
 # INVARIANTE DE ORDEN (auditoría M3): worldskate y cron-live van PRIMERO;
-# cron-live puede ocupar el bucle hasta MAX_RUNTIME_MIN (180) durante un
-# torneo, así que TODA tarea nueva se añade DESPUÉS y debe tolerar no correr
-# mientras haya directo. No reordenar sin releer los comentarios de cada bloque.
+# cron-live ocupa el bucle mientras hay directo, cediendo el turno cada
+# LIVE_YIELD_MIN (60) para la pasada horaria; TODA tarea nueva se añade DESPUÉS
+# y debe tolerar retrasos de hasta una hora mientras haya directo. No reordenar sin releer los comentarios de cada bloque.
 # ============================================================
 set -u
 # Desde la raíz: los procesos van empaquetados en /app/dist y las rutas de
@@ -91,8 +91,19 @@ while true; do
   # Puede quedarse hasta MAX_RUNTIME_MIN dentro de su bucle activo: todo lo que
   # va DESPUÉS de esta línea espera a que termine. Tenerlo en cuenta al añadir
   # tareas nuevas.
+  # Con partidos en ventana, el directo CEDE cada LIVE_YIELD_MIN (60) saliendo
+  # con código 3: así la pasada horaria entra también los fines de semana de
+  # base en 9 portales. Tras una cesión no se duerme: el directo vuelve a entrar
+  # en cuanto acaba lo que toque (ver apps/etl/src/live-yield.ts).
   echo "[scheduler] cron-live $(date -u +%T)"
-  $LOCK node dist/apps/etl/src/cron-live.js || echo "[scheduler] cron-live saltado o falló (seguimos)"
+  LIVE_YIELDED=0
+  $LOCK node dist/apps/etl/src/cron-live.js; RC=$?
+  if [ "$RC" -eq 3 ]; then
+    LIVE_YIELDED=1
+    echo "[scheduler] cron-live cede el turno (partidos en ventana)"
+  elif [ "$RC" -ne 0 ]; then
+    echo "[scheduler] cron-live saltado o falló (seguimos)"
+  fi
   touch "$ALIVE"   # latido tras el directo (cron-live además late por dentro cada ciclo, #146)
 
   # ── Cada hora: calendario + clasificación ──────────────────
@@ -175,5 +186,5 @@ while true; do
   fi
 
   touch "$ALIVE"   # latido: vuelta completada
-  sleep 300
+  if [ "$LIVE_YIELDED" -eq 1 ]; then sleep 5; else sleep 300; fi
 done
