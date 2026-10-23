@@ -13,7 +13,9 @@
 # equipo homónimo que ya juega otra liga actual, en vez de fusionarlo. Esos
 # homónimos son FILIALES: A2 y B van con --filial-if-shared y se crean como
 # equipo B/C (squad_level) automáticamente; los parecidos dudosos, a la cola. Las copas comparten equipos (--allow-shared)
-# y van DESPUÉS de su liga para reutilizarlos.
+# y van DESPUÉS de su liga para reutilizarlos, buscando PRIMERO entre los
+# equipos de su liga (--teams-from): la Coppa A2 es de los equipos de A2 (el
+# TRISSINO de la Coppa A2 es el filial, no el de A1).
 #
 # Hora: sidgad publica en hora local italiana. Europe/Rome = Europe/Madrid en
 # todo el año, pero se fija competitions.timezone = Europe/Rome por corrección.
@@ -51,12 +53,12 @@ COMMON=(--organizer=FISR --country=IT --scope=national --season=2026/27 --temp=4
 # idc | nombre | corto | género | extra
 COMPS=(
   "1896|CAMPIONATO SERIE A1|Serie A1|male|"
-  "1906|SUPERCOPPA ITALIANA|Supercoppa|male|--format=bracket --allow-shared=true"
-  "1910|SKATE ITALIA TROPHY|Skate Italia Trophy|male|--format=bracket --allow-shared=true"
+  "1906|SUPERCOPPA ITALIANA|Supercoppa|male|--format=bracket --allow-shared=true --teams-from=1896"
+  "1910|SKATE ITALIA TROPHY|Skate Italia Trophy|male|--format=bracket --allow-shared=true --teams-from=1896"
   "1895|CAMPIONATO SERIE A2|Serie A2|male|--filial-if-shared=true"
-  "1904|COPPA ITALIA A2|Coppa Italia A2|male|--format=bracket --allow-shared=true"
+  "1904|COPPA ITALIA A2|Coppa Italia A2|male|--format=bracket --allow-shared=true --teams-from=1895"
   "1894|CAMPIONATO SERIE B|Serie B|male|--filial-if-shared=true"
-  "1909|COPPA ITALIA SERIE B|Coppa Italia B|male|--format=bracket --allow-shared=true"
+  "1909|COPPA ITALIA SERIE B|Coppa Italia B|male|--format=bracket --allow-shared=true --teams-from=1894"
   "1907|SUPERCOPPA ITALIANA FEMMINILE|Supercoppa F|female|--format=bracket"
 )
 

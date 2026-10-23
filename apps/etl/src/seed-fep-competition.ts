@@ -93,6 +93,11 @@ const FILIAL_IF_SHARED = argv['filial-if-shared'] === 'true' || argv['filial-if-
 const MIN_SCORE = Number(argv['min-score'] ?? '0.35');
 // Coincidencia casi exacta: mismo equipo (o su filial si ya juega otra liga).
 const EXACT_SCORE = 0.95;
+// Copas de UNA liga (Coppa Italia A2 → Serie A2): sus equipos se buscan PRIMERO
+// entre los de la temporada actual de esa(s) liga(s), por nombre. Sin esto, el
+// homónimo de un filial (HOCKEY TRISSINO de A2) se enganchaba por slug al
+// PRIMER equipo (el de A1). Formato: --teams-from=1895 (idc, separados por coma).
+const TEAMS_FROM = (argv['teams-from'] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 
 function slugify(s: string): string {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -227,7 +232,49 @@ async function main() {
   const gTag = (g?: string | null) => (g === 'female' ? 'F' : g === 'male' ? 'M' : '·');
   const etiqueta = `[${gTag(GENDER)}/${AGE}${SQUAD_LEVEL > 1 ? `/B${SQUAD_LEVEL}` : ''}]`;
   const plan: Fila[] = [];
+  // Equipos de la(s) liga(s) madre de esta copa, por nombre normalizado.
+  const ligaMadre = new Map<string, string>();
+  let ambiguosMadre = new Set<string>();
+  let idsMadre: string[] = [];
+  if (TEAMS_FROM.length > 0) {
+    const refs = TEAMS_FROM.flatMap((idc) => [idc, competitionSourceRefForSeed(currentSource(), idc)]);
+    const r = await db.query<{ id: string; name: string }>(
+      `SELECT DISTINCT t.id, t.name FROM competitions c
+         JOIN seasons s ON s.competition_id = c.id AND s.is_current
+         JOIN season_teams st ON st.season_id = s.id
+         JOIN teams t ON t.id = st.team_id
+        WHERE c.source_ref = ANY($1)`,
+      [refs],
+    );
+    const dup = new Set<string>();
+    for (const row of r.rows) {
+      const k = normalizeTeamName(row.name);
+      if (ligaMadre.has(k)) dup.add(k); else ligaMadre.set(k, row.id);
+    }
+    for (const k of dup) ligaMadre.delete(k); // dos homónimos en la liga madre: que decida un humano
+    ambiguosMadre = dup;
+    idsMadre = r.rows.map((row) => row.id);
+    console.log(`Liga(s) madre ${TEAMS_FROM.join(',')}: ${r.rows.length} equipos (${dup.size} nombres ambiguos)`);
+  }
   for (const t of teams) {
+    if (TEAMS_FROM.length > 0) {
+      // Copa de una liga: SOLO equipos de esa liga. Nunca se cae a la búsqueda
+      // general (engancharía el homónimo al primer equipo de otra categoría).
+      const k = normalizeTeamName(t.name);
+      const exacto = ligaMadre.get(k);
+      if (exacto) { plan.push({ t, accion: 'reusar-alias', teamId: exacto }); continue; }
+      const sim = ambiguosMadre.has(k) ? [] : (await db.query<{ id: string; name: string; gender: string | null; score: number }>(
+        `SELECT id, name, gender, similarity(lower(name), lower($1))::float AS score
+           FROM teams WHERE id = ANY($2) ORDER BY score DESC LIMIT 2`,
+        [t.name, idsMadre],
+      )).rows;
+      const [a, b] = sim;
+      if (a && a.score >= MIN_SCORE && (!b || a.score - b.score >= 0.1)) {
+        plan.push({ t, accion: 'reusar-alias', teamId: a.id }); continue;
+      }
+      plan.push({ t, accion: 'dudoso', candidatos: sim.map((x) => ({ teamId: x.id, name: x.name, gender: x.gender, score: Number(x.score) })) });
+      continue;
+    }
     const byRef = await findTeamBySourceRef(t.ref);
     if (byRef) {
       if (mismoGenero(byRef.gender) && mismaCategoria(byRef.age_category)) { plan.push({ t, accion: 'reusar-ref', teamId: byRef.id }); continue; }
