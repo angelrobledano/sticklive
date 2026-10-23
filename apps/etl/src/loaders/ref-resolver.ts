@@ -34,6 +34,7 @@ import {
 import { createLogger } from '@sports/logger';
 import { slugify } from '../transformers/slugify.js';
 import { normalizeTeamName } from '../transformers/normalize.js';
+import { isClubRef } from '../../../scraper/src/core/sources.js';
 
 const log = createLogger({ module: 'ref-resolver' });
 
@@ -75,6 +76,17 @@ export function pickUnambiguousTeam<T>(
 /** ¿Es un id de inscripción de equipo (teamId sidgad, `wse_1130`…) y no un club/abreviatura/nombre? */
 function isInscriptionRef(ref: string): boolean {
   return /^(?:[a-z]+_)?\d+$/.test(ref) && !/_club_|abbr/.test(ref);
+}
+
+/**
+ * ¿Tiene sentido que un humano revise esta ref en la cola HITL?
+ * Sólo los nombres. Un id de club (`fep_club_102`) o de inscripción (`11846`,
+ * `wse_1130`) no da candidatos ni se puede reconocer a ojo: llenaba la cola de
+ * ruido con miles de avistamientos y tapaba los nombres de verdad.
+ */
+export function isReviewableName(ref: string): boolean {
+  if (isClubRef(ref) || /^[a-z]+_club_/.test(ref)) return false;
+  return !/^(?:[a-z]+_)?\d+$/.test(ref);
 }
 
 export class RefResolver {
@@ -245,7 +257,7 @@ export class RefResolver {
       }
 
       // 5b. Si no se auto-confirmó, a la cola HITL para revisión humana.
-      if (!teamId) {
+      if (!teamId && isReviewableName(teamRef)) {
         const candidates = await generateFuzzyCandidates(normalized, this.sportId, 3);
         await enqueueResolution({
           rawText: teamRef,
