@@ -25,6 +25,7 @@ export const READ_LIMIT_PATHS: readonly string[] = [
   '/seasons/:id/insights',
   '/teams/:id',
   '/teams/:id/recent',
+  '/clubs/:id',
   '/players/:id',
   '/players/:id/insights',
   '/search',

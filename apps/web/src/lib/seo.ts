@@ -549,6 +549,9 @@ export function teamJsonLd(opts: {
   competitionId?: string | null;
   competitionSlug?: string | null;
   competitionName?: string | null;
+  /** Club canónico (Plan B1): se declara como `parentOrganization`. */
+  clubSlug?: string | null;
+  clubName?: string | null;
 }): Record<string, unknown> {
   return {
     '@context': 'https://schema.org',
@@ -564,6 +567,16 @@ export function teamJsonLd(opts: {
             '@type': 'SportsLeague',
             name: opts.competitionName,
             url: `${SITE_URL}/${opts.locale}${competitionCanonicalPath(opts.competitionId, opts.competitionId, opts.competitionSlug)}`,
+          },
+        }
+      : {}),
+    ...(opts.clubSlug && opts.clubName
+      ? {
+          parentOrganization: {
+            '@type': 'SportsOrganization',
+            '@id': `${SITE_URL}/clubs/${opts.clubSlug}#club`,
+            name: opts.clubName,
+            url: `${SITE_URL}/${opts.locale}/clubs/${opts.clubSlug}`,
           },
         }
       : {}),

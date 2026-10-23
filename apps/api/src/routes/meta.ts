@@ -154,6 +154,31 @@ metaRouter.get('/sitemap', async (c) => {
       logger.warn({ err }, '[meta] no se pudo registrar el snapshot del sitemap');
     }
 
+    // Plan B1: clubes con alguna sección jugando una temporada en curso visible
+    // (la misma regla que `indexable` de GET /clubs/:key). Tolerante: si falla,
+    // el sitemap sale sin clubes.
+    let clubs: Array<{ id: string; slug: string; updated_at: Date }> = [];
+    try {
+      const clubRows = await db.query<{ id: string; slug: string; updated_at: Date }>(`
+        SELECT cl.id, cl.slug, cl.updated_at
+          FROM clubs cl
+         WHERE EXISTS (
+           SELECT 1
+             FROM teams t
+             JOIN matches m      ON m.home_team_id = t.id OR m.away_team_id = t.id
+             JOIN seasons s      ON s.id = m.season_id
+             JOIN competitions c ON c.id = s.competition_id
+            WHERE t.club_id = cl.id
+              AND s.is_current
+              AND s.data_quality = 'ok'
+              AND c.data_quality = 'ok'
+         )
+      `);
+      clubs = clubRows.rows;
+    } catch (err) {
+      logger.warn({ err }, '[meta] clubes del sitemap no disponibles');
+    }
+
     // Hubs de país y federación (migración 089): solo los que tienen
     // competiciones visibles. Tolerante: si falla, el sitemap sale sin hubs.
     let hubs: string[] = [];
@@ -184,6 +209,7 @@ metaRouter.get('/sitemap', async (c) => {
     c.header('Cache-Control', 'public, max-age=3600');
     return c.json({
       hubs,
+      clubs:        clubs.map((r) => ({ id: r.id, slug: r.slug, updatedAt: r.updated_at })),
       competitions: comps.rows.map((r) => ({ id: r.id, slug: r.slug, updatedAt: r.updated_at })),
       teams:        teams.rows.map((r) => ({ id: r.id, updatedAt: r.updated_at })),
       players:      players.rows.map((r) => ({ id: r.id, updatedAt: r.updated_at })),

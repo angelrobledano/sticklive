@@ -33,6 +33,7 @@ import type {
   PlayerDetail,
   PlayerInsights,
   TeamRecentResponse,
+  ClubDetail,
 } from './types';
 
 export { isApiNotFound } from './core';
@@ -394,6 +395,13 @@ export async function getSeasonInsights(seasonId: string): Promise<SeasonInsight
 export async function getTeamRecent(teamId: string, limit = 5): Promise<TeamRecentResponse> {
   return apiFetch<TeamRecentResponse>(`/teams/${teamId}/recent?limit=${limit}`, {
     next: { revalidate: 120, tags: [`team-recent-${teamId}`] },
+  });
+}
+
+/** Ficha de club por slug o UUID (Plan B1). */
+export async function getClubDetail(key: string): Promise<ClubDetail> {
+  return apiFetch<ClubDetail>(`/clubs/${encodeURIComponent(key)}`, {
+    next: { revalidate: 300, tags: [`club-${key}`] },
   });
 }
 
