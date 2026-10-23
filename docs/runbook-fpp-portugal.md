@@ -111,22 +111,28 @@ usa un fixture sintético. Durante los primeros partidos:
 
 ## Despliegue (primera vez)
 
-El orden no importa: sin la migración, `--run-once fpp` no encuentra
-competiciones y no hace nada.
+Procedimiento estándar de docs/DEPLOY.md: las migraciones (087) las aplica el
+servicio `migrate` en el `up`, no hay paso manual.
 
 ```sh
-cd /opt/sticklive && git pull
-$DC run --rm api node dist/packages/db/src/migrate.js        # 087: fuente fpp_hockey + categoría sub23
-$DC up -d --build
-$DC exec etl node dist/apps/etl/src/seed-fpp.js               # dry-run: revisar equipos
+cd /opt/sticklive
+DC="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+./deploy/backup-db.sh                       # 087 cambia un CHECK; barato y por si acaso
+./deploy/deploy.sh                          # pull + espacio en disco + up -d --build + smoke
+$DC logs --tail=50 migrate                  # debe listar 087_fpp_source.sql aplicada
+
+# Alta de las 10 competiciones (dry-run primero: revisar equipos)
+$DC exec etl node dist/apps/etl/src/seed-fpp.js
 $DC exec etl node dist/apps/etl/src/seed-fpp.js --write
+
+# Primera carga a mano (con el lock del scheduler); después, cada 15 min solo
 $DC exec etl flock -n /tmp/etl-pipeline.lock node dist/apps/scraper/src/index.js --run-once fpp
 ```
 
-A partir de ahí, el scheduler lo lanza **cada 15 min**, antes de cron-live.
-Son unas 30 peticiones GET por pasada, con 400 ms de cortesía entre ellas.
+Sin el seed, `--run-once fpp` y el directo no encuentran competiciones y no
+hacen nada: el orden despliegue → seed es seguro.
 
-Comprobación (en local se cargaron 1.561 partidos, 114 rondas, 141 clasificaciones y 141 equipos):
+Comprobación (en local salieron 1.561 partidos, 114 rondas, 141 clasificaciones, 141 equipos):
 
 ```sql
 SELECT c.short_name, count(m.*) FROM competitions c
