@@ -16,7 +16,7 @@
 import * as cheerio from 'cheerio';
 import { db, closeDb } from '@sports/db';
 import { createLogger } from '@sports/logger';
-import { competitionLogoUrl } from './competition-logo.js';
+import { competitionLogoUrl, idcFromSourceRef } from './competition-logo.js';
 import { FEDERATIONS } from './federations.js';
 
 const log = createLogger({ service: 'sync-competition-logos' });
@@ -31,7 +31,7 @@ const argv = Object.fromEntries(
 const PORTAL = argv['portal'] ?? process.env['SIDGAD_PORTAL'] ?? 'rfep';
 const DEFAULT_ORG = PORTAL === 'rfep' ? 'RFEP'
   : PORTAL === 'worldskate' ? 'WSE,World Skate'
-  : PORTAL.toUpperCase();
+  : FEDERATIONS.find((f) => f.prefix === PORTAL)?.org ?? PORTAL.toUpperCase();
 const ORGS = (argv['org'] ?? DEFAULT_ORG).split(',').map((s) => s.trim()).filter(Boolean);
 const REFERER = argv['referer']
   ?? (PORTAL === 'rfep'
@@ -112,7 +112,7 @@ async function main() {
   let updated = 0;
   let skipped = 0;
   for (const comp of comps) {
-    const idc = (comp.source_ref ?? '').replace(/^(fep|wse)_competition_/, '');
+    const idc = idcFromSourceRef(comp.source_ref);
     if (!idc) { skipped++; continue; }
     if (ONLY.size > 0 && !ONLY.has(idc)) continue;
 
