@@ -96,6 +96,15 @@ export const SOURCES: SourceDef[] = [
     },
   },
   {
+    key: 'fpcyl',
+    name: 'FPCYL — Hockey Patines (Castilla y León)',
+    client: {
+      baseUrl: 'https://www.server2.sidgad.es/fpcyl',
+      portalPrefix: 'fpcyl',
+      referer: 'https://www.hockeypatines.fpcyl.es/',
+    },
+  },
+  {
     key: 'fgp',
     name: 'FGP — Hockey Patines (Galicia)',
     client: {

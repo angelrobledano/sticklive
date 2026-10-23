@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 DC="docker compose -f docker-compose.prod.yml --env-file .env.prod"
 EXTRA=()
 [ "${1:-}" = "--write" ] && EXTRA=(--write)
-for p in rfep worldskate fecapa fisr fmp fap fpcv fnp fgpatinaxe; do
+for p in rfep worldskate fecapa fisr fmp fap fpcv fnp fpcyl fgpatinaxe; do
   echo "════════ $p"
   OUT=$($DC exec -T etl node dist/apps/etl/src/sync-competition-logos.js --portal=$p "${EXTRA[@]}" 2>&1)
   echo "$OUT" | grep -vE '^\{'
