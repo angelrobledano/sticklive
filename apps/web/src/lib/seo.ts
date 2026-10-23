@@ -1,3 +1,4 @@
+import { isCompetitionSlug } from '@/lib/competition-path';
 import type { Metadata } from 'next';
 import { FALLBACK_LOCALE, SUPPORTED_LOCALES, type Locale } from '@/lib/locales';
 import { isApiNotFound } from '@/lib/api/core';
@@ -80,7 +81,13 @@ export function metadataOnError(err: unknown, alternates: Metadata['alternates']
  * usuario" en Search Console. Cuando el id pedido no es el de la competición,
  * la canónica es la de la competición.
  */
-export function competitionCanonicalPath(requestedId: string, competitionId?: string | null): string {
+export function competitionCanonicalPath(
+  requestedId: string,
+  competitionId?: string | null,
+  competitionSlug?: string | null,
+): string {
+  // Plan A de URLs legibles: si la competición tiene slug, esa es la canónica.
+  if (competitionId && isCompetitionSlug(competitionSlug)) return `/competitions/${competitionSlug}`;
   const id = competitionId && competitionId !== requestedId ? competitionId : requestedId;
   return `/competitions/${id}`;
 }
@@ -540,6 +547,7 @@ export function teamJsonLd(opts: {
   city?: string | null;
   logoUrl: string;
   competitionId?: string | null;
+  competitionSlug?: string | null;
   competitionName?: string | null;
 }): Record<string, unknown> {
   return {
@@ -555,7 +563,7 @@ export function teamJsonLd(opts: {
           memberOf: {
             '@type': 'SportsLeague',
             name: opts.competitionName,
-            url: `${SITE_URL}/${opts.locale}/competitions/${opts.competitionId}`,
+            url: `${SITE_URL}/${opts.locale}${competitionCanonicalPath(opts.competitionId, opts.competitionId, opts.competitionSlug)}`,
           },
         }
       : {}),

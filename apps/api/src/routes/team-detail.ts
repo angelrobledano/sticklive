@@ -41,6 +41,7 @@ interface TeamRow {
 interface StandingRow {
   season_id: string;
   competition_id: string;
+  competition_slug: string;
   competition_name: string;
   competition_short_name: string | null;
   position: number | null;
@@ -289,6 +290,7 @@ teamDetailRouter.get('/:id', async (c) => {
           SELECT
             s.season_id,
             se.competition_id,
+            c.slug          AS competition_slug,
             c.name          AS competition_name,
             c.short_name    AS competition_short_name,
             s.position,
@@ -566,6 +568,7 @@ teamDetailRouter.get('/:id', async (c) => {
     const standing = standingRow ? {
       seasonId:          standingRow.season_id,
       competitionId:     standingRow.competition_id,
+      competitionSlug:   standingRow.competition_slug,
       competitionName:   standingRow.competition_name,
       competitionShort:  standingRow.competition_short_name,
       position:          standingRow.position,

@@ -22,6 +22,8 @@ export type SitemapDate = string | Date | null | undefined;
  */
 export interface SitemapItem {
   id: string;
+  /** Slug público (solo competiciones, Plan A de URLs legibles). Si llega, la URL lo usa. */
+  slug?: string | null;
   updatedAt?: SitemapDate;
   finishedAt?: SitemapDate;
   scheduledAt?: SitemapDate;
@@ -171,7 +173,7 @@ export function sitemapEntries(section: string, ids: SitemapIds): SitemapEntry[]
   const slice = list.slice(chunk * SITEMAP_SECTION_SIZE, (chunk + 1) * SITEMAP_SECTION_SIZE);
   return slice.map((item) => {
     const entry: SitemapEntry = {
-      path: `${meta.prefix}/${sitemapItemId(item)}`,
+      path: `${meta.prefix}/${name === 'competitions' && typeof item !== 'string' && item.slug ? item.slug : sitemapItemId(item)}`,
     };
     const lastModified = sitemapLastModified(item);
     if (lastModified) entry.lastModified = lastModified;

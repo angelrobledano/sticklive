@@ -1,6 +1,7 @@
 import type { TeamDetail, TeamMatchSummary, TeamSummary } from '@/lib/api/types';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { clubName } from '@/lib/names';
+import { competitionPath } from '@/lib/competition-path';
 
 const COPY: Record<string, { title: string; competition: string }> = {
   es: { title: 'Rivales', competition: 'Competición' },
@@ -38,12 +39,14 @@ export function TeamOpponents({ data, locale }: { data: TeamDetail; locale: stri
   const competition = data.standing
     ? {
         id: data.standing.competitionId,
+        slug: data.standing.competitionSlug,
         name: data.standing.competitionName,
         seasonId: data.standing.seasonId,
       }
     : data.season && data.selectedSeasonId
       ? {
           id: data.season.competitionId,
+          slug: data.season.competitionSlug,
           name: data.season.competitionName,
           seasonId: data.selectedSeasonId,
         }
@@ -59,7 +62,7 @@ export function TeamOpponents({ data, locale }: { data: TeamDetail; locale: stri
         </h2>
         {competition && (
           <Link
-            href={`/competitions/${competition.id}?season=${competition.seasonId}`}
+            href={competitionPath(competition.id, competition.slug, competition.seasonId)}
             className="text-xs font-medium text-rink-passion hover:underline dark:text-rink-accent"
           >
             {copy.competition}: {competition.name} →

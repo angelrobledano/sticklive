@@ -15,6 +15,7 @@ import { fmtDate, fmtTime } from '@/components/competition/format';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TrophyIcon } from '@/components/match/icons';
 import { clubName } from '@/lib/names';
+import { competitionPath } from '@/lib/competition-path';
 
 /**
  * Resumen de la participación del equipo en una competición ELIMINATORIA
@@ -224,7 +225,7 @@ export function KnockoutSeasonSummary({ data, summary, renderMatch }: {
         </div>
         {data.selectedSeasonId && (
           <Link href={data.season?.competitionId
-                  ? `/competitions/${data.season.competitionId}?season=${data.selectedSeasonId}`
+                  ? competitionPath(data.season.competitionId, data.season.competitionSlug, data.selectedSeasonId)
                   : `/competitions/${data.selectedSeasonId}`}
                 className="text-xs font-medium text-rink-passion hover:underline shrink-0">
             {t('team.view_competition')} →

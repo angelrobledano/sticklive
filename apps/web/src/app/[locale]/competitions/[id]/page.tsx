@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { permanentRedirect } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { localeAlternates, socialMeta, isSupportedLocale, competitionJsonLd, competitionMetaTitle, competitionCanonicalPath, breadcrumbJsonLd, SITE_URL, metadataOnError } from '@/lib/seo';
 import { BREADCRUMB_LABELS } from '@/lib/breadcrumbs';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
@@ -22,6 +22,8 @@ import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { previousSeason } from '@/lib/season-nav';
+import { competitionKey, competitionPath } from '@/lib/competition-path';
+import { isUuid } from '@/lib/uuid';
 
 // #351: esta ruta es dinámica (lee `?season=`), así que el HTML no entra en el
 // ISR de Next y Next le pone `private, no-cache, no-store`. Como la ficha es
@@ -76,7 +78,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       seasons[0];
     if (!season) return { alternates: fallbackAlternates };
     const overview = await getSeasonOverview(season.id);
-    const canonical = competitionCanonicalPath(params.id, overview.season.competitionId);
+    const canonical = competitionCanonicalPath(params.id, overview.season.competitionId, overview.season.competitionSlug);
     const alternates = localeAlternates(locale, canonical);
     const name = `${overview.season.competitionName} ${season.name ?? ''}`.trim();
     const title = competitionMetaTitle({
@@ -145,6 +147,8 @@ export default async function CompetitionPage(props: Props) {
   } catch (err) {
     // F1-7: si la ficha se fusionó o la sustituye otra, 308 a esa ficha.
     if (isApiNotFound(err)) {
+      // Un slug inexistente no tiene redirección registrada (es por UUID).
+      if (!isUuid(params.id)) notFound();
       await redirectOrNotFound('competition', params.id, isSupportedLocale(params.locale) ? params.locale : 'en');
     }
     throw err; // error boundary con reintento
@@ -157,16 +161,22 @@ export default async function CompetitionPage(props: Props) {
   // es la de su competición (y el `competitionId` que recibe el cliente tiene
   // que ser el de la competición, no el de la temporada). 308 para consolidar:
   // sin esto había dos URLs con el mismo contenido, ambas auto-canónicas.
+  //
+  // Plan A de URLs legibles: la clave pública es el slug. Una URL con el UUID
+  // de la competición responde 308 al slug conservando `?season=` si era válido.
   const canonicalId = data.season.competitionId;
-  if (canonicalId && canonicalId !== params.id) {
-    permanentRedirect(`/${locale}/competitions/${canonicalId}?season=${seasonId}`);
+  const canonicalKey = canonicalId ? competitionKey(canonicalId, data.season.competitionSlug) : params.id;
+  if (canonicalId && canonicalKey !== params.id) {
+    const wasSeasonId = params.id !== canonicalId && !seasons.length;
+    const keepSeason = wasSeasonId || (requested && requested === seasonId);
+    permanentRedirect(`/${locale}${competitionPath(canonicalId, data.season.competitionSlug, keepSeason ? seasonId : null)}`);
   }
 
   const previous = previousSeason(seasons, seasonId);
 
   const competitionLd = competitionJsonLd({
     leagueName: data.season.competitionName,
-    leagueUrl: `${SITE_URL}/${locale}/competitions/${params.id}`,
+    leagueUrl: `${SITE_URL}/${locale}/competitions/${canonicalKey}`,
     seasonName: data.season.name,
     startDate: data.season.startDate,
     endDate: data.season.endDate,
@@ -178,7 +188,7 @@ export default async function CompetitionPage(props: Props) {
   const crumbs = [
     { label: BREADCRUMB_LABELS[locale].home, href: '/' },
     { label: BREADCRUMB_LABELS[locale].competitions, href: '/competitions' },
-    { label: data.season.competitionName, href: `/competitions/${canonicalId}` },
+    { label: data.season.competitionName, href: `/competitions/${canonicalKey}` },
   ];
   const breadcrumbLd = breadcrumbJsonLd(
     locale,
@@ -195,7 +205,7 @@ export default async function CompetitionPage(props: Props) {
 
       {/* C0: "Así va la liga" server-rendered, bajo la cabecera (H1) y antes de las pestañas. */}
       <CompetitionClient
-        data={data} seasons={seasons} competitionId={params.id} stats={stats}
+        data={data} seasons={seasons} competitionId={canonicalKey} stats={stats}
         summary={
           <CompetitionSummary
             data={buildCompetitionSummary(data, stats)} locale={locale}
@@ -218,7 +228,7 @@ export default async function CompetitionPage(props: Props) {
       {previous && (
         <p className="text-center text-xs">
           <Link
-            href={`/competitions/${canonicalId}?season=${previous.id}`}
+            href={`/competitions/${canonicalKey}?season=${previous.id}`}
             className="font-semibold text-rink-passion underline underline-offset-2"
           >
             ← {PREVIOUS_SEASON[locale] ?? PREVIOUS_SEASON['en']}: {previous.name}
