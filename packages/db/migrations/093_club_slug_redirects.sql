@@ -1,5 +1,5 @@
 -- ============================================================
--- 091 — Slugs antiguos de club (Plan B1, ficha /clubs/<slug>)
+-- 093 — Slugs antiguos de club (Plan B1, ficha /clubs/<slug>)
 --
 -- El slug del club es su URL pública. Al renombrarlo desde /admin, el slug
 -- anterior se guarda aquí para que GET /clubs/:key lo resuelva y la web

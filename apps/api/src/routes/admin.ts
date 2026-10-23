@@ -305,7 +305,7 @@ adminRouter.get('/clubs', async (c) => {
 
 /**
  * PATCH /admin/clubs/:id  { canonicalName?, slug?, city? }
- * Cambiar el slug guarda el anterior en `club_slug_redirects` (migración 091)
+ * Cambiar el slug guarda el anterior en `club_slug_redirects` (migración 093)
  * para que la URL vieja responda 308. Slug ocupado por otro club → 409.
  */
 adminRouter.patch('/clubs/:id', async (c) => {

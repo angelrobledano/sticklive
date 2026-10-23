@@ -143,7 +143,7 @@ clubDetailRouter.get('/:key', async (c) => {
       [key.value],
     );
     let club = clubRes.rows[0];
-    // Slug antiguo (club renombrado desde /admin, migración 091): se sirve el
+    // Slug antiguo (club renombrado desde /admin, migración 093): se sirve el
     // club actual y la web responde 308 a su slug vigente.
     if (!club && key.by === 'slug') {
       const moved = await db.query<ClubRow>(
