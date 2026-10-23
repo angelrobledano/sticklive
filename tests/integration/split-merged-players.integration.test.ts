@@ -114,6 +114,17 @@ describe('A2 — splitMergedPlayers', () => {
     expect(nuevo.rows[0]!.slug).toBe('galbas-pedrol-pol-wse-4716');
   });
 
+  it('NO separa a la misma persona enlazada a propósito (ref del otro portal registrada, B1)', async () => {
+    const e = await escenario();
+    // Enlace humano en /admin: la persona RFEP ya tiene su ref de World Skate.
+    await db.query(`INSERT INTO player_source_refs (player_id, source_ref, created_by) VALUES ($1,'fep_player_4716','backfill'),($1,'wse_player_3801','admin')`, [e.player]);
+
+    const r = await splitMergedPlayers({ write: true });
+    expect(r.candidates).toHaveLength(0);
+    const ml = await db.query(`SELECT player_id FROM match_lineups WHERE match_id = $1`, [e.mW]);
+    expect(ml.rows).toEqual([{ player_id: e.player }]);
+  });
+
   it('es idempotente: una segunda pasada no encuentra nada', async () => {
     await escenario();
     await splitMergedPlayers({ write: true });

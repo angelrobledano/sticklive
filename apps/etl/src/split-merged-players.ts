@@ -46,6 +46,15 @@ function splitName(full: string): { firstName: string; lastName: string } {
     : { firstName: full, lastName: full };
 }
 
+/**
+ * Portal "cubierto": la persona ya tiene registrada una ref de ese portal en
+ * player_source_refs (B1). Es la MISMA persona enlazada a propósito (p. ej. un
+ * jugador de OK Liga y Lliga Catalana, enlazado en /admin), no una fusión por
+ * colisión de ids. Solo los portales NO cubiertos se separan.
+ */
+const COVERED = `EXISTS (SELECT 1 FROM player_source_refs r
+                  WHERE r.player_id = p.id AND r.source_ref LIKE a.portal || '\\_player\\_%')`;
+
 const PORTALS_SQL = `
   WITH comp AS (
     SELECT c.id, competition_portal_key(c.organizer, c.source_ref) AS portal FROM competitions c
@@ -64,11 +73,13 @@ const PORTALS_SQL = `
      WHERE e.player_id IS NOT NULL
   )
   SELECT p.id, p.source_ref, p.first_name || ' ' || p.last_name AS name,
-         array_agg(DISTINCT a.portal ORDER BY a.portal) AS portals
+         array_agg(DISTINCT a.portal ORDER BY a.portal) AS portals,
+         array_agg(DISTINCT a.portal ORDER BY a.portal) FILTER (WHERE NOT ${COVERED}) AS uncovered
     FROM players p JOIN apariciones a ON a.player_id = p.id
    WHERE p.source_ref LIKE 'fep\\_player\\_%'
    GROUP BY p.id
-  HAVING count(DISTINCT a.portal) > 1`;
+  HAVING count(DISTINCT a.portal) > 1
+     AND count(*) FILTER (WHERE NOT ${COVERED}) > 0`;
 
 /** Condición SQL "el partido $alias pertenece a una competición del portal $n". */
 const matchInPortal = (alias: string, param: string) => `
@@ -78,11 +89,11 @@ const matchInPortal = (alias: string, param: string) => `
             AND competition_portal_key(cc.organizer, cc.source_ref) = ${param})`;
 
 export async function splitMergedPlayers(opts: { write: boolean }): Promise<SplitResult> {
-  const { rows } = await db.query<{ id: string; source_ref: string; name: string; portals: string[] }>(PORTALS_SQL);
+  const { rows } = await db.query<{ id: string; source_ref: string; name: string; portals: string[]; uncovered: string[] }>(PORTALS_SQL);
   const candidates: SplitCandidate[] = rows.map((r) => {
     const keep = r.portals.includes('fep') ? 'fep' : r.portals[0]!;
-    return { playerId: r.id, sourceRef: r.source_ref, name: r.name, keep, split: r.portals.filter((p) => p !== keep) };
-  });
+    return { playerId: r.id, sourceRef: r.source_ref, name: r.name, keep, split: r.uncovered.filter((p) => p !== keep) };
+  }).filter((c) => c.split.length > 0);
 
   for (const c of candidates) log.info(c, opts.write ? 'Separando jugador fusionado' : '(dry-run) Jugador fusionado');
   if (!opts.write) return { candidates, created: 0 };

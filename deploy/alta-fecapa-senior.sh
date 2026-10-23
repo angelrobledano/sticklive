@@ -12,7 +12,7 @@
 #     SU portal (sourceForCompetitionRef). Sin él, una competición FECAPA activa
 #     se pediría a la RFEP.
 #   · Identidad por portal aplicada (runbook-identidad-por-portal.md):
-#     apply_portal_namespacing() con players_mixed = 0.
+#     sin fusiones reales entre portales (split-merged-players en seco = 0).
 #
 # Qué hace cada alta (seed-fep-competition): descubre los equipos en sidgad,
 # reutiliza los que ya existen (por ref, slug o alias), manda los dudosos a la
@@ -58,10 +58,15 @@ if ! $DC exec -T etl grep -q "function sourceForCompetitionRef" dist/apps/etl/sr
   echo "ERROR: el etl desplegado no lleva el arreglo de portal por competición. Despliega main antes (./deploy/deploy.sh)." >&2
   exit 1
 fi
-MIXED=$(psql_q "SELECT players_mixed FROM apply_portal_namespacing();" | tail -1)
-echo "players_mixed = ${MIXED:-?}"
+# Fusiones REALES (colisión de ids entre portales). Las personas enlazadas a
+# propósito en /admin (misma persona en RFEP y FECAPA, ref registrada en
+# player_source_refs) no cuentan: `players_mixed` de la 081 sí las contaba.
+MIXED=$($DC exec -T etl node dist/apps/etl/src/split-merged-players.js 2>/dev/null | sed -n 's/^\([0-9]\+\) jugadores fusionados.*/\1/p' | tail -1)
+echo "jugadores fusionados entre portales = ${MIXED:-?}"
 if [ "${MIXED:-1}" != "0" ]; then
-  echo "ERROR: hay jugadores mezclados entre portales. Sigue antes docs/runbook-identidad-por-portal.md (paso 3, split-merged-players)." >&2
+  echo "ERROR: hay jugadores fusionados entre portales. Revísalos con split-merged-players.js (en seco):" >&2
+  echo "  · personas distintas → split-merged-players.js --write" >&2
+  echo "  · la misma persona   → enlázala en /admin y vuelve a lanzar esto" >&2
   exit 1
 fi
 echo "OK"
