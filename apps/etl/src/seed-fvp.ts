@@ -31,6 +31,8 @@ import {
 import { fvpGet, fvpPaths } from '../../scraper/src/scrapers/fvp/fvp-client.js';
 import { fetchFvpCompetition } from '../../scraper/src/scrapers/fvp/fvp.scraper.js';
 import { deriveShortName } from './derive-short-name.js';
+// La API no da logo de competición: se usa el de la federación (web /federaciones/).
+import { federationLogoUrl } from './federations.js';
 
 const log = createLogger({ service: 'seed-fvp' });
 
@@ -144,16 +146,16 @@ async function main() {
 
     const compId = (await db.query<{ id: string }>(
       `INSERT INTO competitions (sport_id, name, short_name, slug, gender, category, age_category, scope, organizer,
-                                 region, country, timezone, source_id, source_ref, scraped_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'regional','FVP','País Vasco','ES',$8,$9,$10,NOW())
+                                 region, country, timezone, logo_url, source_id, source_ref, scraped_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'regional','FVP','País Vasco','ES',$8,$11,$9,$10,NOW())
        ON CONFLICT (sport_id, slug) DO UPDATE SET
          name=EXCLUDED.name, short_name=EXCLUDED.short_name, gender=EXCLUDED.gender,
          category=EXCLUDED.category, age_category=EXCLUDED.age_category, organizer='FVP',
          region='País Vasco', country='ES', timezone=EXCLUDED.timezone, source_id=EXCLUDED.source_id,
-         source_ref=EXCLUDED.source_ref, updated_at=NOW()
+         source_ref=EXCLUDED.source_ref, logo_url=COALESCE(competitions.logo_url, EXCLUDED.logo_url), updated_at=NOW()
        RETURNING id`,
       [sportId, comp.name, comp.shortName, comp.slug, comp.gender, comp.age, comp.age,
-       FVP_TIMEZONE, sourceId, competitionSourceRef(comp.key)],
+       FVP_TIMEZONE, sourceId, competitionSourceRef(comp.key), federationLogoUrl('fvp.png')],
     )).rows[0]!.id;
 
     await db.query(`UPDATE seasons SET is_current=FALSE WHERE competition_id=$1 AND slug<>$2`, [compId, comp.season.slug]);
