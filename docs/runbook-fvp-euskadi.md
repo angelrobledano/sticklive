@@ -58,7 +58,7 @@ $DC exec -T etl flock -w 1800 /tmp/etl-pipeline.lock node dist/apps/scraper/src/
 ```
 
 En local (23/10) salieron 1.267 partidos, 100 terminados con acta, 919 jugadores y
-5.000 eventos. Los goles del acta cuadran con el resultado en todos salvo los 13
+unos 2.300 eventos. Los goles del acta cuadran con el resultado en todos salvo los 13
 cortados por la regla de los 5 goles.
 
 ## Pendiente
