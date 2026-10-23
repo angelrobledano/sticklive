@@ -102,11 +102,11 @@ for row in "${COMPS[@]}"; do
   if [ -z "$SEASON_ID" ]; then echo "  ⚠️  sin SEASON_ID: revisa la salida completa del seed"; continue; fi
   psql_q "UPDATE competitions SET timezone = 'Europe/Rome', country = 'IT' WHERE source_ref = 'fisr_competition_$IDC';" >/dev/null
 
-  $DC exec -T "${PORTAL_ENV[@]}" etl flock -w 600 /tmp/etl-pipeline.lock \
+  $DC exec -T "${PORTAL_ENV[@]}" etl flock -w "${LOCK_WAIT:-600}" /tmp/etl-pipeline.lock \
     node dist/apps/etl/src/run-pipeline.js --entity=calendar --idc="$IDC" --season-id="$SEASON_ID" >/dev/null 2>&1 \
     && echo "  calendario ✓" || echo "  calendario ✗ (revisa logs del etl)"
   if [[ "$EXTRA" != *"--format="* ]]; then
-    $DC exec -T "${PORTAL_ENV[@]}" etl flock -w 600 /tmp/etl-pipeline.lock \
+    $DC exec -T "${PORTAL_ENV[@]}" etl flock -w "${LOCK_WAIT:-600}" /tmp/etl-pipeline.lock \
       node dist/apps/etl/src/run-pipeline.js --entity=standings --idc="$IDC" --season-id="$SEASON_ID" >/dev/null 2>&1 \
       && echo "  clasificación ✓" || echo "  clasificación ✗ (revisa logs del etl)"
   fi
