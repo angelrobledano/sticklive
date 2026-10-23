@@ -25,7 +25,9 @@ import {
   db, closeDb,
   findTeamBySourceRef, findTeamBySlug, addTeamAltRef, upsertCompetitionSource,
   findTeamByNormalizedAlias, findSimilarTeamNames, enqueueResolution, upsertSourceEntityMapTeam, ensureClubForTeam, recordSeasonTeamRef,
+  findSeasonTeamRefOwners, findTeamById,
 } from '@sports/db';
+import { pickRefOwnerForPortal, ownedByOtherPortal } from './seed-ref-portal.js';
 import { normalizeTeamName } from './transformers/normalize.js';
 import { deriveShortName } from './derive-short-name.js';
 import { createLogger } from '@sports/logger';
@@ -97,6 +99,7 @@ const EXACT_SCORE = 0.95;
 // entre los de la temporada actual de esa(s) liga(s), por nombre. Sin esto, el
 // homónimo de un filial (HOCKEY TRISSINO de A2) se enganchaba por slug al
 // PRIMER equipo (el de A1). Formato: --teams-from=1895 (idc, separados por coma).
+const PORTAL_KEY = currentSource().key;
 const TEAMS_FROM = (argv['teams-from'] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 
 function slugify(s: string): string {
@@ -285,7 +288,21 @@ async function main() {
       plan.push({ t, accion: 'dudoso', candidatos: sim.map((x) => ({ teamId: x.id, name: x.name, gender: x.gender, score: Number(x.score) })) });
       continue;
     }
-    const byRef = await findTeamBySourceRef(t.ref);
+    // La ref es del PORTAL: el 5177 de la FGP no es el 5177 de la FISR.
+    const owners = await findSeasonTeamRefOwners(t.ref);
+    const delPortal = pickRefOwnerForPortal(owners, PORTAL_KEY);
+    if (delPortal && 'ambiguous' in delPortal) {
+      const cands = (await Promise.all(delPortal.ambiguous.map((id) => findTeamById(id)))).filter((x) => x !== null);
+      plan.push({ t, accion: 'dudoso', candidatos: cands.map((c) => ({ teamId: c.id, name: c.name, gender: c.gender ?? null, score: 1 })) });
+      continue;
+    }
+    // Sin inscripción en este portal, el puente global teams.source_ref solo
+    // vale para la RFEP (legado sin season_teams) y si nadie de otro portal la usa.
+    const byRef = delPortal
+      ? await findTeamById(delPortal.teamId)
+      : PORTAL_KEY === 'fep' && !ownedByOtherPortal(owners, PORTAL_KEY)
+        ? await findTeamBySourceRef(t.ref)
+        : null;
     if (byRef) {
       if (mismoGenero(byRef.gender) && mismaCategoria(byRef.age_category)) { plan.push({ t, accion: 'reusar-ref', teamId: byRef.id }); continue; }
       // La ref apunta a un equipo de otra sección (género/categoría): dato

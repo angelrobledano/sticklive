@@ -171,6 +171,25 @@ export async function recordSeasonTeamRef(seasonId: string, teamId: string, sour
   return true;
 }
 
+/**
+ * Equipos inscritos con la ref `sourceRef` en cualquier temporada, con la ref
+ * de su competición (de la que sale el portal). Cada portal sidgad numera sus
+ * equipos aparte: el llamante filtra por portal antes de dar la ref por buena.
+ */
+export async function findSeasonTeamRefOwners(
+  sourceRef: string,
+): Promise<Array<{ teamId: string; competitionSourceRef: string | null }>> {
+  const r = await db.query<{ teamId: string; competitionSourceRef: string | null }>(
+    `SELECT DISTINCT st.team_id AS "teamId", c.source_ref AS "competitionSourceRef"
+       FROM season_teams st
+       JOIN seasons s      ON s.id = st.season_id
+       JOIN competitions c ON c.id = s.competition_id
+      WHERE st.source_ref = $1`,
+    [sourceRef],
+  );
+  return r.rows;
+}
+
 /** A5 — Equipo inscrito en `seasonId` con la ref de fuente `sourceRef`, o null. */
 export async function findTeamIdBySeasonRef(seasonId: string, sourceRef: string): Promise<string | null> {
   const r = await db.query<{ team_id: string }>(
