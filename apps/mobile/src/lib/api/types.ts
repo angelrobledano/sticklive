@@ -174,6 +174,30 @@ export interface CompetitionSeasonSummary {
   matchCount: number;
 }
 
+export type FederationLevel = 'world' | 'continental' | 'national' | 'regional';
+
+export interface FederationRef {
+  code: string;
+  slug: string;
+  name: string;
+  shortName: string;
+  level: FederationLevel | string;
+  parentCode: string | null;
+  country: string | null;
+  region: string | null;
+}
+
+export interface Federation extends FederationRef {
+  website: string | null;
+  displayOrder: number;
+  competitionCount: number;
+}
+
+export interface FederationsResponse {
+  count: number;
+  federations: Federation[];
+}
+
 /**
  * Ítem de `GET /competitions` (competitions.ts:96-119). Sustituye al
  * placeholder anterior (gender?/currentSeasonId?): la temporada de referencia
@@ -195,6 +219,9 @@ export interface CompetitionSummary {
   region: string | null;
   ageCategory: string;
   dataQuality: string;
+  tier?: number | null;
+  featuredRank?: number | null;
+  federation?: FederationRef | null;
   season: CompetitionSeasonSummary | null;
 }
 

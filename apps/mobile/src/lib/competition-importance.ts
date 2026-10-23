@@ -24,9 +24,24 @@ export const IMPORTANCE: Record<string, number> = {
 };
 
 const RANK_DESCONOCIDA = 1000;
+/** Base del rango por tier: detrás de cualquier destacada (featured_rank < 500). */
+const TIER_BASE = 500;
 
-export function importanceRank(slug?: string | null): number {
-  return (slug && IMPORTANCE[slug]) || RANK_DESCONOCIDA;
+export interface Rankable {
+  slug?: string | null;
+  featuredRank?: number | null;
+  tier?: number | null;
+}
+
+export function importanceRank(item?: Rankable | null | string): number {
+  if (!item) return RANK_DESCONOCIDA;
+  if (typeof item === 'string') {
+    return IMPORTANCE[item] ?? RANK_DESCONOCIDA;
+  }
+  if (item.featuredRank != null && item.featuredRank > 0) return item.featuredRank;
+  if (item.tier != null && item.tier > 0) return TIER_BASE + item.tier * 10;
+  if (item.slug && IMPORTANCE[item.slug]) return IMPORTANCE[item.slug];
+  return RANK_DESCONOCIDA;
 }
 
 /**
@@ -57,12 +72,12 @@ export function hasSeasonYear(c: CompetitionSummary, year: number): boolean {
 /**
  * Ordena por importancia; empate → nombre en el locale. No muta la entrada.
  */
-export function orderByImportance<T extends { slug?: string | null; name: string }>(
+export function orderByImportance<T extends Rankable & { name: string }>(
   list: T[],
   locale: string,
 ): T[] {
   return [...list].sort((a, b) => {
-    const d = importanceRank(a.slug) - importanceRank(b.slug);
+    const d = importanceRank(a) - importanceRank(b);
     return d !== 0 ? d : a.name.localeCompare(b.name, locale);
   });
 }

@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { useCompetitions } from '@/src/hooks/queries';
+import { useCompetitions, useFederations } from '@/src/hooks/queries';
 import { useFavorites, useLocalFavorites } from '@/src/hooks/favorites';
 import { useSession } from '@/src/context/AuthContext';
 import { ErrorState } from '@/src/components/shared/ErrorState';
@@ -31,13 +31,21 @@ import {
   countryDisplayName,
   filterCompetitions,
   genderLabel,
-  groupCompetitionsForIndex,
   normalizeSearchText,
   orderSearchResults,
 } from '@/src/lib/competition-filter';
+import {
+  buildCompetitionTree,
+  featuredCompetitions,
+  filterByGender,
+  isCup,
+  type CountryGroup,
+  type FederationGroup,
+  type GenderFilter,
+} from '@/src/lib/competition-groups';
 import type { CompetitionSummary } from '@/src/lib/api/types';
 
-type Tab = 'mis-ligas' | 'principales' | 'todas';
+type Tab = 'destacadas' | 'paises' | 'mis-ligas';
 
 function CompetitionRowItem({
   comp,
@@ -55,23 +63,28 @@ function CompetitionRowItem({
   const isWorld = comp.country === 'W' || comp.scope === 'international';
   const initials = (comp.shortName ?? comp.name).slice(0, 2).toUpperCase();
 
-  // Línea de metadatos (equipos · género · temporada)
+  // Línea de metadatos (equipos · género · categoría · temporada)
   const parts: string[] = [];
   if (comp.season?.teamCount) {
-    parts.push(`${comp.season.teamCount} ${t('common.teams_lc')}`);
+    parts.push(`${comp.season.teamCount} ${t('common.teams_lc') || 'equipos'}`);
   }
   const gl = genderLabel(comp.gender, t);
   if (gl) parts.push(gl);
-  if (comp.season?.name) parts.push(comp.season.name);
-  const meta = parts.join(' · ');
 
+  if (comp.tier === 1) {
+    parts.push('1ª Cat.');
+  } else if (isCup(comp)) {
+    parts.push(t('competitions.section_cups') || 'Copa');
+  }
+
+  const meta = parts.join(' · ');
   const displayName = clubName(competitionName(comp.name, comp.nameI18n, locale));
 
   return (
     <View className="flex-row items-center border-b border-slate-100 last:border-b-0 dark:border-slate-800/60">
       <Pressable
         onPress={() => router.push({ pathname: '/competition/[id]', params: { id: comp.id } })}
-        className="flex-1 flex-row items-center gap-3 py-2.5 pl-3 pr-1 active:bg-slate-50 dark:active:bg-slate-800/40"
+        className="flex-1 flex-row items-center gap-3 py-2.5 pl-3 pr-1 active:bg-slate-50 dark:active:bg-slate-800/40 min-h-[50px]"
       >
         {/* Avatar circular */}
         <View
@@ -130,23 +143,74 @@ function CompetitionRowItem({
   );
 }
 
-function CountryAccordion({
-  countryCode,
-  label,
-  comps,
+function RegionalFederationAccordion({
+  group,
   isOpen,
   onToggle,
   locale,
   t,
 }: {
-  countryCode: string | null;
-  label: string;
-  comps: CompetitionSummary[];
+  group: FederationGroup;
   isOpen: boolean;
   onToggle: () => void;
   locale: string;
   t: (k: string) => string;
 }) {
+  return (
+    <View className="border-b border-slate-100 last:border-b-0 dark:border-slate-800/60">
+      <Pressable
+        onPress={onToggle}
+        className="flex-row items-center justify-between px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/40 active:bg-slate-100 dark:active:bg-slate-800"
+      >
+        <View className="flex-row items-center gap-2 flex-1 min-w-0 pr-2">
+          <Ionicons
+            name={isOpen ? 'chevron-down' : 'chevron-forward'}
+            size={14}
+            color="#64748b"
+          />
+          <Text numberOfLines={1} className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            {group.label}
+          </Text>
+        </View>
+        <View className="rounded-full bg-slate-200/80 px-2 py-0.5 dark:bg-slate-700">
+          <Text className="font-mono text-[10px] font-bold text-slate-600 dark:text-slate-300">
+            {group.comps.length}
+          </Text>
+        </View>
+      </Pressable>
+
+      {isOpen && (
+        <View className="pl-2 border-t border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900">
+          {group.comps.map((comp) => (
+            <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function CountryAccordion({
+  country,
+  isOpen,
+  onToggle,
+  openFederations,
+  onToggleFederation,
+  locale,
+  t,
+}: {
+  country: CountryGroup;
+  isOpen: boolean;
+  onToggle: () => void;
+  openFederations: Record<string, boolean>;
+  onToggleFederation: (key: string) => void;
+  locale: string;
+  t: (k: string) => string;
+}) {
+  const { code, total, sections } = country;
+  const label = countryDisplayName(code, locale) || code;
+  const { leagues, cups, base, regional } = sections;
+
   return (
     <View className="mb-2.5 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       {/* Cabecera del país */}
@@ -155,7 +219,7 @@ function CountryAccordion({
         className="flex-row items-center justify-between px-3.5 py-3 active:bg-slate-50 dark:active:bg-slate-800/40"
       >
         <View className="flex-row items-center gap-2.5 flex-1 min-w-0">
-          <CountryFlag code={countryCode} size={22} />
+          <CountryFlag code={code} size={22} />
           <Text
             numberOfLines={1}
             className="text-[13px] font-bold text-slate-700 dark:text-slate-200"
@@ -167,7 +231,7 @@ function CountryAccordion({
         <View className="flex-row items-center gap-2 shrink-0">
           <View className="rounded-full bg-slate-100 px-2 py-0.5 dark:bg-slate-800">
             <Text className="font-mono text-[11px] font-bold text-slate-600 dark:text-slate-300">
-              {comps.length}
+              {total}
             </Text>
           </View>
           <Ionicons
@@ -178,12 +242,71 @@ function CountryAccordion({
         </View>
       </Pressable>
 
-      {/* Lista de competiciones */}
+      {/* Secciones internas si está abierto */}
       {isOpen && (
         <View className="border-t border-slate-100 dark:border-slate-800/60">
-          {comps.map((comp) => (
-            <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
-          ))}
+          {/* Ligas nacionales */}
+          {leagues.length > 0 && (
+            <View>
+              <View className="bg-slate-50/70 px-3.5 py-1.5 border-b border-slate-100 dark:bg-slate-800/30 dark:border-slate-800/60">
+                <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {t('competitions.section_leagues') || 'Ligas'}
+                </Text>
+              </View>
+              {leagues.map((comp) => (
+                <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+              ))}
+            </View>
+          )}
+
+          {/* Copas nacionales */}
+          {cups.length > 0 && (
+            <View>
+              <View className="bg-slate-50/70 px-3.5 py-1.5 border-b border-slate-100 dark:bg-slate-800/30 dark:border-slate-800/60">
+                <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {t('competitions.section_cups') || 'Copas'}
+                </Text>
+              </View>
+              {cups.map((comp) => (
+                <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+              ))}
+            </View>
+          )}
+
+          {/* Base */}
+          {base.length > 0 && (
+            <View>
+              <View className="bg-slate-50/70 px-3.5 py-1.5 border-b border-slate-100 dark:bg-slate-800/30 dark:border-slate-800/60">
+                <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {t('competitions.section_base') || 'Categorías de base'}
+                </Text>
+              </View>
+              {base.map((comp) => (
+                <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+              ))}
+            </View>
+          )}
+
+          {/* Autonómicas / Regionales */}
+          {regional.length > 0 && (
+            <View>
+              <View className="bg-slate-50/70 px-3.5 py-1.5 border-b border-slate-100 dark:bg-slate-800/30 dark:border-slate-800/60">
+                <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {t('competitions.section_regional') || 'Federaciones autonómicas'}
+                </Text>
+              </View>
+              {regional.map((group) => (
+                <RegionalFederationAccordion
+                  key={group.key}
+                  group={group}
+                  isOpen={Boolean(openFederations[group.key])}
+                  onToggle={() => onToggleFederation(group.key)}
+                  locale={locale}
+                  t={t}
+                />
+              ))}
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -193,8 +316,10 @@ function CountryAccordion({
 export default function CompetitionsScreen() {
   const { t, locale } = useLocale();
   const competitionsQuery = useCompetitions();
+  const federationsQuery = useFederations();
 
-  const [activeTab, setActiveTab] = useState<Tab>('todas');
+  const [activeTab, setActiveTab] = useState<Tab>('destacadas');
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>('all');
   const [query, setQuery] = useState('');
 
   // Favoritos
@@ -208,6 +333,7 @@ export default function CompetitionsScreen() {
   );
 
   const allComps = useMemo(() => competitionsQuery.data ?? [], [competitionsQuery.data]);
+  const federations = useMemo(() => federationsQuery.data ?? [], [federationsQuery.data]);
 
   // Temporada vigente (año mayor deducido automáticamente, p. ej. 2026 en 2026/27)
   const seasonYear = useMemo(() => currentSeasonYear(allComps), [allComps]);
@@ -226,27 +352,40 @@ export default function CompetitionsScreen() {
     return orderSearchResults(matches, q, locale);
   }, [allComps, q, query, locale]);
 
-  // Datos por pestaña
-  const principales = useMemo(
-    () => orderByImportance(relevant.filter((c) => c.scope === 'national'), locale),
-    [relevant, locale],
+  // Filtro de género sobre las competiciones relevantes
+  const relevantByGender = useMemo(
+    () => filterByGender(relevant, genderFilter),
+    [relevant, genderFilter],
   );
 
-  const misLigas = useMemo(
-    () => orderByImportance(allComps.filter((c) => favoriteIds.has(c.id)), locale),
-    [allComps, favoriteIds, locale],
+  // Pestaña Destacadas (curación featuredRank y tier 1 sénior)
+  const destacadas = useMemo(
+    () => featuredCompetitions(relevantByGender, locale),
+    [relevantByGender, locale],
   );
 
-  const { international, byCountry } = useMemo(
-    () => groupCompetitionsForIndex(relevant, locale),
-    [relevant, locale],
+  // Pestaña Mis Ligas (con filtro de género opcional)
+  const misLigas = useMemo(() => {
+    const followed = allComps.filter((c) => favoriteIds.has(c.id));
+    return orderByImportance(filterByGender(followed, genderFilter), locale);
+  }, [allComps, favoriteIds, genderFilter, locale]);
+
+  // Pestaña Países (árbol internacional + países + federaciones autonómicas)
+  const tree = useMemo(
+    () => buildCompetitionTree(relevantByGender, locale, federations, (code) => countryDisplayName(code, locale)),
+    [relevantByGender, locale, federations],
   );
 
-  // Estado de acordeones de países (abiertos por defecto si tienen favoritos o España)
+  // Estado de acordeones de países (España abierta por defecto)
   const [openCountries, setOpenCountries] = useState<Record<string, boolean>>({ ES: true });
-
   const toggleCountry = (code: string) => {
     setOpenCountries((prev) => ({ ...prev, [code]: !prev[code] }));
+  };
+
+  // Estado de acordeones de federaciones autonómicas
+  const [openFederations, setOpenFederations] = useState<Record<string, boolean>>({});
+  const toggleFederation = (key: string) => {
+    setOpenFederations((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   if (competitionsQuery.isPending) {
@@ -263,7 +402,7 @@ export default function CompetitionsScreen() {
 
   return (
     <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
-      {/* ── Buscador y pestañas fijas ────────────────────────────────────────── */}
+      {/* ── Buscador, pestañas principales y selector de género ───────────────── */}
       <View className="border-b border-slate-200/80 bg-white px-3 pb-3 pt-2.5 dark:border-slate-800 dark:bg-slate-900">
         {/* Input de búsqueda */}
         <View className="flex-row items-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-950">
@@ -271,7 +410,7 @@ export default function CompetitionsScreen() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder={t('competitions.search_placeholder')}
+            placeholder={t('competitions.search_placeholder') || 'Buscar liga, país o federación...'}
             placeholderTextColor="#94a3b8"
             className="ml-2 flex-1 text-sm font-medium text-slate-900 dark:text-slate-100 py-1"
             returnKeyType="search"
@@ -284,9 +423,61 @@ export default function CompetitionsScreen() {
           )}
         </View>
 
-        {/* Segmented filter pills (solo si no se está buscando) */}
+        {/* Pestañas principales (Destacadas · Países · Mis Ligas) */}
         {!isSearching && (
           <View className="mt-2.5 flex-row gap-2">
+            {/* Destacadas */}
+            <Pressable
+              onPress={() => setActiveTab('destacadas')}
+              className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl py-2 px-1 border ${
+                activeTab === 'destacadas'
+                  ? 'border-rose-900 bg-rose-900 dark:border-rose-700 dark:bg-rose-800'
+                  : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/60'
+              }`}
+            >
+              <Ionicons
+                name="flame"
+                size={14}
+                color={activeTab === 'destacadas' ? '#ffffff' : BRAND.granate}
+              />
+              <Text
+                numberOfLines={1}
+                className={`text-xs font-bold ${
+                  activeTab === 'destacadas'
+                    ? 'text-white'
+                    : 'text-slate-700 dark:text-slate-300'
+                }`}
+              >
+                {t('competitions.tab_main') || 'Destacadas'}
+              </Text>
+            </Pressable>
+
+            {/* Países */}
+            <Pressable
+              onPress={() => setActiveTab('paises')}
+              className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl py-2 px-1 border ${
+                activeTab === 'paises'
+                  ? 'border-rose-900 bg-rose-900 dark:border-rose-700 dark:bg-rose-800'
+                  : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/60'
+              }`}
+            >
+              <Ionicons
+                name="globe-outline"
+                size={13}
+                color={activeTab === 'paises' ? '#ffffff' : '#64748b'}
+              />
+              <Text
+                numberOfLines={1}
+                className={`text-xs font-bold ${
+                  activeTab === 'paises'
+                    ? 'text-white'
+                    : 'text-slate-700 dark:text-slate-300'
+                }`}
+              >
+                {t('competitions.tab_all') || 'Países'}
+              </Text>
+            </Pressable>
+
             {/* Mis Ligas */}
             <Pressable
               onPress={() => setActiveTab('mis-ligas')}
@@ -309,7 +500,7 @@ export default function CompetitionsScreen() {
                     : 'text-slate-700 dark:text-slate-300'
                 }`}
               >
-                {t('competitions.tab_my_leagues')}
+                {t('competitions.tab_my_leagues') || 'Mis Ligas'}
               </Text>
               {favoriteIds.size > 0 && (
                 <View
@@ -331,48 +522,44 @@ export default function CompetitionsScreen() {
                 </View>
               )}
             </Pressable>
+          </View>
+        )}
 
-            {/* Principales */}
-            <Pressable
-              onPress={() => setActiveTab('principales')}
-              className={`flex-1 items-center justify-center rounded-xl py-2 px-1 border ${
-                activeTab === 'principales'
-                  ? 'border-rose-900 bg-rose-900 dark:border-rose-700 dark:bg-rose-800'
-                  : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/60'
-              }`}
-            >
-              <Text
-                numberOfLines={1}
-                className={`text-xs font-bold ${
-                  activeTab === 'principales'
-                    ? 'text-white'
-                    : 'text-slate-700 dark:text-slate-300'
-                }`}
-              >
-                {t('competitions.tab_main')}
-              </Text>
-            </Pressable>
+        {/* Selector de Género (Todas / Masc. / Fem.) */}
+        {!isSearching && (
+          <View className="mt-2.5 flex-row gap-1.5">
+            {(['all', 'male', 'female'] as const).map((g) => {
+              const isSelected = genderFilter === g;
+              const label =
+                g === 'all'
+                  ? (t('competitions.gender_all') || 'Todas')
+                  : g === 'male'
+                    ? (t('common.male') || 'Masculino')
+                    : (t('common.female') || 'Femenino');
 
-            {/* Todas */}
-            <Pressable
-              onPress={() => setActiveTab('todas')}
-              className={`flex-1 items-center justify-center rounded-xl py-2 px-1 border ${
-                activeTab === 'todas'
-                  ? 'border-rose-900 bg-rose-900 dark:border-rose-700 dark:bg-rose-800'
-                  : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/60'
-              }`}
-            >
-              <Text
-                numberOfLines={1}
-                className={`text-xs font-bold ${
-                  activeTab === 'todas'
-                    ? 'text-white'
-                    : 'text-slate-700 dark:text-slate-300'
-                }`}
-              >
-                {t('competitions.tab_all')}
-              </Text>
-            </Pressable>
+              return (
+                <Pressable
+                  key={g}
+                  onPress={() => setGenderFilter(g)}
+                  className={`flex-1 items-center justify-center rounded-lg py-1.5 border ${
+                    isSelected
+                      ? 'border-slate-800 bg-slate-800 dark:border-slate-100 dark:bg-slate-100'
+                      : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/60'
+                  }`}
+                >
+                  <Text
+                    numberOfLines={1}
+                    className={`text-[11px] font-semibold ${
+                      isSelected
+                        ? 'text-white dark:text-slate-900'
+                        : 'text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         )}
       </View>
@@ -380,11 +567,14 @@ export default function CompetitionsScreen() {
       {/* ── Lista de contenido ──────────────────────────────────────────────── */}
       <ScrollView
         className="flex-1 px-3 pt-3"
-        contentContainerStyle={{ paddingBottom: 24 }}
+        contentContainerStyle={{ paddingBottom: 28 }}
         refreshControl={
           <RefreshControl
-            refreshing={competitionsQuery.isRefetching}
-            onRefresh={() => void competitionsQuery.refetch()}
+            refreshing={competitionsQuery.isRefetching || federationsQuery.isRefetching}
+            onRefresh={() => {
+              void competitionsQuery.refetch();
+              void federationsQuery.refetch();
+            }}
           />
         }
       >
@@ -393,7 +583,7 @@ export default function CompetitionsScreen() {
           searchResults.length === 0 ? (
             <View className="py-12 items-center justify-center">
               <EmptyState
-                title={t('common.no_search_results')}
+                title={t('common.no_search_results') || 'Sin resultados'}
                 hint={`«${query}»`}
               />
               <Pressable
@@ -412,20 +602,36 @@ export default function CompetitionsScreen() {
               ))}
             </View>
           )
+        ) : activeTab === 'destacadas' ? (
+          // Pestaña Destacadas
+          destacadas.length === 0 ? (
+            <View className="py-12 items-center justify-center px-4">
+              <EmptyState
+                title="Sin competiciones destacadas"
+                hint="No hay competiciones que coincidan con el filtro de género seleccionado."
+              />
+            </View>
+          ) : (
+            <View className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              {destacadas.map((comp) => (
+                <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+              ))}
+            </View>
+          )
         ) : activeTab === 'mis-ligas' ? (
           // Pestaña Mis Ligas
           misLigas.length === 0 ? (
             <View className="py-12 items-center justify-center px-4">
               <EmptyState
-                title={t('competitions.no_fav_leagues_title')}
-                hint={t('competitions.no_fav_leagues_hint')}
+                title={t('competitions.no_fav_leagues_title') || 'Todavía no tienes ligas favoritas'}
+                hint={t('competitions.no_fav_leagues_hint') || 'Pulsa la estrella en cualquier competición para guardarla aquí.'}
               />
               <Pressable
-                onPress={() => setActiveTab('todas')}
+                onPress={() => setActiveTab('destacadas')}
                 className="mt-4 rounded-xl bg-rose-900 px-5 py-2.5 shadow-sm active:bg-rose-950 dark:bg-rose-800"
               >
                 <Text className="text-xs font-bold text-white">
-                  Explorar todas las competiciones
+                  Explorar competiciones destacadas
                 </Text>
               </Pressable>
             </View>
@@ -436,45 +642,38 @@ export default function CompetitionsScreen() {
               ))}
             </View>
           )
-        ) : activeTab === 'principales' ? (
-          // Pestaña Principales
-          <View className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            {principales.map((comp) => (
-              <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
-            ))}
-          </View>
         ) : (
-          // Pestaña Todas (Internacional + acordeones por país)
+          // Pestaña Países (Internacional + acordeones por país con Ligas, Copas, Base y Autonómicas)
           <View>
             {/* Competiciones Internacionales */}
-            {international.length > 0 && (
+            {tree.international.length > 0 && (
               <View className="mb-2.5 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <View className="flex-row items-center gap-2 border-b border-slate-100 px-3.5 py-3 dark:border-slate-800/60">
                   <Text className="text-base leading-none">🌍</Text>
                   <Text className="text-[13px] font-bold text-slate-700 dark:text-slate-200">
-                    {t('competitions.international')}
+                    {t('competitions.international') || 'Mundo'}
                   </Text>
                   <View className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 dark:bg-slate-800">
                     <Text className="font-mono text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                      {international.length}
+                      {tree.international.length}
                     </Text>
                   </View>
                 </View>
-                {international.map((comp) => (
+                {tree.international.map((comp) => (
                   <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
                 ))}
               </View>
             )}
 
             {/* Acordeones por país */}
-            {byCountry.map(([code, countryComps]) => (
+            {tree.countries.map((country) => (
               <CountryAccordion
-                key={code}
-                countryCode={code}
-                label={countryDisplayName(code, locale) || code}
-                comps={countryComps}
-                isOpen={Boolean(openCountries[code])}
-                onToggle={() => toggleCountry(code)}
+                key={country.code}
+                country={country}
+                isOpen={Boolean(openCountries[country.code])}
+                onToggle={() => toggleCountry(country.code)}
+                openFederations={openFederations}
+                onToggleFederation={toggleFederation}
                 locale={locale}
                 t={t}
               />

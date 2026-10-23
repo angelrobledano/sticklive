@@ -8,6 +8,8 @@ import type {
   CompetitionsResponse,
   CurrentMatchesResponse,
   FavoritesResponse,
+  Federation,
+  FederationsResponse,
   MatchDetail,
   MatchSummary,
   PlayerDetail,
@@ -35,6 +37,7 @@ export const qk = {
   following: (f: FeedFollows) => ['matches', 'current', 'following', f.teams.join(','), f.leagues.join(',')] as const,
   match: (id: string) => ['matches', id] as const,
   competitions: ['competitions'] as const,
+  federations: ['federations'] as const,
   competitionSeasons: (id: string) => ['competitions', id, 'seasons'] as const,
   seasonOverview: (seasonId: string) => ['seasons', seasonId, 'overview'] as const,
   seasonStats: (seasonId: string) => ['seasons', seasonId, 'stats'] as const,
@@ -98,6 +101,9 @@ export const selectCurrentMatches = (d: CurrentMatchesResponse): MatchSummary[] 
 /** `/competitions` devuelve `{ count, competitions }` (competitions.ts:121). */
 export const selectCompetitions = (d: CompetitionsResponse): CompetitionSummary[] => d.competitions;
 
+/** `/federations` devuelve `{ count, federations }` (federations.ts:58). */
+export const selectFederations = (d: FederationsResponse): Federation[] => d.federations;
+
 /** `/seasons/:id/standings` devuelve `{ seasonId, group, count, standings }` (standings.ts:40-45). */
 export const selectStandings = (d: StandingsResponse): StandingsRow[] => d.standings;
 
@@ -139,6 +145,10 @@ export async function fetchDayMatches(dayKey: string): Promise<CurrentMatchesRes
 
 export async function fetchCompetitions(): Promise<CompetitionsResponse> {
   return apiFetch<CompetitionsResponse>('/competitions');
+}
+
+export async function fetchFederations(): Promise<FederationsResponse> {
+  return apiFetch<FederationsResponse>('/federations');
 }
 
 export async function fetchCompetitionSeasons(competitionId: string): Promise<CompetitionSeasonsResponse> {
@@ -260,6 +270,15 @@ export function useCompetitions() {
     queryFn: fetchCompetitions,
     select: selectCompetitions,
     staleTime: 10 * 60_000,
+  });
+}
+
+export function useFederations() {
+  return useQuery({
+    queryKey: qk.federations,
+    queryFn: fetchFederations,
+    select: selectFederations,
+    staleTime: 60 * 60_000,
   });
 }
 

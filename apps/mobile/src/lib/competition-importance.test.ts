@@ -70,5 +70,20 @@ describe('competition-importance helpers', () => {
       expect(sorted[1].slug).toBe('ok-liga-masculina');
       expect(sorted[2].slug).toBe('ok-liga-bronce-masculina-norte');
     });
+
+    it('prioriza featuredRank sobre tier y slugs sin rank', () => {
+      const topCurated = { name: 'Copa Destacada', slug: 'copa-x', featuredRank: 1 };
+      const tier1 = { name: 'Liga Tier 1', slug: 'tier-1', tier: 1 };
+      const tier2 = { name: 'Liga Tier 2', slug: 'tier-2', tier: 2 };
+      const unknown = { name: 'Desconocida', slug: 'desconocida' };
+
+      const sorted = orderByImportance([unknown, tier2, topCurated, tier1], 'es');
+      expect(sorted.map((s) => s.name)).toEqual([
+        'Copa Destacada',
+        'Liga Tier 1',
+        'Liga Tier 2',
+        'Desconocida',
+      ]);
+    });
   });
 });

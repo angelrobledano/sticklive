@@ -45,7 +45,9 @@ export function matchesCompetitionQuery(
     normalizeSearchText(c.shortName ?? '').includes(normalizedQuery) ||
     normalizeSearchText(countryName).includes(normalizedQuery) ||
     normalizeSearchText(c.region ?? '').includes(normalizedQuery) ||
-    normalizeSearchText(c.organizer).includes(normalizedQuery)
+    normalizeSearchText(c.organizer).includes(normalizedQuery) ||
+    normalizeSearchText(c.federation?.name ?? '').includes(normalizedQuery) ||
+    normalizeSearchText(c.federation?.shortName ?? '').includes(normalizedQuery)
   );
 }
 

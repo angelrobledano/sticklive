@@ -49,14 +49,16 @@ describe('competition-filter helpers', () => {
       expect(filterCompetitions(comps, 'primera division', countryName).map((c) => c.name)).toEqual(['Primera División']);
     });
 
-    it('filtra también por nombre corto, organizador o país', () => {
+    it('filtra también por nombre corto, organizador, federación o país', () => {
       const comps = [
         createComp('OK Liga', { shortName: 'OKL' }),
         createComp('Campeonato de Portugal', { country: 'PT', organizer: 'FPP' }),
+        createComp('1ª Madrileña', { federation: { code: 'FMP', slug: 'fmp', name: 'Federación Madrileña de Patinaje', shortName: 'FMP', level: 'regional', parentCode: 'RFEP', country: 'ES', region: 'Madrid' } }),
       ];
       expect(filterCompetitions(comps, 'okl', countryName)).toHaveLength(1);
       expect(filterCompetitions(comps, 'portugal', countryName)).toHaveLength(1);
       expect(filterCompetitions(comps, 'fpp', countryName)).toHaveLength(1);
+      expect(filterCompetitions(comps, 'madrileña', countryName)).toHaveLength(1);
     });
   });
 
