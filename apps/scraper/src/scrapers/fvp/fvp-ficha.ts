@@ -17,6 +17,7 @@ import { splitPtName } from '../fpp/fpp-ficha.parser.js';
 import { fvpGet, fvpPaths } from './fvp-client.js';
 import { FVP_SCRAPER_KEY } from './fvp-catalog.js';
 import { parseFvpActa, lineupToInput, type FvpLineupEntry } from './fvp-ficha.parser.js';
+import { clockOfActa } from './fvp-live.parser.js';
 
 const log = createLogger({ service: 'fvp-ficha' });
 
@@ -32,6 +33,8 @@ export interface FvpFichaTarget {
   sportId: string;
   homeTeamId: string;
   awayTeamId: string;
+  /** En juego (lo pone el directo): además del acta se escribe el crono. */
+  live?: boolean;
 }
 
 export async function pendingFvpFichas(limit = MAX_PER_RUN): Promise<FvpFichaTarget[]> {
@@ -93,7 +96,23 @@ async function upsertPlayer(t: FvpFichaTarget, l: FvpLineupEntry): Promise<strin
 
 export async function processFvpFicha(t: FvpFichaTarget): Promise<{ events: number; lineup: number }> {
   const apiId = t.sourceRef.replace(/^fvp_match_/, '');
-  const acta = parseFvpActa(await fvpGet(fvpPaths.match(apiId)), apiId);
+  const raw = await fvpGet(fvpPaths.match(apiId));
+  const acta = parseFvpActa(raw, apiId);
+  if (t.live) {
+    // Crono restante de la parte. Parado → clock_at NULL: la web lo congela en
+    // vez de hacerlo correr. Descanso = fin de la 1ª parte con el crono a cero.
+    const c = clockOfActa(raw);
+    await db.query(
+      `UPDATE matches SET
+         live_period = COALESCE($2, live_period),
+         live_clock_seconds = $3,
+         live_clock_at = CASE WHEN $4::boolean THEN NOW() ELSE NULL END,
+         live_is_halftime = COALESCE($2::int = 1 AND $3::int = 0 AND NOT $4::boolean, FALSE),
+         updated_at = NOW()
+       WHERE id = $1 AND status = 'live'`,
+      [t.matchId, c.period, c.seconds, c.running],
+    );
+  }
   if (acta.unknownTypes.length > 0) {
     Sentry.captureMessage(`Acta FVP con incidencias desconocidas: ${acta.unknownTypes.join(', ')}`, {
       level: 'warning', fingerprint: ['fvp-acta-tipos', ...acta.unknownTypes], tags: { source: 'fvp' },

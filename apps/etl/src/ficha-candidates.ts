@@ -34,6 +34,8 @@ export async function selectFichaCandidates(seasonIds: string[]): Promise<FichaC
      LEFT JOIN teams ht ON ht.id = m.home_team_id
      WHERE m.season_id = ANY($1)
        AND m.source_ref IS NOT NULL
+       -- Solo sidgad: FPP y FVP cargan su acta en su propio paso del ciclo.
+       AND m.source_ref NOT LIKE 'fpp\\_%' AND m.source_ref NOT LIKE 'fvp\\_%'
        AND (
          m.status = 'live'
          OR (

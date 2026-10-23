@@ -10,7 +10,7 @@ sidgad**: plataforma DigitalSport con API pública en JSON, sin autenticación.
 | `/hierarchy/division/{id}/tree` | fases → jornadas → partidos (equipos, fecha, hora, pista, árbitros, goles) y cruces de copa |
 | `/hierarchy/fase/{id}/clasificacion` | clasificación de una fase de liga |
 | `/public/partidos/{id}` | acta: alineaciones con foto y dorsal, cuerpo técnico, incidencias con parte y crono |
-| `/public/partidos/marcadores` | marcadores en directo de todo el hockey vasco (pendiente: directo, v2) |
+| `/public/partidos/marcadores` | marcadores en directo de todo el hockey vasco y la Liga Norte, en una llamada |
 
 La entidad de la FVP es `00000000-0000-4000-0000-000000000001`.
 
@@ -19,7 +19,25 @@ La entidad de la FVP es `00000000-0000-4000-0000-000000000001`.
 15 competiciones de 2026/27: Liga Norte (masculina, femenina, sub-23 y copa), Liga
 Vasca (sénior, júnior, juvenil, veteranos) y las ligas escolares (infantil, alevín,
 benjamín). Calendario, resultados, clasificación y actas cada 15 min
-(`--run-once fvp` en el scheduler). Sin directo todavía.
+(`--run-once fvp` en el scheduler) y directo en cada ciclo de cron-live (v2).
+
+## Directo (v2)
+
+`fvp-live.parser.ts` (puro) + `fvp-live.ts`, llamados desde cron-live (`runFvpScores`,
+junto a FPP). Sin partidos FVP en ventana (en juego, o con inicio entre −5 h y +30 min)
+no hay ninguna petición. Con partidos: 1 GET a `/marcadores` + 1 acta por partido
+en juego o recién terminado, cargada entre el snapshot y el diff → avisos de inicio,
+gol, tarjeta y final como en la FEP.
+
+- **Emparejado:** por id (`fvp_match_{id}`), sin nombres.
+- **Estado (`periodo`, visto en vivo el 23/10/2026):** 0 sin empezar · 1-2 parte en
+  juego (3-4 prórroga) · 9 descanso · 30 terminado. Otro valor no toca el partido y va
+  a Sentry (`fvp-live-state`).
+- **Crono:** del acta (`cronoMin/cronoSec`, restante). Parado → `live_clock_at` NULL y
+  la web lo congela.
+- **Marcador oculto (benjamines):** el directo publica 0-0 como la federación.
+- El `estado` del árbol y del acta sigue en `SCHEDULED` mientras se juega: no se usa
+  para el directo.
 
 ## Modelo
 
@@ -63,8 +81,7 @@ cortados por la regla de los 5 goles.
 
 ## Pendiente
 
-- Directo (v2): `/public/partidos/marcadores` en cron-live (una llamada para todo
-  Euskadi) y, si hace falta, el canal Centrifugo `marcadores_{entidad}`.
+- Si 45 s se queda corto: el canal Centrifugo `marcadores_{entidad}` empuja los cambios.
 - La Benjamín B tiene una jornada con fecha de 2027 (error de la fuente). El loader
   la rechaza por estar fuera de la temporada (#229). Se cargará sola cuando la corrijan.
 - Equipos de la Liga Norte que ya existen por otras fuentes (Oberena e Iruña por
