@@ -20,7 +20,8 @@ export const FEDERATIONS: Federation[] = [
   { org: 'FMP',    region: 'Madrid',               prefix: 'fmp',    referer: 'https://www.hockeypatines.fmp.es/' },
   { org: 'FAP',    region: 'Andalucía',            prefix: 'fap',    referer: 'https://www.hockeypatines.fapatinaje.org/' },
   { org: 'FECAPA', region: 'Cataluña',             prefix: 'fecapa', referer: 'https://www.fecapa.cat/' },
-  { org: 'FPCV',   region: 'Comunidad Valenciana', prefix: 'fpcv',   referer: 'https://www.fpcv.es/' },
+  { org: 'FPCV',   region: 'Comunidad Valenciana', prefix: 'fpcv',   referer: 'https://www.hockeypatines.fpcv.es/' },
+  { org: 'FNP',    region: 'Navarra',              prefix: 'fnp',    referer: 'https://www.hockey.fnp.org/' },
   { org: 'FGP',    region: 'Galicia',              prefix: 'fgpatinaxe', referer: 'https://www.hockeypatines.fgpatinaxe.gal/' },
   // Italia (FISR, hockeypista.fisr.it): mismo sidgad y mismos temp_ (41 = 2026/27).
   // NO es una autonómica: país IT y hora local Europe/Rome. Alta con revisión

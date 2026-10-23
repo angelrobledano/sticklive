@@ -83,7 +83,16 @@ export const SOURCES: SourceDef[] = [
     client: {
       baseUrl: 'https://www.server2.sidgad.es/fpcv',
       portalPrefix: 'fpcv',
-      referer: 'https://www.fpcv.es/',
+      referer: 'https://www.hockeypatines.fpcv.es/',
+    },
+  },
+  {
+    key: 'fnp',
+    name: 'FNP — Hockey Patines (Navarra)',
+    client: {
+      baseUrl: 'https://www.server2.sidgad.es/fnp',
+      portalPrefix: 'fnp',
+      referer: 'https://www.hockey.fnp.org/',
     },
   },
   {
