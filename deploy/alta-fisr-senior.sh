@@ -11,8 +11,8 @@
 # (HOCKEY TRISSINO juega A1, A2 y Serie B). Primero A1: crea los primeros
 # equipos. Después A2 y B: el seed manda a la cola (/admin/resolucion) todo
 # equipo homónimo que ya juega otra liga actual, en vez de fusionarlo. Esos
-# dudosos son FILIALES: altas con --force-new=<refs> y --squad-level=2 (o 3)
-# re-ejecutando esa liga con --only. Las copas comparten equipos (--allow-shared)
+# homónimos son FILIALES: A2 y B van con --filial-if-shared y se crean como
+# equipo B/C (squad_level) automáticamente; los parecidos dudosos, a la cola. Las copas comparten equipos (--allow-shared)
 # y van DESPUÉS de su liga para reutilizarlos.
 #
 # Hora: sidgad publica en hora local italiana. Europe/Rome = Europe/Madrid en
@@ -46,16 +46,16 @@ for a in "$@"; do
 done
 
 PORTAL_ENV=(-e SIDGAD_PORTAL=fisr -e SIDGAD_REFERER=https://hockeypista.fisr.it/)
-COMMON=(--organizer=FISR --country=IT --scope=national --season=2026/27 --temp=41 --start=2026-09-01 --end=2027-06-30)
+COMMON=(--organizer=FISR --country=IT --scope=national --season=2026/27 --temp=41 --start=2026-09-01 --end=2027-06-30 --min-score=0.6)
 
 # idc | nombre | corto | género | extra
 COMPS=(
   "1896|CAMPIONATO SERIE A1|Serie A1|male|"
   "1906|SUPERCOPPA ITALIANA|Supercoppa|male|--format=bracket --allow-shared=true"
   "1910|SKATE ITALIA TROPHY|Skate Italia Trophy|male|--format=bracket --allow-shared=true"
-  "1895|CAMPIONATO SERIE A2|Serie A2|male|"
+  "1895|CAMPIONATO SERIE A2|Serie A2|male|--filial-if-shared=true"
   "1904|COPPA ITALIA A2|Coppa Italia A2|male|--format=bracket --allow-shared=true"
-  "1894|CAMPIONATO SERIE B|Serie B|male|"
+  "1894|CAMPIONATO SERIE B|Serie B|male|--filial-if-shared=true"
   "1909|COPPA ITALIA SERIE B|Coppa Italia B|male|--format=bracket --allow-shared=true"
   "1907|SUPERCOPPA ITALIANA FEMMINILE|Supercoppa F|female|--format=bracket"
 )

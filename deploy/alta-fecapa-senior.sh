@@ -14,6 +14,15 @@
 #   · Identidad por portal aplicada (runbook-identidad-por-portal.md):
 #     sin fusiones reales entre portales (split-merged-players en seco = 0).
 #
+# Identidad (23/10, tras el primer dry-run):
+#   · Ligas (Nacional/Primera/Segona/Tercera): --filial-if-shared. Un homónimo
+#     de un equipo que ya juega otra liga actual (Barça, Caldes, Igualada…) es
+#     su FILIAL → se crea como B/C con squad_level, no va a la cola.
+#   · Lligues Catalanes y Supercopas: torneos de pretemporada con los PRIMEROS
+#     equipos → --allow-shared (se reutilizan).
+#   · --min-score=0.6: un parecido de trigramas por debajo (Castellar ~ Girona
+#     0.43) no bloquea el alta.
+#
 # Qué hace cada alta (seed-fep-competition): descubre los equipos en sidgad,
 # reutiliza los que ya existen (por ref, slug o alias), manda los dudosos a la
 # cola /admin/resolucion y crea el resto; competición + temporada 2026/27 +
@@ -33,19 +42,19 @@ for a in "$@"; do
 done
 
 PORTAL_ENV=(-e SIDGAD_PORTAL=fecapa -e SIDGAD_REFERER=https://www.fecapa.cat/)
-COMMON=(--organizer=FECAPA --region=Cataluña --scope=regional --season=2026/27 --temp=41 --start=2026-09-01 --end=2027-06-30)
+COMMON=(--organizer=FECAPA --region=Cataluña --scope=regional --season=2026/27 --temp=41 --start=2026-09-01 --end=2027-06-30 --min-score=0.6)
 
 # idc | nombre | corto | género | extra
 COMPS=(
-  "4774|NACIONAL CATALANA MASCULINA|Nacional Catalana|male|"
-  "4775|NACIONAL CATALANA FEMENINA|Nacional Catalana F|female|"
-  "4776|PRIMERA CATALANA MASCULINA|Primera Catalana|male|"
-  "4778|PRIMERA CATALANA FEMENINA|Primera Catalana F|female|"
-  "4779|SEGONA CATALANA MASCULINA|Segona Catalana|male|"
-  "4780|SEGONA CATALANA FEMENINA|Segona Catalana F|female|"
-  "4781|TERCERA CATALANA MASCULINA|Tercera Catalana|male|"
-  "4856|LLIGA CATALANA PLATA|Lliga Catalana Plata|male|"
-  "4860|LLIGA CATALANA FEMENINA|Lliga Catalana F|female|"
+  "4774|NACIONAL CATALANA MASCULINA|Nacional Catalana|male|--filial-if-shared=true"
+  "4775|NACIONAL CATALANA FEMENINA|Nacional Catalana F|female|--filial-if-shared=true"
+  "4776|PRIMERA CATALANA MASCULINA|Primera Catalana|male|--filial-if-shared=true"
+  "4778|PRIMERA CATALANA FEMENINA|Primera Catalana F|female|--filial-if-shared=true"
+  "4779|SEGONA CATALANA MASCULINA|Segona Catalana|male|--filial-if-shared=true"
+  "4780|SEGONA CATALANA FEMENINA|Segona Catalana F|female|--filial-if-shared=true"
+  "4781|TERCERA CATALANA MASCULINA|Tercera Catalana|male|--filial-if-shared=true"
+  "4856|LLIGA CATALANA PLATA|Lliga Catalana Plata|male|--allow-shared=true"
+  "4860|LLIGA CATALANA FEMENINA|Lliga Catalana F|female|--allow-shared=true"
   "5014|SUPERCOPA CATALANA MASCULINA|Supercopa Catalana|male|--format=bracket --allow-shared=true"
   "5015|SUPERCOPA CATALANA FEMENINA|Supercopa Catalana F|female|--format=bracket --allow-shared=true"
 )

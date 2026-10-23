@@ -82,6 +82,17 @@ const FORCE_NEW = (argv['force-new'] ?? '').split(',').map((s) => s.trim()).filt
 // Competiciones que COMPARTEN equipos legítimamente (copas, supercopas): sin
 // esta bandera, un equipo que ya juega en otra liga actual se manda a la cola.
 const ALLOW_SHARED = argv['allow-shared'] === 'true' || argv['allow-shared'] === '1';
+// Ligas de un portal autonómico cuyos clubes ya tienen su primer equipo en otra
+// liga actual (Barça en OK Liga y en Nacional Catalana): ese homónimo es su
+// FILIAL. Con esta bandera se da de alta como equipo B/C (squad_level) en vez de
+// aparcarlo en la cola. Sin ella, comportamiento de siempre (a la cola).
+const FILIAL_IF_SHARED = argv['filial-if-shared'] === 'true' || argv['filial-if-shared'] === '1';
+// Similitud mínima para que un candidato bloquee el alta (dudoso). Por debajo,
+// es ruido de trigramas ("HOQUEI CLUB CASTELLAR" ~ "GIRONA CLUB HOQUEI" 0.43)
+// y el equipo se crea. findSimilarTeamNames devuelve desde 0.35.
+const MIN_SCORE = Number(argv['min-score'] ?? '0.35');
+// Coincidencia casi exacta: mismo equipo (o su filial si ya juega otra liga).
+const EXACT_SCORE = 0.95;
 
 function slugify(s: string): string {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -161,7 +172,7 @@ async function main() {
   // GÉNERO: un equipo sin género marcado se puede reutilizar (y se rellena);
   // uno del género contrario NO — es la otra sección (M/F) del mismo club, y
   // reutilizarlo mezclaría historiales y estadísticas.
-  type Accion = 'reusar-ref' | 'reusar-slug' | 'reusar-alias' | 'dudoso' | 'nuevo';
+  type Accion = 'reusar-ref' | 'reusar-slug' | 'reusar-alias' | 'dudoso' | 'nuevo' | 'filial';
   interface Fila { t: DiscTeam; accion: Accion; teamId?: string; candidatos?: { teamId: string; name: string; gender: string | null; score: number }[]; }
   const mismoGenero = (g?: string | null) => !g || g === GENDER;
   const mismaCategoria = (a?: string | null) => !a || a === AGE;
@@ -229,6 +240,7 @@ async function main() {
     if (bySlug && mismoGenero(bySlug.gender) && mismaCategoria(bySlug.age_category)) {
       // Ya juega en otra liga actual → es un filial nombrado igual: a la cola.
       if (!ALLOW_SHARED && await enOtraLigaActual(bySlug.id)) {
+        if (FILIAL_IF_SHARED && !(await historialIncompatible(bySlug.id))) { plan.push({ t, accion: 'filial', teamId: bySlug.id }); continue; }
         plan.push({ t, accion: 'dudoso', candidatos: [{ teamId: bySlug.id, name: bySlug.name, gender: bySlug.gender ?? null, score: 1 }] });
         continue;
       }
@@ -247,6 +259,7 @@ async function main() {
       const g = (await db.query<{ name: string; gender: string | null; age_category: string | null }>(`SELECT name, gender, age_category FROM teams WHERE id=$1`, [aliasId])).rows[0];
       if (mismoGenero(g?.gender) && mismaCategoria(g?.age_category)) {
         if (!ALLOW_SHARED && await enOtraLigaActual(aliasId)) {
+          if (FILIAL_IF_SHARED && !(await historialIncompatible(aliasId))) { plan.push({ t, accion: 'filial', teamId: aliasId }); continue; }
           plan.push({ t, accion: 'dudoso', candidatos: [{ teamId: aliasId, name: g!.name, gender: g?.gender ?? null, score: 1 }] });
           continue;
         }
@@ -260,18 +273,35 @@ async function main() {
     }
     // Alta confirmada a mano: se crea aunque haya candidatos por similitud.
     if (FORCE_NEW.includes(t.ref)) { plan.push({ t, accion: 'nuevo' }); continue; }
-    const candidatos = await findSimilarTeamNames(t.name, sportId, { gender: GENDER, ageCategory: AGE }, 3);
+    const candidatos = (await findSimilarTeamNames(t.name, sportId, { gender: GENDER, ageCategory: AGE }, 3))
+      .filter((c) => c.score >= MIN_SCORE);
+    const top = candidatos[0];
+    // Casi exacto, mismo género y sin rival cercano: es ESE equipo (torneo
+    // compartido, --allow-shared) o su filial (liga, --filial-if-shared).
+    const inequivoco = top && top.score >= EXACT_SCORE && top.gender === GENDER
+      && (candidatos[1]?.score ?? 0) < EXACT_SCORE && !(await historialIncompatible(top.teamId));
+    if (inequivoco) {
+      if (await enOtraLigaActual(top.teamId)) {
+        if (ALLOW_SHARED) { plan.push({ t, accion: 'reusar-alias', teamId: top.teamId }); continue; }
+        if (FILIAL_IF_SHARED) { plan.push({ t, accion: 'filial', teamId: top.teamId }); continue; }
+      } else if (ALLOW_SHARED || FILIAL_IF_SHARED) {
+        plan.push({ t, accion: 'reusar-alias', teamId: top.teamId }); continue;
+      }
+    }
     if (candidatos.length > 0) { plan.push({ t, accion: 'dudoso', candidatos }); continue; }
     plan.push({ t, accion: 'nuevo' });
   }
   const cuenta = (a: Accion) => plan.filter((f) => f.accion === a).length;
   console.log(
     `\nSección de la liga: ${etiqueta} · identidad: reusar(ref ${cuenta('reusar-ref')}, slug ${cuenta('reusar-slug')}, ` +
-      `alias ${cuenta('reusar-alias')}) · dudosos→cola ${cuenta('dudoso')} · nuevos ${cuenta('nuevo')}`
+      `alias ${cuenta('reusar-alias')}) · filiales ${cuenta('filial')} · dudosos→cola ${cuenta('dudoso')} · nuevos ${cuenta('nuevo')}`
   );
   for (const f of plan.filter((x) => x.accion === 'dudoso')) {
     console.log(`  ?  ${f.t.ref.padEnd(6)} ${f.t.name}`);
     console.log(`       candidatos: ${f.candidatos!.map((c) => `${c.name} [${gTag(c.gender)}] (${c.score.toFixed(2)})`).join(' · ')}`);
+  }
+  for (const f of plan.filter((x) => x.accion === 'filial')) {
+    console.log(`  B  ${f.t.ref.padEnd(6)} ${f.t.name} → filial de un equipo que ya juega otra liga actual`);
   }
   for (const f of plan.filter((x) => x.accion === 'nuevo')) {
     console.log(`  +  ${f.t.ref.padEnd(6)} ${f.t.name} → se creará ${etiqueta}`);
@@ -370,10 +400,30 @@ async function main() {
       pending++;
       continue;
     } else {
+      // Filial (--filial-if-shared): nivel = siguiente libre entre los equipos
+      // de la MISMA sección (género + categoría) de ese club. El club sale del
+      // equipo base (A4); sin club, de los slugs `{base}`, `{base}-b2`…
+      let nivelFilial = 0;
+      if (f.accion === 'filial' && f.teamId) {
+        const r = await db.query<{ n: number }>(
+          `SELECT COALESCE(MAX(t.squad_level), 1)::int AS n
+             FROM teams base
+             JOIN teams t ON t.sport_id = base.sport_id
+                         AND t.gender IS NOT DISTINCT FROM base.gender
+                         AND t.age_category IS NOT DISTINCT FROM base.age_category
+                         AND ((base.club_id IS NOT NULL AND t.club_id = base.club_id)
+                              OR t.id = base.id OR t.slug ~ ('^' || base.slug || '-b[0-9]+$'))
+            WHERE base.id = $1`,
+          [f.teamId],
+        );
+        nivelFilial = (r.rows[0]?.n ?? 1) + 1;
+        console.log(`  ℹ️  ${t.name} → filial, squad_level=${nivelFilial}`);
+      }
       // Slug único: el nombre solo no basta (mismo club en senior y cantera, o en
       // secciones M/F, o un filial). Sufijos en orden: categoría (si no es
       // senior) → género → filial → ref, hasta que no choque.
       let slug = slugify(t.name);
+      if (nivelFilial > 1) slug = `${slug}-b${nivelFilial}`;
       const libre = async (s: string) => !(await findTeamBySlug(sportId, s));
       if (!(await libre(slug)) && AGE !== 'senior') slug = `${slug}-${AGE}`;
       if (!(await libre(slug))) slug = `${slug}-${GENDER === 'female' ? 'f' : 'm'}`;
@@ -384,7 +434,7 @@ async function main() {
       // pasa --squad-level y los filiales entraban como primer equipo. Sólo se
       // sube de nivel (nunca se baja el del flag). "B B" ruidoso cuenta una vez.
       const nivelNombre = / (?:B|II|2)$/i.test(t.name) ? 2 : / C$/i.test(t.name) ? 3 : 1;
-      const nivelFinal = Math.max(SQUAD_LEVEL, nivelNombre);
+      const nivelFinal = Math.max(SQUAD_LEVEL, nivelNombre, nivelFilial);
       if (nivelNombre > 1) {
         console.log(`  ℹ️  ${t.name} → squad_level=${nivelNombre} (derivado del nombre, #198)`);
       }
