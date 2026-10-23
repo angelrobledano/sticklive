@@ -18,6 +18,7 @@ import { matchesRouter } from './routes/matches.js';
 import { liveRouter } from './routes/live.js';
 import { matchDetailRouter } from './routes/match-detail.js';
 import { teamDetailRouter } from './routes/team-detail.js';
+import { clubDetailRouter } from './routes/club-detail.js';
 import { teamRecentRouter } from './routes/team-recent.js';
 import { teamLogoRouter } from './routes/team-logo.js';
 import { seasonOverviewRouter } from './routes/season-overview.js';
@@ -152,6 +153,7 @@ app.route('/matches', matchStreamRouter); // /matches/:id/stream — SSE
 app.route('/matches', matchDetailRouter); // /matches/:id
 app.route('/teams',   teamLogoRouter);    // /teams/:id/logo - escudo (volumen/CDN)
 app.route('/teams',   teamRecentRouter);  // /teams/:id/recent - últimos partidos (C9)
+app.route('/clubs',   clubDetailRouter);  // /clubs/:key - ficha de club (slug o UUID)
 app.route('/teams',   teamDetailRouter);  // /teams/:id
 app.route('/seasons', seasonOverviewRouter); // /seasons/:id/overview — después de standings/matches
 app.route('/seasons', seasonStatsRouter);    // /seasons/:id/stats — líderes de temporada
