@@ -95,6 +95,7 @@ const OPERATIVOS = [
   'apps/etl/src/seed-competition-sources.ts',
   'apps/etl/src/seed-fep-competition.ts',      // seed genérico por idc (2026/27)
   'apps/etl/src/seed-fpp.ts',                  // Portugal (FPP): ligas y copas 2026/27
+  'apps/etl/src/merge-teams.ts',                // fusión de dos fichas del mismo equipo (+ --suggest)
   'apps/etl/src/seed-fvp.ts',                  // Euskadi + Liga Norte (FVP, API DigitalSport)
   'apps/etl/src/sync-competition-logos.ts',    // logos de competición desde el catálogo
   'apps/etl/src/split-filial-teams.ts',        // reparación filiales conflados (one-off)
