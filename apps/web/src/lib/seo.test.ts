@@ -373,6 +373,12 @@ describe('privateMetadata', () => {
 // servía el mismo contenido que `/competitions/<idDeCompetición>` y ambas se
 // declaraban canónicas de sí mismas.
 describe('competitionCanonicalPath', () => {
+  it('usa el slug de la competición cuando lo hay (Plan A)', () => {
+    expect(competitionCanonicalPath('c1', 'c1', 'ok-liga')).toBe('/competitions/ok-liga');
+    expect(competitionCanonicalPath('ok-liga', 'c1', 'ok-liga')).toBe('/competitions/ok-liga');
+    expect(competitionCanonicalPath('c1', 'c1', 'Mal Slug')).toBe('/competitions/c1');
+  });
+
   it('con un id de competición devuelve la misma ruta', () => {
     expect(competitionCanonicalPath('c1', 'c1')).toBe('/competitions/c1');
   });

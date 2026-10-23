@@ -12,6 +12,7 @@ import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { clubName, playerDisplayName, teamQualifiedName } from '@/lib/names';
 import { teamSectionLabel } from '@/lib/team-section-label';
 import { teamHistory } from '@/lib/team-histories';
+import { competitionPath } from '@/lib/competition-path';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
@@ -74,16 +75,18 @@ export default async function TeamDetailPage(props: Props) {
     // 404 (#169). No usamos `logoUrl` directo porque el CDN bloquea el hotlink.
     logoUrl: `${API_URL}/teams/${data.team.id}/logo`,
     competitionId: data.standing?.competitionId ?? data.season?.competitionId,
+    competitionSlug: data.standing?.competitionSlug ?? data.season?.competitionSlug,
     competitionName: data.standing?.competitionName ?? data.season?.competitionName,
   });
 
   // F5-6: migas visibles + BreadcrumbList (Inicio › Competiciones › Competición › Equipo).
   const compName = data.standing?.competitionName ?? data.season?.competitionName;
   const compId = data.standing?.competitionId ?? data.season?.competitionId;
+  const compSlug = data.standing?.competitionSlug ?? data.season?.competitionSlug;
   const crumbs = [
     { label: BREADCRUMB_LABELS[locale].home, href: '/' },
     { label: BREADCRUMB_LABELS[locale].competitions, href: '/competitions' },
-    ...(compName && compId ? [{ label: compName, href: `/competitions/${compId}` }] : []),
+    ...(compName && compId ? [{ label: compName, href: competitionPath(compId, compSlug) }] : []),
     { label: qualifiedTeamName, href: `/teams/${data.team.id}` },
   ];
   const breadcrumbLd = breadcrumbJsonLd(

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { logger } from '@sports/logger';
-import { isUuid } from '../lib/uuid.js';
+import { parseCompetitionKey } from '../lib/competition-key.js';
 import { captureRouteError } from '../lib/route-error.js';
 
 export const competitionsRouter = new Hono();
@@ -162,11 +162,10 @@ competitionsRouter.get('/', async (c) => {
  * Accesible siempre por URL directa independientemente del estado de archivado.
  */
 competitionsRouter.get('/:id/seasons', async (c) => {
-  const id = c.req.param('id');
-
-  // Un id no-UUID haría fallar el cast a uuid de Postgres y devolvería 500
-  // (enlace corrupto/bot) en vez de 404 (#275).
-  if (!isUuid(id)) return c.json({ error: 'Not found' }, 404);
+  // Plan A de URLs legibles: el parámetro puede ser el UUID (URLs antiguas) o
+  // el slug de la competición. Cualquier otra cosa → 404 sin tocar la BD (#275).
+  const key = parseCompetitionKey(c.req.param('id'));
+  if (!key) return c.json({ error: 'Not found' }, 404);
 
   try {
     const result = await db.query<{
@@ -175,21 +174,27 @@ competitionsRouter.get('/:id/seasons', async (c) => {
       slug: string;
       is_current: boolean;
       start_date: Date | null;
+      competition_id: string;
+      competition_slug: string;
     }>(
-      `SELECT s.id, s.name, s.slug, s.is_current, s.start_date
+      `SELECT s.id, s.name, s.slug, s.is_current, s.start_date,
+              c.id AS competition_id, c.slug AS competition_slug
         FROM seasons s
         JOIN competitions c ON c.id = s.competition_id
-        WHERE s.competition_id = $1
+        WHERE ${key.by === 'id' ? 'c.id = $1' : 'c.slug = $1'}
           AND s.data_quality = 'ok'
           AND c.data_quality = 'ok'
           AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = s.id)
         ORDER BY s.start_date DESC NULLS LAST, s.name DESC`,
-      [id]
+      [key.value]
     );
 
     if (result.rows.length === 0) return c.json({ error: 'Competition not found or has no seasons' }, 404);
 
+    const first = result.rows[0]!;
     return c.json({
+      // Identidad canónica: la web la usa para redirigir el UUID al slug.
+      competition: { id: first.competition_id, slug: first.competition_slug },
       seasons: result.rows.map((r) => ({
         id:        r.id,
         name:      r.name,

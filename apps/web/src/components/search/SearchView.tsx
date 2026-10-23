@@ -16,6 +16,7 @@ import {
   type SearchResults,
 } from '@/lib/api/search';
 import { tt } from './translate';
+import { competitionPath } from '@/lib/competition-path';
 
 interface SearchViewProps {
   initialQuery: string;
@@ -244,7 +245,7 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
                   return (
                     <Link
                       key={comp.id}
-                      href={`/competitions/${comp.id}`}
+                      href={competitionPath(comp.id, comp.slug)}
                       className={ROW}
                       onClick={() => track('search_result_clicked', { surface: 'search', kind: 'competition', ref_id: comp.id })}
                     >

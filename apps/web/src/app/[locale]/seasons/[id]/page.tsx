@@ -28,6 +28,7 @@ import {
   socialMeta,
 } from '@/lib/seo';
 import { clubName } from '@/lib/names';
+import { competitionPath } from '@/lib/competition-path';
 
 interface Props {
   params: Promise<{ locale: string; id: string }>;
@@ -126,7 +127,7 @@ export default async function ClosedSeasonPage(props: Props) {
   const competitionId = overview.season.competitionId;
   if (!competitionId) notFound();
   if (!isClosed(overview)) {
-    redirect(`/${locale}/competitions/${competitionId}?season=${id}`);
+    redirect(`/${locale}${competitionPath(competitionId, overview.season.competitionSlug, id)}`);
   }
 
   const competitionName = overview.season.competitionName;
@@ -143,7 +144,7 @@ export default async function ClosedSeasonPage(props: Props) {
   const crumbs = [
     { label: BREADCRUMB_LABELS[locale].home, href: '/' },
     { label: BREADCRUMB_LABELS[locale].competitions, href: '/competitions' },
-    { label: competitionName, href: `/competitions/${competitionId}` },
+    { label: competitionName, href: competitionPath(competitionId, overview.season.competitionSlug) },
     { label: seasonName || c.title(competitionName, ''), href: `/seasons/${id}` },
   ];
   const ld = competitionJsonLd({
@@ -158,7 +159,7 @@ export default async function ClosedSeasonPage(props: Props) {
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
       <JsonLd data={ld} />
-      <BackLink href={`/competitions/${competitionId}`} />
+      <BackLink href={competitionPath(competitionId, overview.season.competitionSlug)} />
       <Breadcrumbs items={crumbs} />
 
       <header>
@@ -187,11 +188,11 @@ export default async function ClosedSeasonPage(props: Props) {
       <ClosedSeasonStandings rows={overview.standings} locale={locale} />
 
       <div className="flex flex-wrap gap-3 text-sm">
-        <Link href={`/competitions/${competitionId}?season=${id}`} className="font-semibold text-rink-passion underline underline-offset-2">
+        <Link href={competitionPath(competitionId, overview.season.competitionSlug, id)} className="font-semibold text-rink-passion underline underline-offset-2">
           {c.calendar}
         </Link>
         {current && (
-          <Link href={`/competitions/${competitionId}`} className="font-semibold text-rink-passion underline underline-offset-2">
+          <Link href={competitionPath(competitionId, overview.season.competitionSlug)} className="font-semibold text-rink-passion underline underline-offset-2">
             {c.currentSeason}
           </Link>
         )}

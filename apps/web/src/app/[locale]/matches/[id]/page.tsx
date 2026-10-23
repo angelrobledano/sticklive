@@ -22,6 +22,7 @@ import {
 import { teamTitleName } from '@/lib/names';
 import { BREADCRUMB_LABELS } from '@/lib/breadcrumbs';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
+import { competitionPath } from '@/lib/competition-path';
 
 interface Props {
   params: Promise<{ locale: string; id: string }>;
@@ -91,7 +92,7 @@ export default async function MatchDetailPage(props: Props) {
     { label: BREADCRUMB_LABELS[locale].home, href: '/' },
     { label: BREADCRUMB_LABELS[locale].competitions, href: '/competitions' },
     ...(m.competitionName && m.competitionId
-      ? [{ label: m.competitionName, href: `/competitions/${m.competitionId}` }]
+      ? [{ label: m.competitionName, href: competitionPath(m.competitionId, m.competitionSlug) }]
       : []),
     { label: `${homeName} - ${awayName}`, href: `/matches/${m.id}` },
   ];
@@ -178,7 +179,7 @@ export default async function MatchDetailPage(props: Props) {
       <JsonLd data={breadcrumbLd} />
 
       {/* Navegacion de vuelta: el fallback es la competición del partido (#182) */}
-      <BackLink href={m.competitionId ? `/competitions/${m.competitionId}` : '/'} />
+      <BackLink href={m.competitionId ? competitionPath(m.competitionId, m.competitionSlug) : '/'} />
       <Breadcrumbs items={crumbs} />
 
       {/* Match Center; en programados la previa va debajo del marcador. En

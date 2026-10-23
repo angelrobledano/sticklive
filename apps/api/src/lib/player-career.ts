@@ -21,6 +21,8 @@ export interface CareerRow {
   season_start: string | Date | null;
   is_current: boolean;
   competition_id: string;
+  /** Opcional para no romper consumidores antiguos (Plan A de URLs legibles). */
+  competition_slug?: string | null;
   competition_name: string;
   competition_short: string | null;
   team_id: string;
@@ -66,6 +68,7 @@ export interface CareerSeason {
   startDate: string | null;
   /** Competición de la temporada (una temporada pertenece a una sola competición). */
   competitionId: string;
+  competitionSlug: string | null;
   competitionName: string;
   competitionShort: string | null;
   totals: CareerStats;
@@ -136,6 +139,7 @@ export function buildPlayerCareer(rows: CareerRow[]): PlayerCareer {
     isCurrent: boolean;
     startDate: string | null;
     competitionId: string;
+    competitionSlug: string | null;
     competitionName: string;
     competitionShort: string | null;
     teams: Map<string, CareerTeamEntry>;
@@ -150,6 +154,7 @@ export function buildPlayerCareer(rows: CareerRow[]): PlayerCareer {
         isCurrent: r.is_current === true,
         startDate: ymd(r.season_start),
         competitionId: r.competition_id,
+        competitionSlug: r.competition_slug ?? null,
         competitionName: r.competition_name,
         competitionShort: r.competition_short,
         teams: new Map(),
@@ -210,6 +215,7 @@ export function buildPlayerCareer(rows: CareerRow[]): PlayerCareer {
       isCurrent: s.isCurrent,
       startDate: s.startDate,
       competitionId: s.competitionId,
+      competitionSlug: s.competitionSlug,
       competitionName: s.competitionName,
       competitionShort: s.competitionShort,
       totals: seasonTotals,

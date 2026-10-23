@@ -32,6 +32,8 @@ export interface SearchCompetition {
   country: string | null;
   scope: string | null;
   seasonName: string | null;
+  /** Slug para la URL legible (Plan A). Opcional: API antigua. */
+  slug?: string | null;
 }
 
 export interface SearchResults {

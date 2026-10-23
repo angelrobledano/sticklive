@@ -4,6 +4,7 @@ import { CompetitionsList } from '@/components/competition/CompetitionsList';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { localeAlternates, socialMeta, isSupportedLocale, competitionsListJsonLd, SITE_URL } from '@/lib/seo';
 import { competitionName } from '@/lib/names';
+import { competitionPath } from '@/lib/competition-path';
 
 // #351: listado público; los datos ya se revalidan cada 300 s en
 // `lib/api/client.ts`, por lo que el HTML hereda ese ISR.
@@ -71,7 +72,7 @@ export default async function CompetitionsPage(props: { params: Promise<{ locale
       {competitions.length > 0 && (
         <JsonLd data={competitionsListJsonLd(competitions.map((c) => ({
           name: competitionName(c.name, c.nameI18n, locale),
-          url: `${SITE_URL}/${locale}/competitions/${c.id}`,
+          url: `${SITE_URL}/${locale}${competitionPath(c.id, c.slug)}`,
         })))} />
       )}
       <CompetitionsList competitions={competitions} federations={federations} error={fetchError} />

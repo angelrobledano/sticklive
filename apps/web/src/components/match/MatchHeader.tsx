@@ -14,6 +14,7 @@ import { formatTime, formatDate, eventSurname, fmtEventClock } from './format';
 import { freshnessState, connectionState, CONNECTION_LABEL, type ConnectionState } from './timeline-model';
 import { BallIcon } from './icons';
 import { matchRoundLabel } from '@/lib/stage-label';
+import { competitionPath } from '@/lib/competition-path';
 
 function TeamCrest({ team }: {
   team: { id: string; name: string; shortName: string | null; logoUrl: string | null };
@@ -233,7 +234,7 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
       {match.competitionId && match.competitionName && (
         <div className="text-center -mt-1">
           <Link
-            href={`/competitions/${match.competitionId}`}
+            href={competitionPath(match.competitionId, match.competitionSlug)}
             className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-rink-passion transition-colors"
           >
             {match.competitionName}
