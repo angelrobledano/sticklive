@@ -15,6 +15,7 @@
  *   npx tsx --env-file=../../.env src/import-federations.ts            # solo catálogos + siembra
  *   npx tsx --env-file=../../.env src/import-federations.ts --run      # + scraping completo
  *   npx tsx --env-file=../../.env src/import-federations.ts --only=fap # una federación
+ *   npx tsx src/import-federations.ts --only=fisr --catalog-only        # solo el JSON del catálogo, sin BD
  */
 import * as cheerio from 'cheerio';
 import { writeFileSync, mkdirSync } from 'fs';
@@ -72,6 +73,9 @@ async function fetchCatalog(fed: Federation) {
 async function main() {
   const args = process.argv.slice(2);
   const doRun = args.includes('--run');
+  // Solo descarga el catálogo (JSON en apps/scraper/logs) para revisarlo antes
+  // de dar de alta nada: ni siembra ni BD.
+  const catalogOnly = args.includes('--catalog-only');
   const only = args.find((a) => a.startsWith('--only='))?.split('=')[1];
   // Alta puntual: limita la siembra/carga a uno o varios idc del catálogo
   // (p. ej. una liga terminada que solo queremos publicar, sin re-importar
@@ -98,6 +102,14 @@ async function main() {
       console.log(`📦 ${competitions.length} competiciones → ${catalogPath}`);
       if (competitions.length === 0) {
         console.log('⚠️  Catálogo vacío — esta federación quizá requiere el probe con navegador. Saltando.');
+        continue;
+      }
+
+      if (catalogOnly) {
+        const actual = (competitions as Array<{ idc: string; name: string; tempId: string | null; teamCount: number }>)
+          .filter((c) => c.tempId === String(Math.max(...(competitions as Array<{ tempId: string | null }>).map((x) => Number(x.tempId) || 0))));
+        console.log(`   Temporada más reciente (${actual.length}):`);
+        for (const c of actual) console.log(`   ${c.idc.padStart(6)}  ${String(c.teamCount).padStart(2)} eq.  ${c.name}`);
         continue;
       }
 

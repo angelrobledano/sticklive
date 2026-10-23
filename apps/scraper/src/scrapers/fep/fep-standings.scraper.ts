@@ -5,7 +5,8 @@ import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 import { FepBaseScraper } from './fep-base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
-import { sidgadPost, SIDGAD_LANG } from './sidgad-client.js';
+import { sidgadPost, SidgadClient, SIDGAD_LANG } from './sidgad-client.js';
+import type { SourceDef } from '../../core/sources.js';
 import { isByeTeamName } from './bye-team.js';
 import { isGenericStandingsTitle, parseGroupTitle } from './standings-title.js';
 import type { ScrapedStanding } from '@sports/shared-types';
@@ -18,6 +19,8 @@ const SOURCE_ID = requireFepSourceId();
 export interface StandingsScraperConfig {
   idc: string;
   competitionName?: string;
+  /** Portal sidgad de la competición. Sin él, el del entorno (SIDGAD_PORTAL). */
+  source?: SourceDef;
 }
 
 export class FepStandingsScraper extends FepBaseScraper<ScrapedStanding> {
@@ -36,7 +39,10 @@ export class FepStandingsScraper extends FepBaseScraper<ScrapedStanding> {
     const { idc, competitionName } = this.standingsConfig;
     const endpointPath = `rfep_clasif_idc_${idc}_1.php`;
     this.log.info({ idc, competition: competitionName ?? idc }, 'Scrapeando clasificacion');
-    const html = await sidgadPost(endpointPath, { idc, site_lang: SIDGAD_LANG });
+    const params = { idc, site_lang: SIDGAD_LANG };
+    const html = this.standingsConfig.source
+      ? await new SidgadClient(this.standingsConfig.source.client).post(endpointPath, params)
+      : await sidgadPost(endpointPath, params);
     return this.parseStandings(html, idc);
   }
 

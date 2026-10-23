@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   sourceForMatchRef, resolveMatchSourceIds, sourceForPortal, playerPrefix,
   matchRef, competitionRef, currentSource, playerIdFromRef, clubRef, isClubRef, competitionSourceRefForSeed,
+  sourceForCompetitionRef,
 } from './sources.js';
 
 /**
@@ -113,5 +114,23 @@ describe('competitionSourceRefForSeed (A1)', () => {
   it('RFEP conserva el idc tal cual (lo ya sembrado), el resto lleva portal', () => {
     expect(competitionSourceRefForSeed(sourceForPortal('rfep'), '3150')).toBe('3150');
     expect(competitionSourceRefForSeed(sourceForPortal('fecapa'), '4858')).toBe('fecapa_competition_4858');
+  });
+});
+
+describe('sourceForCompetitionRef', () => {
+  it('saca el portal del prefijo de la competición', () => {
+    expect(sourceForCompetitionRef('fecapa_competition_4774')?.client.portalPrefix).toBe('fecapa');
+    expect(sourceForCompetitionRef('wse_competition_320')?.key).toBe('wse');
+    expect(sourceForCompetitionRef('fisr_competition_9001')?.client.portalPrefix).toBe('fisr');
+  });
+
+  it('lo heredado (fep_ o idc pelado o vacío) es RFEP', () => {
+    expect(sourceForCompetitionRef('fep_competition_3150')?.client.portalPrefix).toBe('rfep');
+    expect(sourceForCompetitionRef('3150')?.client.portalPrefix).toBe('rfep');
+    expect(sourceForCompetitionRef(null)?.client.portalPrefix).toBe('rfep');
+  });
+
+  it('un prefijo que no es un portal sidgad (FPP) da null', () => {
+    expect(sourceForCompetitionRef('fpp_competition_campeonato-placard')).toBeNull();
   });
 });

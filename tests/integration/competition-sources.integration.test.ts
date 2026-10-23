@@ -117,6 +117,15 @@ describe('getActiveScrapePlan — plan del modo multi (Fase 2)', () => {
     expect(plan[0]!.timezone).toBe('Europe/Madrid');
   });
 
+  it('expone el source_ref de la competición: de él sale su portal sidgad', async () => {
+    const compId = await crearCompeticion(sportId, 'fecapa_competition_4774');
+    await crearTemporada(compId, { esActual: true });
+    await upsertCompetitionSource({ competitionId: compId, sourceId: fepSourceId, externalIds: { idc: '4774' } });
+
+    const [item] = await getActiveScrapePlan('fep_hockey');
+    expect(item!.competitionSourceRef).toBe('fecapa_competition_4774');
+  });
+
   it('sin secundarios, playoffIdcs es un array vacío', async () => {
     const compId = await crearCompeticion(sportId, 'fep_competition_3258');
     await crearTemporada(compId, { esActual: true });
