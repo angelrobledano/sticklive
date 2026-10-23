@@ -30,10 +30,10 @@ export function CompStatsTable({ rows }: Props) {
         <Text className="w-8 text-center text-[11px] font-bold text-slate-400">
           {t('player.col_g') || 'G'}
         </Text>
-        <View className="w-8 items-center justify-center" accessibilityLabel={t('blue_cards') || 'Tarjetas azules'}>
+        <View className="w-8 items-center justify-center" accessibilityLabel={t('hockey_stats.blue_cards') || 'Tarjetas azules'}>
           <View className="w-2.5 h-3.5 rounded-[2px] bg-blue-500 shadow-2xs" />
         </View>
-        <View className="w-8 items-center justify-center" accessibilityLabel={t('red_cards') || 'Tarjetas rojas'}>
+        <View className="w-8 items-center justify-center" accessibilityLabel={t('hockey_stats.red_cards') || 'Tarjetas rojas'}>
           <View className="w-2.5 h-3.5 rounded-[2px] bg-red-500 shadow-2xs" />
         </View>
         <Text className="w-10 text-center text-[11px] font-bold text-slate-400">

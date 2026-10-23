@@ -44,11 +44,11 @@ export function SquadTab({ data }: Props) {
     const goalLabel = p.goals > 0 ? `${p.goals} ${goalsWord(p.goals, locale)}` : '';
     const blueCardLabel =
       p.blueCards && p.blueCards > 0
-        ? `${p.blueCards} ${t('blue_cards') || 'tarjetas azules'}`
+        ? `${p.blueCards} ${t('hockey_stats.blue_cards') || 'tarjetas azules'}`
         : '';
     const redCardLabel =
       p.redCards && p.redCards > 0
-        ? `${p.redCards} ${t('red_cards') || 'tarjetas rojas'}`
+        ? `${p.redCards} ${t('hockey_stats.red_cards') || 'tarjetas rojas'}`
         : '';
 
     const statsDescription = [goalLabel, blueCardLabel, redCardLabel].filter(Boolean).join(', ');
@@ -100,7 +100,10 @@ export function SquadTab({ data }: Props) {
             ) : null}
 
             {p.blueCards && p.blueCards > 0 ? (
-              <View className="flex-row items-center gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-800/50 px-2 py-0.5">
+              <View
+                className="flex-row items-center gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-800/50 px-2 py-0.5"
+                accessibilityLabel={`${p.blueCards} ${t('hockey_stats.blue_cards') || 'tarjetas azules'}`}
+              >
                 <View className="w-2.5 h-3.5 rounded-[2px] bg-blue-500 shadow-2xs" />
                 <Text className="text-xs font-bold text-blue-700 dark:text-blue-300 tabular-nums">
                   {p.blueCards}
@@ -109,7 +112,10 @@ export function SquadTab({ data }: Props) {
             ) : null}
 
             {p.redCards && p.redCards > 0 ? (
-              <View className="flex-row items-center gap-1.5 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200/70 dark:border-red-800/50 px-2 py-0.5">
+              <View
+                className="flex-row items-center gap-1.5 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200/70 dark:border-red-800/50 px-2 py-0.5"
+                accessibilityLabel={`${p.redCards} ${t('hockey_stats.red_cards') || 'tarjetas rojas'}`}
+              >
                 <View className="w-2.5 h-3.5 rounded-[2px] bg-red-500 shadow-2xs" />
                 <Text className="text-xs font-bold text-red-700 dark:text-red-300 tabular-nums">
                   {p.redCards}
@@ -160,13 +166,13 @@ export function SquadTab({ data }: Props) {
           <View className="flex-row items-center gap-1.5">
             <View className="w-2.5 h-3.5 rounded-[2px] bg-blue-500 shadow-2xs" />
             <Text className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              {t('blue_card') || 'Tarjeta azul'}
+              {t('timeline_events.blue_card') || 'Tarjeta azul'}
             </Text>
           </View>
           <View className="flex-row items-center gap-1.5">
             <View className="w-2.5 h-3.5 rounded-[2px] bg-red-500 shadow-2xs" />
             <Text className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              {t('red_card') || 'Tarjeta roja'}
+              {t('timeline_events.red_card') || 'Tarjeta roja'}
             </Text>
           </View>
         </View>
