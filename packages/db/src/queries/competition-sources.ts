@@ -34,6 +34,20 @@ export interface ExternalIds {
       fppId: string; phase: string; phaseTitle: string; group: string | null; hasStandings: boolean;
     }>;
   };
+  /**
+   * Fuente FVP (Federación Vasca, API DigitalSport): id de la competición en la
+   * API y ámbito de sus equipos. Lo escribe `seed-fvp.ts` y lo lee `run-fvp.ts`.
+   */
+  fvp?: {
+    apiId: string;
+    key: string;
+    teamScope: string;
+    gender: 'male' | 'female' | 'mixed';
+    age: string;
+    isCup: boolean;
+    /** Copas: nombre en la copa → nombre en su liga (ver fvp-catalog.ts). */
+    nameAliases?: Record<string, string>;
+  };
 }
 
 /** Política de sondeo en directo. NULL en BD = usar los defaults de cron-live. */

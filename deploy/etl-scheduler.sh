@@ -43,6 +43,7 @@ LOCK="flock -n $ETL_LOCK"
 
 LAST_HOUR=""
 LAST_FPP=""
+LAST_FVP=""
 LAST_DAY=""
 
 echo "[scheduler] arrancado $(date -u +%FT%TZ)"
@@ -84,6 +85,18 @@ while true; do
     echo "[scheduler] fpp $(date -u +%T)"
     $LOCK node dist/apps/scraper/src/index.js --run-once fpp \
       || echo "[scheduler] fpp saltado o falló (seguimos)"
+    touch "$ALIVE"
+  fi
+
+  # ── Cada 15 min: Euskadi + Liga Norte (FVP) ─────────────
+  # API JSON de DigitalSport (fvpatinaje.eus), ~35 GET por pasada + actas de
+  # los terminados. Misma ranura de 15 min que la FPP y por la misma razón va
+  # antes de cron-live.
+  if [ "$LAST_FVP" != "$NOW_FPP" ]; then
+    LAST_FVP=$NOW_FPP
+    echo "[scheduler] fvp $(date -u +%T)"
+    $LOCK node dist/apps/scraper/src/index.js --run-once fvp \
+      || echo "[scheduler] fvp saltado o falló (seguimos)"
     touch "$ALIVE"
   fi
 

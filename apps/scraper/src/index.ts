@@ -35,6 +35,7 @@ import { FepListadoScraper }     from './scrapers/fep/fep-listado.scraper.js';
 import { runAllWorldskate }      from './scrapers/worldskate/run-worldskate.js';
 // Portugal (FPP): fuente propia, no sidgad. Data-driven desde competition_sources.
 import { runAllFpp }             from './scrapers/fpp/run-fpp.js';
+import { runAllFvp }             from './scrapers/fvp/run-fvp.js';
 import { closeBrowser }          from './core/browser.js';
 
 const log = createLogger({ service: 'scraper' });
@@ -178,6 +179,14 @@ async function runOnce(key: string, seasons: SeasonLookup) {
     return;
   }
 
+  // FVP (Euskadi + Liga Norte, API DigitalSport): calendario, resultados, clasificación y actas.
+  if (key === 'fvp') {
+    await runAllFvp((seasonId) =>
+      new EtlPipeline({ sportSlug: 'hockey-patines', seasonId, createRounds: true }));
+    await Promise.all([closeBrowser(), closeDb(), shutdownAnalytics()]);
+    return;
+  }
+
   const map: Record<string, () => Promise<void>> = {
     // Datos estructurales (competiciones y listados). Estaba documentado en el
     // README pero NO existía en este mapa: sólo era alcanzable desde el cron
@@ -221,6 +230,7 @@ Claves disponibles:
   fep_matches_live        marcadores en vivo
   worldskate              World Skate Europe (todas las activas)
   fpp                     Portugal (FPP): ligas y copas activas
+  fvp                     Euskadi + Liga Norte (FVP): ligas, copas y actas
 
 Este comando ejecuta UNA tarea y sale. La ejecución periódica en producción la
 lleva deploy/etl-scheduler.sh dentro del contenedor 'etl'; aquí había un
