@@ -22,6 +22,10 @@ export const FEDERATIONS: Federation[] = [
   { org: 'FECAPA', region: 'Cataluña',             prefix: 'fecapa', referer: 'https://www.fecapa.cat/' },
   { org: 'FPCV',   region: 'Comunidad Valenciana', prefix: 'fpcv',   referer: 'https://www.fpcv.es/' },
   { org: 'FGP',    region: 'Galicia',              prefix: 'fgpatinaxe', referer: 'https://www.hockeypatines.fgpatinaxe.gal/' },
+  // Italia (FISR, hockeypista.fisr.it): mismo sidgad y mismos temp_ (41 = 2026/27).
+  // NO es una autonómica: país IT y hora local Europe/Rome. Alta con revisión
+  // del catálogo (--catalog-only), no con la siembra masiva de import-history.
+  { org: 'FISR',   region: 'Italia',               prefix: 'fisr',   referer: 'https://hockeypista.fisr.it/' },
 ];
 
 /**

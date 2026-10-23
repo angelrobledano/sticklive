@@ -95,6 +95,16 @@ export const SOURCES: SourceDef[] = [
       referer: 'https://www.hockeypatines.fgpatinaxe.gal/',
     },
   },
+  // Italia: Federazione Italiana Sport Rotellistici (hockey pista).
+  {
+    key: 'fisr',
+    name: 'FISR — Hockey Pista (Italia)',
+    client: {
+      baseUrl: 'https://www.server2.sidgad.es/fisr',
+      portalPrefix: 'fisr',
+      referer: 'https://hockeypista.fisr.it/',
+    },
+  },
 ];
 
 /** Fuente a la que pertenece un `matches.source_ref`, o null si no la conocemos. */
