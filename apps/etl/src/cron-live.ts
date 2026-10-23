@@ -46,6 +46,7 @@ import {
 } from '../../scraper/src/scrapers/worldskate/run-worldskate.js';
 import {
   sourceForMatchRef, idpFromMatchRef, idcFromCompetitionRef, matchRef, currentSource,
+  SOURCES, type SourceDef,
 } from '../../scraper/src/core/sources.js';
 // Portugal (FPP): feed /Direto + ficha/timeline de los partidos en juego.
 import { runFppLiveScores, fppLiveCandidates } from '../../scraper/src/scrapers/fpp/fpp-live.js';
@@ -63,7 +64,8 @@ const log = createLogger({ service: 'cron-live' });
 // Fallos consecutivos del scrape de marcadores: solo alertamos a Sentry tras
 // varios seguidos (un blip de red aislado se recupera al ciclo siguiente).
 const MC_FAIL_ALERT_THRESHOLD = 3;
-let consecutiveMcFailures = 0;
+/** Fallos consecutivos del match center, por portal (`fep`, `fecapa`, `fisr`…). */
+const consecutiveMcFailures = new Map<string, number>();
 
 // #293: fallos consecutivos por fuente. Mientras una fuente lleve N ciclos
 // fallando, el latido del Cron Monitor deja de decir "todo bien" (status
@@ -92,7 +94,13 @@ function noteWorldskateResult(name: string, idc: string, ok: boolean): void {
 // activos, así que 3 ciclos (~2 min) con el feed respondiendo es señal fiable;
 // conservador a propósito (cualquier fallo de la fuente desactiva este camino).
 const MISSING_LIVE_CYCLES = Number(process.env['MISSING_LIVE_CYCLES'] ?? 3);
-const missingLiveTracker = new MissingLiveTracker(MISSING_LIVE_CYCLES);
+/** Un rastreador de "ausente del feed" por portal: cada feed solo ve los suyos. */
+const missingLiveTrackers = new Map<string, MissingLiveTracker>();
+function trackerFor(key: string): MissingLiveTracker {
+  let t = missingLiveTrackers.get(key);
+  if (!t) { t = new MissingLiveTracker(MISSING_LIVE_CYCLES); missingLiveTrackers.set(key, t); }
+  return t;
+}
 
 const POLL_INTERVAL  = Number(process.env['POLL_INTERVAL_S']  ?? 45) * 1000;
 const WINDOW_HOURS   = Number(process.env['WINDOW_HOURS']     ?? 2);
@@ -214,22 +222,24 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<EndedByAc
 }
 
 /**
- * Temporadas de la FEP (cualquier competición `fep_%`) con actividad: live o
- * partido inminente en la ventana. De éstas se hace snapshot→diff para el push.
- * El feed rfep_mc_1 es de la FEP; World Skate va aparte (runWorldskateScores).
+ * Temporadas con actividad (live o partido inminente en la ventana) de UN
+ * portal sidgad. De éstas se hace snapshot→diff para el push.
+ *
+ * Se mira el prefijo de los PARTIDOS (`fecapa_match_…`), no el de la
+ * competición: las de la RFEP sembradas en 2026/27 guardan el idc pelado en
+ * `competitions.source_ref` (sin `fep_`), y con el filtro antiguo
+ * (`c.source_ref LIKE 'fep_%'`) se quedaban fuera del snapshot.
  */
-async function activeFepSeasons(seasonIds: string[]): Promise<string[]> {
+async function activeSeasonsFor(seasonIds: string[], source: SourceDef): Promise<string[]> {
   const res = await db.query<{ season_id: string }>(
     `SELECT DISTINCT m.season_id FROM matches m
-     JOIN seasons s      ON s.id = m.season_id
-     JOIN competitions c ON c.id = s.competition_id
      WHERE m.season_id = ANY($1)
-       AND c.source_ref LIKE 'fep_%'
+       AND m.source_ref LIKE $3
        AND ( m.status = 'live'
           OR (m.status = 'scheduled'
               AND m.scheduled_at BETWEEN NOW() - INTERVAL '3 hours'
                                      AND NOW() + make_interval(hours => $2::int)) )`,
-    [seasonIds, WINDOW_HOURS]
+    [seasonIds, WINDOW_HOURS, `${matchRef(source, '').replace(/_/g, '\\_')}%`]
   );
   return res.rows.map((r) => r.season_id);
 }
@@ -240,7 +250,7 @@ async function activeFepSeasons(seasonIds: string[]): Promise<string[]> {
  * faltaba. Solo se llama con el feed sano y con datos: una caída de la fuente
  * NO es un final.
  */
-async function finalizeMissingFepLive(seasonIds: string[], feed: ScrapedMatch[]): Promise<void> {
+async function finalizeMissingLive(source: SourceDef, seasonIds: string[], feed: ScrapedMatch[]): Promise<void> {
   const seen = new Set(feed.map((m) => m.sourceRef).filter((r): r is string => !!r));
 
   const liveRes = await db.query<{ source_ref: string }>(
@@ -250,12 +260,12 @@ async function finalizeMissingFepLive(seasonIds: string[], feed: ScrapedMatch[])
         AND source_ref LIKE $2
         AND home_score IS NOT NULL
         AND away_score IS NOT NULL`,
-    // Solo los partidos del portal del feed (A1): el feed de RFEP no
-    // puede cerrar partidos de otro portal.
-    [seasonIds, `${matchRef(currentSource(), '')}%`]
+    // Solo los partidos del portal del feed (A1): el feed de un portal no
+    // puede cerrar partidos de otro.
+    [seasonIds, `${matchRef(source, '').replace(/_/g, '\\_')}%`]
   );
 
-  const refs = missingLiveTracker.observe(liveRes.rows.map((r) => r.source_ref), seen);
+  const refs = trackerFor(source.key).observe(liveRes.rows.map((r) => r.source_ref), seen);
   if (refs.length === 0) return;
 
   const upd = await db.query(
@@ -275,8 +285,8 @@ async function finalizeMissingFepLive(seasonIds: string[], feed: ScrapedMatch[])
     'Partidos live ausentes del feed mc N ciclos → finalizados con el último marcador'
   );
   Sentry.captureMessage(
-    `${count} partido(s) FEP finalizados por desaparición del feed mc (${MISSING_LIVE_CYCLES} ciclos)`,
-    { level: 'warning', extra: { refs } }
+    `${count} partido(s) ${source.key} finalizados por desaparición del feed mc (${MISSING_LIVE_CYCLES} ciclos)`,
+    { level: 'warning', extra: { refs, portal: source.key } }
   );
 }
 
@@ -294,8 +304,31 @@ async function finalizeMissingFepLive(seasonIds: string[], feed: ScrapedMatch[])
  * Devuelve cuántos partidos se actualizaron (0 si la fuente no dio nada).
  */
 async function runFepScores(seasonIds: string[], playingNow: Set<string>): Promise<number> {
-  // Temporadas FEP con actividad: de éstas hacemos snapshot→diff para el push.
-  const activeSeasons = await activeFepSeasons(seasonIds);
+  // Un match center por portal sidgad (RFEP, FECAPA, autonómicas, FISR…).
+  // World Skate va aparte (runWorldskateScores). La RFEP se pide siempre, como
+  // hasta ahora; el resto SOLO si tiene partidos en ventana (sin actividad no
+  // hay ni una petición). Aislado por portal: si uno cae, los demás siguen.
+  let upserted = 0;
+  for (const source of SOURCES) {
+    if (source.key === 'wse') continue;
+    try {
+      const active = await activeSeasonsFor(seasonIds, source);
+      if (source.key !== 'fep' && active.length === 0) continue;
+      upserted += await runPortalScores(source, active, seasonIds, playingNow);
+    } catch (err) {
+      log.warn({ err, portal: source.key }, 'marcadores del portal fallaron — sigue con el siguiente');
+    }
+  }
+  return upserted;
+}
+
+async function runPortalScores(
+  source: SourceDef,
+  activeSeasons: string[],
+  seasonIds: string[],
+  playingNow: Set<string>,
+): Promise<number> {
+  const portal = source.client.portalPrefix;
 
   // Snapshot ANTES del scrape (partidos + jornadas), por temporada activa.
   const prevByS = new Map<string, {
@@ -311,7 +344,7 @@ async function runFepScores(seasonIds: string[], playingNow: Set<string>): Promi
   // UN scrape del feed global. El seasonId es sólo fallback para partidos que el
   // calendario aún no cargó; para los existentes, el upsert preserva su season_id.
   const seasonFallback = activeSeasons[0] ?? seasonIds[0]!;
-  const scraper  = new FepMatchesScraper({ seasonId: seasonFallback });
+  const scraper  = new FepMatchesScraper({ seasonId: seasonFallback, source });
   const pipeline = new EtlPipeline({ sportSlug: SPORT_SLUG, seasonId: seasonFallback, requireTeamsInSeason: true, stampLiveTimes: true });
 
   const result = await scraper.run();
@@ -322,33 +355,36 @@ async function runFepScores(seasonIds: string[], playingNow: Set<string>): Promi
     // Solo escalamos a Sentry como ERROR si FALLA VARIOS CICLOS SEGUIDOS; uno
     // suelto queda como warning/breadcrumb para no generar ruido.
     if (!result.success) {
-      consecutiveMcFailures++;
-      if (consecutiveMcFailures >= MC_FAIL_ALERT_THRESHOLD) {
+      const fails = (consecutiveMcFailures.get(source.key) ?? 0) + 1;
+      consecutiveMcFailures.set(source.key, fails);
+      if (fails >= MC_FAIL_ALERT_THRESHOLD) {
         Sentry.captureException(
-          new Error(`Scraper de marcadores falló ${consecutiveMcFailures} ciclos seguidos`),
-          { tags: { phase: 'mc-scrape' }, extra: { errors: result.errors } });
+          new Error(`Match center ${portal}_mc_1.php falló ${fails} ciclos seguidos`),
+          { tags: { phase: 'mc-scrape', portal }, extra: { errors: result.errors } });
       } else {
-        log.warn({ errors: result.errors, consecutiveMcFailures },
+        log.warn({ errors: result.errors, consecutiveMcFailures: fails, portal },
           'Scraper de marcadores falló (transitorio) — reintento en el próximo ciclo');
       }
     } else if (activeSeasons.length > 0) {
       // 200 OK pero 0 partidos habiendo FEP con actividad esperada: sospechoso.
       // (Fuera de temporada FEP el feed devuelve 0 legítimamente y no alertamos.)
-      Sentry.captureMessage('rfep_mc_1.php devolvió 0 partidos habiendo partidos FEP en juego — posible cambio/caída de la fuente', 'warning');
+      Sentry.captureMessage(`${portal}_mc_1.php devolvió 0 partidos habiendo partidos en juego — posible cambio/caída de la fuente`, {
+        level: 'warning', fingerprint: ['mc-empty', portal], tags: { portal },
+      });
     } else {
-      log.debug('rfep_mc_1.php sin partidos y sin actividad FEP esperada — normal fuera de temporada');
+      log.debug({ portal }, 'match center sin partidos y sin actividad esperada — normal fuera de temporada');
     }
     return 0;
   }
   // Ciclo con datos: la fuente responde, reseteamos el contador de fallos.
-  consecutiveMcFailures = 0;
+  consecutiveMcFailures.set(source.key, 0);
   for (const m of result.data) if (m.status === 'live' && m.sourceRef) playingNow.add(m.sourceRef);
 
   const etl = await pipeline.runMatches(result);
 
   // #374: antes del push, para que la transición live→finished dispare el aviso
   // de final (prev snapshot era live, el actual ya finished).
-  try { await finalizeMissingFepLive(seasonIds, result.data); }
+  try { await finalizeMissingLive(source, seasonIds, result.data); }
   catch (err) { log.warn({ err }, 'finalizado por feed ausente falló — el ciclo sigue'); }
 
   // Push (inicio/gol/final + jornada + competición) para TODAS las FEP activas,

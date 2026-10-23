@@ -35,7 +35,7 @@ import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 import { FepBaseScraper } from './fep-base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
-import { sidgadPost } from './sidgad-client.js';
+import { sidgadPost, SidgadClient } from './sidgad-client.js';
 import { parseShortDatetime } from './match-datetime.js';
 import { currentSource, matchRef, clubRef, type SourceDef } from '../../core/sources.js';
 import type { ScrapedMatch, MatchStatus } from '@sports/shared-types';
@@ -70,10 +70,14 @@ export class FepMatchesScraper extends FepBaseScraper<ScrapedMatch> {
   }
 
   protected async scrape(): Promise<ScrapedMatch[]> {
-    this.log.info('Scrapeando marcadores rfep_mc_1.php');
+    this.log.info({ portal: this.source.client.portalPrefix }, 'Scrapeando marcadores (match center)');
 
-    // POST sin parámetros — el endpoint devuelve todos los partidos activos
-    const html = await sidgadPost('rfep_mc_1.php', {});
+    // POST sin parámetros — el endpoint devuelve todos los partidos activos del
+    // portal. Con fuente explícita, al match center de SU portal
+    // (`fecapa_mc_1.php`, `fisr_mc_1.php`…: el cliente reescribe `rfep_`).
+    const html = this.matchesConfig.source
+      ? await new SidgadClient(this.matchesConfig.source.client).post('rfep_mc_1.php', {})
+      : await sidgadPost('rfep_mc_1.php', {});
 
     return this.parseMatches(html);
   }
