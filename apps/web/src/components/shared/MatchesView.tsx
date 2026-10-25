@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';
 import { madridDateKey, madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
-import { buildDayView, nextMatchday, daysWithMatches, type DayFilter, type DayView } from '@/lib/day-view';
+import { buildDayView, nextMatchday, daysWithMatches, defaultOpenKeys, type DayFilter, type DayView } from '@/lib/day-view';
 import { getMatchesInRange, getCurrentMatchesFresh } from '@/lib/api/client';
 import { dayFetchRange, windowFromDays, nextDayWithMatches } from '@/lib/home-loading';
 import { tt } from '@/components/search/translate';
@@ -237,6 +237,7 @@ function DayCards({ view, followedTeamIds, showDate = false, afterFirst, listAd 
       ),
     });
   }
+  const openKeys = defaultOpenKeys(view.competitions);
   for (const block of view.competitions) {
     cards.push({
       key: block.key || '__other__',
@@ -248,6 +249,9 @@ function DayCards({ view, followedTeamIds, showDate = false, afterFirst, listAd 
           icon={<CompetitionIcon country={block.country} name={block.name} logoUrl={block.logoUrl} />}
           count={block.matches.length}
           followed={block.followed}
+          defaultOpen={openKeys.has(block.key)}
+          storageKey={`${view.dayKey}:${block.key || '__other__'}`}
+          liveCount={block.matches.filter((m) => m.status === 'live').length}
         >
           {block.matches.map((m) => (
             <MatchRow key={m.id} match={m} followedTeamIds={followedTeamIds} showDate={showDate} />

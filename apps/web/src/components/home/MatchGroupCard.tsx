@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { CountryFlag } from '@/components/shared/CountryFlag';
 import { useT } from '@/lib/i18n';
@@ -61,8 +61,18 @@ export function FollowStar({ label }: { label?: string }) {
   );
 }
 
+/** Estado abierto/plegado elegido a mano, por bloque, durante la sesión. */
+const OPEN_STATE_KEY = 'sl_home_open_blocks';
+function readOpenState(): Record<string, boolean> {
+  try { return JSON.parse(sessionStorage.getItem(OPEN_STATE_KEY) ?? '{}') as Record<string, boolean>; } catch { return {}; }
+}
+function writeOpenState(key: string, open: boolean): void {
+  try { sessionStorage.setItem(OPEN_STATE_KEY, JSON.stringify({ ...readOpenState(), [key]: open })); } catch { /* noop */ }
+}
+
 export function MatchGroupCard({
   title, href, icon, count, followed = false, action, collapsible = true, children,
+  defaultOpen = true, storageKey, liveCount = 0,
 }: {
   title: string;
   /** Destino del título (ficha de la competición); null → texto plano. */
@@ -75,9 +85,28 @@ export function MatchGroupCard({
   action?: ReactNode;
   collapsible?: boolean;
   children: ReactNode;
+  /** Abierta al montar (iteración 3: base y ligas menores salen plegadas). */
+  defaultOpen?: boolean;
+  /** Clave para recordar en la sesión lo que el usuario abrió o plegó. */
+  storageKey?: string;
+  /** Partidos en directo del bloque: se avisa en la cabecera aunque esté plegado. */
+  liveCount?: number;
 }) {
   const { t } = useT();
-  const [open, setOpen] = useState(true);
+  const [open, setOpenState] = useState(defaultOpen);
+  // La elección manual de la sesión manda sobre el valor por defecto.
+  useEffect(() => {
+    if (!storageKey) return;
+    const saved = readOpenState()[storageKey];
+    if (typeof saved === 'boolean') setOpenState(saved);
+  }, [storageKey]);
+  const setOpen = (fn: (v: boolean) => boolean) => {
+    setOpenState((v) => {
+      const nv = fn(v);
+      if (storageKey) writeOpenState(storageKey, nv);
+      return nv;
+    });
+  };
   const bodyId = useId();
   const titleCls = 'line-clamp-2 break-words text-[13px] font-semibold leading-snug text-slate-800 dark:text-slate-100';
 
@@ -98,6 +127,12 @@ export function MatchGroupCard({
         </h3>
         {followed && <FollowStar label={tt(t, 'favorites.following', 'Siguiendo')} />}
         {action}
+        {!open && liveCount > 0 && (
+          <span className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-live">
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-live" />
+            {tt(t, 'home.live_in_block', '{n} en directo', { n: liveCount })}
+          </span>
+        )}
         <span className={`shrink-0 text-[11px] tabular-nums text-slate-500 dark:text-slate-400 ${collapsible ? '' : 'pr-2'}`}>
           {count} {count === 1 ? t('common.match_lc') : t('common.matches_lc')}
         </span>
@@ -121,8 +156,9 @@ export function MatchGroupCard({
           </button>
         )}
       </header>
+      {/* Plegada no monta las filas: menos DOM y menos render en cada refresco. */}
       <div id={bodyId} hidden={!open} className="divide-y divide-slate-100 dark:divide-slate-800">
-        {children}
+        {open ? children : null}
       </div>
     </section>
   );

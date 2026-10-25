@@ -798,6 +798,7 @@
     "refresh": "Refresh"
   },
   "home": {
+    "live_in_block": "{n} live",
     "filters": "Filter matches",
     "filter_live": "Live",
     "filter_following": "Following",

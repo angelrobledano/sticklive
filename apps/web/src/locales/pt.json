@@ -798,6 +798,7 @@
     "refresh": "Atualizar"
   },
   "home": {
+    "live_in_block": "{n} em direto",
     "filters": "Filtrar jogos",
     "filter_live": "Ao vivo",
     "filter_following": "A seguir",

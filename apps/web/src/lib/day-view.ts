@@ -183,3 +183,32 @@ export function daysWithMatches(matches: readonly DayViewMatch[]): Set<string> {
   }
   return out;
 }
+
+/** Máxima categoría: tier 1-2 (migración 089). */
+const OPEN_MAX_TIER = 2;
+
+/**
+ * Bloques que la home abre por defecto (plan 2026-10-25, iteración 3):
+ * seguidas, con algún partido en directo, destacadas (`featured_rank`) o de
+ * máxima categoría. El resto (base, ligas menores) se queda plegado con su
+ * recuento. Si ninguno califica, se abre el primero para no dejar todo cerrado.
+ */
+export function defaultOpenKeys(blocks: readonly {
+  key: string;
+  followed: boolean;
+  tier: number | null;
+  featuredRank: number | null;
+  matches: readonly { status: string }[];
+}[]): Set<string> {
+  const open = new Set<string>();
+  for (const b of blocks) {
+    if (b.followed
+      || b.matches.some((m) => m.status === 'live')
+      || b.featuredRank != null
+      || (b.tier != null && b.tier <= OPEN_MAX_TIER)) {
+      open.add(b.key);
+    }
+  }
+  if (open.size === 0 && blocks.length > 0) open.add(blocks[0]!.key);
+  return open;
+}

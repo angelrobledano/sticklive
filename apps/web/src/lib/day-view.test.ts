@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildDayView, nextMatchday, daysWithMatches, type DayViewMatch } from './day-view';
+import { buildDayView, nextMatchday, daysWithMatches, defaultOpenKeys, type DayViewMatch } from './day-view';
 
 /**
  * Fixtures TZ-seguros: las horas UTC elegidas caen siempre en el mismo día de
@@ -234,5 +234,30 @@ describe('daysWithMatches', () => {
       M('c', null, 'okliga'),
     ]);
     expect([...days].sort()).toEqual(['2026-10-16', '2026-10-17']);
+  });
+});
+
+/**
+ * Plegado inteligente (plan 2026-10-25, iteración 3): con 90 competiciones en
+ * un día de base, todo desplegado eran 380 filas. Abiertas solo las que
+ * importan; si ninguna lo hace, la primera para no dejar la pantalla cerrada.
+ */
+describe('defaultOpenKeys', () => {
+  const b = (key: string, o: Partial<{ followed: boolean; tier: number | null; featuredRank: number | null; live: boolean }> = {}) => ({
+    key, followed: o.followed ?? false, tier: o.tier ?? null, featuredRank: o.featuredRank ?? null,
+    matches: [{ status: o.live ? 'live' : 'scheduled' }],
+  });
+  it('abre seguidas, con directo, destacadas y de máxima categoría (tier 1-2)', () => {
+    const keys = defaultOpenKeys([
+      b('seguida', { followed: true }), b('directo', { live: true }), b('destacada', { featuredRank: 3 }),
+      b('tier1', { tier: 1 }), b('tier2', { tier: 2 }), b('tier3', { tier: 3 }), b('base'),
+    ]);
+    expect([...keys].sort()).toEqual(['destacada', 'directo', 'seguida', 'tier1', 'tier2']);
+  });
+  it('si ninguna importa, abre solo la primera', () => {
+    expect([...defaultOpenKeys([b('x'), b('y')])]).toEqual(['x']);
+  });
+  it('sin bloques, nada', () => {
+    expect(defaultOpenKeys([]).size).toBe(0);
   });
 });

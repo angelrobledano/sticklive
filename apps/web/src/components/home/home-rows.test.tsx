@@ -204,3 +204,20 @@ describe('MiGrada (fuera de la home, con fecha en cada fila)', () => {
     expect(html).not.toContain('href="/es/favorites"');
   });
 });
+
+describe('MatchGroupCard plegada (iteración 3)', () => {
+  it('plegada no monta las filas y avisa de los directos en la cabecera', () => {
+    const html = render(
+      <MatchGroupCard title="Benjamí Plata" icon={null} count={12} defaultOpen={false} liveCount={2}>
+        <p>FILA-DENTRO</p>
+      </MatchGroupCard>,
+    );
+    expect(html).not.toContain('FILA-DENTRO');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toMatch(/2 en directo/);
+  });
+  it('abierta por defecto sigue mostrando las filas', () => {
+    const html = render(<MatchGroupCard title="OK Liga" icon={null} count={1}><p>FILA-DENTRO</p></MatchGroupCard>);
+    expect(html).toContain('FILA-DENTRO');
+  });
+});

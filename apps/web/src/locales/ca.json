@@ -798,6 +798,7 @@
     "refresh": "Actualitzar"
   },
   "home": {
+    "live_in_block": "{n} en directe",
     "filters": "Filtrar partits",
     "filter_live": "En directe",
     "filter_following": "Seguint",

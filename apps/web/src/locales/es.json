@@ -798,6 +798,7 @@
     "refresh": "Actualizar"
   },
   "home": {
+    "live_in_block": "{n} en directo",
     "filters": "Filtrar partidos",
     "filter_live": "En directo",
     "filter_following": "Siguiendo",
