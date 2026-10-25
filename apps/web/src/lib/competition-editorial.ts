@@ -18,6 +18,8 @@ export interface CompetitionEditorial {
   source?: { label: string; url: string };
 }
 
+import { COMPETITION_EDITORIAL_CA } from './competition-editorial-ca';
+
 type EditorialByLocale = Partial<Record<'es' | 'en', CompetitionEditorial>>;
 
 const FEP_SUPERCOPAS =
@@ -531,9 +533,19 @@ export const COMPETITION_EDITORIAL: Record<string, EditorialByLocale> = {
   },
 };
 
+/**
+ * Slugs alternativos de la misma competición (el alta de 2026/27 genera el slug
+ * desde el nombre de la fuente: "OK LIGA IBERDROLA" → `ok-liga-iberdrola`).
+ */
+const SLUG_ALIASES: Record<string, string> = {
+  'ok-liga-iberdrola': 'ok-liga-femenina',
+};
+
 export function competitionEditorial(slug: string | null | undefined, locale: string): CompetitionEditorial | null {
   if (!slug) return null;
-  const entry = COMPETITION_EDITORIAL[slug];
+  const key = SLUG_ALIASES[slug] ?? slug;
+  const entry = COMPETITION_EDITORIAL[key];
   if (!entry) return null;
+  if (locale === 'ca') return COMPETITION_EDITORIAL_CA[key] ?? entry.es ?? null;
   return entry[locale === 'en' ? 'en' : 'es'] ?? entry.es ?? null;
 }

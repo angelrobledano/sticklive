@@ -38,7 +38,7 @@ export function CompetitionEditorial({ slug, locale }: { slug: string | null | u
 
       {content.source && (
         <p className="text-[11px] text-slate-400 dark:text-slate-500">
-          {locale === 'en' ? 'Source' : 'Fuente'}:{' '}
+          {locale === 'en' ? 'Source' : locale === 'ca' ? 'Font' : 'Fuente'}:{' '}
           <a
             href={content.source.url}
             target="_blank"

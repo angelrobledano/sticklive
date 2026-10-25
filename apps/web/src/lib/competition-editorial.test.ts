@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { competitionEditorial } from './competition-editorial';
+import { competitionEditorial, COMPETITION_EDITORIAL } from './competition-editorial';
 
 describe('competitionEditorial', () => {
   it('tiene contenido para las dos Supercopas', () => {
@@ -35,6 +35,19 @@ describe('competitionEditorial', () => {
         expect(c!.source?.url).toMatch(/^https:\/\//);
       }
     }
+  });
+
+  it('tiene versión en catalán de todos los textos', () => {
+    for (const slug of Object.keys(COMPETITION_EDITORIAL)) {
+      const ca = competitionEditorial(slug, 'ca');
+      expect(ca, slug).not.toEqual(competitionEditorial(slug, 'es'));
+      expect(ca!.sections.length, slug).toBe(competitionEditorial(slug, 'es')!.sections.length);
+    }
+    expect(competitionEditorial('ok-liga-masculina', 'ca')!.title).toContain('OK Lliga');
+  });
+
+  it('el slug del alta 2026/27 (ok-liga-iberdrola) usa el texto de la OK Liga femenina', () => {
+    expect(competitionEditorial('ok-liga-iberdrola', 'es')).toEqual(competitionEditorial('ok-liga-femenina', 'es'));
   });
 
   it('cae al español en locales sin traducción', () => {
