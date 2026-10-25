@@ -182,7 +182,7 @@ export const COMPETITION_EDITORIAL: Record<string, EditorialByLocale> = {
         {
           heading: 'Cómo se juega',
           body: [
-            'Dieciséis equipos se enfrentan a doble vuelta en una fase regular de 30 jornadas. Victoria 3 puntos, empate 1 y derrota 0. Los mejores clasificados pasan al play-off por el título y los últimos descienden a OK Liga Plata.',
+            'Catorce equipos en la temporada 2026/27, a doble vuelta. Victoria 3 puntos, empate 1 y derrota 0. Los mejores clasificados pasan al play-off por el título y los tres últimos (12.º, 13.º y 14.º) descienden a OK Liga Plata.',
           ],
         },
         {
@@ -222,7 +222,7 @@ export const COMPETITION_EDITORIAL: Record<string, EditorialByLocale> = {
         {
           heading: 'Format',
           body: [
-            'Sixteen teams play each other home and away over a 30-round regular season. A win is worth 3 points, a draw 1 and a defeat 0. The top teams go through to the title play-offs and the bottom teams are relegated to OK Liga Plata.',
+            'Fourteen teams in 2026/27, playing home and away. A win is worth 3 points, a draw 1 and a defeat 0. The top teams go through to the title play-offs and the bottom three (12th, 13th and 14th) are relegated to OK Liga Plata.',
           ],
         },
         {
@@ -529,6 +529,298 @@ export const COMPETITION_EDITORIAL: Record<string, EditorialByLocale> = {
         },
       ],
       source: { label: "Wikipedia (Serie A1) and OA Sport", url: "https://it.wikipedia.org/wiki/Serie_A1_(hockey_su_pista)" },
+    },
+  },
+
+  // ── Categorías de ascenso RFEP (Plata y Bronce): formato y qué hay en juego ──
+  'ok-liga-plata-norte': {
+    es: {
+      "title": "OK Liga Plata Norte: formato, ascenso y descenso",
+      "intro": "La OK Liga Plata es la segunda categoría del hockey patines masculino en España. Nació en 1969/70 como Primera División y lleva su nombre actual desde 2018/19. Se divide en dos grupos territoriales, Norte y Sur, y este es el grupo Norte.",
+      "sections": [
+        {
+          "heading": "Cómo se juega",
+          "body": [
+            "Catorce equipos a doble vuelta, 26 jornadas. No hay fase final ni se proclama un campeón de la OK Liga Plata: lo que se juega es el ascenso."
+          ]
+        },
+        {
+          "heading": "Qué hay en juego",
+          "body": [
+            "El primero del grupo Norte sube directamente a la OK Liga. El segundo juega una eliminatoria a doble partido contra el segundo del grupo Sur, y el ganador también asciende. Los dos últimos bajan a la OK Liga Bronce (o a su liga autonómica, en el caso de los clubes catalanes)."
+          ]
+        },
+        {
+          "heading": "Qué seguir esta temporada",
+          "body": [
+            "La clasificación del grupo, el calendario, los resultados en directo y los goleadores están en las pestañas de esta competición."
+          ]
+        }
+      ],
+      "source": {
+        "label": "RFEP · Bases de competición 2026/27",
+        "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+      }
+    },
+    en: {
+      "title": "OK Liga Plata North: format, promotion and relegation",
+      "intro": "The OK Liga Plata is the second tier of men’s rink hockey in Spain. It started in 1969/70 as the Primera División and has had its current name since 2018/19. It is split into two regional groups, North and South, and this is the North group.",
+      "sections": [
+        {
+          "heading": "Format",
+          "body": [
+            "Fourteen teams, home and away, 26 rounds. There is no final phase and no OK Liga Plata champion is crowned: what is at stake is promotion."
+          ]
+        },
+        {
+          "heading": "What is at stake",
+          "body": [
+            "The North group winner goes straight up to the OK Liga. The runner-up plays a two-legged tie against the South group runner-up, and the winner is also promoted. The bottom two drop to OK Liga Bronce (or to their regional league, for Catalan clubs)."
+          ]
+        },
+        {
+          "heading": "What to follow this season",
+          "body": [
+            "Group standings, fixtures, live results and top scorers are in this competition’s tabs."
+          ]
+        }
+      ],
+      "source": {
+        "label": "RFEP · 2026/27 competition rules",
+        "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+      }
+    },
+  },
+  'ok-liga-plata-sur': {
+    es: {
+      "title": "OK Liga Plata Sur: formato, ascenso y descenso",
+      "intro": "La OK Liga Plata es la segunda categoría del hockey patines masculino en España. Nació en 1969/70 como Primera División y lleva su nombre actual desde 2018/19. Se divide en dos grupos territoriales, Norte y Sur, y este es el grupo Sur.",
+      "sections": [
+        {
+          "heading": "Cómo se juega",
+          "body": [
+            "Catorce equipos a doble vuelta, 26 jornadas. No hay fase final ni se proclama un campeón de la OK Liga Plata: lo que se juega es el ascenso."
+          ]
+        },
+        {
+          "heading": "Qué hay en juego",
+          "body": [
+            "El primero del grupo Sur sube directamente a la OK Liga. El segundo juega una eliminatoria a doble partido contra el segundo del grupo Norte, y el ganador también asciende. Los dos últimos bajan a la OK Liga Bronce (o a su liga autonómica, en el caso de los clubes catalanes)."
+          ]
+        },
+        {
+          "heading": "Qué seguir esta temporada",
+          "body": [
+            "La clasificación del grupo, el calendario, los resultados en directo y los goleadores están en las pestañas de esta competición."
+          ]
+        }
+      ],
+      "source": {
+        "label": "RFEP · Bases de competición 2026/27",
+        "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+      }
+    },
+    en: {
+      "title": "OK Liga Plata South: format, promotion and relegation",
+      "intro": "The OK Liga Plata is the second tier of men’s rink hockey in Spain. It started in 1969/70 as the Primera División and has had its current name since 2018/19. It is split into two regional groups, North and South, and this is the South group.",
+      "sections": [
+        {
+          "heading": "Format",
+          "body": [
+            "Fourteen teams, home and away, 26 rounds. There is no final phase and no OK Liga Plata champion is crowned: what is at stake is promotion."
+          ]
+        },
+        {
+          "heading": "What is at stake",
+          "body": [
+            "The South group winner goes straight up to the OK Liga. The runner-up plays a two-legged tie against the North group runner-up, and the winner is also promoted. The bottom two drop to OK Liga Bronce (or to their regional league, for Catalan clubs)."
+          ]
+        },
+        {
+          "heading": "What to follow this season",
+          "body": [
+            "Group standings, fixtures, live results and top scorers are in this competition’s tabs."
+          ]
+        }
+      ],
+      "source": {
+        "label": "RFEP · 2026/27 competition rules",
+        "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+      }
+    },
+  },
+  'ok-liga-bronce-masculina-norte': {
+    es: {
+      "title": "OK Liga Bronce Masculina Norte: formato y ascenso",
+      "intro": "La OK Liga Bronce es la tercera categoría estatal del hockey patines masculino. La creó la RFEP en 2018 y se juega en dos grupos territoriales, Norte y Sur. Este es el grupo Norte.",
+      "sections": [
+        {
+          "heading": "Cómo se juega",
+          "body": [
+            "Liga regular en cada grupo. El objetivo es el ascenso a la OK Liga Plata."
+          ]
+        },
+        {
+          "heading": "Qué hay en juego",
+          "body": [
+            "El mejor equipo del grupo Norte asciende directamente a la OK Liga Plata. El segundo juega una eliminatoria a doble partido contra el segundo del grupo Sur, y el ganador también sube. Además asciende un equipo designado por la Federació Catalana de Patinatge."
+          ]
+        },
+        {
+          "heading": "Qué seguir esta temporada",
+          "body": [
+            "La clasificación del grupo, el calendario, los resultados en directo y los goleadores están en las pestañas de esta competición."
+          ]
+        }
+      ],
+      "source": {
+        "label": "RFEP · Bases de competición 2026/27",
+        "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+      }
+    },
+    en: {
+      "title": "OK Liga Bronce Men’s North: format and promotion",
+      "intro": "The OK Liga Bronce is the third national tier of men’s rink hockey in Spain. The RFEP created it in 2018 and it is played in two regional groups, North and South. This is the North group.",
+      "sections": [
+        {
+          "heading": "Format",
+          "body": [
+            "A regular league in each group, with promotion to OK Liga Plata as the goal."
+          ]
+        },
+        {
+          "heading": "What is at stake",
+          "body": [
+            "The best team in the North group goes straight up to OK Liga Plata. The runner-up plays a two-legged tie against the South group runner-up, and the winner is also promoted. One team nominated by the Catalan federation is promoted as well."
+          ]
+        },
+        {
+          "heading": "What to follow this season",
+          "body": [
+            "Group standings, fixtures, live results and top scorers are in this competition’s tabs."
+          ]
+        }
+      ],
+      "source": {
+        "label": "RFEP · 2026/27 competition rules",
+        "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+      }
+    },
+  },
+  'ok-liga-bronce-masculina-sur': {
+    es: {
+      "title": "OK Liga Bronce Masculina Sur: formato y ascenso",
+      "intro": "La OK Liga Bronce es la tercera categoría estatal del hockey patines masculino. La creó la RFEP en 2018 y se juega en dos grupos territoriales, Norte y Sur. Este es el grupo Sur.",
+      "sections": [
+        {
+          "heading": "Cómo se juega",
+          "body": [
+            "Liga regular en cada grupo. El objetivo es el ascenso a la OK Liga Plata."
+          ]
+        },
+        {
+          "heading": "Qué hay en juego",
+          "body": [
+            "El mejor equipo del grupo Sur asciende directamente a la OK Liga Plata. El segundo juega una eliminatoria a doble partido contra el segundo del grupo Norte, y el ganador también sube. Además asciende un equipo designado por la Federació Catalana de Patinatge."
+          ]
+        },
+        {
+          "heading": "Qué seguir esta temporada",
+          "body": [
+            "La clasificación del grupo, el calendario, los resultados en directo y los goleadores están en las pestañas de esta competición."
+          ]
+        }
+      ],
+      "source": {
+        "label": "RFEP · Bases de competición 2026/27",
+        "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+      }
+    },
+    en: {
+      "title": "OK Liga Bronce Men’s South: format and promotion",
+      "intro": "The OK Liga Bronce is the third national tier of men’s rink hockey in Spain. The RFEP created it in 2018 and it is played in two regional groups, North and South. This is the South group.",
+      "sections": [
+        {
+          "heading": "Format",
+          "body": [
+            "A regular league in each group, with promotion to OK Liga Plata as the goal."
+          ]
+        },
+        {
+          "heading": "What is at stake",
+          "body": [
+            "The best team in the South group goes straight up to OK Liga Plata. The runner-up plays a two-legged tie against the North group runner-up, and the winner is also promoted. One team nominated by the Catalan federation is promoted as well."
+          ]
+        },
+        {
+          "heading": "What to follow this season",
+          "body": [
+            "Group standings, fixtures, live results and top scorers are in this competition’s tabs."
+          ]
+        }
+      ],
+      "source": {
+        "label": "RFEP · 2026/27 competition rules",
+        "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+      }
+    },
+  },
+  'ok-liga-plata-femenina': {
+    es: {
+      "title": "OK Liga Plata Femenina: formato y ascenso a la OK Liga Iberdrola",
+      "intro": "La OK Liga Plata Femenina es la segunda categoría del hockey patines femenino en España. La RFEP aprobó su creación en julio de 2020 y la primera temporada arrancó en marzo de 2021, con siete equipos.",
+      "sections": [
+        {
+          "heading": "Cómo se juega",
+          "body": [
+            "Liga a doble vuelta, todos contra todos."
+          ]
+        },
+        {
+          "heading": "Qué hay en juego",
+          "body": [
+            "La campeona y la subcampeona ascienden a la OK Liga Iberdrola, junto a un equipo designado por la Federació Catalana de Patinatge."
+          ]
+        },
+        {
+          "heading": "Qué seguir esta temporada",
+          "body": [
+            "La clasificación, el calendario, los resultados en directo y las goleadoras están en las pestañas de esta competición."
+          ]
+        }
+      ],
+      "source": {
+        "label": "RFEP · Bases de competición 2026/27",
+        "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+      }
+    },
+    en: {
+      "title": "OK Liga Plata Femenina: format and promotion to OK Liga Iberdrola",
+      "intro": "The OK Liga Plata Femenina is the second tier of women’s rink hockey in Spain. The RFEP approved it in July 2020 and the first season started in March 2021, with seven teams.",
+      "sections": [
+        {
+          "heading": "Format",
+          "body": [
+            "A home-and-away league in which everyone plays everyone."
+          ]
+        },
+        {
+          "heading": "What is at stake",
+          "body": [
+            "The champion and runner-up are promoted to the OK Liga Iberdrola, together with one team nominated by the Catalan federation."
+          ]
+        },
+        {
+          "heading": "What to follow this season",
+          "body": [
+            "Standings, fixtures, live results and top scorers are in this competition’s tabs."
+          ]
+        }
+      ],
+      "source": {
+        "label": "RFEP · 2026/27 competition rules",
+        "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+      }
     },
   },
 };

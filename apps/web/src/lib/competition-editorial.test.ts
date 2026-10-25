@@ -13,7 +13,7 @@ describe('competitionEditorial', () => {
   });
 
   it('no inventa contenido para competiciones sin editorial', () => {
-    expect(competitionEditorial('ok-liga-plata-sur', 'es')).toBeNull();
+    expect(competitionEditorial('lliga-catalana-juvenil', 'es')).toBeNull();
     expect(competitionEditorial(null, 'es')).toBeNull();
   });
 

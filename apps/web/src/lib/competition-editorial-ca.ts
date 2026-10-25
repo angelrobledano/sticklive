@@ -60,7 +60,7 @@ export const COMPETITION_EDITORIAL_CA: Record<string, CompetitionEditorial> = {
     sections: [
       {
         heading: 'Com es juga',
-        body: ['Setze equips s’enfronten a doble volta en una fase regular de 30 jornades. Victòria 3 punts, empat 1 i derrota 0. Els millors classificats passen al play-off pel títol i els últims baixen a l’OK Lliga Plata.'],
+        body: ['Catorze equips la temporada 2026/27, a doble volta. Victòria 3 punts, empat 1 i derrota 0. Els millors classificats passen al play-off pel títol i els tres últims (12è, 13è i 14è) baixen a l’OK Lliga Plata.'],
       },
       {
         heading: 'Campió 2025/26: l’Igualada, 29 anys després',
@@ -151,5 +151,146 @@ export const COMPETITION_EDITORIAL_CA: Record<string, CompetitionEditorial> = {
       SEGUIR,
     ],
     source: { label: 'Wikipedia (Serie A1) i OA Sport', url: 'https://it.wikipedia.org/wiki/Serie_A1_(hockey_su_pista)' },
+  },
+
+  'ok-liga-plata-norte': {
+    "title": "OK Lliga Plata Nord: format, ascens i descens",
+    "intro": "L’OK Lliga Plata és la segona categoria de l’hoquei patins masculí a Espanya. Va néixer el 1969/70 com a Primera División i porta el nom actual des del 2018/19. Es divideix en dos grups territorials, Nord i Sud, i aquest és el grup Nord.",
+    "sections": [
+      {
+        "heading": "Com es juga",
+        "body": [
+          "Catorze equips a doble volta, 26 jornades. No hi ha fase final ni es proclama un campió de l’OK Lliga Plata: el que es juga és l’ascens."
+        ]
+      },
+      {
+        "heading": "Què hi ha en joc",
+        "body": [
+          "El primer del grup Nord puja directament a l’OK Lliga. El segon juga una eliminatòria a doble partit contra el segon del grup Sud, i el guanyador també puja. Els dos últims baixen a l’OK Lliga Bronze (o a la seva lliga autonòmica, en el cas dels clubs catalans)."
+        ]
+      },
+      {
+        "heading": "Què seguir aquesta temporada",
+        "body": [
+          "La classificació del grup, el calendari, els resultats en directe i els golejadors són a les pestanyes d’aquesta competició."
+        ]
+      }
+    ],
+    "source": {
+      "label": "RFEP · Bases de competició 2026/27",
+      "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+    }
+  },
+  'ok-liga-plata-sur': {
+    "title": "OK Lliga Plata Sud: format, ascens i descens",
+    "intro": "L’OK Lliga Plata és la segona categoria de l’hoquei patins masculí a Espanya. Va néixer el 1969/70 com a Primera División i porta el nom actual des del 2018/19. Es divideix en dos grups territorials, Nord i Sud, i aquest és el grup Sud.",
+    "sections": [
+      {
+        "heading": "Com es juga",
+        "body": [
+          "Catorze equips a doble volta, 26 jornades. No hi ha fase final ni es proclama un campió de l’OK Lliga Plata: el que es juga és l’ascens."
+        ]
+      },
+      {
+        "heading": "Què hi ha en joc",
+        "body": [
+          "El primer del grup Sud puja directament a l’OK Lliga. El segon juga una eliminatòria a doble partit contra el segon del grup Nord, i el guanyador també puja. Els dos últims baixen a l’OK Lliga Bronze (o a la seva lliga autonòmica, en el cas dels clubs catalans)."
+        ]
+      },
+      {
+        "heading": "Què seguir aquesta temporada",
+        "body": [
+          "La classificació del grup, el calendari, els resultats en directe i els golejadors són a les pestanyes d’aquesta competició."
+        ]
+      }
+    ],
+    "source": {
+      "label": "RFEP · Bases de competició 2026/27",
+      "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+    }
+  },
+  'ok-liga-bronce-masculina-norte': {
+    "title": "OK Lliga Bronze Masculina Nord: format i ascens",
+    "intro": "L’OK Lliga Bronze és la tercera categoria estatal de l’hoquei patins masculí. La va crear la RFEP el 2018 i es juga en dos grups territorials, Nord i Sud. Aquest és el grup Nord.",
+    "sections": [
+      {
+        "heading": "Com es juga",
+        "body": [
+          "Lliga regular a cada grup. L’objectiu és l’ascens a l’OK Lliga Plata."
+        ]
+      },
+      {
+        "heading": "Què hi ha en joc",
+        "body": [
+          "El millor equip del grup Nord puja directament a l’OK Lliga Plata. El segon juga una eliminatòria a doble partit contra el segon del grup Sud, i el guanyador també puja. A més, puja un equip designat per la Federació Catalana de Patinatge."
+        ]
+      },
+      {
+        "heading": "Què seguir aquesta temporada",
+        "body": [
+          "La classificació del grup, el calendari, els resultats en directe i els golejadors són a les pestanyes d’aquesta competició."
+        ]
+      }
+    ],
+    "source": {
+      "label": "RFEP · Bases de competició 2026/27",
+      "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+    }
+  },
+  'ok-liga-bronce-masculina-sur': {
+    "title": "OK Lliga Bronze Masculina Sud: format i ascens",
+    "intro": "L’OK Lliga Bronze és la tercera categoria estatal de l’hoquei patins masculí. La va crear la RFEP el 2018 i es juga en dos grups territorials, Nord i Sud. Aquest és el grup Sud.",
+    "sections": [
+      {
+        "heading": "Com es juga",
+        "body": [
+          "Lliga regular a cada grup. L’objectiu és l’ascens a l’OK Lliga Plata."
+        ]
+      },
+      {
+        "heading": "Què hi ha en joc",
+        "body": [
+          "El millor equip del grup Sud puja directament a l’OK Lliga Plata. El segon juga una eliminatòria a doble partit contra el segon del grup Nord, i el guanyador també puja. A més, puja un equip designat per la Federació Catalana de Patinatge."
+        ]
+      },
+      {
+        "heading": "Què seguir aquesta temporada",
+        "body": [
+          "La classificació del grup, el calendari, els resultats en directe i els golejadors són a les pestanyes d’aquesta competició."
+        ]
+      }
+    ],
+    "source": {
+      "label": "RFEP · Bases de competició 2026/27",
+      "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+    }
+  },
+  'ok-liga-plata-femenina': {
+    "title": "OK Lliga Plata Femenina: format i ascens a l’OK Lliga Iberdrola",
+    "intro": "L’OK Lliga Plata Femenina és la segona categoria de l’hoquei patins femení a Espanya. La RFEP en va aprovar la creació el juliol del 2020 i la primera temporada va començar el març del 2021, amb set equips.",
+    "sections": [
+      {
+        "heading": "Com es juga",
+        "body": [
+          "Lliga a doble volta, tots contra tots."
+        ]
+      },
+      {
+        "heading": "Què hi ha en joc",
+        "body": [
+          "La campiona i la subcampiona pugen a l’OK Lliga Iberdrola, juntament amb un equip designat per la Federació Catalana de Patinatge."
+        ]
+      },
+      {
+        "heading": "Què seguir aquesta temporada",
+        "body": [
+          "La classificació, el calendari, els resultats en directe i les golejadores són a les pestanyes d’aquesta competició."
+        ]
+      }
+    ],
+    "source": {
+      "label": "RFEP · Bases de competició 2026/27",
+      "url": "https://fmp.es/wp-content/uploads/2026/08/Bases-temp-2026-27-ok.pdf"
+    }
   },
 };
