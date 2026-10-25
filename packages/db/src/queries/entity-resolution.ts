@@ -231,6 +231,7 @@ export async function enqueueResolution(
      ON CONFLICT (normalized, source_id) DO UPDATE
         SET occurrences = resolution_queue.occurrences + 1,
             candidates  = EXCLUDED.candidates,
+            context     = resolution_queue.context || EXCLUDED.context,
             updated_at  = NOW()
       WHERE resolution_queue.status = 'pending'`,
     [

@@ -30,6 +30,7 @@ import {
 import { pickRefOwnerForPortal, ownedByOtherPortal } from './seed-ref-portal.js';
 import { normalizeTeamName } from './transformers/normalize.js';
 import { deriveShortName } from './derive-short-name.js';
+import { collapseRepeatedTeamLetter } from '../../scraper/src/core/team-name.js';
 import { createLogger } from '@sports/logger';
 import { sidgadPost, SIDGAD_LANG } from '../../scraper/src/scrapers/fep/sidgad-client.js';
 import * as cheerio from 'cheerio';
@@ -129,7 +130,7 @@ function parseTeamsArray(html: string): DiscTeam[] {
   // "logo.png,ref,abbr,NAME;logo.png,ref,abbr,NAME;..."
   return val.split(';').filter(Boolean).map((chunk) => {
     const [logo = '', ref = '', abbr = '', ...nameParts] = chunk.split(',');
-    return { ref: ref.trim(), abbr: abbr.trim(), name: nameParts.join(',').trim(), logo: logo.trim() };
+    return { ref: ref.trim(), abbr: abbr.trim(), name: collapseRepeatedTeamLetter(nameParts.join(',').trim()), logo: logo.trim() };
   }).filter((t) => t.ref && t.name && !isBye(t.name));
 }
 
@@ -140,7 +141,7 @@ function parseTeamsFromCalendar(html: string): DiscTeam[] {
     const $row = $(row);
     const teamClasses = ($row.attr('class') ?? '').split(/\s+/)
       .filter((c) => c.startsWith('team_') && c !== 'team_class').map((c) => c.replace('team_', ''));
-    const names = $row.find('.nombre_junto_logo').map((_, el) => $(el).text().trim()).get();
+    const names = $row.find('.nombre_junto_logo').map((_, el) => collapseRepeatedTeamLetter($(el).text().trim())).get();
     teamClasses.forEach((ref, i) => {
       const nm = names[i] ?? '';
       if (ref && !byRef.has(ref) && !isBye(nm)) byRef.set(ref, { ref, name: nm || `Equipo ${ref}`, abbr: '' });

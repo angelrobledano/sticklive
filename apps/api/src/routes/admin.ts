@@ -618,10 +618,29 @@ adminRouter.get('/resolution-queue', async (c) => {
     const ids = [...new Set(raw.flatMap((i) => (i.candidates ?? []).map((cnd) => cnd.teamId)))]
       .filter((x) => isUuid(x));
     const teams = await describeTeams(ids);
-    const items = raw.map((i) => ({
-      ...i,
-      kind: (i.context as { kind?: string } | null)?.kind === 'team-duplicate' ? 'duplicate' : 'name',
-    }));
+    // Origen del nombre (temporada → competición) para decidir con contexto.
+    const seasonIds = [...new Set(raw.map((i) => (i.context as { seasonId?: string } | null)?.seasonId)
+      .filter((x): x is string => typeof x === 'string' && isUuid(x)))];
+    const origins = new Map<string, string>();
+    if (seasonIds.length > 0) {
+      const { rows } = await db.query<{ id: string; label: string }>(
+        `SELECT s.id, c.name || ' · ' || s.name AS label
+           FROM seasons s JOIN competitions c ON c.id = s.competition_id
+          WHERE s.id = ANY($1::uuid[])`,
+        [seasonIds],
+      );
+      for (const r of rows) origins.set(r.id, r.label);
+    }
+    const items = raw.map((i) => {
+      const ctx = (i.context ?? {}) as { kind?: string; seasonId?: string; gender?: string | null; ageCategory?: string | null };
+      return {
+        ...i,
+        kind: ctx.kind === 'team-duplicate' ? 'duplicate' : 'name',
+        origin: ctx.seasonId ? origins.get(ctx.seasonId) ?? null : null,
+        gender: ctx.gender ?? null,
+        ageCategory: ctx.ageCategory ?? null,
+      };
+    });
     return c.json({ status, count: items.length, items, teams });
   } catch (err) {
     captureRouteError(err, 'admin] resolution-queue error');

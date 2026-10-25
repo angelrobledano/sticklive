@@ -23,6 +23,7 @@ interface Candidate { teamId: string; name: string; score: number }
 interface QueueItem {
   id: string; rawText: string; normalized: string; sourceRef: string | null;
   occurrences: number; candidates: Candidate[]; kind: 'name' | 'duplicate';
+  origin?: string | null; gender?: string | null; ageCategory?: string | null;
 }
 interface TeamBrief {
   id: string; name: string; logoUrl: string | null; gender: string | null; ageCategory: string | null;
@@ -259,6 +260,15 @@ export default function ResolutionQueuePage() {
               ¿Qué equipo es…? · visto {it.occurrences} {it.occurrences === 1 ? 'vez' : 'veces'}
             </p>
             <p className="mt-1 text-lg font-extrabold text-slate-900 dark:text-slate-50">«{it.rawText}»</p>
+            {(it.origin || it.gender || it.ageCategory) && (
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                Viene de: {[
+                  it.origin ?? 'competición desconocida',
+                  it.gender === 'female' ? 'Femenino' : it.gender === 'male' ? 'Masculino' : null,
+                  it.ageCategory,
+                ].filter(Boolean).join(' · ')}
+              </p>
+            )}
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Elige el equipo y ese nombre se asignará solo a partir de ahora.
             </p>

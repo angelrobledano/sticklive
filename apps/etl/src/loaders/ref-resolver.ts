@@ -20,7 +20,7 @@ import {
   resolveTeamViaSourceMap,
   upsertSourceEntityMapTeam,
   findTeamByNormalizedAlias,
-  generateFuzzyCandidates,
+  findSimilarTeamNames,
   enqueueResolution,
   autoConfirmTeam,
   upsertTeamAlias,
@@ -35,6 +35,7 @@ import { createLogger } from '@sports/logger';
 import { slugify } from '../transformers/slugify.js';
 import { normalizeTeamName } from '../transformers/normalize.js';
 import { isClubRef } from '../../../scraper/src/core/sources.js';
+import { collapseRepeatedTeamLetter } from '../../../scraper/src/core/team-name.js';
 
 const log = createLogger({ module: 'ref-resolver' });
 
@@ -124,7 +125,9 @@ export class RefResolver {
     sourceId?: string,
     signals?: { gender?: string | null; ageCategory?: string | null },
     seasonId?: string,
+    queueCtx?: { seasonId?: string },
   ): Promise<string> {
+    teamRef = collapseRepeatedTeamLetter(teamRef);
     const cacheKey = `${sourceId ?? ''}|${seasonId ?? ''}|${teamRef}`;
     const cached = this.teamCache.get(cacheKey);
     if (cached) return cached;
@@ -258,13 +261,22 @@ export class RefResolver {
 
       // 5b. Si no se auto-confirmó, a la cola HITL para revisión humana.
       if (!teamId && isReviewableName(teamRef)) {
-        const candidates = await generateFuzzyCandidates(normalized, this.sportId, 3);
+        // Candidatos de la MISMA sección (género + categoría): sin este filtro
+        // el panel proponía el Bembibre femenino para un equipo italiano.
+        const candidates = (await findSimilarTeamNames(teamRef, this.sportId, signals, 3))
+          .map((c) => ({ teamId: c.teamId, name: c.name, score: c.score }));
         await enqueueResolution({
           rawText: teamRef,
           normalized,
           sourceId,
           sourceRef: teamRef,
-          context: { sportId: this.sportId },
+          // Contexto para el panel: de qué temporada/competición y sección viene.
+          context: {
+            sportId: this.sportId,
+            seasonId: queueCtx?.seasonId ?? seasonId ?? null,
+            gender: signals?.gender ?? null,
+            ageCategory: signals?.ageCategory ?? null,
+          },
           candidates,
         }).catch((err) => {
           log.debug({ teamRef, err }, 'No se pudo encolar en resolution_queue');

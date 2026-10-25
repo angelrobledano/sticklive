@@ -1,6 +1,7 @@
 /**
  * Scraper de clasificacion -- rfep_clasif_idc_{IDC}_1.php
  */
+import { collapseRepeatedTeamLetter } from '../../core/team-name.js';
 import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 import { FepBaseScraper } from './fep-base-scraper.js';
@@ -131,8 +132,8 @@ export class FepStandingsScraper extends FepBaseScraper<ScrapedStanding> {
     const logoFile = logoSrc.split('/').pop() ?? '';
     const logoUrl = resolveLogoUrl(logoSrc);
 
-    const teamName = cells.eq(2).find('.no_mobile').first().text().trim()
-      || cells.eq(2).text().trim();
+    const teamName = collapseRepeatedTeamLetter(cells.eq(2).find('.no_mobile').first().text().trim()
+      || cells.eq(2).text().trim());
     const abbreviation = cells.eq(2).find('.mobile').first().text().trim();
     if (!teamName) return null;
     // La tabla de Bronce (nº impar de equipos) incluye una fila de bye

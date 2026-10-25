@@ -93,7 +93,7 @@ export async function loadStandings(
         // no cae en el primer equipo (que juega en otra liga). Si no aparece,
         // cascada normal del resolver (ahora con señales y fuente, #194).
         const teamId = (await findTeamInSeasonByName(seasonId, raw.teamRef, raw.abbreviation))
-          ?? await resolver.resolveTeam(raw.teamRef, raw.sourceId, signals);
+          ?? await resolver.resolveTeam(raw.teamRef, raw.sourceId, signals, undefined, { seasonId });
         resolved.push({ raw, teamId, phaseId: await phaseFor(raw.phaseTitle) });
       }
       resolved.sort((a, b) => a.teamId.localeCompare(b.teamId));
