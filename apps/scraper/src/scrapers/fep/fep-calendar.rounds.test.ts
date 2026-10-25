@@ -8,7 +8,7 @@ vi.hoisted(() => {
 
 import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
-import { collectRoundRows, extractTeamLogoUrls } from './fep-calendar.scraper.js';
+import { collectRoundRows, extractTeamLogoUrls, extractVideoUrl } from './fep-calendar.scraper.js';
 
 /**
  * Regresión: la fuente agrupa por fase con VARIOS <thead class="head_jornada"> +
@@ -187,5 +187,31 @@ describe('collectRoundRows — filas de nota de la fuente', () => {
     const $ = cheerio.load(html);
     const rows = collectRoundRows($, $('table').get(0) as Element);
     expect(rows).toHaveLength(1);
+  });
+});
+
+/**
+ * Enlace al vídeo del partido (directo o diferido). Las federaciones lo ponen
+ * en el calendario de sidgad (OK Liga → okliga.tv; Plata → laxarxames, tiivii;
+ * o un id de YouTube en `url_video` con href="#").
+ */
+describe('extractVideoUrl — enlace al vídeo del partido', () => {
+  const row = (inner: string) => {
+    const $ = cheerio.load(`<table><tr id="r">${inner}</tr></table>`);
+    return { $, el: $('#r').get(0) as Element };
+  };
+  it('enlace directo', () => {
+    const { $, el } = row('<td><a href="https://www.okliga.tv/player/2225" class="fa fa-video-camera"></a></td>');
+    expect(extractVideoUrl($, el)).toBe('https://www.okliga.tv/player/2225');
+  });
+  it('id de YouTube en url_video', () => {
+    const { $, el } = row('<td><a href="#" class="fa fa-video-camera video_partido" url_video="0UGBkb7d53k"></a></td>');
+    expect(extractVideoUrl($, el)).toBe('https://www.youtube.com/watch?v=0UGBkb7d53k');
+  });
+  it('sin vídeo, o con algo que no es http(s), nada', () => {
+    const empty = row('<td></td>');
+    expect(extractVideoUrl(empty.$, empty.el as Element)).toBeUndefined();
+    const { $, el } = row('<td><a href="javascript:alert(1)" class="fa fa-video-camera"></a></td>');
+    expect(extractVideoUrl($, el)).toBeUndefined();
   });
 });

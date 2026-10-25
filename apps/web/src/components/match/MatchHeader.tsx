@@ -393,7 +393,8 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
         </div>
       )}
 
-      {/* Enlace de vídeo del partido (p. ej. World Skate → worldskate.tv) */}
+      {/* Enlace al vídeo del partido, en directo o diferido, que publica la
+          federación en su calendario (okliga.tv, YouTube, laxarxames, tiivii…). */}
       {match.videoUrl && (
         <div className="flex justify-center pt-1">
           <a
@@ -406,10 +407,21 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
               <polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none" />
             </svg>
-            {t('match_detail.watch_video')}
+            {match.status === 'live'
+              ? tt(t, 'match_detail.watch_live', 'Ver en directo')
+              : t('match_detail.watch_video')}
+            {videoHost(match.videoUrl) && (
+              <span className="font-normal opacity-80">· {videoHost(match.videoUrl)}</span>
+            )}
           </a>
         </div>
       )}
     </div>
   );
+}
+
+/** Dominio legible del enlace de vídeo ("okliga.tv", "youtube.com"), o null. */
+function videoHost(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return null; }
 }

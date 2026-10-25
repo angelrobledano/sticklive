@@ -36,6 +36,21 @@ const BASE_URL = 'https://www.server2.sidgad.es/rfep';
 const SOURCE_ID = requireFepSourceId();
 
 /**
+ * Enlace al vídeo del partido (directo o diferido) publicado en el calendario
+ * de sidgad: `a.fa-video-camera` con la URL en `href` (okliga.tv, laxarxames,
+ * tiivii, worldskate.tv…) o, con `href="#"`, un id de YouTube en `url_video`.
+ * Solo se acepta http(s). Pura para poder testearla.
+ */
+export function extractVideoUrl($: cheerio.CheerioAPI, row: Element): string | undefined {
+  const a = $(row).find('a.fa-video-camera').first();
+  if (a.length === 0) return undefined;
+  const yt = (a.attr('url_video') ?? '').trim();
+  if (yt && /^[A-Za-z0-9_-]{6,20}$/.test(yt)) return `https://www.youtube.com/watch?v=${yt}`;
+  const href = (a.attr('href') ?? '').trim();
+  return /^https?:\/\//i.test(href) ? href : undefined;
+}
+
+/**
  * URLs de los escudos (local, visitante) de una fila del calendario. La fuente
  * pone un `<img class="team_logo">` por equipo con el logo del CDN; sin capturarlo
  * `teams.logo_url` queda NULL y la web cae al escudo genérico. El CDN aparece a
@@ -194,6 +209,7 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
 
     // Escudos del CDN (local, visitante) → rellenan `teams.logo_url` si falta.
     const [homeTeamLogoUrl, awayTeamLogoUrl] = extractTeamLogoUrls($, $row.get(0)!);
+    const videoUrl = extractVideoUrl($, $row.get(0)!);
 
     // La fila de descanso (bye) trae a "DESCANSO" como rival, con su propia ref
     // (verificado en Bronce N/S 2026/27). No es un partido: se omite aquí para
@@ -236,6 +252,7 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
       awayTeamRef,
       homeTeamLogoUrl,
       awayTeamLogoUrl,
+      videoUrl,
       homeScore,
       awayScore,
       status,
