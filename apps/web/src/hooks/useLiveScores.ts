@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Sentry from '@sentry/nextjs';
 import type { Match } from '@/lib/api/client';
-import { getCurrentMatchesFresh } from '@/lib/api/client';
-import { mergeMatchList } from '@/lib/live-merge';
+import { getCurrentMatchesFresh, getLiveMatches } from '@/lib/api/client';
+import { mergeMatchList, patchWithLive, shouldReconcile } from '@/lib/live-merge';
 
 /** Cada cuánto se sondea la API mientras hay actividad en vivo. */
 const POLL_INTERVAL_MS = 25_000;
@@ -33,7 +33,8 @@ function hasLiveActivity(matches: Match[]): boolean {
  * La home se renderiza en el servidor (revalidate:60) y no tiene vida propia: un
  * usuario que se queda mirando no dispara nuevas requests, así que el marcador se
  * congela mientras el detalle (SSE) sí se actualiza. Este hook cierra ese hueco:
- * cuando hay partidos en juego (o a punto de empezar) sondea /current sin caché
+ * cuando hay partidos en juego (o a punto de empezar) sondea /matches/live (y solo
+ * reconcilia con /current cuando hace falta)
  * cada POLL_INTERVAL_MS y devuelve la lista fresca. Se pausa con la pestaña oculta
  * y refresca al volver, para no gastar batería/datos de fondo.
  *
@@ -65,17 +66,29 @@ export function useLiveScores(initial: Match[]): LiveScoresState {
 
     let cancelled = false;
 
+    // Instante de la última descarga del listado completo. El SSR cuenta como
+    // tal: la página trae la lista recién servida (≤60 s de caché).
+    let lastReconcileAt = Date.now();
+
+    // Cada tick pide SOLO los directos (/matches/live, ~2 KB). El listado
+    // completo (~478 KB) se descarga solo cuando el feed no basta (un final,
+    // un directo nuevo) o como reconciliación de seguridad cada 5 min.
     const refresh = async () => {
       if (document.visibilityState === 'hidden') return;
       try {
-        const fresh = await getCurrentMatchesFresh();
-        if (!cancelled) {
-          // Conserva la identidad de los partidos sin cambios (#perf): evita
-          // re-renderizar toda la jornada cada 25 s y, si nada cambió, ni
-          // siquiera actualiza el estado.
-          setMatches((prev) => mergeMatchList(prev, fresh));
-          setDegraded(false);
+        const live = await getLiveMatches();
+        if (cancelled) return;
+        const patch = patchWithLive(matchesRef.current, live);
+        // Conserva la identidad de los partidos sin cambios (#perf).
+        if (patch.matches !== matchesRef.current) setMatches(patch.matches);
+
+        const now = Date.now();
+        if (shouldReconcile(patch.needsReconcile, lastReconcileAt, now)) {
+          lastReconcileAt = now;
+          const fresh = await getCurrentMatchesFresh();
+          if (!cancelled) setMatches((prev) => mergeMatchList(prev, fresh));
         }
+        if (!cancelled) setDegraded(false);
       } catch (err) {
         // Mantén el estado actual; reintentamos en el próximo tick. #244: los
         // fallos del polling en vivo ya no se descartan en silencio.

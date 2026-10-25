@@ -39,3 +39,43 @@ export function mergeMatchList(previous: Match[], next: Match[]): Match[] {
   // Sin cambios devolvemos el array anterior: React puede abortar el render.
   return changed ? merged : previous;
 }
+
+/**
+ * Aplica el feed de directos (`/matches/live`, ~2 KB) sobre la lista de la
+ * jornada sin volver a descargar el listado completo (~478 KB por sondeo).
+ *
+ * Solo parchea partidos ya conocidos. Pide reconciliar con el listado completo
+ * cuando el feed no basta: un directo que ya no aparece (ha terminado: el
+ * marcador final lo da `/matches/current`, aquí no se inventa) o un directo
+ * que no está en la lista. Función pura.
+ */
+export function patchWithLive(previous: Match[], live: Match[]): { matches: Match[]; needsReconcile: boolean } {
+  const liveById = new Map(live.map((m) => [m.id, m]));
+  const known = new Set(previous.map((m) => m.id));
+  let needsReconcile = live.some((m) => !known.has(m.id));
+  let changed = false;
+
+  const matches = previous.map((old) => {
+    const fresh = liveById.get(old.id);
+    if (!fresh) {
+      if (old.status === 'live') needsReconcile = true;
+      return old;
+    }
+    if (sameMatch(old, fresh)) return old;
+    changed = true;
+    return fresh;
+  });
+
+  return { matches: changed ? matches : previous, needsReconcile };
+}
+
+/** Mínimo entre dos descargas del listado completo cuando el feed las pide. */
+export const RECONCILE_MIN_MS = 60_000;
+/** Reconciliación de seguridad (aplazamientos, finales sin pasar por directo…). */
+export const RECONCILE_MAX_MS = 5 * 60_000;
+
+/** ¿Toca descargar el listado completo? Pura: el hook pone los tiempos. */
+export function shouldReconcile(needed: boolean, lastAt: number, now: number): boolean {
+  const elapsed = now - lastAt;
+  return elapsed >= RECONCILE_MAX_MS || (needed && elapsed >= RECONCILE_MIN_MS);
+}
