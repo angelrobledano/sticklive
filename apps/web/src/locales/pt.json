@@ -404,6 +404,7 @@
     "description": "Resultados, estatísticas e alinhamentos de hóquei em patins em direto. OK Liga, playoffs e muito mais, ao segundo."
   },
   "settings": {
+    "country_desc": "As suas competições aparecem primeiro na página inicial. As restantes continuam lá.",
     "title": "Definições",
     "subtitle": "Personaliza a tua experiência no rinque",
     "premium_title": "Stick Live Premium",
@@ -798,6 +799,8 @@
     "refresh": "Atualizar"
   },
   "home": {
+    "country_all": "Todos os países",
+    "country_label": "País preferido",
     "live_in_block": "{n} em direto",
     "filters": "Filtrar jogos",
     "filter_live": "Ao vivo",

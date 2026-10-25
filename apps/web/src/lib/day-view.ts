@@ -77,6 +77,8 @@ export interface DayViewOptions {
   leagueIds?: readonly string[];
   filter?: DayFilter;
   locale?: string;
+  /** País preferido (ISO-2): sus competiciones van primero, luego las mundiales. Ordena, no excluye. */
+  country?: string | null;
 }
 
 /** Instante del partido (o 0 si falta / es inválido) para ordenar establemente. */
@@ -90,11 +92,19 @@ function byTime(a: DayViewMatch, b: DayViewMatch): number {
   return d !== 0 ? d : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
+/** 0 = el país preferido, 1 = mundial/sin país, 2 = otro país. */
+function countryRank(blockCountry: string | null, preferred: string): number {
+  if (blockCountry === preferred) return 0;
+  if (!blockCountry || blockCountry === 'W') return 1;
+  return 2;
+}
+
 /** La jornada de un día: filtrada, agrupada y ordenada. */
 export function buildDayView<T extends DayViewMatch>(matches: T[], opts: DayViewOptions): DayView<T> {
   const teams = new Set(opts.teamIds ?? []);
   const leagues = new Set(opts.leagueIds ?? []);
   const locale = opts.locale ?? 'es';
+  const country = opts.country ?? null;
 
   const isMyTeam = (m: T) => teams.has(m.homeTeamId) || teams.has(m.awayTeamId);
   const isFollowedLeague = (m: T) => !!m.competitionId && leagues.has(m.competitionId);
@@ -147,6 +157,10 @@ export function buildDayView<T extends DayViewMatch>(matches: T[], opts: DayView
   for (const b of competitions) b.matches.sort(byTime);
   competitions.sort((a, b) => {
     if (a.followed !== b.followed) return a.followed ? -1 : 1;
+    if (country) {
+      const c = countryRank(a.country, country) - countryRank(b.country, country);
+      if (c !== 0) return c;
+    }
     // Sin competición conocida: siempre al final.
     if ((a.name === null) !== (b.name === null)) return a.name === null ? 1 : -1;
     const d = importanceRank(a) - importanceRank(b);
@@ -195,17 +209,20 @@ const OPEN_MAX_TIER = 2;
  */
 export function defaultOpenKeys(blocks: readonly {
   key: string;
+  country?: string | null;
   followed: boolean;
   tier: number | null;
   featuredRank: number | null;
   matches: readonly { status: string }[];
-}[]): Set<string> {
+}[], country: string | null = null): Set<string> {
   const open = new Set<string>();
   for (const b of blocks) {
+    // Con país preferido, la importancia solo abre lo del país y lo mundial:
+    // lo de otros países se queda plegado salvo que lo sigas o tenga directo.
+    const relevantCountry = !country || countryRank(b.country ?? null, country) < 2;
     if (b.followed
       || b.matches.some((m) => m.status === 'live')
-      || b.featuredRank != null
-      || (b.tier != null && b.tier <= OPEN_MAX_TIER)) {
+      || (relevantCountry && (b.featuredRank != null || (b.tier != null && b.tier <= OPEN_MAX_TIER)))) {
       open.add(b.key);
     }
   }

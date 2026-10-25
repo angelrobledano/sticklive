@@ -404,6 +404,7 @@
     "description": "Scores, statistiques et compositions de rink hockey en direct. OK Liga, playoffs et plus, à la seconde."
   },
   "settings": {
+    "country_desc": "Ses compétitions apparaissent en premier sur l’accueil. Les autres restent disponibles.",
     "title": "Paramètres",
     "subtitle": "Personnalisez votre expérience sur la piste",
     "premium_title": "Stick Live Premium",
@@ -798,6 +799,8 @@
     "refresh": "Actualiser"
   },
   "home": {
+    "country_all": "Tous les pays",
+    "country_label": "Pays préféré",
     "live_in_block": "{n} en direct",
     "filters": "Filtrer les matchs",
     "filter_live": "En direct",

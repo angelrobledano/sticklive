@@ -1,5 +1,7 @@
 'use client';
 
+import { tt } from '@/components/search/translate';
+import { CountryPicker } from '@/components/shared/CountryPicker';
 import { useEffect, useMemo, useState } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useFavorites } from '@/hooks/useFavorites';
@@ -308,6 +310,16 @@ export default function SettingsPage() {
           </div>
 
           <LanguageRow />
+
+          <div className="flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{tt(t, 'home.country_label', 'País preferido')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                {tt(t, 'settings.country_desc', 'Sus competiciones salen primero en la portada. Las demás siguen ahí.')}
+              </p>
+            </div>
+            <CountryPicker variant="field" />
+          </div>
 
           <p className="py-2.5 text-[11px] text-slate-500 dark:text-slate-400">
             {t('settings.choice_saved')}

@@ -477,6 +477,7 @@
     "description": "Live rink hockey scores, stats and lineups. OK Liga, playoffs and more, updated to the second."
   },
   "settings": {
+    "country_desc": "Its competitions come first on the home page. The rest are still there.",
     "title": "Settings",
     "subtitle": "Personalize your rink experience",
     "premium_title": "Stick Live Premium",
@@ -798,6 +799,8 @@
     "refresh": "Refresh"
   },
   "home": {
+    "country_all": "All countries",
+    "country_label": "Preferred country",
     "live_in_block": "{n} live",
     "filters": "Filter matches",
     "filter_live": "Live",

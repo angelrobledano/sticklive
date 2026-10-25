@@ -404,6 +404,7 @@
     "description": "Risultati, statistiche e formazioni di hockey su pista in diretta. OK Liga, playoff e molto altro, al secondo."
   },
   "settings": {
+    "country_desc": "Le sue competizioni compaiono per prime nella home. Le altre restano disponibili.",
     "title": "Impostazioni",
     "subtitle": "Personalizza la tua esperienza in pista",
     "premium_title": "Stick Live Premium",
@@ -798,6 +799,8 @@
     "refresh": "Aggiorna"
   },
   "home": {
+    "country_all": "Tutti i paesi",
+    "country_label": "Paese preferito",
     "live_in_block": "{n} in diretta",
     "filters": "Filtra le partite",
     "filter_live": "In diretta",

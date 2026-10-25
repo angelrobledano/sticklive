@@ -493,6 +493,7 @@
     "description": "Resultats, estadístiques i alineacions d'hoquei patins en directe. OK Lliga, playoffs i molt més, al segon."
   },
   "settings": {
+    "country_desc": "Les seves competicions surten primer a la portada. La resta continuen allà.",
     "title": "Ajustos",
     "subtitle": "Personalitza la teva experiència a la pista",
     "premium_title": "Stick Live Premium",
@@ -798,6 +799,8 @@
     "refresh": "Actualitzar"
   },
   "home": {
+    "country_all": "Tots els països",
+    "country_label": "País preferit",
     "live_in_block": "{n} en directe",
     "filters": "Filtrar partits",
     "filter_live": "En directe",

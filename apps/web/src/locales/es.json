@@ -493,6 +493,7 @@
     "description": "Resultados, estadísticas y alineaciones de hockey patines en directo. OK Liga, playoffs y mucho más, al segundo."
   },
   "settings": {
+    "country_desc": "Sus competiciones salen primero en la portada. Las demás siguen ahí.",
     "title": "Ajustes",
     "subtitle": "Personaliza tu experiencia en la pista",
     "premium_title": "Stick Live Premium",
@@ -798,6 +799,8 @@
     "refresh": "Actualizar"
   },
   "home": {
+    "country_all": "Todos los países",
+    "country_label": "País preferido",
     "live_in_block": "{n} en directo",
     "filters": "Filtrar partidos",
     "filter_live": "En directo",

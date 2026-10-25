@@ -9,6 +9,8 @@ import { MiGrada } from '@/components/home/MiGrada';
 import { MatchRow } from '@/components/home/MatchRow';
 import { MatchGroupCard, CompetitionIcon, FollowStar } from '@/components/home/MatchGroupCard';
 import { DayChips } from '@/components/home/DayChips';
+import { CountryPicker } from '@/components/shared/CountryPicker';
+import { usePreferredCountry } from '@/hooks/usePreferredCountry';
 import { AdBanner } from '@/components/shared/AdBanner';
 import { adsenseConfig, listAdInsertIndex } from '@/lib/ads';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
@@ -202,12 +204,13 @@ function longDayLabel(dateKey: string, locale: string, withMonth: boolean): stri
  * `afterFirst` se intercala tras la primera tarjeta (publicidad y onboarding:
  * nunca antes del primer partido). `listAd` inserta el banner entre resultados.
  */
-function DayCards({ view, followedTeamIds, showDate = false, afterFirst, listAd = false }: {
+function DayCards({ view, followedTeamIds, showDate = false, afterFirst, listAd = false, country = null }: {
   view: DayView<Match>;
   followedTeamIds: ReadonlySet<string>;
   showDate?: boolean;
   afterFirst?: ReactNode;
   listAd?: boolean;
+  country?: string | null;
 }) {
   const { t } = useT();
   const other = tt(t, 'common.other_competitions', 'Otras competiciones');
@@ -237,7 +240,7 @@ function DayCards({ view, followedTeamIds, showDate = false, afterFirst, listAd 
       ),
     });
   }
-  const openKeys = defaultOpenKeys(view.competitions);
+  const openKeys = defaultOpenKeys(view.competitions, country);
   for (const block of view.competitions) {
     cards.push({
       key: block.key || '__other__',
@@ -463,6 +466,7 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
   }, [selectedDate]);
 
   const { favorites, leagues } = useFavorites();
+  const { country } = usePreferredCountry();
   const followedTeamIds = useMemo(() => new Set(favorites), [favorites]);
   const { t, locale } = useT();
 
@@ -492,8 +496,8 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
   };
 
   const view = useMemo(
-    () => buildDayView(matches, { dayKey: selectedDate, teamIds: favorites, leagueIds: leagues, filter: requestedFilter, locale }),
-    [matches, selectedDate, favorites, leagues, requestedFilter, locale],
+    () => buildDayView(matches, { dayKey: selectedDate, teamIds: favorites, leagueIds: leagues, filter: requestedFilter, locale, country }),
+    [matches, selectedDate, favorites, leagues, requestedFilter, locale, country],
   );
   const isPast = selectedDate < todayKey;
   const dayKeys = useMemo(() => days.filter((d) => d.count > 0).map((d) => d.day), [days]);
@@ -510,12 +514,12 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
     if (selectedLoading || view.total > 0 || isPast) return null;
     // Sin índice de días (falló /matches/days): se busca en lo ya cargado.
     if (dayKeys.length === 0) {
-      return nextMatchday(matches, selectedDate, { teamIds: favorites, leagueIds: leagues, locale });
+      return nextMatchday(matches, selectedDate, { teamIds: favorites, leagueIds: leagues, locale, country });
     }
     return nextKey && loadedDays.has(nextKey)
-      ? buildDayView(matches, { dayKey: nextKey, teamIds: favorites, leagueIds: leagues, filter: 'all', locale })
+      ? buildDayView(matches, { dayKey: nextKey, teamIds: favorites, leagueIds: leagues, filter: 'all', locale, country })
       : null;
-  }, [selectedLoading, view.total, isPast, dayKeys.length, nextKey, loadedDays, matches, selectedDate, favorites, leagues, locale]);
+  }, [selectedLoading, view.total, isPast, dayKeys.length, nextKey, loadedDays, matches, selectedDate, favorites, leagues, locale, country]);
   const markedDays = useMemo(
     () => (dayKeys.length > 0 ? new Set(dayKeys) : daysWithMatches(matches)),
     [dayKeys, matches],
@@ -591,13 +595,18 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
             {/* Contexto para lectores de pantalla: de qué día son las tarjetas
                 (cada tarjeta es un h3). */}
             <h2 className="sr-only">{longDayLabel(selectedDate, locale, true)}</h2>
-            <DayChips
-              liveCount={view.liveCount}
-              followingCount={view.followingCount}
-              filter={view.filter}
-              onChange={onFilterChange}
-              degraded={degraded}
-            />
+            <div className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <DayChips
+                  liveCount={view.liveCount}
+                  followingCount={view.followingCount}
+                  filter={view.filter}
+                  onChange={onFilterChange}
+                  degraded={degraded}
+                />
+              </div>
+              <div className="pb-3"><CountryPicker /></div>
+            </div>
 
             {selectedLoading ? (
               failedDay === selectedDate ? (
@@ -635,6 +644,7 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
               <DayCards
                 view={view}
                 followedTeamIds={followedTeamIds}
+                country={country}
                 listAd
                 afterFirst={
                   <>

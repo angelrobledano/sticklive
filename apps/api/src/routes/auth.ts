@@ -440,6 +440,30 @@ authRouter.get('/me', async (c) => {
 });
 
 /**
+ * GET /auth/preferences — preferencias de la cuenta (país preferido de la home).
+ * PUT /auth/preferences { country: "PT" | null }
+ */
+authRouter.get('/preferences', async (c) => {
+  const user = await userFromBearer(c.req.header('Authorization'));
+  if (!user) return c.json({ error: 'unauthorized' }, 401);
+  const r = await db.query<{ preferred_country: string | null }>(
+    `SELECT preferred_country FROM users WHERE id = $1`, [user.id]);
+  return c.json({ country: r.rows[0]?.preferred_country ?? null });
+});
+
+authRouter.put('/preferences', async (c) => {
+  const user = await userFromBearer(c.req.header('Authorization'));
+  if (!user) return c.json({ error: 'unauthorized' }, 401);
+  const body = await c.req.json<{ country?: unknown }>().catch(() => ({} as { country?: unknown }));
+  const country = body.country ?? null;
+  if (country !== null && !(typeof country === 'string' && /^[A-Z]{2}$/.test(country))) {
+    return c.json({ error: 'invalid_country' }, 400);
+  }
+  await db.query(`UPDATE users SET preferred_country = $2 WHERE id = $1`, [user.id, country]);
+  return c.json({ country });
+});
+
+/**
  * GET /auth/favorites — favoritos de la cuenta.
  *
  * Fuente de verdad multi-dispositivo (#268): en las sincronizaciones posteriores

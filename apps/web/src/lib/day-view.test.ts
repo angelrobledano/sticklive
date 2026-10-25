@@ -261,3 +261,40 @@ describe('defaultOpenKeys', () => {
     expect(defaultOpenKeys([]).size).toBe(0);
   });
 });
+
+/** País preferido (iteración 4): ordena, nunca excluye. Los favoritos mandan. */
+describe('buildDayView con país preferido', () => {
+  const day = [
+    M('1', '2026-10-16T18:00:00Z', 'okliga'),
+    M('2', '2026-10-16T18:00:00Z', 'zeta'),
+    M('3', '2026-10-16T18:00:00Z', 'mundial'),
+    M('4', '2026-10-16T18:00:00Z', 'alfa'),
+  ];
+  it('las competiciones del país van primero; nada desaparece', () => {
+    const v = buildDayView(day, { dayKey: DAY, country: 'PT' });
+    expect(v.competitions.map((b) => b.key)).toEqual(['zeta', 'mundial', 'okliga', 'alfa']);
+  });
+  it('una liga seguida de otro país va por delante del país', () => {
+    const v = buildDayView(day, { dayKey: DAY, country: 'PT', leagueIds: ['alfa'] });
+    expect(v.competitions[0]!.key).toBe('alfa');
+    expect(v.competitions[1]!.key).toBe('zeta');
+  });
+  it('sin país, el orden global de siempre', () => {
+    const v = buildDayView(day, { dayKey: DAY });
+    expect(v.competitions.map((b) => b.key)).toEqual(['mundial', 'okliga', 'alfa', 'zeta']);
+  });
+});
+
+describe('defaultOpenKeys con país preferido', () => {
+  const b = (key: string, country: string, o: Partial<{ followed: boolean; tier: number | null; live: boolean }> = {}) => ({
+    key, country, followed: o.followed ?? false, tier: o.tier ?? null, featuredRank: null,
+    matches: [{ status: o.live ? 'live' : 'scheduled' }],
+  });
+  it('la máxima categoría de otro país sale plegada salvo que la sigas o tenga directo', () => {
+    const keys = defaultOpenKeys([
+      b('pt1', 'PT', { tier: 1 }), b('es1', 'ES', { tier: 1 }), b('esLive', 'ES', { live: true }),
+      b('itSeg', 'IT', { followed: true }), b('mundial', 'W', { tier: 1 }),
+    ], 'PT');
+    expect([...keys].sort()).toEqual(['esLive', 'itSeg', 'mundial', 'pt1']);
+  });
+});
