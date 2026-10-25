@@ -330,6 +330,205 @@ export const COMPETITION_EDITORIAL: Record<string, EditorialByLocale> = {
       source: { label: 'Wikipedia (OK Liga Femenina) and Infobae', url: 'https://en.wikipedia.org/wiki/OK_Liga_Femenina' },
     },
   },
+
+  'campeonato-placard-portugal': {
+    es: {
+      title: "Campeonato Placard (1.ª División de Portugal): historia, formato y palmarés",
+      intro:
+        "El Campeonato Placard es la primera división del hockey patines portugués, una de las tres grandes ligas del mundo junto a la española y la italiana. Se disputa desde la temporada 1938/39 y el primer campeón fue el Sporting CP.",
+      sections: [
+        {
+          heading: "Cómo se juega",
+          body: [
+            "Fase regular a doble vuelta y play-off por el título entre los mejores clasificados.",
+          ],
+        },
+        {
+          heading: "Campeón 2025/26: el Benfica, invicto",
+          body: [
+            "El SL Benfica ganó la liga 2025/26 sin perder un solo partido: cuatro empates en la fase regular y ocho victorias de ocho en el play-off. Cerró la final ante el Sporting CP con un 3-1 en el tercer partido.",
+            "Es su título número 25 y el primero en tres años, después del bicampeonato del FC Porto.",
+          ],
+          bullets: [
+            "2025/26: SL Benfica",
+            "2024/25: FC Porto",
+            "2023/24: FC Porto",
+          ],
+        },
+        {
+          heading: "Qué seguir esta temporada",
+          body: [
+            "La clasificación, el calendario, los resultados en directo y los goleadores de la temporada en curso están en las pestañas de esta competición.",
+          ],
+        },
+      ],
+      source: { label: "FPP (Federação de Patinagem de Portugal)", url: "https://fpp.pt/benfica-e-campeao-nacional-de-hoquei-em-patins/" },
+    },
+    en: {
+      title: "Campeonato Placard (Portugal’s 1.ª Divisão): history, format and champions",
+      intro:
+        "The Campeonato Placard is the top division of Portuguese rink hockey and, with the Spanish and Italian leagues, one of the three strongest in the world. It has been played since 1938/39 and the first champions were Sporting CP.",
+      sections: [
+        {
+          heading: "Format",
+          body: [
+            "A home-and-away regular season followed by title play-offs for the top teams.",
+          ],
+        },
+        {
+          heading: "2025/26 champions: Benfica, unbeaten",
+          body: [
+            "SL Benfica won the 2025/26 title without losing a match: four draws in the regular season and eight wins out of eight in the play-offs. They closed out the final against Sporting CP with a 3-1 win in game three.",
+            "It is their 25th title and their first in three years, after FC Porto’s back-to-back championships.",
+          ],
+          bullets: [
+            "2025/26: SL Benfica",
+            "2024/25: FC Porto",
+            "2023/24: FC Porto",
+          ],
+        },
+        {
+          heading: "What to follow this season",
+          body: [
+            "Standings, fixtures, live results and top scorers for the current season are in this competition’s tabs.",
+          ],
+        },
+      ],
+      source: { label: "FPP (Portuguese Skating Federation)", url: "https://fpp.pt/benfica-e-campeao-nacional-de-hoquei-em-patins/" },
+    },
+  },
+
+  'campeonato-nacional-feminino-portugal': {
+    es: {
+      title: "Campeonato Nacional Femenino de Portugal: formato y palmarés",
+      intro:
+        "El Campeonato Nacional Femenino es la primera división del hockey patines femenino en Portugal. En la última década lo ha dominado el SL Benfica, uno de los grandes clubes del hockey femenino mundial.",
+      sections: [
+        {
+          heading: "Cómo se juega",
+          body: [
+            "Fase regular y play-off por el título, con final a doble partido.",
+          ],
+        },
+        {
+          heading: "Campeón 2025/26: el Benfica, otra vez",
+          body: [
+            "El SL Benfica ganó los dos partidos de la final ante la ACD Gulpilhares (7-0 y 4-3). Es su decimotercer título consecutivo: en 2024/25 ya había ganado el duodécimo seguido, ante el Turquel.",
+          ],
+          bullets: [
+            "2025/26: SL Benfica",
+            "2024/25: SL Benfica",
+          ],
+        },
+        {
+          heading: "Qué seguir esta temporada",
+          body: [
+            "La clasificación, el calendario, los resultados en directo y las goleadoras de la temporada en curso están en las pestañas de esta competición.",
+          ],
+        },
+      ],
+      source: { label: "Federação de Patinagem de Portugal", url: "https://www.hoqueipatins.pt/feminino/benfica-campeao-nacional-feminino-30-jun-2026/" },
+    },
+    en: {
+      title: "Portuguese Women’s National Championship: format and champions",
+      intro:
+        "The Campeonato Nacional Feminino is the top division of women’s rink hockey in Portugal. Over the last decade it has been dominated by SL Benfica, one of the leading clubs in women’s rink hockey worldwide.",
+      sections: [
+        {
+          heading: "Format",
+          body: [
+            "A regular season followed by title play-offs, with a two-game final.",
+          ],
+        },
+        {
+          heading: "2025/26 champions: Benfica again",
+          body: [
+            "SL Benfica won both games of the final against ACD Gulpilhares (7-0 and 4-3). It is their thirteenth title in a row: in 2024/25 they had already won their twelfth straight, against Turquel.",
+          ],
+          bullets: [
+            "2025/26: SL Benfica",
+            "2024/25: SL Benfica",
+          ],
+        },
+        {
+          heading: "What to follow this season",
+          body: [
+            "Standings, fixtures, live results and top scorers for the current season are in this competition’s tabs.",
+          ],
+        },
+      ],
+      source: { label: "Portuguese Skating Federation", url: "https://www.hoqueipatins.pt/feminino/benfica-campeao-nacional-feminino-30-jun-2026/" },
+    },
+  },
+
+  'campionato-serie-a1': {
+    es: {
+      title: "Serie A1 de Italia: historia, formato y palmarés",
+      intro:
+        "La Serie A1 es la primera división del hockey patines italiano. El campeonato nacional se juega desde 1922, cuando se disputó la primera edición en Milán, y el Novara es el club con más títulos de la historia, con 32 scudetti.",
+      sections: [
+        {
+          heading: "Cómo se juega",
+          body: [
+            "Catorce equipos a doble vuelta. Los diez primeros juegan el play-off por el scudetto, con semifinales y final al mejor de cinco partidos. Los cuatro últimos disputan un play-out y los dos peores descienden a Serie A2.",
+          ],
+        },
+        {
+          heading: "Campeón 2025/26: el Trissino",
+          body: [
+            "El Hockey Trissino ganó la final 3-1 al Bassano y cerró el título en el cuarto partido, en la pista del rival. Es el quinto scudetto de su historia y el cuarto en las últimas cinco temporadas.",
+          ],
+          bullets: [
+            "2025/26: Hockey Trissino",
+            "2024/25: Hockey Trissino",
+            "2023/24: Forte dei Marmi",
+            "2022/23: Hockey Trissino",
+            "2021/22: Hockey Trissino",
+          ],
+        },
+        {
+          heading: "Qué seguir esta temporada",
+          body: [
+            "La clasificación, el calendario, los resultados en directo y los goleadores de la temporada en curso están en las pestañas de esta competición.",
+          ],
+        },
+      ],
+      source: { label: "Wikipedia (Serie A1) y OA Sport", url: "https://it.wikipedia.org/wiki/Serie_A1_(hockey_su_pista)" },
+    },
+    en: {
+      title: "Italy’s Serie A1: history, format and champions",
+      intro:
+        "Serie A1 is the top division of Italian rink hockey. The national championship has been played since 1922, when the first edition was held in Milan, and Novara hold the all-time record with 32 titles.",
+      sections: [
+        {
+          heading: "Format",
+          body: [
+            "Fourteen teams play home and away. The top ten go into the title play-offs, with best-of-five semi-finals and final. The bottom four play a relegation round and the last two drop to Serie A2.",
+          ],
+        },
+        {
+          heading: "2025/26 champions: Trissino",
+          body: [
+            "Hockey Trissino beat Bassano 3-1 in the final, clinching the title in game four on their rivals’ rink. It is the fifth title in their history and their fourth in the last five seasons.",
+          ],
+          bullets: [
+            "2025/26: Hockey Trissino",
+            "2024/25: Hockey Trissino",
+            "2023/24: Forte dei Marmi",
+            "2022/23: Hockey Trissino",
+            "2021/22: Hockey Trissino",
+          ],
+        },
+        {
+          heading: "What to follow this season",
+          body: [
+            "Standings, fixtures, live results and top scorers for the current season are in this competition’s tabs.",
+          ],
+        },
+      ],
+      source: { label: "Wikipedia (Serie A1) and OA Sport", url: "https://it.wikipedia.org/wiki/Serie_A1_(hockey_su_pista)" },
+    },
+  },
 };
 
 export function competitionEditorial(slug: string | null | undefined, locale: string): CompetitionEditorial | null {

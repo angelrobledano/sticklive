@@ -26,6 +26,17 @@ describe('competitionEditorial', () => {
     expect(competitionEditorial('ok-liga-masculina', 'en')!.title).toContain('history');
   });
 
+  it('tiene contenido para las ligas de Portugal e Italia', () => {
+    for (const slug of ['campeonato-placard-portugal', 'campeonato-nacional-feminino-portugal', 'campionato-serie-a1']) {
+      for (const locale of ['es', 'en']) {
+        const c = competitionEditorial(slug, locale);
+        expect(c).not.toBeNull();
+        expect(c!.sections.length).toBeGreaterThanOrEqual(3);
+        expect(c!.source?.url).toMatch(/^https:\/\//);
+      }
+    }
+  });
+
   it('cae al español en locales sin traducción', () => {
     const fallback = competitionEditorial('supercopa-de-espana-masculina', 'fr');
     const es = competitionEditorial('supercopa-de-espana-masculina', 'es');
