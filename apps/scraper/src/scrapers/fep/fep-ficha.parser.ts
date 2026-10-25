@@ -426,6 +426,14 @@ export function parseFicha(
     return events;
   }
 
+  // Ficha rfep_gr reconocible pero sin cronología: actas de base (FEM 11,
+  // benjamín…) que solo publican goles agregados por jugador. No hay eventos
+  // que sacar; el fallback de "cualquier tabla" solo metía ruido en el log.
+  if ($('#game_report_inicidencias').length > 0) {
+    log.info({ idp }, 'Ficha rfep_gr sin cronología de incidencias — 0 eventos');
+    return events;
+  }
+
   // ── Estrategia 1: tabla con clase acta / ficha / eventos ────────────
   const ACTA_TABLE_SELECTORS = [
     'table.tabla_acta',

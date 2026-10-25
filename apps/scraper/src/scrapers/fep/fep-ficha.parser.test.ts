@@ -619,3 +619,18 @@ describe('nombre sin la etiqueta de licencia de FECAPA (A3)', () => {
     expect(serra?.playerFirstName).toBe('MARTÍ');
   });
 });
+
+/**
+ * Actas de base (FEM 11, benjamín…): la ficha rfep_gr llega FINALIZADA pero con
+ * el bloque de incidencias vacío; los goles solo vienen agregados por jugador.
+ * No hay cronología: devolver [] sin caer al fallback de "cualquier tabla",
+ * que generaba ruido en el log cada minuto y podía inventar eventos.
+ */
+describe('acta rfep_gr sin cronología de incidencias', () => {
+  it('devuelve [] y no inventa eventos desde otras tablas', () => {
+    const warns: string[] = [];
+    const log = { debug: () => {}, info: () => {}, warn: (_o: unknown, m?: string) => { warns.push(m ?? ''); } };
+    expect(parseFicha(load('ficha-sin-incidencias'), '159681', { log })).toEqual([]);
+    expect(warns).toEqual([]);
+  });
+});
