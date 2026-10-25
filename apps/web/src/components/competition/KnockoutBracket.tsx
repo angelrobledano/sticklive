@@ -1,5 +1,6 @@
 'use client';
 
+import { useViewerTz } from '@/hooks/useViewerTz';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useMemo } from 'react';
 import type { SeasonMatch, SeasonRound } from '@/lib/api/client';
@@ -30,6 +31,7 @@ export function KnockoutMatchCard({ m, label, showFinishedLabel = true, highligh
   highlight?: boolean;
 }) {
   const { t, locale } = useT();
+  const viewerTz = useViewerTz();
   const isFinished = m.status === 'finished';
   const isLive = m.status === 'live';
   const showScore = isFinished || isLive;
@@ -95,8 +97,8 @@ export function KnockoutMatchCard({ m, label, showFinishedLabel = true, highligh
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isLive ? 'text-emerald-500' : 'text-slate-500 dark:text-slate-400'}`}>
           {isLive ? `🟢 ${t('playoffs.live')}`
             : isFinished
-              ? `${showFinishedLabel ? `${t('match_states.final')} · ` : ''}${fmtDate(m.scheduledAt ?? m.finishedAt, m.competitionTimezone, locale)}`
-              : `${fmtDate(m.scheduledAt, m.competitionTimezone, locale)} · ${fmtTime(m.scheduledAt, m.competitionTimezone, locale)}`}
+              ? `${showFinishedLabel ? `${t('match_states.final')} · ` : ''}${fmtDate(m.scheduledAt ?? m.finishedAt, viewerTz, locale)}`
+              : `${fmtDate(m.scheduledAt, viewerTz, locale)} · ${fmtTime(m.scheduledAt, viewerTz, locale)}`}
         </span>
       </div>
     </Link>

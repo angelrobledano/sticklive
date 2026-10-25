@@ -11,7 +11,8 @@
  * Función pura, sin React: testeable sin navegador. El día de cada partido se
  * calcula con `madridDateKey`, la autoridad horaria única de la app.
  */
-import { madridDateKey } from '@/lib/match-time';
+import { APP_TZ } from '@/lib/match-time';
+import { dateKeyIn } from '@/lib/viewer-tz-core';
 import { importanceRank } from '@/lib/competition-importance';
 
 export type DayFilter = 'all' | 'live' | 'following';
@@ -77,6 +78,8 @@ export interface DayViewOptions {
   leagueIds?: readonly string[];
   filter?: DayFilter;
   locale?: string;
+  /** Zona horaria con la que se agrupan los días (la de quien mira). Por defecto, Madrid. */
+  tz?: string;
   /** País preferido (ISO-2): sus competiciones van primero, luego las mundiales. Ordena, no excluye. */
   country?: string | null;
 }
@@ -111,7 +114,8 @@ export function buildDayView<T extends DayViewMatch>(matches: T[], opts: DayView
   const isFollowing = (m: T) => isMyTeam(m) || isFollowedLeague(m);
   const isLive = (m: T) => m.status === 'live';
 
-  const day = matches.filter((m) => madridDateKey(m.scheduledAt) === opts.dayKey);
+  const tz = opts.tz ?? APP_TZ;
+  const day = matches.filter((m) => dateKeyIn(m.scheduledAt, tz) === opts.dayKey);
   const liveCount = day.filter(isLive).length;
   const followingCount = day.filter(isFollowing).length;
 
@@ -182,17 +186,17 @@ export function nextMatchday<T extends DayViewMatch>(
 ): DayView<T> | null {
   let next: string | null = null;
   for (const m of matches) {
-    const k = madridDateKey(m.scheduledAt);
+    const k = dateKeyIn(m.scheduledAt, opts.tz ?? APP_TZ);
     if (k && k > afterKey && (next === null || k < next)) next = k;
   }
   return next === null ? null : buildDayView(matches, { ...opts, dayKey: next, filter: 'all' });
 }
 
 /** Días (clave de Madrid) que tienen al menos un partido: puntos del selector. */
-export function daysWithMatches(matches: readonly DayViewMatch[]): Set<string> {
+export function daysWithMatches(matches: readonly DayViewMatch[], tz: string = APP_TZ): Set<string> {
   const out = new Set<string>();
   for (const m of matches) {
-    const k = madridDateKey(m.scheduledAt);
+    const k = dateKeyIn(m.scheduledAt, tz);
     if (k) out.add(k);
   }
   return out;

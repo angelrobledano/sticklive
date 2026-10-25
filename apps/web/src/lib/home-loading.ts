@@ -11,7 +11,9 @@ import { addDaysToKey } from '@/lib/match-time';
  * la víspera a las 22:00/23:00 UTC. La vista vuelve a filtrar por día de Madrid.
  */
 export function dayFetchRange(dayKey: string): { from: string; to: string } {
-  return { from: addDaysToKey(dayKey, -1), to: dayKey };
+  // ±1 día: cubre el día local de cualquier zona (Europa y también América),
+  // porque la vista agrupa en la zona de quien mira.
+  return { from: addDaysToKey(dayKey, -1), to: addDaysToKey(dayKey, 1) };
 }
 
 /**

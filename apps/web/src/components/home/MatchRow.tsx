@@ -1,5 +1,6 @@
 'use client';
 
+import { useViewerTz } from '@/hooks/useViewerTz';
 import { memo, useEffect, useRef, useState } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import type { Match, TeamSummary } from '@/lib/api/client';
@@ -93,7 +94,7 @@ function useCenter(match: Match, showDate: boolean): { node: React.ReactNode; te
   const { t, locale } = useT();
   const display = matchCardState(match, useNow30s(match.status === 'scheduled'));
   const { status, score } = match;
-  const tz = match.competitionTimezone || APP_TZ;
+  const tz = useViewerTz();
   const day = showDate ? shortDayLabel(match.scheduledAt ?? match.startedAt, locale, tz) : '';
   const flash = useScoreFlash(status === 'live' ? score.home : null, status === 'live' ? score.away : null);
 
@@ -154,7 +155,7 @@ function useCenter(match: Match, showDate: boolean): { node: React.ReactNode; te
       </>
     );
   } else {
-    const time = formatTime(match.startedAt ?? match.scheduledAt, match.competitionTimezone, locale);
+    const time = formatTime(match.startedAt ?? match.scheduledAt, tz, locale);
     const sub = day
       || (display === 'awaiting_start' ? tt(t, 'match_states.awaiting_start', 'Pendiente')
         : display === 'overdue' ? tt(t, 'match_states.no_result', 'Sin resultado') : '');

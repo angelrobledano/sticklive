@@ -1,5 +1,7 @@
 'use client';
 
+import { useViewerTz } from '@/hooks/useViewerTz';
+import { localTimeDiffers } from '@/lib/viewer-tz-core';
 import { useState, useEffect } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useT } from '@/lib/i18n';
@@ -179,6 +181,7 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
   serverStale?: boolean;
 }) {
   const { t, locale } = useT();
+  const viewerTz = useViewerTz();
   const { match, stats } = data;
   const ht = match.homeTeam!;
   const at = match.awayTeam!;
@@ -295,7 +298,11 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
         )}
         {!isLive && !isFinished && (
           <span className="text-[11px] text-slate-500 dark:text-slate-400">
-            {formatDate(match.scheduledAt, match.competitionTimezone, locale)} · {formatTime(match.scheduledAt, match.competitionTimezone, locale)}
+            {formatDate(match.scheduledAt, viewerTz, locale)} · {formatTime(match.scheduledAt, viewerTz, locale)}
+            {/* Hora del pabellón cuando no coincide con la de quien mira. */}
+            {localTimeDiffers(match.scheduledAt, viewerTz, match.competitionTimezone) && (
+              <> ({tt(t, 'match_detail.local_time', '{time} hora local', { time: formatTime(match.scheduledAt, match.competitionTimezone, locale) })})</>
+            )}
           </span>
         )}
       </div>
@@ -317,7 +324,7 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
             </div>
           ) : (
             <div className="font-score text-3xl font-semibold text-slate-500 dark:text-slate-400 tabular-nums">
-              {formatTime(match.scheduledAt, match.competitionTimezone, locale)}
+              {formatTime(match.scheduledAt, viewerTz, locale)}
             </div>
           )}
           {match.status === 'postponed' && (

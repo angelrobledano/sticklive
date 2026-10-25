@@ -298,3 +298,13 @@ describe('defaultOpenKeys con país preferido', () => {
     expect([...keys].sort()).toEqual(['esLive', 'itSeg', 'mundial', 'pt1']);
   });
 });
+
+/** Los días se agrupan en la zona de quien mira (decisión 25/10/2026). */
+describe('buildDayView con zona horaria de quien mira', () => {
+  const late = [M('1', '2026-10-24T22:30:00Z', 'zeta')];
+  it('en Madrid cae el 25; en Lisboa, el 24', () => {
+    expect(buildDayView(late, { dayKey: '2026-10-25' }).total).toBe(1);
+    expect(buildDayView(late, { dayKey: '2026-10-24', tz: 'Europe/Lisbon' }).total).toBe(1);
+    expect(buildDayView(late, { dayKey: '2026-10-25', tz: 'Europe/Lisbon' }).total).toBe(0);
+  });
+});

@@ -17,7 +17,9 @@ import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';
-import { madridDateKey, madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
+import { madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
+import { useViewerTz } from '@/hooks/useViewerTz';
+import { dateKeyIn, todayKeyIn } from '@/lib/viewer-tz-core';
 import { buildDayView, nextMatchday, daysWithMatches, defaultOpenKeys, type DayFilter, type DayView } from '@/lib/day-view';
 import { getMatchesInRange, getCurrentMatchesFresh } from '@/lib/api/client';
 import { dayFetchRange, windowFromDays, nextDayWithMatches } from '@/lib/home-loading';
@@ -415,8 +417,11 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
 
   // "Hoy" anclado en Europe/Madrid: misma autoridad horaria que usa el filtrado
   // de partidos. Estable en SSR (servidor UTC) y en cualquier TZ del dispositivo.
-  const todayKey = madridTodayKey();
+  // Días y "hoy" en la zona de quien mira (SSR e hidratación: Madrid).
+  const viewerTz = useViewerTz();
+  const todayKey = todayKeyIn(viewerTz);
   const [selectedDate, setSelectedDateState] = useState<string>(todayKey);
+  const pickedRef = useRef(false);
 
   // El día elegido sobrevive al pull-to-refresh (sessionStorage: muere al
   // cerrar la pestaña, así mañana la app vuelve a abrir en "hoy").
@@ -424,7 +429,7 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
     try {
       const saved = sessionStorage.getItem('rink-selected-date');
       if (saved && /^\d{4}-\d{2}-\d{2}$/.test(saved)) {
-        if (Math.abs(dayDiff(saved, todayKey)) <= 7) setSelectedDateState(saved);
+        if (Math.abs(dayDiff(saved, todayKey)) <= 7) { pickedRef.current = true; setSelectedDateState(saved); }
       }
     } catch { /* noop */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -451,7 +456,14 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
       .finally(() => setLoadingDays((s) => { const n = new Set(s); n.delete(key); return n; }));
   }, [loadedDays, loadingDays, addMatches]);
 
+  // Si "hoy" cambia al conocer la zona del dispositivo (p. ej. de noche fuera
+  // de España) y el usuario no ha elegido día, se sigue a "hoy".
+  useEffect(() => {
+    if (!pickedRef.current) setSelectedDateState(todayKey);
+  }, [todayKey]);
+
   const setSelectedDate = useCallback((key: string) => {
+    pickedRef.current = true;
     setSelectedDateState(key);
     try { sessionStorage.setItem('rink-selected-date', key); } catch { /* noop */ }
   }, []);
@@ -496,8 +508,8 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
   };
 
   const view = useMemo(
-    () => buildDayView(matches, { dayKey: selectedDate, teamIds: favorites, leagueIds: leagues, filter: requestedFilter, locale, country }),
-    [matches, selectedDate, favorites, leagues, requestedFilter, locale, country],
+    () => buildDayView(matches, { dayKey: selectedDate, teamIds: favorites, leagueIds: leagues, filter: requestedFilter, locale, country, tz: viewerTz }),
+    [matches, selectedDate, favorites, leagues, requestedFilter, locale, country, viewerTz],
   );
   const isPast = selectedDate < todayKey;
   const dayKeys = useMemo(() => days.filter((d) => d.count > 0).map((d) => d.day), [days]);
@@ -514,15 +526,15 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
     if (selectedLoading || view.total > 0 || isPast) return null;
     // Sin índice de días (falló /matches/days): se busca en lo ya cargado.
     if (dayKeys.length === 0) {
-      return nextMatchday(matches, selectedDate, { teamIds: favorites, leagueIds: leagues, locale, country });
+      return nextMatchday(matches, selectedDate, { teamIds: favorites, leagueIds: leagues, locale, country, tz: viewerTz });
     }
     return nextKey && loadedDays.has(nextKey)
-      ? buildDayView(matches, { dayKey: nextKey, teamIds: favorites, leagueIds: leagues, filter: 'all', locale, country })
+      ? buildDayView(matches, { dayKey: nextKey, teamIds: favorites, leagueIds: leagues, filter: 'all', locale, country, tz: viewerTz })
       : null;
-  }, [selectedLoading, view.total, isPast, dayKeys.length, nextKey, loadedDays, matches, selectedDate, favorites, leagues, locale, country]);
+  }, [selectedLoading, view.total, isPast, dayKeys.length, nextKey, loadedDays, matches, selectedDate, favorites, leagues, locale, country, viewerTz]);
   const markedDays = useMemo(
-    () => (dayKeys.length > 0 ? new Set(dayKeys) : daysWithMatches(matches)),
-    [dayKeys, matches],
+    () => (dayKeys.length > 0 ? new Set(dayKeys) : daysWithMatches(matches, viewerTz)),
+    [dayKeys, matches, viewerTz],
   );
 
   // Rango de días con datos cargados (#365): acota el DateSelector para no
@@ -532,7 +544,7 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
     let from: string | null = null;
     let to: string | null = null;
     for (const m of matches) {
-      const k = madridDateKey(m.scheduledAt);
+      const k = dateKeyIn(m.scheduledAt, viewerTz);
       if (!k) continue;
       if (from === null || k < from) from = k;
       if (to === null || k > to) to = k;
@@ -544,7 +556,7 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
     if (from !== null && from > todayKey) from = todayKey;
     if (to !== null && to < todayKey) to = todayKey;
     return { from, to };
-  }, [dayKeys, matches, todayKey]);
+  }, [dayKeys, matches, todayKey, viewerTz]);
   const outOfWindow = (!!windowRange.from && selectedDate < windowRange.from)
     || (!!windowRange.to && selectedDate > windowRange.to);
 

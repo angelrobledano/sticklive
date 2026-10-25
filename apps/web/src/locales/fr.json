@@ -265,6 +265,7 @@
     "team_fouls_header": "Fautes d'équipe",
     "fouls": "fautes",
     "watch_live": "Regarder en direct",
+    "local_time": "{time} heure locale",
     "watch_video": "Voir la vidéo",
     "auto_update": "mise à jour automatique",
     "reconnecting": "Recherche du signal… reconnexion pour vous apporter chaque but à la seconde",

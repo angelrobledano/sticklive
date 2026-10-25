@@ -354,6 +354,7 @@
     "team_fouls_header": "Faltas de equipo",
     "fouls": "faltas",
     "watch_live": "Ver en directo",
+    "local_time": "{time} hora local",
     "watch_video": "Ver vídeo",
     "auto_update": "actualización automática",
     "reconnecting": "Buscando la señal… reconectando para traerte los goles al segundo",

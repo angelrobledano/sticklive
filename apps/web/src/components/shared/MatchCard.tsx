@@ -1,5 +1,6 @@
 'use client';
 
+import { useViewerTz } from '@/hooks/useViewerTz';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import type { Match, TeamSummary } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
@@ -125,6 +126,7 @@ function useMatchCardState(match: Match): MatchDisplayState {
 
 function ScoreBlock({ match }: { match: Match }) {
   const { t, locale } = useT();
+  const viewerTz = useViewerTz();
   const { status, score, scheduledAt, startedAt } = match;
 
   const display = useMatchCardState(match);
@@ -200,7 +202,7 @@ function ScoreBlock({ match }: { match: Match }) {
   return (
     <div className="flex flex-col items-center gap-0.5 px-3 shrink-0">
       <span className="font-score text-lg font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
-        {formatTime(startedAt ?? scheduledAt, match.competitionTimezone, locale)}
+        {formatTime(startedAt ?? scheduledAt, viewerTz, locale)}
       </span>
       {display === 'awaiting_start' && (
         <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">

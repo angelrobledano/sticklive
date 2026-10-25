@@ -1,5 +1,6 @@
 'use client';
 
+import { useViewerTz } from '@/hooks/useViewerTz';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useRouter } from 'next/navigation';
@@ -291,6 +292,7 @@ function ClubSection({ data }: { data: TeamDetailView }) {
 
 function MiniMatchCard({ match, teamId, roundLabel }: { match: TeamMatchSummary; teamId: string; roundLabel?: string | null }) {
   const { t, locale } = useT();
+  const viewerTz = useViewerTz();
   const isHome = match.homeTeam.id === teamId;
   const opp  = isHome ? match.awayTeam  : match.homeTeam;
   const isFinished = match.status === 'finished';
@@ -324,7 +326,7 @@ function MiniMatchCard({ match, teamId, roundLabel }: { match: TeamMatchSummary;
         <p className="text-xs text-slate-500 dark:text-slate-400">
           {/* En eliminatorias, la ronda da el contexto que la jornada da en liga */}
           {roundLabel && <span className="font-semibold">{roundLabel} · </span>}
-          {showScore ? (isLive ? t('playoffs.live') : formatMatchDate(match.scheduledAt ?? match.finishedAt, locale, match.competitionTimezone)) : formatMatchDate(match.scheduledAt, locale, match.competitionTimezone)}
+          {showScore ? (isLive ? t('playoffs.live') : formatMatchDate(match.scheduledAt ?? match.finishedAt, locale, viewerTz)) : formatMatchDate(match.scheduledAt, locale, viewerTz)}
         </p>
       </div>
 
@@ -336,7 +338,7 @@ function MiniMatchCard({ match, teamId, roundLabel }: { match: TeamMatchSummary;
           </span>
         ) : (
           <span className="font-score text-sm font-semibold text-slate-500 dark:text-slate-400 tabular-nums">
-            {formatTime(match.scheduledAt, locale, match.competitionTimezone)}
+            {formatTime(match.scheduledAt, locale, viewerTz)}
           </span>
         )}
       </div>

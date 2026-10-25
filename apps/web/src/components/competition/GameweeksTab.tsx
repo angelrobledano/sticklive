@@ -1,5 +1,6 @@
 'use client';
 
+import { useViewerTz } from '@/hooks/useViewerTz';
 import { useMemo, useCallback, useEffect, useRef, Fragment } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -143,6 +144,7 @@ export function fixturesFilterMode(
 
 function MatchCard({ match }: { match: SeasonMatch }) {
   const { t, locale } = useT();
+  const viewerTz = useViewerTz();
   const isLive     = match.status === 'live';
   const isFinished = match.status === 'finished';
   const showScore  = isLive || isFinished;
@@ -181,7 +183,7 @@ function MatchCard({ match }: { match: SeasonMatch }) {
           </>
         ) : (
           <span className="font-score text-sm font-semibold text-slate-500 dark:text-slate-400 tabular-nums">
-            {fmtTime(match.scheduledAt, match.competitionTimezone, locale)}
+            {fmtTime(match.scheduledAt, viewerTz, locale)}
           </span>
         )}
         {/* Grupo de la fase de grupos (WSG): en una misma jornada se mezclan

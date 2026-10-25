@@ -1,8 +1,10 @@
 'use client';
 
+import { useViewerTz } from '@/hooks/useViewerTz';
+import { todayKeyIn } from '@/lib/viewer-tz-core';
 import { memo, useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import { useT } from '@/lib/i18n';
-import { madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
+import { addDaysToKey, dayDiff } from '@/lib/match-time';
 import { computeDateWindow } from '@/lib/date-window';
 import { tt } from '@/components/search/translate';
 
@@ -160,7 +162,7 @@ const DayChip = memo(DayChipImpl);
  */
 function DateSelectorImpl({ selected, onChange, availableFrom, availableTo, markedDays }: DateSelectorProps) {
   const { t } = useT();
-  const todayKey = madridTodayKey();
+  const todayKey = todayKeyIn(useViewerTz());
   const dateKeys = useMemo(() => buildDateKeys(todayKey, 7, 14), [todayKey]);
   const scrollRef = useRef<HTMLDivElement>(null);
 

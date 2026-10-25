@@ -1,5 +1,6 @@
 'use client';
 
+import { useViewerTz } from '@/hooks/useViewerTz';
 import { useMemo, useState } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { TeamShield } from '@/components/shared/TeamShield';
@@ -25,7 +26,7 @@ function upperFirst(s: string) {
  */
 function CalendarRow({ match, teamId, roundLabel }: { match: TeamMatchSummary; teamId: string; roundLabel: string | null }) {
   const { t, locale } = useT();
-  const tz = match.competitionTimezone ?? 'Europe/Madrid';
+  const tz = useViewerTz();
   const when = match.scheduledAt ?? match.finishedAt;
   const date = when ? new Date(when) : null;
   const live = match.status === 'live';

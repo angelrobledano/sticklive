@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { dayFetchRange, mergeById, windowFromDays, nextDayWithMatches } from './home-loading';
 
 describe('dayFetchRange', () => {
-  it('cubre el día de Madrid entero con el rango UTC [d-1, d]', () => {
-    expect(dayFetchRange('2026-10-25')).toEqual({ from: '2026-10-24', to: '2026-10-25' });
+  it('cubre el día local de cualquier zona con el rango UTC [d-1, d+1]', () => {
+    expect(dayFetchRange('2026-10-25')).toEqual({ from: '2026-10-24', to: '2026-10-26' });
   });
   it('cruza mes y año', () => {
-    expect(dayFetchRange('2027-01-01')).toEqual({ from: '2026-12-31', to: '2027-01-01' });
+    expect(dayFetchRange('2027-01-01')).toEqual({ from: '2026-12-31', to: '2027-01-02' });
   });
 });
 

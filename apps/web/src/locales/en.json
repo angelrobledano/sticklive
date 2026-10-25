@@ -338,6 +338,7 @@
     "team_fouls_header": "Team fouls",
     "fouls": "fouls",
     "watch_live": "Watch live",
+    "local_time": "{time} local time",
     "watch_video": "Watch video",
     "auto_update": "auto-updating",
     "reconnecting": "Searching for the signal… reconnecting to bring you every goal instantly",
