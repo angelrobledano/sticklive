@@ -13,8 +13,17 @@ describe('competitionEditorial', () => {
   });
 
   it('no inventa contenido para competiciones sin editorial', () => {
-    expect(competitionEditorial('ok-liga-masculina', 'es')).toBeNull();
+    expect(competitionEditorial('ok-liga-plata-sur', 'es')).toBeNull();
     expect(competitionEditorial(null, 'es')).toBeNull();
+  });
+
+  it('tiene contenido para las dos OK Liga, con palmarés y campeón vigente', () => {
+    const masc = competitionEditorial('ok-liga-masculina', 'es')!;
+    const fem = competitionEditorial('ok-liga-femenina', 'es')!;
+    expect(masc.title).toContain('OK Liga Masculina');
+    expect(masc.sections.find((s) => s.heading === 'Palmarés')!.bullets![0]).toBe('2025/26: Igualada Rigat HC');
+    expect(fem.sections.find((s) => s.heading === 'Palmarés')!.bullets![0]).toBe('2025/26: CP Vila-sana');
+    expect(competitionEditorial('ok-liga-masculina', 'en')!.title).toContain('history');
   });
 
   it('cae al español en locales sin traducción', () => {

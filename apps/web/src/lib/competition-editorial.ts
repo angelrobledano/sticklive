@@ -169,6 +169,167 @@ export const COMPETITION_EDITORIAL: Record<string, EditorialByLocale> = {
       source: { label: 'RFEP', url: FEP_SUPERCOPAS },
     },
   },
+
+  // ── Ligas principales (contenido perenne: historia, palmarés, última edición) ──
+  'ok-liga-masculina': {
+    es: {
+      title: 'OK Liga Masculina: historia, formato y palmarés',
+      intro:
+        'La OK Liga Masculina es la primera división del hockey patines español y una de las ligas más fuertes del mundo. Se disputa desde 1969, primero como División de Honor y desde 2003 con su nombre actual.',
+      sections: [
+        {
+          heading: 'Cómo se juega',
+          body: [
+            'Dieciséis equipos se enfrentan a doble vuelta en una fase regular de 30 jornadas. Victoria 3 puntos, empate 1 y derrota 0. Los mejores clasificados pasan al play-off por el título y los últimos descienden a OK Liga Plata.',
+          ],
+        },
+        {
+          heading: 'Campeón 2025/26: el Igualada, 29 años después',
+          body: [
+            'El Igualada Rigat HC ganó la liga 2025/26 en el quinto partido de la final, en el Palacio de los Deportes de Riazor: 2-2 tras la prórroga y 0-2 para el Igualada en la tanda de penaltis. Remontó un 2-0 en contra en la serie ante el HC Liceo, después de eliminar al Barça en semifinales.',
+            'Era su sexto título de liga y el primero desde 1997.',
+          ],
+        },
+        {
+          heading: 'Palmarés',
+          body: [
+            'El Barça domina el historial con 35 ligas, entre ellas ocho seguidas de 2013/14 a 2020/21. Le siguen el HC Liceo (8), el Igualada (6), el Reus Deportiu (5), el CP Voltregà (2) y el CE Noia (1).',
+          ],
+          bullets: [
+            '2025/26: Igualada Rigat HC',
+            '2024/25: Barça',
+            '2023/24: Barça',
+            '2022/23: Barça',
+            '2021/22: HC Liceo',
+          ],
+        },
+        {
+          heading: 'Qué seguir esta temporada',
+          body: [
+            'La clasificación, el calendario, los resultados en directo y los goleadores de la temporada en curso están en las pestañas de esta competición.',
+          ],
+        },
+      ],
+      source: { label: 'Wikipedia (OK Liga) y Diario de Santiago', url: 'https://en.wikipedia.org/wiki/OK_Liga' },
+    },
+    en: {
+      title: 'OK Liga Masculina: history, format and champions',
+      intro:
+        'The OK Liga Masculina is the top division of Spanish rink hockey and one of the strongest leagues in the world. It has been played since 1969, first as the División de Honor and under its current name since 2003.',
+      sections: [
+        {
+          heading: 'Format',
+          body: [
+            'Sixteen teams play each other home and away over a 30-round regular season. A win is worth 3 points, a draw 1 and a defeat 0. The top teams go through to the title play-offs and the bottom teams are relegated to OK Liga Plata.',
+          ],
+        },
+        {
+          heading: '2025/26 champions: Igualada, 29 years later',
+          body: [
+            'Igualada Rigat HC won the 2025/26 title in game five of the final at the Palacio de los Deportes de Riazor: 2-2 after extra time and 0-2 to Igualada in the shoot-out. They came back from 2-0 down in the series against HC Liceo, after knocking out Barça in the semi-finals.',
+            'It was their sixth league title and their first since 1997.',
+          ],
+        },
+        {
+          heading: 'Roll of honour',
+          body: [
+            'Barça lead the all-time list with 35 titles, including eight in a row from 2013/14 to 2020/21. They are followed by HC Liceo (8), Igualada (6), Reus Deportiu (5), CP Voltregà (2) and CE Noia (1).',
+          ],
+          bullets: [
+            '2025/26: Igualada Rigat HC',
+            '2024/25: Barça',
+            '2023/24: Barça',
+            '2022/23: Barça',
+            '2021/22: HC Liceo',
+          ],
+        },
+        {
+          heading: 'What to follow this season',
+          body: ['Standings, fixtures, live results and top scorers for the current season are in this competition’s tabs.'],
+        },
+      ],
+      source: { label: 'Wikipedia (OK Liga) and Diario de Santiago', url: 'https://en.wikipedia.org/wiki/OK_Liga' },
+    },
+  },
+
+  'ok-liga-femenina': {
+    es: {
+      title: 'OK Liga Iberdrola (femenina): historia, formato y palmarés',
+      intro:
+        'La OK Liga Iberdrola es la primera división del hockey patines femenino en España. Se juega en formato de liga desde la temporada 2008/09 y reúne a buena parte de las mejores jugadoras del mundo.',
+      sections: [
+        {
+          heading: 'Cómo se juega',
+          body: [
+            'Fase regular a doble vuelta (24 jornadas en 2025/26) y play-off por el título, con la final al mejor de tres partidos.',
+          ],
+        },
+        {
+          heading: 'Campeón 2025/26: primer título del CP Vila-sana',
+          body: [
+            'El CP Vila-sana Coop. d’Ivars ganó la final 2-0 al CP Esneca Fraga en una final inédita, con dos clubes que nunca habían ganado la liga. Había terminado la fase regular en primera posición, con 22 victorias y 2 derrotas, y completó el doblete con la Copa de la Reina.',
+          ],
+        },
+        {
+          heading: 'Palmarés',
+          body: [
+            'En la etapa de liga, CP Voltregà, CP Palau de Plegamans y el club de Gijón (Telecable Hockey Club, antes Gijón Solimar) suman cinco títulos cada uno. Palau y Gijón ganaron todas las ligas entre 2020/21 y 2024/25, hasta que el CP Vila-sana rompió esa racha en 2025/26.',
+          ],
+          bullets: [
+            '2025/26: CP Vila-sana',
+            '2024/25: Telecable Gijón',
+            '2023/24: CP Palau de Plegamans',
+            '2022/23: Telecable Gijón',
+            '2021/22: CP Palau de Plegamans',
+          ],
+        },
+        {
+          heading: 'Qué seguir esta temporada',
+          body: [
+            'La clasificación, el calendario, los resultados en directo y las goleadoras de la temporada en curso están en las pestañas de esta competición.',
+          ],
+        },
+      ],
+      source: { label: 'Wikipedia (OK Liga Femenina) e Infobae', url: 'https://en.wikipedia.org/wiki/OK_Liga_Femenina' },
+    },
+    en: {
+      title: 'OK Liga Iberdrola (women): history, format and champions',
+      intro:
+        'The OK Liga Iberdrola is the top division of women’s rink hockey in Spain. It has been played as a league since 2008/09 and brings together many of the best players in the world.',
+      sections: [
+        {
+          heading: 'Format',
+          body: [
+            'A home-and-away regular season (24 rounds in 2025/26) followed by title play-offs, with a best-of-three final.',
+          ],
+        },
+        {
+          heading: '2025/26 champions: a first title for CP Vila-sana',
+          body: [
+            'CP Vila-sana Coop. d’Ivars beat CP Esneca Fraga 2-0 in an unprecedented final between two clubs that had never won the league. They had topped the regular season with 22 wins and 2 defeats, and completed the double with the Copa de la Reina.',
+          ],
+        },
+        {
+          heading: 'Roll of honour',
+          body: [
+            'In the league era, CP Voltregà, CP Palau de Plegamans and the Gijón club (Telecable Hockey Club, formerly Gijón Solimar) have five titles each. Palau and Gijón won every title between 2020/21 and 2024/25, until CP Vila-sana broke the streak in 2025/26.',
+          ],
+          bullets: [
+            '2025/26: CP Vila-sana',
+            '2024/25: Telecable Gijón',
+            '2023/24: CP Palau de Plegamans',
+            '2022/23: Telecable Gijón',
+            '2021/22: CP Palau de Plegamans',
+          ],
+        },
+        {
+          heading: 'What to follow this season',
+          body: ['Standings, fixtures, live results and top scorers for the current season are in this competition’s tabs.'],
+        },
+      ],
+      source: { label: 'Wikipedia (OK Liga Femenina) and Infobae', url: 'https://en.wikipedia.org/wiki/OK_Liga_Femenina' },
+    },
+  },
 };
 
 export function competitionEditorial(slug: string | null | undefined, locale: string): CompetitionEditorial | null {
