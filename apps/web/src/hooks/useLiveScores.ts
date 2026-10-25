@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Sentry from '@sentry/nextjs';
 import type { Match } from '@/lib/api/client';
 import { getCurrentMatchesFresh, getLiveMatches } from '@/lib/api/client';
-import { mergeMatchList, patchWithLive, shouldReconcile } from '@/lib/live-merge';
+import { patchWithLive, shouldReconcile } from '@/lib/live-merge';
+import { mergeById } from '@/lib/home-loading';
 
 /** Cada cuánto se sondea la API mientras hay actividad en vivo. */
 const POLL_INTERVAL_MS = 25_000;
@@ -45,14 +46,33 @@ export interface LiveScoresState {
   matches: Match[];
   /** true si el último sondeo falló: el marcador puede estar congelado. */
   degraded: boolean;
+  /** Une partidos cargados aparte (p. ej. otro día) a la lista. */
+  addMatches: (more: Match[]) => void;
 }
 
-export function useLiveScores(initial: Match[]): LiveScoresState {
+export interface LiveScoresOptions {
+  /**
+   * Cómo reconciliar con el listado completo. La home pasa el rango del día
+   * visible; por defecto, la ventana entera de /current.
+   */
+  reconcile?: () => Promise<Match[]>;
+}
+
+export function useLiveScores(initial: Match[], opts: LiveScoresOptions = {}): LiveScoresState {
   const [matches, setMatches] = useState<Match[]>(initial);
   const [degraded, setDegraded] = useState(false);
 
   // Resincroniza si cambia el prop del servidor (navegación, revalidate).
-  useEffect(() => { setMatches(initial); }, [initial]);
+  // Se UNE (no se reemplaza): la home acumula los días que el usuario va abriendo.
+  useEffect(() => { setMatches((prev) => mergeById(prev, initial)); }, [initial]);
+
+  const reconcileRef = useRef(opts.reconcile ?? getCurrentMatchesFresh);
+  reconcileRef.current = opts.reconcile ?? getCurrentMatchesFresh;
+
+  /** Añade partidos cargados aparte (otro día) sin perder los que ya hay. */
+  const addMatches = useCallback((more: Match[]) => {
+    setMatches((prev) => mergeById(prev, more));
+  }, []);
 
   // Mantiene la última lista en un ref para que el efecto de polling no se
   // recree en cada actualización de marcador (solo depende de "¿hay actividad?").
@@ -85,8 +105,8 @@ export function useLiveScores(initial: Match[]): LiveScoresState {
         const now = Date.now();
         if (shouldReconcile(patch.needsReconcile, lastReconcileAt, now)) {
           lastReconcileAt = now;
-          const fresh = await getCurrentMatchesFresh();
-          if (!cancelled) setMatches((prev) => mergeMatchList(prev, fresh));
+          const fresh = await reconcileRef.current();
+          if (!cancelled) setMatches((prev) => mergeById(prev, fresh));
         }
         if (!cancelled) setDegraded(false);
       } catch (err) {
@@ -114,5 +134,5 @@ export function useLiveScores(initial: Match[]): LiveScoresState {
     // Solo nos importa el flag de actividad: el contenido vive en matchesRef.
   }, [active]);
 
-  return { matches, degraded };
+  return { matches, degraded, addMatches };
 }

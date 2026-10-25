@@ -275,6 +275,25 @@ export async function getCurrentMatchesFresh(): Promise<Match[]> {
   return deduplicateMatches(res.matches.map(normalizeLiveMatch));
 }
 
+/**
+ * Partidos de un rango de fechas (UTC, ambos incluidos) de las temporadas
+ * actuales. La home pide solo el día visible (plan 2026-10-25, iteración 2).
+ */
+export async function getMatchesInRange(from: string, to: string, fresh = false): Promise<Match[]> {
+  const qs = `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  const res = await apiFetch<{ matches: RawLiveMatch[] }>(`/matches/current${qs}`,
+    fresh ? { cache: 'no-store' } : { next: { revalidate: 60, tags: ['matches-current'] } });
+  return deduplicateMatches(res.matches.map(normalizeLiveMatch));
+}
+
+/** Días (de Madrid) con partidos en la ventana de la home y cuántos. */
+export async function getMatchDays(): Promise<{ day: string; count: number }[]> {
+  const res = await apiFetch<{ days: { day: string; count: number }[] }>('/matches/days', {
+    next: { revalidate: 60, tags: ['matches-current'] },
+  });
+  return res.days;
+}
+
 // ─── Match detail ───
 
 interface RawMatchDetail {

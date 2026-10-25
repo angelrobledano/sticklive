@@ -17,6 +17,8 @@ import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';
 import { madridDateKey, madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
 import { buildDayView, nextMatchday, daysWithMatches, type DayFilter, type DayView } from '@/lib/day-view';
+import { getMatchesInRange, getCurrentMatchesFresh } from '@/lib/api/client';
+import { dayFetchRange, windowFromDays, nextDayWithMatches } from '@/lib/home-loading';
 import { tt } from '@/components/search/translate';
 import { clubName } from '@/lib/names';
 import { competitionPath } from '@/lib/competition-path';
@@ -133,11 +135,22 @@ function DesktopAside({ matches, favorites, leagues, todayKey, className = '' }:
 }) {
   const { t } = useT();
   const follows = favorites.length > 0 || leagues.length > 0;
+  // "Mi grada" mira varios días (próximos y últimos de tus equipos). La home
+  // ya no trae la ventana entera, así que se pide aparte y SOLO si el carril
+  // se ve (2xl) y sigues algo: el resto de pantallas no paga esa descarga.
+  const [wide, setWide] = useState<Match[] | null>(null);
+  useEffect(() => {
+    if (!follows || wide) return;
+    if (typeof window === 'undefined' || !window.matchMedia('(min-width: 1536px)').matches) return;
+    let cancelled = false;
+    getCurrentMatchesFresh().then((m) => { if (!cancelled) setWide(m); }).catch(() => { /* se queda con el día */ });
+    return () => { cancelled = true; };
+  }, [follows, wide]);
   return (
     <aside className={`shrink-0 ${className}`}>
       <div className="rail-scroll sticky top-[76px] flex max-h-[calc(100vh-92px)] flex-col gap-4 overflow-y-auto pb-1">
         {follows ? (
-          <MiGrada matches={matches} teamIds={favorites} leagueIds={leagues} todayKey={todayKey} />
+          <MiGrada matches={wide ?? matches} teamIds={favorites} leagueIds={leagues} todayKey={todayKey} />
         ) : (
           <Link href="/competitions"
                 className="card p-4 flex items-center gap-3 transition-colors
@@ -369,7 +382,10 @@ export function HomeLoadError() {
 }
 
 interface MatchesViewProps {
+  /** Partidos del día de hoy (rango de `dayFetchRange(hoy)`), del SSR. */
   matches: Match[];
+  /** Índice de días con partidos (`/matches/days`). Vacío si falló: se degrada a los partidos cargados. */
+  days?: { day: string; count: number }[];
 }
 
 /**
@@ -378,11 +394,17 @@ interface MatchesViewProps {
  * Siguiendo. Un día vacío enseña la próxima jornada. Lo personal que no es del
  * día (Mi grada) vive en Favoritos y en el carril de escritorio.
  */
-export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
+export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewProps) {
   // Refresco en vivo: mientras haya partidos en juego, la lista se sincroniza con
   // el resultado real sondeando /current sin caché (la home es SSR y, si no, el
   // marcador quedaría congelado frente al detalle, que sí va por SSE).
-  const { matches, degraded } = useLiveScores(initialMatches);
+  // La reconciliación pide solo el día visible (ref: el hook no se recrea).
+  const selectedRef = useRef<string>(madridTodayKey());
+  const reconcile = useCallback(() => {
+    const { from, to } = dayFetchRange(selectedRef.current);
+    return getMatchesInRange(from, to, true);
+  }, []);
+  const { matches, degraded, addMatches } = useLiveScores(initialMatches, { reconcile });
 
   // "Hoy" anclado en Europe/Madrid: misma autoridad horaria que usa el filtrado
   // de partidos. Estable en SSR (servidor UTC) y en cualquier TZ del dispositivo.
@@ -400,6 +422,27 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
     } catch { /* noop */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  selectedRef.current = selectedDate;
+
+  // ── Carga por día (plan 2026-10-25, iteración 2) ──────────────────────────
+  // El SSR trae solo hoy; cada día nuevo se pide al abrirlo y se acumula.
+  const [loadedDays, setLoadedDays] = useState<ReadonlySet<string>>(() => new Set([todayKey]));
+  const [loadingDays, setLoadingDays] = useState<ReadonlySet<string>>(() => new Set());
+  const [failedDay, setFailedDay] = useState<string | null>(null);
+  const loadDay = useCallback((key: string) => {
+    if (loadedDays.has(key) || loadingDays.has(key)) return;
+    setLoadingDays((s) => new Set(s).add(key));
+    setFailedDay(null);
+    const { from, to } = dayFetchRange(key);
+    getMatchesInRange(from, to)
+      .then((more) => {
+        addMatches(more);
+        setLoadedDays((s) => new Set(s).add(key));
+      })
+      .catch(() => setFailedDay(key))
+      .finally(() => setLoadingDays((s) => { const n = new Set(s); n.delete(key); return n; }));
+  }, [loadedDays, loadingDays, addMatches]);
 
   const setSelectedDate = useCallback((key: string) => {
     setSelectedDateState(key);
@@ -449,17 +492,35 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
     [matches, selectedDate, favorites, leagues, requestedFilter, locale],
   );
   const isPast = selectedDate < todayKey;
-  const next = useMemo(
-    () => (view.total === 0 && !isPast
-      ? nextMatchday(matches, selectedDate, { teamIds: favorites, leagueIds: leagues, locale })
-      : null),
-    [view.total, isPast, matches, selectedDate, favorites, leagues, locale],
+  const dayKeys = useMemo(() => days.filter((d) => d.count > 0).map((d) => d.day), [days]);
+
+  useEffect(() => { loadDay(selectedDate); }, [selectedDate, loadDay]);
+  const selectedLoading = !loadedDays.has(selectedDate);
+
+  // Día vacío → próxima jornada: el índice dice qué día es; se carga si falta.
+  const nextKey = !selectedLoading && view.total === 0 && !isPast
+    ? nextDayWithMatches(dayKeys, selectedDate)
+    : null;
+  useEffect(() => { if (nextKey) loadDay(nextKey); }, [nextKey, loadDay]);
+  const next = useMemo(() => {
+    if (selectedLoading || view.total > 0 || isPast) return null;
+    // Sin índice de días (falló /matches/days): se busca en lo ya cargado.
+    if (dayKeys.length === 0) {
+      return nextMatchday(matches, selectedDate, { teamIds: favorites, leagueIds: leagues, locale });
+    }
+    return nextKey && loadedDays.has(nextKey)
+      ? buildDayView(matches, { dayKey: nextKey, teamIds: favorites, leagueIds: leagues, filter: 'all', locale })
+      : null;
+  }, [selectedLoading, view.total, isPast, dayKeys.length, nextKey, loadedDays, matches, selectedDate, favorites, leagues, locale]);
+  const markedDays = useMemo(
+    () => (dayKeys.length > 0 ? new Set(dayKeys) : daysWithMatches(matches)),
+    [dayKeys, matches],
   );
-  const markedDays = useMemo(() => daysWithMatches(matches), [matches]);
 
   // Rango de días con datos cargados (#365): acota el DateSelector para no
   // ofrecer días que la ventana del API no cubre y que saldrían vacíos.
   const windowRange = useMemo(() => {
+    if (dayKeys.length > 0) return windowFromDays(dayKeys, todayKey);
     let from: string | null = null;
     let to: string | null = null;
     for (const m of matches) {
@@ -475,7 +536,7 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
     if (from !== null && from > todayKey) from = todayKey;
     if (to !== null && to < todayKey) to = todayKey;
     return { from, to };
-  }, [matches, todayKey]);
+  }, [dayKeys, matches, todayKey]);
   const outOfWindow = (!!windowRange.from && selectedDate < windowRange.from)
     || (!!windowRange.to && selectedDate > windowRange.to);
 
@@ -534,7 +595,26 @@ export function MatchesView({ matches: initialMatches }: MatchesViewProps) {
               degraded={degraded}
             />
 
-            {view.total === 0 ? (
+            {selectedLoading ? (
+              failedDay === selectedDate ? (
+                <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    {tt(t, 'errors.matches_load_title', 'No hemos podido cargar los partidos')}
+                  </p>
+                  <button type="button" onClick={() => loadDay(selectedDate)}
+                          className="min-h-[44px] rounded-xl px-4 text-sm font-semibold text-rink-passion hover:underline dark:text-rink-accent">
+                    {tt(t, 'errors.retry', 'Reintentar')}
+                  </button>
+                </div>
+              ) : (
+                <div role="status" aria-busy="true" className="space-y-3">
+                  <span className="sr-only">{tt(t, 'common.loading', 'Cargando…')}</span>
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="card h-24 animate-pulse bg-slate-100 dark:bg-slate-800" />
+                  ))}
+                </div>
+              )
+            ) : view.total === 0 ? (
               <EmptyDay
                 isToday={selectedDate === todayKey}
                 isPast={isPast}

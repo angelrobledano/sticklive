@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
-import { getCurrentMatches } from '@/lib/api/client';
+import { getMatchesInRange, getMatchDays } from '@/lib/api/client';
+import { madridTodayKey } from '@/lib/match-time';
+import { dayFetchRange } from '@/lib/home-loading';
 import { MatchesView, HomeLoadError } from '@/components/shared/MatchesView';
 import { localeAlternates, isSupportedLocale } from '@/lib/seo';
 
@@ -15,19 +17,23 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
 }
 
 export default async function HomePage() {
-  let matches: Awaited<ReturnType<typeof getCurrentMatches>> = [];
+  // Solo hoy (plan 2026-10-25, iteración 2): antes se traían 23 días de todo
+  // el catálogo (~3.400 partidos, 734 KB de HTML). El resto de días se pide
+  // al abrirlos y el índice de días (`/matches/days`) pinta el selector.
+  let matches: Awaited<ReturnType<typeof getMatchesInRange>> = [];
+  let days: Awaited<ReturnType<typeof getMatchDays>> = [];
   let fetchFailed = false;
+  const { from, to } = dayFetchRange(madridTodayKey());
 
-  try {
-    matches = await getCurrentMatches();
-  } catch {
-    fetchFailed = true;
-  }
+  const [mRes, dRes] = await Promise.allSettled([getMatchesInRange(from, to), getMatchDays()]);
+  if (mRes.status === 'fulfilled') matches = mRes.value; else fetchFailed = true;
+  // El índice es accesorio: si falla, la vista se degrada a los partidos de hoy.
+  if (dRes.status === 'fulfilled') days = dRes.value;
 
   if (fetchFailed) {
     // #346: reintento real + copy i18n (client component).
     return <HomeLoadError />;
   }
 
-  return <MatchesView matches={matches} />;
+  return <MatchesView matches={matches} days={days} />;
 }

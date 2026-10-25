@@ -204,6 +204,39 @@ liveRouter.get('/live', async (c) => {
  * mostrar partidos de TODAS las competiciones activas sin depender
  * de un único SEASON_ID hardcodeado.
  */
+/**
+ * GET /matches/days
+ * Índice ligero de la home: días (de Madrid) con partidos y cuántos, en la
+ * misma ventana por defecto que /current (hoy-8d .. hoy+15d). Sustituye a
+ * descargar ~3.400 partidos solo para pintar los puntos del selector de fecha
+ * y encontrar la próxima jornada (plan 2026-10-25, iteración 2).
+ */
+liveRouter.get('/days', async (c) => {
+  try {
+    const payload = await cached('days:default', async () => {
+      const result = await db.query<{ day: string; count: number }>(`
+        SELECT to_char(m.scheduled_at AT TIME ZONE 'Europe/Madrid', 'YYYY-MM-DD') AS day,
+               count(*)::int AS count
+          FROM matches m
+          JOIN seasons s ON s.id = m.season_id AND s.is_current = true
+          JOIN competitions comp ON comp.id = s.competition_id
+         WHERE s.data_quality = 'ok'
+           AND comp.data_quality = 'ok'
+           AND m.scheduled_at >= NOW() - INTERVAL '8 days'
+           AND m.scheduled_at <  NOW() + INTERVAL '15 days'
+         GROUP BY 1
+         ORDER BY 1`);
+      return { days: result.rows };
+    });
+    c.header('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
+    return c.json(payload);
+  } catch (err) {
+    captureRouteError(err, 'live] GET /days error');
+    logger.error({ err }, '[live] GET /days error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
 liveRouter.get('/current', async (c) => {
   try {
     // Ventana temporal: en vez de devolver TODO el calendario de todas las
