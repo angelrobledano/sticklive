@@ -130,6 +130,7 @@ export function buildFppCompetition(
       sourceId: ctx.sourceId,
       sourceRef: fppMatchRef(section.fppId, row.numero),
       sourceUrl: row.jogoPath ? `${FPP_BASE_URL}${row.jogoPath}` : `${FPP_BASE_URL}/Competicao/${section.fppId}`,
+      ...(row.videoUrl ? { videoUrl: row.videoUrl } : {}),
       scrapedAt,
       ...phaseFields(a.phaseRef),
       stage: round.stage,

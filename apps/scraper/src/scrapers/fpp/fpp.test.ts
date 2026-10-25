@@ -167,3 +167,17 @@ describe('catálogo', () => {
     );
   });
 });
+
+/** Vídeo del partido (FPP TV): icono `fa-tv` en la columna de opciones del calendario. */
+describe('parseFppCalendar — enlace de vídeo', () => {
+  const rows = parseFppCalendar(fx('competicao-294-liga-2024-jogada.html'));
+  it('saca el enlace de tv.fpp.pt con las entidades decodificadas', () => {
+    const r = rows.find((x) => x.jogoPath === '/jogo/10522')!;
+    expect(r.videoUrl).toBe('https://tv.fpp.pt/video?videoId=e-1750&metaname=VideoChannel&metavalue=&stageId=&metaseason=2024');
+  });
+  it('null cuando la fila no lo tiene', () => {
+    const conVideo = rows.filter((x) => x.videoUrl).length;
+    expect(conVideo).toBeGreaterThan(0);
+    expect(rows.every((x) => !x.videoUrl || x.videoUrl.startsWith('https://'))).toBe(true);
+  });
+});

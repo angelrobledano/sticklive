@@ -35,6 +35,8 @@ export interface FppCalendarRow {
   awayScore: number | null;
   /** Ruta de la ficha cuando existe: `/jogo/{id}` (liga) o `/jogoTaca/{id}` (copas). */
   jogoPath: string | null;
+  /** Vídeo del partido en FPP TV (icono `fa-tv`), directo o diferido; null si no hay. */
+  videoUrl?: string | null;
   /** Orden en el documento. */
   docIndex: number;
 }
@@ -105,6 +107,7 @@ export function parseFppCalendar(html: string): FppCalendarRow[] {
 
     const res = /(\d+)\s*-\s*(\d+)/.exec($tr.find('td.coluna-resultado').text());
     const jogo = /\/jogo(?:Taca)?\/\d+/i.exec($tr.find('td.coluna-opcoes a').attr('href') ?? '');
+    const videoHref = ($tr.find('td.coluna-opcoes a').filter((_, a) => $(a).find('i.fa-tv').length > 0).first().attr('href') ?? '').trim();
 
     rows.push({
       numero,
@@ -118,6 +121,7 @@ export function parseFppCalendar(html: string): FppCalendarRow[] {
       homeScore: res ? Number(res[1]) : null,
       awayScore: res ? Number(res[2]) : null,
       jogoPath: jogo ? jogo[0] : null,
+      videoUrl: /^https?:\/\//i.test(videoHref) ? videoHref : null,
       docIndex: docIndex++,
     });
   });
