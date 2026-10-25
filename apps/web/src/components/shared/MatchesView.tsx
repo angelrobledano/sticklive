@@ -232,7 +232,7 @@ function DayCards({ view, followedTeamIds, showDate = false, afterFirst, listAd 
         <MatchGroupCard
           title={block.name ? clubName(block.name) : other}
           href={block.id ? competitionPath(block.id, block.slug) : null}
-          icon={<CompetitionIcon country={block.country} name={block.name} />}
+          icon={<CompetitionIcon country={block.country} name={block.name} logoUrl={block.logoUrl} />}
           count={block.matches.length}
           followed={block.followed}
         >

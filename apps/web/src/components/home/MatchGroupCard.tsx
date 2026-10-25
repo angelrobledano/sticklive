@@ -15,8 +15,17 @@ import { tt } from '@/components/search/translate';
 
 const ICON_BOX = 'flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full';
 
-/** Bandera del país, mundo para las competiciones mundiales ('W') o iniciales. */
-export function CompetitionIcon({ country, name }: { country: string | null | undefined; name: string | null }) {
+/** Logo de la competición; si no hay, bandera del país, mundo ('W') o iniciales. */
+export function CompetitionIcon({ country, name, logoUrl }: { country: string | null | undefined; name: string | null; logoUrl?: string | null }) {
+  const [logoFailed, setLogoFailed] = useState(false);
+  if (logoUrl && !logoFailed) {
+    return (
+      <span aria-hidden="true" className={`${ICON_BOX} border border-slate-200 bg-white p-px dark:border-slate-700`}>
+        <img src={logoUrl} alt="" width={20} height={20} loading="lazy" decoding="async"
+             onError={() => setLogoFailed(true)} className="h-full w-full object-contain" />
+      </span>
+    );
+  }
   if (country === 'W') {
     return (
       <span data-icon="world" aria-hidden="true" className={`${ICON_BOX} bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300`}>
