@@ -8,7 +8,7 @@
     "start": "next start -p 3001",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vitest run",
+    "test": "vitest run --pool=threads",
     "seo:crawl": "npx tsx scripts/seo-crawl.ts",
     "seo:check": "npx tsx scripts/seo-check.ts"
   },

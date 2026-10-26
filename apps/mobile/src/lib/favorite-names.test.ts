@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import {
+  getPlayerTeams,
   getPersistedFavoriteName,
+  getPersistedPlayerTeam,
   PLACEHOLDER_KEY,
   resolveFavoriteName,
   saveFavoriteName,
+  savePlayerTeam,
 } from './favorite-names';
 import { qk } from '../hooks/queries';
 import type {
@@ -43,6 +46,12 @@ describe('favorite-names', () => {
   it('guarda y recupera nombres de favoritos en memoria y AsyncStorage', () => {
     saveFavoriteName('t1', 'Barça');
     expect(getPersistedFavoriteName('t1')).toBe('Barça');
+  });
+
+  it('guarda y recupera la relación de equipo de un jugador', () => {
+    savePlayerTeam('p1', 't-barca');
+    expect(getPersistedPlayerTeam('p1')).toBe('t-barca');
+    expect(getPlayerTeams(['p1', 'p-unknown'])).toEqual(['t-barca']);
   });
 
   it('resuelve nombre de equipo desde la query de team', () => {

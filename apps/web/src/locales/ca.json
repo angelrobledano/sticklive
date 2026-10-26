@@ -607,6 +607,8 @@
     "vibration_desc": "Patrons de vibració diferenciats segons l'esdeveniment",
     "reminders": "Recordatoris previs",
     "reminders_desc": "Avís abans del començament dels teus partits seguits",
+    "live_lockscreen": "Partits a la pantalla de bloqueig",
+    "live_lockscreen_desc": "Mostra el marcador i estat en directe a la pantalla de bloqueig quan jugui un equip, jugador o lliga que segueixis",
     "android_channels_title": "Canals de notificació del sistema",
     "android_channels_desc": "Android gestiona tons, volum i prioritats de manera independent.",
     "android_channels_btn": "Ajusts de notificacions a Android",

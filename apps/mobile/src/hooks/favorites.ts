@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiFetch } from '@/src/lib/api/client';
 import { capture } from '@/src/lib/analytics';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { PLACEHOLDER_KEY, resolveFavoriteName, saveFavoriteName } from '@/src/lib/favorite-names';
+import { PLACEHOLDER_KEY, resolveFavoriteName, saveFavoriteName, savePlayerTeam } from '@/src/lib/favorite-names';
 import { qk, useCompetitions, useFavorites, usePlayer, useTeam } from './queries';
 
 /**
@@ -194,6 +194,9 @@ export function useFavoriteName(kind: FavoriteKind, id: string): {
     const p = playerQuery.data.player;
     resolved = `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim();
     if (resolved) saveFavoriteName(id, resolved);
+    if (playerQuery.data.currentTeam?.id) {
+      savePlayerTeam(id, playerQuery.data.currentTeam.id);
+    }
   } else if (!resolved && kind === 'league' && compsQuery.data) {
     const comp = compsQuery.data.find((c) => c.id === id);
     if (comp?.name) {

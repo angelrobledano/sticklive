@@ -24,7 +24,9 @@ import type {
  */
 
 const STORAGE_KEY = 'favorites_names_cache_v1';
+const PLAYER_TEAMS_STORAGE_KEY = 'favorites_player_teams_v1';
 const memoryNameCache: Record<string, string> = {};
+const memoryPlayerTeamsCache: Record<string, string> = {};
 
 // Carga inicial en frío desde AsyncStorage (no bloqueante)
 void AsyncStorage.getItem(STORAGE_KEY)
@@ -42,6 +44,21 @@ void AsyncStorage.getItem(STORAGE_KEY)
   })
   .catch(() => {});
 
+void AsyncStorage.getItem(PLAYER_TEAMS_STORAGE_KEY)
+  .then((raw) => {
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Record<string, string>;
+        if (parsed && typeof parsed === 'object') {
+          Object.assign(memoryPlayerTeamsCache, parsed);
+        }
+      } catch {
+        // Fallback fail-safe
+      }
+    }
+  })
+  .catch(() => {});
+
 export function saveFavoriteName(id: string, name: string): void {
   if (!id || !name) return;
   memoryNameCache[id] = name;
@@ -50,6 +67,27 @@ export function saveFavoriteName(id: string, name: string): void {
 
 export function getPersistedFavoriteName(id: string): string | null {
   return memoryNameCache[id] ?? null;
+}
+
+export function savePlayerTeam(playerId: string, teamId: string): void {
+  if (!playerId || !teamId) return;
+  memoryPlayerTeamsCache[playerId] = teamId;
+  void AsyncStorage.setItem(PLAYER_TEAMS_STORAGE_KEY, JSON.stringify(memoryPlayerTeamsCache)).catch(() => {});
+}
+
+export function getPersistedPlayerTeam(playerId: string): string | null {
+  return memoryPlayerTeamsCache[playerId] ?? null;
+}
+
+export function getPlayerTeams(playerIds: string[]): string[] {
+  const result: string[] = [];
+  for (const pid of playerIds) {
+    const tid = memoryPlayerTeamsCache[pid];
+    if (tid && !result.includes(tid)) {
+      result.push(tid);
+    }
+  }
+  return result;
 }
 
 /** Placeholders cuando el nombre no está en caché: claves i18n resueltas con
@@ -128,7 +166,10 @@ export function resolveFavoriteName(qc: QueryClient, kind: FavoriteKind, id: str
     }
   } else if (kind === 'player') {
     const detail = qc.getQueryData<PlayerDetail>(qk.player(id));
-    if (detail?.player) resolved = `${detail.player.firstName ?? ''} ${detail.player.lastName ?? ''}`.trim();
+    if (detail?.player) {
+      resolved = `${detail.player.firstName ?? ''} ${detail.player.lastName ?? ''}`.trim();
+      if (detail.currentTeam?.id) savePlayerTeam(id, detail.currentTeam.id);
+    }
 
     // Buscar en plantillas de equipos en caché
     if (!resolved) {
@@ -137,6 +178,7 @@ export function resolveFavoriteName(qc: QueryClient, kind: FavoriteKind, id: str
         const p = teamDetail?.squad?.find((x) => x.playerId === id);
         if (p) {
           resolved = `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim();
+          if (teamDetail?.team?.id) savePlayerTeam(id, teamDetail.team.id);
           break;
         }
       }

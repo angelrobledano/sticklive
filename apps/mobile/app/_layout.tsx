@@ -16,7 +16,8 @@ import { ApiError } from '@/src/lib/api/client';
 import { capture, getPostHogClient } from '@/src/lib/analytics';
 import { markPushInteraction } from '@/src/lib/ads/session-context';
 import { useAppOpenAd } from '@/src/hooks/ads/useAppOpenAd';
-import { registerNotificationChannels } from '@/src/lib/push';
+import { NOTIFICATION_CHANNELS, registerNotificationChannels } from '@/src/lib/push';
+import { LockScreenLiveTracker } from '@/src/components/shared/LockScreenLiveTracker';
 
 // Sentry (Task 5.1): init a nivel de módulo, ANTES de renderizar nada, y SOLO
 // si hay DSN (en desarrollo sin DSN no se inicializa y no hay overhead). El
@@ -49,13 +50,32 @@ const queryClient = new QueryClient({
 
 // Handler de presentación (Task 4.2): con la app en primer plano las
 // notificaciones se muestran como banner y en la lista, con sonido, sin badge.
+// Las actualizaciones de pantalla de bloqueo permanecen en la lista/lockscreen de forma silenciosa.
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async (notification) => {
+    const isLockscreenLive =
+      notification?.request?.content?.data?.type === 'live_lockscreen' ||
+      (notification?.request?.trigger &&
+        typeof notification.request.trigger === 'object' &&
+        'channelId' in notification.request.trigger &&
+        notification.request.trigger.channelId === NOTIFICATION_CHANNELS.liveLockscreen.id);
+
+    if (isLockscreenLive) {
+      return {
+        shouldShowBanner: false,
+        shouldShowList: true,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      };
+    }
+
+    return {
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    };
+  },
 });
 
 /**
@@ -126,6 +146,7 @@ function AppTree() {
         <LocaleProvider>
           <QueryClientProvider client={queryClient}>
             <AppOpenAdGate />
+            <LockScreenLiveTracker />
             <RootNavigator />
           </QueryClientProvider>
         </LocaleProvider>

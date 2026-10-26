@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { buildPlayerFacts } from '@/src/lib/player-facts';
 import { PlayerFacts } from '@/src/components/player/PlayerFacts';
 import { CompStatsTable } from '@/src/components/player/CompStatsTable';
 import { ShareImageModal } from '@/src/components/shared/ShareImageModal';
+import { saveFavoriteName, savePlayerTeam } from '@/src/lib/favorite-names';
 
 function calcAge(birthDate?: string | null): number | null {
   if (!birthDate) return null;
@@ -36,6 +37,15 @@ export default function PlayerScreen() {
 
   const rawPlayer = query.data?.player;
   const displayName = rawPlayer ? playerDisplayName(rawPlayer.firstName, rawPlayer.lastName) : '';
+
+  useEffect(() => {
+    if (playerId && displayName) {
+      saveFavoriteName(playerId, displayName);
+    }
+    if (playerId && query.data?.currentTeam?.id) {
+      savePlayerTeam(playerId, query.data.currentTeam.id);
+    }
+  }, [playerId, displayName, query.data?.currentTeam?.id]);
 
   const handleShare = () => {
     if (!rawPlayer) return;

@@ -516,6 +516,8 @@
     "vibration_desc": "Padrões de vibração diferenciados consoante o evento",
     "reminders": "Lembretes de jogos",
     "reminders_desc": "Aviso antes do início dos teus jogos seguidos",
+    "live_lockscreen": "Jogos no ecrã de bloqueio",
+    "live_lockscreen_desc": "Mostra o resultado e estado em direto no ecrã de bloqueio quando joga uma equipa, jogador ou liga seguida",
     "android_channels_title": "Canais de notificação do sistema",
     "android_channels_desc": "O Android gere toques, volume e prioridades de forma independente.",
     "android_channels_btn": "Definições de notificação do Android",

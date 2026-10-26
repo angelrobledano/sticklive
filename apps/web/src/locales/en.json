@@ -589,6 +589,8 @@
     "vibration_desc": "Differentiated vibration patterns based on the event",
     "reminders": "Match reminders",
     "reminders_desc": "Alert before kickoff for your followed matches",
+    "live_lockscreen": "Live matches on lock screen",
+    "live_lockscreen_desc": "Show live score and match status on the lock screen when a followed team, player, or league is playing",
     "android_channels_title": "System notification channels",
     "android_channels_desc": "Android manages ringtones, volume, and priorities independently.",
     "android_channels_btn": "Android notification settings",

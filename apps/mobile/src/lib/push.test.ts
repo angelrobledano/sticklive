@@ -23,6 +23,7 @@ const { expoConstants, storage, notificationChannelsMock } = vi.hoisted(() => ({
 }));
 vi.mock('expo-notifications', () => ({
   AndroidImportance: { MAX: 5, HIGH: 4, DEFAULT: 3 },
+  AndroidNotificationVisibility: { PUBLIC: 1, PRIVATE: 2, SECRET: 3 },
   setNotificationChannelAsync: notificationChannelsMock,
   scheduleNotificationAsync: vi.fn(async () => 'mock-id'),
 }));
@@ -108,6 +109,7 @@ describe('loadPushPrefs', () => {
         soundEnabled: true,
         vibrationEnabled: true,
         remindersEnabled: true,
+        liveLockscreenEnabled: true,
       },
     });
   });
@@ -125,6 +127,7 @@ describe('loadPushPrefs', () => {
         soundEnabled: true,
         vibrationEnabled: true,
         remindersEnabled: true,
+        liveLockscreenEnabled: true,
       },
     });
   });

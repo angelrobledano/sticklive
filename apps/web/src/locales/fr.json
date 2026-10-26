@@ -516,6 +516,8 @@
     "vibration_desc": "Modèles de vibration différenciés selon l'événement",
     "reminders": "Rappels de match",
     "reminders_desc": "Alerte avant le coup d'envoi de vos matchs suivis",
+    "live_lockscreen": "Matchs sur écran de verrouillage",
+    "live_lockscreen_desc": "Affiche le score et l'état en direct sur l'écran de verrouillage lorsqu'une équipe, un joueur ou une ligue suivi(e) joue",
     "android_channels_title": "Canaux de notification du système",
     "android_channels_desc": "Android gère les sonneries, le volume et les priorités indépendamment.",
     "android_channels_btn": "Paramètres de notification Android",

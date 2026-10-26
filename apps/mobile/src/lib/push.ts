@@ -70,6 +70,15 @@ export const NOTIFICATION_CHANNELS = {
     sound: 'aviso_recordatorio.wav',
     vibrationPattern: [0, 100],
   },
+  /** Partido en directo / marcador en pantalla de bloqueo (ongoing, visibilidad pública, silencioso) */
+  liveLockscreen: {
+    id: 'sticklive_live_lockscreen_v1',
+    name: 'Partidos en directo (Pantalla de bloqueo)',
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: undefined,
+    vibrationPattern: undefined,
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+  },
   /** Canal general / legacy */
   live: {
     id: 'live',
@@ -97,15 +106,17 @@ export async function registerNotificationChannels(options?: {
   const vibrate = options?.vibrationEnabled !== false;
 
   for (const ch of Object.values(NOTIFICATION_CHANNELS)) {
+    const chRecord = ch as unknown as { lockscreenVisibility?: Notifications.AndroidNotificationVisibility };
     await Notifications.setNotificationChannelAsync(ch.id, {
       name: ch.name,
       importance: ch.importance,
       sound: sound ? ch.sound : undefined,
-      enableVibrate: vibrate,
-      vibrationPattern: vibrate ? (ch.vibrationPattern as unknown as number[]) : undefined,
+      enableVibrate: vibrate && Boolean(ch.vibrationPattern),
+      vibrationPattern: vibrate && ch.vibrationPattern ? (ch.vibrationPattern as unknown as number[]) : undefined,
       lightColor: BRAND.granate,
       enableLights: true,
       showBadge: false,
+      lockscreenVisibility: chRecord.lockscreenVisibility ?? Notifications.AndroidNotificationVisibility.PUBLIC,
     });
   }
 }
@@ -188,6 +199,7 @@ export interface PushPrefs {
     soundEnabled?: boolean;
     vibrationEnabled?: boolean;
     remindersEnabled?: boolean;
+    liveLockscreenEnabled?: boolean;
   };
 }
 
@@ -205,6 +217,7 @@ export function defaultPushPrefs(): PushPrefs {
       soundEnabled: true,
       vibrationEnabled: true,
       remindersEnabled: true,
+      liveLockscreenEnabled: true,
     },
   };
 }
@@ -234,6 +247,7 @@ export function parsePushPrefs(raw: string | null): PushPrefs {
       soundEnabled: cfg['soundEnabled'] !== false,
       vibrationEnabled: cfg['vibrationEnabled'] !== false,
       remindersEnabled: cfg['remindersEnabled'] !== false,
+      liveLockscreenEnabled: cfg['liveLockscreenEnabled'] !== false,
     },
   };
 }
@@ -264,6 +278,7 @@ export function buildSubscribeBody(input: {
     soundEnabled?: boolean;
     vibrationEnabled?: boolean;
     remindersEnabled?: boolean;
+    liveLockscreenEnabled?: boolean;
   };
 }) {
   return {

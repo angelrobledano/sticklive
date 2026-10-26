@@ -3,10 +3,12 @@ import { Linking, Pressable, ScrollView, Switch, Text, View, useColorScheme } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
+import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useFavoriteName, useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
+import { PUSH_PREFS_QUERY_KEY } from '@/src/hooks/useLockScreenLiveMatches';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { clubName } from '@/src/lib/names';
 import { getDeviceId } from '@/src/lib/device';
@@ -556,6 +558,7 @@ function SettingRow({
 export default function NotificationsScreen() {
   const { t, locale } = useLocale();
   const router = useRouter();
+  const qc = useQueryClient();
   const { session } = useSession();
   const insets = useSafeAreaInsets();
   const authToken = session?.token;
@@ -639,16 +642,20 @@ export default function NotificationsScreen() {
   }, []);
 
   /** Escribe prefs (estado + storage). El sync lo dispara el effect de abajo. */
-  const updatePrefs = useCallback((next: PushPrefs) => {
-    setPrefs(next);
-    void registerNotificationChannels({
-      soundEnabled: next.config.soundEnabled,
-      vibrationEnabled: next.config.vibrationEnabled,
-    });
-    void savePushPrefs(next).catch((err) =>
-      console.error('[push] no se pudieron guardar las preferencias localmente', err),
-    );
-  }, []);
+  const updatePrefs = useCallback(
+    (next: PushPrefs) => {
+      setPrefs(next);
+      qc.setQueryData(PUSH_PREFS_QUERY_KEY, next);
+      void registerNotificationChannels({
+        soundEnabled: next.config.soundEnabled,
+        vibrationEnabled: next.config.vibrationEnabled,
+      });
+      void savePushPrefs(next).catch((err) =>
+        console.error('[push] no se pudieron guardar las preferencias localmente', err),
+      );
+    },
+    [qc],
+  );
 
   const setEntityPreset = useCallback(
     (kind: FavoriteKind, id: string, preset: NotificationPreset) => {
@@ -804,6 +811,16 @@ export default function NotificationsScreen() {
               value={prefs.config.remindersEnabled !== false}
               onChange={(next) =>
                 updatePrefs({ presets: prefs.presets, config: { ...prefs.config, remindersEnabled: next } })
+              }
+            />
+          </View>
+          <View className="border-t border-slate-100 dark:border-slate-800">
+            <SettingRow
+              label={t('settings.live_lockscreen')}
+              description={t('settings.live_lockscreen_desc')}
+              value={prefs.config.liveLockscreenEnabled !== false}
+              onChange={(next) =>
+                updatePrefs({ presets: prefs.presets, config: { ...prefs.config, liveLockscreenEnabled: next } })
               }
             />
           </View>

@@ -516,6 +516,8 @@
     "vibration_desc": "Pattern di vibrazione differenziati in base all'evento",
     "reminders": "Promemoria delle partite",
     "reminders_desc": "Avviso prima del fischio d'inizio delle partite seguite",
+    "live_lockscreen": "Partite sulla schermata di blocco",
+    "live_lockscreen_desc": "Mostra punteggio e stato in tempo reale sulla schermata di blocco quando gioca una squadra, giocatore o lega seguita",
     "android_channels_title": "Canali di notifica del sistema",
     "android_channels_desc": "Android gestisce suonerie, volume e priorità in modo indipendente.",
     "android_channels_btn": "Impostazioni delle notifiche Android",
