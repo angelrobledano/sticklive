@@ -34,7 +34,8 @@ import { deriveMatchResults } from './derive-results.js';
 import { sweepStaleLive } from './stale-live-watchdog.js';
 import { MissingLiveTracker } from './missing-live.js';
 import { checkWindow } from './live-window.js';
-import { selectFichaCandidates } from './ficha-candidates.js';
+import { selectFichaCandidates, type FichaCandidate } from './ficha-candidates.js';
+import { ACTA_POST_STRIKES } from './acta-mode.js';
 import { actaFinalCandidates, finalizeByActa, type EndedByActa } from './acta-final.js';
 import { touchAlive } from './heartbeat-file.js';
 import { loopDecision, LIVE_YIELD_EXIT_CODE } from './live-yield.js';
@@ -170,6 +171,48 @@ async function resolveSeasonIds(): Promise<string[]> {
 
 
 /**
+ * #417: anota el intento (para espaciar los siguientes) y, en directos con
+ * goles, aprende si la competición publica el acta en directo o solo al final.
+ */
+async function recordFichaFetch(match: FichaCandidate, events: number): Promise<void> {
+  await db.query(
+    `UPDATE matches SET ficha_fetched_at = NOW(),
+            ficha_finished_tries = ficha_finished_tries + CASE WHEN status = 'finished' THEN 1 ELSE 0 END
+      WHERE id = $1`,
+    [match.id],
+  );
+  if (match.status !== 'live') return;
+  const goals = (match.home_score ?? 0) + (match.away_score ?? 0);
+  // Misma regla que learnActaMode (acta-mode.ts, testeada), pero atómica en
+  // SQL: varios partidos de la competición se procesan en paralelo y cada
+  // partido cuenta UNA vez (acta_probe), no una por ciclo.
+  if (events > 0) {
+    await db.query(
+      `UPDATE competitions SET acta_mode = 'live', acta_post_strikes = 0
+        WHERE id = $1 AND (acta_mode IS DISTINCT FROM 'live' OR acta_post_strikes <> 0)`,
+      [match.competition_id],
+    );
+    return;
+  }
+  if (goals <= 0) return;
+  const r = await db.query<{ acta_mode: string | null }>(
+    `WITH probe AS (
+       UPDATE matches SET acta_probe = true WHERE id = $1 AND NOT acta_probe RETURNING id
+     )
+     UPDATE competitions
+        SET acta_post_strikes = acta_post_strikes + 1,
+            acta_mode = CASE WHEN acta_post_strikes + 1 >= $3 THEN 'post' ELSE acta_mode END
+      WHERE id = $2 AND EXISTS (SELECT 1 FROM probe)
+      RETURNING acta_mode`,
+    [match.id, match.competition_id, ACTA_POST_STRIKES],
+  );
+  const mode = r.rows[0]?.acta_mode ?? null;
+  if (mode === 'post' && match.acta_mode !== 'post') {
+    log.info({ competitionId: match.competition_id }, 'Competición marcada «acta solo al final» (#417)');
+  }
+}
+
+/**
  * Descarga y persiste la ficha resumen (eventos, alineaciones, faltas) de todos
  * los partidos que están live o que terminaron recientemente sin tener eventos.
  * Opera sobre TODAS las temporadas activas.
@@ -213,7 +256,9 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<EndedByAc
         ...(match.home_team_name ? { homeTeamName: match.home_team_name } : {}),
         matchId: match.id,
       });
-      await scraper.run();
+      const res = await scraper.run();
+      await recordFichaFetch(match, res.data?.length ?? 0).catch((err) =>
+        log.debug({ err, matchId: match.id }, 'No se pudo registrar el intento de ficha (#417)'));
       // Señal explícita de final en el acta (periodo_fin): se aplica después,
       // con la guarda del feed en vivo (ver acta-final.ts).
       if (match.status === 'live' && scraper.liveHeader?.ended) {

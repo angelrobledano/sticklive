@@ -15,6 +15,7 @@
  * listando (p. ej. incomparecencias antiguas 0-10).
  */
 import { db } from '@sports/db';
+import { shouldFetchFicha } from './acta-mode.js';
 
 export interface FichaCandidate {
   id: string;
@@ -23,11 +24,20 @@ export interface FichaCandidate {
   source_ref: string;
   comp_ref: string | null;
   home_team_name: string | null;
+  competition_id: string;
+  acta_mode: 'live' | 'post' | null;
+  acta_post_strikes: number;
+  ficha_fetched_at: Date | null;
+  ficha_finished_tries: number;
+  home_score: number | null;
+  away_score: number | null;
 }
 
 export async function selectFichaCandidates(seasonIds: string[]): Promise<FichaCandidate[]> {
   const res = await db.query<FichaCandidate>(
-    `SELECT m.id, m.season_id, m.status, m.source_ref, comp.source_ref AS comp_ref, ht.name AS home_team_name
+    `SELECT m.id, m.season_id, m.status, m.source_ref, comp.source_ref AS comp_ref, ht.name AS home_team_name,
+            comp.id AS competition_id, comp.acta_mode, comp.acta_post_strikes,
+            m.ficha_fetched_at, m.ficha_finished_tries, m.home_score, m.away_score
      FROM matches m
      JOIN seasons s ON s.id = m.season_id
      JOIN competitions comp ON comp.id = s.competition_id
@@ -57,5 +67,9 @@ export async function selectFichaCandidates(seasonIds: string[]): Promise<FichaC
        )`,
     [seasonIds]
   );
-  return res.rows;
+  // #417: espaciado por competición «solo al final» y reintentos de terminados.
+  const now = new Date();
+  return res.rows.filter((m) => shouldFetchFicha({
+    status: m.status, mode: m.acta_mode, fetchedAt: m.ficha_fetched_at, emptyChecks: m.ficha_finished_tries,
+  }, now));
 }
