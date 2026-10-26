@@ -10,6 +10,7 @@ import {
   injectPeriodDividers,
   injectAccumulatedFouls,
   compareTimelineEvents,
+  foulBonusState,
   visibleTabsFor,
   formatTime,
   formatDate,
@@ -256,6 +257,28 @@ describe('match-helpers', () => {
         lineups: { home: [], away: [] },
       };
       expect(visibleTabsFor(data)).toContain('Estadísticas');
+    });
+  });
+
+  describe('foulBonusState', () => {
+    it('returns normal for fouls below 9', () => {
+      expect(foulBonusState(0)).toBe('normal');
+      expect(foulBonusState(5)).toBe('normal');
+      expect(foulBonusState(8)).toBe('normal');
+    });
+
+    it('returns warning when 1 foul away from direct hit (9, 14, 19, 24)', () => {
+      expect(foulBonusState(9)).toBe('warning');
+      expect(foulBonusState(14)).toBe('warning');
+      expect(foulBonusState(19)).toBe('warning');
+      expect(foulBonusState(24)).toBe('warning');
+    });
+
+    it('returns bonus when at or above 10 fouls', () => {
+      expect(foulBonusState(10)).toBe('bonus');
+      expect(foulBonusState(11)).toBe('bonus');
+      expect(foulBonusState(15)).toBe('bonus');
+      expect(foulBonusState(20)).toBe('bonus');
     });
   });
 });

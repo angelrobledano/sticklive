@@ -3,6 +3,21 @@ import type { MatchDetail } from './api/types';
 const APP_TZ = 'Europe/Madrid';
 const FOUL_THRESHOLDS = [10, 15, 20, 25, 30];
 
+export type FoulBonusState = 'normal' | 'warning' | 'bonus';
+
+/**
+ * En hockey sobre patines:
+ * - A la 10ª falta de equipo (y cada 5 adicionales: 15, 20, 25...), se concede falta directa al rival.
+ * - A falta de 1 (9, 14, 19, 24...), el equipo está en riesgo inminente de falta directa ('warning').
+ * - A partir de la 10ª falta, entra en ciclo de bonus ('bonus').
+ */
+export function foulBonusState(fouls: number): FoulBonusState {
+  if (fouls < 9) return 'normal';
+  if (FOUL_THRESHOLDS.some((th) => th - 1 === fouls)) return 'warning';
+  if (fouls >= 10) return 'bonus';
+  return 'normal';
+}
+
 export const TABS = ['Resumen', 'Alineaciones', 'Estadísticas'] as const;
 export type Tab = (typeof TABS)[number];
 

@@ -638,7 +638,9 @@
     "next_date": "Date suivante",
     "choose_team": "Choisissez une équipe pour voir tous ses matchs.",
     "match_count_one": "{n} match",
-    "match_count_many": "{n} matchs"
+    "match_count_many": "{n} matchs",
+    "current_round": "Actuelle",
+    "jump_to_current": "Aller à la journée actuelle"
   },
   "search": {
     "section_clubs": "Clubs",

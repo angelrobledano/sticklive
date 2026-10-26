@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import type { TeamDetail } from '@/src/lib/api/types';
+import type { TeamDetail, TeamMatchSummary } from '@/src/lib/api/types';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { clubName } from '@/src/lib/names';
@@ -15,14 +15,47 @@ interface Props {
   onSelectSeason: (seasonId: string) => void;
 }
 
-function FormBadge({ result }: { result: string }) {
+function FormBadge({
+  result,
+  match,
+  currentTeamId,
+}: {
+  result: string;
+  match?: TeamMatchSummary;
+  currentTeamId?: string;
+}) {
   const { t } = useLocale();
-  const map: Record<string, { bg: string; label: string }> = {
-    W: { bg: 'bg-emerald-500', label: t('team.form_w') || 'V' },
-    D: { bg: 'bg-slate-400 dark:bg-slate-500', label: t('team.form_d') || 'E' },
-    L: { bg: 'bg-red-500', label: t('team.form_l') || 'D' },
+  const router = useRouter();
+
+  const map: Record<string, { bg: string; label: string; desc: string }> = {
+    W: { bg: 'bg-emerald-500', label: t('team.form_w') || 'V', desc: 'Victoria' },
+    D: { bg: 'bg-slate-400 dark:bg-slate-500', label: t('team.form_d') || 'E', desc: 'Empate' },
+    L: { bg: 'bg-red-500', label: t('team.form_l') || 'D', desc: 'Derrota' },
   };
-  const { bg, label } = map[result] ?? { bg: 'bg-slate-300 dark:bg-slate-600', label: '?' };
+  const { bg, label, desc } = map[result] ?? { bg: 'bg-slate-300 dark:bg-slate-600', label: '?', desc: '' };
+
+  const isHome = match?.homeTeam?.id === currentTeamId;
+  const opponent = match ? (isHome ? match.awayTeam?.name : match.homeTeam?.name) : undefined;
+  const opponentName = opponent ? clubName(opponent) : undefined;
+  const scoreText = match?.score?.home != null ? `${match.score.home}-${match.score.away}` : undefined;
+
+  const a11y = match && opponentName
+    ? `${desc}${scoreText ? ` ${scoreText}` : ''} vs ${opponentName}. Pulsa para abrir el partido.`
+    : label;
+
+  if (match?.id) {
+    return (
+      <Pressable
+        onPress={() => router.push(`/match/${match.id}`)}
+        accessibilityRole="button"
+        accessibilityLabel={a11y}
+        hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+        className={`h-7 w-7 rounded-full ${bg} items-center justify-center active:opacity-75 shadow-2xs`}
+      >
+        <Text className="text-xs font-bold text-white">{label}</Text>
+      </Pressable>
+    );
+  }
 
   return (
     <View className={`h-7 w-7 rounded-full ${bg} items-center justify-center`}>
@@ -40,6 +73,18 @@ export function TeamHeader({ data, selectedSeasonId, onSelectSeason }: Props) {
   const displayName = clubName(team.name) || team.shortName || team.name;
   const section = sectionBadgeText(team, t);
   const form = (standing?.form ?? []).slice(-5);
+
+  const finishedMatches = useMemo(
+    () =>
+      (data.matches ?? [])
+        .filter((m) => m.status === 'finished')
+        .sort((a, b) => (a.scheduledAt ?? '').localeCompare(b.scheduledAt ?? '')),
+    [data.matches],
+  );
+  const formMatches = useMemo(
+    () => finishedMatches.slice(-form.length),
+    [finishedMatches, form.length],
+  );
 
   const currentSeason = seasons.find((s) => s.id === (selectedSeasonId || data.selectedSeasonId)) ?? seasons[0];
 
@@ -105,7 +150,7 @@ export function TeamHeader({ data, selectedSeasonId, onSelectSeason }: Props) {
         </View>
       ) : null}
 
-      {/* Racha de últimos resultados */}
+      {/* Racha de últimos resultados con enlace directo al partido */}
       {form.length > 0 ? (
         <View className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
           <Text className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
@@ -113,7 +158,12 @@ export function TeamHeader({ data, selectedSeasonId, onSelectSeason }: Props) {
           </Text>
           <View className="flex-row gap-2">
             {form.map((res, i) => (
-              <FormBadge key={i} result={res} />
+              <FormBadge
+                key={i}
+                result={res}
+                match={formMatches[i]}
+                currentTeamId={team.id}
+              />
             ))}
           </View>
         </View>

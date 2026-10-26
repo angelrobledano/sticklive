@@ -16,6 +16,7 @@ import {
   fmtEventClock,
   formatDate,
   formatTime,
+  foulBonusState,
   penaltyText,
 } from '@/src/lib/match-helpers';
 import type { MatchDetail } from '@/src/lib/api/types';
@@ -354,26 +355,80 @@ export function MatchHeader({
         />
       ) : null}
 
-      {/* Faltas de equipo */}
-      {stats && (stats.homeFouls > 0 || stats.awayFouls > 0) ? (
-        <View className="mt-3 flex-row items-center justify-between border-t border-slate-100 px-2 pt-2.5 dark:border-slate-800">
-          <View className="flex-row items-baseline gap-1">
-            <Text className="font-mono text-base font-extrabold text-slate-800 dark:text-slate-200">
-              {stats.homeFouls}
-            </Text>
-            <Text className="text-xs text-slate-500 dark:text-slate-400">{t('match_detail.fouls')}</Text>
+      {/* Faltas de equipo y bonus de falta directa */}
+      {stats && (stats.homeFouls > 0 || stats.awayFouls > 0) ? (() => {
+        const homeState = foulBonusState(stats.homeFouls);
+        const awayState = foulBonusState(stats.awayFouls);
+
+        return (
+          <View className="mt-3 border-t border-slate-100 px-2 pt-2.5 dark:border-slate-800">
+            <View className="flex-row items-center justify-between">
+              {/* Local */}
+              <View className="flex-row items-center gap-1.5">
+                <Text
+                  className={`font-mono text-base font-extrabold ${
+                    homeState === 'bonus'
+                      ? 'text-rose-600 dark:text-rose-400'
+                      : homeState === 'warning'
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-slate-800 dark:text-slate-200'
+                  }`}
+                >
+                  {stats.homeFouls}
+                </Text>
+                <Text className="text-xs text-slate-500 dark:text-slate-400">{t('match_detail.fouls')}</Text>
+                {homeState === 'bonus' ? (
+                  <View className="rounded-full bg-rose-100 px-1.5 py-0.2 dark:bg-rose-950/60">
+                    <Text className="text-[9px] font-black uppercase text-rose-700 dark:text-rose-300">
+                      Directa
+                    </Text>
+                  </View>
+                ) : homeState === 'warning' ? (
+                  <View className="rounded-full bg-amber-100 px-1.5 py-0.2 dark:bg-amber-950/60">
+                    <Text className="text-[9px] font-black uppercase text-amber-700 dark:text-amber-300">
+                      A 1
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+
+              {/* Título centro */}
+              <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {t('match_detail.team_fouls_header')}
+              </Text>
+
+              {/* Visitante */}
+              <View className="flex-row items-center gap-1.5">
+                {awayState === 'bonus' ? (
+                  <View className="rounded-full bg-rose-100 px-1.5 py-0.2 dark:bg-rose-950/60">
+                    <Text className="text-[9px] font-black uppercase text-rose-700 dark:text-rose-300">
+                      Directa
+                    </Text>
+                  </View>
+                ) : awayState === 'warning' ? (
+                  <View className="rounded-full bg-amber-100 px-1.5 py-0.2 dark:bg-amber-950/60">
+                    <Text className="text-[9px] font-black uppercase text-amber-700 dark:text-amber-300">
+                      A 1
+                    </Text>
+                  </View>
+                ) : null}
+                <Text className="text-xs text-slate-500 dark:text-slate-400">{t('match_detail.fouls')}</Text>
+                <Text
+                  className={`font-mono text-base font-extrabold ${
+                    awayState === 'bonus'
+                      ? 'text-rose-600 dark:text-rose-400'
+                      : awayState === 'warning'
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-slate-800 dark:text-slate-200'
+                  }`}
+                >
+                  {stats.awayFouls}
+                </Text>
+              </View>
+            </View>
           </View>
-          <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
-            {t('match_detail.team_fouls_header')}
-          </Text>
-          <View className="flex-row items-baseline gap-1">
-            <Text className="text-xs text-slate-500 dark:text-slate-400">{t('match_detail.fouls')}</Text>
-            <Text className="font-mono text-base font-extrabold text-slate-800 dark:text-slate-200">
-              {stats.awayFouls}
-            </Text>
-          </View>
-        </View>
-      ) : null}
+        );
+      })() : null}
 
       {/* Pabellón y Árbitro */}
       {match.venue || match.referee ? (

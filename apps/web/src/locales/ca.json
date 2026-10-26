@@ -192,7 +192,9 @@
     "next_date": "Data següent",
     "choose_team": "Tria un equip per veure tots els seus partits.",
     "match_count_one": "{n} partit",
-    "match_count_many": "{n} partits"
+    "match_count_many": "{n} partits",
+    "current_round": "Actual",
+    "jump_to_current": "Anar a jornada actual"
   },
   "match": {
     "watch_live": "Es pot veure en directe",

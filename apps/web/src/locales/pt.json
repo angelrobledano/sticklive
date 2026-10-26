@@ -638,7 +638,9 @@
     "next_date": "Data seguinte",
     "choose_team": "Escolhe uma equipa para veres todos os seus jogos.",
     "match_count_one": "{n} jogo",
-    "match_count_many": "{n} jogos"
+    "match_count_many": "{n} jogos",
+    "current_round": "Atual",
+    "jump_to_current": "Ir para jornada atual"
   },
   "search": {
     "section_clubs": "Clubes",

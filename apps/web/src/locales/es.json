@@ -192,7 +192,9 @@
     "next_date": "Fecha siguiente",
     "choose_team": "Elige un equipo para ver todos sus partidos.",
     "match_count_one": "{n} partido",
-    "match_count_many": "{n} partidos"
+    "match_count_many": "{n} partidos",
+    "current_round": "Actual",
+    "jump_to_current": "Ir a jornada actual"
   },
   "match": {
     "watch_live": "Se puede ver en directo",

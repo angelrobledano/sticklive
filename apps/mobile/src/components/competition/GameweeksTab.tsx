@@ -106,6 +106,8 @@ export function GameweeksTab({ rounds, matches }: GameweeksTabProps) {
   const [showRoundModal, setShowRoundModal] = useState(false);
 
   const activeRoundKey = selectedRound ? roundSelectionKey(selectedRound) : null;
+  const defaultRoundKey = defaultRound ? roundSelectionKey(defaultRound) : null;
+  const isViewingDefaultRound = Boolean(activeRoundKey && activeRoundKey === defaultRoundKey);
 
   const roundIdx = useMemo(() => {
     if (!activeRoundKey) return -1;
@@ -258,12 +260,21 @@ export function GameweeksTab({ rounds, matches }: GameweeksTabProps) {
             accessibilityLabel={t('fixtures.by_round') || 'Filtrar por jornada'}
             className="min-h-[44px] flex-1 flex-row items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 active:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:active:bg-slate-800/80"
           >
-            <Text
-              numberOfLines={1}
-              className="text-sm font-semibold text-slate-800 dark:text-slate-100"
-            >
-              {activeRoundTitle}
-            </Text>
+            <View className="flex-row items-center gap-2 flex-1 min-w-0 pr-1">
+              <Text
+                numberOfLines={1}
+                className="text-sm font-semibold text-slate-800 dark:text-slate-100"
+              >
+                {activeRoundTitle}
+              </Text>
+              {isViewingDefaultRound ? (
+                <View className="rounded-full bg-rose-100 px-2 py-0.5 dark:bg-rose-950/60">
+                  <Text className="text-[10px] font-bold text-rose-800 dark:text-rose-300">
+                    {t('fixtures.current_round') || 'Actual'}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
             <Ionicons name="chevron-down" size={16} color="#64748b" />
           </Pressable>
 
@@ -282,6 +293,23 @@ export function GameweeksTab({ rounds, matches }: GameweeksTabProps) {
               size={18}
               color={!nextRound ? '#94a3b8' : '#64748b'}
             />
+          </Pressable>
+        </View>
+      )}
+
+      {/* Botón rápido para volver a la jornada actual cuando se explora otra */}
+      {mode === 'round' && !isViewingDefaultRound && defaultRound && (
+        <View className="mx-3 -mt-1.5 mb-2.5 flex-row justify-end">
+          <Pressable
+            onPress={() => setSelectedRound(defaultRound)}
+            className="flex-row items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 border border-rose-200/80 dark:bg-rose-950/40 dark:border-rose-900/60 active:opacity-75"
+            accessibilityRole="button"
+            accessibilityLabel={t('fixtures.jump_to_current') || 'Ir a jornada actual'}
+          >
+            <Ionicons name="arrow-undo-outline" size={12} color="#be123c" />
+            <Text className="text-xs font-semibold text-rose-800 dark:text-rose-300">
+              {t('fixtures.jump_to_current') || 'Ir a jornada actual'}
+            </Text>
           </Pressable>
         </View>
       )}
@@ -571,6 +599,7 @@ export function GameweeksTab({ rounds, matches }: GameweeksTabProps) {
               {orderedRounds.map((r) => {
                 const sel = roundSelection(r);
                 const isSelected = roundSelectionKey(sel) === activeRoundKey;
+                const isCurrent = roundSelectionKey(sel) === defaultRoundKey;
                 const label = roundLabel(r, t);
 
                 return (
@@ -584,15 +613,24 @@ export function GameweeksTab({ rounds, matches }: GameweeksTabProps) {
                       isSelected ? 'bg-rink-passion/5 dark:bg-rose-950/20' : ''
                     }`}
                   >
-                    <Text
-                      className={`text-sm ${
-                        isSelected
-                          ? 'font-bold text-rink-passion dark:text-rose-400'
-                          : 'font-medium text-slate-800 dark:text-slate-200'
-                      }`}
-                    >
-                      {label}
-                    </Text>
+                    <View className="flex-row items-center gap-2 flex-1 pr-2">
+                      <Text
+                        className={`text-sm ${
+                          isSelected
+                            ? 'font-bold text-rink-passion dark:text-rose-400'
+                            : 'font-medium text-slate-800 dark:text-slate-200'
+                        }`}
+                      >
+                        {label}
+                      </Text>
+                      {isCurrent ? (
+                        <View className="rounded-full bg-rose-100 px-2 py-0.5 dark:bg-rose-950/60">
+                          <Text className="text-[10px] font-bold text-rose-800 dark:text-rose-300">
+                            {t('fixtures.current_round') || 'Actual'}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
                     {isSelected ? (
                       <Ionicons name="checkmark-circle" size={20} color="#dc2626" />
                     ) : null}

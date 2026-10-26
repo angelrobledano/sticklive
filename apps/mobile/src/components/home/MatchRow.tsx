@@ -81,18 +81,36 @@ export function MatchRow({ match, showCompetition = false }: MatchRowProps) {
                       {t('match_states.live')}
                     </Text>
                   </View>
-                  {match.fouls && (match.fouls.home != null || match.fouls.away != null) ? (
-                    <Text
-                      className={`mt-0.5 font-mono text-[10px] font-bold tabular-nums ${
-                        (match.fouls.home ?? 0) >= 9 || (match.fouls.away ?? 0) >= 9
-                          ? 'text-rose-600 dark:text-rose-400'
-                          : 'text-slate-500 dark:text-slate-400'
-                      }`}
-                      accessibilityLabel={`Faltas: ${match.fouls.home ?? 0} a ${match.fouls.away ?? 0}`}
-                    >
-                      F: {match.fouls.home ?? 0} - {match.fouls.away ?? 0}
-                    </Text>
-                  ) : null}
+                  {match.fouls && (match.fouls.home != null || match.fouls.away != null) ? (() => {
+                    const hf = match.fouls.home ?? 0;
+                    const af = match.fouls.away ?? 0;
+                    const hasBonus = hf >= 10 || af >= 10;
+                    const hasWarning = hf === 9 || af === 9 || hf === 14 || af === 14;
+
+                    return (
+                      <View className="mt-0.5 flex-row items-center gap-1">
+                        <Text
+                          className={`font-mono text-[10px] tabular-nums ${
+                            hasBonus
+                              ? 'text-rose-600 dark:text-rose-400 font-extrabold'
+                              : hasWarning
+                              ? 'text-amber-600 dark:text-amber-400 font-bold'
+                              : 'text-slate-500 dark:text-slate-400 font-bold'
+                          }`}
+                          accessibilityLabel={`Faltas: ${hf} a ${af}${hasBonus ? ', en bonus de falta directa' : ''}`}
+                        >
+                          F: {hf} - {af}
+                        </Text>
+                        {hasBonus ? (
+                          <View className="rounded bg-rose-100 px-1 py-0.2 dark:bg-rose-950/70">
+                            <Text className="text-[8px] font-black uppercase text-rose-700 dark:text-rose-300">
+                              Directa
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    );
+                  })() : null}
                 </>
               ) : (
                 <Text className="text-[10px] font-semibold text-slate-400 dark:text-slate-400">

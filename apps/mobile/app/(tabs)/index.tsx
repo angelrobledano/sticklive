@@ -1,6 +1,16 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { FlatList, PanResponder, Pressable, RefreshControl, Text, useWindowDimensions, View } from 'react-native';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import {
+  Animated,
+  FlatList,
+  PanResponder,
+  Pressable,
+  RefreshControl,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useNavigation } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { useAdsConfig, useDayMatches, useFeedMatches } from '@/src/hooks/queries';
 import { useSession } from '@/src/context/AuthContext';
@@ -25,6 +35,7 @@ import {
   daysWithMatches,
   defaultOpenKeys,
   extractGestureStartX,
+  getRelativeKey,
   isHorizontalSwipeGesture,
   isOutsideEdgeGuard,
   madridTodayKey,
@@ -202,6 +213,26 @@ export default function LiveScreen() {
 
   const { width: screenWidth } = useWindowDimensions();
 
+  // Toast flotante al cambiar de día mediante gesto de deslizamiento
+  const [toastOpacity] = useState(() => new Animated.Value(0));
+  const [toastText, setToastText] = useState<string | null>(null);
+
+  const showDayToast = useCallback((newDateKey: string, delta: number) => {
+    const relKey = getRelativeKey(newDateKey, todayKey);
+    const label = relKey ? t(relKey) : formatDayLabel(newDateKey, locale);
+
+    const text = delta < 0 ? `← ${label}` : `${label} →`;
+    setToastText(text);
+
+    toastOpacity.setValue(1);
+    Animated.timing(toastOpacity, {
+      toValue: 0,
+      duration: 700,
+      delay: 500,
+      useNativeDriver: true,
+    }).start();
+  }, [todayKey, locale, t, toastOpacity]);
+
   // Gestos táctiles de deslizamiento horizontal para cambiar de día
   // Se protegen 32dp en ambos bordes laterales para no interferir con el gesto
   // nativo Atrás de Android 15 (Predictive Back Gesture).
@@ -228,13 +259,17 @@ export default function LiveScreen() {
         onPanResponderRelease: (_, gestureState) => {
           const delta = resolveDaySwipeDelta(gestureState.dx, gestureState.vx);
           if (delta !== 0) {
-            setSelectedDate((prev) => addDaysToKey(prev, delta));
+            setSelectedDate((prev) => {
+              const nextDate = addDaysToKey(prev, delta);
+              showDayToast(nextDate, delta);
+              return nextDate;
+            });
             setFilter('all');
             setOverrides({});
           }
         },
       }),
-    [screenWidth],
+    [screenWidth, showDayToast],
   );
 
   if (isPending) {
@@ -352,6 +387,24 @@ export default function LiveScreen() {
           }
         />
       </View>
+
+      {/* Toast visual flotante al deslizar de día */}
+      {toastText ? (
+        <Animated.View
+          pointerEvents="none"
+          style={{ opacity: toastOpacity }}
+          className="absolute bottom-6 self-center z-50 flex-row items-center gap-1.5 rounded-full bg-slate-900/90 dark:bg-slate-100/95 px-4 py-2 shadow-lg"
+        >
+          <Ionicons
+            name="calendar-outline"
+            size={13}
+            color="#ffffff"
+          />
+          <Text className="text-xs font-bold text-white dark:text-slate-900">
+            {toastText}
+          </Text>
+        </Animated.View>
+      ) : null}
     </View>
   );
 }
