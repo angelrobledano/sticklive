@@ -394,7 +394,8 @@
       "lost": "P",
       "gf": "GF",
       "ga": "GS",
-      "gd": "DR"
+      "gd": "DR",
+      "diff": "DR"
     },
     "legend_title": "Cosa significano le colonne",
     "cols_full": {
@@ -405,7 +406,8 @@
       "lost": "Perse",
       "gf": "Gol fatti",
       "ga": "Gol subiti",
-      "gd": "Differenza reti"
+      "gd": "Differenza reti",
+      "diff": "Differenza reti"
     }
   },
   "season": {

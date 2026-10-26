@@ -467,7 +467,8 @@
       "lost": "L",
       "gf": "GF",
       "ga": "GA",
-      "gd": "GD"
+      "gd": "GD",
+      "diff": "GD"
     },
     "legend_title": "What the columns mean",
     "cols_full": {
@@ -478,7 +479,8 @@
       "lost": "Lost",
       "gf": "Goals for",
       "ga": "Goals against",
-      "gd": "Goal difference"
+      "gd": "Goal difference",
+      "diff": "Goal difference"
     }
   },
   "season": {

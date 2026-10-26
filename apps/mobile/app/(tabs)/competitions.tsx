@@ -12,10 +12,11 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { useCompetitions, useFederations } from '@/src/hooks/queries';
+import { useCompetitions, useCurrentMatches, useFederations } from '@/src/hooks/queries';
 import { useFavorites, useLocalFavorites } from '@/src/hooks/favorites';
 import { useSession } from '@/src/context/AuthContext';
 import { usePreferredCountry } from '@/src/hooks/usePreferredCountry';
+import { isEffectivelyLive } from '@/src/lib/time';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { CompetitionsSkeleton } from '@/src/components/shared/Skeleton';
@@ -49,17 +50,29 @@ import type { CompetitionSummary } from '@/src/lib/api/types';
 /** Tipos de selector principal: destacadas, países (ES, PT, IT...), internacional y favoritas */
 type TabKey = 'destacadas' | 'favoritas' | 'international' | string;
 
-// ── Fila de competición compacta, táctil y limpia (sin chevrons redundantes) ─
+/** Sugerencias de búsqueda rápida más frecuentes para hockey sobre patines */
+const POPULAR_SEARCHES = [
+  'OK Liga',
+  'OK Liga Iberdrola',
+  'Campeonato Placard',
+  'Copa del Rey',
+  'Serie A1',
+  'Champions',
+];
+
+// ── Fila de competición compacta, táctil y limpia con señal de directo ───────
 function CompetitionRowItem({
   comp,
   locale,
   t,
   showCountryBadge = false,
+  liveCount,
 }: {
   comp: CompetitionSummary;
   locale: string;
   t: (k: string) => string;
   showCountryBadge?: boolean;
+  liveCount?: number;
 }) {
   const router = useRouter();
 
@@ -93,51 +106,67 @@ function CompetitionRowItem({
 
   const meta = parts.join(' · ');
   const displayName = clubName(competitionName(comp.name, comp.nameI18n, locale));
+  const isLive = Boolean(liveCount && liveCount > 0);
 
   return (
     <View className="flex-row items-center border-b border-slate-100 last:border-b-0 dark:border-slate-800/60">
       <Pressable
         onPress={() => router.push({ pathname: '/competition/[id]', params: { id: comp.id } })}
         accessibilityRole="button"
-        accessibilityLabel={`${displayName}, ${meta}`}
+        accessibilityLabel={`${displayName}, ${isLive ? `${liveCount} partidos en directo, ` : ''}${meta}`}
         accessibilityHint="Abre los partidos y clasificación de la competición"
         className="flex-1 flex-row items-center gap-3 py-2.5 pl-3 pr-2 active:bg-slate-50 dark:active:bg-slate-800/40 min-h-[50px]"
       >
-        {/* Avatar circular */}
-        <View
-          className={`h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${
-            hasLogo
-              ? 'border border-slate-200 bg-white p-0.5 dark:border-slate-700'
-              : hasFlag
-                ? 'bg-slate-100 dark:bg-slate-800'
-                : 'border border-rose-200 bg-rose-50 dark:border-rose-900/40 dark:bg-rose-950/40'
-          }`}
-        >
-          {hasLogo ? (
-            <Image
-              source={{ uri: comp.logoUrl! }}
-              className="h-full w-full"
-              resizeMode="contain"
-            />
-          ) : hasFlag ? (
-            <CountryFlag code={comp.country} size={22} />
-          ) : isWorld ? (
-            <Text className="text-sm leading-none">🌍</Text>
-          ) : (
-            <Text className="text-[10px] font-black text-rose-800 dark:text-rose-300">
-              {initials}
-            </Text>
-          )}
+        {/* Avatar circular con badge de directo si hay partidos en juego */}
+        <View className="relative">
+          <View
+            className={`h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${
+              hasLogo
+                ? 'border border-slate-200 bg-white p-0.5 dark:border-slate-700'
+                : hasFlag
+                  ? 'bg-slate-100 dark:bg-slate-800'
+                  : 'border border-rose-200 bg-rose-50 dark:border-rose-900/40 dark:bg-rose-950/40'
+            }`}
+          >
+            {hasLogo ? (
+              <Image
+                source={{ uri: comp.logoUrl! }}
+                className="h-full w-full"
+                resizeMode="contain"
+              />
+            ) : hasFlag ? (
+              <CountryFlag code={comp.country} size={22} />
+            ) : isWorld ? (
+              <Text className="text-sm leading-none">🌍</Text>
+            ) : (
+              <Text className="text-[10px] font-black text-rose-800 dark:text-rose-300">
+                {initials}
+              </Text>
+            )}
+          </View>
+          {isLive ? (
+            <View className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-rose-500 dark:border-slate-900" />
+          ) : null}
         </View>
 
         {/* Textos con espacio completo */}
         <View className="flex-1 min-w-0 pr-1">
-          <Text
-            numberOfLines={1}
-            className="text-[13px] font-bold text-slate-800 dark:text-slate-100"
-          >
-            {displayName}
-          </Text>
+          <View className="flex-row items-center gap-1.5 flex-wrap">
+            <Text
+              numberOfLines={1}
+              className="text-[13px] font-bold text-slate-800 dark:text-slate-100 flex-shrink"
+            >
+              {displayName}
+            </Text>
+            {isLive ? (
+              <View className="flex-row items-center gap-1 rounded-full bg-rose-500/10 px-1.5 py-0.5 border border-rose-500/20 dark:bg-rose-950/50 dark:border-rose-800/50">
+                <View className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                <Text className="text-[9px] font-extrabold uppercase tracking-tight text-rose-600 dark:text-rose-400">
+                  {liveCount && liveCount > 1 ? `${liveCount} DIRECTO` : 'EN DIRECTO'}
+                </Text>
+              </View>
+            ) : null}
+          </View>
           {meta ? (
             <Text
               numberOfLines={1}
@@ -286,12 +315,14 @@ function RegionalFederationAccordion({
   onToggle,
   locale,
   t,
+  liveMap,
 }: {
   group: FederationGroup;
   isOpen: boolean;
   onToggle: () => void;
   locale: string;
   t: (k: string) => string;
+  liveMap?: Map<string, number>;
 }) {
   return (
     <View className="border-b border-slate-100 last:border-b-0 dark:border-slate-800/60">
@@ -322,7 +353,13 @@ function RegionalFederationAccordion({
       {isOpen && (
         <View className="border-t border-slate-100 bg-white dark:border-slate-800/60 dark:bg-slate-900">
           {group.comps.map((comp) => (
-            <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+            <CompetitionRowItem
+              key={comp.id}
+              comp={comp}
+              locale={locale}
+              t={t}
+              liveCount={liveMap?.get(comp.id)}
+            />
           ))}
         </View>
       )}
@@ -339,6 +376,7 @@ function CountryCatalogView({
   onToggleFederation,
   locale,
   t,
+  liveMap,
 }: {
   country: CountryGroup;
   openSections: Record<string, boolean>;
@@ -347,6 +385,7 @@ function CountryCatalogView({
   onToggleFederation: (key: string) => void;
   locale: string;
   t: (k: string) => string;
+  liveMap?: Map<string, number>;
 }) {
   const { code, sections, federation } = country;
   const countryName = countryDisplayName(code, locale) || code;
@@ -384,7 +423,13 @@ function CountryCatalogView({
             </View>
           </View>
           {mainLeagues.map((comp) => (
-            <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+            <CompetitionRowItem
+              key={comp.id}
+              comp={comp}
+              locale={locale}
+              t={t}
+              liveCount={liveMap?.get(comp.id)}
+            />
           ))}
         </View>
       )}
@@ -399,7 +444,13 @@ function CountryCatalogView({
           onToggle={() => onToggleSection(`${code}:cups`)}
         >
           {cups.map((comp) => (
-            <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+            <CompetitionRowItem
+              key={comp.id}
+              comp={comp}
+              locale={locale}
+              t={t}
+              liveCount={liveMap?.get(comp.id)}
+            />
           ))}
         </CollapsibleSection>
       )}
@@ -414,7 +465,13 @@ function CountryCatalogView({
           onToggle={() => onToggleSection(`${code}:otherLeagues`)}
         >
           {otherLeagues.map((comp) => (
-            <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+            <CompetitionRowItem
+              key={comp.id}
+              comp={comp}
+              locale={locale}
+              t={t}
+              liveCount={liveMap?.get(comp.id)}
+            />
           ))}
         </CollapsibleSection>
       )}
@@ -429,7 +486,13 @@ function CountryCatalogView({
           onToggle={() => onToggleSection(`${code}:base`)}
         >
           {base.map((comp) => (
-            <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+            <CompetitionRowItem
+              key={comp.id}
+              comp={comp}
+              locale={locale}
+              t={t}
+              liveCount={liveMap?.get(comp.id)}
+            />
           ))}
         </CollapsibleSection>
       )}
@@ -451,6 +514,7 @@ function CountryCatalogView({
               onToggle={() => onToggleFederation(group.key)}
               locale={locale}
               t={t}
+              liveMap={liveMap}
             />
           ))}
         </CollapsibleSection>
@@ -475,6 +539,20 @@ export default function CompetitionsScreen() {
 
   const competitionsQuery = useCompetitions();
   const federationsQuery = useFederations();
+  const currentMatchesQuery = useCurrentMatches();
+
+  // Partidos en directo por ID de competición (señal visual en tiempo real)
+  const liveMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const matches = currentMatchesQuery.data ?? [];
+    for (const m of matches) {
+      if (!m.competitionId) continue;
+      if (isEffectivelyLive(m.status, m.scheduledAt)) {
+        map.set(m.competitionId, (map.get(m.competitionId) ?? 0) + 1);
+      }
+    }
+    return map;
+  }, [currentMatchesQuery.data]);
 
   // Estados de interfaz
   const [query, setQuery] = useState('');
@@ -590,6 +668,30 @@ export default function CompetitionsScreen() {
             </Pressable>
           )}
         </View>
+
+        {/* Sugerencias de búsqueda rápida (1-tap para ligas top) */}
+        {!isSearching && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="mt-1.5"
+            contentContainerStyle={{ gap: 5, paddingHorizontal: 1 }}
+          >
+            {POPULAR_SEARCHES.map((term) => (
+              <Pressable
+                key={term}
+                onPress={() => setQuery(term)}
+                className="rounded-full bg-slate-100/90 px-2.5 py-0.5 dark:bg-slate-800/80 active:opacity-75"
+                accessibilityRole="button"
+                accessibilityLabel={`Buscar ${term}`}
+              >
+                <Text className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                  {term}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
 
         {/* Selector de país y categorías (Pestañas horizontales) */}
         {!isSearching && (
@@ -833,6 +935,26 @@ export default function CompetitionsScreen() {
                   Limpiar búsqueda
                 </Text>
               </Pressable>
+
+              {/* Sugerencias de búsqueda rápida cuando no hay resultados */}
+              <View className="mt-8 w-full px-4 items-center">
+                <Text className="mb-2.5 text-xs font-semibold text-slate-400">
+                  Prueba buscando:
+                </Text>
+                <View className="flex-row flex-wrap justify-center gap-2">
+                  {POPULAR_SEARCHES.map((term) => (
+                    <Pressable
+                      key={term}
+                      onPress={() => setQuery(term)}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-800 active:opacity-75"
+                    >
+                      <Text className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        {term}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
             </View>
           ) : (
             <View className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs dark:border-slate-800 dark:bg-slate-900">
@@ -848,6 +970,7 @@ export default function CompetitionsScreen() {
                   locale={locale}
                   t={t}
                   showCountryBadge
+                  liveCount={liveMap.get(comp.id)}
                 />
               ))}
             </View>
@@ -883,7 +1006,13 @@ export default function CompetitionsScreen() {
                     </Text>
                   </View>
                   {destacadas.map((comp) => (
-                    <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+                    <CompetitionRowItem
+                      key={comp.id}
+                      comp={comp}
+                      locale={locale}
+                      t={t}
+                      liveCount={liveMap.get(comp.id)}
+                    />
                   ))}
                 </View>
               )
@@ -915,7 +1044,13 @@ export default function CompetitionsScreen() {
                     </Text>
                   </View>
                   {misLigas.map((comp) => (
-                    <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+                    <CompetitionRowItem
+                      key={comp.id}
+                      comp={comp}
+                      locale={locale}
+                      t={t}
+                      liveCount={liveMap.get(comp.id)}
+                    />
                   ))}
                 </View>
               )
@@ -934,7 +1069,13 @@ export default function CompetitionsScreen() {
                   </Text>
                 </View>
                 {tree.international.map((comp) => (
-                  <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+                  <CompetitionRowItem
+                    key={comp.id}
+                    comp={comp}
+                    locale={locale}
+                    t={t}
+                    liveCount={liveMap.get(comp.id)}
+                  />
                 ))}
               </View>
             ) : selectedCountryGroup ? (
@@ -947,6 +1088,7 @@ export default function CompetitionsScreen() {
                 onToggleFederation={toggleFederation}
                 locale={locale}
                 t={t}
+                liveMap={liveMap}
               />
             ) : (
               // Fallback si no hay datos del país

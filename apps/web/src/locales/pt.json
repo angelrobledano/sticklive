@@ -394,7 +394,8 @@
       "lost": "D",
       "gf": "GM",
       "ga": "GS",
-      "gd": "DG"
+      "gd": "DG",
+      "diff": "DG"
     },
     "legend_title": "O que significam as colunas",
     "cols_full": {
@@ -405,7 +406,8 @@
       "lost": "Derrotas",
       "gf": "Golos marcados",
       "ga": "Golos sofridos",
-      "gd": "Diferença de golos"
+      "gd": "Diferença de golos",
+      "diff": "Diferença de golos"
     }
   },
   "season": {

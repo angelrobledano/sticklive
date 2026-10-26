@@ -483,7 +483,8 @@
       "lost": "PP",
       "gf": "GF",
       "ga": "GC",
-      "gd": "DG"
+      "gd": "DG",
+      "diff": "DG"
     },
     "legend_title": "Què signifiquen les columnes",
     "cols_full": {
@@ -494,7 +495,8 @@
       "lost": "Perduts",
       "gf": "Gols a favor",
       "ga": "Gols en contra",
-      "gd": "Diferència de gols"
+      "gd": "Diferència de gols",
+      "diff": "Diferència de gols"
     }
   },
   "season": {

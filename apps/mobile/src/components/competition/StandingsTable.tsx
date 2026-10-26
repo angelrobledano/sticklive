@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import type { SeasonOverviewStandingRow } from '@/src/lib/api/types';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { useLocale } from '@/src/i18n/LocaleContext';
@@ -57,6 +58,7 @@ function zoneLabel(t: (k: string) => string, zone: RowZone): string {
 export function StandingsTable({ rows, legacyZones = true }: Props) {
   const router = useRouter();
   const { t } = useLocale();
+  const [showColHelp, setShowColHelp] = useState(false);
 
   const zones = useMemo(() => rowZones(rows, { legacyFallback: legacyZones }), [rows, legacyZones]);
   const cuts = useMemo(() => zoneChangesAfter(zones), [zones]);
@@ -83,7 +85,7 @@ export function StandingsTable({ rows, legacyZones = true }: Props) {
           {t('standings.cols.lost') || 'PP'}
         </Text>
         <Text className="w-7 text-center text-[11px] font-bold text-slate-400">
-          {t('standings.cols.diff') || 'DG'}
+          {t('standings.cols.gd') || t('standings.cols.diff') || 'DG'}
         </Text>
         <Text className="w-7 text-center text-xs font-bold text-slate-900 dark:text-slate-100">
           {t('standings.cols.pts') || 'PT'}
@@ -189,6 +191,52 @@ export function StandingsTable({ rows, legacyZones = true }: Props) {
           ))}
         </View>
       ) : null}
+
+      {/* Explicación de columnas (PJ, PG, PE, PP, DG, PT) */}
+      <View className="border-t border-slate-100 dark:border-slate-800">
+        <Pressable
+          onPress={() => setShowColHelp((prev) => !prev)}
+          accessibilityRole="button"
+          accessibilityLabel={t('standings.legend_title') || 'Qué significan las columnas'}
+          className="flex-row items-center justify-between px-3 py-2 bg-slate-50/30 dark:bg-slate-800/20 active:opacity-75"
+        >
+          <View className="flex-row items-center gap-1.5">
+            <Ionicons name="help-circle-outline" size={13} color="#94a3b8" />
+            <Text className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+              {t('standings.legend_title') || 'Qué significan las columnas'}
+            </Text>
+          </View>
+          <Ionicons
+            name={showColHelp ? 'chevron-up' : 'chevron-down'}
+            size={13}
+            color="#94a3b8"
+          />
+        </Pressable>
+
+        {showColHelp ? (
+          <View className="px-3 pb-2.5 pt-1 bg-slate-50/50 dark:bg-slate-800/40">
+            <View className="flex-row flex-wrap gap-x-4 gap-y-1">
+              {[
+                { key: 'played', fallbackShort: 'PJ', fallbackLong: 'Partidos jugados' },
+                { key: 'won', fallbackShort: 'PG', fallbackLong: 'Ganados' },
+                { key: 'drawn', fallbackShort: 'PE', fallbackLong: 'Empatados' },
+                { key: 'lost', fallbackShort: 'PP', fallbackLong: 'Perdidos' },
+                { key: 'gd', fallbackShort: 'DG', fallbackLong: 'Diferencia de goles' },
+                { key: 'pts', fallbackShort: 'PT', fallbackLong: 'Puntos' },
+              ].map(({ key, fallbackShort, fallbackLong }) => (
+                <View key={key} className="flex-row items-baseline gap-1">
+                  <Text className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                    {t(`standings.cols.${key}`) || fallbackShort}:
+                  </Text>
+                  <Text className="text-[10px] text-slate-500 dark:text-slate-400">
+                    {t(`standings.cols_full.${key}`) || fallbackLong}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
