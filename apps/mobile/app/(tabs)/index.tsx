@@ -17,12 +17,13 @@ import { ErrorState } from '@/src/components/shared/ErrorState';
 import { FeedSkeleton } from '@/src/components/shared/Skeleton';
 import { BrandHeaderTitle, HomeHeaderRight } from '@/src/components/layout/AppHeader';
 import { capture } from '@/src/lib/analytics';
-import { formatDayLabel } from '@/src/lib/time';
+import { formatDayLabel, isEffectivelyLive } from '@/src/lib/time';
 import {
   addDaysToKey,
   buildDayView,
   hiddenForDay,
   daysWithMatches,
+  defaultOpenKeys,
   extractGestureStartX,
   isHorizontalSwipeGesture,
   isOutsideEdgeGuard,
@@ -31,12 +32,17 @@ import {
   resolveDaySwipeDelta,
   type DayFilter,
 } from '@/src/lib/day-view';
+import { usePreferredCountry } from '@/src/hooks/usePreferredCountry';
+import { deviceTimeZone } from '@/src/lib/viewer-tz';
 import type { MatchSummary } from '@/src/lib/api/types';
 
 interface Section {
   key: string;
   title: string;
   competitionId?: string | null;
+  logoUrl?: string | null;
+  country?: string | null;
+  liveCount: number;
   followed?: boolean;
   matches: MatchSummary[];
 }
@@ -75,14 +81,18 @@ export default function LiveScreen() {
     const seen = new Set(feed.map((m) => m.id));
     return [...feed, ...dayAll.data.filter((m) => !seen.has(m.id))];
   }, [feedQuery.data, othersOpen, dayAll.data]);
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const navigation = useNavigation();
+
+  const { country: preferredCountry } = usePreferredCountry();
+  const viewerTz = useMemo(() => deviceTimeZone(), []);
 
   // Analítica: vista de la pestaña home
   useEffect(() => {
     capture('live_tab_viewed');
   }, []);
 
-  const markedDays = useMemo(() => daysWithMatches(data ?? []), [data]);
+  const markedDays = useMemo(() => daysWithMatches(data ?? [], viewerTz), [data, viewerTz]);
 
   const dayView = useMemo(
     () =>
@@ -93,8 +103,15 @@ export default function LiveScreen() {
         filter,
         locale,
         includeOthers: othersOpen,
+        tz: viewerTz,
+        country: preferredCountry,
       }),
-    [data, selectedDate, teamIds, leagueIds, filter, locale, othersOpen],
+    [data, selectedDate, teamIds, leagueIds, filter, locale, othersOpen, viewerTz, preferredCountry],
+  );
+
+  const defaultOpen = useMemo(
+    () => defaultOpenKeys(dayView.competitions, preferredCountry),
+    [dayView.competitions, preferredCountry],
   );
   const othersCount = othersOpen ? 0 : hiddenForDay(feedQuery.data?.hiddenByHour, selectedDate);
 
@@ -126,9 +143,15 @@ export default function LiveScreen() {
   const next = useMemo(
     () =>
       dayView.total === 0 && selectedDate >= todayKey
-        ? nextMatchday(data ?? [], selectedDate, { teamIds, leagueIds, locale })
+        ? nextMatchday(data ?? [], selectedDate, {
+            teamIds,
+            leagueIds,
+            locale,
+            tz: viewerTz,
+            country: preferredCountry,
+          })
         : null,
-    [dayView.total, selectedDate, todayKey, data, teamIds, leagueIds, locale],
+    [dayView.total, selectedDate, todayKey, data, teamIds, leagueIds, locale, viewerTz, preferredCountry],
   );
 
   const sections = useMemo<Section[]>(() => {
@@ -138,6 +161,9 @@ export default function LiveScreen() {
         key: '__following__',
         title: t('favorites.following_section') || 'Siguiendo',
         competitionId: null,
+        logoUrl: null,
+        country: null,
+        liveCount: dayView.myTeams.filter((m) => isEffectivelyLive(m.status, m.scheduledAt)).length,
         followed: true,
         matches: dayView.myTeams,
       });
@@ -147,6 +173,9 @@ export default function LiveScreen() {
         key: comp.key,
         title: comp.name ?? 'Otras competiciones',
         competitionId: comp.id,
+        logoUrl: comp.logoUrl,
+        country: comp.country,
+        liveCount: comp.matches.filter((m) => isEffectivelyLive(m.status, m.scheduledAt)).length,
         followed: comp.followed,
         matches: comp.matches,
       });
@@ -201,6 +230,7 @@ export default function LiveScreen() {
           if (delta !== 0) {
             setSelectedDate((prev) => addDaysToKey(prev, delta));
             setFilter('all');
+            setOverrides({});
           }
         },
       }),
@@ -221,6 +251,7 @@ export default function LiveScreen() {
         onSelect={(key) => {
           setSelectedDate(key);
           setFilter('all');
+          setOverrides({});
         }}
         markedDays={markedDays}
       />
@@ -244,13 +275,28 @@ export default function LiveScreen() {
           renderItem={({ item }) => {
             if (item.kind === 'ad') return <NativeFeedAd />;
             const { section } = item;
+            const isFollowingSection = section.key === '__following__';
+            const isOpen = isFollowingSection
+              ? true
+              : (overrides[section.key] ?? defaultOpen.has(section.key));
+
             return (
               <MatchGroupCard
                 key={section.key}
                 title={section.title}
                 competitionId={section.competitionId}
+                logoUrl={section.logoUrl}
+                country={section.country}
                 count={section.matches.length}
+                liveCount={section.liveCount}
                 followed={section.followed}
+                isOpen={isOpen}
+                onToggleOpen={() => {
+                  setOverrides((prev) => {
+                    const current = prev[section.key] ?? defaultOpen.has(section.key);
+                    return { ...prev, [section.key]: !current };
+                  });
+                }}
               >
                 {section.matches.map((m) => (
                   <MatchRow

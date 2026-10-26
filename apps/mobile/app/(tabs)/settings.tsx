@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,9 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 import { LOCALES, type Locale } from '@/src/i18n/locales';
 import { useThemePref, type ThemePref } from '@/src/theme/ThemeContext';
 import { authErrorKey } from '@/src/lib/auth-errors';
+import { CountryFlag } from '@/src/components/shared/CountryFlag';
+import { usePreferredCountry, HOME_COUNTRIES } from '@/src/hooks/usePreferredCountry';
+import { capture } from '@/src/lib/analytics';
 
 /**
  * Ajustes (Task 3.4). Orden coherente con la página de settings de la web
@@ -59,9 +62,18 @@ export default function SettingsScreen() {
   const { t, locale, setLocale } = useLocale();
   const { pref, setPref } = useThemePref();
   const { session, ready, lastAuthError, signInWithGoogle, signOut } = useSession();
+  const { country: preferredCountry, setCountry: setPreferredCountry } = usePreferredCountry();
   const [signingIn, setSigningIn] = useState(false);
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  const regionNames = useMemo(() => {
+    try {
+      return new Intl.DisplayNames([locale], { type: 'region' });
+    } catch {
+      return null;
+    }
+  }, [locale]);
 
   const handleSignIn = () => {
     setSigningIn(true);
@@ -170,6 +182,57 @@ export default function SettingsScreen() {
               onPress={() => setLocale(l)}
             />
           ))}
+        </View>
+      </View>
+
+      {/* País preferido: ordena las competiciones de la portada */}
+      <View className="mx-4 mt-3 rounded-xl bg-white p-4 dark:bg-slate-900">
+        <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
+          {t('home.country_label') !== 'home.country_label'
+            ? t('home.country_label')
+            : 'País preferido'}
+        </Text>
+        <Text className="mt-0.5 text-xs text-slate-500">
+          {t('settings.country_desc') !== 'settings.country_desc'
+            ? t('settings.country_desc')
+            : 'Sus competiciones salen primero en la portada. Las demás siguen ahí.'}
+        </Text>
+        <View className="mt-3 flex-row flex-wrap gap-2">
+          <OptionChip
+            label={t('home.country_all') !== 'home.country_all' ? t('home.country_all') : 'Todos'}
+            active={preferredCountry === null}
+            onPress={() => {
+              setPreferredCountry(null);
+              capture('home_country_changed', { country: 'none', from: 'settings' });
+            }}
+          />
+          {HOME_COUNTRIES.map((c) => {
+            const name = regionNames?.of(c) ?? c;
+            const active = preferredCountry === c;
+            return (
+              <Pressable
+                key={c}
+                onPress={() => {
+                  setPreferredCountry(c);
+                  capture('home_country_changed', { country: c, from: 'settings' });
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                className={`min-h-[44px] flex-row items-center gap-1.5 rounded-full px-3.5 active:opacity-70 ${
+                  active ? 'bg-rink-passion' : 'bg-slate-100 dark:bg-slate-800'
+                }`}
+              >
+                <CountryFlag code={c} size={18} />
+                <Text
+                  className={`text-sm font-semibold ${
+                    active ? 'text-white' : 'text-slate-700 dark:text-slate-200'
+                  }`}
+                >
+                  {name}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 

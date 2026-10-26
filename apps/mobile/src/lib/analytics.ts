@@ -63,6 +63,7 @@ export interface AnalyticsEventProps {
   // cap 2/hora y con las impresiones reales de AdMob).
   ads_app_open_shown: Record<string, never>;
   ads_interstitial_shown: Record<string, never>;
+  home_country_changed: { country: string; from?: string };
 }
 
 let client: PostHog | null = null;

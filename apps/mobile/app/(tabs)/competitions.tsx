@@ -15,6 +15,7 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 import { useCompetitions, useFederations } from '@/src/hooks/queries';
 import { useFavorites, useLocalFavorites } from '@/src/hooks/favorites';
 import { useSession } from '@/src/context/AuthContext';
+import { usePreferredCountry } from '@/src/hooks/usePreferredCountry';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { CompetitionsSkeleton } from '@/src/components/shared/Skeleton';
@@ -45,8 +46,10 @@ import {
 } from '@/src/lib/competition-groups';
 import type { CompetitionSummary } from '@/src/lib/api/types';
 
-type Tab = 'destacadas' | 'paises' | 'mis-ligas';
+/** Tipos de selector principal: destacadas, países (ES, PT, IT...), internacional y favoritas */
+type TabKey = 'destacadas' | 'favoritas' | 'international' | string;
 
+// ── Fila de competición compacta y táctil ─────────────────────────────────────
 function CompetitionRowItem({
   comp,
   locale,
@@ -63,7 +66,7 @@ function CompetitionRowItem({
   const isWorld = comp.country === 'W' || comp.scope === 'international';
   const initials = (comp.shortName ?? comp.name).slice(0, 2).toUpperCase();
 
-  // Línea de metadatos (equipos · género · categoría · temporada)
+  // Línea de metadatos (equipos · género · categoría)
   const parts: string[] = [];
   if (comp.season?.teamCount) {
     parts.push(`${comp.season.teamCount} ${t('common.teams_lc') || 'equipos'}`);
@@ -75,6 +78,8 @@ function CompetitionRowItem({
     parts.push('1ª Cat.');
   } else if (isCup(comp)) {
     parts.push(t('competitions.section_cups') || 'Copa');
+  } else if (comp.federation?.shortName) {
+    parts.push(comp.federation.shortName);
   }
 
   const meta = parts.join(' · ');
@@ -84,11 +89,14 @@ function CompetitionRowItem({
     <View className="flex-row items-center border-b border-slate-100 last:border-b-0 dark:border-slate-800/60">
       <Pressable
         onPress={() => router.push({ pathname: '/competition/[id]', params: { id: comp.id } })}
+        accessibilityRole="button"
+        accessibilityLabel={`${displayName}, ${meta}`}
+        accessibilityHint="Abre los partidos y clasificación de la competición"
         className="flex-1 flex-row items-center gap-3 py-2.5 pl-3 pr-1 active:bg-slate-50 dark:active:bg-slate-800/40 min-h-[50px]"
       >
         {/* Avatar circular */}
         <View
-          className={`h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ${
+          className={`h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${
             hasLogo
               ? 'border border-slate-200 bg-white p-0.5 dark:border-slate-700'
               : hasFlag
@@ -103,11 +111,11 @@ function CompetitionRowItem({
               resizeMode="contain"
             />
           ) : hasFlag ? (
-            <CountryFlag code={comp.country} size={28} />
+            <CountryFlag code={comp.country} size={22} />
           ) : isWorld ? (
-            <Text className="text-base leading-none">🌍</Text>
+            <Text className="text-sm leading-none">🌍</Text>
           ) : (
-            <Text className="text-[11px] font-black text-rose-800 dark:text-rose-300">
+            <Text className="text-[10px] font-black text-rose-800 dark:text-rose-300">
               {initials}
             </Text>
           )}
@@ -131,18 +139,79 @@ function CompetitionRowItem({
           ) : null}
         </View>
 
-        {/* Flecha indicador */}
-        <Ionicons name="chevron-forward" size={15} color="#94a3b8" />
+        {/* Indicador de navegación */}
+        <Ionicons name="chevron-forward" size={14} color="#94a3b8" />
       </Pressable>
 
-      {/* Botón de seguir / favoritos */}
-      <View className="pr-1.5 shrink-0">
+      {/* Botón de seguir / favoritos (48x48dp accesible con hitSlop) */}
+      <View className="pr-1 shrink-0">
         <FollowButton kind="league" refId={comp.id} name={comp.name} />
       </View>
     </View>
   );
 }
 
+// ── Bloque colapsable de categoría o división ─────────────────────────────────
+function CollapsibleSection({
+  title,
+  iconName,
+  count,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  title: string;
+  iconName?: keyof typeof Ionicons.glyphMap;
+  count?: number;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <View className="mb-2.5 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <Pressable
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityLabel={`${title}, ${count != null ? `${count} elementos` : ''}`}
+        accessibilityState={{ expanded: isOpen }}
+        className="flex-row items-center justify-between px-3.5 py-3 active:bg-slate-50 dark:active:bg-slate-800/40"
+      >
+        <View className="flex-row items-center gap-2.5 flex-1 min-w-0">
+          {iconName ? <Ionicons name={iconName} size={16} color="#64748b" /> : null}
+          <Text
+            numberOfLines={1}
+            className="text-[13px] font-bold text-slate-800 dark:text-slate-200"
+          >
+            {title}
+          </Text>
+        </View>
+
+        <View className="flex-row items-center gap-2 shrink-0">
+          {count != null ? (
+            <View className="rounded-full bg-slate-100 px-2 py-0.5 dark:bg-slate-800">
+              <Text className="font-mono text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                {count}
+              </Text>
+            </View>
+          ) : null}
+          <Ionicons
+            name={isOpen ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color="#64748b"
+          />
+        </View>
+      </Pressable>
+
+      {isOpen && (
+        <View className="border-t border-slate-100 dark:border-slate-800/60">
+          {children}
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ── Sub-acordeón para federación autonómica / regional ────────────────────────
 function RegionalFederationAccordion({
   group,
   isOpen,
@@ -160,12 +229,15 @@ function RegionalFederationAccordion({
     <View className="border-b border-slate-100 last:border-b-0 dark:border-slate-800/60">
       <Pressable
         onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityLabel={`${group.label}, ${group.comps.length} competiciones`}
+        accessibilityState={{ expanded: isOpen }}
         className="flex-row items-center justify-between px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/40 active:bg-slate-100 dark:active:bg-slate-800"
       >
         <View className="flex-row items-center gap-2 flex-1 min-w-0 pr-2">
           <Ionicons
             name={isOpen ? 'chevron-down' : 'chevron-forward'}
-            size={14}
+            size={13}
             color="#64748b"
           />
           <Text numberOfLines={1} className="text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -180,7 +252,7 @@ function RegionalFederationAccordion({
       </Pressable>
 
       {isOpen && (
-        <View className="pl-2 border-t border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900">
+        <View className="pl-1 border-t border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900">
           {group.comps.map((comp) => (
             <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
           ))}
@@ -190,135 +262,146 @@ function RegionalFederationAccordion({
   );
 }
 
-function CountryAccordion({
+// ── Catálogo por país con ligas principales visibles y el resto plegado ──────
+function CountryCatalogView({
   country,
-  isOpen,
-  onToggle,
+  openSections,
+  onToggleSection,
   openFederations,
   onToggleFederation,
   locale,
   t,
 }: {
   country: CountryGroup;
-  isOpen: boolean;
-  onToggle: () => void;
+  openSections: Record<string, boolean>;
+  onToggleSection: (key: string) => void;
   openFederations: Record<string, boolean>;
   onToggleFederation: (key: string) => void;
   locale: string;
   t: (k: string) => string;
 }) {
-  const { code, total, sections } = country;
-  const label = countryDisplayName(code, locale) || code;
-  const { leagues, cups, base, regional } = sections;
+  const { code, sections, federation } = country;
+  const countryName = countryDisplayName(code, locale) || code;
+  const { mainLeagues, otherLeagues, cups, base, regional } = sections;
 
   return (
-    <View className="mb-2.5 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      {/* Cabecera del país */}
-      <Pressable
-        onPress={onToggle}
-        className="flex-row items-center justify-between px-3.5 py-3 active:bg-slate-50 dark:active:bg-slate-800/40"
-      >
-        <View className="flex-row items-center gap-2.5 flex-1 min-w-0">
-          <CountryFlag code={code} size={22} />
-          <Text
-            numberOfLines={1}
-            className="text-[13px] font-bold text-slate-700 dark:text-slate-200"
-          >
-            {label}
+    <View>
+      {/* Cabecera compacta de la federación / país */}
+      <View className="mb-2.5 flex-row items-center justify-between rounded-xl bg-slate-100/80 px-3 py-2 dark:bg-slate-800/60">
+        <View className="flex-row items-center gap-2 flex-1 min-w-0">
+          <CountryFlag code={code} size={20} />
+          <Text numberOfLines={1} className="text-xs font-bold text-slate-700 dark:text-slate-200">
+            {federation?.name ?? countryName}
           </Text>
         </View>
+        <Text className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0">
+          {country.total} {country.total === 1 ? 'competición' : 'competiciones'}
+        </Text>
+      </View>
 
-        <View className="flex-row items-center gap-2 shrink-0">
-          <View className="rounded-full bg-slate-100 px-2 py-0.5 dark:bg-slate-800">
-            <Text className="font-mono text-[11px] font-bold text-slate-600 dark:text-slate-300">
-              {total}
-            </Text>
+      {/* 1. Ligas Principales (Tier 1) — Siempre desplegadas de forma prominente */}
+      {mainLeagues.length > 0 && (
+        <View className="mb-2.5 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <View className="flex-row items-center justify-between border-b border-slate-100 bg-slate-50/80 px-3.5 py-2.5 dark:border-slate-800/60 dark:bg-slate-800/40">
+            <View className="flex-row items-center gap-1.5">
+              <Ionicons name="trophy" size={14} color={BRAND.granate} />
+              <Text className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                {t('competitions.section_main_leagues') || 'Ligas principales'}
+              </Text>
+            </View>
+            <View className="rounded-full bg-rose-100 px-2 py-0.5 dark:bg-rose-950/60">
+              <Text className="font-mono text-[10px] font-bold text-rose-900 dark:text-rose-300">
+                {mainLeagues.length}
+              </Text>
+            </View>
           </View>
-          <Ionicons
-            name={isOpen ? 'chevron-up' : 'chevron-down'}
-            size={16}
-            color="#64748b"
-          />
+          {mainLeagues.map((comp) => (
+            <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+          ))}
         </View>
-      </Pressable>
+      )}
 
-      {/* Secciones internas si está abierto */}
-      {isOpen && (
-        <View className="border-t border-slate-100 dark:border-slate-800/60">
-          {/* Ligas nacionales */}
-          {leagues.length > 0 && (
-            <View>
-              <View className="bg-slate-50/70 px-3.5 py-1.5 border-b border-slate-100 dark:bg-slate-800/30 dark:border-slate-800/60">
-                <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {t('competitions.section_leagues') || 'Ligas'}
-                </Text>
-              </View>
-              {leagues.map((comp) => (
-                <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
-              ))}
-            </View>
-          )}
+      {/* 2. Copas y Supercopas — Sección contraíble */}
+      {cups.length > 0 && (
+        <CollapsibleSection
+          title={t('competitions.section_cups') || 'Copas y Supercopas'}
+          iconName="medal-outline"
+          count={cups.length}
+          isOpen={Boolean(openSections[`${code}:cups`])}
+          onToggle={() => onToggleSection(`${code}:cups`)}
+        >
+          {cups.map((comp) => (
+            <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+          ))}
+        </CollapsibleSection>
+      )}
 
-          {/* Copas nacionales */}
-          {cups.length > 0 && (
-            <View>
-              <View className="bg-slate-50/70 px-3.5 py-1.5 border-b border-slate-100 dark:bg-slate-800/30 dark:border-slate-800/60">
-                <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {t('competitions.section_cups') || 'Copas'}
-                </Text>
-              </View>
-              {cups.map((comp) => (
-                <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
-              ))}
-            </View>
-          )}
+      {/* 3. Otras Divisiones (Plata, Bronce...) — Sección contraíble */}
+      {otherLeagues.length > 0 && (
+        <CollapsibleSection
+          title={t('competitions.section_other_leagues') || 'Otras ligas y divisiones'}
+          iconName="layers-outline"
+          count={otherLeagues.length}
+          isOpen={Boolean(openSections[`${code}:otherLeagues`])}
+          onToggle={() => onToggleSection(`${code}:otherLeagues`)}
+        >
+          {otherLeagues.map((comp) => (
+            <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+          ))}
+        </CollapsibleSection>
+      )}
 
-          {/* Base */}
-          {base.length > 0 && (
-            <View>
-              <View className="bg-slate-50/70 px-3.5 py-1.5 border-b border-slate-100 dark:bg-slate-800/30 dark:border-slate-800/60">
-                <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {t('competitions.section_base') || 'Categorías de base'}
-                </Text>
-              </View>
-              {base.map((comp) => (
-                <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
-              ))}
-            </View>
-          )}
+      {/* 4. Categorías de Base — Sección contraíble */}
+      {base.length > 0 && (
+        <CollapsibleSection
+          title={t('competitions.section_base') || 'Categorías de base'}
+          iconName="people-outline"
+          count={base.length}
+          isOpen={Boolean(openSections[`${code}:base`])}
+          onToggle={() => onToggleSection(`${code}:base`)}
+        >
+          {base.map((comp) => (
+            <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
+          ))}
+        </CollapsibleSection>
+      )}
 
-          {/* Autonómicas / Regionales */}
-          {regional.length > 0 && (
-            <View>
-              <View className="bg-slate-50/70 px-3.5 py-1.5 border-b border-slate-100 dark:bg-slate-800/30 dark:border-slate-800/60">
-                <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {t('competitions.section_regional') || 'Federaciones autonómicas'}
-                </Text>
-              </View>
-              {regional.map((group) => (
-                <RegionalFederationAccordion
-                  key={group.key}
-                  group={group}
-                  isOpen={Boolean(openFederations[group.key])}
-                  onToggle={() => onToggleFederation(group.key)}
-                  locale={locale}
-                  t={t}
-                />
-              ))}
-            </View>
-          )}
-        </View>
+      {/* 5. Federaciones Autonómicas — Sección contraíble */}
+      {regional.length > 0 && (
+        <CollapsibleSection
+          title={t('competitions.section_regional') || 'Federaciones autonómicas'}
+          iconName="map-outline"
+          count={regional.length}
+          isOpen={Boolean(openSections[`${code}:regional`])}
+          onToggle={() => onToggleSection(`${code}:regional`)}
+        >
+          {regional.map((group) => (
+            <RegionalFederationAccordion
+              key={group.key}
+              group={group}
+              isOpen={Boolean(openFederations[group.key])}
+              onToggle={() => onToggleFederation(group.key)}
+              locale={locale}
+              t={t}
+            />
+          ))}
+        </CollapsibleSection>
       )}
     </View>
   );
 }
 
+// ── Pantalla Principal ────────────────────────────────────────────────────────
 export default function CompetitionsScreen() {
   const { t, locale } = useLocale();
   const competitionsQuery = useCompetitions();
   const federationsQuery = useFederations();
 
-  const [activeTab, setActiveTab] = useState<Tab>('destacadas');
+  // Preferencia del usuario (ES por defecto si está en España)
+  const { country: preferredCountry } = usePreferredCountry();
+
+  // Tab activo: por defecto el país preferido del usuario si existe, o 'destacadas'
+  const [activeTab, setActiveTab] = useState<TabKey>(() => preferredCountry ?? 'ES');
   const [genderFilter, setGenderFilter] = useState<GenderFilter>('all');
   const [query, setQuery] = useState('');
 
@@ -358,35 +441,41 @@ export default function CompetitionsScreen() {
     [relevant, genderFilter],
   );
 
-  // Pestaña Destacadas (curación featuredRank y tier 1 sénior)
-  const destacadas = useMemo(
-    () => featuredCompetitions(relevantByGender, locale),
-    [relevantByGender, locale],
-  );
-
-  // Pestaña Mis Ligas (con filtro de género opcional)
+  // Competiciones seguidas (Mis Ligas)
   const misLigas = useMemo(() => {
     const followed = allComps.filter((c) => favoriteIds.has(c.id));
     return orderByImportance(filterByGender(followed, genderFilter), locale);
   }, [allComps, favoriteIds, genderFilter, locale]);
 
-  // Pestaña Países (árbol internacional + países + federaciones autonómicas)
+  // Destacadas globales
+  const destacadas = useMemo(
+    () => featuredCompetitions(relevantByGender, locale),
+    [relevantByGender, locale],
+  );
+
+  // Árbol estructurado por país e internacional
   const tree = useMemo(
     () => buildCompetitionTree(relevantByGender, locale, federations, (code) => countryDisplayName(code, locale)),
     [relevantByGender, locale, federations],
   );
 
-  // Estado de acordeones de países (España abierta por defecto)
-  const [openCountries, setOpenCountries] = useState<Record<string, boolean>>({ ES: true });
-  const toggleCountry = (code: string) => {
-    setOpenCountries((prev) => ({ ...prev, [code]: !prev[code] }));
+  // Control de apertura de secciones internas
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const toggleSection = (key: string) => {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Estado de acordeones de federaciones autonómicas
+  // Control de apertura de federaciones regionales
   const [openFederations, setOpenFederations] = useState<Record<string, boolean>>({});
   const toggleFederation = (key: string) => {
     setOpenFederations((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
+  // Lista de países disponibles en el árbol
+  const availableCountries = tree.countries;
+
+  // Si el tab activo es un país pero no existe en los datos, fallback a destacadas
+  const selectedCountryGroup = availableCountries.find((c) => c.code === activeTab);
 
   if (competitionsQuery.isPending) {
     return <CompetitionsSkeleton />;
@@ -402,132 +491,179 @@ export default function CompetitionsScreen() {
 
   return (
     <View className="flex-1 bg-rink-floor dark:bg-rink-floor-dark">
-      {/* ── Buscador, pestañas principales y selector de género ───────────────── */}
-      <View className="border-b border-slate-200/80 bg-white px-3 pb-3 pt-2.5 dark:border-slate-800 dark:bg-slate-900">
-        {/* Input de búsqueda */}
+      {/* ── Cabecera compacta y sticky: Búsqueda, selector de país y género ──── */}
+      <View className="border-b border-slate-200/80 bg-white px-3 pb-2.5 pt-2 dark:border-slate-800 dark:bg-slate-900 shadow-sm z-10">
+        {/* Input de búsqueda accesible */}
         <View className="flex-row items-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-950">
-          <Ionicons name="search-outline" size={18} color="#94a3b8" />
+          <Ionicons name="search-outline" size={17} color="#94a3b8" />
           <TextInput
             value={query}
             onChangeText={setQuery}
             placeholder={t('competitions.search_placeholder') || 'Buscar liga, país o federación...'}
             placeholderTextColor="#94a3b8"
-            className="ml-2 flex-1 text-sm font-medium text-slate-900 dark:text-slate-100 py-1"
+            className="ml-2 flex-1 text-sm font-medium text-slate-900 dark:text-slate-100 py-0.5"
             returnKeyType="search"
             autoCorrect={false}
           />
           {query.length > 0 && (
-            <Pressable onPress={() => setQuery('')} hitSlop={8} className="p-0.5 active:opacity-60">
-              <Ionicons name="close-circle" size={18} color="#94a3b8" />
+            <Pressable
+              onPress={() => setQuery('')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Limpiar búsqueda"
+              className="p-1 active:opacity-60"
+            >
+              <Ionicons name="close-circle" size={17} color="#94a3b8" />
             </Pressable>
           )}
         </View>
 
-        {/* Pestañas principales (Destacadas · Países · Mis Ligas) */}
+        {/* Selector de país y categorías (Pestañas horizontales scrolleables) */}
         {!isSearching && (
-          <View className="mt-2.5 flex-row gap-2">
-            {/* Destacadas */}
-            <Pressable
-              onPress={() => setActiveTab('destacadas')}
-              className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl py-2 px-1 border ${
-                activeTab === 'destacadas'
-                  ? 'border-rose-900 bg-rose-900 dark:border-rose-700 dark:bg-rose-800'
-                  : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/60'
-              }`}
+          <View className="mt-2.5">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingHorizontal: 1 }}
             >
-              <Ionicons
-                name="flame"
-                size={14}
-                color={activeTab === 'destacadas' ? '#ffffff' : BRAND.granate}
-              />
-              <Text
-                numberOfLines={1}
-                className={`text-xs font-bold ${
+              {/* Destacadas */}
+              <Pressable
+                onPress={() => setActiveTab('destacadas')}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: activeTab === 'destacadas' }}
+                className={`min-h-[38px] flex-row items-center gap-1.5 rounded-full px-3.5 py-1.5 border active:opacity-75 ${
                   activeTab === 'destacadas'
-                    ? 'text-white'
-                    : 'text-slate-700 dark:text-slate-300'
+                    ? 'border-rose-900 bg-rose-900 dark:border-rose-700 dark:bg-rose-800 shadow-sm'
+                    : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/70'
                 }`}
               >
-                {t('competitions.tab_main') || 'Destacadas'}
-              </Text>
-            </Pressable>
-
-            {/* Países */}
-            <Pressable
-              onPress={() => setActiveTab('paises')}
-              className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl py-2 px-1 border ${
-                activeTab === 'paises'
-                  ? 'border-rose-900 bg-rose-900 dark:border-rose-700 dark:bg-rose-800'
-                  : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/60'
-              }`}
-            >
-              <Ionicons
-                name="globe-outline"
-                size={13}
-                color={activeTab === 'paises' ? '#ffffff' : '#64748b'}
-              />
-              <Text
-                numberOfLines={1}
-                className={`text-xs font-bold ${
-                  activeTab === 'paises'
-                    ? 'text-white'
-                    : 'text-slate-700 dark:text-slate-300'
-                }`}
-              >
-                {t('competitions.tab_all') || 'Países'}
-              </Text>
-            </Pressable>
-
-            {/* Mis Ligas */}
-            <Pressable
-              onPress={() => setActiveTab('mis-ligas')}
-              className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl py-2 px-1 border ${
-                activeTab === 'mis-ligas'
-                  ? 'border-rose-900 bg-rose-900 dark:border-rose-700 dark:bg-rose-800'
-                  : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/60'
-              }`}
-            >
-              <Ionicons
-                name="star"
-                size={13}
-                color={activeTab === 'mis-ligas' ? '#ffffff' : BRAND.granate}
-              />
-              <Text
-                numberOfLines={1}
-                className={`text-xs font-bold ${
-                  activeTab === 'mis-ligas'
-                    ? 'text-white'
-                    : 'text-slate-700 dark:text-slate-300'
-                }`}
-              >
-                {t('competitions.tab_my_leagues') || 'Mis Ligas'}
-              </Text>
-              {favoriteIds.size > 0 && (
-                <View
-                  className={`rounded-full px-1.5 py-0.2 ${
-                    activeTab === 'mis-ligas'
-                      ? 'bg-rose-800 dark:bg-rose-900'
-                      : 'bg-slate-200 dark:bg-slate-800'
+                <Ionicons
+                  name="flame"
+                  size={14}
+                  color={activeTab === 'destacadas' ? '#ffffff' : BRAND.granate}
+                />
+                <Text
+                  className={`text-xs font-bold ${
+                    activeTab === 'destacadas'
+                      ? 'text-white'
+                      : 'text-slate-700 dark:text-slate-300'
                   }`}
                 >
+                  {t('competitions.tab_main') || 'Destacadas'}
+                </Text>
+              </Pressable>
+
+              {/* Países individuales (España, Portugal, Italia...) */}
+              {availableCountries.map((c) => {
+                const isSelected = activeTab === c.code;
+                const label = countryDisplayName(c.code, locale) || c.code;
+                return (
+                  <Pressable
+                    key={c.code}
+                    onPress={() => setActiveTab(c.code)}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isSelected }}
+                    className={`min-h-[38px] flex-row items-center gap-1.5 rounded-full px-3.5 py-1.5 border active:opacity-75 ${
+                      isSelected
+                        ? 'border-rose-900 bg-rose-900 dark:border-rose-700 dark:bg-rose-800 shadow-sm'
+                        : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/70'
+                    }`}
+                  >
+                    <CountryFlag code={c.code} size={16} />
+                    <Text
+                      className={`text-xs font-bold ${
+                        isSelected
+                          ? 'text-white'
+                          : 'text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+
+              {/* Internacional (Europa / Mundo) */}
+              {tree.international.length > 0 && (
+                <Pressable
+                  onPress={() => setActiveTab('international')}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: activeTab === 'international' }}
+                  className={`min-h-[38px] flex-row items-center gap-1.5 rounded-full px-3.5 py-1.5 border active:opacity-75 ${
+                    activeTab === 'international'
+                      ? 'border-rose-900 bg-rose-900 dark:border-rose-700 dark:bg-rose-800 shadow-sm'
+                      : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/70'
+                  }`}
+                >
+                  <Ionicons
+                    name="globe-outline"
+                    size={14}
+                    color={activeTab === 'international' ? '#ffffff' : '#0284c7'}
+                  />
                   <Text
-                    className={`font-mono text-[10px] font-black ${
-                      activeTab === 'mis-ligas'
+                    className={`text-xs font-bold ${
+                      activeTab === 'international'
                         ? 'text-white'
                         : 'text-slate-700 dark:text-slate-300'
                     }`}
                   >
-                    {favoriteIds.size}
+                    {t('competitions.international') || 'Europa & Mundo'}
                   </Text>
-                </View>
+                </Pressable>
               )}
-            </Pressable>
+
+              {/* Mis Ligas (Favoritas) */}
+              <Pressable
+                onPress={() => setActiveTab('favoritas')}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: activeTab === 'favoritas' }}
+                className={`min-h-[38px] flex-row items-center gap-1.5 rounded-full px-3.5 py-1.5 border active:opacity-75 ${
+                  activeTab === 'favoritas'
+                    ? 'border-rose-900 bg-rose-900 dark:border-rose-700 dark:bg-rose-800 shadow-sm'
+                    : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/70'
+                }`}
+              >
+                <Ionicons
+                  name="star"
+                  size={13}
+                  color={activeTab === 'favoritas' ? '#ffffff' : '#eab308'}
+                />
+                <Text
+                  className={`text-xs font-bold ${
+                    activeTab === 'favoritas'
+                      ? 'text-white'
+                      : 'text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  {t('competitions.tab_my_leagues') || 'Mis Ligas'}
+                </Text>
+                {favoriteIds.size > 0 && (
+                  <View
+                    className={`rounded-full px-1.5 py-0.2 ${
+                      activeTab === 'favoritas'
+                        ? 'bg-rose-800 dark:bg-rose-950'
+                        : 'bg-slate-200 dark:bg-slate-800'
+                    }`}
+                  >
+                    <Text
+                      className={`font-mono text-[10px] font-black ${
+                        activeTab === 'favoritas'
+                          ? 'text-white'
+                          : 'text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      {favoriteIds.size}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            </ScrollView>
           </View>
         )}
 
-        {/* Selector de Género (Todas / Masc. / Fem.) */}
+        {/* Filtro de género discreto (Todas · Masculino · Femenino) */}
         {!isSearching && (
-          <View className="mt-2.5 flex-row gap-1.5">
+          <View className="mt-2 flex-row gap-1.5">
             {(['all', 'male', 'female'] as const).map((g) => {
               const isSelected = genderFilter === g;
               const label =
@@ -541,7 +677,9 @@ export default function CompetitionsScreen() {
                 <Pressable
                   key={g}
                   onPress={() => setGenderFilter(g)}
-                  className={`flex-1 items-center justify-center rounded-lg py-1.5 border ${
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  className={`flex-1 items-center justify-center rounded-lg py-1 border active:opacity-70 ${
                     isSelected
                       ? 'border-slate-800 bg-slate-800 dark:border-slate-100 dark:bg-slate-100'
                       : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/60'
@@ -564,7 +702,7 @@ export default function CompetitionsScreen() {
         )}
       </View>
 
-      {/* ── Lista de contenido ──────────────────────────────────────────────── */}
+      {/* ── Contenido de competiciones ───────────────────────────────────────── */}
       <ScrollView
         className="flex-1 px-3 pt-3"
         contentContainerStyle={{ paddingBottom: 28 }}
@@ -579,7 +717,7 @@ export default function CompetitionsScreen() {
         }
       >
         {isSearching ? (
-          // Resultados de búsqueda
+          // ── Vista de Búsqueda ────────────────────────────────────────────────
           searchResults.length === 0 ? (
             <View className="py-12 items-center justify-center">
               <EmptyState
@@ -588,7 +726,7 @@ export default function CompetitionsScreen() {
               />
               <Pressable
                 onPress={() => setQuery('')}
-                className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm dark:border-slate-800 dark:bg-slate-900 active:opacity-70"
               >
                 <Text className="text-xs font-semibold text-rose-800 dark:text-rose-300">
                   Limpiar búsqueda
@@ -597,34 +735,47 @@ export default function CompetitionsScreen() {
             </View>
           ) : (
             <View className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <View className="border-b border-slate-100 bg-slate-50/80 px-3.5 py-2 dark:border-slate-800/60 dark:bg-slate-800/40">
+                <Text className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                  {searchResults.length} {searchResults.length === 1 ? 'resultado' : 'resultados'}
+                </Text>
+              </View>
               {searchResults.map((comp) => (
                 <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
               ))}
             </View>
           )
         ) : activeTab === 'destacadas' ? (
-          // Pestaña Destacadas
+          // ── Vista Destacadas ─────────────────────────────────────────────────
           destacadas.length === 0 ? (
             <View className="py-12 items-center justify-center px-4">
               <EmptyState
                 title="Sin competiciones destacadas"
-                hint="No hay competiciones que coincidan con el filtro de género seleccionado."
+                hint="No hay competiciones que coincidan con el filtro seleccionado."
               />
             </View>
           ) : (
             <View className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <View className="border-b border-slate-100 bg-slate-50/80 px-3.5 py-2.5 dark:border-slate-800/60 dark:bg-slate-800/40 flex-row items-center justify-between">
+                <Text className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  {t('competitions.featured_title') || 'Principales ligas y copas'}
+                </Text>
+                <Text className="text-[11px] font-semibold text-slate-400">
+                  {destacadas.length}
+                </Text>
+              </View>
               {destacadas.map((comp) => (
                 <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
               ))}
             </View>
           )
-        ) : activeTab === 'mis-ligas' ? (
-          // Pestaña Mis Ligas
+        ) : activeTab === 'favoritas' ? (
+          // ── Vista Mis Ligas (Favoritas) ──────────────────────────────────────
           misLigas.length === 0 ? (
             <View className="py-12 items-center justify-center px-4">
               <EmptyState
                 title={t('competitions.no_fav_leagues_title') || 'Todavía no tienes ligas favoritas'}
-                hint={t('competitions.no_fav_leagues_hint') || 'Pulsa la estrella en cualquier competición para guardarla aquí.'}
+                hint={t('competitions.no_fav_leagues_hint') || 'Pulsa la estrella en cualquier competición para tenerla siempre a mano.'}
               />
               <Pressable
                 onPress={() => setActiveTab('destacadas')}
@@ -637,51 +788,59 @@ export default function CompetitionsScreen() {
             </View>
           ) : (
             <View className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <View className="border-b border-slate-100 bg-slate-50/80 px-3.5 py-2.5 dark:border-slate-800/60 dark:bg-slate-800/40 flex-row items-center justify-between">
+                <Text className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  {t('competitions.my_leagues_title') || 'Competiciones seguidas'}
+                </Text>
+                <Text className="text-[11px] font-semibold text-slate-400">
+                  {misLigas.length}
+                </Text>
+              </View>
               {misLigas.map((comp) => (
                 <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
               ))}
             </View>
           )
-        ) : (
-          // Pestaña Países (Internacional + acordeones por país con Ligas, Copas, Base y Autonómicas)
-          <View>
-            {/* Competiciones Internacionales */}
-            {tree.international.length > 0 && (
-              <View className="mb-2.5 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                <View className="flex-row items-center gap-2 border-b border-slate-100 px-3.5 py-3 dark:border-slate-800/60">
-                  <Text className="text-base leading-none">🌍</Text>
-                  <Text className="text-[13px] font-bold text-slate-700 dark:text-slate-200">
-                    {t('competitions.international') || 'Mundo'}
-                  </Text>
-                  <View className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 dark:bg-slate-800">
-                    <Text className="font-mono text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                      {tree.international.length}
-                    </Text>
-                  </View>
-                </View>
-                {tree.international.map((comp) => (
-                  <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
-                ))}
+        ) : activeTab === 'international' ? (
+          // ── Vista Europa & Mundo ─────────────────────────────────────────────
+          <View className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <View className="flex-row items-center justify-between border-b border-slate-100 bg-slate-50/80 px-3.5 py-2.5 dark:border-slate-800/60 dark:bg-slate-800/40">
+              <View className="flex-row items-center gap-2">
+                <Text className="text-base leading-none">🌍</Text>
+                <Text className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  World Skate & World Skate Europe
+                </Text>
               </View>
-            )}
-
-            {/* Acordeones por país */}
-            {tree.countries.map((country) => (
-              <CountryAccordion
-                key={country.code}
-                country={country}
-                isOpen={Boolean(openCountries[country.code])}
-                onToggle={() => toggleCountry(country.code)}
-                openFederations={openFederations}
-                onToggleFederation={toggleFederation}
-                locale={locale}
-                t={t}
-              />
+              <Text className="text-[11px] font-semibold text-slate-400">
+                {tree.international.length}
+              </Text>
+            </View>
+            {tree.international.map((comp) => (
+              <CompetitionRowItem key={comp.id} comp={comp} locale={locale} t={t} />
             ))}
+          </View>
+        ) : selectedCountryGroup ? (
+          // ── Vista del País Seleccionado (España, Portugal, Italia...) ─────────
+          <CountryCatalogView
+            country={selectedCountryGroup}
+            openSections={openSections}
+            onToggleSection={toggleSection}
+            openFederations={openFederations}
+            onToggleFederation={toggleFederation}
+            locale={locale}
+            t={t}
+          />
+        ) : (
+          // Fallback si no hay datos del país
+          <View className="py-12 items-center justify-center px-4">
+            <EmptyState
+              title="Sin competiciones"
+              hint="No se encontraron competiciones para la selección actual."
+            />
           </View>
         )}
 
-        {/* Banner publicitario */}
+        {/* Banner publicitario al final del catálogo */}
         <View className="mt-4">
           <AdBanner variant="list" />
         </View>

@@ -14,6 +14,8 @@ import {
   madridDateKey,
   nextMatchday,
   resolveDaySwipeDelta,
+  countryRank,
+  defaultOpenKeys,
 } from './day-view';
 import type { MatchSummary } from './api/types';
 
@@ -245,6 +247,48 @@ describe('buildDayView', () => {
 
       // Indefinido si no hay datos de coordenadas
       expect(extractGestureStartX(null, { x0: 0, moveX: 0 })).toBeUndefined();
+    });
+  });
+
+  describe('preferred country and smart folding', () => {
+    it('countryRank prioriza país preferido, luego mundial/sin país, luego otros', () => {
+      expect(countryRank('ES', 'ES')).toBe(0);
+      expect(countryRank('W', 'ES')).toBe(1);
+      expect(countryRank(null, 'ES')).toBe(1);
+      expect(countryRank('PT', 'ES')).toBe(2);
+      expect(countryRank('IT', 'ES')).toBe(2);
+    });
+
+    it('buildDayView ordena por país preferido cuando está presente', () => {
+      const m1 = createMatch('1', '2026-10-21T18:00:00Z', 'comp-es', 'ok-liga', { competitionCountry: 'ES', competitionTier: 1 });
+      const m2 = createMatch('2', '2026-10-21T18:00:00Z', 'comp-pt', '1-divisao', { competitionCountry: 'PT', competitionTier: 1 });
+      const m3 = createMatch('3', '2026-10-21T18:00:00Z', 'comp-wse', 'wse-champions', { competitionCountry: 'W', competitionTier: 1 });
+
+      // Con país preferido PT: Portugal primero, luego W, luego España
+      const viewPt = buildDayView([m1, m2, m3], { dayKey: '2026-10-21', country: 'PT' });
+      expect(viewPt.competitions.map((c) => c.country)).toEqual(['PT', 'W', 'ES']);
+
+      // Con país preferido ES: España primero, luego W, luego Portugal
+      const viewEs = buildDayView([m1, m2, m3], { dayKey: '2026-10-21', country: 'ES' });
+      expect(viewEs.competitions.map((c) => c.country)).toEqual(['ES', 'W', 'PT']);
+    });
+
+    it('defaultOpenKeys abre seguidas, directos y máxima categoría del país preferido', () => {
+      const blocks = [
+        { key: 'followed', country: 'IT', followed: true, tier: 4, featuredRank: null, matches: [{ status: 'scheduled' }] },
+        { key: 'live', country: 'IT', followed: false, tier: 4, featuredRank: null, matches: [{ status: 'live' }] },
+        { key: 'es-top', country: 'ES', followed: false, tier: 1, featuredRank: null, matches: [{ status: 'scheduled' }] },
+        { key: 'es-base', country: 'ES', followed: false, tier: 4, featuredRank: null, matches: [{ status: 'scheduled' }] },
+        { key: 'pt-top', country: 'PT', followed: false, tier: 1, featuredRank: null, matches: [{ status: 'scheduled' }] },
+      ];
+
+      // Con preferencia ES: abre seguida, live, y la liga top de ES. La de base de ES y la de PT quedan plegadas.
+      const open = defaultOpenKeys(blocks, 'ES');
+      expect(open.has('followed')).toBe(true);
+      expect(open.has('live')).toBe(true);
+      expect(open.has('es-top')).toBe(true);
+      expect(open.has('es-base')).toBe(false);
+      expect(open.has('pt-top')).toBe(false);
     });
   });
 });

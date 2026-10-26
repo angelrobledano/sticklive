@@ -705,3 +705,11 @@ export interface CompetitionSeasonsResponse {
     isCurrent: boolean;
   }[];
 }
+
+export interface UserPreferencesResponse {
+  country: string | null;
+}
+
+export interface DaysIndexResponse {
+  days: { day: string; count: number }[];
+}

@@ -1,5 +1,6 @@
 import { importanceRank } from './competition-importance';
 import { isEffectivelyLive } from './time';
+import { dateKeyIn } from './viewer-tz';
 import type { MatchSummary } from './api/types';
 import { feedReason } from '@sports/shared-types';
 
@@ -86,6 +87,10 @@ export interface CompetitionBlock<T> {
   id: string | null;
   name: string | null;
   slug: string | null;
+  country: string | null;
+  logoUrl: string | null;
+  tier: number | null;
+  featuredRank: number | null;
   followed: boolean;
   /** Sale por defecto (destacada o seguida); false = «otras competiciones». */
   inFeed: boolean;
@@ -113,6 +118,8 @@ export interface DayViewOptions {
   locale?: string;
   /** Pinta también las competiciones fuera del feed, detrás. */
   includeOthers?: boolean;
+  tz?: string;
+  country?: string | null;
 }
 
 function timeOf(m: MatchSummary): number {
@@ -125,11 +132,20 @@ function byTime(a: MatchSummary, b: MatchSummary): number {
   return d !== 0 ? d : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
+/** 0 = el país preferido, 1 = mundial/sin país, 2 = otro país. */
+export function countryRank(blockCountry: string | null, preferred: string): number {
+  if (blockCountry === preferred) return 0;
+  if (!blockCountry || blockCountry === 'W') return 1;
+  return 2;
+}
+
 /** La jornada de un día para la app móvil: filtrada, agrupada y ordenada. */
 export function buildDayView<T extends MatchSummary>(matches: T[], opts: DayViewOptions): DayView<T> {
   const teams = new Set(opts.teamIds ?? []);
   const leagues = new Set(opts.leagueIds ?? []);
   const locale = opts.locale ?? 'es';
+  const tz = opts.tz ?? APP_TZ;
+  const country = opts.country ?? null;
 
   const isMyTeam = (m: T) => teams.has(m.homeTeam.id) || teams.has(m.awayTeam.id);
   const isFollowedLeague = (m: T) => Boolean(m.competitionId && leagues.has(m.competitionId));
@@ -139,7 +155,7 @@ export function buildDayView<T extends MatchSummary>(matches: T[], opts: DayView
   // Visibilidad (spec 2026-10-30): la regla compartida con la web y la API.
   const seen = new Set<string>();
   const all = matches.filter((m) => {
-    if (madridDateKey(m.scheduledAt) !== opts.dayKey || seen.has(m.id)) return false;
+    if (dateKeyIn(m.scheduledAt, tz) !== opts.dayKey || seen.has(m.id)) return false;
     seen.add(m.id);
     return true;
   });
@@ -176,6 +192,10 @@ export function buildDayView<T extends MatchSummary>(matches: T[], opts: DayView
         id: m.competitionId ?? null,
         name: m.competitionName ?? null,
         slug: m.competitionSlug ?? null,
+        country: m.competitionCountry ?? null,
+        logoUrl: m.competitionLogoUrl ?? null,
+        tier: m.competitionTier ?? null,
+        featuredRank: m.competitionFeaturedRank ?? null,
         followed: isFollowedLeague(m),
         inFeed: inFeed(m),
         matches: [],
@@ -191,8 +211,13 @@ export function buildDayView<T extends MatchSummary>(matches: T[], opts: DayView
   competitions.sort((a, b) => {
     if (a.inFeed !== b.inFeed) return a.inFeed ? -1 : 1;
     if (a.followed !== b.followed) return a.followed ? -1 : 1;
+    if (country) {
+      const c = countryRank(a.country, country) - countryRank(b.country, country);
+      if (c !== 0) return c;
+    }
     if ((a.name === null) !== (b.name === null)) return a.name === null ? 1 : -1;
-    const d = importanceRank(a.slug) - importanceRank(b.slug);
+    const d = importanceRank({ slug: a.slug, tier: a.tier, featuredRank: a.featuredRank }) -
+              importanceRank({ slug: b.slug, tier: b.tier, featuredRank: b.featuredRank });
     return d !== 0 ? d : (a.name ?? '').localeCompare(b.name ?? '', locale);
   });
 
@@ -203,10 +228,10 @@ export function buildDayView<T extends MatchSummary>(matches: T[], opts: DayView
 }
 
 /** Días que tienen al menos un partido. */
-export function daysWithMatches(matches: readonly MatchSummary[]): Set<string> {
+export function daysWithMatches(matches: readonly MatchSummary[], tz: string = APP_TZ): Set<string> {
   const out = new Set<string>();
   for (const m of matches) {
-    const k = madridDateKey(m.scheduledAt);
+    const k = dateKeyIn(m.scheduledAt, tz);
     if (k) out.add(k);
   }
   return out;
@@ -219,7 +244,8 @@ export function nextMatchday<T extends MatchSummary>(
   opts: Omit<DayViewOptions, 'dayKey' | 'filter'> = {},
 ): DayView<T> | null {
   // Primer día posterior con algo que enseñar por defecto (feed).
-  const keys = [...new Set(matches.map((m) => madridDateKey(m.scheduledAt)))]
+  const tz = opts.tz ?? APP_TZ;
+  const keys = [...new Set(matches.map((m) => dateKeyIn(m.scheduledAt, tz)))]
     .filter((k) => !!k && k > afterKey)
     .sort();
   for (const k of keys) {
@@ -227,6 +253,42 @@ export function nextMatchday<T extends MatchSummary>(
     if (v.total > 0) return v;
   }
   return null;
+}
+
+/** Máxima categoría: tier 1-2 (migración 089). */
+const OPEN_MAX_TIER = 2;
+
+/**
+ * Bloques que la home abre por defecto (paridad con web):
+ * seguidas, con algún partido en directo, destacadas (`featured_rank`) o de
+ * máxima categoría. El resto (base, ligas menores de otros países) se queda
+ * plegado con su recuento para no saturar la pantalla.
+ * Si ninguno califica, se abre el primero para no dejar todo cerrado.
+ */
+export function defaultOpenKeys<T extends { status: string; scheduledAt?: string | null }>(
+  blocks: readonly {
+    key: string;
+    country?: string | null;
+    followed: boolean;
+    tier: number | null;
+    featuredRank: number | null;
+    matches: readonly T[];
+  }[],
+  country: string | null = null,
+): Set<string> {
+  const open = new Set<string>();
+  for (const b of blocks) {
+    const relevantCountry = !country || countryRank(b.country ?? null, country) < 2;
+    if (
+      b.followed ||
+      b.matches.some((m) => isEffectivelyLive(m.status, m.scheduledAt)) ||
+      (relevantCountry && (b.featuredRank != null || (b.tier != null && b.tier <= OPEN_MAX_TIER)))
+    ) {
+      open.add(b.key);
+    }
+  }
+  if (open.size === 0 && blocks.length > 0) open.add(blocks[0]!.key);
+  return open;
 }
 
 /**

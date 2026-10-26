@@ -9,6 +9,7 @@ import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { PenaltyShootout } from '@/src/components/match/PenaltyShootout';
 import { GoalStickIcon } from '@/src/components/shared/GoalStickIcon';
 import { clubName } from '@/src/lib/names';
+import { deviceTimeZone, localTimeDiffers } from '@/src/lib/viewer-tz';
 import {
   eventSurname,
   finalLabelKey,
@@ -52,6 +53,18 @@ export function MatchHeader({
     match.status === 'penalty_shootout';
   const isFinished = match.status === 'finished';
   const showScore = isLive || isFinished;
+
+  const viewerTz = deviceTimeZone();
+  const differs = localTimeDiffers(match.scheduledAt, viewerTz, match.competitionTimezone);
+  const localTimeStr =
+    differs && match.competitionTimezone
+      ? formatTime(match.scheduledAt, match.competitionTimezone, locale)
+      : null;
+  const localTimeNotice = localTimeStr
+    ? t('match_detail.local_time') !== 'match_detail.local_time'
+      ? t('match_detail.local_time').replace('{time}', localTimeStr)
+      : `${localTimeStr} hora local`
+    : null;
 
   // Crono en vivo descendente local: solo corre si la conexión está viva (evita tiempo fantasma en pabellón)
   const live = match.live;
@@ -175,8 +188,9 @@ export function MatchHeader({
           </Text>
         ) : (
           <Text className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            {formatDate(match.scheduledAt, match.competitionTimezone, locale)} ·{' '}
-            {formatTime(match.scheduledAt, match.competitionTimezone, locale)}
+            {formatDate(match.scheduledAt, viewerTz, locale)} ·{' '}
+            {formatTime(match.scheduledAt, viewerTz, locale)}
+            {localTimeNotice ? ` (${localTimeNotice})` : ''}
           </Text>
         )}
       </View>
@@ -220,10 +234,15 @@ export function MatchHeader({
               </Text>
             </View>
           ) : (
-            <View className="rounded-xl bg-slate-100 px-3 py-1.5 dark:bg-slate-800">
+            <View className="items-center rounded-xl bg-slate-100 px-3 py-1.5 dark:bg-slate-800">
               <Text className="font-mono text-xl font-bold text-slate-700 dark:text-slate-300">
-                {formatTime(match.scheduledAt, match.competitionTimezone, locale)}
+                {formatTime(match.scheduledAt, viewerTz, locale)}
               </Text>
+              {localTimeNotice ? (
+                <Text className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                  {localTimeNotice}
+                </Text>
+              ) : null}
             </View>
           )}
 
@@ -386,14 +405,44 @@ export function MatchHeader({
             onPress={() => void Linking.openURL(match.videoUrl!)}
             className="flex-row items-center gap-2 rounded-full px-4 py-2 active:opacity-80"
             style={{ backgroundColor: BRAND.granate }}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isLive
+                ? t('match_detail.watch_live') !== 'match_detail.watch_live'
+                  ? t('match_detail.watch_live')
+                  : 'Ver en directo'
+                : t('match_detail.watch_video') !== 'match_detail.watch_video'
+                  ? t('match_detail.watch_video')
+                  : 'Ver vídeo'
+            }
           >
             <Ionicons name="play" size={14} color="#ffffff" />
             <Text className="text-xs font-bold text-white">
-              {t('match_detail.watch_video')}
+              {isLive
+                ? t('match_detail.watch_live') !== 'match_detail.watch_live'
+                  ? t('match_detail.watch_live')
+                  : 'Ver en directo'
+                : t('match_detail.watch_video') !== 'match_detail.watch_video'
+                  ? t('match_detail.watch_video')
+                  : 'Ver vídeo'}
+              {videoHost(match.videoUrl) ? (
+                <Text className="font-normal opacity-80"> · {videoHost(match.videoUrl)}</Text>
+              ) : null}
             </Text>
           </Pressable>
         </View>
       ) : null}
     </View>
   );
+}
+
+/** Dominio legible del enlace de vídeo ("okliga.tv", "youtube.com"), o null. */
+function videoHost(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const match = /^(?:https?:\/\/)?(?:www\.)?([^/]+)/i.exec(url);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
 }

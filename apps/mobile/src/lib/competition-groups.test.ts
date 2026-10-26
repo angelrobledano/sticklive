@@ -78,16 +78,19 @@ describe('competition-groups', () => {
     it('separa internacional y agrupa por país con secciones', () => {
       const wse = comp('wse-champions', { scope: 'international', federation: ref(FED.WSE!) });
       const okLiga = comp('ok-liga', { tier: 1 });
+      const plata = comp('ok-liga-plata', { tier: 2 });
       const copa = comp('copa-del-rey', { name: 'Copa del Rey' });
       const sub17 = comp('sub-17', { ageCategory: 'sub-17' });
       const fmp = comp('1-madrid', { scope: 'regional', region: 'Madrid', federation: ref(FED.FMP!) });
 
-      const tree = buildCompetitionTree([wse, okLiga, copa, sub17, fmp], 'es', FEDS);
+      const tree = buildCompetitionTree([wse, okLiga, plata, copa, sub17, fmp], 'es', FEDS);
       expect(tree.international.map((c) => c.slug)).toEqual(['wse-champions']);
       expect(tree.countries).toHaveLength(1);
       const es = tree.countries[0];
       expect(es.code).toBe('ES');
-      expect(es.sections.leagues.map((c) => c.slug)).toEqual(['ok-liga']);
+      expect(es.sections.mainLeagues.map((c) => c.slug)).toEqual(['ok-liga']);
+      expect(es.sections.otherLeagues.map((c) => c.slug)).toEqual(['ok-liga-plata']);
+      expect(es.sections.leagues.map((c) => c.slug)).toEqual(['ok-liga', 'ok-liga-plata']);
       expect(es.sections.cups.map((c) => c.slug)).toEqual(['copa-del-rey']);
       expect(es.sections.base.map((c) => c.slug)).toEqual(['sub-17']);
       expect(es.sections.regional).toHaveLength(1);

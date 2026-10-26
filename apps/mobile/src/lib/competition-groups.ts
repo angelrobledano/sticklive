@@ -57,6 +57,10 @@ export interface FederationGroup {
 }
 
 export interface CountrySections {
+  /** Ligas principales (tier 1 sénior). */
+  mainLeagues: CompetitionSummary[];
+  /** Otras divisiones y categorías inferiores (tier > 1 sénior). */
+  otherLeagues: CompetitionSummary[];
   /** Ligas sénior nacionales (no copas), por tier. */
   leagues: CompetitionSummary[];
   /** Copas y supercopas sénior nacionales. */
@@ -96,6 +100,10 @@ export function buildCountrySections(
 
   const senior = national.filter((c) => c.ageCategory === 'senior');
   const leagues = orderByImportance(senior.filter((c) => !isCup(c)), locale);
+  const mainLeagues = leagues.filter((c) => c.tier === 1);
+  const otherLeagues = leagues.filter((c) => c.tier !== 1);
+  const finalMain = mainLeagues.length > 0 ? mainLeagues : leagues.slice(0, 2);
+  const finalOther = mainLeagues.length > 0 ? otherLeagues : leagues.slice(2);
   const cups = orderByImportance(senior.filter(isCup), locale);
   const base = orderByImportance(national.filter((c) => c.ageCategory !== 'senior'), locale);
 
@@ -122,7 +130,14 @@ export function buildCountrySections(
       return oa !== ob ? oa - ob : a.label.localeCompare(b.label, locale);
     });
 
-  return { leagues, cups, base, regional };
+  return {
+    mainLeagues: finalMain,
+    otherLeagues: finalOther,
+    leagues,
+    cups,
+    base,
+    regional,
+  };
 }
 
 /**

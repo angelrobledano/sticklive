@@ -52,7 +52,7 @@ export class ApiError extends Error {
 
 interface Options {
   token?: string | null;
-  method?: 'GET' | 'POST' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
   signal?: AbortSignal;
 }
