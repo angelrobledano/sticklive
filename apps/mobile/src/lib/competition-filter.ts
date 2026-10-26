@@ -8,12 +8,26 @@ export function countrySortKey(code: string | null): number {
   return i === -1 ? 100 : i;
 }
 
+const COUNTRY_NAMES: Record<string, Record<string, string>> = {
+  ES: { es: 'España', ca: 'Espanya', en: 'Spain', pt: 'Espanha', it: 'Spagna', fr: 'Espagne' },
+  PT: { es: 'Portugal', ca: 'Portugal', en: 'Portugal', pt: 'Portugal', it: 'Portogallo', fr: 'Portugal' },
+  IT: { es: 'Italia', ca: 'Itàlia', en: 'Italy', pt: 'Itália', it: 'Italia', fr: 'Italie' },
+  CH: { es: 'Suiza', ca: 'Suïssa', en: 'Switzerland', pt: 'Suíça', it: 'Svizzera', fr: 'Suisse' },
+  FR: { es: 'Francia', ca: 'França', en: 'France', pt: 'França', it: 'Francia', fr: 'France' },
+  DE: { es: 'Alemania', ca: 'Alemanya', en: 'Germany', pt: 'Alemanha', it: 'Germania', fr: 'Allemagne' },
+  GB: { es: 'Inglaterra', ca: 'Anglaterra', en: 'England', pt: 'Inglaterra', it: 'Inghilterra', fr: 'Angleterre' },
+  AD: { es: 'Andorra', ca: 'Andorra', en: 'Andorra', pt: 'Andorra', it: 'Andorra', fr: 'Andorre' },
+};
+
 export function countryDisplayName(code: string | null, locale: string): string {
   if (!code) return '';
+  const upper = code.toUpperCase();
+  const direct = COUNTRY_NAMES[upper]?.[locale] || COUNTRY_NAMES[upper]?.['es'];
+  if (direct) return direct;
   try {
-    return new Intl.DisplayNames([locale], { type: 'region' }).of(code) ?? code;
+    return new Intl.DisplayNames([locale], { type: 'region' }).of(upper) ?? upper;
   } catch {
-    return code;
+    return upper;
   }
 }
 
