@@ -116,4 +116,121 @@ describe('Widget Snapshot', () => {
     expect(snap.featuredMatch?.awayFouls).toBe(9);
     expect(snap.featuredMatch?.isHalftime).toBe(true);
   });
+
+  it('prioriza partidos programados del equipo favorito sobre otros programados', () => {
+    const fixedNow = new Date('2026-10-26T14:00:00.000Z');
+    const scheduledList: MatchInput[] = [
+      {
+        id: 'sch-child',
+        homeTeamName: 'CP Sevilla',
+        awayTeamName: 'CD Claret',
+        status: 'scheduled',
+        competitionName: 'Benjamín Andalucía',
+        scheduledAt: '2026-10-26T17:00:00.000Z',
+      },
+      {
+        id: 'sch-fav',
+        homeTeamName: 'Barça',
+        awayTeamName: 'Noia Freixenet',
+        status: 'scheduled',
+        competitionName: 'OK Liga',
+        scheduledAt: '2026-10-26T19:00:00.000Z',
+      },
+    ];
+
+    // Sin favoritos, prima el que empieza antes o categoría élite
+    // Con favorito 'Barça', debe elegir sch-fav aunque empiece 2 horas más tarde
+    const snap = buildWidgetSnapshot(scheduledList, ['Barça'], fixedNow);
+    expect(snap.featuredMatch?.matchId).toBe('sch-fav');
+    expect(snap.featuredMatch?.homeTeam).toBe('Barça');
+  });
+
+  it('prioriza el partido programado más inminente cuando no hay favoritos', () => {
+    const fixedNow = new Date('2026-10-26T15:00:00.000Z');
+    const scheduledList: MatchInput[] = [
+      {
+        id: 'sch-soon',
+        homeTeamName: 'Voltregà',
+        awayTeamName: 'Calafell',
+        status: 'scheduled',
+        competitionName: 'OK Liga',
+        scheduledAt: '2026-10-26T16:00:00.000Z', // en 1 hora
+      },
+      {
+        id: 'sch-later',
+        homeTeamName: 'Liceo',
+        awayTeamName: 'Reus Deportiu',
+        status: 'scheduled',
+        competitionName: 'OK Liga',
+        scheduledAt: '2026-10-26T21:00:00.000Z', // en 6 horas
+      },
+    ];
+
+    const snap = buildWidgetSnapshot(scheduledList, [], fixedNow);
+    expect(snap.featuredMatch?.matchId).toBe('sch-soon');
+  });
+
+  it('no se queda atascado en el primer partido de ayer y elige el finalizado más reciente', () => {
+    // Escenario real del bug: matches[0] era un partido de ayer a las 13:00.
+    // El usuario se quejaba de que el widget siempre mostraba el mismo partido.
+    const fixedNow = new Date('2026-10-26T22:00:00.000Z');
+    const matchesFromApi: MatchInput[] = [
+      {
+        id: 'oldest-yesterday',
+        homeTeamName: 'HC Ponteareas',
+        awayTeamName: 'Dominicos A',
+        homeScore: 0,
+        awayScore: 13,
+        status: 'finished',
+        competitionName: 'Juvenil Galicia',
+        scheduledAt: '2026-10-25T13:00:00.000Z', // Ayer mañana (índice 0 devuelto por la API)
+      },
+      {
+        id: 'recent-today',
+        homeTeamName: 'Barça',
+        awayTeamName: 'Igualada',
+        homeScore: 4,
+        awayScore: 2,
+        status: 'finished',
+        competitionName: 'OK Liga',
+        scheduledAt: '2026-10-26T19:00:00.000Z', // Hoy noche (reciente)
+      },
+    ];
+
+    const snap = buildWidgetSnapshot(matchesFromApi, [], fixedNow);
+    // Debe seleccionar el reciente de hoy, NO el primero devuelto en la lista de ayer
+    expect(snap.featuredMatch?.matchId).toBe('recent-today');
+    expect(snap.featuredMatch?.homeTeam).toBe('Barça');
+    expect(snap.featuredMatch?.homeScore).toBe(4);
+  });
+
+  it('prioriza partidos finalizados de equipos favoritos', () => {
+    const fixedNow = new Date('2026-10-26T22:00:00.000Z');
+    const finishedMatches: MatchInput[] = [
+      {
+        id: 'fin-general',
+        homeTeamName: 'Calafell',
+        awayTeamName: 'Voltregà',
+        homeScore: 2,
+        awayScore: 1,
+        status: 'finished',
+        competitionName: 'OK Liga',
+        scheduledAt: '2026-10-26T20:00:00.000Z',
+      },
+      {
+        id: 'fin-fav',
+        homeTeamName: 'Deportivo Liceo',
+        awayTeamName: 'Reus',
+        homeScore: 3,
+        awayScore: 3,
+        status: 'finished',
+        competitionName: 'OK Liga',
+        scheduledAt: '2026-10-26T19:30:00.000Z',
+      },
+    ];
+
+    const snap = buildWidgetSnapshot(finishedMatches, ['Deportivo Liceo'], fixedNow);
+    expect(snap.featuredMatch?.matchId).toBe('fin-fav');
+    expect(snap.featuredMatch?.homeTeam).toBe('Deportivo Liceo');
+  });
 });
