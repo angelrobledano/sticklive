@@ -787,7 +787,9 @@
     "section_second": "Més lligues nacionals",
     "live_n": "{n} en joc",
     "next_on": "Proper: {d}",
-    "last_on": "Últim: {d}"
+    "last_on": "Últim: {d}",
+    "matchday_of": "Jornada {c} de {t}",
+    "matchday_n": "Jornada {n}"
   },
   "premium": {
     "title": "Premium",

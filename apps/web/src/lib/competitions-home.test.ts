@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { CompetitionSummary } from '@/lib/api/client';
-import { buildCompetitionsHome, cupIsActive, groupVariants } from './competitions-home';
+import { buildCompetitionsHome, competitionStatus, cupIsActive, groupVariants } from './competitions-home';
 
 const NOW = new Date('2026-10-29T12:00:00Z');
 const day = (d: number) => new Date(NOW.getTime() + d * 86_400_000).toISOString();
@@ -73,5 +73,21 @@ describe('groupVariants', () => {
     expect(g.map((r) => [r.label, r.variants.map((v) => v.label)])).toEqual([
       ['OK LIGA PLATA', ['Norte', 'Sur']], ['OK LIGA PLATA FEMENINA', []],
     ]);
+  });
+});
+
+describe('competitionStatus', () => {
+  it('en juego manda, con la jornada si es liga', () => {
+    expect(competitionStatus(comp('x', { season: { liveMatches: 2, matchday: { current: 7, total: 26 } } }))).toEqual({ kind: 'live', live: 2, matchday: 7 });
+  });
+  it('copa terminada: el campeón', () => {
+    const champion = { teamId: 't', name: 'FC Barcelona', shortName: 'Barça', logoUrl: null };
+    expect(competitionStatus(comp('x', { season: { champion, nextMatchAt: null } }))).toEqual({ kind: 'champion', team: champion });
+  });
+  it('liga: jornada en curso sobre el total', () => {
+    expect(competitionStatus(comp('x', { season: { matchday: { current: 7, total: 26 } } }))).toEqual({ kind: 'matchday', current: 7, total: 26 });
+  });
+  it('copa en curso: próximo partido', () => {
+    expect(competitionStatus(comp('x', { season: { nextMatchAt: day(2) } }))).toEqual({ kind: 'next', at: day(2) });
   });
 });

@@ -787,7 +787,9 @@
     "section_second": "More national leagues",
     "live_n": "{n} live",
     "next_on": "Next: {d}",
-    "last_on": "Last: {d}"
+    "last_on": "Last: {d}",
+    "matchday_of": "Matchday {c} of {t}",
+    "matchday_n": "Matchday {n}"
   },
   "premium": {
     "title": "Premium",

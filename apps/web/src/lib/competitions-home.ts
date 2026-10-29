@@ -118,3 +118,22 @@ export function groupVariants(comps: CompetitionSummary[]): VariantRow[] {
   }
   return rows;
 }
+
+export type CompetitionStatus =
+  | { kind: 'live'; live: number; matchday: number | null }
+  | { kind: 'champion'; team: NonNullable<NonNullable<CompetitionSummary['season']>['champion']> }
+  | { kind: 'matchday'; current: number; total: number }
+  | { kind: 'next'; at: string }
+  | { kind: 'last'; at: string };
+
+/** Estado corto de una competición: en juego > campeón > jornada > próximo > último. */
+export function competitionStatus(c: CompetitionSummary): CompetitionStatus | null {
+  const s = c.season;
+  if (!s) return null;
+  if ((s.liveMatches ?? 0) > 0) return { kind: 'live', live: s.liveMatches!, matchday: s.matchday?.current ?? null };
+  if (s.champion) return { kind: 'champion', team: s.champion };
+  if (s.matchday) return { kind: 'matchday', current: s.matchday.current, total: s.matchday.total };
+  if (s.nextMatchAt) return { kind: 'next', at: s.nextMatchAt };
+  if (s.lastMatchAt) return { kind: 'last', at: s.lastMatchAt };
+  return null;
+}

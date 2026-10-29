@@ -10,21 +10,28 @@ import { competitionName, clubName } from '@/lib/names';
 import { competitionPath } from '@/lib/competition-path';
 import { usePreferredCountry } from '@/hooks/usePreferredCountry';
 import {
-  buildCompetitionsHome, groupVariants, HOME_SECOND_COUNTRIES, type HomeCountry,
+  buildCompetitionsHome, competitionStatus, groupVariants, HOME_SECOND_COUNTRIES, type HomeCountry,
 } from '@/lib/competitions-home';
 import { CompetitionRow } from './CompetitionsList';
 
-/** Estado corto de una competición: en juego, próximo partido o último. */
+/** Estado corto de una competición (ver `competitionStatus`) ya traducido. */
 function useStatusLine() {
   const { t, locale } = useT();
   const fmt = useMemo(() => new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short' }), [locale]);
   return (c: CompetitionSummary): { text: string; live: boolean } | null => {
-    const s = c.season;
-    if (!s) return null;
-    if ((s.liveMatches ?? 0) > 0) return { text: tt(t, 'competitions.live_n', '{n} en juego', { n: s.liveMatches ?? 0 }), live: true };
-    if (s.nextMatchAt) return { text: tt(t, 'competitions.next_on', 'Próximo: {d}', { d: fmt.format(new Date(s.nextMatchAt)) }), live: false };
-    if (s.lastMatchAt) return { text: tt(t, 'competitions.last_on', 'Último: {d}', { d: fmt.format(new Date(s.lastMatchAt)) }), live: false };
-    return null;
+    const st = competitionStatus(c);
+    if (!st) return null;
+    switch (st.kind) {
+      case 'live': {
+        const live = tt(t, 'competitions.live_n', '{n} en juego', { n: st.live });
+        const md = st.matchday != null ? ` · ${tt(t, 'competitions.matchday_n', 'Jornada {n}', { n: st.matchday })}` : '';
+        return { text: live + md, live: true };
+      }
+      case 'champion': return { text: `🏆 ${clubName(st.team.name)}`, live: false };
+      case 'matchday': return { text: tt(t, 'competitions.matchday_of', 'Jornada {c} de {t}', { c: st.current, t: st.total }), live: false };
+      case 'next': return { text: tt(t, 'competitions.next_on', 'Próximo: {d}', { d: fmt.format(new Date(st.at)) }), live: false };
+      case 'last': return { text: tt(t, 'competitions.last_on', 'Último: {d}', { d: fmt.format(new Date(st.at)) }), live: false };
+    }
   };
 }
 

@@ -42,6 +42,12 @@ interface CompetitionRow {
   last_match_at: Date | string | null;
   next_match_at: Date | string | null;
   live_matches: number | null;
+  round_current: number | null;
+  round_total: number | null;
+  champion_id: string | null;
+  champion_name: string | null;
+  champion_short: string | null;
+  champion_logo: string | null;
 }
 
 /**
@@ -93,6 +99,32 @@ competitionsRouter.get('/', async (c) => {
         FROM matches m
         WHERE m.season_id IN (SELECT season_id FROM picked)
         GROUP BY m.season_id
+      ),
+      -- Jornada de liga: la más alta con algún partido terminado, sobre el total.
+      round_info AS (
+        SELECT m.season_id,
+          MAX(r.number) FILTER (WHERE m.status = 'finished') AS cur,
+          MAX(r.number) AS total
+        FROM matches m
+        JOIN rounds r ON r.id = m.round_id
+        WHERE m.season_id IN (SELECT season_id FROM picked) AND r.round_type = 'regular'
+        GROUP BY m.season_id
+      ),
+      -- Campeón: ganador de la última final terminada, solo con la temporada
+      -- cerrada (sin partidos pendientes ni en juego).
+      champion AS (
+        SELECT DISTINCT ON (m.season_id) m.season_id,
+          COALESCE(m.winner_team_id,
+            CASE WHEN m.home_score > m.away_score THEN m.home_team_id
+                 WHEN m.away_score > m.home_score THEN m.away_team_id END) AS team_id
+        FROM matches m
+        JOIN rounds r ON r.id = m.round_id
+        WHERE m.season_id IN (SELECT season_id FROM picked)
+          AND r.stage = 'final' AND m.status = 'finished'
+          AND NOT EXISTS (
+            SELECT 1 FROM matches p WHERE p.season_id = m.season_id
+              AND p.status IN ('scheduled', 'live', 'halftime', 'overtime', 'penalty_shootout'))
+        ORDER BY m.season_id, m.scheduled_at DESC NULLS LAST
       )
       SELECT
         comp.id, comp.name, comp.name_i18n, comp.short_name, comp.logo_url, comp.slug,
@@ -110,12 +142,17 @@ competitionsRouter.get('/', async (c) => {
         COALESCE(tc.c, '0') AS team_count,
         COALESCE(mc.c, '0') AS match_count,
         mc.first_at AS first_match_at, mc.last_at AS last_match_at, mc.next_at AS next_match_at,
-        COALESCE(mc.live, 0) AS live_matches
+        COALESCE(mc.live, 0) AS live_matches,
+        ri.cur AS round_current, ri.total AS round_total,
+        ch.team_id AS champion_id, ct.name AS champion_name, ct.short_name AS champion_short, ct.logo_url AS champion_logo
       FROM picked p
       JOIN competitions comp ON comp.id = p.comp_id
       JOIN seasons s ON s.id = p.season_id
       LEFT JOIN team_counts tc ON tc.season_id = p.season_id
       LEFT JOIN match_counts mc ON mc.season_id = p.season_id
+      LEFT JOIN round_info ri ON ri.season_id = p.season_id
+      LEFT JOIN champion ch ON ch.season_id = p.season_id
+      LEFT JOIN teams ct ON ct.id = ch.team_id
       LEFT JOIN federations f ON f.code = comp.organizer
       ORDER BY comp.name ASC
     `);
@@ -161,6 +198,12 @@ competitionsRouter.get('/', async (c) => {
         lastMatchAt:  r.last_match_at ?? null,
         nextMatchAt:  r.next_match_at ?? null,
         liveMatches:  Number(r.live_matches ?? 0),
+        matchday: r.round_total != null && r.round_current != null
+          ? { current: Number(r.round_current), total: Number(r.round_total) }
+          : null,
+        champion: r.champion_id
+          ? { teamId: r.champion_id, name: r.champion_name, shortName: r.champion_short ?? null, logoUrl: r.champion_logo ?? null }
+          : null,
       } : null,
     }));
 

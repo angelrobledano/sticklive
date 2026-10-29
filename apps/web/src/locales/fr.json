@@ -787,7 +787,9 @@
     "section_second": "Autres championnats nationaux",
     "live_n": "{n} en cours",
     "next_on": "Prochain : {d}",
-    "last_on": "Dernier : {d}"
+    "last_on": "Dernier : {d}",
+    "matchday_of": "Journée {c} sur {t}",
+    "matchday_n": "Journée {n}"
   },
   "premium": {
     "title": "Premium",

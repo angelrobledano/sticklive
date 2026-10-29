@@ -271,6 +271,10 @@ export interface CompetitionSummary {
     lastMatchAt?: string | null;
     nextMatchAt?: string | null;
     liveMatches?: number;
+    /** Liga: jornada más alta jugada sobre el total. */
+    matchday?: { current: number; total: number } | null;
+    /** Copa terminada: ganador de la final. */
+    champion?: { teamId: string; name: string; shortName: string | null; logoUrl: string | null } | null;
   } | null;
 }
 

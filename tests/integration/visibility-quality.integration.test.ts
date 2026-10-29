@@ -195,6 +195,40 @@ describe('GET /competitions — calendario de la temporada', () => {
     expect(Math.round(h(s['nextMatchAt']))).toBe(24);
     expect(s['liveMatches']).toBe(1);
   });
+
+  it('liga: jornada en curso sobre el total; copa terminada: campeón de la final', async () => {
+    const ronda = async (seasonId: string, number: number, type: string, stage: string | null = null) =>
+      (await db.query<{ id: string }>(
+        `INSERT INTO rounds (season_id, number, name, round_type, stage) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [seasonId, number, `R${number}`, type, stage])).rows[0]!.id;
+    const asignar = (matchId: string, roundId: string, extra = '') =>
+      db.query(`UPDATE matches SET round_id = $2 ${extra} WHERE id = $1`, [matchId, roundId]);
+
+    // Liga a 3 jornadas: la 2 jugada, la 3 pendiente.
+    const ligaId = await crearCompeticion(sportId);
+    const liga = await crearTemporada(ligaId);
+    for (const [n, st] of [[1, 'finished'], [2, 'finished'], [3, 'scheduled']] as const) {
+      const r = await ronda(liga, n, 'regular');
+      const { matchId } = await crearPartido({ seasonId: liga, status: st, horasDesdeInicio: st === 'finished' ? 24 * (4 - n) : -24 });
+      await asignar(matchId, r);
+    }
+
+    // Copa: final terminada 2-2, gana el visitante por penaltis.
+    const copaId = await crearCompeticion(sportId);
+    const copa = await crearTemporada(copaId);
+    const fin = await ronda(copa, 40, 'playoff', 'final');
+    const p = await crearPartido({ seasonId: copa, status: 'finished', horasDesdeInicio: 24 });
+    await asignar(p.matchId, fin, ', home_score = 2, away_score = 2, winner_team_id = away_team_id');
+
+    const res = await get(competitionsRouter, '/');
+    const body = res.body as { competitions: Array<{ id: string; season: Record<string, unknown> | null }> };
+    const sLiga = body.competitions.find((c) => c.id === ligaId)!.season!;
+    const sCopa = body.competitions.find((c) => c.id === copaId)!.season!;
+    expect(sLiga['matchday']).toEqual({ current: 2, total: 3 });
+    expect(sLiga['champion']).toBeNull();
+    expect(sCopa['matchday']).toBeNull();
+    expect(sCopa['champion']).toMatchObject({ teamId: p.awayTeamId });
+  });
 });
 
 describe('endpoints de temporada — visibilidad', () => {
