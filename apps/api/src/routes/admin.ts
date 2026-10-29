@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db, withTransaction, mergeClubs, findClubIdBySlug, MergeClubsError, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, createTeamForQueueItem, CreateQueueTeamError, mergeTeams, setTeamClub, SetTeamClubError, setTeamSection, TEAM_GENDERS, TEAM_AGE_CATEGORIES, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, setCompetitionRanking, listFederationsAdmin, listOrphanOrganizers, upsertFederation, type DataQuality, type FederationLevel } from '@sports/db';
+import { db, withTransaction, mergeClubs, findClubIdBySlug, MergeClubsError, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, createTeamForQueueItem, CreateQueueTeamError, mergeTeams, setTeamClub, SetTeamClubError, setTeamSection, TEAM_GENDERS, TEAM_AGE_CATEGORIES, splitTeam, SplitTeamError, type SplitRoute, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, setCompetitionRanking, listFederationsAdmin, listOrphanOrganizers, upsertFederation, type DataQuality, type FederationLevel } from '@sports/db';
 import { logger } from '@sports/logger';
 import type { StandingsZone } from '@sports/shared-types';
 import { isUuid } from '../lib/uuid.js';
@@ -393,6 +393,54 @@ adminRouter.post('/clubs/:id/merge', async (c) => {
     }
     captureRouteError(err, 'admin] club merge error');
     logger.error({ err }, '[admin] club merge error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/**
+ * POST /admin/teams/:id/split  { routes: [{ seasonIds, target }], dryRun? }
+ * target = { teamId } (equipo existente) o { name, gender, ageCategory, squadLevel? }
+ * (equipo nuevo del mismo club). Mueve a cada destino los partidos, alineaciones,
+ * eventos, inscripción, clasificación y plantilla de esas temporadas. Lo no
+ * enrutado se queda en el equipo. Con dryRun devuelve el informe sin tocar nada.
+ */
+adminRouter.post('/teams/:id/split', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Team not found' }, 404);
+  const body = await c.req.json().catch(() => null) as { routes?: unknown; dryRun?: unknown } | null;
+  if (!body || !Array.isArray(body.routes) || body.routes.length === 0 || body.routes.length > 12) {
+    return c.json({ error: 'routes es obligatorio (1 a 12 rutas)' }, 400);
+  }
+  const routes: SplitRoute[] = [];
+  for (const r of body.routes as Array<{ seasonIds?: unknown; target?: Record<string, unknown> }>) {
+    const seasonIds = Array.isArray(r?.seasonIds) ? r.seasonIds : [];
+    if (seasonIds.length === 0 || !seasonIds.every((x) => typeof x === 'string' && isUuid(x))) {
+      return c.json({ error: 'Cada ruta necesita seasonIds (UUIDs)' }, 400);
+    }
+    const t = r.target ?? {};
+    if (typeof t['teamId'] === 'string') {
+      if (!isUuid(t['teamId'])) return c.json({ error: 'target.teamId debe ser un UUID' }, 400);
+      routes.push({ seasonIds: seasonIds as string[], target: { teamId: t['teamId'] } });
+      continue;
+    }
+    const gender = t['gender'] ?? null;
+    const ageCategory = t['ageCategory'] ?? null;
+    const squadLevel = t['squadLevel'] ?? 1;
+    if (typeof t['name'] !== 'string' || !t['name'].trim() || t['name'].length > 120) return c.json({ error: 'target.name es obligatorio' }, 400);
+    if (gender !== null && !(TEAM_GENDERS as readonly unknown[]).includes(gender)) return c.json({ error: 'target.gender no válido' }, 400);
+    if (ageCategory !== null && !(TEAM_AGE_CATEGORIES as readonly unknown[]).includes(ageCategory)) return c.json({ error: 'target.ageCategory no válida' }, 400);
+    if (typeof squadLevel !== 'number' || !Number.isInteger(squadLevel) || squadLevel < 1 || squadLevel > 8) return c.json({ error: 'target.squadLevel de 1 a 8' }, 400);
+    routes.push({ seasonIds: seasonIds as string[], target: {
+      name: t['name'], gender: gender as 'male' | 'female' | 'mixed' | null, ageCategory: ageCategory as string | null, squadLevel,
+    } });
+  }
+  try {
+    const report = await splitTeam(id, routes, { dryRun: body.dryRun === true });
+    return c.json({ ok: true, dryRun: body.dryRun === true, ...report });
+  } catch (err) {
+    if (err instanceof SplitTeamError) return c.json({ error: err.message }, /No existe/.test(err.message) ? 404 : 400);
+    captureRouteError(err, 'admin] team split error');
+    logger.error({ err }, '[admin] team split error');
     return c.json({ error: 'Database error' }, 500);
   }
 });
