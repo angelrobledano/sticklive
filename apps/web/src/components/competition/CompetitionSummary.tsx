@@ -14,6 +14,7 @@ interface Copy {
   liveT: string; doneT: string; startL: string; startT: string; moreT: (n: number) => string;
   matchday: (c: number, t: number) => string;
   leader: string; finalFirst: string; pts: string;
+  champion: string; finalVs: (team: string) => string;
   ahead: (n: number, team: string) => string; tied: (team: string) => string;
   featured: string; next: string; versus: (h: string, a: string) => string; round: (n: number) => string;
   scorer: string; goals: string; team: string;
@@ -27,6 +28,7 @@ interface Copy {
 
 const COPY: Record<string, Copy> = {
   es: {
+    champion: 'Campeón', finalVs: (team) => `Ganó la final a ${team}`,
     liveT: 'Así va el torneo', doneT: 'Así terminó el torneo', startL: 'Así arranca la liga', startT: 'Así arranca el torneo', moreT: (n) => `Más datos del torneo (${n})`,
     live: 'Así va la liga', done: 'Así terminó', matchday: (c, t) => `Jornada ${c} de ${t}`,
     leader: 'Líder', finalFirst: '1.º en la clasificación final', pts: 'pts',
@@ -42,6 +44,7 @@ const COPY: Record<string, Copy> = {
     medals: 'Medallero', gold: 'Oro', silver: 'Plata', bronze: 'Bronce',
   },
   en: {
+    champion: 'Champion', finalVs: (team) => `Beat ${team} in the final`,
     liveT: 'The tournament so far', doneT: 'How the tournament ended', startL: 'The league kicks off', startT: 'The tournament kicks off', moreT: (n) => `More tournament facts (${n})`,
     live: 'The league so far', done: 'How it ended', matchday: (c, t) => `Matchday ${c} of ${t}`,
     leader: 'Leader', finalFirst: '1st in the final standings', pts: 'pts',
@@ -60,6 +63,7 @@ const COPY: Record<string, Copy> = {
     medals: 'Medal table', gold: 'Gold', silver: 'Silver', bronze: 'Bronze',
   },
   pt: {
+    champion: 'Campeão', finalVs: (team) => `Venceu a final frente a ${team}`,
     liveT: 'Assim vai o torneio', doneT: 'Assim terminou o torneio', startL: 'Assim arranca a liga', startT: 'Assim arranca o torneio', moreT: (n) => `Mais dados do torneio (${n})`,
     live: 'Assim vai a liga', done: 'Assim terminou', matchday: (c, t) => `Jornada ${c} de ${t}`,
     leader: 'Líder', finalFirst: '1.º na classificação final', pts: 'pts',
@@ -75,6 +79,7 @@ const COPY: Record<string, Copy> = {
     medals: 'Medalheiro', gold: 'Ouro', silver: 'Prata', bronze: 'Bronze',
   },
   fr: {
+    champion: 'Champion', finalVs: (team) => `Vainqueur de la finale face à ${team}`,
     liveT: 'Le tournoi en cours', doneT: 'Bilan du tournoi', startL: 'Le championnat commence', startT: 'Le tournoi commence', moreT: (n) => `Plus de chiffres du tournoi (${n})`,
     live: 'Le championnat en cours', done: 'Bilan de la saison', matchday: (c, t) => `Journée ${c} sur ${t}`,
     leader: 'Leader', finalFirst: '1er du classement final', pts: 'pts',
@@ -90,6 +95,7 @@ const COPY: Record<string, Copy> = {
     medals: 'Tableau des médailles', gold: 'Or', silver: 'Argent', bronze: 'Bronze',
   },
   it: {
+    champion: 'Campione', finalVs: (team) => `Ha vinto la finale contro ${team}`,
     liveT: 'Il torneo finora', doneT: 'Com’è finito il torneo', startL: 'Si parte: il campionato', startT: 'Si parte: il torneo', moreT: (n) => `Altri dati del torneo (${n})`,
     live: 'Il campionato finora', done: 'Com’è finita', matchday: (c, t) => `Giornata ${c} di ${t}`,
     leader: 'Capolista', finalFirst: '1º nella classifica finale', pts: 'pt',
@@ -107,6 +113,7 @@ const COPY: Record<string, Copy> = {
 };
 
 COPY['ca'] = {
+    champion: 'Campió', finalVs: (team) => `Va guanyar la final contra ${team}`,
   live: 'Així va la lliga', done: 'Així va acabar', matchday: (c, t) => `Jornada ${c} de ${t}`,
   liveT: 'Així va el torneig', doneT: 'Així va acabar el torneig', startL: 'Així arrenca la lliga', startT: 'Així arrenca el torneig', moreT: (n) => `Més dades del torneig (${n})`,
   leader: 'Líder', finalFirst: '1r a la classificació final', pts: 'pts',
@@ -171,12 +178,14 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
 }) {
   const c = COPY[locale] ?? COPY['en']!;
   const { leader, featured, topScorer, figures, matchday, podium } = data;
+  // Con medallero el campeón ya sale en él (oro).
+  const champion = podium ? null : data.champion;
   const facts = insights ? insights.insights.filter((i) => isRenderable(i, insights)) : [];
   const daily = insights && seed && day ? pickDailyInsight(facts, seed, day) : null;
   const rest = facts.filter((i) => i !== daily);
   const hasDiscipline = Boolean(insights?.discipline && insights.discipline.reds.length > 0);
-  if (!leader && !featured && !topScorer && !podium && !daily && !hasDiscipline) return null;
-  const tiles = [leader, featured, topScorer].filter(Boolean).length;
+  if (!champion && !leader && !featured && !topScorer && !podium && !daily && !hasDiscipline) return null;
+  const tiles = [champion, leader, featured, topScorer].filter(Boolean).length;
 
   // "Campeón" no: en ligas cuyo título se decide en un playoff de otra
   // competición (OK Liga), el 1.º de la tabla no lo es.
@@ -230,7 +239,19 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
       )}
 
       <ul className={`-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 scrollbar-none sm:mx-0 sm:grid sm:overflow-visible sm:px-0 sm:pb-0 ${
-        tiles === 3 ? 'sm:grid-cols-3' : tiles === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}>
+        tiles >= 3 ? 'sm:grid-cols-3' : tiles === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}>
+        {champion && (
+          <Tile href={`/teams/${champion.teamId}`} label={c.champion}>
+            <div className="flex items-center gap-2">
+              <TeamShield teamId={champion.teamId} teamName={champion.teamName} size={28} className="shrink-0" />
+              <span className="line-clamp-2 text-sm font-semibold leading-tight text-slate-900 dark:text-slate-50">{clubName(champion.teamName)}</span>
+            </div>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+              {c.finalVs(clubName(champion.runnerUpName))}
+            </p>
+          </Tile>
+        )}
+
         {leader && (
           <Tile href={`/teams/${leader.teamId}`} label={leaderLabel}>
             <div className="flex items-center gap-2">

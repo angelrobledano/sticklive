@@ -274,6 +274,17 @@ export interface CompetitionSummary {
     silver: { teamId: string; teamName: string };
     bronze: { teamId: string; teamName: string };
   } | null;
+  /**
+   * Ganador de la final jugada en esta competición (copa, final four, cuadro o
+   * liga con final). Null sin final terminada.
+   */
+  champion: {
+    teamId: string; teamName: string; runnerUpId: string; runnerUpName: string; matchId: string;
+  } | null;
+  /**
+   * 1.º de la tabla. Solo en ligas a jornadas: en un torneo (copa, final four,
+   * cuadro, grupos) la tabla de puntos no decide nada y no se usa.
+   */
   leader: {
     teamId: string; teamName: string; points: number; played: number;
     /** Puntos de ventaja sobre el 2.º (null si no hay 2.º). */
@@ -294,7 +305,21 @@ export interface CompetitionSummary {
     /** Nombre del 2.º goleador, para que la ventaja no se confunda con su equipo. */
     secondName: string | null;
   } | null;
+  /** `homeWinPct` es null en torneos: se juegan en sede neutral. */
   figures: { matchesPlayed: number; goalsPerMatch: number | null; homeWinPct: number | null } | null;
+}
+
+const isFinalMatch = (m: SeasonMatch) =>
+  m.stage === 'final' || (!m.stage && /^final$/i.test((m.roundName ?? '').trim()));
+
+/** Campeón y subcampeón de la última final terminada. */
+function buildChampion(matches: SeasonMatch[]): CompetitionSummary['champion'] {
+  const final = lastFinished(matches.filter(isFinalMatch));
+  const winner = final ? gameWinnerId(final) : null;
+  if (!final || !winner) return null;
+  const [w, r] = final.homeTeam.id === winner ? [final.homeTeam, final.awayTeam] : [final.awayTeam, final.homeTeam];
+  if (w.id !== winner) return null;
+  return { teamId: w.id, teamName: w.name, runnerUpId: r.id, runnerUpName: r.name, matchId: final.id };
 }
 
 const PENDING = new Set(['scheduled', 'live', 'halftime', 'overtime', 'penalty_shootout']);
@@ -317,8 +342,7 @@ function lastFinished(matches: SeasonMatch[]): SeasonMatch | null {
  * Solo devuelve un medallero completo: sin bronce no hay tabla de medallas.
  */
 function buildPodium(matches: SeasonMatch[]): CompetitionSummary['podium'] {
-  const isFinal = (m: SeasonMatch) =>
-    m.stage === 'final' || (!m.stage && /^final$/i.test((m.roundName ?? '').trim()));
+  const isFinal = isFinalMatch;
   const isThird = (m: SeasonMatch) =>
     m.stage === 'third_place' || (!m.stage && /3.*4|tercer|third|bronce/i.test(m.roundName ?? ''));
 
@@ -375,18 +399,21 @@ export function buildCompetitionSummary(
     ? { current: Math.min(Math.max(...playedRounds), totalRounds), total: totalRounds }
     : null;
 
-  // Líder: solo con una tabla única (con grupos no hay un líder de la liga).
   const groups = new Set(overview.standings.map((s) => s.groupName ?? null));
-  const sorted = [...overview.standings].sort((a, b) =>
-    (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || b.points - a.points);
-  const first = groups.size === 1 ? sorted.find((s) => s.played > 0) ?? null : null;
-  const second = first ? sorted.find((s) => s !== first && s.played > 0) ?? null : null;
-
   const format = (overview.season as { competitionFormat?: string }).competitionFormat;
   const kind: CompetitionSummary['kind'] =
     format === 'bracket' || format === 'final_four' || groups.size > 1 || regularRounds.length === 0 ? 'tournament' : 'league';
 
-  const position = new Map(overview.standings.map((s) => [s.teamId, s.position]));
+  // Líder y posiciones: solo en una liga a jornadas con tabla única. En una
+  // copa (Supercopa a partido único) la API también calcula puntos con sus
+  // resultados, pero esa tabla no decide nada: no se enseña.
+  const table = kind === 'league' ? overview.standings : [];
+  const sorted = [...table].sort((a, b) =>
+    (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || b.points - a.points);
+  const first = sorted.find((s) => s.played > 0) ?? null;
+  const second = first ? sorted.find((s) => s !== first && s.played > 0) ?? null : null;
+
+  const position = new Map(table.map((s) => [s.teamId, s.position]));
   const upcoming = overview.matches
     .filter((m) => m.status === 'scheduled' && m.scheduledAt && new Date(m.scheduledAt) >= now)
     .sort((a, b) => String(a.scheduledAt).localeCompare(String(b.scheduledAt)));
@@ -414,6 +441,7 @@ export function buildCompetitionSummary(
     kind,
     matchday,
     podium: buildPodium(overview.matches),
+    champion: buildChampion(overview.matches),
     leader: first
       ? {
           teamId: first.teamId, teamName: first.teamName, points: first.points, played: first.played,
@@ -442,7 +470,7 @@ export function buildCompetitionSummary(
       ? {
           matchesPlayed: scored.length,
           goalsPerMatch: Math.round((goals / scored.length) * 10) / 10,
-          homeWinPct: Math.round((homeWins / scored.length) * 100),
+          homeWinPct: kind === 'league' ? Math.round((homeWins / scored.length) * 100) : null,
         }
       : null,
   };

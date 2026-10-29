@@ -86,7 +86,9 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       competitionName: overview.season.competitionName,
       // La temporada solo se añade al title cuando hay más de una visible.
       seasonName: seasons.length > 1 ? season.name : null,
-      hasPlayed: (overview.standings ?? []).some((row) => row.played > 0),
+      hasPlayed: (overview.standings ?? []).some((row) => row.played > 0)
+        || overview.matches.some((m) => m.status === 'finished'),
+      knockout: overview.season.competitionFormat === 'bracket' || overview.season.competitionFormat === 'final_four',
     });
     const description = (DESC[locale] ?? DESC['en'])!(name);
     // #279: solo añadimos `?season=` a la URL si la temporada pedida existe de

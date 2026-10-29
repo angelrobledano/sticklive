@@ -163,44 +163,47 @@ export function localeLessUrl(path: string): string {
  */
 const TITLE_COPY: Record<
   Locale,
-  { competitionResults: string; competitionCalendar: string; team: string; playerWithTeam: string; playerAlone: string }
+  { competitionResults: string; competitionKnockout: string; competitionCalendar: string; team: string; playerWithTeam: string; playerAlone: string }
 > = {
   es: {
-    competitionResults: 'clasificación y resultados', competitionCalendar: 'calendario',
+    competitionResults: 'clasificación y resultados', competitionKnockout: 'cuadro y resultados', competitionCalendar: 'calendario',
     team: 'calendario, resultados y plantilla', playerWithTeam: 'estadísticas con', playerAlone: 'estadísticas',
   },
   ca: {
-    competitionResults: 'classificació i resultats', competitionCalendar: 'calendari',
+    competitionResults: 'classificació i resultats', competitionKnockout: 'quadre i resultats', competitionCalendar: 'calendari',
     team: 'calendari, resultats i plantilla', playerWithTeam: 'estadístiques amb', playerAlone: 'estadístiques',
   },
   en: {
-    competitionResults: 'standings and results', competitionCalendar: 'fixtures',
+    competitionResults: 'standings and results', competitionKnockout: 'bracket and results', competitionCalendar: 'fixtures',
     team: 'fixtures, results and squad', playerWithTeam: 'stats with', playerAlone: 'stats',
   },
   pt: {
-    competitionResults: 'classificação e resultados', competitionCalendar: 'calendário',
+    competitionResults: 'classificação e resultados', competitionKnockout: 'quadro e resultados', competitionCalendar: 'calendário',
     team: 'calendário, resultados e plantel', playerWithTeam: 'estatísticas com', playerAlone: 'estatísticas',
   },
   fr: {
-    competitionResults: 'classement et résultats', competitionCalendar: 'calendrier',
+    competitionResults: 'classement et résultats', competitionKnockout: 'tableau et résultats', competitionCalendar: 'calendrier',
     team: 'calendrier, résultats et effectif', playerWithTeam: 'statistiques avec', playerAlone: 'statistiques',
   },
   it: {
-    competitionResults: 'classifica e risultati', competitionCalendar: 'calendario',
+    competitionResults: 'classifica e risultati', competitionKnockout: 'tabellone e risultati', competitionCalendar: 'calendario',
     team: 'calendario, risultati e rosa', playerWithTeam: 'statistiche con', playerAlone: 'statistiche',
   },
 };
 
-/** Title de competición: clasificación si hay jornadas jugadas; si no, calendario. */
+/** Title de competición: clasificación (o cuadro en una copa) si hay partidos jugados; si no, calendario. */
 export function competitionMetaTitle(opts: {
   locale: Locale;
   competitionName: string;
   seasonName?: string | null;
   hasPlayed: boolean;
+  /** Copa a eliminatorias (final four, cuadro): no tiene clasificación. */
+  knockout?: boolean;
 }): string {
   const copy = TITLE_COPY[opts.locale] ?? TITLE_COPY.en;
   const season = opts.seasonName?.trim();
-  const suffix = opts.hasPlayed ? copy.competitionResults : copy.competitionCalendar;
+  const suffix = !opts.hasPlayed ? copy.competitionCalendar
+    : opts.knockout ? copy.competitionKnockout : copy.competitionResults;
   return `${opts.competitionName}${season ? ` ${season}` : ''}: ${suffix} | Stick Live`;
 }
 

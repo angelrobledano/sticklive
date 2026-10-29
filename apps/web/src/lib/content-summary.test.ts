@@ -190,6 +190,53 @@ describe('buildCompetitionSummary', () => {
     expect(buildCompetitionSummary(o, scorers, now).podium).toBeNull();
   });
 
+  it('final four a partido único: campeón y subcampeón de la final, sin líder por puntos ni % de victorias locales', () => {
+    const ff = {
+      season: { id: 's1', name: '2026/27', competitionId: 'c1', competitionName: 'Supercopa', competitionFormat: 'final_four', phases: [] },
+      // La API calcula una tabla con los resultados de la copa: no significa nada.
+      standings: [row('b', 1, 4, 2), row('a', 2, 4, 2), row('c', 3, 0, 1), row('d', 4, 0, 1)],
+      rounds: [],
+      matches: [
+        match({ id: 's1', roundType: 'playoff', stage: 'semis', homeTeam: team('d'), awayTeam: team('b'), score: { home: 3, away: 5 } }),
+        match({ id: 's2', roundType: 'playoff', stage: 'semis', homeTeam: team('a'), awayTeam: team('c'), score: { home: 2, away: 1 } }),
+        match({
+          id: 'final', roundType: 'playoff', stage: 'final', roundName: 'Final', homeTeam: team('b'), awayTeam: team('a'),
+          score: { home: 2, away: 2 }, penalties: { home: 3, away: 2 }, winnerTeamId: 'b',
+        }),
+      ],
+    } as unknown as SeasonOverview;
+    const s = buildCompetitionSummary(ff, scorers, now);
+    expect(s.kind).toBe('tournament');
+    expect(s.leader).toBeNull();
+    expect(s.champion).toEqual({
+      teamId: 'b', teamName: 'B', runnerUpId: 'a', runnerUpName: 'A', matchId: 'final',
+    });
+    expect(s.figures?.homeWinPct).toBeNull();
+  });
+
+  it('copa en curso sin final jugada: ni líder ni campeón', () => {
+    const ff = {
+      season: { id: 's1', name: '2026/27', competitionId: 'c1', competitionName: 'Supercopa', competitionFormat: 'final_four', phases: [] },
+      standings: [row('b', 1, 2, 1), row('a', 2, 2, 1)],
+      rounds: [],
+      matches: [
+        match({ id: 's1', roundType: 'playoff', stage: 'semis', homeTeam: team('d'), awayTeam: team('b'), score: { home: 3, away: 5 } }),
+        match({ id: 'final', roundType: 'playoff', stage: 'final', status: 'scheduled', scheduledAt: '2026-10-20T18:00:00Z',
+          homeTeam: team('b'), awayTeam: team('a'), score: { home: null, away: null } }),
+      ],
+    } as unknown as SeasonOverview;
+    const s = buildCompetitionSummary(ff, scorers, now);
+    expect(s.leader).toBeNull();
+    expect(s.champion).toBeNull();
+    expect(s.featured).toMatchObject({ id: 'final', homePosition: null, awayPosition: null });
+  });
+
+  it('liga sin final: sin campeón, el 1.º de la tabla sigue siendo líder', () => {
+    const s = buildCompetitionSummary(liga(), scorers, now);
+    expect(s.champion).toBeNull();
+    expect(s.leader?.teamId).toBe('a');
+  });
+
   it('con varios grupos no hay un líder único', () => {
     const o = liga({ pending: true });
     o.standings = [row('a', 1, 12, 4, { groupName: 'A' }), row('b', 1, 9, 4, { groupName: 'B' })] as never;

@@ -46,14 +46,16 @@ export function ClosedSeasonHighlights({ summary, stats, insights, standings, lo
   locale: string;
 }) {
   const c = COPY[locale] ?? COPY['en']!;
-  const champion = summary.podium?.gold ?? (summary.leader
+  const champion = summary.podium?.gold ?? summary.champion ?? (summary.leader
     ? { teamId: summary.leader.teamId, teamName: summary.leader.teamName }
     : null);
-  const championLabel = summary.podium ? c.champion : c.regular;
+  const championLabel = summary.podium || summary.champion ? c.champion : c.regular;
   const scorer = stats?.topScorers?.[0];
   const assister = stats?.topAssists?.[0];
-  const attack = uniqueBest(standings, (r) => r.goalsFor);
-  const defense = uniqueBest(standings, (r) => -r.goalsAgainst);
+  // Mejor ataque/defensa salen de la tabla: en un torneo (copa, cuadro) no aplica.
+  const table = summary.kind === 'league' ? standings : [];
+  const attack = uniqueBest(table, (r) => r.goalsFor);
+  const defense = uniqueBest(table, (r) => -r.goalsAgainst);
   const recordKinds = new Set<Insight['kind']>([
     'only_unbeaten', 'win_streak', 'losing_streak', 'biggest_win', 'highest_scoring', 'best_attack', 'best_defense',
   ]);

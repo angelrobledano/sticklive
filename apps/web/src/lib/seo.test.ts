@@ -54,6 +54,15 @@ describe('titles de competición, equipo y jugador (F3-3)', () => {
     })).toBe('OK Liga 2026/27: calendario | Stick Live');
   });
 
+  it('copa a eliminatorias: cuadro en vez de clasificación', () => {
+    expect(competitionMetaTitle({
+      locale: 'es', competitionName: 'Supercopa', seasonName: '2026/27', hasPlayed: true, knockout: true,
+    })).toBe('Supercopa 2026/27: cuadro y resultados | Stick Live');
+    expect(competitionMetaTitle({
+      locale: 'en', competitionName: 'Supercopa', hasPlayed: true, knockout: true,
+    })).toBe('Supercopa: bracket and results | Stick Live');
+  });
+
   it('competición sin temporada no deja un espacio doble', () => {
     expect(competitionMetaTitle({
       locale: 'es', competitionName: 'OK Liga', seasonName: null, hasPlayed: true,
