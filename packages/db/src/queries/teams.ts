@@ -197,3 +197,31 @@ export async function findTeamIdBySeasonRef(seasonId: string, sourceRef: string)
   );
   return r.rows[0]?.team_id ?? null;
 }
+
+export class SetTeamClubError extends Error {
+  constructor(message: string, readonly code: 'not_found' | 'invalid') { super(message); this.name = 'SetTeamClubError'; }
+}
+
+/**
+ * Cuelga un equipo de un club (o lo suelta con `null`) sin fusionar nada: el
+ * equipo sigue siendo una plantilla independiente con sus partidos. Para los
+ * equipos huérfanos y para las plantillas B/C que no deben unirse a la A.
+ */
+export async function setTeamClub(
+  teamId: string,
+  clubId: string | null,
+): Promise<{ teamId: string; club: { id: string; name: string; slug: string } | null }> {
+  const t = await db.query<{ sport_id: string }>(`SELECT sport_id FROM teams WHERE id = $1`, [teamId]);
+  if (!t.rows[0]) throw new SetTeamClubError('No existe ese equipo', 'not_found');
+  let club: { id: string; name: string; slug: string } | null = null;
+  if (clubId) {
+    const c = await db.query<{ id: string; canonical_name: string; slug: string; sport_id: string }>(
+      `SELECT id, canonical_name, slug, sport_id FROM clubs WHERE id = $1`, [clubId]);
+    const row = c.rows[0];
+    if (!row) throw new SetTeamClubError('No existe ese club', 'not_found');
+    if (row.sport_id !== t.rows[0].sport_id) throw new SetTeamClubError('El club es de otro deporte', 'invalid');
+    club = { id: row.id, name: row.canonical_name, slug: row.slug };
+  }
+  await db.query(`UPDATE teams SET club_id = $2, updated_at = NOW() WHERE id = $1`, [teamId, clubId]);
+  return { teamId, club };
+}

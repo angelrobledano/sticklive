@@ -24,6 +24,7 @@ interface TeamRow {
   squadLevel: number | null;
   teamType: string;
   clubName: string | null;
+  clubSlug: string | null;
 }
 
 function squadLetter(level: number | null): string {
@@ -43,16 +44,17 @@ function sectionText(team: TeamRow): string {
 export function AdminTeams({ token, onError }: { token: string; onError: (m: string) => void }) {
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [query, setQuery] = useState('');
+  const [orphans, setOrphans] = useState(false);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const requestId = useRef(0);
 
-  const load = useCallback(async (q: string) => {
+  const load = useCallback(async (q: string, onlyOrphans: boolean) => {
     const id = ++requestId.current;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/admin/teams?q=${encodeURIComponent(q)}`, {
+      const res = await fetch(`${API_URL}/admin/teams?q=${encodeURIComponent(q)}${onlyOrphans ? '&orphans=1' : ''}`, {
         headers: { 'X-Admin-Token': token },
       });
       if (!res.ok) throw new Error(`Error ${res.status}`);
@@ -68,9 +70,9 @@ export function AdminTeams({ token, onError }: { token: string; onError: (m: str
   }, [token, onError]);
 
   useEffect(() => {
-    const id = setTimeout(() => { void load(query); }, 250);
+    const id = setTimeout(() => { void load(query, orphans); }, 250);
     return () => clearTimeout(id);
-  }, [query, load]);
+  }, [query, orphans, load]);
 
   const save = useCallback(async (team: TeamRow, value: string | null) => {
     setBusy(team.id);
@@ -91,6 +93,33 @@ export function AdminTeams({ token, onError }: { token: string; onError: (m: str
       setBusy(null);
     }
   }, [token, onError]);
+
+  // Club: cuelga el equipo de un club sin fusionarlo (plantillas B/C, huérfanos).
+  const setClub = useCallback(async (team: TeamRow) => {
+    const value = window.prompt(
+      `Club de «${team.name}».\n\nSlug del club (p. ej. hc-alpicat). Vacío = quitarle el club.`,
+      team.clubSlug ?? '',
+    );
+    if (value === null) return;
+    setBusy(team.id);
+    try {
+      const res = await fetch(`${API_URL}/admin/teams/${team.id}/club`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
+        body: JSON.stringify({ club: value.trim() || null }),
+      });
+      const body = await res.json() as { club?: { name: string; slug: string } | null; error?: string };
+      if (!res.ok) throw new Error(body.error ?? `Error ${res.status}`);
+      const club = body.club ?? null;
+      setTeams((current) => current
+        .map((t) => (t.id === team.id ? { ...t, clubName: club?.name ?? null, clubSlug: club?.slug ?? null } : t))
+        .filter((t) => !orphans || !t.clubName));
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setBusy(null);
+    }
+  }, [token, onError, orphans]);
 
   // Fusión: el equipo de la fila desaparece dentro del que se indique. Primero
   // en seco para enseñar qué se mueve; la API se niega si son de secciones
@@ -134,6 +163,11 @@ export function AdminTeams({ token, onError }: { token: string; onError: (m: str
                    bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200
                    focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-rink-accent"
       />
+
+      <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+        <input type="checkbox" checked={orphans} onChange={(e) => setOrphans(e.target.checked)} />
+        Solo equipos sin club
+      </label>
 
       <p className="text-[11px] text-slate-500 dark:text-slate-400">
         El nombre curado manda en toda la web y en el SEO. Vacío = nombre de la fuente.
@@ -216,6 +250,15 @@ export function AdminTeams({ token, onError }: { token: string; onError: (m: str
                                hover:text-blue-600 disabled:opacity-40"
                   >
                     Fusionar en…
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy === team.id}
+                    onClick={() => void setClub(team)}
+                    className="min-h-[44px] px-3 rounded-xl text-xs font-semibold text-slate-500 dark:text-slate-400
+                               hover:text-blue-600 disabled:opacity-40"
+                  >
+                    Club…
                   </button>
                 </div>
               </div>

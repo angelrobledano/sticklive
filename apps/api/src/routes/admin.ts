@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db, withTransaction, mergeClubs, findClubIdBySlug, MergeClubsError, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, createTeamForQueueItem, CreateQueueTeamError, mergeTeams, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, setCompetitionRanking, listFederationsAdmin, listOrphanOrganizers, upsertFederation, type DataQuality, type FederationLevel } from '@sports/db';
+import { db, withTransaction, mergeClubs, findClubIdBySlug, MergeClubsError, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, createTeamForQueueItem, CreateQueueTeamError, mergeTeams, setTeamClub, SetTeamClubError, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, setCompetitionRanking, listFederationsAdmin, listOrphanOrganizers, upsertFederation, type DataQuality, type FederationLevel } from '@sports/db';
 import { logger } from '@sports/logger';
 import type { StandingsZone } from '@sports/shared-types';
 import { isUuid } from '../lib/uuid.js';
@@ -144,6 +144,7 @@ interface AdminTeamRow {
   squad_level: number | null;
   team_type: string;
   club_name: string | null;
+  club_slug: string | null;
 }
 
 const MAX_DISPLAY_NAME = 120;
@@ -161,6 +162,7 @@ function hasControlChars(value: string): boolean {
 /** GET /admin/teams?q= — busca equipos para curar su nombre visible. */
 adminRouter.get('/teams', async (c) => {
   const q = (c.req.query('q') ?? '').trim();
+  const orphans = c.req.query('orphans') === '1';
   if (q.length > MAX_TEAM_QUERY) {
     return c.json({ error: `q must be at most ${MAX_TEAM_QUERY} characters` }, 400);
   }
@@ -168,15 +170,16 @@ adminRouter.get('/teams', async (c) => {
   try {
     const result = await db.query<AdminTeamRow>(`
       SELECT t.id, t.name, t.display_name, t.short_name, t.gender, t.age_category,
-             t.squad_level, t.team_type, cl.canonical_name AS club_name
+             t.squad_level, t.team_type, cl.canonical_name AS club_name, cl.slug AS club_slug
         FROM teams t
         LEFT JOIN clubs cl ON cl.id = t.club_id
-       WHERE $1 = ''
+       WHERE ($1 = ''
           OR t.name ILIKE '%' || $1 || '%'
-          OR COALESCE(t.display_name, '') ILIKE '%' || $1 || '%'
+          OR COALESCE(t.display_name, '') ILIKE '%' || $1 || '%')
+         AND (NOT $2 OR (t.club_id IS NULL AND t.team_type = 'club'))
        ORDER BY COALESCE(t.display_name, t.name) ASC
        LIMIT 100
-    `, [q]);
+    `, [q, orphans]);
 
     return c.json({
       count: result.rows.length,
@@ -190,6 +193,7 @@ adminRouter.get('/teams', async (c) => {
         squadLevel: r.squad_level,
         teamType: r.team_type,
         clubName: r.club_name,
+        clubSlug: r.club_slug,
       })),
     });
   } catch (err) {
@@ -387,6 +391,33 @@ adminRouter.post('/clubs/:id/merge', async (c) => {
     }
     captureRouteError(err, 'admin] club merge error');
     logger.error({ err }, '[admin] club merge error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/**
+ * PATCH /admin/teams/:id/club  { club: <slug o id> | null }
+ * Cuelga el equipo de un club (o lo suelta) sin fusionar: sigue siendo una
+ * plantilla independiente con sus partidos.
+ */
+adminRouter.patch('/teams/:id/club', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Team not found' }, 404);
+  const body = await c.req.json().catch(() => null) as { club?: unknown } | null;
+  if (!body || !('club' in body)) return c.json({ error: 'club is required (slug, id or null)' }, 400);
+  const raw = typeof body.club === 'string' ? body.club.trim().toLowerCase() : null;
+  if (body.club !== null && (!raw || raw.length > 120)) return c.json({ error: 'club must be a slug, an id or null' }, 400);
+  try {
+    let clubId: string | null = null;
+    if (raw) {
+      clubId = isUuid(raw) ? raw : await findClubIdBySlug(raw);
+      if (!clubId) return c.json({ error: `No existe ningún club con slug "${raw}"` }, 404);
+    }
+    return c.json({ ok: true, ...(await setTeamClub(id, clubId)) });
+  } catch (err) {
+    if (err instanceof SetTeamClubError) return c.json({ error: err.message }, err.code === 'not_found' ? 404 : 400);
+    captureRouteError(err, 'admin] team club error');
+    logger.error({ err }, '[admin] team club error');
     return c.json({ error: 'Database error' }, 500);
   }
 });
