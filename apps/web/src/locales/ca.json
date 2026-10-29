@@ -425,6 +425,8 @@
     "ot_short": "pr.",
     "third_place": "3r i 4t lloc",
     "tbd": "Per determinar",
+    "winner_of": "Guanyador {x}",
+    "date_tbc": "Data per confirmar",
     "round_n": "Ronda {n}",
     "other_places": "Altres llocs",
     "stage_round_of_16": "Vuitens de final",

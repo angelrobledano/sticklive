@@ -18,7 +18,7 @@
  *
  * Funciones puras y testeadas.
  */
-import type { SeasonMatch } from '@/lib/api/client';
+import type { SeasonMatch, SeasonRound } from '@/lib/api/client';
 import { gameWinnerId } from '@/lib/playoff';
 import { matchPhaseKey, playoffPhaseKey, type PlayoffPhaseKey } from '@/components/competition/format';
 
@@ -213,4 +213,61 @@ export function buildBracketRounds(matches: SeasonMatch[]): BracketRound[] {
   const names = new Set(pool.map((m) => m.roundName ?? ''));
   const shared = names.size === 1 ? (first.roundName ?? null) : null;
   return [{ key: null, name: shared, roundNumber: shared ? first.roundNumber : null, matches: pool.slice().sort(byDate) }];
+}
+
+export interface BracketColumn extends BracketRound {
+  /** Cruces que tiene la ronda en el cuadro (los que faltan son «por determinar»). */
+  slots: number;
+}
+
+/**
+ * Completa el cuadro con las rondas que la fuente DECLARA pero aún no tienen
+ * partidos (o no todos): con solo los cuartos publicados, semis y final entran
+ * como huecos «por determinar» y el cuadro se dibuja entero (4 → 2 → 1). Solo
+ * rondas posteriores a la última con partidos y con fase reconocida.
+ */
+export function completeBracket(bracket: BracketRound[], declared: SeasonRound[]): BracketColumn[] {
+  const main = bracket.filter((r) => r.key !== 'third_place' && r.matches.length > 0);
+  const cols: BracketColumn[] = [];
+  for (const r of main) {
+    const prev = cols[cols.length - 1];
+    const expected = prev && r.key ? Math.ceil(prev.slots / 2) : 0;
+    cols.push({ ...r, slots: Math.max(r.matches.length, expected) });
+  }
+  const last = cols[cols.length - 1];
+  if (!last?.key) return cols;
+  const pendingStages = FROM_FINAL
+    .filter((k) => PHASE_ORDER[k] > PHASE_ORDER[last.key!])
+    .filter((k) => declared.some((d) => d.roundType === 'playoff' && d.stage === k))
+    .sort((a, b) => PHASE_ORDER[a] - PHASE_ORDER[b]);
+  for (const key of pendingStages) {
+    const prev = cols[cols.length - 1]!;
+    if (prev.slots <= 1) break;
+    const round = declared.find((d) => d.stage === key)!;
+    cols.push({ key, name: round.name, roundNumber: round.number, matches: [], slots: Math.ceil(prev.slots / 2) });
+  }
+  return cols;
+}
+
+export type SlotFeeder =
+  | { kind: 'team'; team: SeasonMatch['homeTeam'] }
+  | { kind: 'match'; match: SeasonMatch }
+  | { kind: 'slot'; round: BracketColumn; index: number };
+
+/**
+ * Procedencia de los dos equipos de un hueco del cuadro (columna `ri`, cruce
+ * `j`): los cruces 2j y 2j+1 de la ronda anterior. Si ya se decidió, el
+ * equipo que pasa; si no, el cruce («Ganador BEN / COL») o el hueco anterior
+ * («Ganador Semifinal 1»).
+ */
+export function slotFeeders(cols: BracketColumn[], ri: number, j: number): SlotFeeder[] | null {
+  const prev = cols[ri - 1];
+  if (!prev) return null;
+  return [2 * j, 2 * j + 1].map((k): SlotFeeder => {
+    const m = prev.matches[k];
+    if (!m) return { kind: 'slot', round: prev, index: k };
+    const w = matchWinnerId(m);
+    if (w) return { kind: 'team', team: w === m.homeTeam.id ? m.homeTeam : m.awayTeam };
+    return { kind: 'match', match: m };
+  });
 }

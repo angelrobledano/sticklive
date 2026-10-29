@@ -336,6 +336,8 @@
     "ot_short": "prol.",
     "third_place": "3.º e 4.º lugar",
     "tbd": "Por decidir",
+    "winner_of": "Vencedor {x}",
+    "date_tbc": "Data por confirmar",
     "round_n": "Ronda {n}",
     "other_places": "Outras posições",
     "stage_round_of_16": "Oitavos de final",

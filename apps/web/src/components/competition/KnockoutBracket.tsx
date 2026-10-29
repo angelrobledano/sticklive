@@ -5,12 +5,13 @@ import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useMemo } from 'react';
 import type { SeasonMatch, SeasonRound } from '@/lib/api/client';
 import { useT } from '@/lib/i18n';
-import { buildBracketRounds, type BracketRound } from '@/lib/bracket';
+import { buildBracketRounds, completeBracket, slotFeeders, type BracketColumn, type BracketRound, type SlotFeeder } from '@/lib/bracket';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
 import { fmtDate, fmtTime } from './format';
 import { gameWinnerId } from '@/lib/playoff';
 import { ChampionBlock } from './ChampionBlock';
+import { clubName } from '@/lib/names';
 
 /**
  * Cuadro de eliminatorias a partido único (formato World Skate: Cuartos → Semis
@@ -115,10 +116,47 @@ function championOf(m: SeasonMatch): SeasonMatch['homeTeam'] | null {
 const HEADING = 'text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1';
 
 /** ¿Las rondas forman un cuadro binario limpio (4→2→1, 2→1, 8→4→2→1…)? */
-function isBinaryBracket(rounds: BracketRound[]): boolean {
-  const base = rounds[0]?.matches.length ?? 0;
+function isBinaryBracket(rounds: BracketColumn[]): boolean {
+  const base = rounds[0]?.slots ?? 0;
   if (base < 2 || (base & (base - 1)) !== 0) return false; // potencia de 2
-  return rounds.every((r, i) => r.matches.length === base / 2 ** i);
+  return rounds.every((r, i) => r.slots === base / 2 ** i);
+}
+
+/** Hueco del cuadro cuyo cruce aún no se conoce: de dónde sale cada equipo. */
+function PendingSlot({ feeders }: { feeders: SlotFeeder[] | null }) {
+  const { t } = useT();
+  const short = (tm: SeasonMatch['homeTeam']) => tm.shortName ?? tm.name;
+  const describe = (f: SlotFeeder): string => {
+    if (f.kind === 'team') return f.team.name;
+    if (f.kind === 'match') {
+      const { homeTeam: h, awayTeam: a } = f.match;
+      // Siglas iguales en la fuente (Barcelos «SAD» y Braga «SAD»): nombre del club.
+      const same = short(h) === short(a);
+      const x = same ? `${clubName(h.name)} / ${clubName(a.name)}` : `${short(h)} / ${short(a)}`;
+      return t('playoffs.winner_of', { x });
+    }
+    const key = f.round.key === 'semis' ? 'playoffs.semifinal_n' : f.round.key === 'quarters' ? 'playoffs.quarter_n' : null;
+    const name = key ? t(key, { n: f.index + 1 }) : `${f.round.name ?? ''} ${f.index + 1}`.trim();
+    return t('playoffs.winner_of', { x: name });
+  };
+  const rows: Array<SlotFeeder | null> = feeders ?? [null, null];
+  return (
+    <div className="card overflow-hidden border border-dashed border-slate-200 dark:border-slate-800" data-slot="tbd">
+      {rows.map((f, i) => (
+        <div key={i} className={`flex items-center gap-2 px-2.5 py-2 ${i === 0 ? 'border-b border-slate-100 dark:border-slate-800' : ''}`}>
+          {f?.kind === 'team'
+            ? <TeamShield teamId={f.team.id} teamName={f.team.shortName ?? f.team.name} size={22} />
+            : <span className="h-[22px] w-[22px] shrink-0 rounded-full bg-slate-100 dark:bg-slate-800" aria-hidden="true" />}
+          <span className={`flex-1 truncate text-[13px] ${f?.kind === 'team' ? 'font-semibold text-slate-800 dark:text-slate-100' : 'font-medium text-slate-500 dark:text-slate-400'}`}>
+            {f ? (f.kind === 'team' ? <AdaptiveTeamName name={f.team.name} shortName={f.team.shortName} mobile="abbr" /> : describe(f)) : t('playoffs.tbd')}
+          </span>
+        </div>
+      ))}
+      <div className="px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        {t('playoffs.date_tbc')}
+      </div>
+    </div>
+  );
 }
 
 export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound[]; matches: SeasonMatch[] }) {
@@ -126,10 +164,8 @@ export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound
   const bracketRounds = useMemo(() => buildBracketRounds(matches), [matches]);
 
   const third = bracketRounds.find((r) => r.key === 'third_place');
-  const bracket = useMemo(
-    () => bracketRounds.filter((r) => r.key !== 'third_place' && r.matches.length > 0),
-    [bracketRounds],
-  );
+  // Rondas con partidos más las declaradas aún sin cruces (huecos del cuadro).
+  const bracket = useMemo(() => completeBracket(bracketRounds, rounds ?? []), [bracketRounds, rounds]);
 
   // Fases DECLARADAS por la fuente (rounds) que aún no tienen partidos: los
   // cruces de la fase final se publican cuando cierran los grupos (WSG). Se
@@ -137,9 +173,11 @@ export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound
   // parezca una liga sin fase final (excluidas las que ya tienen partidos).
   const pending = useMemo(
     () => (rounds ?? [])
-      .filter((r) => r.roundType === 'playoff' && !bracketRounds.some((b) => b.matches.some((m) => m.roundId === r.id)))
+      .filter((r) => r.roundType === 'playoff'
+        && !bracketRounds.some((b) => b.matches.some((m) => m.roundId === r.id))
+        && !bracket.some((b) => b.key === r.stage))
       .sort((a, b) => a.number - b.number),
-    [rounds, bracketRounds],
+    [rounds, bracketRounds, bracket],
   );
 
   if (bracket.length === 0 && !third && pending.length === 0) return null;
@@ -185,6 +223,7 @@ export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound
             {(r.key || r.name) && <h3 className={HEADING}>{labelOf(r, i)}</h3>}
             <div className="space-y-2">
               {r.matches.map((m) => <KnockoutMatchCard key={m.id} m={m} showFinishedLabel={false} highlight={r.key === 'final'} />)}
+              {Array.from({ length: r.slots - r.matches.length }, (_, k) => <PendingSlot key={`tbd${k}`} feeders={slotFeeders(bracket, i, r.matches.length + k)} />)}
             </div>
             {r.key === 'final' && r.matches.length === 1 && (() => {
               const champion = championOf(r.matches[0]!);
@@ -198,7 +237,7 @@ export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound
     );
   }
 
-  const base = bracket[0]!.matches.length;
+  const base = bracket[0]!.slots;
   const columns: string[] = [];
   bracket.forEach((_, i) => { if (i > 0) columns.push('20px'); columns.push('minmax(150px,1fr)'); });
 
@@ -225,9 +264,18 @@ export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound
           ))}
 
           {bracket.map((r, ri) => {
-            const span = base / r.matches.length;
-            const isFinal = ri === bracket.length - 1 && r.matches.length === 1;
-            return r.matches.map((m, j) => {
+            const span = base / r.slots;
+            const isFinal = ri === bracket.length - 1 && r.slots === 1;
+            return Array.from({ length: r.slots }, (_, j) => {
+              const m = r.matches[j];
+              if (!m) {
+                return (
+                  <div key={`tbd${ri}-${j}`} className="relative flex items-center py-1.5"
+                       style={{ gridColumn: ri * 2 + 1, gridRow: `${2 + j * span} / span ${span}` }}>
+                    <div className="w-full"><PendingSlot feeders={slotFeeders(bracket, ri, j)} /></div>
+                  </div>
+                );
+              }
               const champion = isFinal ? championOf(m) : null;
               return (
                 <div
@@ -251,8 +299,8 @@ export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound
           })}
 
           {bracket.slice(0, -1).map((r, ri) => {
-            const children = r.matches.length;
-            const parents = bracket[ri + 1]!.matches.length;
+            const children = r.slots;
+            const parents = bracket[ri + 1]!.slots;
             const d: string[] = [];
             for (let p = 0; p < parents; p++) {
               const yP = (((p + 0.5) / parents) * 100).toFixed(2);

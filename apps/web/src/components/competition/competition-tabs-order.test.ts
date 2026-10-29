@@ -37,3 +37,18 @@ describe('competitionVisibleTabs — el cuadro primero en fase final', () => {
       .toEqual(['Playoffs', 'Clasificación', 'Jornadas']);
   });
 });
+
+describe('competitionVisibleTabs — copas sin tabla de puntos', () => {
+  const copa = (rows: Array<{ groupName: string | null }>) =>
+    ({ standings: rows.map((r, i) => ({ teamId: `t${i}`, ...r })), matches: [match('playoff', 'finished')], rounds: [] }) as unknown as
+      Pick<SeasonOverview, 'standings' | 'matches' | 'rounds'>;
+
+  it('copa a eliminatorias (Supercopa Catalana): solo el cuadro, sin Clasificación', () => {
+    expect(competitionVisibleTabs(copa([{ groupName: null }, { groupName: null }]), null, 'bracket')).toEqual(['Playoffs']);
+  });
+
+  it('copa con grupos de verdad (Coppa Italia A2): mantiene la Clasificación de los grupos', () => {
+    expect(competitionVisibleTabs(copa([{ groupName: 'GIRONE A' }, { groupName: 'GIRONE B' }]), null, 'bracket'))
+      .toContain('Clasificación');
+  });
+});

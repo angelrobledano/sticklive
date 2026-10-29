@@ -409,6 +409,8 @@
     "ot_short": "OT",
     "third_place": "Third place",
     "tbd": "To be decided",
+    "winner_of": "Winner {x}",
+    "date_tbc": "Date to be confirmed",
     "round_n": "Round {n}",
     "other_places": "Other places",
     "stage_round_of_16": "Round of 16",

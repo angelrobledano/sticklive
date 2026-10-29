@@ -33,6 +33,7 @@ const ES = {
     semifinal_n: 'Semifinal {n}', quarter_n: 'Cuarto {n}', grand_final: 'Gran Final',
     champion: 'Campeón', live: 'En directo', tbd: 'Por determinar', series_wins: 'Victorias de la serie',
     other_places: 'Otros puestos', placement: '9º–10º',
+    winner_of: 'Ganador {x}', date_tbc: 'Fecha por confirmar',
   },
   match_states: { final: 'Final' },
   match_tabs: { playoffs: 'Playoffs' },
@@ -112,9 +113,30 @@ describe('PlayoffsTab con fases de la fuente', () => {
     ];
     const html = render(<PlayoffsTab rounds={[qf, sf, fin]} matches={ms} format="bracket" phases={[ko]} />);
     expect(html).toContain('Cuartos');
-    expect(html).toContain('Por determinar');
-    // Las rondas declaradas sin partidos se rotulan por su fase, no por el nombre de la fuente.
+    // Las rondas declaradas sin partidos entran en el cuadro (4 → 2 → 1) con
+    // su fase como cabecera, no como lista aparte.
+    expect(html).toContain('data-bracket="tree"');
     expect(html).toContain('Semis');
+    // Semis: ya se sabe quién pasó. Final: de qué semifinal sale cada uno.
+    expect(html.match(/data-slot="tbd"/g)).toHaveLength(3);
+    expect(html).toContain('Ganador Semifinal 1');
+    expect(html).toContain('Ganador Semifinal 2');
+    expect(html).toContain('Fecha por confirmar');
+  });
+
+  it('cuartos sin jugar: los huecos de semis dicen de qué cruce sale cada equipo', () => {
+    const ko = phase({ kind: 'knockout', stages: ['quarters', 'semis', 'final'] });
+    const qf = round(ko, 'quarters', 20, '1/4 Final');
+    const sf = round(ko, 'semis', 30, null);
+    const fin = round(ko, 'final', 40, null);
+    const pending = { status: 'scheduled', score: { home: null, away: null }, winnerTeamId: null };
+    const ms = [
+      match(ko, qf, 'a', 'h', '2026-03-19', pending), match(ko, qf, 'b', 'g', '2026-03-19', pending),
+      match(ko, qf, 'c', 'f', '2026-03-20', pending), match(ko, qf, 'd', 'e', '2026-03-20', pending),
+    ];
+    const html = render(<PlayoffsTab rounds={[qf, sf, fin]} matches={ms} format="bracket" phases={[ko]} />);
+    expect(html).toContain('Ganador A / H');
+    expect(html).not.toContain('>Por determinar<');
   });
 
   it('sin fases (payload antiguo): presentación de siempre por formato declarado', () => {

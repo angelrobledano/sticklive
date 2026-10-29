@@ -111,8 +111,12 @@ export function competitionVisibleTabs(
 ): MainTab[] {
   // Una Final Four (Supercopa) es un cuadro: sin Clasificación ni Jornadas.
   const isFinalFour = format === 'final_four';
+  // En una copa la API también calcula puntos con los cruces, pero esa tabla no
+  // decide nada: solo se enseña si la copa tiene grupos de verdad.
+  const groupCount = new Set(data.standings.map((s) => s.groupName).filter(Boolean)).size;
+  const cupTable = format !== 'bracket' || groupCount > 1;
   const tabs: MainTab[] = [];
-  if (!isFinalFour && data.standings.length > 0) tabs.push('Clasificación');
+  if (!isFinalFour && cupTable && data.standings.length > 0) tabs.push('Clasificación');
   if (!isFinalFour && data.matches.some((m) => m.roundType === 'regular')) tabs.push('Jornadas');
   // La pestaña Playoffs aparece si hay partidos de playoff O si la competición
   // declara rondas eliminatorias aún sin partidos (WSG: los cruces de la fase
