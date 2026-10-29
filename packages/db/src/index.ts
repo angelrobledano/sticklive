@@ -16,6 +16,7 @@ export * from './queries/scrape-logs.js';
 export * from './queries/users.js';
 export * from './queries/redirects.js';
 export * from './queries/merge-teams.js';
+export * from './queries/merge-clubs.js';
 export * from './queries/player-identity.js';
 export * from './queries/standings-zones.js';
 export * from './queries/club-crest-review.js';

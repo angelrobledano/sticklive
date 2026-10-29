@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db, withTransaction, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, setCompetitionRanking, listFederationsAdmin, listOrphanOrganizers, upsertFederation, type DataQuality, type FederationLevel } from '@sports/db';
+import { db, withTransaction, mergeClubs, findClubIdBySlug, MergeClubsError, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, setCompetitionRanking, listFederationsAdmin, listOrphanOrganizers, upsertFederation, type DataQuality, type FederationLevel } from '@sports/db';
 import { logger } from '@sports/logger';
 import type { StandingsZone } from '@sports/shared-types';
 import { isUuid } from '../lib/uuid.js';
@@ -360,6 +360,33 @@ adminRouter.patch('/clubs/:id', async (c) => {
   } catch (err) {
     captureRouteError(err, 'admin] club patch error');
     logger.error({ err }, '[admin] club patch error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/**
+ * POST /admin/clubs/:id/merge  { into: <slug o uuid del club que se queda> }
+ * El club `:id` desaparece: sus equipos, nombres y refs pasan al otro y su
+ * slug redirige (308) a la ficha superviviente. Irreversible desde el admin.
+ */
+adminRouter.post('/clubs/:id/merge', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Club not found' }, 404);
+  const body = await c.req.json().catch(() => null) as { into?: unknown } | null;
+  const into = typeof body?.into === 'string' ? body.into.trim().toLowerCase() : '';
+  if (!into || into.length > 120) return c.json({ error: 'into is required (slug or id of the surviving club)' }, 400);
+
+  try {
+    const intoId = isUuid(into) ? into : await findClubIdBySlug(into);
+    if (!intoId) return c.json({ error: `No existe ningún club con slug "${into}"` }, 404);
+    const result = await mergeClubs(id, intoId);
+    return c.json({ ok: true, ...result });
+  } catch (err) {
+    if (err instanceof MergeClubsError) {
+      return c.json({ error: err.message }, err.code === 'not_found' ? 404 : 400);
+    }
+    captureRouteError(err, 'admin] club merge error');
+    logger.error({ err }, '[admin] club merge error');
     return c.json({ error: 'Database error' }, 500);
   }
 });

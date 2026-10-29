@@ -24,7 +24,7 @@ interface ClubRow {
   suggestedSlug: string;
 }
 
-interface Draft { name: string; slug: string; city: string }
+interface Draft { name: string; slug: string; city: string; mergeInto?: string }
 
 function slugify(value: string): string {
   return value.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -70,6 +70,31 @@ export function AdminClubs({ token, onError }: { token: string; onError: (m: str
     const id = setTimeout(() => { void load(query); }, 250);
     return () => clearTimeout(id);
   }, [query, load]);
+
+  const merge = useCallback(async (club: ClubRow, into: string) => {
+    const target = into.trim().toLowerCase();
+    if (!target) return;
+    if (!window.confirm(
+      `Fusionar "${club.canonicalName}" en el club "${target}".\n\n` +
+      `Sus ${club.teams} equipos pasan a ese club y /clubs/${club.slug} redirigirá a su ficha. No se puede deshacer desde aquí. ¿Seguir?`,
+    )) return;
+    setBusy(club.id);
+    try {
+      const res = await fetch(`${API_URL}/admin/clubs/${club.id}/merge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
+        body: JSON.stringify({ into: target }),
+      });
+      const json = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(json.error ?? `Error ${res.status}`);
+      setClubs((current) => current.filter((c) => c.id !== club.id));
+      void load(query);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setBusy(null);
+    }
+  }, [token, onError, load, query]);
 
   const setDraft = (id: string, patch: Partial<Draft>) =>
     setDrafts((current) => ({ ...current, [id]: { ...current[id]!, ...patch } }));
@@ -117,7 +142,7 @@ export function AdminClubs({ token, onError }: { token: string; onError: (m: str
 
       <p className="text-[11px] text-slate-500 dark:text-slate-400">
         Nombre sin patrocinador: es el título de la ficha del club y lo que lee Google. Arriba, los clubes con
-        equipos en la temporada en curso (los que se publican). Cambiar el slug cambia la URL; la antigua redirige.
+        equipos en la temporada en curso (los que se publican). Cambiar el slug cambia la URL; la antigua redirige. Si dos fichas son el mismo club, fusiona la sobrante en la buena.
       </p>
 
       {loading && <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>}
@@ -172,6 +197,25 @@ export function AdminClubs({ token, onError }: { token: string; onError: (m: str
                   maxLength={80}
                   className={INPUT}
                 />
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  value={draft.mergeInto ?? ''}
+                  onChange={(e) => setDraft(club.id, { mergeInto: e.target.value })}
+                  aria-label={`Fusionar ${club.canonicalName} en otro club`}
+                  placeholder="Fusionar en… (slug del club que se queda)"
+                  className={`flex-1 ${INPUT} font-mono`}
+                />
+                <button
+                  type="button"
+                  disabled={busy === club.id || !(draft.mergeInto ?? '').trim()}
+                  onClick={() => void merge(club, draft.mergeInto ?? '')}
+                  className="min-h-[44px] px-4 rounded-xl text-xs font-semibold text-amber-800 dark:text-amber-300
+                             bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 disabled:opacity-40"
+                >
+                  Fusionar
+                </button>
               </div>
 
               <div className="flex flex-wrap gap-2">
