@@ -34,6 +34,7 @@ import { collapseRepeatedTeamLetter } from '../../scraper/src/core/team-name.js'
 import { createLogger } from '@sports/logger';
 import { sidgadPost, SIDGAD_LANG } from '../../scraper/src/scrapers/fep/sidgad-client.js';
 import * as cheerio from 'cheerio';
+import { isByeTeamName } from './lib/bye-team.js';
 
 const log = createLogger({ service: 'seed-fep' });
 
@@ -121,7 +122,7 @@ function teamLetter(name: string): { base: string; letter: string | null } {
 interface DiscTeam { ref: string; name: string; abbr: string; logo?: string; }
 
 // La fuente mete un pseudo-equipo 'DESCANSO' como bye en ligas de nº impar (Bronce N/S).
-const isBye = (n: string): boolean => /^\s*descanso\s*$/i.test(n || '');
+const isBye = isByeTeamName;
 
 function parseTeamsArray(html: string): DiscTeam[] {
   const $ = cheerio.load(html);

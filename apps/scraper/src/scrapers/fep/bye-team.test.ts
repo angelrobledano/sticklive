@@ -8,6 +8,11 @@ describe('isByeTeamName', () => {
     expect(isByeTeamName('  descanso  ')).toBe(true);
   });
 
+  it('reconoce las variantes numeradas (DESCANSO 1, DESCANSO 2)', () => {
+    expect(isByeTeamName('DESCANSO 1')).toBe(true);
+    expect(isByeTeamName('descanso 2')).toBe(true);
+  });
+
   it('no confunde equipos reales con el bye', () => {
     expect(isByeTeamName('CLUB HOCKEY OLEIROS')).toBe(false);
     expect(isByeTeamName('DESCANSO FEMENINO')).toBe(false); // no es el pseudo-equipo exacto

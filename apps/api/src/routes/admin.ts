@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db, withTransaction, mergeClubs, findClubIdBySlug, MergeClubsError, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, setCompetitionRanking, listFederationsAdmin, listOrphanOrganizers, upsertFederation, type DataQuality, type FederationLevel } from '@sports/db';
+import { db, withTransaction, mergeClubs, findClubIdBySlug, MergeClubsError, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, createTeamForQueueItem, CreateQueueTeamError, mergeTeams, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, setCompetitionRanking, listFederationsAdmin, listOrphanOrganizers, upsertFederation, type DataQuality, type FederationLevel } from '@sports/db';
 import { logger } from '@sports/logger';
 import type { StandingsZone } from '@sports/shared-types';
 import { isUuid } from '../lib/uuid.js';
@@ -391,6 +391,32 @@ adminRouter.post('/clubs/:id/merge', async (c) => {
   }
 });
 
+/**
+ * POST /admin/teams/:id/merge  { into: <id del equipo que se queda>, dryRun? }
+ * El equipo `:id` desaparece: partidos, plantillas, clasificaciones, alias y
+ * refs pasan al otro y su URL redirige (308). Se niega si son de secciones
+ * distintas o si se han enfrentado alguna vez. Con dryRun devuelve el informe
+ * sin tocar nada.
+ */
+adminRouter.post('/teams/:id/merge', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Team not found' }, 404);
+  const body = await c.req.json().catch(() => null) as { into?: unknown; dryRun?: unknown } | null;
+  const into = typeof body?.into === 'string' ? body.into.trim() : '';
+  if (!isUuid(into)) return c.json({ error: 'into is required (id of the surviving team)' }, 400);
+  try {
+    const report = await mergeTeams(into, id, { dryRun: body?.dryRun === true, reason: 'admin' });
+    return c.json({ ok: true, dryRun: body?.dryRun === true, ...report });
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith('mergeTeams:')) {
+      return c.json({ error: err.message.replace(/^mergeTeams:\s*/, '') }, /no existe/.test(err.message) ? 404 : 400);
+    }
+    captureRouteError(err, 'admin] team merge error');
+    logger.error({ err }, '[admin] team merge error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
 // ── Competiciones ─────────────────────
 
 /**
@@ -709,6 +735,35 @@ adminRouter.post('/resolution-queue/:id/resolve', async (c) => {
   } catch (err) {
     captureRouteError(err, 'admin] resolve error');
     logger.error({ err }, '[admin] resolve error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/**
+ * POST /admin/resolution-queue/:id/create-team  Body: { name?, club? }
+ * El nombre es un equipo que aún no existe (otro club, o la plantilla B/E de
+ * uno que sí está): lo da de alta con la sección del contexto y resuelve el
+ * ítem contra él. `club` es el slug o el id del club al que pertenece.
+ */
+adminRouter.post('/resolution-queue/:id/create-team', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Item not found or not pending' }, 404);
+  const body = await c.req.json().catch(() => ({})) as { name?: unknown; club?: unknown };
+  const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 120) : undefined;
+  const club = typeof body.club === 'string' ? body.club.trim().toLowerCase() : '';
+  try {
+    let clubId: string | null = null;
+    if (club) {
+      clubId = isUuid(club) ? club : await findClubIdBySlug(club);
+      if (!clubId) return c.json({ error: `No existe ningún club con slug "${club}"` }, 404);
+    }
+    const result = await createTeamForQueueItem(id, { name, clubId }, 'human:admin');
+    if (!result) return c.json({ error: 'Item not found or not pending' }, 404);
+    return c.json({ ok: true, ...result });
+  } catch (err) {
+    if (err instanceof CreateQueueTeamError) return c.json({ error: err.message }, 400);
+    captureRouteError(err, 'admin] create-team error');
+    logger.error({ err }, '[admin] create-team error');
     return c.json({ error: 'Database error' }, 500);
   }
 });

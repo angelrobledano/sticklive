@@ -157,7 +157,9 @@ export default function ResolutionQueuePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const act = useCallback(async (id: string, action: 'resolve' | 'reject', teamId?: string, msg?: string) => {
+  const act = useCallback(async (
+    id: string, action: 'resolve' | 'reject' | 'create-team', teamId?: string, msg?: string, club?: string,
+  ) => {
     setBusy(id);
     setError(null);
     setNotice(null);
@@ -165,10 +167,14 @@ export default function ResolutionQueuePage() {
       const res = await fetch(`${API_URL}/admin/resolution-queue/${id}/${action}`, {
         method: 'POST',
         headers: { 'X-Admin-Token': token, 'Content-Type': 'application/json' },
-        body: action === 'resolve' ? JSON.stringify({ teamId }) : undefined,
+        body: action === 'resolve' ? JSON.stringify({ teamId })
+          : action === 'create-team' ? JSON.stringify(club ? { club } : {}) : undefined,
       });
-      if (res.status === 404) throw new Error('Ya no está pendiente (¿lo resolvió otra persona?).');
-      if (!res.ok) throw new Error(`Error ${res.status}`);
+      if (!res.ok) {
+        const detail = await res.json().catch(() => null) as { error?: string } | null;
+        if (res.status === 404 && !detail?.error?.startsWith('No existe')) throw new Error('Ya no está pendiente (¿lo resolvió otra persona?).');
+        throw new Error(detail?.error ?? `Error ${res.status}`);
+      }
       setNotice(msg ?? 'Hecho.');
       await load(token);
     } catch (err) {
@@ -291,6 +297,21 @@ export default function ResolutionQueuePage() {
             <p className="text-xs text-slate-500 dark:text-slate-400">No hay candidatos parecidos: búscalo abajo.</p>
           )}
           <TeamSearch disabled={busy === it.id} onPick={(teamId) => void act(it.id, 'resolve', teamId, `«${it.rawText}» asignado.`)} />
+          <button
+            type="button" disabled={busy === it.id}
+            onClick={() => {
+              const club = window.prompt(
+                `«${it.rawText}» es un equipo que aún no existe (otro club, o la plantilla B/E de uno que sí está).\n\n`
+                + 'Slug del club al que pertenece (déjalo vacío si no lo sabes):',
+                '',
+              );
+              if (club === null) return;
+              void act(it.id, 'create-team', undefined, `«${it.rawText}» creado como equipo nuevo.`, club.trim() || undefined);
+            }}
+            className="min-h-[40px] text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-40 dark:text-blue-400"
+          >
+            Es un equipo nuevo (crearlo)
+          </button>
           <button
             type="button" disabled={busy === it.id}
             onClick={() => void act(it.id, 'reject', undefined, `«${it.rawText}» descartado.`)}

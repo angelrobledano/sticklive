@@ -26,7 +26,7 @@ curl -H "X-Admin-Token: $ADMIN_TOKEN" https://sticklive.eu/api/admin/player-link
 curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" https://sticklive.eu/api/admin/player-links/<id>/accept   # o /reject
 ```
 
-Los candidatos son mismo nombre en portales distintos (dos fichas del mismo portal con el mismo nombre son homónimos). Puntúan 0,95 si comparten club y 0,80 si no. Nunca se enlaza solo. Rechazar prohíbe el par para siempre. Aceptar conserva la ficha más antigua, mueve plantillas, alineaciones, eventos y favoritos, y la ficha absorbida redirige con 308. Empezar por los de 0,95 y por jugadores de máxima categoría. Panel: `/es/admin/jugadores` (mismo token que `/admin`). Marca en rojo los pares que jugaron la misma temporada y competición con equipos distintos.
+Los candidatos son mismo nombre en portales distintos (dos fichas del mismo portal con el mismo nombre son homónimos). Puntúan 0,95 si comparten club y 0,80 si no. Nunca se enlaza solo. Rechazar prohíbe el par para siempre. Aceptar conserva la ficha de la RFEP (o, si no hay o hay dos, la más antigua), mueve plantillas, alineaciones, eventos y favoritos, y la ficha absorbida redirige con 308. Empezar por los de 0,95 y por jugadores de máxima categoría. Panel: `/es/admin/jugadores` (mismo token que `/admin`). Marca en rojo los pares que jugaron la misma temporada y competición con equipos distintos.
 
 ## B2 · Cargar zonas
 

@@ -300,40 +300,131 @@ export async function resolveQueueItem(
   createdBy = 'human',
 ): Promise<{ id: string; teamId: string } | null> {
   return withTransaction(async (client) => {
-    const { rows } = await client.query<{ normalized: string; source_id: string; source_ref: string | null; raw_text: string }>(
-      `SELECT normalized, source_id, source_ref, raw_text FROM resolution_queue
-        WHERE id = $1 AND status = 'pending' FOR UPDATE`,
-      [id],
-    );
-    const item = rows[0];
+    const item = await lockPendingQueueItem(client, id);
     if (!item) return null;
-
-    await client.query(
-      `UPDATE resolution_queue
-          SET status = 'resolved', resolved_team_id = $2, updated_at = NOW()
-        WHERE id = $1`,
-      [id, teamId],
-    );
-    await upsertTeamAlias(
-      {
-        teamId,
-        rawText: item.raw_text,
-        normalized: item.normalized,
-        sourceId: item.source_id,
-        createdBy,
-        confidence: 1.0,
-        status: 'confirmed',
-      },
-      client,
-    );
-    // La resolución humana también fija el mapa determinista. Un alias
-    // homónimo de otra sección puede bloquear el escalón 2 (`ON CONFLICT DO
-    // NOTHING`), así que sin esto el clic no sobrevivía a la siguiente pasada:
-    // el ref volvía a caer en el equipo equivocado.
-    if (item.source_ref && item.source_ref !== item.raw_text) {
-      await setSourceEntityMapTeam(item.source_id, item.source_ref, teamId, client);
-    }
+    await markResolved(client, id, item, teamId, createdBy);
     return { id, teamId };
+  });
+}
+
+interface PendingQueueItem {
+  normalized: string; source_id: string; source_ref: string | null; raw_text: string;
+  context: Record<string, unknown> | null;
+}
+
+async function lockPendingQueueItem(client: pg.PoolClient, id: string): Promise<PendingQueueItem | null> {
+  const { rows } = await client.query<PendingQueueItem>(
+    `SELECT normalized, source_id, source_ref, raw_text, context FROM resolution_queue
+      WHERE id = $1 AND status = 'pending' FOR UPDATE`,
+    [id],
+  );
+  return rows[0] ?? null;
+}
+
+async function markResolved(
+  client: pg.PoolClient, id: string, item: PendingQueueItem, teamId: string, createdBy: string,
+): Promise<void> {
+  await client.query(
+    `UPDATE resolution_queue
+        SET status = 'resolved', resolved_team_id = $2, updated_at = NOW()
+      WHERE id = $1`,
+    [id, teamId],
+  );
+  await upsertTeamAlias(
+    {
+      teamId,
+      rawText: item.raw_text,
+      normalized: item.normalized,
+      sourceId: item.source_id,
+      createdBy,
+      confidence: 1.0,
+      status: 'confirmed',
+    },
+    client,
+  );
+  // La resolución humana también fija el mapa determinista. Un alias
+  // homónimo de otra sección puede bloquear el escalón 2 (`ON CONFLICT DO
+  // NOTHING`), así que sin esto el clic no sobrevivía a la siguiente pasada:
+  // el ref volvía a caer en el equipo equivocado.
+  if (item.source_ref && item.source_ref !== item.raw_text) {
+    await setSourceEntityMapTeam(item.source_id, item.source_ref, teamId, client);
+  }
+}
+
+export class CreateQueueTeamError extends Error {
+  constructor(message: string) { super(message); this.name = 'CreateQueueTeamError'; }
+}
+
+const slugPart = (text: string): string => text
+  .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 90);
+
+/**
+ * El nombre de la cola es un equipo que todavía no existe (otro club, o la
+ * plantilla B/E de uno que sí está): se da de alta con la sección del contexto
+ * (género y categoría) y se resuelve el ítem contra él, igual que `resolveQueueItem`.
+ * El ETL encontrará el equipo por el alias en la siguiente pasada.
+ */
+export async function createTeamForQueueItem(
+  id: string,
+  opts: { name?: string; clubId?: string | null } = {},
+  createdBy = 'human',
+): Promise<{ id: string; teamId: string; slug: string } | null> {
+  return withTransaction(async (client) => {
+    const item = await lockPendingQueueItem(client, id);
+    if (!item) return null;
+    const ctx = (item.context ?? {}) as { sportId?: string; seasonId?: string; gender?: string | null; ageCategory?: string | null };
+    const name = (opts.name ?? item.raw_text).replace(/\s+/g, ' ').trim();
+    if (!name) throw new CreateQueueTeamError('El equipo necesita un nombre');
+
+    let sportId = typeof ctx.sportId === 'string' ? ctx.sportId : null;
+    if (!sportId && ctx.seasonId) {
+      const r = await client.query<{ sport_id: string }>(
+        `SELECT c.sport_id FROM seasons s JOIN competitions c ON c.id = s.competition_id WHERE s.id = $1`, [ctx.seasonId]);
+      sportId = r.rows[0]?.sport_id ?? null;
+    }
+    let country = 'ES';
+    if (opts.clubId) {
+      const r = await client.query<{ sport_id: string; country: string }>(`SELECT sport_id, country FROM clubs WHERE id = $1`, [opts.clubId]);
+      const club = r.rows[0];
+      if (!club) throw new CreateQueueTeamError('No existe ese club');
+      sportId ??= club.sport_id;
+      country = club.country;
+    }
+    if (!sportId) throw new CreateQueueTeamError('No sé de qué deporte es este nombre: indica un club');
+
+    const gender = ctx.gender ?? null;
+    const age = ctx.ageCategory ?? null;
+    const letter = /\s([A-H])$/i.exec(name)?.[1]?.toUpperCase();
+    const squadLevel = letter ? 'ABCDEFGH'.indexOf(letter) + 1 : 1;
+
+    const base = slugPart(name) || 'equipo';
+    const options = [base, age && age !== 'senior' ? `${base}-${age}` : null, gender ? `${base}-${gender === 'female' ? 'f' : 'm'}` : null]
+      .filter((x): x is string => !!x);
+    let slug: string | null = null;
+    for (const s of options) {
+      const r = await client.query(`SELECT 1 FROM teams WHERE sport_id = $1 AND slug = $2`, [sportId, s]);
+      if (!r.rowCount) { slug = s; break; }
+    }
+    for (let n = 2; !slug; n++) {
+      const s = `${options[options.length - 1]}-${n}`;
+      const r = await client.query(`SELECT 1 FROM teams WHERE sport_id = $1 AND slug = $2`, [sportId, s]);
+      if (!r.rowCount) slug = s;
+    }
+
+    const teamId = (await client.query<{ id: string }>(
+      `INSERT INTO teams (sport_id, name, slug, gender, age_category, squad_level, country, club_id, source_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [sportId, name, slug, gender, age, squadLevel, country, opts.clubId ?? null, item.source_id],
+    )).rows[0]!.id;
+    if (ctx.seasonId) {
+      await client.query(
+        `INSERT INTO season_teams (season_id, team_id) VALUES ($1, $2) ON CONFLICT (season_id, team_id) DO NOTHING`,
+        [ctx.seasonId, teamId],
+      );
+    }
+    await markResolved(client, id, item, teamId, createdBy);
+    return { id, teamId, slug };
   });
 }
 

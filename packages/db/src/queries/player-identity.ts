@@ -215,17 +215,23 @@ export async function rejectPlayerLinkCandidate(id: string): Promise<boolean> {
   });
 }
 
-/** Acepta un candidato: enlaza B en A (A = la ficha más antigua). */
+/** Acepta un candidato: conserva la ficha RFEP (o la más antigua) y enlaza la otra en ella. */
 export async function acceptPlayerLinkCandidate(id: string, by: string): Promise<{ keepId: string; absorbedId: string } | null> {
-  const r = await db.query<{ player_a: string; player_b: string; a_created: Date; b_created: Date }>(
-    `SELECT c.player_a, c.player_b, pa.created_at AS a_created, pb.created_at AS b_created
+  // Se queda la ficha de la RFEP (ref fep_player_*): su nombre suele venir
+  // más limpio y es la URL que interesa conservar. Sin RFEP, o con las dos,
+  // la más antigua.
+  const r = await db.query<{ player_a: string; player_b: string; a_created: Date; b_created: Date; a_rfep: boolean; b_rfep: boolean }>(
+    `SELECT c.player_a, c.player_b, pa.created_at AS a_created, pb.created_at AS b_created,
+            EXISTS (SELECT 1 FROM player_source_refs r WHERE r.player_id = c.player_a AND r.source_ref LIKE 'fep\\_player\\_%') AS a_rfep,
+            EXISTS (SELECT 1 FROM player_source_refs r WHERE r.player_id = c.player_b AND r.source_ref LIKE 'fep\\_player\\_%') AS b_rfep
        FROM player_link_candidates c JOIN players pa ON pa.id = c.player_a JOIN players pb ON pb.id = c.player_b
       WHERE c.id = $1 AND c.status = 'pending'`,
     [id],
   );
   const row = r.rows[0];
   if (!row) return null;
-  const [keepId, absorbedId] = row.a_created <= row.b_created ? [row.player_a, row.player_b] : [row.player_b, row.player_a];
+  const aFirst = row.a_rfep !== row.b_rfep ? row.a_rfep : row.a_created <= row.b_created;
+  const [keepId, absorbedId] = aFirst ? [row.player_a, row.player_b] : [row.player_b, row.player_a];
   await linkPlayers(keepId, absorbedId, by);
   return { keepId, absorbedId };
 }

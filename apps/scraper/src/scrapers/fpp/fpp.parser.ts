@@ -59,7 +59,7 @@ export interface FppStandingRow {
 
 /** Espacios colapsados y recortados (la FPP deja espacios al final: "FC Porto "). */
 export function cleanName(raw: string): string {
-  return raw.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  return raw.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /** "Vencedor Jogo 1557", "Vencido jogo 3", "A definir"… no son equipos. */

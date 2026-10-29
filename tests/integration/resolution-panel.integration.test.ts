@@ -12,9 +12,10 @@ import {
   resolveQueueItem,
   rejectQueueItem,
   findTeamByNormalizedAlias,
+  createTeamForQueueItem,
 } from '@sports/db';
 import { limpiar } from './support/db.js';
-import { crearDeporte, crearFuente, crearEquipo } from './support/factorias.js';
+import { crearDeporte, crearFuente, crearEquipo, crearCompeticion, crearTemporada } from './support/factorias.js';
 
 let sportId: string;
 let sourceId: string;
@@ -47,6 +48,27 @@ describe('Fase 2b — panel de la cola de resolución', () => {
     expect(items).toHaveLength(2);
     expect(items[0]!.normalized).toBe('dos');
     expect(items[0]!.occurrences).toBe(2);
+  });
+
+  it('crear equipo: lo da de alta con la sección y la plantilla, lo inscribe y aprende el alias', async () => {
+    const seasonId = await crearTemporada(await crearCompeticion(sportId));
+    const { rows: [club] } = await db.query<{ id: string }>(
+      `INSERT INTO clubs (sport_id, canonical_name, slug) VALUES ($1, 'CHP Aluche', 'chp-aluche') RETURNING id`, [sportId]);
+    await enqueueResolution({
+      rawText: 'CHP ALUCHE B', normalized: 'chp aluche b', sourceId, candidates: [],
+      context: { seasonId, gender: 'male', ageCategory: 'infantil' },
+    });
+    const id = await idDe('chp aluche b');
+
+    const res = await createTeamForQueueItem(id, { clubId: club!.id }, 'human:test');
+    expect(res).toMatchObject({ id, slug: 'chp-aluche-b' });
+    const { rows: [t] } = await db.query<{ name: string; gender: string; age_category: string; squad_level: number; club_id: string }>(
+      `SELECT name, gender, age_category, squad_level, club_id FROM teams WHERE id = $1`, [res!.teamId]);
+    expect(t).toEqual({ name: 'CHP ALUCHE B', gender: 'male', age_category: 'infantil', squad_level: 2, club_id: club!.id });
+    const st = await db.query(`SELECT 1 FROM season_teams WHERE season_id = $1 AND team_id = $2`, [seasonId, res!.teamId]);
+    expect(st.rowCount).toBe(1);
+    expect(await findTeamByNormalizedAlias('chp aluche b', sourceId)).toBe(res!.teamId);
+    expect(await createTeamForQueueItem(id)).toBeNull();
   });
 
   it('resolver marca resuelto, aprende el alias y es idempotente', async () => {

@@ -92,6 +92,36 @@ export function AdminTeams({ token, onError }: { token: string; onError: (m: str
     }
   }, [token, onError]);
 
+  // Fusión: el equipo de la fila desaparece dentro del que se indique. Primero
+  // en seco para enseñar qué se mueve; la API se niega si son de secciones
+  // distintas o si se han enfrentado.
+  const merge = useCallback(async (team: TeamRow) => {
+    const into = window.prompt(`Fusionar «${team.name}» en otro equipo.\n\nId del equipo que se QUEDA (cópialo de su fila):`, '');
+    if (!into?.trim()) return;
+    setBusy(team.id);
+    try {
+      const call = async (dryRun: boolean) => {
+        const res = await fetch(`${API_URL}/admin/teams/${team.id}/merge`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
+          body: JSON.stringify({ into: into.trim(), dryRun }),
+        });
+        const body = await res.json() as { keep?: { name: string }; moved?: Record<string, number>; error?: string };
+        if (!res.ok) throw new Error(body.error ?? `Error ${res.status}`);
+        return body;
+      };
+      const preview = await call(true);
+      const moved = Object.entries(preview.moved ?? {}).filter(([, n]) => n > 0).map(([k, n]) => `${k}: ${n}`).join(', ');
+      if (!window.confirm(`«${team.name}» pasará a «${preview.keep?.name}» y su URL redirigirá.\n\nSe mueve: ${moved || 'nada'}\n\nNo se puede deshacer desde aquí. ¿Seguir?`)) return;
+      await call(false);
+      setTeams((current) => current.filter((t) => t.id !== team.id));
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setBusy(null);
+    }
+  }, [token, onError]);
+
   return (
     <div className="space-y-4">
       <input
@@ -124,6 +154,9 @@ export function AdminTeams({ token, onError }: { token: string; onError: (m: str
                   </p>
                   <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500 truncate">
                     {team.name}
+                  </p>
+                  <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500 select-all truncate">
+                    {team.id}
                   </p>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400">
                     {sectionText(team)}
@@ -174,6 +207,15 @@ export function AdminTeams({ token, onError }: { token: string; onError: (m: str
                                hover:text-red-500 disabled:opacity-40"
                   >
                     Restablecer
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy === team.id}
+                    onClick={() => void merge(team)}
+                    className="min-h-[44px] px-3 rounded-xl text-xs font-semibold text-slate-500 dark:text-slate-400
+                               hover:text-blue-600 disabled:opacity-40"
+                  >
+                    Fusionar en…
                   </button>
                 </div>
               </div>

@@ -115,6 +115,17 @@ describe('B1 — revisión de candidatos', () => {
     await expect(findPlayerIdBySourceRef('fecapa_player_14782')).resolves.toBe(vieja);
   });
 
+  it('aceptar conserva la ficha RFEP aunque la autonómica sea más antigua', async () => {
+    const sportId = await crearDeporte();
+    const fecapa = await jugador(sportId, 'MARTÍ', 'SERRA MOLIST', 'fecapa_player_14782');
+    await db.query(`UPDATE players SET created_at = NOW() - INTERVAL '1 day' WHERE id = $1`, [fecapa]);
+    const rfep = await jugador(sportId, 'MARTÍ', 'SERRA MOLIST', 'fep_player_4095');
+    await generatePlayerLinkCandidates();
+    const [c] = await listPlayerLinkCandidates('pending');
+    await expect(acceptPlayerLinkCandidate(c!.id, 'human:admin')).resolves.toEqual({ keepId: rfep, absorbedId: fecapa });
+    await expect(findPlayerIdBySourceRef('fecapa_player_14782')).resolves.toBe(rfep);
+  });
+
   it('rechazar prohíbe el par: no se vuelve a proponer', async () => {
     const sportId = await crearDeporte();
     await jugador(sportId, 'JUAN', 'PEREZ GARCIA', 'fep_player_1');

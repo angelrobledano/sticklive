@@ -6,7 +6,7 @@
  * Tras separar las refs por portal (A1), un mismo jugador puede tener una ficha
  * por federación (Martí Serra Molist: RFEP, FECAPA y World Skate). La API
  * propone parejas con el mismo nombre en portales distintos; aquí una persona
- * decide. Unir conserva la ficha más antigua, mueve plantillas, alineaciones,
+ * decide. Unir conserva la ficha de la RFEP (o la más antigua si ninguna o ambas lo son), mueve plantillas, alineaciones,
  * eventos y favoritos, y la otra redirige (308). Separar prohíbe el par para
  * siempre. Mismo token y sessionStorage que /admin y /admin/resolucion.
  */
@@ -204,7 +204,7 @@ export default function JugadoresPage() {
       </div>
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        Fichas con el mismo nombre en federaciones distintas. Unir conserva la ficha más antigua, le pasa
+        Fichas con el mismo nombre en federaciones distintas. Unir conserva la ficha de la RFEP (o la más antigua si ninguna o ambas lo son), le pasa
         plantillas, partidos y favoritos, y la otra redirige. Separar evita que el par vuelva a proponerse.
         Ante la duda, abre las dos fichas.
       </p>
