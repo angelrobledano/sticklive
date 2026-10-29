@@ -3,7 +3,7 @@
  * independiente (p. ej. «HC ALPICAT» sin letra, que puede ser el B o el C).
  */
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
-import { db, closeDb, setTeamClub, SetTeamClubError } from '@sports/db';
+import { db, closeDb, setTeamClub, SetTeamClubError, setTeamSection } from '@sports/db';
 import { limpiar } from './support/db.js';
 import { crearDeporte, crearEquipo } from './support/factorias.js';
 
@@ -39,5 +39,18 @@ describe('setTeamClub', () => {
     const equipo = await crearEquipo(hockey, 'X');
     await expect(setTeamClub(equipo, await club(otroDeporte, 'ajeno'))).rejects.toBeInstanceOf(SetTeamClubError);
     await expect(setTeamClub('00000000-0000-0000-0000-000000000000', null)).rejects.toBeInstanceOf(SetTeamClubError);
+  });
+});
+
+describe('setTeamSection', () => {
+  it('completa género, categoría y plantilla de un equipo creado sin sección', async () => {
+    const sportId = await crearDeporte();
+    const t = await crearEquipo(sportId, 'ROTOTANK CHP BIGUES I RIELLS B');
+    await expect(setTeamSection(t, { gender: 'male', ageCategory: 'prebenjamin', squadLevel: 2 }))
+      .resolves.toEqual({ teamId: t, gender: 'male', ageCategory: 'prebenjamin', squadLevel: 2 });
+    const { rows: [r] } = await db.query(`SELECT gender, age_category, squad_level FROM teams WHERE id = $1`, [t]);
+    expect(r).toEqual({ gender: 'male', age_category: 'prebenjamin', squad_level: 2 });
+    await expect(setTeamSection('00000000-0000-0000-0000-000000000000', { gender: null, ageCategory: null, squadLevel: 1 }))
+      .rejects.toBeInstanceOf(SetTeamClubError);
   });
 });

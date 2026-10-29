@@ -485,7 +485,10 @@ async function main() {
         normalized: normalizeTeamName(t.name),
         sourceId,
         sourceRef: t.ref,
-        context: { sportId, from: 'seed-fep-competition' },
+        // Sección y temporada de origen: sin ellas el panel no puede elegir
+        // entre equipos homónimos de distintas categorías ni crear el equipo
+        // en la sección correcta.
+        context: { sportId, from: 'seed-fep-competition', seasonId: season.id, gender: GENDER, ageCategory: AGE },
         candidates: f.candidatos,
       }).catch(() => {});
       pending++;

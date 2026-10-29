@@ -45,16 +45,18 @@ export function AdminTeams({ token, onError }: { token: string; onError: (m: str
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [query, setQuery] = useState('');
   const [orphans, setOrphans] = useState(false);
+  const [noSection, setNoSection] = useState(false);
+  const [sectionDraft, setSectionDraft] = useState<Record<string, { gender: string; ageCategory: string; squadLevel: number }>>({});
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const requestId = useRef(0);
 
-  const load = useCallback(async (q: string, onlyOrphans: boolean) => {
+  const load = useCallback(async (q: string, onlyOrphans: boolean, onlyNoSection: boolean) => {
     const id = ++requestId.current;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/admin/teams?q=${encodeURIComponent(q)}${onlyOrphans ? '&orphans=1' : ''}`, {
+      const res = await fetch(`${API_URL}/admin/teams?q=${encodeURIComponent(q)}${onlyOrphans ? '&orphans=1' : ''}${onlyNoSection ? '&nosection=1' : ''}`, {
         headers: { 'X-Admin-Token': token },
       });
       if (!res.ok) throw new Error(`Error ${res.status}`);
@@ -70,9 +72,9 @@ export function AdminTeams({ token, onError }: { token: string; onError: (m: str
   }, [token, onError]);
 
   useEffect(() => {
-    const id = setTimeout(() => { void load(query, orphans); }, 250);
+    const id = setTimeout(() => { void load(query, orphans, noSection); }, 250);
     return () => clearTimeout(id);
-  }, [query, orphans, load]);
+  }, [query, orphans, noSection, load]);
 
   const save = useCallback(async (team: TeamRow, value: string | null) => {
     setBusy(team.id);
@@ -93,6 +95,30 @@ export function AdminTeams({ token, onError }: { token: string; onError: (m: str
       setBusy(null);
     }
   }, [token, onError]);
+
+  // Sección: género, categoría y plantilla (para equipos creados sin contexto).
+  const saveSection = useCallback(async (team: TeamRow) => {
+    const d = sectionDraft[team.id];
+    if (!d) return;
+    setBusy(team.id);
+    try {
+      const res = await fetch(`${API_URL}/admin/teams/${team.id}/section`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
+        body: JSON.stringify({ gender: d.gender || null, ageCategory: d.ageCategory || null, squadLevel: d.squadLevel }),
+      });
+      const body = await res.json() as { gender?: string | null; ageCategory?: string | null; squadLevel?: number; error?: string };
+      if (!res.ok) throw new Error(body.error ?? `Error ${res.status}`);
+      setTeams((current) => current
+        .map((t) => (t.id === team.id ? { ...t, gender: body.gender ?? null, ageCategory: body.ageCategory ?? null, squadLevel: body.squadLevel ?? 1 } : t))
+        .filter((t) => !noSection || !t.gender || !t.ageCategory));
+      setSectionDraft((current) => { const next = { ...current }; delete next[team.id]; return next; });
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setBusy(null);
+    }
+  }, [token, onError, sectionDraft, noSection]);
 
   // Club: cuelga el equipo de un club sin fusionarlo (plantillas B/C, huérfanos).
   const setClub = useCallback(async (team: TeamRow) => {
@@ -167,6 +193,10 @@ export function AdminTeams({ token, onError }: { token: string; onError: (m: str
       <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
         <input type="checkbox" checked={orphans} onChange={(e) => setOrphans(e.target.checked)} />
         Solo equipos sin club
+      </label>
+      <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+        <input type="checkbox" checked={noSection} onChange={(e) => setNoSection(e.target.checked)} />
+        Solo equipos sin género o categoría
       </label>
 
       <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -260,8 +290,68 @@ export function AdminTeams({ token, onError }: { token: string; onError: (m: str
                   >
                     Club…
                   </button>
+                  <button
+                    type="button"
+                    disabled={busy === team.id}
+                    onClick={() => setSectionDraft((current) => ({
+                      ...current,
+                      [team.id]: { gender: team.gender ?? '', ageCategory: team.ageCategory ?? '', squadLevel: team.squadLevel ?? 1 },
+                    }))}
+                    className="min-h-[44px] px-3 rounded-xl text-xs font-semibold text-slate-500 dark:text-slate-400
+                               hover:text-blue-600 disabled:opacity-40"
+                  >
+                    Sección…
+                  </button>
                 </div>
               </div>
+              {sectionDraft[team.id] && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    aria-label={`Género de ${team.name}`}
+                    value={sectionDraft[team.id]!.gender}
+                    onChange={(e) => setSectionDraft((c) => ({ ...c, [team.id]: { ...c[team.id]!, gender: e.target.value } }))}
+                    className="min-h-[40px] px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                  >
+                    <option value="">Género ?</option>
+                    <option value="male">Masculino</option>
+                    <option value="female">Femenino</option>
+                    <option value="mixed">Mixto</option>
+                  </select>
+                  <select
+                    aria-label={`Categoría de ${team.name}`}
+                    value={sectionDraft[team.id]!.ageCategory}
+                    onChange={(e) => setSectionDraft((c) => ({ ...c, [team.id]: { ...c[team.id]!, ageCategory: e.target.value } }))}
+                    className="min-h-[40px] px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                  >
+                    <option value="">Categoría ?</option>
+                    {['senior', 'sub23', 'junior', 'juvenil', 'sub17', 'infantil', 'sub15', 'alevin', 'benjamin', 'prebenjamin', 'veteranos', 'base']
+                      .map((a) => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                  <select
+                    aria-label={`Plantilla de ${team.name}`}
+                    value={sectionDraft[team.id]!.squadLevel}
+                    onChange={(e) => setSectionDraft((c) => ({ ...c, [team.id]: { ...c[team.id]!, squadLevel: Number(e.target.value) } }))}
+                    className="min-h-[40px] px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                  >
+                    {'ABCDEFGH'.split('').map((l, i) => <option key={l} value={i + 1}>Plantilla {l}</option>)}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={busy === team.id}
+                    onClick={() => void saveSection(team)}
+                    className="min-h-[40px] px-3 rounded-lg text-xs font-semibold text-white bg-rink-passion disabled:opacity-40"
+                  >
+                    Guardar sección
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSectionDraft((c) => { const n = { ...c }; delete n[team.id]; return n; })}
+                    className="min-h-[40px] px-2 text-xs text-slate-500"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}

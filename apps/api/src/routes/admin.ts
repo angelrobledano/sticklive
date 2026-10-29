@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
-import { db, withTransaction, mergeClubs, findClubIdBySlug, MergeClubsError, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, createTeamForQueueItem, CreateQueueTeamError, mergeTeams, setTeamClub, SetTeamClubError, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, setCompetitionRanking, listFederationsAdmin, listOrphanOrganizers, upsertFederation, type DataQuality, type FederationLevel } from '@sports/db';
+import { db, withTransaction, mergeClubs, findClubIdBySlug, MergeClubsError, archiveCompetition, restoreCompetition, mergeCompetitions, findDuplicateCandidates, listArchivedCompetitions, listResolutionQueue, resolveQueueItem, createTeamForQueueItem, CreateQueueTeamError, mergeTeams, setTeamClub, SetTeamClubError, setTeamSection, TEAM_GENDERS, TEAM_AGE_CATEGORIES, rejectQueueItem, getResolutionStats, listPlayerLinkCandidates, listCrestReviewGroups, describeTeams, generatePlayerLinkCandidates, acceptPlayerLinkCandidate, rejectPlayerLinkCandidate, getStandingsZones, replaceStandingsZones, copyStandingsZones, listCompetitionsForQuality, setCompetitionQuality, listSeasonsForQuality, setSeasonQuality, setCompetitionRanking, listFederationsAdmin, listOrphanOrganizers, upsertFederation, type DataQuality, type FederationLevel } from '@sports/db';
 import { logger } from '@sports/logger';
 import type { StandingsZone } from '@sports/shared-types';
 import { isUuid } from '../lib/uuid.js';
@@ -163,6 +163,7 @@ function hasControlChars(value: string): boolean {
 adminRouter.get('/teams', async (c) => {
   const q = (c.req.query('q') ?? '').trim();
   const orphans = c.req.query('orphans') === '1';
+  const noSection = c.req.query('nosection') === '1';
   if (q.length > MAX_TEAM_QUERY) {
     return c.json({ error: `q must be at most ${MAX_TEAM_QUERY} characters` }, 400);
   }
@@ -177,9 +178,10 @@ adminRouter.get('/teams', async (c) => {
           OR t.name ILIKE '%' || $1 || '%'
           OR COALESCE(t.display_name, '') ILIKE '%' || $1 || '%')
          AND (NOT $2 OR (t.club_id IS NULL AND t.team_type = 'club'))
+         AND (NOT $3 OR t.gender IS NULL OR t.age_category IS NULL)
        ORDER BY COALESCE(t.display_name, t.name) ASC
        LIMIT 100
-    `, [q, orphans]);
+    `, [q, orphans, noSection]);
 
     return c.json({
       count: result.rows.length,
@@ -391,6 +393,42 @@ adminRouter.post('/clubs/:id/merge', async (c) => {
     }
     captureRouteError(err, 'admin] club merge error');
     logger.error({ err }, '[admin] club merge error');
+    return c.json({ error: 'Database error' }, 500);
+  }
+});
+
+/**
+ * PATCH /admin/teams/:id/section  { gender, ageCategory, squadLevel }
+ * Corrige género, categoría y nivel de plantilla (1 = A, 2 = B…). null en
+ * género o categoría = desconocido.
+ */
+adminRouter.patch('/teams/:id/section', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return c.json({ error: 'Team not found' }, 404);
+  const body = await c.req.json().catch(() => null) as { gender?: unknown; ageCategory?: unknown; squadLevel?: unknown } | null;
+  if (!body) return c.json({ error: 'Body required' }, 400);
+  const gender = body.gender ?? null;
+  const ageCategory = body.ageCategory ?? null;
+  const squadLevel = body.squadLevel ?? 1;
+  if (gender !== null && !(TEAM_GENDERS as readonly unknown[]).includes(gender)) {
+    return c.json({ error: `gender debe ser ${TEAM_GENDERS.join(', ')} o null` }, 400);
+  }
+  if (ageCategory !== null && !(TEAM_AGE_CATEGORIES as readonly unknown[]).includes(ageCategory)) {
+    return c.json({ error: `ageCategory debe ser ${TEAM_AGE_CATEGORIES.join(', ')} o null` }, 400);
+  }
+  if (typeof squadLevel !== 'number' || !Number.isInteger(squadLevel) || squadLevel < 1 || squadLevel > 8) {
+    return c.json({ error: 'squadLevel debe ser un entero de 1 (A) a 8 (H)' }, 400);
+  }
+  try {
+    return c.json({ ok: true, ...(await setTeamSection(id, {
+      gender: gender as (typeof TEAM_GENDERS)[number] | null,
+      ageCategory: ageCategory as (typeof TEAM_AGE_CATEGORIES)[number] | null,
+      squadLevel,
+    })) });
+  } catch (err) {
+    if (err instanceof SetTeamClubError) return c.json({ error: err.message }, 404);
+    captureRouteError(err, 'admin] team section error');
+    logger.error({ err }, '[admin] team section error');
     return c.json({ error: 'Database error' }, 500);
   }
 });

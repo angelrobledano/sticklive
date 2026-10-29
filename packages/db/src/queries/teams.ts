@@ -225,3 +225,30 @@ export async function setTeamClub(
   await db.query(`UPDATE teams SET club_id = $2, updated_at = NOW() WHERE id = $1`, [teamId, clubId]);
   return { teamId, club };
 }
+
+export const TEAM_GENDERS = ['male', 'female', 'mixed'] as const;
+export const TEAM_AGE_CATEGORIES = [
+  'senior', 'sub23', 'junior', 'juvenil', 'sub17', 'infantil', 'sub15', 'alevin', 'benjamin', 'prebenjamin', 'veteranos', 'base',
+] as const;
+
+export interface TeamSection {
+  gender: (typeof TEAM_GENDERS)[number] | null;
+  ageCategory: (typeof TEAM_AGE_CATEGORIES)[number] | null;
+  squadLevel: number;
+}
+
+/**
+ * Corrige la sección de un equipo (género, categoría y plantilla A=1, B=2…).
+ * Para los equipos creados desde la cola sin contexto, que nacen sin sección.
+ * No mueve partidos ni plantillas: solo describe mejor el equipo.
+ */
+export async function setTeamSection(teamId: string, section: TeamSection): Promise<TeamSection & { teamId: string }> {
+  const r = await db.query<{ gender: TeamSection['gender']; age_category: TeamSection['ageCategory']; squad_level: number }>(
+    `UPDATE teams SET gender = $2, age_category = $3, squad_level = $4, updated_at = NOW()
+      WHERE id = $1 RETURNING gender, age_category, squad_level`,
+    [teamId, section.gender, section.ageCategory, section.squadLevel],
+  );
+  const row = r.rows[0];
+  if (!row) throw new SetTeamClubError('No existe ese equipo', 'not_found');
+  return { teamId, gender: row.gender, ageCategory: row.age_category, squadLevel: row.squad_level };
+}
