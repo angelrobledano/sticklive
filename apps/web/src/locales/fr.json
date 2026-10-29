@@ -781,7 +781,13 @@
     "hub_count": "{n} compétitions",
     "official_site": "Site officiel",
     "no_fav_leagues_title": "Vous n'avez pas encore de ligues favorites",
-    "no_fav_leagues_hint": "Appuyez sur l'étoile d'une compétition pour l'enregistrer ici."
+    "no_fav_leagues_hint": "Appuyez sur l'étoile d'une compétition pour l'enregistrer ici.",
+    "section_main": "Principales",
+    "section_cups_now": "Coupes et tournois",
+    "section_second": "Autres championnats nationaux",
+    "live_n": "{n} en cours",
+    "next_on": "Prochain : {d}",
+    "last_on": "Dernier : {d}"
   },
   "premium": {
     "title": "Premium",

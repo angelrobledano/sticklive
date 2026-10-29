@@ -781,7 +781,13 @@
     "hub_count": "{n} competitions",
     "official_site": "Official website",
     "no_fav_leagues_title": "You don't have favourite leagues yet",
-    "no_fav_leagues_hint": "Tap the star on any competition to save it here."
+    "no_fav_leagues_hint": "Tap the star on any competition to save it here.",
+    "section_main": "Top leagues",
+    "section_cups_now": "Cups and tournaments",
+    "section_second": "More national leagues",
+    "live_n": "{n} live",
+    "next_on": "Next: {d}",
+    "last_on": "Last: {d}"
   },
   "premium": {
     "title": "Premium",

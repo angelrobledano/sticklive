@@ -781,7 +781,13 @@
     "hub_count": "{n} competizioni",
     "official_site": "Sito ufficiale",
     "no_fav_leagues_title": "Non hai ancora leghe preferite",
-    "no_fav_leagues_hint": "Tocca la stella su una competizione per salvarla qui."
+    "no_fav_leagues_hint": "Tocca la stella su una competizione per salvarla qui.",
+    "section_main": "Principali",
+    "section_cups_now": "Coppe e tornei",
+    "section_second": "Altri campionati nazionali",
+    "live_n": "{n} in corso",
+    "next_on": "Prossima: {d}",
+    "last_on": "Ultima: {d}"
   },
   "premium": {
     "title": "Premium",

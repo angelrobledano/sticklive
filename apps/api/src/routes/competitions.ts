@@ -38,6 +38,10 @@ interface CompetitionRow {
   season_is_current: boolean | null;
   team_count: string | null;
   match_count: string | null;
+  first_match_at: Date | string | null;
+  last_match_at: Date | string | null;
+  next_match_at: Date | string | null;
+  live_matches: number | null;
 }
 
 /**
@@ -81,7 +85,11 @@ competitionsRouter.get('/', async (c) => {
         GROUP BY st.season_id
       ),
       match_counts AS (
-        SELECT m.season_id, COUNT(*)::text AS c
+        SELECT m.season_id, COUNT(*)::text AS c,
+          MIN(m.scheduled_at) AS first_at,
+          MAX(m.scheduled_at) AS last_at,
+          MIN(m.scheduled_at) FILTER (WHERE m.status = 'scheduled' AND m.scheduled_at >= NOW()) AS next_at,
+          COUNT(*) FILTER (WHERE m.status IN ('live', 'halftime', 'overtime', 'penalty_shootout'))::int AS live
         FROM matches m
         WHERE m.season_id IN (SELECT season_id FROM picked)
         GROUP BY m.season_id
@@ -100,7 +108,9 @@ competitionsRouter.get('/', async (c) => {
         s.end_date   AS season_end,
         s.is_current AS season_is_current,
         COALESCE(tc.c, '0') AS team_count,
-        COALESCE(mc.c, '0') AS match_count
+        COALESCE(mc.c, '0') AS match_count,
+        mc.first_at AS first_match_at, mc.last_at AS last_match_at, mc.next_at AS next_match_at,
+        COALESCE(mc.live, 0) AS live_matches
       FROM picked p
       JOIN competitions comp ON comp.id = p.comp_id
       JOIN seasons s ON s.id = p.season_id
@@ -145,6 +155,12 @@ competitionsRouter.get('/', async (c) => {
         isCurrent:  r.season_is_current ?? false,
         teamCount:  Number(r.team_count ?? 0),
         matchCount: Number(r.match_count ?? 0),
+        // Calendario de la temporada: la pantalla de competiciones destaca
+        // una copa solo cerca de sus fechas y marca las que están en juego.
+        firstMatchAt: r.first_match_at ?? null,
+        lastMatchAt:  r.last_match_at ?? null,
+        nextMatchAt:  r.next_match_at ?? null,
+        liveMatches:  Number(r.live_matches ?? 0),
       } : null,
     }));
 

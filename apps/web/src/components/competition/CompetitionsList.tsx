@@ -14,10 +14,11 @@ import { tt } from '@/components/search/translate';
 import { useFavorites } from '@/hooks/useFavorites';
 import { currentSeasonYear, hasSeasonYear, orderByImportance } from '@/lib/competition-importance';
 import {
-  buildCompetitionTree, countryHubPath, federationHubPath, featuredCompetitions, filterByGender,
+  buildCompetitionTree, countryHubPath, federationHubPath, filterByGender,
   type CountrySections, type GenderFilter,
 } from '@/lib/competition-groups';
 import { competitionPath } from '@/lib/competition-path';
+import { FeaturedCompetitions } from './FeaturedCompetitions';
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -149,6 +150,7 @@ export function CompetitionRow({
   onToggleFav,
   locale,
   onSelect,
+  status = null,
 }: {
   comp: CompetitionSummary;
   isFav: boolean;
@@ -156,6 +158,8 @@ export function CompetitionRow({
   locale: string;
   /** Click de navegación al detalle (instrumentado en modo búsqueda, #240). */
   onSelect?: () => void;
+  /** Estado corto (en juego, próximo partido) delante de los metadatos. */
+  status?: { text: string; live: boolean } | null;
 }) {
   const { t } = useT();
 
@@ -218,8 +222,15 @@ export function CompetitionRow({
           <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate leading-snug">
             {clubName(competitionName(comp.name, comp.nameI18n, locale))}
           </p>
-          {meta && (
+          {(meta || status) && (
             <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 leading-none">
+              {status && (
+                <span className={`font-semibold ${status.live ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                  {status.live && <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 align-middle animate-pulse" aria-hidden="true" />}
+                  {status.text}
+                </span>
+              )}
+              {status && meta ? ' · ' : ''}
               {meta}
             </p>
           )}
@@ -538,8 +549,6 @@ export function CompetitionsList({
   // 3) Datos por tab
   const visible = useMemo(() => filterByGender(searched, gender), [searched, gender]);
 
-  const destacadas = useMemo(() => featuredCompetitions(visible, locale), [visible, locale]);
-
   const misLigas = useMemo(
     () => orderByImportance(searched.filter((c) => favorites.has(c.id)), locale),
     [searched, favorites, locale],
@@ -808,15 +817,10 @@ export function CompetitionsList({
           )
         )}
 
-        {/* Tab: Destacadas (curación en BD: featured_rank, migración 089) */}
+        {/* Tab: Destacadas — principales fijas, copas cerca de sus fechas y
+            segundo nivel por país (spec 2026-10-29, lib/competitions-home). */}
         {!isSearching && tab === 'destacadas' && (
-          <FlatList
-            comps={destacadas}
-            favorites={favorites}
-            onToggleFav={toggleFav}
-            locale={locale}
-            emptyKey="common.no_search_results"
-          />
+          <FeaturedCompetitions comps={visible} favorites={favorites} onToggleFav={toggleFav} />
         )}
 
         {/* Tab: Países — internacional + árbol país → federación */}

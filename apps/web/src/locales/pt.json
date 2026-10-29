@@ -781,7 +781,13 @@
     "hub_count": "{n} competições",
     "official_site": "Site oficial",
     "no_fav_leagues_title": "Ainda não tens ligas favoritas",
-    "no_fav_leagues_hint": "Toca a estrela em qualquer competição para a guardar aqui."
+    "no_fav_leagues_hint": "Toca a estrela em qualquer competição para a guardar aqui.",
+    "section_main": "Principais",
+    "section_cups_now": "Taças e torneios",
+    "section_second": "Mais ligas nacionais",
+    "live_n": "{n} a decorrer",
+    "next_on": "Próximo: {d}",
+    "last_on": "Último: {d}"
   },
   "premium": {
     "title": "Premium",

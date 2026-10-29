@@ -177,6 +177,26 @@ describe('GET /competitions — filtrado por calidad', () => {
   });
 });
 
+describe('GET /competitions — calendario de la temporada', () => {
+  it('primer, último y próximo partido y cuántos hay en juego (las copas se destacan solas)', async () => {
+    const compId = await crearCompeticion(sportId);
+    const seasonId = await crearTemporada(compId);
+    await crearPartido({ seasonId, status: 'finished', horasDesdeInicio: 48 });
+    await crearPartido({ seasonId, status: 'live', horasDesdeInicio: 1 });
+    await crearPartido({ seasonId, status: 'scheduled', horasDesdeInicio: -24 });
+    await crearPartido({ seasonId, status: 'scheduled', horasDesdeInicio: -72 });
+
+    const res = await get(competitionsRouter, '/');
+    const body = res.body as { competitions: Array<{ id: string; season: Record<string, unknown> | null }> };
+    const s = body.competitions.find((c) => c.id === compId)!.season!;
+    const h = (iso: unknown) => (new Date(String(iso)).getTime() - Date.now()) / 3_600_000;
+    expect(Math.round(h(s['firstMatchAt']))).toBe(-48);
+    expect(Math.round(h(s['lastMatchAt']))).toBe(72);
+    expect(Math.round(h(s['nextMatchAt']))).toBe(24);
+    expect(s['liveMatches']).toBe(1);
+  });
+});
+
 describe('endpoints de temporada — visibilidad', () => {
   it('404 en overview/stats/standings/matches cuando la temporada está oculta', async () => {
     const compId = await crearCompeticion(sportId);

@@ -266,6 +266,11 @@ export interface CompetitionSummary {
     isCurrent: boolean;
     teamCount: number;
     matchCount: number;
+    /** Calendario de la temporada (API ≥ 2026-10-29; ausente en payloads antiguos). */
+    firstMatchAt?: string | null;
+    lastMatchAt?: string | null;
+    nextMatchAt?: string | null;
+    liveMatches?: number;
   } | null;
 }
 

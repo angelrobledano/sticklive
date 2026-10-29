@@ -781,7 +781,13 @@
     "hub_count": "{n} competicions",
     "official_site": "Web oficial",
     "no_fav_leagues_title": "Encara no tens lligues favorites",
-    "no_fav_leagues_hint": "Prem l'estrella en qualsevol competició per desar-la aquí."
+    "no_fav_leagues_hint": "Prem l'estrella en qualsevol competició per desar-la aquí.",
+    "section_main": "Principals",
+    "section_cups_now": "Copes i tornejos",
+    "section_second": "Més lligues nacionals",
+    "live_n": "{n} en joc",
+    "next_on": "Proper: {d}",
+    "last_on": "Últim: {d}"
   },
   "premium": {
     "title": "Premium",
