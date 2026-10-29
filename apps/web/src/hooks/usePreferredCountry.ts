@@ -7,6 +7,8 @@ import { isCountryCode, suggestCountry } from '@/lib/country-pref';
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 const KEY = 'sl_country';
 const EVENT = 'sl-country-changed';
+/** «Todos los países» elegido a propósito: no debe caer a la sugerencia. */
+export const ALL_COUNTRIES = 'ALL';
 
 /** Países con competiciones hoy. Se amplía al añadir países (no condiciona nada más). */
 export const HOME_COUNTRIES = ['ES', 'PT', 'IT'] as const;
@@ -19,11 +21,21 @@ export interface PreferredCountry {
   setCountry: (c: string | null) => void;
 }
 
-function readChosen(): string | null {
+/**
+ * Elección guardada: código de país, `ALL_COUNTRIES` si eligió «Todos los
+ * países», o null si nunca eligió (entonces se sugiere por el navegador).
+ */
+export function readChosen(): string | null {
   try {
     const v = localStorage.getItem(KEY);
-    return isCountryCode(v) ? v : null;
+    return v === ALL_COUNTRIES || isCountryCode(v) ? v : null;
   } catch { return null; }
+}
+
+/** País efectivo: «Todos» elegido gana a la sugerencia del navegador. */
+export function resolveCountry(chosen: string | null, suggested: string | null): string | null {
+  if (chosen === ALL_COUNTRIES) return null;
+  return chosen ?? suggested;
 }
 
 /**
@@ -63,7 +75,7 @@ export function usePreferredCountry(): PreferredCountry {
 
   const setCountry = useCallback((c: string | null) => {
     try {
-      if (c && isCountryCode(c)) localStorage.setItem(KEY, c); else localStorage.removeItem(KEY);
+      localStorage.setItem(KEY, c && isCountryCode(c) ? c : ALL_COUNTRIES);
       window.dispatchEvent(new Event(EVENT));
     } catch { /* noop */ }
     const session = getSession();
@@ -76,5 +88,5 @@ export function usePreferredCountry(): PreferredCountry {
     }
   }, []);
 
-  return { country: chosen ?? suggested, chosen: chosen !== null, setCountry };
+  return { country: resolveCountry(chosen, suggested), chosen: chosen !== null, setCountry };
 }
