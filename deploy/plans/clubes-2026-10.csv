@@ -1,0 +1,195 @@
+﻿accion;slug;destino;nombre;nuevo_slug
+fusionar;ac-ordes;acordes;;
+fusionar;barca-fecapa-club-234;barca;;
+fusionar;bembibre-hockey-club;bembibre-hc;;
+fusionar;c-d-urdaneta;cd-urdaneta;;
+fusionar;c-p-burgos;cp-burgos;;
+fusionar;calvo-escola-lubians;allknow-escola-lubians;;
+fusionar;ce-noia-freixenet-fecapa-club-269;ce-noia-freixenet;;
+fusionar;ch-caldes-recam-laser-fecapa-club-237;ch-caldes-recam-laser;;
+fusionar;ch-compostela-fgp-club-145;ch-compostela;;
+fusionar;ch-olot;b-sensible-ch-olot;;
+fusionar;club-esports-vendrell;club-d-esports-vendrell;;
+fusionar;club-hockey-oleiros-fgp-club-257;club-hockey-oleiros;;
+fusionar;club-pati-calafell;calafell-la-menorquina;;
+fusionar;club-pati-tordera-fecapa-club-297;club-pati-tordera;;
+fusionar;club-pati-vila-sana;cp-vila-sana-coop-d-ivars;;
+fusionar;club-patin-esneca-fraga;cp-esneca-fraga;;
+fusionar;cp-alcala;club-patin-alcala-hockey;;
+fusionar;cp-alcobendas;club-patin-alcobendas;;
+fusionar;cp-alcorcon;club-patin-alcorcon;;
+fusionar;cp-las-rozas;club-patin-las-rozas;;
+fusionar;cp-taradell-fecapa-club-295;cp-taradell;;
+fusionar;cpp-raspeig;club-promocion-patin-raspeig;;
+fusionar;digittecnic-cpv-capital-del-vi;ametller-origen-cp-vilafranca;;
+fusionar;dominicos;caa-dominicos;;
+fusionar;dp-berenguela-axiltec-fgp-club-258;dp-berenguela-axiltec;;
+fusionar;gatikako-iusturi-fvp-club-00000000-0000-4000-0000-000000000062;gatikako-iusturi;;
+fusionar;geieg-fecapa-club-311;geieg;;
+fusionar;generali-hc-palau-fecapa-club-271;generali-hc-palau;;
+fusionar;gestas-de-espana-chp-aluche;chp-aluche-a-vitaldent;;
+fusionar;hc-cocentaina-fpcv-club-76;hc-cocentaina;;
+fusionar;hockey-club-borbolla;hc-borbolla;;
+fusionar;hockey-club-liceo-fgp-club-149;hockey-club-liceo;;
+fusionar;hoquei-club-alpicat;lleidanet-hc-alpicat;;
+fusionar;hoquei-club-ponteareas-fgp-club-382;hoquei-club-ponteareas;;
+fusionar;igualada-rigat-hc;igualada-hc;;
+fusionar;iman-serroukh-coslada-rh;coslada-rh-a;;
+fusionar;innoaesthetics-hc-sant-just-fecapa-club-288;innoaesthetics-hc-sant-just;;
+fusionar;irlandesas;cp-irlandesas;;
+fusionar;iruna-hockey;iruna-hc;;
+fusionar;iruna-hp;iruna-hc;;
+fusionar;laguna-negra;laguna-negra-hc;;
+fusionar;marineda-hockey-fgp-club-439;marineda-hockey;;
+fusionar;martinelia-manlleu-fecapa-club-259;martinelia-manlleu;;
+fusionar;oberena-autoescuela-indurain-fnp-club-322;oberena-autoescuela-indurain;;
+fusionar;oviedo-roller-hc-m;oviedo-roller-hc;;
+fusionar;pati-vic;auto-vigatana-pati-vic;;
+fusionar;pons-lleida;pons-lleida-bell-lloc;;
+fusionar;r-c-jolaseta;real-club-jolaseta;;
+fusionar;rototank-bigues-i-riells;orkla-bigues-i-riells;;
+fusionar;santutxu-ht;santutxu-hockey-taldea;;
+fusionar;shum-selvafil;shum-frit-ravich;;
+fusionar;sporting-alcoi-erum;sporting-alcoi-a;;
+fusionar;traviesas-hockey-club-fgp-club-154;traviesas-hockey-club;;
+fusionar;tres-cantos-castano-asociados;tres-cantos-pc;;
+fusionar;tudela-hockey;tudela-hc;;
+fusionar;vettonia-hc;cd-vettonia-hockey-a;;
+renombrar;a-academica-c;;Associação Académica de Coimbra;associacao-academica-de-coimbra
+renombrar;a-baraldi-modena-b;;A. Baraldi Modena;a-baraldi-modena
+renombrar;aacd-remax-mosteiro;;AACD Mosteiro;aacd-mosteiro
+renombrar;academico-fc-ribadouro;;Académico FC;academico-fc
+renombrar;acdcp-vila-boa-bispo;;ACDCP Vila Boa do Bispo;acdcp-vila-boa-do-bispo
+renombrar;ad-valongo-colquimica;;AD Valongo;ad-valongo
+renombrar;adiss-hockey-rivas;;Hockey Rivas;hockey-rivas
+renombrar;ae-fisica-d;;AE Física;ae-fisica
+renombrar;aitex-pas-alcoi;;PAS Alcoi;pas-alcoi
+renombrar;allknow-escola-lubians;;Escola Lubiáns;escola-lubians
+renombrar;ametller-origen-cp-vilafranca;;CP Vilafranca;cp-vilafranca
+renombrar;andbank-andorra-hoquei-club;;Andorra Hoquei Club;andorra-hoquei-club
+renombrar;area-juridica-global-cp-vilano;;CP Vilano;cp-vilano
+renombrar;auto-vigatana-pati-vic;;Patí Vic;pati-vic
+renombrar;b-sensible-ch-olot;;CH Olot;ch-olot
+renombrar;bcc-centropadana-lodi;;Amatori Lodi;amatori-lodi
+renombrar;bdl-minimotor-correggio;;Hockey Correggio;hockey-correggio
+renombrar;blue-factor-castiglione;;Hockey Castiglione;hockey-castiglione
+renombrar;calafell-la-menorquina;;CP Calafell;cp-calafell
+renombrar;cd-povoa-ap-motors;;CD Póvoa;cd-povoa
+renombrar;cd-vettonia-hockey-a;;CD Vettonia Hockey;cd-vettonia-hockey
+renombrar;ce-arenys-de-munt-solartradex;;CE Arenys de Munt;ce-arenys-de-munt
+renombrar;ce-noia-freixenet;;CE Noia;ce-noia
+renombrar;ce-torrelavit-font-packaging;;CE Torrelavit;ce-torrelavit
+renombrar;cerdanyola-club-dhoquei;;Cerdanyola Club d'Hoquei;cerdanyola-club-d-hoquei
+renombrar;ch-caldes-recam-laser;;CH Caldes;ch-caldes
+renombrar;ch-les-franqueses;;CH Les Franqueses;
+renombrar;ch-lloret-fitel-network;;CH Lloret;ch-lloret
+renombrar;ch-vila-seca-ceh-olimpic;;CH Vila-seca;ch-vila-seca
+renombrar;chp-aluche-a-vitaldent;;CHP Aluche;chp-aluche
+renombrar;chp-cajar-granada;;CHP Cájar Granada;
+renombrar;chp-el-comtat;;CHP El Comtat;
+renombrar;chp-mcdonald-s-amposta;;CHP Amposta;chp-amposta
+renombrar;club-hoquei-molins-de-rei;;Club Hoquei Molins de Rei;
+renombrar;club-hoquei-premia;;Club Hoquei Premià;
+renombrar;club-pati-breda-a;;Club Patí Breda;club-pati-breda
+renombrar;club-pati-cubelles;;Club Patí Cubelles;
+renombrar;club-pati-malgrat-grup-escobar;;Club Patí Malgrat;club-pati-malgrat
+renombrar;club-pati-monjos-pansalud;;Club Patí Monjos;club-pati-monjos
+renombrar;club-pati-tordera;;Club Patí Tordera;
+renombrar;club-pati-torrelles;;Club Patí Torrelles;
+renombrar;club-pati-voltrega-masies;;Club Patí Voltregà Masies;
+renombrar;club-patin-alcala-hockey;;Club Patín Alcalá Hockey;
+renombrar;club-patin-alcobendas;;Club Patín Alcobendas;
+renombrar;club-patin-alcorcon;;CP Alcorcón;cp-alcorcon
+renombrar;club-patin-alhambra-cajar;;Club Patín Alhambra Cájar;
+renombrar;club-patin-las-rozas;;Club Patín Las Rozas;
+renombrar;cn-reus-ploms-a;;CN Reus Ploms;cn-reus-ploms
+renombrar;cnc-service-recoaro;;Hockey Recoaro;hockey-recoaro
+renombrar;coslada-rh-a;;Coslada RH;coslada-rh
+renombrar;cp-caldes-a;;CP Caldes;cp-caldes
+renombrar;cp-congres-a;;CP Congrés;cp-congres
+renombrar;cp-congres-la-sagrera-es-mou;;CP Congrés La Sagrera;cp-congres-la-sagrera
+renombrar;cp-esneca-fraga;;CP Fraga;cp-fraga
+renombrar;cp-vila-sana-coop-d-ivars;;CP Vila-sana;cp-vila-sana
+renombrar;cp-voltrega-movento-stern;;CP Voltregà;cp-voltrega
+renombrar;cp-zendal-ordes;;CP Ordes;cp-ordes
+renombrar;criar-t-oleofluxo;;Criar-T;criar-t
+renombrar;crpf-lavra;;CRPF Lavra;
+renombrar;dp-berenguela-axiltec;;DP Berenguela;dp-berenguela
+renombrar;dyadema-roller-bassano;;Roller Bassano;roller-bassano
+renombrar;electro-ad-cp-masquefa;;CP Masquefa;cp-masquefa
+renombrar;escola-livre-a;;Escola Livre;escola-livre
+renombrar;eurofirms-cassanenc;;FD Cassanenc;fd-cassanenc
+renombrar;f-salesianos-aj-salesiana;;AJ Salesiana;aj-salesiana
+renombrar;gcc-os-corujas;;GCC Os Corujas;
+renombrar;generali-hc-palau;;HC Palau;hc-palau
+renombrar;harina-trad-zamorana-patinalon;;Patinalón Zamora;patinalon-zamora
+renombrar;hc-as-pontes-o-medulio;;HC As Pontes;hc-as-pontes
+renombrar;hc-braga-sad-spormex;;HC Braga;hc-braga
+renombrar;hc-os-tigres-work-permit;;HC Os Tigres;hc-os-tigres
+renombrar;hc-sintra-planta-livre;;HC Sintra;hc-sintra
+renombrar;hc-valls-intec-enginyeria;;HC Valls;hc-valls
+renombrar;hc-vasco-da-gama-j-ascencao;;HC Vasco da Gama;hc-vasco-da-gama
+renombrar;hc-villena-a;;HC Villena;hc-villena
+renombrar;hcm-gavicar;;HC Mealhada;hc-mealhada
+renombrar;hcpiera-b;;HC Piera;hc-piera
+renombrar;hcsentmenat;;HC Sentmenat;hc-sentmenat
+renombrar;hf-sant-josep-sant-sadurni-a;;HF Sant Josep Sant Sadurní;hf-sant-josep-sant-sadurni
+renombrar;hockey-bregnaze-1961;;Hockey Breganze;hockey-breganze
+renombrar;hockey-club-riazor-alevin;;Hockey Club Riazor;hockey-club-riazor
+renombrar;hoquei-club-el-pla;;Hoquei Club El Pla;
+renombrar;hoquei-mollerussa-tarrega-b;;Hoquei Mollerussa-Tàrrega;hoquei-mollerussa-tarrega
+renombrar;igualada-femeni-grupo-guzman;;Igualada Femení HCP;igualada-femeni-hcp
+renombrar;igualada-hc;;Igualada HC;
+renombrar;innoaesthetics-hc-sant-just;;HC Sant Just;hc-sant-just
+renombrar;innocenti-costruzioni-follonica;;Follonica Hockey;follonica-hockey
+renombrar;j-pacense-des-compagnons;;Juventude Pacense;juventude-pacense
+renombrar;jesus-maria-i-josep-b;;Jesús Maria i Josep;jesus-maria-i-josep
+renombrar;joieria-moner-sant-ramon;;CH Sant Ramon;ch-sant-ramon
+renombrar;la-vendeenne;;La Vendéenne;
+renombrar;lleidanet-hc-alpicat;;HC Alpicat;hc-alpicat
+renombrar;martinelia-manlleu;;CP Manlleu;cp-manlleu
+renombrar;msk-mungia;;MSK Mungia;
+renombrar;nating-novara-femm;;Hockey Novara Femminile;hockey-novara-femminile
+renombrar;newco-roller-matera;;Roller Matera;roller-matera
+renombrar;oberena-autoescuela-indurain;;SCDR Oberena;scdr-oberena
+renombrar;oc-barcelos-sad;;OC Barcelos;oc-barcelos
+renombrar;orkla-bigues-i-riells;;CH Bigues i Riells;ch-bigues-i-riells
+renombrar;oviedo-booling-club;;Oviedo Booling Club;
+renombrar;oxford-hc-salt;;HC Salt;hc-salt
+renombrar;oxigen-phc-sant-cugat;;PHC Sant Cugat;phc-sant-cugat
+renombrar;p-alcodiam-a;;P. Alcodiam;p-alcodiam
+renombrar;pons-lleida-bell-lloc;;Lleida Llista Bell-lloc;lleida-llista-bell-lloc
+renombrar;previntegral-ch-mollerussa;;CH Mollerussa;ch-mollerussa
+renombrar;remaplast-cresh-eboli;;CRESH Eboli;cresh-eboli
+renombrar;reus-deportiu-brasilia;;Reus Deportiu;reus-deportiu
+renombrar;riba-d-ave-hc-csj-group;;Riba d'Ave HC;riba-d-ave-hc
+renombrar;ribes-cp-a-a;;Ribes CP;ribes-cp
+renombrar;rot-castello-suzzara;;Rotellistica Suzzara;rotellistica-suzzara
+renombrar;s-alenquer-b;;Sporting Alenquer;sporting-alenquer
+renombrar;sanse-hock-paisajismo-batres-a;;Sanse Hockey;sanse-hockey
+renombrar;santa-maria-del-mar;;Santa Maria del Mar;
+renombrar;santutxu-hockey-taldea;;Santutxu Hockey Taldea;
+renombrar;sct-up-tomar;;SC Tomar;sc-tomar
+renombrar;se-la-salle-bonanova-a;;SE La Salle Bonanova;se-la-salle-bonanova
+renombrar;shum-frit-ravich;;CH Shum;ch-shum
+renombrar;sporting-alcoi-a;;Sporting Alcoi;sporting-alcoi
+renombrar;sta-m-del-pilar;;Santa María del Pilar;santa-maria-del-pilar
+renombrar;sta-m-la-blanca;;Santa María la Blanca;santa-maria-la-blanca
+renombrar;teamservicecar-monza;;Hockey Monza;hockey-monza
+renombrar;telea-medical-sandrigo;;Hockey Sandrigo;hockey-sandrigo
+renombrar;termas-oc-multisac;;Termas OC;termas-oc
+renombrar;tierre-chimica-montebello;;Hockey Montebello;hockey-montebello
+renombrar;translop-alcaniz-club-patin;;Club Patín Alcañiz;club-patin-alcaniz
+renombrar;tres-cantos-pc;;Tres Cantos PC;
+renombrar;ubroker-bassano;;Hockey Bassano;hockey-bassano
+renombrar;ud-oliveirense-simoldes;;UD Oliveirense;ud-oliveirense
+renombrar;uf-entroncamento-entrosegur;;UF Entroncamento;uf-entroncamento
+renombrar;unio-esportiva-d-horta;;Unió Esportiva d'Horta;
+renombrar;unio-esportiva-la-garriga;;Unió Esportiva La Garriga;
+renombrar;versilia-hockeyforte;;Forte dei Marmi;forte-dei-marmi
+renombrar;vgp-valdagno;;Hockey Valdagno;hockey-valdagno
+renombrar;zulux-hc-raxoi;;HC Raxoi;hc-raxoi
+seleccion;alemanya;;;
+seleccion;catalunya;;;
+seleccion;comunitat-valenciana;;;
+seleccion;franca-m;;;
