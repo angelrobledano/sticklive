@@ -886,3 +886,85 @@ export function clubKeyFromLogo(logo: string | null | undefined): string | null 
 export function crestPortal(url: string | null | undefined): string | null {
   return /sidgad\.(?:cloud|com)\/([a-z]+)\/images\//.exec(url ?? '')?.[1] ?? null;
 }
+
+// ── Visibilidad en Partidos (spec 2026-10-30) ──────────────────────────────
+//
+// Tres conceptos:
+//   · Disponible: todo el catálogo (Explorar y búsqueda). No se filtra nada.
+//   · Destacada: curada en datos (`competitions.featured_rank`, editable desde
+//     el admin). NO depende de tener directo.
+//   · Seguida: equipos y competiciones que sigue el usuario. Manda siempre.
+//
+// Un partido sale en Partidos si tiene un motivo (`feedReason`); el resto queda
+// a un toque («otras competiciones»). Esta es la ÚNICA definición: la usan la
+// web, la app y, en SQL, `GET /matches/current?scope=feed` (apps/api,
+// `feedWhereSql`), que replica estas mismas condiciones.
+
+export type FeedReason = 'team' | 'league' | 'featured';
+
+/** Firma mínima de un partido para decidir su visibilidad. */
+export interface FeedMatch {
+  id: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  competitionId?: string | null;
+  competitionFeaturedRank?: number | null;
+  competitionTier?: number | null;
+  /** ISO-2, `'W'` para mundiales, o null. */
+  competitionCountry?: string | null;
+}
+
+export interface FeedFollows {
+  teamIds?: readonly string[];
+  leagueIds?: readonly string[];
+  /** País preferido (ISO-2) o null = todos los países. */
+  country?: string | null;
+}
+
+/** Competición destacada: curada en datos. */
+export function isFeaturedCompetition(c: { featuredRank?: number | null }): boolean {
+  return c.featuredRank != null;
+}
+
+/** Máxima categoría (tier 1): se ve aunque el usuario prefiera otro país. */
+const ALWAYS_VISIBLE_TIER = 1;
+
+/**
+ * Destacada que procede para el país elegido: las del país, las internacionales
+ * y las de primer nivel de cualquier país (Placard, Serie A1…). Una Plata o una
+ * copa portuguesa no se cuelan en el feed de quien prefiere España.
+ */
+export function featuredForCountry(
+  m: Pick<FeedMatch, 'competitionFeaturedRank' | 'competitionTier' | 'competitionCountry'>,
+  country: string | null | undefined,
+): boolean {
+  if (m.competitionFeaturedRank == null) return false;
+  if (!country) return true;
+  const cc = m.competitionCountry ?? null;
+  return cc === country || cc === null || cc === 'W' || m.competitionTier === ALWAYS_VISIBLE_TIER;
+}
+
+/**
+ * Por qué un partido sale en Partidos, o null si no sale por defecto. Un solo
+ * motivo por partido (equipo > competición > destacada): nunca se duplica.
+ */
+export function feedReason(m: FeedMatch, f: FeedFollows): FeedReason | null {
+  const teams = f.teamIds ?? [];
+  if (teams.includes(m.homeTeamId) || teams.includes(m.awayTeamId)) return 'team';
+  if (m.competitionId && (f.leagueIds ?? []).includes(m.competitionId)) return 'league';
+  if (featuredForCountry(m, f.country ?? null)) return 'featured';
+  return null;
+}
+
+/** Parte una lista (deduplicada por id) en feed y resto. */
+export function splitFeed<T extends FeedMatch>(matches: readonly T[], f: FeedFollows): { feed: T[]; others: T[] } {
+  const seen = new Set<string>();
+  const feed: T[] = [];
+  const others: T[] = [];
+  for (const m of matches) {
+    if (seen.has(m.id)) continue;
+    seen.add(m.id);
+    (feedReason(m, f) ? feed : others).push(m);
+  }
+  return { feed, others };
+}
