@@ -580,6 +580,8 @@
     "form_d": "E",
     "form_l": "D",
     "other_teams": "Outras equipas do clube",
+    "club_teams_all": "Ver as {n} equipas",
+    "club_teams_less": "Ver menos",
     "view_club": "Ver página do clube",
     "season": "Época",
     "filial": "Equipa B",

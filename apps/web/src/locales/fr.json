@@ -580,6 +580,8 @@
     "form_d": "N",
     "form_l": "P",
     "other_teams": "Autres équipes du club",
+    "club_teams_all": "Voir les {n} équipes",
+    "club_teams_less": "Voir moins",
     "view_club": "Voir la fiche du club",
     "season": "Saison",
     "filial": "Équipe réserve",

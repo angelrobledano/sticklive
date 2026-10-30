@@ -669,6 +669,8 @@
     "form_d": "E",
     "form_l": "D",
     "other_teams": "Otros equipos del club",
+    "club_teams_all": "Ver los {n} equipos",
+    "club_teams_less": "Ver menos",
     "view_club": "Ver ficha del club",
     "season": "Temporada",
     "filial": "Filial",

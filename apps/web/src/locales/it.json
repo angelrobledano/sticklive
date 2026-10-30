@@ -580,6 +580,8 @@
     "form_d": "N",
     "form_l": "P",
     "other_teams": "Altre squadre del club",
+    "club_teams_all": "Vedi tutte le {n} squadre",
+    "club_teams_less": "Vedi meno",
     "view_club": "Vedi la scheda del club",
     "season": "Stagione",
     "filial": "Squadra B",

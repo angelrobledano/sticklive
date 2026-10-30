@@ -47,3 +47,22 @@ describe('TeamCenterClient — paneles en el HTML servido', () => {
     expect(html).toContain(`/matches/${data.matches[0]!.id}`);
   });
 });
+
+describe('TeamCenterClient — otros equipos del club (club con muchos equipos)', () => {
+  it('recogido: 6 equipos con categoría y liga, y «Ver los N equipos»', () => {
+    const ages = ['senior', 'junior', 'juvenil', 'infantil', 'alevin', 'alevin', 'benjamin', 'benjamin', 'prebenjamin', 'veteranos'];
+    const clubTeams = ages.map((a, i) => ({
+      id: `ct${i}`, name: 'SHUM', shortName: null, logoUrl: null, gender: 'male', ageCategory: a,
+      squadLevel: i === 5 || i === 7 ? 2 : 1, teamType: 'club', sectionSuffix: '',
+      competition: { id: `c${i}`, slug: null, name: `LIGA ${i}` },
+    }));
+    const html = renderToStaticMarkup(
+      <I18nProvider initialLocale="es" dict={{}} referenceDict={{}}>
+        <TeamCenterClient data={{ ...data, clubTeams } as TeamDetailView} />
+      </I18nProvider>,
+    );
+    expect((html.match(/href="\/es\/teams\/ct\d"/g) ?? []).length).toBe(6);
+    expect(html).toContain('Liga 0');
+    expect(html).toContain('Ver los 10 equipos');
+  });
+});

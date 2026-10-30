@@ -669,6 +669,8 @@
     "form_d": "E",
     "form_l": "P",
     "other_teams": "Altres equips del club",
+    "club_teams_all": "Veure els {n} equips",
+    "club_teams_less": "Veure menys",
     "view_club": "Veure fitxa del club",
     "season": "Temporada",
     "filial": "Filial",

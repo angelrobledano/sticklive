@@ -653,6 +653,8 @@
     "form_d": "D",
     "form_l": "L",
     "other_teams": "Other club teams",
+    "club_teams_all": "See all {n} teams",
+    "club_teams_less": "See less",
     "view_club": "View club page",
     "season": "Season",
     "filial": "Reserve team",

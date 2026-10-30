@@ -238,19 +238,34 @@ function TeamHeader({ data }: { data: TeamDetailView }) {
 
 // ─── Club: otras secciones + búsqueda de equipos (#197) ───────────────
 
+/** Equipos del club visibles antes de «Ver todos»: lo justo para orientarse. */
+const CLUB_TEAMS_PREVIEW = 6;
+
 function ClubSection({ data }: { data: TeamDetailView }) {
   const { t, locale } = useT();
   const { clubTeams = [] } = data;
-  // Agrupados por sección y nombrados por categoría («Alevín C · Aleví Or»),
-  // como OKmob: el nombre del club es el mismo en todos y no distingue nada.
+  const [expanded, setExpanded] = useState(false);
+  // Agrupados por sección y nombrados por categoría («Alevín B · Aleví Plata»),
+  // en rejilla compacta: un club con 18 equipos no debe empujar la ficha
+  // hacia abajo. Recogido, solo los primeros; el resto con «Ver todos».
   const groups = useMemo(() => groupClubSections(clubTeams), [clubTeams]);
   if (clubTeams.length === 0) return null;
 
+  const collapsible = clubTeams.length > CLUB_TEAMS_PREVIEW;
+  let budget = expanded || !collapsible ? Infinity : CLUB_TEAMS_PREVIEW;
+  const shown = groups
+    .map((g) => {
+      const teams = g.teams.slice(0, Math.max(0, budget));
+      budget -= teams.length;
+      return { ...g, teams };
+    })
+    .filter((g) => g.teams.length > 0);
+
   return (
-    <div className="card overflow-hidden">
-      <div className="flex items-baseline justify-between gap-3 px-4 pt-3 pb-1">
+    <div className="card overflow-hidden px-4 pb-3">
+      <div className="flex items-baseline justify-between gap-3 pt-3">
         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-          {t('team.other_teams')}
+          {t('team.other_teams')} <span className="tabular-nums">· {clubTeams.length}</span>
         </p>
         {data.team.club?.slug && (
           <Link href={`/clubs/${data.team.club.slug}`} className="shrink-0 text-xs font-semibold text-rink-passion hover:underline">
@@ -258,31 +273,38 @@ function ClubSection({ data }: { data: TeamDetailView }) {
           </Link>
         )}
       </div>
-      {groups.map(({ section, teams }) => (
-        <div key={section}>
-          <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+      {shown.map(({ section, teams }) => (
+        <div key={section} className="pt-2">
+          <p className="pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             {tt(t, `club.section_${section}`, section)}
           </p>
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800/60">
+          <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
             {teams.map((ct) => (
               <li key={ct.id}>
                 <Link href={`/teams/${ct.id}`}
-                      className="group flex items-center gap-3 px-4 py-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60">
-                  <span className="w-28 shrink-0 truncate text-sm font-semibold text-slate-800 group-hover:text-rink-passion dark:text-slate-200">
+                      className="group block rounded-lg border border-slate-200 px-2.5 py-1.5 transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/60">
+                  <span className="block truncate text-[13px] font-semibold text-slate-800 group-hover:text-rink-passion dark:text-slate-200">
                     {clubTeamLabel(ct, locale as Locale)}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-slate-500 dark:text-slate-400">
-                    {ct.competition ? clubName(ct.competition.name) : ''}
-                  </span>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-700" aria-hidden="true">
-                    <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  {ct.competition && (
+                    <span className="block truncate text-[11px] text-slate-500 dark:text-slate-400">
+                      {clubName(ct.competition.name)}
+                    </span>
+                  )}
                 </Link>
               </li>
             ))}
           </ul>
         </div>
       ))}
+      {collapsible && (
+        <button type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}
+                className="mt-2.5 min-h-[36px] w-full rounded-lg text-xs font-semibold text-rink-passion hover:bg-slate-50 dark:text-rink-accent dark:hover:bg-slate-800/60">
+          {expanded
+            ? tt(t, 'team.club_teams_less', 'Ver menos')
+            : tt(t, 'team.club_teams_all', 'Ver los {n} equipos', { n: clubTeams.length })}
+        </button>
+      )}
     </div>
   );
 }
