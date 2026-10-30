@@ -8,6 +8,7 @@ import {
   daysWithMatches,
   extractGestureStartX,
   getRelativeKey,
+  hiddenForDay,
   isHorizontalSwipeGesture,
   isOutsideEdgeGuard,
   madridDateKey,
@@ -31,6 +32,10 @@ function createMatch(
     competitionName: compId ? 'OK Liga' : null,
     competitionSlug: compSlug,
     competitionTimezone: 'Europe/Madrid',
+    // Destacada por defecto (OK Liga); los casos de visibilidad lo sobrescriben.
+    competitionFeaturedRank: 1,
+    competitionTier: 1,
+    competitionCountry: 'ES',
     status: 'scheduled',
     isHalftime: false,
     winType: null,
@@ -244,3 +249,33 @@ describe('buildDayView', () => {
   });
 });
 
+
+describe('buildDayView — visibilidad (spec 2026-10-30, misma regla que la web)', () => {
+  const D = '2026-10-31T16:00:00Z';
+  const day = '2026-10-31';
+  const small = (id: string, extra: Partial<MatchSummary> = {}) =>
+    createMatch(id, D, 'provincial', 'liga-provincial', { competitionFeaturedRank: null, competitionTier: null, ...extra });
+
+  it('destacada sí, pequeña no (contada en hiddenCount)', () => {
+    const v = buildDayView([createMatch('1', D), small('2', { status: 'live' })], { dayKey: day });
+    expect(v.competitions.map((b) => b.id)).toEqual(['okliga']);
+    expect(v.hiddenCount).toBe(1);
+    expect(v.liveCount).toBe(0);
+  });
+
+  it('pequeña seguida o con un equipo seguido: aparece', () => {
+    expect(buildDayView([small('2')], { dayKey: day, leagueIds: ['provincial'] }).total).toBe(1);
+    expect(buildDayView([small('3')], { dayKey: day, teamIds: ['home-3'] }).myTeams).toHaveLength(1);
+  });
+
+  it('includeOthers: el resto detrás, marcado fuera del feed', () => {
+    const v = buildDayView([small('2'), createMatch('1', D)], { dayKey: day, includeOthers: true });
+    expect(v.competitions.map((b) => [b.id, b.inFeed])).toEqual([['okliga', true], ['provincial', false]]);
+  });
+});
+
+describe('hiddenForDay', () => {
+  it('suma los ocultos por hora UTC que caen en el día de Madrid', () => {
+    expect(hiddenForDay({ '2026-10-30T22': 4, '2026-10-30T23': 2, '2026-10-31T16': 5, '2026-10-31T23': 1 }, '2026-10-31')).toBe(7);
+  });
+});

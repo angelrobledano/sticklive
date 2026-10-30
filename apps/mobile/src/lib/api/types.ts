@@ -51,6 +51,11 @@ export interface MatchSummary {
   competitionName: string | null;
   competitionSlug: string | null;
   competitionTimezone: string | null;
+  /** Curación de la competición (migraciones 089/100): decide el feed de Partidos. */
+  competitionCountry?: string | null;
+  competitionLogoUrl?: string | null;
+  competitionTier?: number | null;
+  competitionFeaturedRank?: number | null;
   status: MatchStatus;
   /** live.ts:87 — `m.live_is_halftime ?? false`; presente siempre (no null). */
   isHalftime: boolean;
@@ -73,6 +78,9 @@ export interface MatchSummary {
 export interface CurrentMatchesResponse {
   count: number;
   matches: MatchSummary[];
+  /** Solo con `scope=feed|following` (spec 2026-10-30): partidos fuera, por hora UTC. */
+  hiddenCount?: number;
+  hiddenByHour?: Record<string, number>;
 }
 
 /** Espejo exacto de MatchDtoStats (apps/api/src/lib/match-dto.ts:116-133). */

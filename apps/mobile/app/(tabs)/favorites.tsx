@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/src/context/AuthContext';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { useCompetitions, useCurrentMatches } from '@/src/hooks/queries';
+import { useCompetitions, useFollowingMatches } from '@/src/hooks/queries';
 import { useFavoriteName, useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { EmptyState } from '@/src/components/shared/EmptyState';
@@ -115,12 +115,15 @@ export default function FavoritesScreen() {
   const router = useRouter();
   // Precarga de competiciones para resolver nombres de ligas favoritas de inmediato
   useCompetitions();
-  const currentMatchesQuery = useCurrentMatches();
-
   // Ambos hooks montados siempre (regla de hooks): el `enabled` de cada uno
   // hace el gating (servidor sólo con token; AsyncStorage sólo anónimo).
   const server = useFavorites(token);
   const local = useLocalFavorites(!token);
+  // Mi grada: solo lo seguido (scope=following), no todo el catálogo.
+  const followed = token ? server.data : local.data;
+  const followTeams = useMemo(() => followed?.teams ?? [], [followed?.teams]);
+  const followLeagues = useMemo(() => followed?.leagues ?? [], [followed?.leagues]);
+  const currentMatchesQuery = useFollowingMatches({ teams: followTeams, leagues: followLeagues });
 
   if (!ready) {
     // Evita el flash del CTA de login mientras se resuelve la sesión guardada.

@@ -12,6 +12,10 @@ import {
   fetchCompetitions,
   fetchCompetitionSeasons,
   fetchCurrentMatches,
+  fetchDayMatches,
+  fetchFeedMatches,
+  fetchFollowingMatches,
+  feedQueryString,
   fetchSearch,
   fetchSeasonOverview,
   fetchSeasonStats,
@@ -153,6 +157,20 @@ describe('queryFns y selectores (vía QueryClient.fetchQuery con fetch stubeado)
 
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/matches/current'), expect.anything());
     expect(data).toEqual(envelope);
+  });
+
+  it('feed: scope=feed con lo seguido; día: rango con margen; following sin follows no pide nada', async () => {
+    const fetchMock = vi.fn(async () => ok({ count: 0, matches: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+    const f = { teams: ['t1'], leagues: ['l1', 'l2'] };
+    expect(feedQueryString('feed', f)).toBe('scope=feed&teams=t1&leagues=l1,l2');
+    await fetchFeedMatches(f);
+    expect(fetchMock).toHaveBeenLastCalledWith(expect.stringContaining('/matches/current?scope=feed&teams=t1&leagues=l1,l2'), expect.anything());
+    await fetchDayMatches('2026-10-31');
+    expect(fetchMock).toHaveBeenLastCalledWith(expect.stringContaining('/matches/current?from=2026-10-30&to=2026-11-01'), expect.anything());
+    const calls = fetchMock.mock.calls.length;
+    expect(await fetchFollowingMatches({ teams: [], leagues: [] })).toEqual({ count: 0, matches: [] });
+    expect(fetchMock.mock.calls.length).toBe(calls);
   });
 
   it('selectCurrentMatches aplana el envoltorio {count, matches} a la lista', () => {

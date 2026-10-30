@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { FlatList, PanResponder, Pressable, RefreshControl, Text, useWindowDimensions, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { useAdsConfig, useCurrentMatches } from '@/src/hooks/queries';
+import { useAdsConfig, useDayMatches, useFeedMatches } from '@/src/hooks/queries';
 import { useSession } from '@/src/context/AuthContext';
 import { useFavorites, useLocalFavorites } from '@/src/hooks/favorites';
 import { MatchGroupCard } from '@/src/components/home/MatchGroupCard';
@@ -21,6 +21,7 @@ import { formatDayLabel } from '@/src/lib/time';
 import {
   addDaysToKey,
   buildDayView,
+  hiddenForDay,
   daysWithMatches,
   extractGestureStartX,
   isHorizontalSwipeGesture,
@@ -45,7 +46,6 @@ type FeedItem =
   | { kind: 'ad'; key: string };
 
 export default function LiveScreen() {
-  const { data, isPending, isError, refetch, isRefetching } = useCurrentMatches();
   const { data: adsConfig } = useAdsConfig();
   const { t, locale } = useLocale();
 
@@ -58,9 +58,23 @@ export default function LiveScreen() {
   const teamIds = useMemo(() => favData?.teams ?? [], [favData?.teams]);
   const leagueIds = useMemo(() => favData?.leagues ?? [], [favData?.leagues]);
 
+  // Visibilidad (spec 2026-10-30): la home pide solo destacadas + lo seguido.
+  // «Otras competiciones» del día se piden bajo demanda.
+  const feedQuery = useFeedMatches({ teams: teamIds, leagues: leagueIds });
+  const { isPending, isError, refetch, isRefetching } = feedQuery;
+
   const todayKey = madridTodayKey();
   const [selectedDate, setSelectedDate] = useState<string>(todayKey);
   const [filter, setFilter] = useState<DayFilter>('all');
+  const [othersDay, setOthersDay] = useState<string | null>(null);
+  const othersOpen = othersDay === selectedDate;
+  const dayAll = useDayMatches(selectedDate, othersOpen);
+  const data = useMemo(() => {
+    const feed = feedQuery.data?.matches ?? [];
+    if (!othersOpen || !dayAll.data) return feed;
+    const seen = new Set(feed.map((m) => m.id));
+    return [...feed, ...dayAll.data.filter((m) => !seen.has(m.id))];
+  }, [feedQuery.data, othersOpen, dayAll.data]);
   const navigation = useNavigation();
 
   // Analítica: vista de la pestaña home
@@ -78,9 +92,11 @@ export default function LiveScreen() {
         leagueIds,
         filter,
         locale,
+        includeOthers: othersOpen,
       }),
-    [data, selectedDate, teamIds, leagueIds, filter, locale],
+    [data, selectedDate, teamIds, leagueIds, filter, locale, othersOpen],
   );
+  const othersCount = othersOpen ? 0 : hiddenForDay(feedQuery.data?.hiddenByHour, selectedDate);
 
   // Cabecera interactiva y de marca (STICK LIVE + Hoy + Live Badge + Búsqueda)
   useLayoutEffect(() => {
@@ -250,9 +266,11 @@ export default function LiveScreen() {
             <View className="flex-1 items-center justify-center px-8 py-16">
               <EmptyState
                 title={
-                  selectedDate === todayKey
-                    ? t('common.no_matches_today')
-                    : t('common.no_matches_this_day')
+                  othersCount > 0
+                    ? t('home.no_featured_matches')
+                    : selectedDate === todayKey
+                      ? t('common.no_matches_today')
+                      : t('common.no_matches_this_day')
                 }
                 hint={t('common.no_matches_hint')}
               />
@@ -268,7 +286,24 @@ export default function LiveScreen() {
               ) : null}
             </View>
           }
-          ListFooterComponent={<AdBanner variant="list" />}
+          ListFooterComponent={
+            <View>
+              {othersOpen || othersCount > 0 ? (
+                <Pressable
+                  onPress={() => setOthersDay(othersOpen ? null : selectedDate)}
+                  disabled={othersOpen && dayAll.isFetching}
+                  className="mx-3 mt-3 min-h-[44px] items-center justify-center rounded-xl border border-dashed border-slate-300 px-4 active:opacity-70 dark:border-slate-700"
+                >
+                  <Text className="text-[13px] font-semibold text-slate-600 dark:text-slate-300">
+                    {othersOpen
+                      ? t('home.others_hide')
+                      : t('home.others_show').replace('{n}', String(othersCount))}
+                  </Text>
+                </Pressable>
+              ) : null}
+              <AdBanner variant="list" />
+            </View>
+          }
         />
       </View>
     </View>

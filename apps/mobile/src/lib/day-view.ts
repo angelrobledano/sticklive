@@ -1,6 +1,7 @@
 import { importanceRank } from './competition-importance';
 import { isEffectivelyLive } from './time';
 import type { MatchSummary } from './api/types';
+import { feedReason } from '@sports/shared-types';
 
 export const APP_TZ = 'Europe/Madrid';
 
@@ -86,12 +87,17 @@ export interface CompetitionBlock<T> {
   name: string | null;
   slug: string | null;
   followed: boolean;
+  /** Sale por defecto (destacada o seguida); false = «otras competiciones». */
+  inFeed: boolean;
   matches: T[];
 }
 
 export interface DayView<T> {
   dayKey: string;
+  /** Partidos del día que salen por defecto. */
   total: number;
+  /** Partidos del día cargados que NO salen por defecto. */
+  hiddenCount: number;
   liveCount: number;
   followingCount: number;
   filter: DayFilter;
@@ -105,6 +111,8 @@ export interface DayViewOptions {
   leagueIds?: readonly string[];
   filter?: DayFilter;
   locale?: string;
+  /** Pinta también las competiciones fuera del feed, detrás. */
+  includeOthers?: boolean;
 }
 
 function timeOf(m: MatchSummary): number {
@@ -128,9 +136,19 @@ export function buildDayView<T extends MatchSummary>(matches: T[], opts: DayView
   const isFollowing = (m: T) => isMyTeam(m) || isFollowedLeague(m);
   const isLive = (m: T) => isEffectivelyLive(m.status, m.scheduledAt);
 
-  const day = matches.filter((m) => madridDateKey(m.scheduledAt) === opts.dayKey);
-  const liveCount = day.filter(isLive).length;
-  const followingCount = day.filter(isFollowing).length;
+  // Visibilidad (spec 2026-10-30): la regla compartida con la web y la API.
+  const seen = new Set<string>();
+  const all = matches.filter((m) => {
+    if (madridDateKey(m.scheduledAt) !== opts.dayKey || seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
+  const follows = { teamIds: opts.teamIds ?? [], leagueIds: opts.leagueIds ?? [], country: null };
+  const inFeed = (m: T) => feedReason({ ...m, homeTeamId: m.homeTeam.id, awayTeamId: m.awayTeam.id }, follows) !== null;
+  const feedDay = all.filter(inFeed);
+  const day = opts.includeOthers ? all : feedDay;
+  const liveCount = feedDay.filter(isLive).length;
+  const followingCount = feedDay.filter(isFollowing).length;
 
   let filter: DayFilter = opts.filter ?? 'all';
   if ((filter === 'live' && liveCount === 0) || (filter === 'following' && followingCount === 0)) {
@@ -159,6 +177,7 @@ export function buildDayView<T extends MatchSummary>(matches: T[], opts: DayView
         name: m.competitionName ?? null,
         slug: m.competitionSlug ?? null,
         followed: isFollowedLeague(m),
+        inFeed: inFeed(m),
         matches: [],
       };
       blocks.set(key, block);
@@ -170,13 +189,17 @@ export function buildDayView<T extends MatchSummary>(matches: T[], opts: DayView
   const competitions = [...blocks.values()];
   for (const b of competitions) b.matches.sort(byTime);
   competitions.sort((a, b) => {
+    if (a.inFeed !== b.inFeed) return a.inFeed ? -1 : 1;
     if (a.followed !== b.followed) return a.followed ? -1 : 1;
     if ((a.name === null) !== (b.name === null)) return a.name === null ? 1 : -1;
     const d = importanceRank(a.slug) - importanceRank(b.slug);
     return d !== 0 ? d : (a.name ?? '').localeCompare(b.name ?? '', locale);
   });
 
-  return { dayKey: opts.dayKey, total: day.length, liveCount, followingCount, filter, myTeams, competitions };
+  return {
+    dayKey: opts.dayKey, total: feedDay.length, hiddenCount: all.length - feedDay.length,
+    liveCount, followingCount, filter, myTeams, competitions,
+  };
 }
 
 /** Días que tienen al menos un partido. */
@@ -195,12 +218,15 @@ export function nextMatchday<T extends MatchSummary>(
   afterKey: string,
   opts: Omit<DayViewOptions, 'dayKey' | 'filter'> = {},
 ): DayView<T> | null {
-  let next: string | null = null;
-  for (const m of matches) {
-    const k = madridDateKey(m.scheduledAt);
-    if (k && k > afterKey && (next === null || k < next)) next = k;
+  // Primer día posterior con algo que enseñar por defecto (feed).
+  const keys = [...new Set(matches.map((m) => madridDateKey(m.scheduledAt)))]
+    .filter((k) => !!k && k > afterKey)
+    .sort();
+  for (const k of keys) {
+    const v = buildDayView(matches, { ...opts, dayKey: k, filter: 'all' });
+    if (v.total > 0) return v;
   }
-  return next === null ? null : buildDayView(matches, { ...opts, dayKey: next, filter: 'all' });
+  return null;
 }
 
 /**
@@ -294,3 +320,15 @@ export function isOutsideEdgeGuard(
 
 
 
+
+/**
+ * Partidos fuera del feed del día `dayKey` (Madrid) a partir del recuento por
+ * hora UTC de la API (`hiddenByHour`, spec 2026-10-30).
+ */
+export function hiddenForDay(byHour: Readonly<Record<string, number>> | undefined, dayKey: string): number {
+  let n = 0;
+  for (const [hour, count] of Object.entries(byHour ?? {})) {
+    if (madridDateKey(`${hour}:00:00Z`) === dayKey) n += count;
+  }
+  return n;
+}

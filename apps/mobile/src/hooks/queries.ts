@@ -19,6 +19,7 @@ import type {
   StandingsRow,
   TeamDetail,
 } from '@/src/lib/api/types';
+import { addDaysToKey } from '@/src/lib/day-view';
 
 /**
  * Claves de query. Las consume la UI para invalidaciones puntuales
@@ -26,6 +27,12 @@ import type {
  */
 export const qk = {
   current: ['matches', 'current'] as const,
+  /** Partidos que salen por defecto (destacadas + lo seguido), spec 2026-10-30. */
+  feed: (f: FeedFollows) => ['matches', 'current', 'feed', f.teams.join(','), f.leagues.join(',')] as const,
+  /** Todo el catálogo de un día («Ver otras competiciones»). */
+  dayAll: (dayKey: string) => ['matches', 'current', 'day', dayKey] as const,
+  /** Solo lo seguido (Favoritos). */
+  following: (f: FeedFollows) => ['matches', 'current', 'following', f.teams.join(','), f.leagues.join(',')] as const,
   match: (id: string) => ['matches', id] as const,
   competitions: ['competitions'] as const,
   competitionSeasons: (id: string) => ['competitions', id, 'seasons'] as const,
@@ -100,6 +107,36 @@ export async function fetchCurrentMatches(): Promise<CurrentMatchesResponse> {
   return apiFetch<CurrentMatchesResponse>('/matches/current');
 }
 
+/** Lo que sigue el usuario: decide qué partidos salen por defecto. */
+export interface FeedFollows {
+  teams: readonly string[];
+  leagues: readonly string[];
+}
+
+/** Query string de `scope=feed|following` (misma API que la web). */
+export function feedQueryString(scope: 'feed' | 'following', f: FeedFollows): string {
+  const parts = [`scope=${scope}`];
+  if (f.teams.length) parts.push(`teams=${f.teams.map(encodeURIComponent).join(',')}`);
+  if (f.leagues.length) parts.push(`leagues=${f.leagues.map(encodeURIComponent).join(',')}`);
+  return parts.join('&');
+}
+
+export async function fetchFeedMatches(f: FeedFollows): Promise<CurrentMatchesResponse> {
+  return apiFetch<CurrentMatchesResponse>(`/matches/current?${feedQueryString('feed', f)}`);
+}
+
+export async function fetchFollowingMatches(f: FeedFollows): Promise<CurrentMatchesResponse> {
+  if (!f.teams.length && !f.leagues.length) return { count: 0, matches: [] };
+  return apiFetch<CurrentMatchesResponse>(`/matches/current?${feedQueryString('following', f)}`);
+}
+
+/** Todo un día de Madrid, con un día de margen a cada lado (la vista vuelve a filtrar). */
+export async function fetchDayMatches(dayKey: string): Promise<CurrentMatchesResponse> {
+  const from = addDaysToKey(dayKey, -1);
+  const to = addDaysToKey(dayKey, 1);
+  return apiFetch<CurrentMatchesResponse>(`/matches/current?from=${from}&to=${to}`);
+}
+
 export async function fetchCompetitions(): Promise<CompetitionsResponse> {
   return apiFetch<CompetitionsResponse>('/competitions');
 }
@@ -164,6 +201,38 @@ export function useAdsConfig() {
     queryKey: qk.adsConfig,
     queryFn: fetchAdsConfig,
     staleTime: 15 * 60_000,
+  });
+}
+
+/** Home: destacadas + lo seguido (spec 2026-10-30). Antes, todo el catálogo (~3 MB). */
+export function useFeedMatches(f: FeedFollows) {
+  return useQuery({
+    queryKey: qk.feed(f),
+    queryFn: () => fetchFeedMatches(f),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+}
+
+/** «Ver otras competiciones»: el día entero, solo cuando el usuario lo pide. */
+export function useDayMatches(dayKey: string, enabled: boolean) {
+  return useQuery({
+    queryKey: qk.dayAll(dayKey),
+    queryFn: () => fetchDayMatches(dayKey),
+    select: selectCurrentMatches,
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+/** Favoritos (Mi grada): solo lo seguido. */
+export function useFollowingMatches(f: FeedFollows) {
+  return useQuery({
+    queryKey: qk.following(f),
+    queryFn: () => fetchFollowingMatches(f),
+    select: selectCurrentMatches,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 }
 

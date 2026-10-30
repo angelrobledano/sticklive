@@ -75,8 +75,11 @@ export function resolveFavoriteName(qc: QueryClient, kind: FavoriteKind, id: str
 
     // Buscar en partidos actuales / home / away
     if (!resolved) {
-      const current = qc.getQueryData<CurrentMatchesResponse>(qk.current);
-      if (current?.matches) {
+      // Cualquier listado de partidos en caché: feed, día completo, lo seguido…
+      const lists = qc.getQueryCache().findAll({ queryKey: qk.current })
+        .map((q) => q.state.data as CurrentMatchesResponse | undefined);
+      for (const current of lists) {
+        if (resolved || !current?.matches) continue;
         for (const m of current.matches) {
           if (m.homeTeam?.id === id && m.homeTeam.name) {
             resolved = m.homeTeam.name;
