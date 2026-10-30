@@ -10,7 +10,7 @@ import { competitionName, clubName } from '@/lib/names';
 import { competitionPath } from '@/lib/competition-path';
 import { usePreferredCountry } from '@/hooks/usePreferredCountry';
 import {
-  buildCompetitionsHome, competitionStatus, groupVariants, HOME_SECOND_COUNTRIES, type HomeCountry,
+  buildCompetitionsHome, competitionStatus, groupVariants,
 } from '@/lib/competitions-home';
 import { CompetitionRow } from './CompetitionsList';
 
@@ -98,9 +98,9 @@ export function FeaturedCompetitions({ comps, favorites, onToggleFav }: {
   const home = useMemo(() => buildCompetitionsHome(comps), [comps]);
 
   const { country: preferred } = usePreferredCountry();
-  const withData = HOME_SECOND_COUNTRIES.filter((k) => home.second[k].length > 0);
-  const initial = (withData.find((k) => k === preferred) ?? withData[0] ?? 'ES') as HomeCountry;
-  const [picked, setPicked] = useState<HomeCountry | null>(null);
+  const withData = home.secondCountries;
+  const initial = withData.find((k) => k === preferred) ?? withData[0] ?? 'ES';
+  const [picked, setPicked] = useState<string | null>(null);
   const country = picked && withData.includes(picked) ? picked : initial;
   const rows = useMemo(() => groupVariants(home.second[country] ?? []), [home, country]);
 

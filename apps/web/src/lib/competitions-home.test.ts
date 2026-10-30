@@ -18,35 +18,46 @@ function comp(slug: string, over: Partial<Omit<CompetitionSummary, 'season'>> & 
 }
 
 describe('buildCompetitionsHome', () => {
+  // Curación como la de la migración 100 (featured_rank + tier en datos).
+  const f = (featuredRank: number, tier: number | null = null) => ({ featuredRank, tier });
   const all = [
-    comp('ok-liga-masculina'), comp('ok-liga-femenina', { gender: 'female' }),
-    comp('campeonato-placard-portugal', { country: 'PT', organizer: 'FPP' }),
-    comp('campionato-serie-a1', { country: 'IT', organizer: 'FISR' }),
-    comp('ok-liga-plata-norte'), comp('ok-liga-plata-sur'), comp('nacional-catalana-masculina', { scope: 'regional' }),
-    comp('2-divisao-portugal', { country: 'PT' }), comp('campionato-serie-a2', { country: 'IT' }),
-    comp('copa-del-rey', { season: { firstMatchAt: day(120), lastMatchAt: day(123), nextMatchAt: day(120) } }),
-    comp('supercopa-de-espana-masculina', { season: { firstMatchAt: day(-5), lastMatchAt: day(-4), nextMatchAt: null } }),
-    comp('taca-de-portugal', { country: 'PT', season: { firstMatchAt: day(-20), lastMatchAt: day(200), nextMatchAt: day(10) } }),
-    comp('mundial-masculino-worldskate', { scope: 'international', country: 'W', season: { firstMatchAt: day(-60), lastMatchAt: day(-45), nextMatchAt: null } }),
-    comp('primera-catalana-masculina', { scope: 'regional' }),
+    comp('ok-liga-femenina', { gender: 'female', name: 'OK LIGA IBERDROLA', ...f(3, 1) }),
+    comp('ok-liga-masculina', { name: 'OK LIGA MASCULINA', ...f(1, 1) }),
+    comp('campeonato-placard-portugal', { country: 'PT', organizer: 'FPP', name: 'Campeonato Placard', ...f(2, 1) }),
+    comp('campionato-serie-a1', { country: 'IT', organizer: 'FISR', name: 'CAMPIONATO SERIE A1', ...f(4, 1) }),
+    comp('ok-liga-plata-norte', { name: 'OK LIGA PLATA NORTE', ...f(20, 2) }),
+    comp('ok-liga-plata-sur', { name: 'OK LIGA PLATA SUR', ...f(21, 2) }),
+    comp('nacional-catalana-masculina', { scope: 'regional', name: 'NACIONAL CATALANA MASCULINA', ...f(27, 3) }),
+    comp('2-divisao-portugal', { country: 'PT', name: 'Campeonato Nacional 2ª Divisão', ...f(30, 2) }),
+    comp('campionato-serie-a2', { country: 'IT', name: 'CAMPIONATO SERIE A2', ...f(31, 2) }),
+    comp('copa-del-rey', { name: 'COPA DEL REY', ...f(40), season: { firstMatchAt: day(120), lastMatchAt: day(123), nextMatchAt: day(120) } }),
+    comp('supercopa-de-espana-masculina', { name: 'SUPERCOPA DE ESPAÑA MASCULINA', ...f(42), season: { firstMatchAt: day(-5), lastMatchAt: day(-4), nextMatchAt: null } }),
+    comp('taca-de-portugal', { country: 'PT', name: 'Taça de Portugal', ...f(46), season: { firstMatchAt: day(-20), lastMatchAt: day(200), nextMatchAt: day(10) } }),
+    comp('mundial-masculino-worldskate', { scope: 'international', country: 'W', name: 'Mundial Masculino', ...f(10), season: { firstMatchAt: day(-60), lastMatchAt: day(-45), nextMatchAt: null } }),
+    comp('primera-catalana-masculina', { scope: 'regional', name: 'PRIMERA CATALANA MASCULINA' }),
   ];
 
-  it('Big 4 en el orden del producto: OK Liga, Placard, Iberdrola, Serie A1', () => {
+  it('principales: destacadas de primer nivel que no son copa, por featured_rank', () => {
     expect(buildCompetitionsHome(all, NOW).big.map((c) => c.slug)).toEqual([
       'ok-liga-masculina', 'campeonato-placard-portugal', 'ok-liga-femenina', 'campionato-serie-a1',
     ]);
   });
 
   it('la WSE Champions entra en los principales cuando existe', () => {
-    const wse = comp('wse-champions-league', { name: 'WSE Champions League', organizer: 'WSE', scope: 'international', country: 'W' });
+    const wse = comp('wse-champions-league', { name: 'WSE Champions League', organizer: 'WSE', scope: 'international', country: 'W', ...f(5, 1) });
     expect(buildCompetitionsHome([...all, wse], NOW).big.map((c) => c.slug)).toContain('wse-champions-league');
   });
 
-  it('segundo nivel por país, sin las autonómicas que no son "nacionales de facto"', () => {
+  it('segundo nivel: el resto de destacadas, por país; lo no destacado no sale', () => {
     const { second } = buildCompetitionsHome(all, NOW);
     expect(second.ES.map((c) => c.slug)).toEqual(['ok-liga-plata-norte', 'ok-liga-plata-sur', 'nacional-catalana-masculina']);
     expect(second.PT.map((c) => c.slug)).toEqual(['2-divisao-portugal']);
     expect(second.IT.map((c) => c.slug)).toEqual(['campionato-serie-a2']);
+  });
+
+  it('nada de esto depende de slugs: una destacada nueva entra sola', () => {
+    const nueva = comp('liga-nueva-francia', { country: 'FR', name: 'Nationale 1', ...f(33, 2) });
+    expect(buildCompetitionsHome([...all, nueva], NOW).second.FR?.map((c) => c.slug)).toEqual(['liga-nueva-francia']);
   });
 
   it('copas solo cerca de sus fechas: Taça (ronda en 10 días) sí, Copa del Rey (en 4 meses) no, Supercopa recién jugada sí, Mundial terminado no', () => {

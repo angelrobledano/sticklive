@@ -14,8 +14,8 @@ import { tt } from '@/components/search/translate';
 import { useFavorites } from '@/hooks/useFavorites';
 import { currentSeasonYear, hasSeasonYear, orderByImportance } from '@/lib/competition-importance';
 import {
-  buildCompetitionTree, countryHubPath, federationHubPath, filterByGender,
-  type CountrySections, type GenderFilter,
+  buildCompetitionTree, countryHubPath, federationHubPath, filterByCategory, filterByGender,
+  type CategoryFilter, type CountrySections, type GenderFilter,
 } from '@/lib/competition-groups';
 import { competitionPath } from '@/lib/competition-path';
 import { FeaturedCompetitions } from './FeaturedCompetitions';
@@ -505,6 +505,7 @@ export function CompetitionsList({
 
   const [tab, setTab]     = useState<Tab>('destacadas');
   const [gender, setGender] = useState<GenderFilter>('all');
+  const [category, setCategory] = useState<CategoryFilter>('all');
   const [query, setQuery] = useState('');
 
   // #358: patrón ARIA tabs con roving tabindex y navegación por flechas.
@@ -548,6 +549,8 @@ export function CompetitionsList({
 
   // 3) Datos por tab
   const visible = useMemo(() => filterByGender(searched, gender), [searched, gender]);
+  // Categoría solo en Países (en Destacadas todo es sénior).
+  const visibleByCategory = useMemo(() => filterByCategory(visible, category), [visible, category]);
 
   const misLigas = useMemo(
     () => orderByImportance(searched.filter((c) => favorites.has(c.id)), locale),
@@ -557,8 +560,8 @@ export function CompetitionsList({
   // 4) Estructura para "Todas": internacional + por país (orden por importancia
   //    dentro de cada grupo). Reutilizada por el índice enlazado (#339).
   const tree = useMemo(
-    () => buildCompetitionTree(visible, locale, federations, (code) => countryDisplayName(code, locale)),
-    [visible, locale, federations],
+    () => buildCompetitionTree(visibleByCategory, locale, federations, (code) => countryDisplayName(code, locale)),
+    [visibleByCategory, locale, federations],
   );
 
   // #339: índice completo (todas las competiciones, no solo la temporada
@@ -735,6 +738,30 @@ export function CompetitionsList({
         </div>
       )}
 
+      {!isSearching && tab === 'paises' && (
+        <div className="flex flex-wrap gap-1.5 px-4 pt-2" role="group" aria-label={tt(t, 'competitions.category_filter', 'Filtrar por categoría')}>
+          {([
+            ['all', tt(t, 'competitions.category_all', 'Todas')],
+                ['senior', tt(t, 'competitions.category_senior', 'Sénior')],
+                ['base', tt(t, 'competitions.category_base', 'Base')],
+              ] as const).map(([id, label]) => (
+                <button
+                  key={`cat-${id}`}
+                  onClick={() => setCategory(id)}
+                  aria-pressed={category === id}
+                  aria-label={id === 'all' ? tt(t, 'competitions.category_all_a11y', 'Todas las categorías') : undefined}
+                  className={`px-3 min-h-[32px] rounded-full text-[12px] font-semibold transition-colors ${
+                    category === id
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+        </div>
+      )}
+
       {/* ── Contenido ──────────────────────────────────────────────────────── */}
       <div
         className="flex-1 px-4 py-3"
@@ -746,9 +773,18 @@ export function CompetitionsList({
         {/* Modo búsqueda: lista plana (busca en todas las temporadas, #256) */}
         {isSearching && (
           <>
-            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 px-1 pb-2 tabular-nums">
-              {tt(t, 'search.results_count', '{n} resultados', { n: searched.length })}
-            </p>
+            <div className="flex items-center justify-between gap-2 px-1 pb-2">
+              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 tabular-nums">
+                {tt(t, 'search.results_count', '{n} resultados', { n: searched.length })}
+              </p>
+              {/* Equipos y jugadores viven en el buscador global. */}
+              <Link
+                href={`/search?q=${encodeURIComponent(query.trim())}`}
+                className="text-[12px] font-semibold text-rink-passion hover:underline dark:text-rink-accent"
+              >
+                {tt(t, 'competitions.search_teams', 'Buscar «{q}» en equipos', { q: query.trim() })}
+              </Link>
+            </div>
             {searched.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-14 gap-3 text-center px-4">
                 <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
@@ -807,13 +843,20 @@ export function CompetitionsList({
               </p>
             </div>
           ) : (
-            <FlatList
-              comps={misLigas}
-              favorites={favorites}
-              onToggleFav={toggleFav}
-              locale={locale}
-              emptyKey="common.no_search_results"
-            />
+            <>
+              <FlatList
+                comps={misLigas}
+                favorites={favorites}
+                onToggleFav={toggleFav}
+                locale={locale}
+                emptyKey="common.no_search_results"
+              />
+              {/* Equipos y jugadores seguidos: en Favoritos, todo junto. */}
+              <Link href="/favorites"
+                    className="mt-2 block px-3 py-2 text-[12px] font-semibold text-rink-passion hover:underline dark:text-rink-accent">
+                {tt(t, 'competitions.all_following', 'Ver todo lo que sigues (equipos y jugadores)')}
+              </Link>
+            </>
           )
         )}
 

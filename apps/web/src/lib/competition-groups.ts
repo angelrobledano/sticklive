@@ -16,7 +16,7 @@ export type GenderFilter = 'all' | 'male' | 'female';
 
 /** Copa / supercopa / torneo KO por nombre (no hay columna `kind`). */
 export function isCup(c: Pick<CompetitionSummary, 'name'>): boolean {
-  return /\b(super)?copa\b|ta[çc]a|supertaça|coppa|coupe|supercoppa/i.test(c.name);
+  return /\b(super)?copa\b|ta[çc]a|supertaça|coppa|coupe|supercoppa|\bcup\b|\btroph(y|ée)\b/i.test(c.name);
 }
 
 /** Internacional: por scope o por colgar de World Skate / WSE. */
@@ -37,18 +37,14 @@ export function filterByGender(comps: CompetitionSummary[], g: GenderFilter): Co
   return comps.filter((c) => c.gender === g || c.gender === 'mixed' || c.gender == null);
 }
 
-/**
- * Destacadas: las curadas (`featuredRank`) en su orden. Si nadie ha curado
- * nada todavía, la máxima categoría sénior de cada país (tier 1) para que la
- * pestaña nunca salga vacía.
- */
-export function featuredCompetitions(comps: CompetitionSummary[], locale: string): CompetitionSummary[] {
-  const curated = comps.filter((c) => c.featuredRank != null);
-  if (curated.length > 0) return orderByImportance(curated, locale);
-  return orderByImportance(
-    comps.filter((c) => c.tier === 1 && c.ageCategory === 'senior'),
-    locale,
-  );
+export type CategoryFilter = 'all' | 'senior' | 'base';
+
+/** Categoría de Explorar: sénior, base (prebenjamín … sub-23) o todas (incluye veteranos). */
+export function filterByCategory(comps: CompetitionSummary[], c: CategoryFilter): CompetitionSummary[] {
+  if (c === 'all') return comps;
+  const age = (x: CompetitionSummary) => x.ageCategory ?? 'senior';
+  if (c === 'senior') return comps.filter((x) => age(x) === 'senior');
+  return comps.filter((x) => age(x) !== 'senior' && age(x) !== 'veteranos');
 }
 
 export interface FederationGroup {

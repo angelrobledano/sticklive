@@ -1,53 +1,29 @@
 /**
- * Portada de Competiciones (spec 2026-10-29, Ángel):
+ * Portada de Competiciones (spec 2026-10-29; datos, spec 2026-10-30).
  *
- *  1. Principales, fijos arriba: OK Liga, Campeonato Placard (PT), OK Liga
- *     Iberdrola, Serie A1 (IT) y la WSE Champions cuando exista.
- *  2. Segundo nivel por país: Plata/Bronce, Nacional Catalana, 2ª Divisão y
- *     Feminino (PT), Serie A2 y Femminile (IT).
- *  3. Copas y torneos dinámicos: solo cerca de sus fechas (14 días antes,
- *     mientras se juegan y una semana después para ver al campeón). Incluye
- *     los torneos internacionales (Mundiales, Europeos).
+ * Todo sale de la curación en datos (`featured_rank` + `tier`, migración 100,
+ * editable desde el admin): aquí no hay listas de competiciones.
  *
- * Las competiciones que aún no existen en la base de datos simplemente no
- * salen. Funciones puras, testeadas.
+ *  1. Principales: destacadas de primer nivel (tier 1) que no son copa.
+ *  2. Copas y torneos: copas e internacionales destacados, solo cerca de sus
+ *     fechas (14 días antes, mientras se juegan y una semana después).
+ *  3. Segundo nivel: el resto de destacadas, por país.
+ *
+ * Funciones puras, testeadas.
  */
 import type { CompetitionSummary } from '@/lib/api/client';
+import { isFeaturedCompetition } from '@sports/shared-types';
+import { isCup, isInternational } from '@/lib/competition-groups';
 
-type Matcher = (c: CompetitionSummary) => boolean;
-const slug = (s: string): Matcher => (c) => c.slug === s;
-const name = (re: RegExp): Matcher => (c) => re.test(c.name);
+/** Orden de los países del segundo nivel; el resto, detrás por código. */
+const COUNTRY_ORDER = ['ES', 'PT', 'IT'];
 
-const BIG: Matcher[] = [
-  slug('ok-liga-masculina'),
-  slug('campeonato-placard-portugal'),
-  slug('ok-liga-femenina'),
-  slug('campionato-serie-a1'),
-  (c) => c.organizer === 'WSE' && /champions/i.test(c.name),
-];
+const byRank = (a: CompetitionSummary, b: CompetitionSummary) => (a.featuredRank ?? 999) - (b.featuredRank ?? 999);
 
-export type HomeCountry = 'ES' | 'PT' | 'IT';
-export const HOME_SECOND_COUNTRIES: HomeCountry[] = ['ES', 'PT', 'IT'];
-
-const SECOND: Record<HomeCountry, Matcher[]> = {
-  ES: [
-    slug('ok-liga-plata-norte'), slug('ok-liga-plata-sur'), slug('ok-liga-plata-femenina'),
-    slug('ok-liga-bronce-masculina-norte'), slug('ok-liga-bronce-masculina-sur'),
-    slug('nacional-catalana-masculina'), slug('nacional-catalana-femenina'),
-  ],
-  PT: [slug('campeonato-nacional-feminino-portugal'), slug('2-divisao-portugal')],
-  IT: [slug('campionato-serie-a2'), name(/serie\s*a\s*femminile/i)],
-};
-
-const CUPS: Matcher[] = [
-  slug('copa-del-rey'), slug('copa-de-la-reina-iberdrola'),
-  slug('supercopa-de-espana-masculina'), slug('supercopa-de-espana-femenina'),
-  slug('copa-sar-la-princesa-masculina'), slug('copa-sar-la-princesa-femenina'),
-  slug('taca-de-portugal'), slug('elite-cup-portugal'), slug('elite-cup-feminina-portugal'),
-  slug('supertaca-portugal'), slug('supertaca-feminina-portugal'),
-  name(/coppa italia(?!.*serie b)/i), name(/supercoppa italiana/i),
-  (c) => c.scope === 'international' && !BIG.some((m) => m(c)),
-];
+/** Copa o torneo: por nombre, o internacional que no es una liga de primer nivel (Mundial sí, WSE Champions no). */
+export function isCupLike(c: CompetitionSummary): boolean {
+  return isCup(c) || (isInternational(c) && c.tier !== 1);
+}
 
 const DAY = 86_400_000;
 const BEFORE_DAYS = 14;
@@ -67,30 +43,30 @@ export function cupIsActive(c: CompetitionSummary, now: Date): boolean {
   return first != null && last != null && first <= t && t - last <= AFTER_DAYS * DAY;
 }
 
-function pick(comps: CompetitionSummary[], matchers: Matcher[]): CompetitionSummary[] {
-  const out: CompetitionSummary[] = [];
-  for (const m of matchers) {
-    for (const c of comps) if (m(c) && !out.includes(c)) out.push(c);
-  }
-  return out;
-}
-
 export interface CompetitionsHome {
   big: CompetitionSummary[];
   cups: CompetitionSummary[];
-  second: Record<HomeCountry, CompetitionSummary[]>;
+  /** Segundo nivel por país (ISO-2), en el orden de `secondCountries`. */
+  second: Record<string, CompetitionSummary[]>;
+  secondCountries: string[];
 }
 
 export function buildCompetitionsHome(comps: CompetitionSummary[], now: Date = new Date()): CompetitionsHome {
-  const big = pick(comps, BIG);
-  const cups = pick(comps.filter((c) => !big.includes(c)), CUPS)
-    .filter((c) => cupIsActive(c, now))
+  const featured = comps.filter(isFeaturedCompetition).sort(byRank);
+  const big = featured.filter((c) => c.tier === 1 && !isCupLike(c));
+  const cups = featured.filter((c) => isCupLike(c) && cupIsActive(c, now))
     .sort((a, b) => Number((b.season?.liveMatches ?? 0) > 0) - Number((a.season?.liveMatches ?? 0) > 0)
       || String(a.season?.nextMatchAt ?? a.season?.lastMatchAt ?? '').localeCompare(String(b.season?.nextMatchAt ?? b.season?.lastMatchAt ?? '')));
-  const second = Object.fromEntries(
-    HOME_SECOND_COUNTRIES.map((k) => [k, pick(comps, SECOND[k])]),
-  ) as Record<HomeCountry, CompetitionSummary[]>;
-  return { big, cups, second };
+  const second: Record<string, CompetitionSummary[]> = {};
+  for (const c of featured) {
+    if (big.includes(c) || isCupLike(c)) continue;
+    const k = (c.federation?.country ?? c.country ?? '').toUpperCase();
+    if (!k) continue;
+    (second[k] ??= []).push(c);
+  }
+  const rank = (k: string) => { const i = COUNTRY_ORDER.indexOf(k); return i === -1 ? 100 : i; };
+  const secondCountries = Object.keys(second).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  return { big, cups, second, secondCountries };
 }
 
 const VARIANT = /\s+(norte|sur|nord|sud|sul)$/i;

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { CompetitionSummary, Federation, FederationRef } from '@/lib/api/client';
 import {
-  buildCompetitionTree, competitionsUnderFederation, featuredCompetitions,
-  filterByGender, isCup,
+  buildCompetitionTree, competitionsUnderFederation,
+  filterByCategory, filterByGender, isCup,
 } from './competition-groups';
 import { importanceRank } from './competition-importance';
 
@@ -42,26 +42,20 @@ describe('importanceRank con datos (089)', () => {
 
 describe('isCup', () => {
   it('reconoce copas en varios idiomas', () => {
-    for (const n of ['Copa del Rey', 'Supercopa de España', 'Taça de Portugal', 'Coppa Italia']) {
+    for (const n of ['Copa del Rey', 'Supercopa de España', 'Taça de Portugal', 'Coppa Italia', 'Elite Cup Masculina', 'Skate Italia Trophy', 'Open Goldencat Cup']) {
       expect(isCup({ name: n })).toBe(true);
     }
     expect(isCup({ name: 'OK Liga Masculina' })).toBe(false);
+    expect(isCup({ name: 'Recuperación de cupos' })).toBe(false);
   });
 });
 
-describe('featuredCompetitions', () => {
-  it('usa la curación en su orden', () => {
-    const out = featuredCompetitions([
-      comp('b', { featuredRank: 2 }), comp('a', { featuredRank: 1 }), comp('c'),
-    ], 'es');
-    expect(out.map((c) => c.slug)).toEqual(['a', 'b']);
-  });
-
-  it('sin curación cae a tier 1 sénior', () => {
-    const out = featuredCompetitions([
-      comp('top', { tier: 1 }), comp('base', { tier: 1, ageCategory: 'juvenil' }), comp('t2', { tier: 2 }),
-    ], 'es');
-    expect(out.map((c) => c.slug)).toEqual(['top']);
+describe('filterByCategory', () => {
+  it('sénior, base (de prebenjamín a sub-23) y veteranos solo en «todas»', () => {
+    const list = [comp('sen'), comp('ale', { ageCategory: 'alevin' }), comp('s23', { ageCategory: 'sub23' }), comp('vet', { ageCategory: 'veteranos' })];
+    expect(filterByCategory(list, 'senior').map((c) => c.slug)).toEqual(['sen']);
+    expect(filterByCategory(list, 'base').map((c) => c.slug)).toEqual(['ale', 's23']);
+    expect(filterByCategory(list, 'all')).toHaveLength(4);
   });
 });
 
