@@ -21,7 +21,7 @@
 | GET | `/seasons/:id/stats` | Líderes de temporada (goleadores, asistentes, tarjetas, eficiencias) |
 | GET | `/seasons/:id/insights` | Datos destacados de la temporada (C2): insights tipados que superan su umbral, ordenados por interés, con los equipos, jugadores y partidos que citan. Incluye `discipline` (C4): rojas de la última jornada de liga, sin deducir sanciones. Sin texto: la frase la pone la web por idioma. Caché de 10 min |
 | GET | `/matches/live` | Partidos en juego ahora (API pública; **sin consumidor interno**, ver nota) |
-| GET | `/matches/current` | Ventana de la home (por defecto ±días; `?from=&to=` / `?days=`) |
+| GET | `/matches/current` | Ventana de la home (por defecto ±días; `?from=&to=` / `?days=`). `?scope=feed\|following&teams=&leagues=&country=`: solo lo que sale por defecto + `hiddenCount`/`hiddenByHour` ([visibilidad](./visibilidad-competiciones.md)) |
 | GET | `/matches/:id` | Detalle de partido: eventos, estadísticas, alineaciones |
 | GET | `/matches/:id/stream` | **SSE** del directo (snapshot inicial + eventos; timeout a 2 h con `event: timeout`) |
 | GET | `/teams/:id` | Ficha de equipo: club canónico, standing, partidos, plantilla, cuerpo técnico, estadísticas |

@@ -17,6 +17,7 @@ Europe → scraper → ETL → PostgreSQL → API Hono (REST+SSE, :3000) → web
 - **Arquitectura y decisiones:** [docs/architecture.md](./docs/architecture.md).
 - **Pipeline de datos (scraper/ETL):** [docs/pipeline-datos.md](./docs/pipeline-datos.md).
 - **Base de datos:** [docs/database.md](./docs/database.md).
+- **Qué sale en Partidos (destacadas, seguidas, catálogo):** [docs/visibilidad-competiciones.md](./docs/visibilidad-competiciones.md). La regla es `feedReason` en `@sports/shared-types`: no la dupliques.
 - **Despliegue y operación:** [docs/DEPLOY.md](./docs/DEPLOY.md), [docs/operations.md](./docs/operations.md).
 
 **Cosas que NO deben romperse** (invariantes verificados en CI): los upserts de
