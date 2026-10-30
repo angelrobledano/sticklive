@@ -1,3 +1,4 @@
+import { applyFeedScope, parseFeedQuery } from '../lib/match-feed.js';
 import { Hono } from 'hono';
 import { db } from '@sports/db';
 import { logger } from '@sports/logger';
@@ -302,8 +303,19 @@ liveRouter.get('/current', async (c) => {
       return { count: matches.length, matches };
     });
 
-    c.header('Cache-Control', 'public, max-age=5, stale-while-revalidate=30');
-    return c.json(payload);
+    // Visibilidad (spec 2026-10-30): scope=feed|following sobre el rango ya
+    // cacheado, con la regla compartida (lib/match-feed.ts).
+    const feed = parseFeedQuery({
+      scope: c.req.query('scope'), teams: c.req.query('teams'),
+      leagues: c.req.query('leagues'), country: c.req.query('country'),
+    });
+    const personal = feed.teamIds.length > 0 || feed.leagueIds.length > 0;
+    c.header('Cache-Control', personal
+      ? 'private, max-age=5'
+      : 'public, max-age=5, stale-while-revalidate=30');
+    if (feed.scope === 'all') return c.json(payload);
+    const scoped = applyFeedScope(payload.matches, feed);
+    return c.json({ count: scoped.matches.length, matches: scoped.matches, hiddenCount: scoped.hiddenCount });
   } catch (err) {
     // El detalle se queda en el log del servidor: nunca al cliente (S7; #152).
     captureRouteError(err, 'live] GET /current error');
