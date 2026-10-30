@@ -54,6 +54,22 @@ export interface SearchTeamRow {
   short_name: string | null;
   logo_url: string | null;
   country: string | null;
+  // Para distinguir las secciones de un club (30/10/2026): «CD Claret» ×5.
+  club_id?: string | null;
+  club_slug?: string | null;
+  gender?: string | null;
+  age_category?: string | null;
+  squad_level?: number | null;
+  competition_name?: string | null;
+}
+
+export interface SearchClubRow {
+  id: string;
+  slug: string;
+  canonical_name: string;
+  city: string | null;
+  crest_url: string | null;
+  team_count: string | number;
 }
 
 export interface SearchPlayerRow {
@@ -78,7 +94,13 @@ export interface SearchCompetitionRow {
 export interface SearchResults {
   query: string;
   total: number;
-  teams: Array<{ id: string; name: string; shortName: string | null; logoUrl: string | null; country: string | null }>;
+  teams: Array<{
+    id: string; name: string; shortName: string | null; logoUrl: string | null; country: string | null;
+    clubId: string | null; clubSlug: string | null;
+    gender: string | null; ageCategory: string | null; squadLevel: number | null; competitionName: string | null;
+  }>;
+  /** Clubes (un club agrupa sus secciones: la web no repite sus equipos). */
+  clubs: Array<{ id: string; slug: string; name: string; city: string | null; crestUrl: string | null; teamCount: number }>;
   players: Array<{ id: string; firstName: string; lastName: string; photoUrl: string | null; teamName: string | null }>;
   competitions: Array<{
     id: string;
@@ -98,16 +120,31 @@ export function buildSearchResults(
   teamRows: SearchTeamRow[],
   playerRows: SearchPlayerRow[],
   competitionRows: SearchCompetitionRow[],
+  clubRows: SearchClubRow[] = [],
 ): SearchResults {
   return {
     query,
-    total: teamRows.length + playerRows.length + competitionRows.length,
+    total: clubRows.length + teamRows.length + playerRows.length + competitionRows.length,
+    clubs: clubRows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      name: r.canonical_name,
+      city: r.city,
+      crestUrl: r.crest_url,
+      teamCount: Number(r.team_count ?? 0),
+    })),
     teams: teamRows.map((r) => ({
       id: r.id,
       name: r.name,
       shortName: r.short_name,
       logoUrl: r.logo_url,
       country: r.country,
+      clubId: r.club_id ?? null,
+      clubSlug: r.club_slug ?? null,
+      gender: r.gender ?? null,
+      ageCategory: r.age_category ?? null,
+      squadLevel: r.squad_level ?? null,
+      competitionName: r.competition_name ?? null,
     })),
     players: playerRows.map((r) => ({
       id: r.id,
@@ -137,14 +174,50 @@ export function buildSearchResults(
 const TEAM_DISPLAY_NAME = 'COALESCE(t.display_name, t.name)';
 
 export const TEAM_QUERY = `
-  SELECT t.id, ${TEAM_DISPLAY_NAME} AS name, t.short_name, t.logo_url, t.country
+  SELECT t.id, ${TEAM_DISPLAY_NAME} AS name, t.short_name, t.logo_url, t.country,
+         t.club_id, cl.slug AS club_slug, t.gender, t.age_category, t.squad_level,
+         cur.competition_name
   FROM teams t
+  LEFT JOIN clubs cl ON cl.id = t.club_id
+  -- Competición actual: misma regla que la ficha de club (temporada en curso primero).
+  LEFT JOIN LATERAL (
+    SELECT c.name AS competition_name
+      FROM matches m
+      JOIN seasons se     ON se.id = m.season_id
+      JOIN competitions c ON c.id = se.competition_id
+     WHERE (m.home_team_id = t.id OR m.away_team_id = t.id)
+       AND se.data_quality = 'ok' AND c.data_quality = 'ok'
+     ORDER BY se.is_current DESC, se.start_date DESC NULLS LAST
+     LIMIT 1
+  ) cur ON TRUE
   WHERE strpos(${unaccentExpr(TEAM_DISPLAY_NAME)}, $1) > 0
      OR strpos(${unaccentExpr("coalesce(t.short_name, '')")}, $1) > 0
   ORDER BY
     (${unaccentExpr(TEAM_DISPLAY_NAME)} = $1) DESC,
     (strpos(${unaccentExpr(TEAM_DISPLAY_NAME)}, $1) = 1) DESC,
     ${TEAM_DISPLAY_NAME} ASC
+  LIMIT $2
+`;
+
+/**
+ * Clubes por su nombre canónico o por el de cualquiera de sus equipos («Claret»
+ * encuentra «Hoquei Claret» aunque el club se llame distinto). `team_count` =
+ * secciones del club (equipos de club, no selecciones).
+ */
+export const CLUB_QUERY = `
+  SELECT cl.id, cl.slug, cl.canonical_name, cl.city, cl.crest_url,
+         (SELECT count(*) FROM teams t2 WHERE t2.club_id = cl.id AND t2.team_type = 'club') AS team_count
+  FROM clubs cl
+  WHERE strpos(${unaccentExpr('cl.canonical_name')}, $1) > 0
+     OR EXISTS (
+       SELECT 1 FROM teams t
+        WHERE t.club_id = cl.id
+          AND strpos(${unaccentExpr(TEAM_DISPLAY_NAME)}, $1) > 0
+     )
+  ORDER BY
+    (${unaccentExpr('cl.canonical_name')} = $1) DESC,
+    (strpos(${unaccentExpr('cl.canonical_name')}, $1) = 1) DESC,
+    cl.canonical_name ASC
   LIMIT $2
 `;
 
@@ -200,24 +273,25 @@ export const COMPETITION_QUERY = `
 
 /**
  * GET /search?q=
- * Búsqueda global: equipos + jugadores + competiciones (todas las temporadas),
+ * Búsqueda global: clubes + equipos + jugadores + competiciones (todas las temporadas),
  * devueltos agrupados. Términos de menos de 2 caracteres → respuesta vacía.
  */
 searchRouter.get('/', async (c) => {
   const normalized = normalizeSearchTerm(c.req.query('q') ?? '');
   const q = parseSearchQuery(normalized);
   if (!q) {
-    return c.json({ query: normalized, total: 0, teams: [], players: [], competitions: [] });
+    return c.json({ query: normalized, total: 0, clubs: [], teams: [], players: [], competitions: [] });
   }
 
   try {
-    const [teams, players, competitions] = await Promise.all([
+    const [teams, players, competitions, clubs] = await Promise.all([
       db.query<SearchTeamRow>(TEAM_QUERY, [q, SEARCH_LIMIT]),
       db.query<SearchPlayerRow>(PLAYER_QUERY, [q, SEARCH_LIMIT]),
       db.query<SearchCompetitionRow>(COMPETITION_QUERY, [q, SEARCH_LIMIT]),
+      db.query<SearchClubRow>(CLUB_QUERY, [q, SEARCH_LIMIT]),
     ]);
 
-    return c.json(buildSearchResults(q, teams.rows, players.rows, competitions.rows));
+    return c.json(buildSearchResults(q, teams.rows, players.rows, competitions.rows, clubs.rows));
   } catch (err) {
     captureRouteError(err, 'search] GET / error');
     logger.error({ err }, '[search] GET / error');

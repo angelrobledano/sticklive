@@ -95,7 +95,7 @@ describe('buildSearchResults', () => {
 
   it('mapea snake_case de la BD a camelCase del DTO', () => {
     const out = buildSearchResults('noia', teamRows, playerRows, competitionRows);
-    expect(out.teams[0]).toEqual({
+    expect(out.teams[0]).toMatchObject({
       id: 't1', name: 'HC Noia', shortName: 'NOIA', logoUrl: null, country: 'ES',
     });
     expect(out.players[0]).toEqual({
@@ -115,6 +115,29 @@ describe('buildSearchResults', () => {
 
   it('sin resultados devuelve grupos vacíos y total 0', () => {
     const out = buildSearchResults('zzz', [], [], []);
-    expect(out).toEqual({ query: 'zzz', total: 0, teams: [], players: [], competitions: [] });
+    expect(out).toEqual({ query: 'zzz', total: 0, clubs: [], teams: [], players: [], competitions: [] });
+  });
+});
+
+describe('buildSearchResults — clubes (búsqueda «Claret», 30/10/2026)', () => {
+  const team = (id: string, o: Record<string, unknown> = {}) => ({
+    id, name: 'CD CLARET', short_name: 'CLA', logo_url: null, country: 'ES',
+    club_id: 'cl1', club_slug: 'cd-claret', gender: 'male', age_category: 'alevin', squad_level: 1,
+    competition_name: 'ALEVÍN ANDALUZ', ...o,
+  });
+
+  it('devuelve los clubes y cada equipo con su club, categoría y competición', () => {
+    const out = buildSearchResults('claret', [team('a'), team('b', { age_category: 'infantil', squad_level: 2 })], [], [], [
+      { id: 'cl1', slug: 'cd-claret', canonical_name: 'CD Claret', city: 'Sevilla', crest_url: null, team_count: '5' },
+    ]);
+    expect(out.clubs).toEqual([{ id: 'cl1', slug: 'cd-claret', name: 'CD Claret', city: 'Sevilla', crestUrl: null, teamCount: 5 }]);
+    expect(out.teams[1]).toMatchObject({
+      clubId: 'cl1', clubSlug: 'cd-claret', ageCategory: 'infantil', squadLevel: 2, gender: 'male', competitionName: 'ALEVÍN ANDALUZ',
+    });
+    expect(out.total).toBe(3);
+  });
+
+  it('sin filas de clubes (llamadas antiguas), clubs vacío', () => {
+    expect(buildSearchResults('x', [], [], []).clubs).toEqual([]);
   });
 });
