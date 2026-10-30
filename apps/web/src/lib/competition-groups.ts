@@ -191,3 +191,15 @@ export function competitionsUnderFederation(
 /** Rutas de los hubs (segmento neutro + código ISO / slug de federación). */
 export const countryHubPath = (code: string) => `/competitions/country/${code.toLowerCase()}`;
 export const federationHubPath = (slug: string) => `/competitions/federation/${slug}`;
+
+/**
+ * Federaciones autonómicas que casan con la búsqueda (región, siglas o nombre,
+ * sin tildes): «Cataluña» lleva a FECAPA y no solo a sus 39 competiciones.
+ */
+export function matchFederationGroups(groups: readonly FederationGroup[], query: string): FederationGroup[] {
+  const norm = (s: string | null | undefined) => (s ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+  const q = norm(query);
+  if (q.length < 2) return [];
+  return groups.filter((g) => g.federation && [g.federation.region, g.federation.shortName, g.federation.name, g.label]
+    .some((v) => norm(v).includes(q)));
+}

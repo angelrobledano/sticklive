@@ -14,11 +14,12 @@ import { tt } from '@/components/search/translate';
 import { useFavorites } from '@/hooks/useFavorites';
 import { currentSeasonYear, hasSeasonYear, orderByImportance } from '@/lib/competition-importance';
 import {
-  buildCompetitionTree, countryHubPath, federationHubPath, filterByCategory, filterByGender,
+  buildCompetitionTree, countryHubPath, federationHubPath, filterByCategory, filterByGender, matchFederationGroups,
   type CategoryFilter, type CountrySections, type GenderFilter,
 } from '@/lib/competition-groups';
 import { competitionPath } from '@/lib/competition-path';
 import { FeaturedCompetitions } from './FeaturedCompetitions';
+import { FederationGrid } from './FederationGrid';
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -336,19 +337,28 @@ export function CountrySectionsView({
   onToggleFav,
   locale,
   regionalCollapsed = true,
+  regionalGrid = false,
 }: {
   sections: CountrySections;
   favorites: Set<string>;
   onToggleFav: (id: string) => void;
   locale: string;
   regionalCollapsed?: boolean;
+  /**
+   * Autonómicas como rejilla ARRIBA, un toque a la página de cada federación
+   * (listado general). Sin esto, acordeones al final (página del país).
+   */
+  regionalGrid?: boolean;
 }) {
   const { t } = useT();
   const rows = (list: CompetitionSummary[]) => list.map((c) => (
     <CompetitionRow key={c.id} comp={c} isFav={favorites.has(c.id)} onToggleFav={onToggleFav} locale={locale} />
   ));
+  // Con rejilla, las regiones sin federación (raro) siguen como acordeón abajo.
+  const regionalBelow = regionalGrid ? sections.regional.filter((g) => !g.federation) : sections.regional;
   return (
     <div>
+      {regionalGrid && <FederationGrid groups={sections.regional} />}
       {sections.leagues.length > 0 && (
         <div><SectionTitle>{tt(t, 'competitions.section_leagues', 'Ligas')}</SectionTitle>{rows(sections.leagues)}</div>
       )}
@@ -358,10 +368,10 @@ export function CountrySectionsView({
       {sections.base.length > 0 && (
         <div><SectionTitle>{tt(t, 'competitions.section_base', 'Categorías de base')}</SectionTitle>{rows(sections.base)}</div>
       )}
-      {sections.regional.length > 0 && (
+      {regionalBelow.length > 0 && (
         <div>
           <SectionTitle>{tt(t, 'competitions.section_regional', 'Federaciones autonómicas')}</SectionTitle>
-          {sections.regional.map((g) => (
+          {regionalBelow.map((g) => (
             <RegionAccordion
               key={g.key}
               region={g.federation ? `${g.label} · ${g.federation.shortName}` : (g.label || tt(t, 'competitions.other_region', 'Otras'))}
@@ -432,7 +442,7 @@ function CountryAccordion({
       </div>
       {open && (
         <div className="pb-2">
-          <CountrySectionsView sections={sections} favorites={favorites} onToggleFav={onToggleFav} locale={locale} />
+          <CountrySectionsView sections={sections} favorites={favorites} onToggleFav={onToggleFav} locale={locale} regionalGrid />
         </div>
       )}
     </div>
@@ -572,6 +582,13 @@ export function CompetitionsList({
   );
 
   const isSearching = q.length > 0;
+
+  // Búsqueda de federaciones: «Cataluña» enseña FECAPA arriba, no solo sus competiciones.
+  const allRegional = useMemo(
+    () => buildCompetitionTree(competitions, locale, federations).countries.flatMap((c) => c.sections.regional),
+    [competitions, locale, federations],
+  );
+  const matchedFeds = useMemo(() => (q ? matchFederationGroups(allRegional, query) : []), [allRegional, q, query]);
 
   // #240: telemetría de búsqueda local. Se debouncea para no emitir en cada
   // tecla y no incluye la query en claro (ver `searchEventProps`).
@@ -773,6 +790,11 @@ export function CompetitionsList({
         {/* Modo búsqueda: lista plana (busca en todas las temporadas, #256) */}
         {isSearching && (
           <>
+            {matchedFeds.length > 0 && (
+              <div className="-mt-4 pb-2">
+                <FederationGrid groups={matchedFeds} title={tt(t, 'competitions.federations', 'Federaciones')} />
+              </div>
+            )}
             <div className="flex items-center justify-between gap-2 px-1 pb-2">
               <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 tabular-nums">
                 {tt(t, 'search.results_count', '{n} resultados', { n: searched.length })}
@@ -863,7 +885,7 @@ export function CompetitionsList({
         {/* Tab: Destacadas — principales fijas, copas cerca de sus fechas y
             segundo nivel por país (spec 2026-10-29, lib/competitions-home). */}
         {!isSearching && tab === 'destacadas' && (
-          <FeaturedCompetitions comps={visible} favorites={favorites} onToggleFav={toggleFav} />
+          <FeaturedCompetitions comps={visible} favorites={favorites} onToggleFav={toggleFav} federations={federations} />
         )}
 
         {/* Tab: Países — internacional + árbol país → federación */}

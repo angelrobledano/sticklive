@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { CompetitionSummary, Federation, FederationRef } from '@/lib/api/client';
 import {
   buildCompetitionTree, competitionsUnderFederation,
-  filterByCategory, filterByGender, isCup,
+  filterByCategory, filterByGender, isCup, matchFederationGroups,
 } from './competition-groups';
 import { importanceRank } from './competition-importance';
 
@@ -108,5 +108,22 @@ describe('competitionsUnderFederation', () => {
     ];
     expect(competitionsUnderFederation(comps, 'RFEP', FEDS).map((c) => c.slug)).toEqual(['ok-liga', 'fmp-1']);
     expect(competitionsUnderFederation(comps, 'FMP', FEDS).map((c) => c.slug)).toEqual(['fmp-1']);
+  });
+});
+
+describe('matchFederationGroups', () => {
+  const g = (code: string, region: string, name: string) => ({
+    key: code, label: region, comps: [],
+    federation: { code, slug: code.toLowerCase(), name, shortName: code, level: 'regional' as const, parentCode: 'RFEP', country: 'ES', region },
+  });
+  const groups = [g('FECAPA', 'Cataluña', 'Federació Catalana de Patinatge'), g('FGP', 'Galicia', 'Federación Galega de Patinaxe')];
+  it('por región (sin tildes), siglas o nombre', () => {
+    expect(matchFederationGroups(groups, 'cataluna').map((x) => x.key)).toEqual(['FECAPA']);
+    expect(matchFederationGroups(groups, 'fgp').map((x) => x.key)).toEqual(['FGP']);
+    expect(matchFederationGroups(groups, 'galega').map((x) => x.key)).toEqual(['FGP']);
+  });
+  it('consultas cortas o sin coincidencia: nada', () => {
+    expect(matchFederationGroups(groups, 'c')).toEqual([]);
+    expect(matchFederationGroups(groups, 'ok liga')).toEqual([]);
   });
 });

@@ -13,6 +13,9 @@ import {
   buildCompetitionsHome, competitionStatus, groupVariants,
 } from '@/lib/competitions-home';
 import { CompetitionRow } from './CompetitionsList';
+import { FederationGrid } from './FederationGrid';
+import { buildCompetitionTree } from '@/lib/competition-groups';
+import type { Federation } from '@/lib/api/client';
 
 /** Estado corto de una competición (ver `competitionStatus`) ya traducido. */
 function useStatusLine() {
@@ -87,9 +90,11 @@ function BigCard({ comp }: { comp: CompetitionSummary }) {
   );
 }
 
-export function FeaturedCompetitions({ comps, favorites, onToggleFav }: {
+export function FeaturedCompetitions({ comps, favorites, onToggleFav, federations }: {
   /** Competiciones ya filtradas por género. */
   comps: CompetitionSummary[];
+  /** Árbol de federaciones: da las autonómicas del país elegido. */
+  federations?: Federation[];
   favorites: Set<string>;
   onToggleFav: (id: string) => void;
 }) {
@@ -103,6 +108,11 @@ export function FeaturedCompetitions({ comps, favorites, onToggleFav }: {
   const [picked, setPicked] = useState<string | null>(null);
   const country = picked && withData.includes(picked) ? picked : initial;
   const rows = useMemo(() => groupVariants(home.second[country] ?? []), [home, country]);
+  // Autonómicas del país elegido: un toque, sin bajar al final de Países.
+  const regional = useMemo(() => {
+    const tree = buildCompetitionTree(comps, locale, federations);
+    return tree.countries.find((c) => c.code === country)?.sections.regional ?? [];
+  }, [comps, locale, federations, country]);
 
   const countryName = (code: string) => {
     try { return new Intl.DisplayNames([locale], { type: 'region' }).of(code) ?? code; } catch { return code; }
@@ -171,6 +181,7 @@ export function FeaturedCompetitions({ comps, favorites, onToggleFav }: {
               </div>
             </div>
           )))}
+          <FederationGrid groups={regional} />
         </section>
       )}
     </div>
