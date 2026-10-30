@@ -122,7 +122,12 @@ function teamMatch(m: ClubMatchRow, teamId: string): TeamMatchDto {
  * indexación de la auditoría SEO): si no, la web sirve `noindex, follow`.
  */
 export function buildClubDetail(club: ClubRow, teams: ClubTeamDetailRow[], matches: ClubMatchRow[]) {
-  const visibleTeams = orderClubTeams(teams.filter((t) => t.competition_id !== null));
+  const playing = teams.filter((t) => t.competition_id !== null);
+  // «Los equipos de esta temporada» (como OKmob): si alguno juega la temporada
+  // en curso, los de temporadas anteriores (el primer equipo con su nombre de
+  // patrocinador viejo, secciones extinguidas) no salen.
+  const anyCurrent = playing.some((t) => t.is_current === true);
+  const visibleTeams = orderClubTeams(anyCurrent ? playing.filter((t) => t.is_current === true) : playing);
 
   const recent = matches
     .filter((m) => m.status === 'finished' || LIVE_STATUSES.has(m.status))

@@ -213,11 +213,11 @@ teamDetailRouter.get('/:id', async (c) => {
       db.query<ClubTeamRow>(`
         SELECT t2.id, COALESCE(t2.display_name, t2.name) AS name, t2.short_name, t2.logo_url,
                t2.gender, t2.age_category, t2.squad_level, t2.team_type,
-               cur.competition_id, cur.competition_slug, cur.competition_name
+               cur.competition_id, cur.competition_slug, cur.competition_name, cur.is_current
         FROM teams t
         JOIN teams t2 ON t2.club_id = t.club_id AND t2.id <> t.id AND t2.team_type = 'club'
         JOIN LATERAL (
-          SELECT c.id AS competition_id, c.slug AS competition_slug, c.name AS competition_name
+          SELECT c.id AS competition_id, c.slug AS competition_slug, c.name AS competition_name, se.is_current
             FROM matches m
             JOIN seasons se     ON se.id = m.season_id
             JOIN competitions c ON c.id = se.competition_id
@@ -234,7 +234,12 @@ teamDetailRouter.get('/:id', async (c) => {
 
     if (teamRes.rows.length === 0) return c.json({ error: 'Team not found' }, 404);
     const teamRow = teamRes.rows[0]!;
-    const clubTeams = orderClubTeams(clubTeamsRes.rows);
+    // Mismo criterio que la ficha de club: con secciones en la temporada en
+    // curso, fuera las de temporadas anteriores.
+    const clubRows = clubTeamsRes.rows.some((r) => r.is_current === true)
+      ? clubTeamsRes.rows.filter((r) => r.is_current === true)
+      : clubTeamsRes.rows;
+    const clubTeams = orderClubTeams(clubRows);
     const seasons = seasonsRes.rows;
     const selectedSeasonId = resolveSelectedSeason(seasonParam ?? null, seasons);
     const currentSeasonIds = selectedSeasonId ? [selectedSeasonId] : [];

@@ -77,4 +77,16 @@ describe('buildClubDetail', () => {
     expect(out.teams.find((t) => t.id === 'ale')!).toMatchObject({ section: 'base', lastMatch: null, nextMatch: null });
     expect(out.teams.find((t) => t.id === 'vet')!.section).toBe('veterans');
   });
+
+  it('con equipos en la temporada en curso, fuera los de temporadas anteriores (nombres de patrocinador viejos)', () => {
+    const out = buildClubDetail(club, [
+      team({ id: 'brasilia', is_current: true }), team({ id: 'miro', is_current: false }), team({ id: 'virginias', is_current: false }),
+    ], []);
+    expect(out.teams.map((t) => t.id)).toEqual(['brasilia']);
+  });
+
+  it('club sin nada en curso: se enseña lo último que jugó (no queda vacío)', () => {
+    const out = buildClubDetail(club, [team({ id: 'a', is_current: false }), team({ id: 'b', is_current: false, squad_level: 2 })], []);
+    expect(out.teams).toHaveLength(2);
+  });
 });

@@ -756,6 +756,23 @@ export interface ClubDetailTeam {
   sectionSuffix: string;
   competition: { id: string; slug: string | null; name: string; seasonId: string | null; isCurrent: boolean } | null;
   position: number | null;
+  /** Sección de la ficha (API ≥ 2026-10-30). */
+  section?: 'senior' | 'senior_female' | 'base' | 'veterans';
+  lastMatch?: ClubTeamMatch | null;
+  nextMatch?: ClubTeamMatch | null;
+}
+
+/** Partido visto desde un equipo del club. */
+export interface ClubTeamMatch {
+  id: string;
+  scheduledAt: string | null;
+  status: string;
+  home: boolean;
+  opponent: string;
+  opponentId: string;
+  goalsFor: number | null;
+  goalsAgainst: number | null;
+  result: 'W' | 'D' | 'L' | null;
 }
 
 export interface ClubDetailMatch {

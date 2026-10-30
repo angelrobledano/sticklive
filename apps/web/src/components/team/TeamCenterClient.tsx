@@ -6,7 +6,6 @@ import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useRouter } from 'next/navigation';
 import type { TeamDetail, TeamMatchSummary, TeamSeason } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
-import { TeamName } from '@/components/shared/TeamName';
 import { clubName } from '@/lib/names';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
@@ -21,6 +20,8 @@ import { isKnockoutSeason, buildKnockoutSummary, knockoutPhaseLabel } from '@/li
 import { KnockoutSeasonSummary } from './KnockoutSeasonSummary';
 import { tt } from '@/components/search/translate';
 import { competitionPath } from '@/lib/competition-path';
+import { clubTeamLabel, groupClubSections } from '@/lib/club-sections';
+import type { Locale } from '@/lib/locales';
 
 // ─── Sección de club (#196/#197) ───────────────────────────────────────
 // La API `team-detail` ya devuelve los campos de sección (club × género ×
@@ -41,6 +42,9 @@ export interface ClubTeamSummary extends TeamSectionFields {
   name: string;
   shortName: string | null;
   logoUrl: string | null;
+  /** API ≥ 2026-10-30: sección y competición actual de cada equipo del club. */
+  section?: 'senior' | 'senior_female' | 'base' | 'veterans';
+  competition?: { id: string; slug: string | null; name: string } | null;
 }
 
 export type TeamDetailView = TeamDetail & {
@@ -235,55 +239,50 @@ function TeamHeader({ data }: { data: TeamDetailView }) {
 // ─── Club: otras secciones + búsqueda de equipos (#197) ───────────────
 
 function ClubSection({ data }: { data: TeamDetailView }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const { clubTeams = [] } = data;
-  // Sin otras secciones del club no hay nada que mostrar. Antes esta tarjeta
-  // quedaba con un único enlace "Buscar equipos", que se ha retirado: era una
-  // búsqueda global dentro de la ficha (redundante con la nav y con ámbito poco
-  // claro).
+  // Agrupados por sección y nombrados por categoría («Alevín C · Aleví Or»),
+  // como OKmob: el nombre del club es el mismo en todos y no distingue nada.
+  const groups = useMemo(() => groupClubSections(clubTeams), [clubTeams]);
   if (clubTeams.length === 0) return null;
 
   return (
     <div className="card overflow-hidden">
-      {/* Otras secciones del mismo club (club × género × categoría × filial).
-          Con el backfill 1:1 actual estará vacío en casi todos los casos. */}
-      {clubTeams.length > 0 && (
-        <>
-          <div className="px-4 pt-3 pb-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-              {t('team.other_teams')}
-            </p>
-          </div>
-          {data.team.club?.slug && (
-            <Link
-              href={`/clubs/${data.team.club.slug}`}
-              className="block px-4 pb-2 text-xs font-semibold text-rink-passion hover:underline"
-            >
-              {t('team.view_club')} →
-            </Link>
-          )}
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-            {clubTeams.map((ct) => (
-              <Link
-                key={ct.id}
-                href={`/teams/${ct.id}`}
-                className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group"
-              >
-                <TeamShield teamId={ct.id} teamName={ct.name} size={28} />
-                <TeamName
-                  name={ct.name}
-                  shortName={ct.shortName}
-                  suffix={ct.sectionSuffix}
-                  className="flex-1 min-w-0 text-sm font-medium text-slate-800 dark:text-slate-200 truncate group-hover:text-rink-passion transition-colors"
-                />
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-slate-300 dark:text-slate-700 shrink-0">
-                  <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </Link>
+      <div className="flex items-baseline justify-between gap-3 px-4 pt-3 pb-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+          {t('team.other_teams')}
+        </p>
+        {data.team.club?.slug && (
+          <Link href={`/clubs/${data.team.club.slug}`} className="shrink-0 text-xs font-semibold text-rink-passion hover:underline">
+            {t('team.view_club')} →
+          </Link>
+        )}
+      </div>
+      {groups.map(({ section, teams }) => (
+        <div key={section}>
+          <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            {tt(t, `club.section_${section}`, section)}
+          </p>
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800/60">
+            {teams.map((ct) => (
+              <li key={ct.id}>
+                <Link href={`/teams/${ct.id}`}
+                      className="group flex items-center gap-3 px-4 py-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60">
+                  <span className="w-28 shrink-0 truncate text-sm font-semibold text-slate-800 group-hover:text-rink-passion dark:text-slate-200">
+                    {clubTeamLabel(ct, locale as Locale)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                    {ct.competition ? clubName(ct.competition.name) : ''}
+                  </span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-700" aria-hidden="true">
+                    <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </Link>
+              </li>
             ))}
-          </div>
-        </>
-      )}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }

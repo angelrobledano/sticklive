@@ -338,6 +338,19 @@
     "prev_week": "Semana anterior",
     "next_week": "Semana siguiente"
   },
+  "club": {
+    "female_team": "femenino",
+    "section_senior": "Sénior",
+    "section_senior_female": "Sénior femenino",
+    "section_base": "Base",
+    "section_veterans": "Veteranos",
+    "last": "Último",
+    "next": "Próximo",
+    "home": "En casa",
+    "away": "Fuera",
+    "no_next": "Sin partido programado",
+    "teams_lc": "equipos"
+  },
   "age_categories": {
     "senior": "Senior",
     "juvenil": "Juvenil",

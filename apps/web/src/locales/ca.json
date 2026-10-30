@@ -338,6 +338,19 @@
     "prev_week": "Setmana anterior",
     "next_week": "Setmana següent"
   },
+  "club": {
+    "female_team": "femení",
+    "section_senior": "Sènior",
+    "section_senior_female": "Sènior femení",
+    "section_base": "Base",
+    "section_veterans": "Veterans",
+    "last": "Últim",
+    "next": "Proper",
+    "home": "A casa",
+    "away": "A fora",
+    "no_next": "Sense partit programat",
+    "teams_lc": "equips"
+  },
   "age_categories": {
     "senior": "Sènior",
     "juvenil": "Juvenil",

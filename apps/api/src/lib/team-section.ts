@@ -31,6 +31,7 @@ export interface ClubTeamRow extends TeamSectionFields {
   competition_id?: string | null;
   competition_slug?: string | null;
   competition_name?: string | null;
+  is_current?: boolean | null;
 }
 
 const GENDER_VALUES: readonly TeamGender[] = ['male', 'female', 'mixed', 'unknown'];
