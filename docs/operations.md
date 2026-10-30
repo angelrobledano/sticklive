@@ -24,7 +24,7 @@
 | calendario + standings | cada hora | siguiente pasada a la hora | scrape-health diaria (>26 h parado) |
 | escudos (`download-logos`) | cada hora (tras calendario+standings) | siguiente pasada a la hora; la API sigue sirviendo el escudo proxeado del CDN | log del ETL |
 | `fichas-pendientes` | diaria 06 UTC | actas se acumulan; se recuperan al día siguiente | scrape-health diaria |
-| fotos de jugador (`update-player-photos`) | diaria 06 UTC (tras fichas) | los jugadores nuevos muestran silueta; se recuperan al día siguiente | log del ETL |
+| fotos de jugador (`update-player-photos`) | diaria 06 UTC (tras fichas) | los jugadores nuevos muestran silueta; se recuperan al día siguiente. Recoge sola la ficha de la temporada nueva (`{id}_{n+1}.jpg`, sin tope de versiones) | log del ETL |
 | purga `scrape_logs` / `partition-guard` / `scrape-health-watch` | diaria 06 UTC | sin efecto inmediato; vigilar disco/particiones | Sentry |
 | backup BD | diaria 04:15 (cron del host) | exit 2 si falla el off-site a Storage Box; el verify falla si el dump supera `MAX_AGE_HOURS` | ping a `BACKUP_PING_URL` (éxito/fallo) + `/var/log/sticklive-backup.log` |
 | higiene de disco (`disk-hygiene.sh`) | diaria 05:00 UTC | sin efecto inmediato; vigilar el disco | alerta si disco ≥80 % (ping) + `/var/log/sticklive-hygiene.log` |

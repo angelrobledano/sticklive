@@ -28,26 +28,33 @@ export const PHOTO_CDNS = new Proxy({} as Record<string, string> & { rfep: strin
   get: (_t, portal: string) => `https://sidgad.cloud/${portal}/images/fichas`,
 });
 
-/** Índice máximo de variante `{id}_{n}.jpg` que se sondea. */
-export const MAX_PHOTO_INDEX = 6;
-
 /**
- * Candidatos de foto para un `idNum` en el portal `area`, en orden de
- * preferencia: primero las variantes `{id}_{n}.jpg` de MAYOR a menor y, como
- * último recurso, `{id}.jpg`.
- *
- * Criterio: dentro de un portal el `idNum` identifica al jugador, así que TODAS
- * sus fichas son suyas (verificado: en World Skate el id 89 tiene `89.jpg` —con
- * la camiseta de la selección— y `89_1.jpg` —con la del club—, el mismo
- * jugador). La preferencia por la variante `_n` replica la convención ya
- * validada en el portal FEP (el índice mayor es la subida más reciente).
+ * Huecos seguidos que se toleran al buscar la ficha más reciente: la
+ * numeración `{id}_{n}.jpg` sube con cada temporada (Marc Grau va por la _8) y
+ * puede tener alguno (una ficha retirada). Tres huecos seguidos = no hay más.
  */
-export function photoCandidates(idNum: string, area: PhotoArea): string[] {
-  const base = PHOTO_CDNS[area];
-  const out: string[] = [];
-  for (let n = MAX_PHOTO_INDEX; n >= 1; n--) out.push(`${base}/${idNum}_${n}.jpg`);
-  out.push(`${base}/${idNum}.jpg`);
-  return out;
+export const PHOTO_GAP = 3;
+/** Tope de seguridad de la numeración. */
+const MAX_PHOTO_INDEX = 60;
+
+const variantUrl = (idNum: string, area: PhotoArea, n: number) => `${PHOTO_CDNS[area]}/${idNum}_${n}.jpg`;
+
+/** `{base}/{id}_{n}.jpg` del portal e id dados → n; si no, null. */
+function variantIndex(url: string, idNum: string, area: PhotoArea): number | null {
+  const prefix = `${PHOTO_CDNS[area]}/${idNum}_`;
+  if (!url.startsWith(prefix) || !url.endsWith('.jpg')) return null;
+  const n = Number(url.slice(prefix.length, -4));
+  return Number.isInteger(n) && n >= 1 ? n : null;
+}
+
+/** Última variante que existe a partir de `from` (incluido), o null. */
+async function newestFrom(idNum: string, area: PhotoArea, from: number, exists: PhotoExists): Promise<number | null> {
+  let newest: number | null = null;
+  let misses = 0;
+  for (let n = from; n <= MAX_PHOTO_INDEX && misses < PHOTO_GAP; n++) {
+    if (await exists(variantUrl(idNum, area, n))) { newest = n; misses = 0; } else { misses++; }
+  }
+  return newest;
 }
 
 /**
@@ -94,29 +101,26 @@ export function photoTargetFromRef(
 export type PhotoExists = (url: string) => Promise<boolean>;
 
 /**
- * Primera URL de foto que existe para `idNum` en `area`, o `null` si no existe
- * ninguna. `null` es una respuesta VÁLIDA: significa "este jugador no tiene
- * foto" y debe guardarse como tal (no inventar una URL muerta).
+ * Ficha MÁS RECIENTE de `idNum` en `area`: la variante `{id}_{n}.jpg` de mayor
+ * n (se busca hacia arriba hasta `PHOTO_GAP` huecos seguidos) y, si no hay
+ * ninguna, `{id}.jpg`. `null` es una respuesta VÁLIDA: el jugador no tiene foto
+ * y debe guardarse como tal (no inventar una URL muerta).
  */
 export async function resolvePlayerPhoto(
   idNum: string,
   area: PhotoArea,
   exists: PhotoExists,
 ): Promise<string | null> {
-  for (const url of photoCandidates(idNum, area)) {
-    if (await exists(url)) return url;
-  }
-  return null;
+  const n = await newestFrom(idNum, area, 1, exists);
+  if (n !== null) return variantUrl(idNum, area, n);
+  const plain = `${PHOTO_CDNS[area]}/${idNum}.jpg`;
+  return (await exists(plain)) ? plain : null;
 }
 
 /**
- * Valor a guardar para `photo_url` en una pasada RÁPIDA: conserva la URL
- * guardada SOLO si sigue existiendo Y es una foto candidata del jugador en su
- * portal (mismo id y misma carpeta); si no, resuelve de cero.
- *
- * Conservar cualquier URL existente (comportamiento anterior) fijaba para
- * siempre fotos equivocadas: la de otro portal por colisión de id, o la de otro
- * id tras un cambio de ref. Ambas hay que re-resolverlas.
+ * Pasada diaria: si la guardada es una variante del portal e id correctos y
+ * sigue existiendo, solo se mira si hay alguna POSTERIOR (la ficha de la
+ * temporada nueva). Si no, se resuelve de cero.
  */
 export async function resolvePlayerPhotoIfNeeded(
   idNum: string,
@@ -124,8 +128,10 @@ export async function resolvePlayerPhotoIfNeeded(
   currentUrl: string | null,
   exists: PhotoExists,
 ): Promise<string | null> {
-  if (currentUrl && photoCandidates(idNum, area).includes(currentUrl) && (await exists(currentUrl))) {
-    return currentUrl;
+  const k = currentUrl ? variantIndex(currentUrl, idNum, area) : null;
+  if (k !== null && (await exists(currentUrl!))) {
+    const newer = await newestFrom(idNum, area, k + 1, exists);
+    return newer !== null ? variantUrl(idNum, area, newer) : currentUrl;
   }
   return resolvePlayerPhoto(idNum, area, exists);
 }

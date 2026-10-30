@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  photoCandidates, idNumFromSourceRef, resolvePlayerPhoto, resolvePlayerPhotoIfNeeded,
-  photoAreaForTeamRefs, PHOTO_CDNS, MAX_PHOTO_INDEX, photoTargetFromRef,
+  idNumFromSourceRef, resolvePlayerPhoto, resolvePlayerPhotoIfNeeded,
+  photoAreaForTeamRefs, PHOTO_CDNS, PHOTO_GAP, photoTargetFromRef,
 } from './player-photo-url.js';
 
 const RFEP = PHOTO_CDNS.rfep;
@@ -49,25 +49,6 @@ describe('photoAreaForTeamRefs', () => {
   });
 });
 
-describe('photoCandidates', () => {
-  it('prefiere las variantes _n de mayor a menor y termina con {id}.jpg (portal FEP)', () => {
-    expect(photoCandidates('7455', 'rfep')).toEqual([
-      `${RFEP}/7455_6.jpg`, `${RFEP}/7455_5.jpg`, `${RFEP}/7455_4.jpg`,
-      `${RFEP}/7455_3.jpg`, `${RFEP}/7455_2.jpg`, `${RFEP}/7455_1.jpg`,
-      `${RFEP}/7455.jpg`,
-    ]);
-    expect(photoCandidates('x', 'rfep')).toHaveLength(MAX_PHOTO_INDEX + 1);
-  });
-
-  it('usa la carpeta del portal World Skate para las selecciones', () => {
-    expect(photoCandidates('89', 'worldskate')).toEqual([
-      `${WSE}/89_6.jpg`, `${WSE}/89_5.jpg`, `${WSE}/89_4.jpg`,
-      `${WSE}/89_3.jpg`, `${WSE}/89_2.jpg`, `${WSE}/89_1.jpg`,
-      `${WSE}/89.jpg`,
-    ]);
-  });
-});
-
 describe('resolvePlayerPhoto', () => {
   it('recupera la foto que solo existe como {id}.jpg (el caso roto)', async () => {
     const existing = new Set([`${RFEP}/19297.jpg`]);
@@ -98,18 +79,40 @@ describe('resolvePlayerPhoto', () => {
       return existing.has(u);
     });
     expect(got).toBeNull();
-    expect(probed.length).toBe(MAX_PHOTO_INDEX + 1);
+    expect(probed.length).toBe(PHOTO_GAP + 1);
     expect(probed.every((u) => u.startsWith(WSE))).toBe(true);
+  });
+
+  it('coge la ficha MÁS RECIENTE aunque pase de 6 (Marc Grau tiene _1…_8; antes se quedaba en _6, de 2024)', async () => {
+    const existing = new Set(Array.from({ length: 8 }, (_, i) => `${RFEP}/4646_${i + 1}.jpg`));
+    expect(await resolvePlayerPhoto('4646', 'rfep', async (u) => existing.has(u))).toBe(`${RFEP}/4646_8.jpg`);
+  });
+
+  it('tolera huecos en la numeración (una ficha borrada) hasta PHOTO_GAP seguidos', async () => {
+    const existing = new Set([`${RFEP}/10_1.jpg`, `${RFEP}/10_4.jpg`]);
+    expect(await resolvePlayerPhoto('10', 'rfep', async (u) => existing.has(u))).toBe(`${RFEP}/10_4.jpg`);
+  });
+
+  it('jugador sin foto: pocas peticiones (PHOTO_GAP huecos + {id}.jpg)', async () => {
+    const probed: string[] = [];
+    await resolvePlayerPhoto('999', 'rfep', async (u) => { probed.push(u); return false; });
+    expect(probed).toHaveLength(PHOTO_GAP + 1);
   });
 });
 
 describe('resolvePlayerPhotoIfNeeded (pasada rápida)', () => {
-  it('conserva la URL guardada si es del portal e id correctos y sigue existiendo', async () => {
+  it('conserva la URL guardada si sigue existiendo y no hay ficha posterior', async () => {
     const stored = `${RFEP}/7455_1.jpg`;
     const calls: string[] = [];
     const exists = async (u: string) => { calls.push(u); return u === stored; };
     expect(await resolvePlayerPhotoIfNeeded('7455', 'rfep', stored, exists)).toBe(stored);
-    expect(calls).toEqual([stored]);
+    // La guardada + PHOTO_GAP posteriores (_2…): nada de volver a empezar.
+    expect(calls).toEqual([stored, ...Array.from({ length: PHOTO_GAP }, (_, i) => `${RFEP}/7455_${i + 2}.jpg`)]);
+  });
+
+  it('recoge la ficha nueva subida tras la guardada (_6 guardada, _7 y _8 nuevas)', async () => {
+    const existing = new Set([6, 7, 8].map((n) => `${RFEP}/4646_${n}.jpg`));
+    expect(await resolvePlayerPhotoIfNeeded('4646', 'rfep', `${RFEP}/4646_6.jpg`, async (u) => existing.has(u))).toBe(`${RFEP}/4646_8.jpg`);
   });
 
   it('si la guardada ya no existe, resuelve de cero (recupera {id}.jpg)', async () => {
@@ -144,9 +147,11 @@ describe('resolvePlayerPhotoIfNeeded (pasada rápida)', () => {
  * mostraba la foto del jugador 14782 de RFEP, otra persona.
  */
 describe('photoTargetFromRef (A1/A3)', () => {
-  it('FECAPA va a su propia carpeta', () => {
+  it('FECAPA va a su propia carpeta', async () => {
     expect(photoTargetFromRef('fecapa_player_14782', [])).toEqual({ idNum: '14782', area: 'fecapa' });
-    expect(photoCandidates('14782', 'fecapa')[0]!).toContain('/fecapa/images/fichas/14782_');
+    const probed: string[] = [];
+    await resolvePlayerPhoto('14782', 'fecapa', async (u) => { probed.push(u); return false; });
+    expect(probed[0]!).toContain('/fecapa/images/fichas/14782_');
   });
   it('wse_player_ va a worldskate', () => {
     expect(photoTargetFromRef('wse_player_192', [])).toEqual({ idNum: '192', area: 'worldskate' });
