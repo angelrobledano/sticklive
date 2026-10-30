@@ -38,6 +38,7 @@ export function parseFeedQuery(q: { scope?: string; teams?: string; leagues?: st
 
 interface Row {
   id: string;
+  scheduledAt?: string | Date | null;
   homeTeam: { id: string | null };
   awayTeam: { id: string | null };
   competitionId: string | null;
@@ -56,17 +57,45 @@ const asFeedMatch = (m: Row) => ({
   competitionCountry: m.competitionCountry,
 });
 
-export function applyFeedScope<T extends Row>(matches: T[], q: FeedQuery): { matches: T[]; hiddenCount: number } {
-  if (q.scope === 'all') return { matches, hiddenCount: 0 };
+/**
+ * Partidos fuera del feed por hora UTC («2026-10-31T16»). El cliente pide su
+ * día con margen (otra zona horaria) y suma solo las horas que caen en su día:
+ * así «Ver otras competiciones (N)» cuenta el día de quien mira, no el rango.
+ */
+function byHour(rows: Row[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const r of rows) {
+    if (!r.scheduledAt) continue;
+    const d = new Date(r.scheduledAt);
+    if (Number.isNaN(d.getTime())) continue;
+    const k = d.toISOString().slice(0, 13);
+    out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
+}
+
+export interface ScopedMatches<T> {
+  matches: T[];
+  hiddenCount: number;
+  hiddenByHour: Record<string, number>;
+}
+
+export function applyFeedScope<T extends Row>(matches: T[], q: FeedQuery): ScopedMatches<T> {
+  if (q.scope === 'all') return { matches, hiddenCount: 0, hiddenByHour: {} };
   const follows: FeedFollows = { teamIds: q.teamIds, leagueIds: q.leagueIds, country: q.country };
   if (q.scope === 'following') {
     const out = matches.filter((m) => {
       const r = feedReason(asFeedMatch(m), follows);
       return r === 'team' || r === 'league';
     });
-    return { matches: out, hiddenCount: matches.length - out.length };
+    const kept = new Set(out);
+    return { matches: out, hiddenCount: matches.length - out.length, hiddenByHour: byHour(matches.filter((m) => !kept.has(m))) };
   }
   const byId = new Map(matches.map((m) => [m.id, m]));
   const { feed, others } = splitFeed(matches.map(asFeedMatch), follows);
-  return { matches: feed.map((f) => byId.get(f.id)!), hiddenCount: others.length };
+  return {
+    matches: feed.map((f) => byId.get(f.id)!),
+    hiddenCount: others.length,
+    hiddenByHour: byHour(others.map((o) => byId.get(o.id)!)),
+  };
 }

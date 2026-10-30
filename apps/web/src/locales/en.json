@@ -811,6 +811,9 @@
     "refresh": "Refresh"
   },
   "home": {
+    "no_featured_matches": "No matches from your teams or the featured competitions on this day",
+    "others_show": "Show other competitions ({n})",
+    "others_hide": "Hide other competitions",
     "country_all": "All countries",
     "country_label": "Preferred country",
     "live_in_block": "{n} live",

@@ -8,12 +8,18 @@
  * tabla que /competiciones) y, a igualdad, por nombre. Partidos por hora. Los
  * directos se quedan en su sitio: que empiece un partido no reordena nada.
  *
+ * Visibilidad (spec 2026-10-30): por defecto solo sale lo que tiene motivo
+ * (`feedReason` de @sports/shared-types: equipo seguido, competición seguida o
+ * destacada). El resto se cuenta en `hiddenCount` y solo se pinta, detrás y
+ * marcado `inFeed: false`, si se pide `includeOthers` («otras competiciones»).
+ *
  * Función pura, sin React: testeable sin navegador. El día de cada partido se
  * calcula con `madridDateKey`, la autoridad horaria única de la app.
  */
 import { APP_TZ } from '@/lib/match-time';
 import { dateKeyIn } from '@/lib/viewer-tz-core';
 import { importanceRank } from '@/lib/competition-importance';
+import { feedReason } from '@sports/shared-types';
 
 export type DayFilter = 'all' | 'live' | 'following';
 
@@ -53,14 +59,18 @@ export interface CompetitionBlock<T> {
   featuredRank: number | null;
   /** El usuario sigue esta competición. */
   followed: boolean;
+  /** Sale por defecto (destacada o seguida); false = «otras competiciones». */
+  inFeed: boolean;
   matches: T[];
 }
 
 export interface DayView<T> {
   dayKey: string;
-  /** Partidos del día (sin filtrar). */
+  /** Partidos del día que salen por defecto (sin filtrar). */
   total: number;
-  /** Partidos en juego del día (sin filtrar): alimenta el chip "En directo". */
+  /** Partidos del día cargados que NO salen por defecto. */
+  hiddenCount: number;
+  /** Partidos en juego del día que salen por defecto: alimenta el chip "En directo". */
   liveCount: number;
   /** Partidos del día de equipos o ligas seguidos (sin filtrar). */
   followingCount: number;
@@ -80,8 +90,13 @@ export interface DayViewOptions {
   locale?: string;
   /** Zona horaria con la que se agrupan los días (la de quien mira). Por defecto, Madrid. */
   tz?: string;
-  /** País preferido (ISO-2): sus competiciones van primero, luego las mundiales. Ordena, no excluye. */
+  /**
+   * País preferido (ISO-2): sus competiciones van primero, luego las mundiales;
+   * las destacadas de segundo nivel de otros países salen del feed.
+   */
   country?: string | null;
+  /** Pinta también las competiciones fuera del feed, detrás. */
+  includeOthers?: boolean;
 }
 
 /** Instante del partido (o 0 si falta / es inválido) para ordenar establemente. */
@@ -115,9 +130,20 @@ export function buildDayView<T extends DayViewMatch>(matches: T[], opts: DayView
   const isLive = (m: T) => m.status === 'live';
 
   const tz = opts.tz ?? APP_TZ;
-  const day = matches.filter((m) => dateKeyIn(m.scheduledAt, tz) === opts.dayKey);
-  const liveCount = day.filter(isLive).length;
-  const followingCount = day.filter(isFollowing).length;
+  // Un partido repetido (SSR + carga del día + directo) cuenta una sola vez.
+  const seen = new Set<string>();
+  const all = matches.filter((m) => {
+    if (dateKeyIn(m.scheduledAt, tz) !== opts.dayKey || seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
+  const follows = { teamIds: opts.teamIds ?? [], leagueIds: opts.leagueIds ?? [], country };
+  const inFeed = (m: T) => feedReason(m, follows) !== null;
+  const feedDay = all.filter(inFeed);
+  const hiddenCount = all.length - feedDay.length;
+  const day = opts.includeOthers ? all : feedDay;
+  const liveCount = feedDay.filter(isLive).length;
+  const followingCount = feedDay.filter(isFollowing).length;
 
   // Un filtro que se queda sin partidos (acabó el último directo, dejó de
   // seguir al equipo…) no debe dejar la pantalla en blanco: vuelve a 'all'.
@@ -149,6 +175,7 @@ export function buildDayView<T extends DayViewMatch>(matches: T[], opts: DayView
         tier: m.competitionTier ?? null,
         featuredRank: m.competitionFeaturedRank ?? null,
         followed: isFollowedLeague(m),
+        inFeed: inFeed(m),
         matches: [],
       };
       blocks.set(key, block);
@@ -160,6 +187,7 @@ export function buildDayView<T extends DayViewMatch>(matches: T[], opts: DayView
   const competitions = [...blocks.values()];
   for (const b of competitions) b.matches.sort(byTime);
   competitions.sort((a, b) => {
+    if (a.inFeed !== b.inFeed) return a.inFeed ? -1 : 1;
     if (a.followed !== b.followed) return a.followed ? -1 : 1;
     if (country) {
       const c = countryRank(a.country, country) - countryRank(b.country, country);
@@ -171,12 +199,12 @@ export function buildDayView<T extends DayViewMatch>(matches: T[], opts: DayView
     return d !== 0 ? d : (a.name ?? '').localeCompare(b.name ?? '', locale);
   });
 
-  return { dayKey: opts.dayKey, total: day.length, liveCount, followingCount, filter, myTeams, competitions };
+  return { dayKey: opts.dayKey, total: feedDay.length, hiddenCount, liveCount, followingCount, filter, myTeams, competitions };
 }
 
 /**
- * Próxima jornada: el primer día POSTERIOR a `afterKey` con partidos, con la
- * misma agrupación que un día normal y sin filtro. `null` si no hay ninguno en
+ * Próxima jornada: el primer día POSTERIOR a `afterKey` con partidos que salen
+ * por defecto, con la misma agrupación que un día normal y sin filtro. `null` si no hay ninguno en
  * los partidos cargados.
  */
 export function nextMatchday<T extends DayViewMatch>(
@@ -184,12 +212,16 @@ export function nextMatchday<T extends DayViewMatch>(
   afterKey: string,
   opts: Omit<DayViewOptions, 'dayKey' | 'filter'> = {},
 ): DayView<T> | null {
-  let next: string | null = null;
-  for (const m of matches) {
-    const k = dateKeyIn(m.scheduledAt, opts.tz ?? APP_TZ);
-    if (k && k > afterKey && (next === null || k < next)) next = k;
+  // Primer día posterior con algo que enseñar por defecto (feed): un día con
+  // solo competiciones pequeñas no es «la próxima jornada».
+  const keys = [...new Set(matches.map((m) => dateKeyIn(m.scheduledAt, opts.tz ?? APP_TZ)))]
+    .filter((k): k is string => !!k && k > afterKey)
+    .sort();
+  for (const k of keys) {
+    const v = buildDayView(matches, { ...opts, dayKey: k, filter: 'all' });
+    if (v.total > 0) return v;
   }
-  return next === null ? null : buildDayView(matches, { ...opts, dayKey: next, filter: 'all' });
+  return null;
 }
 
 /** Días (clave de Madrid) que tienen al menos un partido: puntos del selector. */

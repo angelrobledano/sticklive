@@ -33,6 +33,13 @@ describe('applyFeedScope', () => {
     expect(r.matches.map((x) => x.id)).toEqual(['dest', 'eq', 'liga']);
     expect(r.hiddenCount).toBe(1);
   });
+  it('hiddenByHour: los ocultos por hora UTC, para contar el día de quien mira', () => {
+    const r = applyFeedScope([
+      m('a', { scheduledAt: '2026-10-31T16:30:00Z' }), m('b', { scheduledAt: '2026-10-31T16:45:00Z' }),
+      m('c', { scheduledAt: '2026-10-31T23:15:00Z' }), m('d', { competitionFeaturedRank: 1, scheduledAt: '2026-10-31T16:00:00Z' }),
+    ], { scope: 'feed', teamIds: [], leagueIds: [], country: null });
+    expect(r.hiddenByHour).toEqual({ '2026-10-31T16': 2, '2026-10-31T23': 1 });
+  });
   it('following: solo lo seguido, sin destacadas', () => {
     const r = applyFeedScope(all, { scope: 'following', teamIds: [U1], leagueIds: [], country: null });
     expect(r.matches.map((x) => x.id)).toEqual(['eq']);

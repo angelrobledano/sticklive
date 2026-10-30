@@ -4,6 +4,7 @@
  * un índice ligero de días con partidos (`/matches/days`). Funciones puras.
  */
 import { addDaysToKey } from '@/lib/match-time';
+import { dateKeyIn } from '@/lib/viewer-tz-core';
 
 /**
  * Rango UTC que cubre el día `dayKey` de Madrid: el API filtra por
@@ -59,4 +60,17 @@ export function nextDayWithMatches(days: readonly string[], afterKey: string): s
   let next: string | null = null;
   for (const d of days) if (d > afterKey && (next === null || d < next)) next = d;
   return next;
+}
+
+/**
+ * Partidos fuera del feed del día `dayKey` en la zona `tz`, a partir del
+ * recuento por hora UTC que da la API (`hiddenByHour`, spec 2026-10-30). El
+ * día se pide con margen; sumar por hora evita contar los días vecinos.
+ */
+export function hiddenForDay(byHour: Readonly<Record<string, number>>, dayKey: string, tz: string): number {
+  let n = 0;
+  for (const [hour, count] of Object.entries(byHour)) {
+    if (dateKeyIn(`${hour}:00:00Z`, tz) === dayKey) n += count;
+  }
+  return n;
 }

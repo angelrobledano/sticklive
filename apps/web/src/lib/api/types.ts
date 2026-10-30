@@ -58,6 +58,8 @@ export interface Match {
   competitionTimezone?: string | null;
   /** País de la competición (ISO alpha-2, 'W' = mundial). Solo en /matches/current y /live. */
   competitionCountry?: string | null;
+  /** Logo de la competición (migración 078). Solo en /matches/current y /live. */
+  competitionLogoUrl?: string | null;
   /** Importancia de la competición (migración 089). Solo en /matches/current y /live. */
   competitionTier?: number | null;
   competitionFeaturedRank?: number | null;

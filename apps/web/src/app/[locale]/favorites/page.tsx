@@ -11,7 +11,7 @@ import { tt } from '@/components/search/translate';
 import { track } from '@/lib/analytics';
 import { BackLink } from '@/components/shared/BackLink';
 import { selectSeasonCandidates, mergeStandingTeams, filterFavorites, type RawStandingRow } from '@/lib/favorites-catalog';
-import { getCurrentMatchesFresh, type Match } from '@/lib/api/client';
+import { getFollowingMatches, type Match } from '@/lib/api/client';
 import { MiGrada } from '@/components/home/MiGrada';
 import { madridTodayKey } from '@/lib/match-time';
 
@@ -110,11 +110,12 @@ function FavoritesInner() {
   useEffect(() => {
     if (!followsTeamsOrLeagues) return;
     let cancelled = false;
-    getCurrentMatchesFresh()
+    // Solo lo seguido (scope=following): antes se bajaba la ventana entera (~3 MB).
+    getFollowingMatches({ teams: favorites, leagues: favLeagues })
       .then((ms) => { if (!cancelled) setGradaMatches(ms); })
       .catch((err: unknown) => { console.warn('[favoritos] Mi grada no disponible', err); });
     return () => { cancelled = true; };
-  }, [followsTeamsOrLeagues]);
+  }, [followsTeamsOrLeagues, favorites, favLeagues]);
 
   const filteredTeams = useMemo(() => filterFavorites(teams, query), [teams, query]);
   const filteredLeagues = useMemo(() => filterFavorites(leagues, query), [leagues, query]);

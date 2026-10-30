@@ -811,6 +811,9 @@
     "refresh": "Actualizar"
   },
   "home": {
+    "no_featured_matches": "Este día no juegan tus equipos ni las competiciones destacadas",
+    "others_show": "Ver otras competiciones ({n})",
+    "others_hide": "Ocultar otras competiciones",
     "country_all": "Todos los países",
     "country_label": "País preferido",
     "live_in_block": "{n} en directo",

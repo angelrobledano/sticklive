@@ -315,7 +315,7 @@ liveRouter.get('/current', async (c) => {
       : 'public, max-age=5, stale-while-revalidate=30');
     if (feed.scope === 'all') return c.json(payload);
     const scoped = applyFeedScope(payload.matches, feed);
-    return c.json({ count: scoped.matches.length, matches: scoped.matches, hiddenCount: scoped.hiddenCount });
+    return c.json({ count: scoped.matches.length, matches: scoped.matches, hiddenCount: scoped.hiddenCount, hiddenByHour: scoped.hiddenByHour });
   } catch (err) {
     // El detalle se queda en el log del servidor: nunca al cliente (S7; #152).
     captureRouteError(err, 'live] GET /current error');

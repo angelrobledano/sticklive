@@ -94,7 +94,7 @@ describe('buildDayView', () => {
         M('m', '2026-10-16T15:00:00Z', 'mundial'),
         M('o', '2026-10-16T15:00:00Z', 'okliga'),
       ],
-      { dayKey: DAY, leagueIds: ['plata'], locale: 'es' },
+      { dayKey: DAY, leagueIds: ['plata'], locale: 'es', includeOthers: true },
     );
     expect(view.competitions.map((c) => c.id)).toEqual(['plata', 'mundial', 'okliga', 'alfa', 'zeta']);
     expect(view.competitions[0]!.followed).toBe(true);
@@ -137,7 +137,7 @@ describe('buildDayView', () => {
   it('partidos sin competición caen en un bloque propio con nombre nulo, al final', () => {
     const view = buildDayView(
       [M('suelto', '2026-10-16T15:00:00Z', null), M('o', '2026-10-16T15:00:00Z', 'okliga')],
-      { dayKey: DAY },
+      { dayKey: DAY, includeOthers: true },
     );
     expect(view.competitions.map((c) => c.name)).toEqual(['OK Liga', null]);
   });
@@ -202,11 +202,13 @@ describe('nextMatchday', () => {
       [
         M('antes', '2026-10-15T15:00:00Z', 'okliga'),
         M('mismo', '2026-10-19T15:00:00Z', 'okliga'),
-        M('lejos', '2026-10-24T15:00:00Z', 'plata'),
-        M('cerca', '2026-10-21T15:00:00Z', 'plata'),
+        M('lejos', '2026-10-24T15:00:00Z', 'mundial'),
+        M('solo-pequena', '2026-10-20T15:00:00Z', 'plata'),
+        M('cerca', '2026-10-21T15:00:00Z', 'mundial'),
       ],
       '2026-10-19',
     );
+    // El día 20 solo tiene una competición fuera del feed: se salta.
     expect(next?.dayKey).toBe('2026-10-21');
     expect(next?.competitions.flatMap((c) => c.matches.map((m) => m.id))).toEqual(['cerca']);
     expect(next?.filter).toBe('all');
@@ -270,17 +272,16 @@ describe('buildDayView con país preferido', () => {
     M('3', '2026-10-16T18:00:00Z', 'mundial'),
     M('4', '2026-10-16T18:00:00Z', 'alfa'),
   ];
-  it('las competiciones del país van primero; nada desaparece', () => {
-    const v = buildDayView(day, { dayKey: DAY, country: 'PT' });
-    expect(v.competitions.map((b) => b.key)).toEqual(['zeta', 'mundial', 'okliga', 'alfa']);
+  it('el país ordena dentro del feed y dentro de «otras competiciones»', () => {
+    const v = buildDayView(day, { dayKey: DAY, country: 'PT', includeOthers: true });
+    expect(v.competitions.map((b) => b.key)).toEqual(['mundial', 'okliga', 'zeta', 'alfa']);
   });
-  it('una liga seguida de otro país va por delante del país', () => {
+  it('una liga seguida de otro país va por delante de todo', () => {
     const v = buildDayView(day, { dayKey: DAY, country: 'PT', leagueIds: ['alfa'] });
     expect(v.competitions[0]!.key).toBe('alfa');
-    expect(v.competitions[1]!.key).toBe('zeta');
   });
   it('sin país, el orden global de siempre', () => {
-    const v = buildDayView(day, { dayKey: DAY });
+    const v = buildDayView(day, { dayKey: DAY, includeOthers: true });
     expect(v.competitions.map((b) => b.key)).toEqual(['mundial', 'okliga', 'alfa', 'zeta']);
   });
 });
@@ -301,10 +302,48 @@ describe('defaultOpenKeys con país preferido', () => {
 
 /** Los días se agrupan en la zona de quien mira (decisión 25/10/2026). */
 describe('buildDayView con zona horaria de quien mira', () => {
-  const late = [M('1', '2026-10-24T22:30:00Z', 'zeta')];
+  const late = [M('1', '2026-10-24T22:30:00Z', 'okliga')];
   it('en Madrid cae el 25; en Lisboa, el 24', () => {
     expect(buildDayView(late, { dayKey: '2026-10-25' }).total).toBe(1);
     expect(buildDayView(late, { dayKey: '2026-10-24', tz: 'Europe/Lisbon' }).total).toBe(1);
     expect(buildDayView(late, { dayKey: '2026-10-25', tz: 'Europe/Lisbon' }).total).toBe(0);
+  });
+});
+
+describe('buildDayView — visibilidad (spec 2026-10-30)', () => {
+  const D = '2026-10-31T16:00:00Z';
+  const day = '2026-10-31';
+
+  it('por defecto solo destacadas y lo seguido; el resto se cuenta en hiddenCount', () => {
+    const v = buildDayView([M('1', D, 'okliga'), M('2', D, 'plata'), M('3', D, 'zeta', { status: 'live' })], { dayKey: day });
+    expect(v.competitions.map((b) => b.id)).toEqual(['okliga']);
+    expect(v.total).toBe(1);
+    expect(v.hiddenCount).toBe(2);
+    // El directo de una competición pequeña no cuenta para el chip «En directo».
+    expect(v.liveCount).toBe(0);
+  });
+
+  it('una competición pequeña seguida aparece; un equipo seguido de otra pequeña, en «Siguiendo»', () => {
+    const v = buildDayView([M('2', D, 'plata'), M('3', D, 'zeta')], { dayKey: day, leagueIds: ['plata'], teamIds: ['h-3'] });
+    expect(v.competitions.map((b) => b.id)).toEqual(['plata']);
+    expect(v.myTeams.map((m) => m.id)).toEqual(['3']);
+    expect(v.hiddenCount).toBe(0);
+  });
+
+  it('un partido sin directo de lo seguido también sale (no se confunde directo con relevancia)', () => {
+    const v = buildDayView([M('2', D, 'plata', { status: 'scheduled' })], { dayKey: day, leagueIds: ['plata'] });
+    expect(v.total).toBe(1);
+  });
+
+  it('con includeOthers, el resto va detrás, marcado fuera del feed; sin duplicados', () => {
+    const v = buildDayView([M('1', D, 'okliga'), M('2', D, 'plata'), M('1', D, 'okliga')], { dayKey: day, includeOthers: true });
+    expect(v.competitions.map((b) => [b.id, b.inFeed, b.matches.length])).toEqual([['okliga', true, 1], ['plata', false, 1]]);
+  });
+
+  it('país preferido: la destacada de segundo nivel de otro país queda fuera del feed', () => {
+    const extra = { competitionCountry: 'PT', competitionFeaturedRank: 30, competitionTier: 2 };
+    const v = buildDayView([M('1', D, 'okliga'), M('9', D, 'zeta', extra)], { dayKey: day, country: 'ES' });
+    expect(v.competitions.map((b) => b.id)).toEqual(['okliga']);
+    expect(v.hiddenCount).toBe(1);
   });
 });

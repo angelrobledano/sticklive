@@ -74,6 +74,9 @@ interface RawLiveMatch {
   competitionSlug?: string | null;
   competitionTimezone?: string | null;
   competitionCountry?: string | null;
+  competitionLogoUrl?: string | null;
+  competitionTier?: number | null;
+  competitionFeaturedRank?: number | null;
   status: MatchStatus;
   isHalftime?: boolean;
   winType?: 'regular' | 'overtime' | 'penalties' | null;
@@ -133,7 +136,7 @@ function normalizeMatch(raw: RawMatch): Match {
   };
 }
 
-function normalizeLiveMatch(raw: RawLiveMatch): Match {
+export function normalizeLiveMatch(raw: RawLiveMatch): Match {
   return {
     id:          raw.id,
     seasonId:    raw.seasonId,
@@ -143,6 +146,11 @@ function normalizeLiveMatch(raw: RawLiveMatch): Match {
     competitionSlug: raw.competitionSlug ?? null,
     competitionTimezone: raw.competitionTimezone ?? null,
     competitionCountry:  raw.competitionCountry ?? null,
+    // Curación de la competición: decide el feed de Partidos (spec 2026-10-30)
+    // y el orden/apertura de los bloques. Antes se perdía aquí.
+    competitionLogoUrl:      raw.competitionLogoUrl ?? null,
+    competitionTier:         raw.competitionTier ?? null,
+    competitionFeaturedRank: raw.competitionFeaturedRank ?? null,
     status:      raw.status,
     isHalftime:  raw.isHalftime ?? false,
     winType:      raw.winType ?? null,
@@ -283,6 +291,50 @@ export async function getMatchesInRange(from: string, to: string, fresh = false)
   const qs = `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
   const res = await apiFetch<{ matches: RawLiveMatch[] }>(`/matches/current${qs}`,
     fresh ? { cache: 'no-store' } : { next: { revalidate: 60, tags: ['matches-current'] } });
+  return deduplicateMatches(res.matches.map(normalizeLiveMatch));
+}
+
+/** Lo que sigue el usuario y su país: decide qué partidos salen por defecto. */
+export interface FeedParams {
+  teams?: readonly string[];
+  leagues?: readonly string[];
+  country?: string | null;
+}
+
+function feedQuery(scope: 'feed' | 'following', p: FeedParams): string {
+  const qs = new URLSearchParams({ scope });
+  if (p.teams?.length) qs.set('teams', p.teams.join(','));
+  if (p.leagues?.length) qs.set('leagues', p.leagues.join(','));
+  if (p.country) qs.set('country', p.country);
+  return qs.toString();
+}
+
+/**
+ * Partidos de un rango que salen por defecto en Partidos (spec 2026-10-30):
+ * destacadas + lo seguido. `hiddenCount` = los del rango que quedan fuera
+ * («otras competiciones», que se piden con `getMatchesInRange`). Sin follows
+ * la respuesta es pública y se cachea; con follows, sin caché.
+ */
+export async function getFeedInRange(
+  from: string, to: string, p: FeedParams = {}, fresh = false,
+): Promise<{ matches: Match[]; hiddenCount: number; hiddenByHour: Record<string, number> }> {
+  const personal = !!(p.teams?.length || p.leagues?.length);
+  const qs = `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&${feedQuery('feed', p)}`;
+  const res = await apiFetch<{ matches: RawLiveMatch[]; hiddenCount?: number; hiddenByHour?: Record<string, number> }>(`/matches/current${qs}`,
+    fresh || personal ? { cache: 'no-store' } : { next: { revalidate: 60, tags: ['matches-current'] } });
+  return {
+    matches: deduplicateMatches(res.matches.map(normalizeLiveMatch)),
+    hiddenCount: res.hiddenCount ?? 0,
+    hiddenByHour: res.hiddenByHour ?? {},
+  };
+}
+
+/** Partidos de lo que sigue el usuario en la ventana de la home (Mi grada). */
+export async function getFollowingMatches(p: FeedParams): Promise<Match[]> {
+  if (!p.teams?.length && !p.leagues?.length) return [];
+  const res = await apiFetch<{ matches: RawLiveMatch[] }>(`/matches/current?${feedQuery('following', p)}`, {
+    cache: 'no-store',
+  });
   return deduplicateMatches(res.matches.map(normalizeLiveMatch));
 }
 

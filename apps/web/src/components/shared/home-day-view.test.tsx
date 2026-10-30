@@ -33,6 +33,8 @@ function match(compId: string, compName: string, slug: string, iso: string, over
     competitionSlug: slug,
     competitionTimezone: 'Europe/Madrid',
     competitionCountry: compId === 'mundial' ? 'W' : 'ES',
+    // Destacadas por defecto (spec 2026-10-30); 'pequena' no lo está.
+    competitionFeaturedRank: compId === 'pequena' ? null : compId === 'mundial' ? 10 : 20,
     status: 'scheduled',
     scheduledAt: iso,
     startedAt: null,
@@ -106,5 +108,15 @@ describe('MatchesView (home por competición)', () => {
     const html = render([match('plata', 'OK Liga Plata Sur', 'ok-liga-plata-sur', '2026-10-14T18:30:00Z')]);
     expect(html).toContain('No hay próximos partidos programados');
     expect(html).toContain('href="/es/competitions"');
+  });
+
+  it('una competición pequeña no sale por defecto: queda tras «Ver otras competiciones (N)»', () => {
+    const html = render([
+      match('mundial', 'Mundial Masculino — World Skate', 'mundial-masculino-worldskate', '2026-10-16T14:45:00Z'),
+      match('pequena', 'Liga Provincial Alevín', 'liga-provincial', '2026-10-16T16:00:00Z', { status: 'live' }),
+    ]);
+    expect(html).toContain('Mundial Masculino — World Skate');
+    expect(html).not.toContain('Liga Provincial Alevín');
+    expect(html).toContain('Ver otras competiciones (1)');
   });
 });

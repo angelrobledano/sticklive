@@ -21,8 +21,8 @@ import { madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
 import { useViewerTz } from '@/hooks/useViewerTz';
 import { dateKeyIn, todayKeyIn } from '@/lib/viewer-tz-core';
 import { buildDayView, nextMatchday, daysWithMatches, defaultOpenKeys, type DayFilter, type DayView } from '@/lib/day-view';
-import { getMatchesInRange, getCurrentMatchesFresh } from '@/lib/api/client';
-import { dayFetchRange, windowFromDays, nextDayWithMatches } from '@/lib/home-loading';
+import { getMatchesInRange, getFeedInRange, getFollowingMatches } from '@/lib/api/client';
+import { dayFetchRange, windowFromDays, nextDayWithMatches, hiddenForDay } from '@/lib/home-loading';
 import { tt } from '@/components/search/translate';
 import { clubName } from '@/lib/names';
 import { competitionPath } from '@/lib/competition-path';
@@ -147,9 +147,12 @@ function DesktopAside({ matches, favorites, leagues, todayKey, className = '' }:
     if (!follows || wide) return;
     if (typeof window === 'undefined' || !window.matchMedia('(min-width: 1536px)').matches) return;
     let cancelled = false;
-    getCurrentMatchesFresh().then((m) => { if (!cancelled) setWide(m); }).catch(() => { /* se queda con el día */ });
+    // Solo lo seguido (scope=following): antes se bajaba la ventana entera (~3 MB).
+    getFollowingMatches({ teams: favorites, leagues })
+      .then((m) => { if (!cancelled) setWide(m); })
+      .catch(() => { /* se queda con el día */ });
     return () => { cancelled = true; };
-  }, [follows, wide]);
+  }, [follows, wide, favorites, leagues]);
   return (
     <aside className={`shrink-0 ${className}`}>
       <div className="rail-scroll sticky top-[76px] flex max-h-[calc(100vh-92px)] flex-col gap-4 overflow-y-auto pb-1">
@@ -243,7 +246,21 @@ function DayCards({ view, followedTeamIds, showDate = false, afterFirst, listAd 
     });
   }
   const openKeys = defaultOpenKeys(view.competitions, country);
+  let othersHeading = false;
   for (const block of view.competitions) {
+    // «Otras competiciones» abiertas a mano: van detrás, con su cabecera.
+    if (!block.inFeed && !othersHeading) {
+      othersHeading = true;
+      cards.push({
+        key: '__others_heading__',
+        rows: 0,
+        node: (
+          <h3 className="px-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            {other}
+          </h3>
+        ),
+      });
+    }
     cards.push({
       key: block.key || '__other__',
       rows: block.matches.length,
@@ -295,11 +312,41 @@ function DayCards({ view, followedTeamIds, showDate = false, afterFirst, listAd 
 }
 
 /**
+ * «Ver N partidos de otras competiciones» (spec 2026-10-30): el catálogo que no
+ * sale por defecto, a un toque. Abierto, permite volver a ocultarlo.
+ */
+function OthersToggle({ count, open, loading, onShow, onHide }: {
+  count: number;
+  open: boolean;
+  loading: boolean;
+  onShow: () => void;
+  onHide: () => void;
+}) {
+  const { t } = useT();
+  if (!open && count === 0) return null;
+  return (
+    <button
+      type="button"
+      onClick={open ? onHide : onShow}
+      disabled={loading}
+      aria-busy={loading}
+      className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 text-[13px] font-semibold text-slate-600 transition-colors hover:border-slate-400 hover:text-slate-900 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-50"
+    >
+      {open
+        ? tt(t, 'home.others_hide', 'Ocultar otras competiciones')
+        : tt(t, 'home.others_show', 'Ver otras competiciones ({n})', { n: count })}
+    </button>
+  );
+}
+
+/**
  * Día sin partidos: mensaje claro y, si el día es hoy o futuro, SOLO la
  * próxima jornada agrupada por competición (desplegada, con fecha en cada
  * fila) y un botón para ir a ese día.
  */
-function EmptyDay({ isToday, isPast, outOfWindow, next, followedTeamIds, onGoTo }: {
+function EmptyDay({ hasOthers = false, isToday, isPast, outOfWindow, next, followedTeamIds, onGoTo }: {
+  /** Hay partidos ese día, pero solo de competiciones que no salen por defecto. */
+  hasOthers?: boolean;
   isToday: boolean;
   isPast: boolean;
   outOfWindow: boolean;
@@ -310,6 +357,7 @@ function EmptyDay({ isToday, isPast, outOfWindow, next, followedTeamIds, onGoTo 
   const { t, locale } = useT();
   const message = outOfWindow
     ? t('common.day_out_of_window')
+    : hasOthers ? tt(t, 'home.no_featured_matches', 'Este día no juegan tus equipos ni las competiciones destacadas')
     : isToday ? t('common.no_matches_today')
     : isPast ? tt(t, 'home.no_matches_past', 'No hubo partidos este día')
     : t('common.no_matches_this_day');
@@ -395,6 +443,8 @@ interface MatchesViewProps {
   matches: Match[];
   /** Índice de días con partidos (`/matches/days`). Vacío si falló: se degrada a los partidos cargados. */
   days?: { day: string; count: number }[];
+  /** Partidos de hoy fuera del feed según el SSR, por hora UTC («Ver otras competiciones»). */
+  hiddenByHour?: Record<string, number>;
 }
 
 /**
@@ -403,15 +453,17 @@ interface MatchesViewProps {
  * Siguiendo. Un día vacío enseña la próxima jornada. Lo personal que no es del
  * día (Mi grada) vive en Favoritos y en el carril de escritorio.
  */
-export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewProps) {
+export function MatchesView({ matches: initialMatches, days = [], hiddenByHour: ssrHidden = {} }: MatchesViewProps) {
   // Refresco en vivo: mientras haya partidos en juego, la lista se sincroniza con
   // el resultado real sondeando /current sin caché (la home es SSR y, si no, el
   // marcador quedaría congelado frente al detalle, que sí va por SSE).
   // La reconciliación pide solo el día visible (ref: el hook no se recrea).
   const selectedRef = useRef<string>(madridTodayKey());
-  const reconcile = useCallback(() => {
+  // Lo que sigue el usuario y su país: decide qué partidos salen (spec 2026-10-30).
+  const feedRef = useRef<{ teams: string[]; leagues: string[]; country: string | null }>({ teams: [], leagues: [], country: null });
+  const reconcile = useCallback(async () => {
     const { from, to } = dayFetchRange(selectedRef.current);
-    return getMatchesInRange(from, to, true);
+    return (await getFeedInRange(from, to, feedRef.current, true)).matches;
   }, []);
   const { matches, degraded, addMatches } = useLiveScores(initialMatches, { reconcile });
 
@@ -420,6 +472,12 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
   // Días y "hoy" en la zona de quien mira (SSR e hidratación: Madrid).
   const viewerTz = useViewerTz();
   const todayKey = todayKeyIn(viewerTz);
+  const { favorites, leagues } = useFavorites();
+  const { country } = usePreferredCountry();
+  feedRef.current = { teams: favorites, leagues, country };
+  // Firma de lo que decide el feed: si cambia (sigue un equipo, cambia de
+  // país), los días se vuelven a pedir. El SSR trae hoy sin follows ni país.
+  const feedSig = `${favorites.join(',')}|${leagues.join(',')}|${country ?? ''}`;
   const [selectedDate, setSelectedDateState] = useState<string>(todayKey);
   const pickedRef = useRef(false);
 
@@ -437,24 +495,52 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
 
   selectedRef.current = selectedDate;
 
-  // ── Carga por día (plan 2026-10-25, iteración 2) ──────────────────────────
-  // El SSR trae solo hoy; cada día nuevo se pide al abrirlo y se acumula.
-  const [loadedDays, setLoadedDays] = useState<ReadonlySet<string>>(() => new Set([todayKey]));
+  // ── Carga por día (plan 2026-10-25, iteración 2; spec 2026-10-30) ─────────
+  // Cada día se pide con scope=feed (destacadas + lo seguido) al abrirlo y se
+  // acumula. «Otras competiciones» se piden aparte, solo si el usuario las abre.
+  // Las claves llevan la firma del feed: el SSR cargó hoy sin follows ni país.
+  const [loadedDays, setLoadedDays] = useState<ReadonlySet<string>>(() => new Set([`${todayKey}#||`]));
   const [loadingDays, setLoadingDays] = useState<ReadonlySet<string>>(() => new Set());
   const [failedDay, setFailedDay] = useState<string | null>(null);
-  const loadDay = useCallback((key: string) => {
-    if (loadedDays.has(key) || loadingDays.has(key)) return;
-    setLoadingDays((s) => new Set(s).add(key));
+  const [hiddenByDay, setHiddenByDay] = useState<Readonly<Record<string, number>>>(() => ({ [todayKey]: hiddenForDay(ssrHidden, todayKey, viewerTz) }));
+  const isLoaded = useCallback((key: string) => loadedDays.has(`${key}#${feedSig}`), [loadedDays, feedSig]);
+  // Un día que falla NO se reintenta solo: cada cambio de estado recrea
+  // `loadDay` y el efecto lo volvería a llamar en bucle (tormenta de peticiones
+  // con la API caída). Se reintenta con el botón (`force`).
+  const failedTags = useRef<Set<string>>(new Set());
+  const loadDay = useCallback((key: string, force = false) => {
+    const tag = `${key}#${feedSig}`;
+    if (isLoaded(key) || loadingDays.has(tag)) return;
+    if (failedTags.current.has(tag) && !force) return;
+    failedTags.current.delete(tag);
+    setLoadingDays((s) => new Set(s).add(tag));
     setFailedDay(null);
     const { from, to } = dayFetchRange(key);
-    getMatchesInRange(from, to)
-      .then((more) => {
+    getFeedInRange(from, to, feedRef.current)
+      .then(({ matches: more, hiddenByHour }) => {
         addMatches(more);
-        setLoadedDays((s) => new Set(s).add(key));
+        setHiddenByDay((h) => ({ ...h, [key]: hiddenForDay(hiddenByHour, key, viewerTz) }));
+        setLoadedDays((s) => new Set(s).add(tag));
       })
-      .catch(() => setFailedDay(key))
-      .finally(() => setLoadingDays((s) => { const n = new Set(s); n.delete(key); return n; }));
-  }, [loadedDays, loadingDays, addMatches]);
+      .catch(() => { failedTags.current.add(tag); setFailedDay(key); })
+      .finally(() => setLoadingDays((s) => { const n = new Set(s); n.delete(tag); return n; }));
+  }, [isLoaded, loadingDays, addMatches, feedSig, viewerTz]);
+
+  // «Otras competiciones» del día: el resto del catálogo, bajo demanda.
+  const [othersDays, setOthersDays] = useState<ReadonlySet<string>>(() => new Set());
+  const [othersLoading, setOthersLoading] = useState(false);
+  const showOthers = useCallback((key: string) => {
+    setOthersLoading(true);
+    const { from, to } = dayFetchRange(key);
+    getMatchesInRange(from, to)
+      .then((all) => {
+        addMatches(all);
+        setOthersDays((s) => new Set(s).add(key));
+        track('home_others_opened', { hidden: hiddenByDay[key] ?? 0 });
+      })
+      .catch(() => { /* el botón sigue ahí para reintentar */ })
+      .finally(() => setOthersLoading(false));
+  }, [addMatches, hiddenByDay]);
 
   // Si "hoy" cambia al conocer la zona del dispositivo (p. ej. de noche fuera
   // de España) y el usuario no ha elegido día, se sigue a "hoy".
@@ -477,8 +563,6 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
     track('home_filter_changed', { filter });
   }, [selectedDate]);
 
-  const { favorites, leagues } = useFavorites();
-  const { country } = usePreferredCountry();
   const followedTeamIds = useMemo(() => new Set(favorites), [favorites]);
   const { t, locale } = useT();
 
@@ -508,30 +592,36 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
   };
 
   const view = useMemo(
-    () => buildDayView(matches, { dayKey: selectedDate, teamIds: favorites, leagueIds: leagues, filter: requestedFilter, locale, country, tz: viewerTz }),
-    [matches, selectedDate, favorites, leagues, requestedFilter, locale, country, viewerTz],
+    () => buildDayView(matches, {
+      dayKey: selectedDate, teamIds: favorites, leagueIds: leagues, filter: requestedFilter, locale, country, tz: viewerTz,
+      includeOthers: othersDays.has(selectedDate),
+    }),
+    [matches, selectedDate, favorites, leagues, requestedFilter, locale, country, viewerTz, othersDays],
   );
+  // Partidos del día fuera del feed: los cargados o, si aún no, los que dijo la API.
+  const othersCount = othersDays.has(selectedDate) ? 0 : Math.max(view.hiddenCount, hiddenByDay[selectedDate] ?? 0);
   const isPast = selectedDate < todayKey;
   const dayKeys = useMemo(() => days.filter((d) => d.count > 0).map((d) => d.day), [days]);
 
   useEffect(() => { loadDay(selectedDate); }, [selectedDate, loadDay]);
-  const selectedLoading = !loadedDays.has(selectedDate);
+  const selectedLoading = !isLoaded(selectedDate);
 
   // Día vacío → próxima jornada: el índice dice qué día es; se carga si falta.
   const nextKey = !selectedLoading && view.total === 0 && !isPast
     ? nextDayWithMatches(dayKeys, selectedDate)
     : null;
   useEffect(() => { if (nextKey) loadDay(nextKey); }, [nextKey, loadDay]);
+  const nextLoaded = nextKey ? isLoaded(nextKey) : false;
   const next = useMemo(() => {
     if (selectedLoading || view.total > 0 || isPast) return null;
     // Sin índice de días (falló /matches/days): se busca en lo ya cargado.
     if (dayKeys.length === 0) {
       return nextMatchday(matches, selectedDate, { teamIds: favorites, leagueIds: leagues, locale, country, tz: viewerTz });
     }
-    return nextKey && loadedDays.has(nextKey)
+    return nextKey && nextLoaded
       ? buildDayView(matches, { dayKey: nextKey, teamIds: favorites, leagueIds: leagues, filter: 'all', locale, country, tz: viewerTz })
       : null;
-  }, [selectedLoading, view.total, isPast, dayKeys.length, nextKey, loadedDays, matches, selectedDate, favorites, leagues, locale, country, viewerTz]);
+  }, [selectedLoading, view.total, isPast, dayKeys.length, nextKey, nextLoaded, matches, selectedDate, favorites, leagues, locale, country, viewerTz]);
   const markedDays = useMemo(
     () => (dayKeys.length > 0 ? new Set(dayKeys) : daysWithMatches(matches, viewerTz)),
     [dayKeys, matches, viewerTz],
@@ -626,7 +716,7 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
                   <p className="text-sm text-slate-600 dark:text-slate-300">
                     {tt(t, 'errors.matches_load_title', 'No hemos podido cargar los partidos')}
                   </p>
-                  <button type="button" onClick={() => loadDay(selectedDate)}
+                  <button type="button" onClick={() => loadDay(selectedDate, true)}
                           className="min-h-[44px] rounded-xl px-4 text-sm font-semibold text-rink-passion hover:underline dark:text-rink-accent">
                     {tt(t, 'errors.retry', 'Reintentar')}
                   </button>
@@ -639,8 +729,9 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
                   ))}
                 </div>
               )
-            ) : view.total === 0 ? (
+            ) : view.myTeams.length === 0 && view.competitions.length === 0 ? (
               <EmptyDay
+                hasOthers={othersCount > 0}
                 isToday={selectedDate === todayKey}
                 isPast={isPast}
                 outOfWindow={outOfWindow}
@@ -666,6 +757,15 @@ export function MatchesView({ matches: initialMatches, days = [] }: MatchesViewP
                     {!followsSomething && <FavoritesOnboarding className="2xl:hidden" />}
                   </>
                 }
+              />
+            )}
+            {!selectedLoading && (
+              <OthersToggle
+                count={othersCount}
+                open={othersDays.has(selectedDate)}
+                loading={othersLoading}
+                onShow={() => showOthers(selectedDate)}
+                onHide={() => setOthersDays((s) => { const n = new Set(s); n.delete(selectedDate); return n; })}
               />
             )}
           </div>

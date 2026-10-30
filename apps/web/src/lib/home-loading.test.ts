@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dayFetchRange, mergeById, windowFromDays, nextDayWithMatches } from './home-loading';
+import { dayFetchRange, mergeById, windowFromDays, nextDayWithMatches, hiddenForDay } from './home-loading';
 
 describe('dayFetchRange', () => {
   it('cubre el día local de cualquier zona con el rango UTC [d-1, d+1]', () => {
@@ -44,5 +44,16 @@ describe('nextDayWithMatches', () => {
   });
   it('null si no hay', () => {
     expect(nextDayWithMatches(['2026-10-20'], '2026-10-25')).toBeNull();
+  });
+});
+
+describe('hiddenForDay', () => {
+  const byHour = { '2026-10-30T22': 4, '2026-10-30T23': 2, '2026-10-31T16': 5, '2026-10-31T23': 1 };
+  it('suma solo las horas que caen en el día de quien mira (Madrid, UTC+1)', () => {
+    // 30T23 UTC = 31 a las 00:00 en Madrid; 31T23 UTC = 1/11 en Madrid.
+    expect(hiddenForDay(byHour, '2026-10-31', 'Europe/Madrid')).toBe(7);
+  });
+  it('en Lisboa (UTC+0) el corte es otro', () => {
+    expect(hiddenForDay(byHour, '2026-10-31', 'Europe/Lisbon')).toBe(6);
   });
 });
