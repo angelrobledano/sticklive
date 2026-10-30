@@ -12,7 +12,7 @@ import {
   type StructurePhaseRow,
   type StructureRoundRow,
 } from '../lib/season-structure.js';
-import { orderClubTeams, sectionSuffix, type ClubTeamRow } from '../lib/team-section.js';
+import { clubSection, orderClubTeams, sectionSuffix, type ClubTeamRow } from '../lib/team-section.js';
 
 export const teamDetailRouter = new Hono();
 
@@ -207,11 +207,26 @@ teamDetailRouter.get('/:id', async (c) => {
       // #197: otras secciones del mismo club (join sobre club_id; el self-join no
       // casa si el club es NULL, así que devuelve vacío hasta el backfill 0.2).
       // El orden definitivo lo fija `orderClubTeams` (función pura testeada).
+      // Con su competición actual (misma regla que la ficha de club): la ficha
+      // dice «Aleví A · Aleví Or», no trece veces el nombre del club. Sin
+      // partidos visibles no hay competición y la sección no se enseña.
       db.query<ClubTeamRow>(`
         SELECT t2.id, COALESCE(t2.display_name, t2.name) AS name, t2.short_name, t2.logo_url,
-               t2.gender, t2.age_category, t2.squad_level, t2.team_type
+               t2.gender, t2.age_category, t2.squad_level, t2.team_type,
+               cur.competition_id, cur.competition_slug, cur.competition_name
         FROM teams t
-        JOIN teams t2 ON t2.club_id = t.club_id AND t2.id <> t.id
+        JOIN teams t2 ON t2.club_id = t.club_id AND t2.id <> t.id AND t2.team_type = 'club'
+        JOIN LATERAL (
+          SELECT c.id AS competition_id, c.slug AS competition_slug, c.name AS competition_name
+            FROM matches m
+            JOIN seasons se     ON se.id = m.season_id
+            JOIN competitions c ON c.id = se.competition_id
+           WHERE (m.home_team_id = t2.id OR m.away_team_id = t2.id)
+             AND se.data_quality = 'ok'
+             AND c.data_quality = 'ok'
+           ORDER BY se.is_current DESC, se.start_date DESC NULLS LAST, c.top_tier DESC
+           LIMIT 1
+        ) cur ON TRUE
         WHERE t.id = $1
         ORDER BY COALESCE(t2.display_name, t2.name)
       `, [id]),
@@ -654,6 +669,10 @@ teamDetailRouter.get('/:id', async (c) => {
       squadLevel:    r.squad_level,
       teamType:      r.team_type,
       sectionSuffix: sectionSuffix(r),
+      section:       clubSection(r),
+      competition:   r.competition_id
+        ? { id: r.competition_id, slug: r.competition_slug ?? null, name: r.competition_name ?? '' }
+        : null,
     }));
 
     const seasonsPayload = seasons.map((s) => ({

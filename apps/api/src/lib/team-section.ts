@@ -28,6 +28,9 @@ export interface ClubTeamRow extends TeamSectionFields {
   name: string;
   short_name: string | null;
   logo_url: string | null;
+  competition_id?: string | null;
+  competition_slug?: string | null;
+  competition_name?: string | null;
 }
 
 const GENDER_VALUES: readonly TeamGender[] = ['male', 'female', 'mixed', 'unknown'];
@@ -87,4 +90,18 @@ export function orderClubTeams<T extends TeamSectionFields & { name: string }>(
 
     return a.name.localeCompare(b.name, 'es');
   });
+}
+
+/**
+ * Sección de la ficha de club (spec 2026-10-30, referencia OKmob): sénior,
+ * sénior femenino, base (de prebenjamín a sub-23, también femenino) y
+ * veteranos. Una categoría vacía se trata como sénior.
+ */
+export type ClubSection = 'senior' | 'senior_female' | 'base' | 'veterans';
+
+export function clubSection(row: TeamSectionFields): ClubSection {
+  const age = (row.age_category ?? '').trim().toLowerCase() || 'senior';
+  if (age === 'veteranos') return 'veterans';
+  if (age !== 'senior') return 'base';
+  return normalizeGender(row.gender) === 'female' ? 'senior_female' : 'senior';
 }

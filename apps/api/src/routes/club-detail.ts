@@ -3,7 +3,7 @@ import { db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { captureRouteError } from '../lib/route-error.js';
 import { parseCompetitionKey as parseSlugOrId } from '../lib/competition-key.js';
-import { orderClubTeams, sectionSuffix, type TeamSectionFields } from '../lib/team-section.js';
+import { clubSection, orderClubTeams, sectionSuffix, type TeamSectionFields } from '../lib/team-section.js';
 
 /**
  * GET /clubs/:key — ficha de club (Plan B1 de URLs legibles y fichas).
@@ -83,6 +83,38 @@ function matchDto(r: ClubMatchRow): ClubMatchDto {
   };
 }
 
+/** Partido visto desde un equipo del club: rival, local/visitante y resultado. */
+export interface TeamMatchDto {
+  id: string;
+  scheduledAt: string | null;
+  status: string;
+  home: boolean;
+  opponent: string;
+  opponentId: string;
+  goalsFor: number | null;
+  goalsAgainst: number | null;
+  /** V/E/D solo si terminó con marcador. */
+  result: 'W' | 'D' | 'L' | null;
+}
+
+function teamMatch(m: ClubMatchRow, teamId: string): TeamMatchDto {
+  const home = m.home_team_id === teamId;
+  const gf = home ? m.home_score : m.away_score;
+  const ga = home ? m.away_score : m.home_score;
+  const done = m.status === 'finished' && gf != null && ga != null;
+  return {
+    id: m.id,
+    scheduledAt: iso(m.scheduled_at),
+    status: m.status,
+    home,
+    opponent: home ? m.away_name : m.home_name,
+    opponentId: home ? m.away_team_id : m.home_team_id,
+    goalsFor: gf,
+    goalsAgainst: ga,
+    result: done ? (gf! > ga! ? 'W' : gf! < ga! ? 'L' : 'D') : null,
+  };
+}
+
 /**
  * Lógica pura de la ficha: ordena secciones, descarta equipos sin ningún
  * partido visible (fichas vacías) y reparte partidos en recientes y próximos.
@@ -124,6 +156,20 @@ export function buildClubDetail(club: ClubRow, teams: ClubTeamDetailRow[], match
         ? { id: t.competition_id, slug: t.competition_slug, name: t.competition_name ?? '', seasonId: t.season_id, isCurrent: t.is_current === true }
         : null,
       position: t.position,
+      // Sección y partidos del equipo (spec 2026-10-30, referencia OKmob).
+      section: clubSection(t),
+      lastMatch: (() => {
+        const m = matches
+          .filter((x) => (x.home_team_id === t.id || x.away_team_id === t.id) && (x.status === 'finished' || LIVE_STATUSES.has(x.status)))
+          .sort((a, b) => (iso(b.scheduled_at) ?? '').localeCompare(iso(a.scheduled_at) ?? ''))[0];
+        return m ? teamMatch(m, t.id) : null;
+      })(),
+      nextMatch: (() => {
+        const m = matches
+          .filter((x) => (x.home_team_id === t.id || x.away_team_id === t.id) && x.status === 'scheduled')
+          .sort((a, b) => (iso(a.scheduled_at) ?? '').localeCompare(iso(b.scheduled_at) ?? ''))[0];
+        return m ? teamMatch(m, t.id) : null;
+      })(),
     })),
     recent,
     upcoming,
@@ -207,7 +253,7 @@ clubDetailRouter.get('/:key', async (c) => {
            AND m.scheduled_at > NOW() - INTERVAL '60 days'
            AND m.scheduled_at < NOW() + INTERVAL '30 days'
          ORDER BY m.scheduled_at
-         LIMIT 300
+         LIMIT 600
       `, [club.id]),
     ]);
 

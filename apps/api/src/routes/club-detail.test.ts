@@ -59,4 +59,22 @@ describe('buildClubDetail', () => {
       id: 'cl1', slug: 'cp-voltrega', name: 'CP Voltregà', city: 'Sant Hipòlit', country: 'ES', crestUrl: null,
     });
   });
+
+  it('cada equipo lleva su sección, último resultado y próximo partido (como OKmob)', () => {
+    const out = buildClubDetail(club, [
+      team({ id: 't1' }), team({ id: 'fem', gender: 'female' }), team({ id: 'ale', age_category: 'alevin', squad_level: 3 }),
+      team({ id: 'vet', age_category: 'veteranos' }),
+    ], [
+      match({ id: 'a', home_team_id: 't1', scheduled_at: '2026-10-10T18:00:00Z', home_score: 1, away_score: 4 }),
+      match({ id: 'b', home_team_id: 'x', away_team_id: 't1', away_name: 'CP Voltregà', home_name: 'Rival', scheduled_at: '2026-10-20T18:00:00Z', home_score: 2, away_score: 2 }),
+      match({ id: 'c', home_team_id: 't1', status: 'scheduled', scheduled_at: '2026-11-02T18:00:00Z', home_score: null, away_score: null }),
+    ]);
+    const t1 = out.teams.find((t) => t.id === 't1')!;
+    expect(t1.section).toBe('senior');
+    expect(t1.lastMatch).toMatchObject({ id: 'b', home: false, opponent: 'Rival', goalsFor: 2, goalsAgainst: 2, result: 'D' });
+    expect(t1.nextMatch).toMatchObject({ id: 'c', home: true, opponent: 'Rival' });
+    expect(out.teams.find((t) => t.id === 'fem')!.section).toBe('senior_female');
+    expect(out.teams.find((t) => t.id === 'ale')!).toMatchObject({ section: 'base', lastMatch: null, nextMatch: null });
+    expect(out.teams.find((t) => t.id === 'vet')!.section).toBe('veterans');
+  });
 });

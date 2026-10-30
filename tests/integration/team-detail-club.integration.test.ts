@@ -98,4 +98,22 @@ describe('Fase 0.3 — GET /teams/:id expone el club', () => {
     expect(body.selectedSeasonId).toBe(femSeason);
     expect(body.standing.competitionId).toBe(femComp);
   });
+
+  it('otros equipos del club: con su competición y sección; sin partidos, fuera', async () => {
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO clubs (sport_id, canonical_name, slug) VALUES ($1, 'Reus Deportiu', 'reus') RETURNING id`, [sportId]);
+    const clubId = rows[0]!.id;
+    const [primero, alevin, vacio, rival] = [await crearEquipo(sportId), await crearEquipo(sportId), await crearEquipo(sportId), await crearEquipo(sportId)];
+    await db.query(`UPDATE teams SET club_id = $1, team_type = 'club' WHERE id = ANY($2::uuid[])`, [clubId, [primero, alevin, vacio]]);
+    await db.query(`UPDATE teams SET age_category = 'alevin', squad_level = 3 WHERE id = $1`, [alevin]);
+    const compId = await crearCompeticion(sportId);
+    await db.query(`UPDATE competitions SET name = 'Aleví Or' WHERE id = $1`, [compId]);
+    const seasonId = await crearTemporada(compId);
+    await db.query(`INSERT INTO matches (season_id, home_team_id, away_team_id, status, scheduled_at, source_ref)
+                    VALUES ($1, $2, $3, 'scheduled', NOW(), 'm-alevin')`, [seasonId, alevin, rival]);
+
+    const { body } = await getTeam(primero);
+    expect(body.clubTeams).toHaveLength(1);
+    expect(body.clubTeams[0]).toMatchObject({ id: alevin, section: 'base', sectionSuffix: 'C', competition: { id: compId, name: 'Aleví Or' } });
+  });
 });
