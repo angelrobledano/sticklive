@@ -706,6 +706,8 @@
     "career_totals": "Totales de su carrera"
   },
   "search": {
+    "section_clubs": "Clubes",
+    "club_teams": "{n} equipos",
     "title": "Buscar",
     "placeholder": "Buscar equipo, jugador o competición…",
     "clear": "Limpiar búsqueda",

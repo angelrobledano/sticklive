@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { SEARCH_MIN_LENGTH, normalizeSearchQuery, isSearchable, searchAll } from './search';
+import { SEARCH_MIN_LENGTH, normalizeSearchQuery, isSearchable, searchAll, arrangeSearchResults } from './search';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -32,6 +32,7 @@ describe('searchAll', () => {
       id: 'c1', name: 'Copa del Rey', nameI18n: null, shortName: null,
       country: 'ES', scope: 'national', seasonName: '2025/26',
     }],
+    clubs: [{ id: 'cl1', slug: 'hc-noia', name: 'HC Noia', city: null, crestUrl: null, teamCount: 3 }],
   };
 
   it('codifica el término y llama a /search?q=', async () => {
@@ -59,5 +60,23 @@ describe('searchAll', () => {
     expect(res.teams).toEqual([]);
     expect(res.players).toEqual([]);
     expect(res.competitions).toEqual([]);
+  });
+});
+
+describe('arrangeSearchResults (30/10/2026: cinco «CD Claret»)', () => {
+  const team = (id: string, clubId: string | null) => ({ id, name: 'CD CLARET', shortName: null, logoUrl: null, country: 'ES', clubId });
+  it('los equipos de un club listado no se repiten; los sueltos sí; el club lleva un escudo', () => {
+    const out = arrangeSearchResults({
+      query: 'claret', total: 4, players: [], competitions: [],
+      clubs: [{ id: 'cl1', slug: 'cd-claret', name: 'CD Claret', city: 'Sevilla', crestUrl: null, teamCount: 5 }],
+      teams: [team('a', 'cl1'), team('b', 'cl1'), team('suelto', null), team('otro-club', 'cl9')],
+    });
+    expect(out.clubs).toEqual([expect.objectContaining({ id: 'cl1', shieldTeamId: 'a' })]);
+    expect(out.teams.map((t) => t.id)).toEqual(['suelto', 'otro-club']);
+  });
+  it('API antigua sin clubs: todo igual', () => {
+    const out = arrangeSearchResults({ query: 'x', total: 1, players: [], competitions: [], teams: [team('a', null)] });
+    expect(out.clubs).toEqual([]);
+    expect(out.teams).toHaveLength(1);
   });
 });

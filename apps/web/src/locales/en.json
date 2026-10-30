@@ -706,6 +706,8 @@
     "match_count_many": "{n} matches"
   },
   "search": {
+    "section_clubs": "Clubs",
+    "club_teams": "{n} teams",
     "title": "Search",
     "placeholder": "Search team, player or competition…",
     "clear": "Clear search",

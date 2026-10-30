@@ -14,6 +14,22 @@ export interface SearchTeam {
   shortName: string | null;
   logoUrl: string | null;
   country: string | null;
+  /** API ≥ 2026-10-30: club y sección, para distinguir «CD Claret» ×5. */
+  clubId?: string | null;
+  clubSlug?: string | null;
+  gender?: string | null;
+  ageCategory?: string | null;
+  squadLevel?: number | null;
+  competitionName?: string | null;
+}
+
+export interface SearchClub {
+  id: string;
+  slug: string;
+  name: string;
+  city: string | null;
+  crestUrl: string | null;
+  teamCount: number;
 }
 
 export interface SearchPlayer {
@@ -42,6 +58,25 @@ export interface SearchResults {
   teams: SearchTeam[];
   players: SearchPlayer[];
   competitions: SearchCompetition[];
+  /** API ≥ 2026-10-30. */
+  clubs?: SearchClub[];
+}
+
+/**
+ * Clubes primero y, en Equipos, solo los que no cuelgan de un club ya listado
+ * (sus secciones se ven en la ficha del club). Cada club lleva un equipo suyo
+ * para pintar el escudo cuando el club no tiene uno propio.
+ */
+export function arrangeSearchResults(r: SearchResults): {
+  clubs: (SearchClub & { shieldTeamId: string | null })[];
+  teams: SearchTeam[];
+} {
+  const clubs = r.clubs ?? [];
+  const listed = new Set(clubs.map((c) => c.id));
+  return {
+    clubs: clubs.map((c) => ({ ...c, shieldTeamId: r.teams.find((t) => t.clubId === c.id)?.id ?? null })),
+    teams: r.teams.filter((t) => !t.clubId || !listed.has(t.clubId)),
+  };
 }
 
 /** Longitud mínima para lanzar una búsqueda (coincide con la API). */
@@ -69,5 +104,6 @@ export async function searchAll(query: string): Promise<SearchResults> {
     teams: res.teams ?? [],
     players: res.players ?? [],
     competitions: res.competitions ?? [],
+    clubs: res.clubs ?? [],
   };
 }

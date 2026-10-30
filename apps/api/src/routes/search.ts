@@ -206,7 +206,16 @@ export const TEAM_QUERY = `
  */
 export const CLUB_QUERY = `
   SELECT cl.id, cl.slug, cl.canonical_name, cl.city, cl.crest_url,
-         (SELECT count(*) FROM teams t2 WHERE t2.club_id = cl.id AND t2.team_type = 'club') AS team_count
+         -- Mismo criterio que la ficha de club: equipos de la temporada en
+         -- curso; si el club no juega esta temporada, los que tengan partidos.
+         COALESCE(NULLIF((
+           SELECT count(DISTINCT t2.id) FROM teams t2
+             JOIN matches m  ON m.home_team_id = t2.id OR m.away_team_id = t2.id
+             JOIN seasons se ON se.id = m.season_id AND se.is_current AND se.data_quality = 'ok'
+            WHERE t2.club_id = cl.id AND t2.team_type = 'club'), 0), (
+           SELECT count(DISTINCT t2.id) FROM teams t2
+             JOIN matches m ON m.home_team_id = t2.id OR m.away_team_id = t2.id
+            WHERE t2.club_id = cl.id AND t2.team_type = 'club')) AS team_count
   FROM clubs cl
   WHERE strpos(${unaccentExpr('cl.canonical_name')}, $1) > 0
      OR EXISTS (

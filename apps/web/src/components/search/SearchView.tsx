@@ -13,8 +13,11 @@ import {
   SEARCH_MIN_LENGTH,
   isSearchable,
   normalizeSearchQuery,
+  arrangeSearchResults,
   type SearchResults,
 } from '@/lib/api/search';
+import { clubTeamLabel } from '@/lib/club-sections';
+import type { Locale } from '@/lib/locales';
 import { tt } from './translate';
 import { competitionPath } from '@/lib/competition-path';
 
@@ -69,7 +72,11 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
 
   const pending = normalizeSearchQuery(query) !== normalizeSearchQuery(initialQuery);
   const canSearch = isSearchable(query);
-  const total = results?.total ?? 0;
+  const arranged = results ? arrangeSearchResults(results) : null;
+  // Lo que se ve: un club cuenta una vez (sus secciones no se repiten).
+  const total = results && arranged
+    ? arranged.clubs.length + arranged.teams.length + results.players.length + results.competitions.length
+    : 0;
 
   // #240: la búsqueda global se resuelve en el servidor; `results` corresponde a
   // `initialQuery`, así que basta una emisión por resultado (incluido el caso de
@@ -178,10 +185,40 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
               {tt(t, 'search.results_count', '{n} resultados', { n: total })}
             </p>
 
-            {results.teams.length > 0 && (
-              <Section title={tt(t, 'search.section_teams', 'Equipos')} count={results.teams.length}>
-                {results.teams.map((team) => {
-                  const country = countryLabel(team.country, locale);
+            {arranged && arranged.clubs.length > 0 && (
+              <Section title={tt(t, 'search.section_clubs', 'Clubes')} count={arranged.clubs.length}>
+                {arranged.clubs.map((club) => (
+                  <Link
+                    key={club.id}
+                    href={`/clubs/${club.slug}`}
+                    className={ROW}
+                    onClick={() => track('search_result_clicked', { surface: 'search', kind: 'club', ref_id: club.id })}
+                  >
+                    {club.shieldTeamId
+                      ? <TeamShield teamId={club.shieldTeamId} teamName={club.name} size={36} />
+                      : <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500 dark:bg-slate-800">{club.name.slice(0, 2).toUpperCase()}</span>}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate leading-snug">
+                        {clubName(club.name)}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 leading-none">
+                        {[club.city, tt(t, 'search.club_teams', '{n} equipos', { n: club.teamCount })].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
+                    <ChevronRight />
+                  </Link>
+                ))}
+              </Section>
+            )}
+
+            {arranged && arranged.teams.length > 0 && (
+              <Section title={tt(t, 'search.section_teams', 'Equipos')} count={arranged.teams.length}>
+                {arranged.teams.map((team) => {
+                  // Categoría y competición distinguen dos secciones homónimas («CD Claret»).
+                  const country = [
+                    team.ageCategory ? clubTeamLabel(team, locale as Locale) : null,
+                    team.competitionName ? clubName(team.competitionName) : null,
+                  ].filter(Boolean).join(' · ') || countryLabel(team.country, locale);
                   return (
                     <Link
                       key={team.id}

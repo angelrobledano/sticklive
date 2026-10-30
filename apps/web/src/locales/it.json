@@ -633,6 +633,8 @@
     "match_count_many": "{n} partite"
   },
   "search": {
+    "section_clubs": "Club",
+    "club_teams": "{n} squadre",
     "title": "Cerca",
     "placeholder": "Cerca squadra, giocatore o competizione…",
     "clear": "Cancella ricerca",

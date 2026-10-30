@@ -13,6 +13,7 @@ beforeEach(limpiar);
 afterAll(closeDb);
 
 describe('GET /search — clubes', () => {
+  // teamCount: solo el alevín juega (la ficha del club tampoco enseña secciones sin partidos).
   it('encuentra el club por el nombre de sus equipos y etiqueta cada equipo', async () => {
     const sportId = await crearDeporte();
     const { rows } = await db.query<{ id: string }>(
@@ -29,7 +30,7 @@ describe('GET /search — clubes', () => {
 
     const res = await searchRouter.request('/?q=claret');
     const body = await res.json() as { clubs: any[]; teams: any[] };
-    expect(body.clubs).toEqual([{ id: clubId, slug: 'cd-claret', name: 'Club Deportivo Claret', city: 'Sevilla', crestUrl: null, teamCount: 2 }]);
+    expect(body.clubs).toEqual([{ id: clubId, slug: 'cd-claret', name: 'Club Deportivo Claret', city: 'Sevilla', crestUrl: null, teamCount: 1 }]);
     const a = body.teams.find((t) => t.id === alevin);
     expect(a).toMatchObject({ clubId, clubSlug: 'cd-claret', ageCategory: 'alevin', competitionName: 'ALEVÍN ANDALUZ' });
     expect(body.teams.find((t) => t.id === infantil)).toMatchObject({ ageCategory: 'infantil', squadLevel: 2, competitionName: null });

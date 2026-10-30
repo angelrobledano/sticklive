@@ -633,6 +633,8 @@
     "match_count_many": "{n} matchs"
   },
   "search": {
+    "section_clubs": "Clubs",
+    "club_teams": "{n} équipes",
     "title": "Rechercher",
     "placeholder": "Rechercher une équipe, un joueur ou une compétition…",
     "clear": "Effacer la recherche",
