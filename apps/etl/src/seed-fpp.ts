@@ -102,15 +102,17 @@ async function main() {
 
     const compId = (await db.query<{ id: string }>(
       `INSERT INTO competitions (sport_id, name, short_name, slug, gender, category, age_category, scope, organizer,
-                                 country, timezone, source_id, source_ref, scraped_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'national','FPP','PT',$8,$9,$10,NOW())
+                                 country, timezone, source_id, source_ref, scraped_at, logo_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'national','FPP','PT',$8,$9,$10,NOW(),$11)
        ON CONFLICT (sport_id, slug) DO UPDATE SET
          name=EXCLUDED.name, short_name=EXCLUDED.short_name, gender=EXCLUDED.gender,
          category=EXCLUDED.category, age_category=EXCLUDED.age_category, organizer='FPP', country='PT',
-         timezone=EXCLUDED.timezone, source_id=EXCLUDED.source_id, source_ref=EXCLUDED.source_ref, updated_at=NOW()
+         timezone=EXCLUDED.timezone, source_id=EXCLUDED.source_id, source_ref=EXCLUDED.source_ref,
+         logo_url=COALESCE(EXCLUDED.logo_url, competitions.logo_url), updated_at=NOW()
        RETURNING id`,
       [sportId, comp.name, comp.shortName, comp.slug, comp.gender, comp.teamAge, comp.competitionAge,
-       FPP_TIMEZONE, sourceId, competitionSourceRef(comp.key)],
+       FPP_TIMEZONE, sourceId, competitionSourceRef(comp.key),
+       comp.logo ? `${process.env['PUBLIC_WEB_URL'] ?? 'https://sticklive.eu'}/competiciones/${comp.logo}` : null],
     )).rows[0]!.id;
 
     await db.query(`UPDATE seasons SET is_current=FALSE WHERE competition_id=$1 AND slug<>$2`, [compId, FPP_SEASON.slug]);

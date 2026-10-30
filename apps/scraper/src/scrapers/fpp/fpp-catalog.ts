@@ -42,6 +42,12 @@ export interface FppCompetition {
   teamAge: 'senior' | 'sub23';
   format: 'league' | 'bracket' | 'final_four';
   sections: FppSection[];
+  /**
+   * Logo en `apps/web/public/competiciones/`. La FPP no publica logos de
+   * competición, solo banners 1000×200 (`/img/Conjuntos/CompeticaoN.png`):
+   * son recortes cuadrados de su parte central.
+   */
+  logo?: string;
 }
 
 export const FPP_SEASON = {
@@ -65,53 +71,53 @@ const cup = (fppId: string, phase: string, phaseTitle: string): FppSection => ({
 export const FPP_COMPETITIONS: FppCompetition[] = [
   {
     key: 'campeonato-placard', name: 'Campeonato Placard de Hóquei em Patins', shortName: 'Campeonato Placard',
-    slug: 'campeonato-placard-portugal', gender: 'male', competitionAge: 'senior', teamAge: 'senior',
+    slug: 'campeonato-placard-portugal', logo: 'fpp-placard.png', gender: 'male', competitionAge: 'senior', teamAge: 'senior',
     format: 'league', sections: [league('493')],
   },
   {
     key: '2-divisao', name: 'Campeonato Nacional 2ª Divisão', shortName: '2ª Divisão PT',
-    slug: '2-divisao-portugal', gender: 'male', competitionAge: 'senior', teamAge: 'senior',
+    slug: '2-divisao-portugal', logo: 'fpp-2-divisao.png', gender: 'male', competitionAge: 'senior', teamAge: 'senior',
     format: 'league', sections: [league('494', 'Norte'), league('495', 'Sul')],
   },
   {
     key: '3-divisao', name: 'Campeonato Nacional 3ª Divisão', shortName: '3ª Divisão PT',
-    slug: '3-divisao-portugal', gender: 'male', competitionAge: 'senior', teamAge: 'senior',
+    slug: '3-divisao-portugal', logo: 'fpp-3-divisao.png', gender: 'male', competitionAge: 'senior', teamAge: 'senior',
     format: 'league',
     sections: [league('498', 'Norte A'), league('499', 'Norte B'), league('500', 'Sul A'), league('501', 'Sul B')],
   },
   {
     key: 'feminino', name: 'Campeonato Nacional Feminino', shortName: 'CN Feminino PT',
-    slug: 'campeonato-nacional-feminino-portugal', gender: 'female', competitionAge: 'senior', teamAge: 'senior',
+    slug: 'campeonato-nacional-feminino-portugal', logo: 'fpp-feminino.png', gender: 'female', competitionAge: 'senior', teamAge: 'senior',
     format: 'league', sections: [league('502', 'Norte'), league('503', 'Centro'), league('504', 'Sul')],
   },
   {
     key: 'sub-23', name: 'Campeonato Nacional Sub-23', shortName: 'CN Sub-23 PT',
-    slug: 'campeonato-nacional-sub-23-portugal', gender: 'male', competitionAge: 'sub23', teamAge: 'sub23',
+    slug: 'campeonato-nacional-sub-23-portugal', logo: 'fpp-sub23.png', gender: 'male', competitionAge: 'sub23', teamAge: 'sub23',
     format: 'league', sections: [league('505', 'Norte'), league('506', 'Centro'), league('507', 'Sul')],
   },
   {
     key: 'supertaca', name: 'Supertaça António Livramento', shortName: 'Supertaça',
-    slug: 'supertaca-portugal', gender: 'male', competitionAge: 'senior', teamAge: 'senior',
+    slug: 'supertaca-portugal', logo: 'fpp-supertaca.png', gender: 'male', competitionAge: 'senior', teamAge: 'senior',
     format: 'bracket', sections: [cup('496', 'final', 'Final')],
   },
   {
     key: 'supertaca-feminina', name: 'Supertaça Feminina', shortName: 'Supertaça F',
-    slug: 'supertaca-feminina-portugal', gender: 'female', competitionAge: 'senior', teamAge: 'senior',
+    slug: 'supertaca-feminina-portugal', logo: 'fpp-supertaca.png', gender: 'female', competitionAge: 'senior', teamAge: 'senior',
     format: 'bracket', sections: [cup('497', 'final', 'Final')],
   },
   {
     key: 'taca-portugal', name: 'Taça de Portugal', shortName: 'Taça de Portugal',
-    slug: 'taca-de-portugal', gender: 'male', competitionAge: 'senior', teamAge: 'senior',
+    slug: 'taca-de-portugal', logo: 'fpp-taca.png', gender: 'male', competitionAge: 'senior', teamAge: 'senior',
     format: 'bracket', sections: [cup('508', 'pre-eliminatoria', 'Pré-Eliminatória')],
   },
   {
     key: 'elite-cup', name: 'Elite Cup Masculina', shortName: 'Elite Cup',
-    slug: 'elite-cup-portugal', gender: 'male', competitionAge: 'senior', teamAge: 'senior',
+    slug: 'elite-cup-portugal', logo: 'fpp-elite-cup.png', gender: 'male', competitionAge: 'senior', teamAge: 'senior',
     format: 'bracket', sections: [cup('509', 'elite-cup', 'Elite Cup')],
   },
   {
     key: 'elite-cup-feminina', name: 'Elite Cup Feminina', shortName: 'Elite Cup F',
-    slug: 'elite-cup-feminina-portugal', gender: 'female', competitionAge: 'senior', teamAge: 'senior',
+    slug: 'elite-cup-feminina-portugal', logo: 'fpp-elite-cup.png', gender: 'female', competitionAge: 'senior', teamAge: 'senior',
     format: 'bracket', sections: [cup('510', 'elite-cup', 'Elite Cup')],
   },
 ];

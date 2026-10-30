@@ -181,3 +181,14 @@ describe('parseFppCalendar — enlace de vídeo', () => {
     expect(rows.every((x) => !x.videoUrl || x.videoUrl.startsWith('https://'))).toBe(true);
   });
 });
+
+describe('logos de competición FPP', () => {
+  it('cada logo del catálogo existe en apps/web/public/competiciones', async () => {
+    const { existsSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const dir = fileURLToPath(new URL('../../../../web/public/competiciones/', import.meta.url));
+    const missing = FPP_COMPETITIONS.filter((c) => c.logo && !existsSync(dir + c.logo)).map((c) => c.logo);
+    expect(missing).toEqual([]);
+    expect(FPP_COMPETITIONS.find((c) => c.slug === 'campeonato-placard-portugal')?.logo).toBe('fpp-placard.png');
+  });
+});
