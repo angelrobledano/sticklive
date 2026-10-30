@@ -75,4 +75,19 @@ describe('GET /matches/current?scope=feed', () => {
     expect((await get(`/current?scope=following&leagues=${pequena.compId}`)).matches.map((m) => m.id)).toEqual([p.matchId]);
     expect((await get('/current')).matches).toHaveLength(2);
   });
+
+});
+
+describe('enlace de retransmisión en el listado', () => {
+  it('/matches/current y /matches/live traen videoUrl (el listado pinta la tele)', async () => {
+    const dest = await competicion({ featured: 1, tier: 1 });
+    const { matchId } = await crearPartido({ seasonId: dest.seasonId, status: 'live' });
+    await db.query(`UPDATE matches SET video_url = 'https://www.youtube.com/watch?v=x' WHERE id = $1`, [matchId]);
+    const sinVideo = await crearPartido({ seasonId: dest.seasonId });
+    const cur = await get('/current') as unknown as { matches: Array<{ id: string; videoUrl: string | null }> };
+    expect(cur.matches.find((m) => m.id === matchId)!.videoUrl).toBe('https://www.youtube.com/watch?v=x');
+    expect(cur.matches.find((m) => m.id === sinVideo.matchId)!.videoUrl).toBeNull();
+    const live = await get('/live') as unknown as { matches: Array<{ id: string; videoUrl: string | null }> };
+    expect(live.matches.find((m) => m.id === matchId)!.videoUrl).toBe('https://www.youtube.com/watch?v=x');
+  });
 });

@@ -61,6 +61,7 @@ interface LiveMatchRow {
   venue_name: string | null;
   venue_city: string | null;
   source_ref: string | null;
+  video_url: string | null;
   competition_id: string | null;
   competition_name: string | null;
   competition_slug: string | null;
@@ -104,6 +105,8 @@ function mapLiveRow(row: LiveMatchRow) {
       ? { home: row.home_pen, away: row.away_pen } : null,
     scheduledAt: row.scheduled_at,
     startedAt:   row.started_at,
+    // Retransmisión (FEP, FPP, World Skate): el listado pinta una tele.
+    videoUrl:    row.video_url ?? null,
     venue:       row.venue_name
       ? { name: row.venue_name, city: row.venue_city }
       : null,
@@ -154,6 +157,7 @@ liveRouter.get('/live', async (c) => {
         m.venue_name,
         m.venue_city,
         m.source_ref,
+        m.video_url,
         comp.id         AS competition_id,
         comp.name       AS competition_name,
         comp.slug       AS competition_slug,
@@ -276,7 +280,7 @@ liveRouter.get('/current', async (c) => {
         m.id, m.season_id, m.round_id,
         m.home_score, m.away_score, m.home_fouls, m.away_fouls, m.status, m.live_is_halftime,
         m.win_type, m.winner_team_id, m.home_pen, m.away_pen,
-        m.scheduled_at, m.started_at, m.venue_name, m.venue_city, m.source_ref,
+        m.scheduled_at, m.started_at, m.venue_name, m.venue_city, m.source_ref, m.video_url,
         comp.id AS competition_id, comp.name AS competition_name,
         comp.slug AS competition_slug,
         comp.timezone AS competition_timezone,
