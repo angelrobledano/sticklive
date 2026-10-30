@@ -204,6 +204,32 @@ export async function pruneStaleRounds(
 }
 
 /**
+ * Retira las fases de la FUENTE que el plan ya no publica y se han quedado sin
+ * datos (p. ej. los «GIRONE B/C/D» de la Coppa Italia, antes cuatro fases
+ * eliminatorias y hoy una sola fase de grupos). Antes, sus rondas vacías.
+ * Nunca toca una fase con partidos o clasificación, ni las legadas (sin
+ * `source_ref`). Devuelve cuántas fases retira.
+ */
+export async function pruneStalePhases(
+  seasonId: string,
+  keepPhaseIds: string[],
+  client: Client = db,
+): Promise<number> {
+  if (keepPhaseIds.length === 0) return 0;
+  const stale = `
+    SELECT p.id FROM phases p
+     WHERE p.season_id = $1
+       AND p.source_ref IS NOT NULL
+       AND NOT (p.id = ANY($2::uuid[]))
+       AND NOT EXISTS (SELECT 1 FROM matches m WHERE m.phase_id = p.id)
+       AND NOT EXISTS (SELECT 1 FROM rounds r JOIN matches m ON m.round_id = r.id WHERE r.phase_id = p.id)
+       AND NOT EXISTS (SELECT 1 FROM standings s WHERE s.phase_id = p.id)`;
+  await client.query(`DELETE FROM rounds WHERE phase_id IN (${stale})`, [seasonId, keepPhaseIds]);
+  const res = await client.query(`DELETE FROM phases WHERE id IN (${stale})`, [seasonId, keepPhaseIds]);
+  return res.rowCount ?? 0;
+}
+
+/**
  * A7 — Fase de una temporada por su título tal como lo publica la fuente
  * (`div_titulo_fase_idc`), sin distinguir mayúsculas ni espacios. null si no
  * hay título o no casa con ninguna fase: la tabla queda sin fase, como antes.

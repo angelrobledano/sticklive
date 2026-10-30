@@ -532,10 +532,11 @@ export function parsePhaseTitle(raw: string | null | undefined): PhaseTitleInfo 
 
   const isPlacement = PLACE_RANGE.test(u)
     || /PUESTOS|PLACE\b|POSITION|CONSOLACI|PLAY ?OUT|PERMANENCIA|DESCENSO/.test(u);
-  const group = u.match(/\b(?:GRUPOS?|GRUPS?|GROUPS?|GRUPPO|GRUP)\s+([A-Z0-9]{1,2})$/);
+  // GIRONE/GIRONI: así llama la FISR (Italia) a los grupos; POULE, en francés.
+  const group = u.match(/\b(?:GRUPOS?|GRUPS?|GROUPS?|GRUPPO|GRUP|GIRONE|POULE)\s+([A-Z0-9]{1,2})$/);
 
   let kindHint: PhaseKind | null = null;
-  if (group || /\bGRUPOS?\b|\bGRUPS?\b|\bGROUPS?\b|\bGRUPPO\b|\bGRUP\b/.test(u)) kindHint = 'groups';
+  if (group || /\bGRUPOS?\b|\bGRUPS?\b|\bGROUPS?\b|\bGRUPPO\b|\bGRUP\b|\bGIRON[EI]\b|\bPOULES?\b/.test(u)) kindHint = 'groups';
   else if (/PLAY ?OFF|PLAY ?OUT|KNOCKOUT|FINAL (?:PHASE|STAGE)|FASES? FINALS?|ELIMINATORI|FINAL ?(?:FOUR|4|EIGHT|8)\b/.test(u)) kindHint = 'knockout';
   else if (/LIGA REGULAR|LLIGA REGULAR|FASE REGULAR|REGULAR SEASON|TEMPORADA REGULAR|LIGUILLA/.test(u)) kindHint = 'league';
   else if (isPlacement && /PLACE|POSITION|PUESTOS/.test(u)) kindHint = 'knockout';
@@ -686,7 +687,12 @@ export function planSourceStructure(input: StructureRow[], opts: PlanOptions = {
   const phases: PlannedPhase[] = [];
 
   ordered.forEach(([ref, group], i) => {
-    const title = parsePhaseTitle(group.rows[0]!.row.phaseTitle);
+    // La fase fundida de bloques «GRUPO A/B…» (o «GIRONE A/B…») perdió su
+    // título al fundirse, pero la fuente ya dijo que son grupos: esa pista
+    // manda sobre el formato declarado de la competición.
+    const title = ref === groupsRef
+      ? { kindHint: 'groups' as const, isPlacement: false, groupName: null }
+      : parsePhaseTitle(group.rows[0]!.row.phaseTitle);
     const labels = group.rows.map((r) => parseRoundLabel(r.row.roundLabel));
     const teams = new Set<string>();
     for (const { row } of group.rows) {

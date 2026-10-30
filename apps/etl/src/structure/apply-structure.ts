@@ -9,7 +9,7 @@
  */
 import * as Sentry from '@sentry/node';
 import { createLogger } from '@sports/logger';
-import { ensurePhase, ensurePhaseRound, pruneStaleRounds } from '@sports/db';
+import { ensurePhase, ensurePhaseRound, pruneStalePhases, pruneStaleRounds } from '@sports/db';
 import type { PhaseKind, ScrapedMatch, StructurePlan, StructureRow } from '@sports/shared-types';
 
 const log = createLogger({ module: 'structure' });
@@ -92,6 +92,8 @@ export async function applyStructurePlan(
 export async function pruneAfterLoad(seasonId: string, applied: AppliedStructure): Promise<number> {
   const pruned = await pruneStaleRounds(seasonId, [...applied.phaseIdByRef.values()], [...applied.roundIdByKey.values()]);
   if (pruned > 0) log.info({ seasonId, pruned }, 'Rondas vacías que la fuente ya no publica, retiradas');
+  const phases = await pruneStalePhases(seasonId, [...applied.phaseIdByRef.values()]);
+  if (phases > 0) log.info({ seasonId, phases }, 'Fases vacías que la fuente ya no publica, retiradas');
   return pruned;
 }
 

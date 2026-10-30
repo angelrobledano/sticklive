@@ -327,3 +327,26 @@ describe('compatRoundNumber — campo legado roundNumber de la API', () => {
     expect(compatRoundNumber(null, false)).toBeNull();
   });
 });
+
+describe('grupos en italiano (FISR: «GIRONE A»)', () => {
+  it('el título «COPPA ITALIA A2 - GIRONE A» es un grupo, no una eliminatoria', () => {
+    expect(parsePhaseTitle('COPPA ITALIA A2 - GIRONE A')).toEqual({ kindHint: 'groups', isPlacement: false, groupName: 'A' });
+    expect(parsePhaseTitle('SKATE ITALIA TROPHY - GIRONI')).toMatchObject({ kindHint: 'groups' });
+  });
+
+  it('cuatro gironi sin jornadas numeradas y declarada como copa: UNA fase de grupos, no cuatro eliminatorias', () => {
+    const rows: StructureRow[] = [];
+    for (const g of ['A', 'B']) {
+      const t = (x: string) => `${g}${x}`;
+      rows.push(
+        row(`fisr_${g}`, `COPPA ITALIA A2 - GIRONE ${g}`, '', '20261003', t('1'), t('2')),
+        row(`fisr_${g}`, `COPPA ITALIA A2 - GIRONE ${g}`, '', '20261003', t('3'), t('4')),
+        row(`fisr_${g}`, `COPPA ITALIA A2 - GIRONE ${g}`, '', '20261010', t('1'), t('3')),
+      );
+    }
+    const plan = planSourceStructure(rows, { declaredKind: 'knockout' });
+    expect(plan.phases).toHaveLength(1);
+    expect(plan.phases[0]).toMatchObject({ kind: 'groups', resolvedBy: 'source_title' });
+    expect(new Set(plan.assignments.map((a) => a.groupName))).toEqual(new Set(['A', 'B']));
+  });
+});

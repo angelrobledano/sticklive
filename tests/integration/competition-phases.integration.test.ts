@@ -6,7 +6,7 @@
  *   · upsertMatch: una fuente sin señal de estado NO toca el estado.
  */
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
-import { db, closeDb, ensurePhase, ensurePhaseRound, upsertMatch } from '@sports/db';
+import { db, closeDb, ensurePhase, ensurePhaseRound, pruneStalePhases, upsertMatch } from '@sports/db';
 import { limpiar } from './support/db.js';
 import { crearDeporte, crearCompeticion, crearTemporada, crearEquipo, crearFuente } from './support/factorias.js';
 
@@ -165,6 +165,27 @@ describe('ensurePhase / ensurePhaseRound', () => {
     expect(phaseId).toBe(legacy.rows[0]!.id);
     const r = await ensurePhaseRound({ seasonId, phaseId, roundType: 'regular', number: 1, stage: null, name: null });
     expect(r).toBe(j1);
+  });
+});
+
+describe('pruneStalePhases — fases que la fuente ya no publica', () => {
+  it('Coppa Italia: los gironi B/C/D, antes eliminatorias y ya vacíos, se retiran; la fase de grupos y las fases con datos se quedan', async () => {
+    const { seasonId, equipos: [a, b] } = await base();
+    const mk = (ref: string, kind: 'groups' | 'knockout') =>
+      ensurePhase({ seasonId, sourceRef: ref, kind, isPlacement: false, name: ref, ordinal: 1, resolvedBy: 'declared' });
+    const grupos = await mk('fisr_A', 'groups');
+    const viejaB = await mk('fisr_B', 'knockout');
+    await ensurePhaseRound({ seasonId, phaseId: viejaB, roundType: 'playoff', number: 90, stage: null, name: 'GIRONE B' });
+    const conPartido = await mk('fisr_X', 'knockout');
+    const rX = await ensurePhaseRound({ seasonId, phaseId: conPartido, roundType: 'playoff', number: 90, stage: null, name: 'X' });
+    await partido(seasonId, a!, b!, rX);
+    const conTabla = await mk('fisr_T', 'knockout');
+    await db.query(`INSERT INTO standings (season_id, team_id, phase_id, position, played, points) VALUES ($1, $2, $3, 1, 0, 0)`, [seasonId, a, conTabla]);
+
+    const retiradas = await pruneStalePhases(seasonId, [grupos]);
+    expect(retiradas).toBe(1);
+    const quedan = await db.query<{ source_ref: string }>(`SELECT source_ref FROM phases WHERE season_id = $1 ORDER BY source_ref`, [seasonId]);
+    expect(quedan.rows.map((r) => r.source_ref)).toEqual(['fisr_A', 'fisr_T', 'fisr_X']);
   });
 });
 
