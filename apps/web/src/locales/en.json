@@ -178,6 +178,10 @@
     "events": "Events",
     "lineups": "Lineups"
   },
+  "match": {
+    "watch_live": "Watch live",
+    "has_video": "Match video available"
+  },
   "match_states": {
     "live": "Live",
     "final": "FT",

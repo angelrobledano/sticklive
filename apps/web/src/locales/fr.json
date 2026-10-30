@@ -105,6 +105,10 @@
     "events": "Événements",
     "lineups": "Compositions"
   },
+  "match": {
+    "watch_live": "À voir en direct",
+    "has_video": "Vidéo du match disponible"
+  },
   "match_states": {
     "live": "En direct",
     "final": "Terminé",

@@ -69,6 +69,13 @@ describe('MatchRow', () => {
     expect(live).toContain('aria-label="Ver partido: Italia - Chile, 2–1, En directo"');
   });
 
+  it('con retransmisión: tele visible y dicha en la etiqueta accesible; sin enlace, nada', () => {
+    const html = render(<MatchRow match={match({ videoUrl: 'https://www.youtube.com/watch?v=x' })} />);
+    expect(html).toContain('data-video="1"');
+    expect(html).toContain('aria-label="Ver partido: Italia - Chile, 16:45, Se puede ver en directo"');
+    expect(render(<MatchRow match={match()} />)).not.toContain('data-video');
+  });
+
   it('terminado: marcador y "Final"', () => {
     const html = render(<MatchRow match={match({ status: 'finished', score: { home: 9, away: 0 } })} />);
     expect(html).toMatch(/9<\/span>.*0<\/span>/s);

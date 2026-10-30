@@ -105,6 +105,10 @@
     "events": "Eventi",
     "lineups": "Formazioni"
   },
+  "match": {
+    "watch_live": "Si può vedere in diretta",
+    "has_video": "Con video della partita"
+  },
   "match_states": {
     "live": "In diretta",
     "final": "Finale",

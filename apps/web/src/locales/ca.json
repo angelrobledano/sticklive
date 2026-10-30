@@ -194,6 +194,10 @@
     "match_count_one": "{n} partit",
     "match_count_many": "{n} partits"
   },
+  "match": {
+    "watch_live": "Es pot veure en directe",
+    "has_video": "Amb vídeo del partit"
+  },
   "match_states": {
     "live": "En directe",
     "final": "Final",

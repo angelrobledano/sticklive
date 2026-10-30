@@ -105,6 +105,10 @@
     "events": "Eventos",
     "lineups": "Alinhamentos"
   },
+  "match": {
+    "watch_live": "Pode ver-se em direto",
+    "has_video": "Com vídeo do jogo"
+  },
   "match_states": {
     "live": "Em direto",
     "final": "Fim",

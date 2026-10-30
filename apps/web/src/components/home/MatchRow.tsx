@@ -90,6 +90,17 @@ const SUB = 'block text-[10px] font-semibold uppercase leading-none tracking-wid
  * pantalla. Es un hook porque la fila entera es un enlace y su `aria-label`
  * necesita el mismo texto que se pinta.
  */
+/** Tele pequeña: el partido tiene enlace para verlo (FEP, FPP, World Skate). */
+function TvIcon({ live }: { live: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"
+         className={`h-3.5 w-3.5 ${live ? 'text-rink-passion dark:text-rink-accent' : 'text-slate-400 dark:text-slate-500'}`}>
+      <rect x="2.5" y="6.5" width="19" height="13" rx="2" />
+      <path d="M8 2.5l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function useCenter(match: Match, showDate: boolean): { node: React.ReactNode; text: string } {
   const { t, locale } = useT();
   const display = matchCardState(match, useNow30s(match.status === 'scheduled'));
@@ -105,6 +116,9 @@ function useCenter(match: Match, showDate: boolean): { node: React.ReactNode; te
       <span>{score.away ?? 0}</span>
     </span>
   );
+
+  // Retransmisión: en cancelados/aplazados no aplica.
+  const watch = !!match.videoUrl && status !== 'cancelled' && status !== 'postponed';
 
   let body: React.ReactNode;
   let text: string;
@@ -170,8 +184,18 @@ function useCenter(match: Match, showDate: boolean): { node: React.ReactNode; te
     );
   }
 
+  if (watch) {
+    text += `, ${status === 'finished'
+      ? tt(t, 'match.has_video', 'Con vídeo del partido')
+      : tt(t, 'match.watch_live', 'Se puede ver en directo')}`;
+  }
   return {
-    node: <span className="flex min-w-[56px] flex-col items-center justify-center gap-1 px-1 text-center">{body}</span>,
+    node: (
+      <span className="flex min-w-[56px] flex-col items-center justify-center gap-1 px-1 text-center">
+        {body}
+        {watch && <span data-video="1" className="inline-flex"><TvIcon live={status === 'live'} /></span>}
+      </span>
+    ),
     text,
   };
 }

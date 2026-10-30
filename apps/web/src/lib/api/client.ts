@@ -77,6 +77,7 @@ interface RawLiveMatch {
   competitionLogoUrl?: string | null;
   competitionTier?: number | null;
   competitionFeaturedRank?: number | null;
+  videoUrl?: string | null;
   status: MatchStatus;
   isHalftime?: boolean;
   winType?: 'regular' | 'overtime' | 'penalties' | null;
@@ -151,6 +152,7 @@ export function normalizeLiveMatch(raw: RawLiveMatch): Match {
     competitionLogoUrl:      raw.competitionLogoUrl ?? null,
     competitionTier:         raw.competitionTier ?? null,
     competitionFeaturedRank: raw.competitionFeaturedRank ?? null,
+    videoUrl: raw.videoUrl ?? null,
     status:      raw.status,
     isHalftime:  raw.isHalftime ?? false,
     winType:      raw.winType ?? null,
