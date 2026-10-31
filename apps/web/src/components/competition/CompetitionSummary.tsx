@@ -6,7 +6,7 @@ import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { clubName, playerDisplayName } from '@/lib/names';
-import { fmtDate, fmtTime } from './format';
+import { ViewerDateTime } from './ViewerDateTime';
 
 interface Copy {
   live: string; done: string;
@@ -285,9 +285,7 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
             ))}
             {featured.date && (
               <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                <span className="capitalize">{fmtDate(featured.date, featured.timezone, locale)}</span>
-                {' · '}
-                <span className="font-score tabular-nums">{fmtTime(featured.date, featured.timezone, locale)}</span>
+                <ViewerDateTime iso={featured.date} locale={locale} />
               </p>
             )}
             <p className="truncate text-xs text-slate-500 dark:text-slate-400">
