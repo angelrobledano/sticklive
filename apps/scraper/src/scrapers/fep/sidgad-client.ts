@@ -22,6 +22,10 @@
  */
 import { createLogger } from '@sports/logger';
 import { sleep } from '../../core/browser.js';
+import { sidgadGuard, SidgadBlockedError } from './sidgad-guard.js';
+
+/** Cookies de sesión por portal, compartidas entre instancias del proceso (una ficha = una instancia: antes, un warm-up por partido y ciclo). */
+const sessionCache = new Map<string, string>();
 
 const log = createLogger({ module: 'sidgad-client' });
 
@@ -88,6 +92,9 @@ export class SidgadClient {
   private async ensureSession(): Promise<void> {
     if (this.sessionInitialized) return;
     this.sessionInitialized = true; // marcar antes de esperar (evita race)
+    const cached = sessionCache.get(this.baseUrl);
+    if (cached !== undefined) { this.sessionCookie = cached; return; }
+    if (sidgadGuard.remaining(new URL(this.baseUrl).host) > 0) return;
 
     try {
       log.debug({ portal: this.portalPrefix }, 'Iniciando sesión sidgad via ls_1.php...');
@@ -104,6 +111,7 @@ export class SidgadClient {
         }
       });
 
+      sessionCache.set(this.baseUrl, cookies.join('; '));
       if (cookies.length > 0) {
         this.sessionCookie = cookies.join('; ');
         log.debug({ cookies: cookies.length }, 'Cookies de sesión sidgad capturadas');
@@ -131,6 +139,7 @@ export class SidgadClient {
 
   /** Fuerza re-inicialización de sesión (útil tras errores de auth). */
   reset(): void {
+    sessionCache.delete(this.baseUrl);
     this.sessionCookie = '';
     this.sessionInitialized = false;
     log.debug({ portal: this.portalPrefix }, 'Sesión sidgad reiniciada');
@@ -145,8 +154,14 @@ export class SidgadClient {
     const { retries = 3, retryDelayMs = 2000, timeoutMs = 30000 } = options;
     const url = path.startsWith('http') ? path : `${this.baseUrl}/${this.portalPath(path)}`;
 
+    const host = new URL(url).host;
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
+        // Freno por host (sidgad-guard): en pausa por bloqueo, ni se intenta.
+        const paused = sidgadGuard.remaining(host);
+        if (paused > 0) throw new SidgadBlockedError(host, paused);
+        const wait = sidgadGuard.reserve(host);
+        if (wait > 0) await sleep(wait);
         const headers: Record<string, string> = { ...this.headers };
 
         if (this.sessionCookie) {
@@ -177,8 +192,15 @@ export class SidgadClient {
             log.debug({ url }, 'Recurso inexistente (404) — sin reintentos');
             throw Object.assign(err, { noRetry: true });
           }
+          // 403/429: nos están bloqueando. Reintentar lo empeora: pausa del host.
+          if (response.status === 403 || response.status === 429) {
+            const pause = sidgadGuard.blocked(host);
+            log.warn({ url, status: response.status, pauseMin: pause / 60_000 }, 'sidgad bloquea — pausa sin reintentos');
+            throw new SidgadBlockedError(host, pause, response.status);
+          }
           throw new Error(`HTTP ${response.status} en ${url}`);
         }
+        sidgadGuard.ok(host);
 
         // Actualizar cookies si sidgad envía nuevas
         response.headers.forEach((value, name) => {

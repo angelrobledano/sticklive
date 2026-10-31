@@ -108,6 +108,13 @@ function trackerFor(key: string): MissingLiveTracker {
 }
 
 const POLL_INTERVAL  = Number(process.env['POLL_INTERVAL_S']  ?? 45) * 1000;
+/** Match center sidgad: separación mínima con partidos en ventana y sin ellos. */
+const MC_ACTIVE_MS = Number(process.env['MC_ACTIVE_S'] ?? 60) * 1000;
+const MC_IDLE_MS   = Number(process.env['MC_IDLE_S'] ?? 600) * 1000;
+const lastMcAt = new Map<string, number>();
+/** Ficha (acta) de un mismo partido: como mucho cada FICHA_MIN_S. */
+const FICHA_MIN_MS = Number(process.env['FICHA_MIN_S'] ?? 90) * 1000;
+const lastFichaAt = new Map<string, number>();
 const WINDOW_HOURS   = Number(process.env['WINDOW_HOURS']     ?? 2);
 const MAX_RUNTIME_MS = Number(process.env['MAX_RUNTIME_MIN']  ?? 180) * 60 * 1000;
 // Cesión al scheduler (ver live-yield.ts). 0 = no ceder.
@@ -227,6 +234,11 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<EndedByAc
   log.info({ count: rows.rows.length, concurrency: FICHA_CONCURRENCY }, 'Procesando fichas para partidos activos/recientes');
 
   await forEachLimited(rows.rows, FICHA_CONCURRENCY, async (match) => {
+    // Ritmo por partido (sidgad bloqueó la IP el 31/10/2026): una ficha por
+    // partido cada FICHA_MIN_MS como mucho, aunque el ciclo sea más corto.
+    const t = Date.now();
+    if (t - (lastFichaAt.get(match.id) ?? 0) < FICHA_MIN_MS) return;
+    lastFichaAt.set(match.id, t);
     const source = sourceForMatchRef(match.source_ref);
     if (!source) {
       // #333: una omisión no debe ser invisible con LOG_LEVEL=info por defecto.
@@ -360,11 +372,18 @@ async function runFepScores(seasonIds: string[], playingNow: Set<string>): Promi
   // hasta ahora; el resto SOLO si tiene partidos en ventana (sin actividad no
   // hay ni una petición). Aislado por portal: si uno cae, los demás siguen.
   let upserted = 0;
+  const now = Date.now();
   for (const source of SOURCES) {
     if (source.key === 'wse') continue;
     try {
       const active = await activeSeasonsFor(seasonIds, source);
       if (source.key !== 'fep' && active.length === 0) continue;
+      // Ritmo (sidgad bloqueó la IP el 31/10/2026): con partidos en ventana,
+      // como mucho cada MC_ACTIVE_MS; sin ellos (solo la RFEP, que se pide para
+      // descubrir partidos que el calendario aún no tiene), cada MC_IDLE_MS.
+      const gap = active.length > 0 ? MC_ACTIVE_MS : MC_IDLE_MS;
+      if (now - (lastMcAt.get(source.key) ?? 0) < gap) continue;
+      lastMcAt.set(source.key, now);
       upserted += await runPortalScores(source, active, seasonIds, playingNow);
     } catch (err) {
       log.warn({ err, portal: source.key }, 'marcadores del portal fallaron — sigue con el siguiente');
