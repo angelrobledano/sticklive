@@ -113,6 +113,84 @@ async function registrarDatosDeFeed(
   }
 }
 
+/**
+ * Feed de directo: adopta el placeholder `synthetic:` (el calendario aún no
+ * publica el idp) por COMPETICIÓN + FECHA y le aplica marcador y estado.
+ * Desempate con `source_club_map` si hay varios a la misma hora. Sin candidato
+ * inequívoco no toca nada. Devuelve la fila adoptada o null.
+ */
+async function adoptarPorCompeticionYFecha(
+  input: { sourceRef?: string | null; scheduledAt?: Date | null; homeScore?: number | null; awayScore?: number | null; status?: string | null; scrapedAt?: Date | null },
+  raw: { competitionName?: string | null; sourceId?: string | null },
+  homeTeamRef: string,
+  awayTeamRef: string,
+): Promise<{ id: string; season_id: string; home_team_id: string; away_team_id: string } | null> {
+  if (!input.sourceRef || input.sourceRef.startsWith('synthetic:') || !input.scheduledAt || !raw.competitionName || !raw.sourceId) return null;
+  const adopted = await db.query<{
+    id: string; season_id: string; home_team_id: string; away_team_id: string;
+  }>(
+    `WITH cand AS (
+       SELECT m.id, m.home_team_id, m.away_team_id
+         FROM matches m
+         JOIN seasons s ON s.id = m.season_id AND s.is_current
+         JOIN competitions c ON c.id = s.competition_id
+        WHERE m.source_ref LIKE 'synthetic:%'
+          AND m.scheduled_at = $2
+          AND lower(c.name) = lower($3)
+     ), mapa AS (
+       SELECT scm.club_ref, scm.team_id
+         FROM source_club_map scm
+         JOIN competitions c2 ON c2.id = scm.competition_id
+        WHERE scm.source_id = $4 AND lower(c2.name) = lower($3)
+          AND scm.club_ref IN ($5, $6)
+     ), elegido AS (
+       SELECT cand.id
+         FROM cand
+        WHERE (SELECT count(*) FROM cand) = 1
+           OR (cand.home_team_id = (SELECT team_id FROM mapa WHERE club_ref = $5)
+               AND cand.away_team_id = (SELECT team_id FROM mapa WHERE club_ref = $6))
+        LIMIT 1
+     )
+     UPDATE matches
+        SET source_ref = $1, updated_at = NOW()
+      WHERE id = (SELECT id FROM elegido)
+        AND NOT EXISTS (SELECT 1 FROM matches WHERE source_ref = $1)
+     RETURNING id, season_id, home_team_id, away_team_id`,
+    [input.sourceRef, input.scheduledAt, raw.competitionName, raw.sourceId, homeTeamRef, awayTeamRef],
+  );
+  const adoptedHit = adopted.rows[0];
+  if (!adoptedHit) return null;
+  await db.query(
+    `UPDATE matches
+        SET home_score = COALESCE($2, home_score),
+            away_score = COALESCE($3, away_score),
+            -- Coherencia del ganador (#326): ver upsertMatch.
+            win_type = CASE
+              WHEN COALESCE($2, home_score) IS NOT NULL
+               AND COALESCE($2, home_score) = COALESCE($3, away_score)
+               AND win_type IS DISTINCT FROM 'penalties'
+              THEN NULL ELSE win_type END,
+            winner_team_id = CASE
+              WHEN COALESCE($2, home_score) IS NOT NULL
+               AND COALESCE($2, home_score) = COALESCE($3, away_score)
+               AND win_type IS DISTINCT FROM 'penalties'
+              THEN NULL ELSE winner_team_id END,
+            status     = COALESCE($4, status),
+      -- Inicio/fin sellados la primera vez (#189), como en el upsert.
+      started_at  = COALESCE(started_at, CASE WHEN $4::text IN ('live', 'finished') THEN NOW() END),
+      finished_at = COALESCE(finished_at, CASE WHEN $4::text = 'finished' THEN NOW() END),
+            scraped_at = $5,
+            updated_at = NOW()
+      WHERE id = $1`,
+    [adoptedHit.id, input.homeScore ?? null, input.awayScore ?? null, input.status ?? null, input.scrapedAt],
+  );
+  log.info(
+    { sourceRef: input.sourceRef, competition: raw.competitionName, scheduledAt: input.scheduledAt },
+    'Placeholder sintético adoptado por competición+fecha (feed de directo)'
+  );
+  return adoptedHit;
+}
+
 export async function loadMatches(
   scrapeResult: ScrapeResult<ScrapedMatch>,
   sportId: string,
@@ -369,6 +447,15 @@ export async function loadMatches(
                 `SELECT 1 FROM matches WHERE source_ref = $1 LIMIT 1`, [input.sourceRef]
               );
               if ((yaExiste.rowCount ?? 0) === 0) {
+                // Primer partido de temporada nueva (OK Liga 31/10/2026): los
+                // equipos resuelven a otra temporada y el calendario aún no
+                // publica el idp, así que nuestro partido es un placeholder.
+                // Antes se omitía y el directo nunca llegaba.
+                const adoptedHit = await adoptarPorCompeticionYFecha(input, raw, homeTeamRef, awayTeamRef);
+                if (adoptedHit) {
+                  upserted++;
+                  continue;
+                }
                 log.warn(
                   { item: itemLabel, seasonId: input.seasonId },
                   'Partido omitido: sus equipos no pertenecen a la temporada del feed global (no se inserta en la competición equivocada)'
@@ -504,80 +591,10 @@ export async function loadMatches(
           }
           // Feed de directo con refs de CLUB (`fep_club_XX`), que no resuelven:
           // si el partido ya existe con la ref del feed, el UPDATE de arriba basta;
-          // si no (nuestro partido es un placeholder `synthetic:` porque el
-          // calendario aún no publica el idp), se ADOPTA por COMPETICIÓN + FECHA.
-          //
-          // Desempate: si esa competición tiene VARIOS partidos a esa misma hora, se
-          // usa el mapa `source_club_map` (ref de club → equipo, acotado por
-          // competición, migración 054) para elegir el candidato cuyos equipos son
-          // los del feed. Sin candidato inequívoco no se toca nada.
-          if (
-            !resolved &&
-            input.sourceRef &&
-            !input.sourceRef.startsWith('synthetic:') &&
-            input.scheduledAt &&
-            raw.competitionName &&
-            raw.sourceId
-          ) {
-            const adopted = await db.query<{
-              id: string; season_id: string; home_team_id: string; away_team_id: string;
-            }>(
-              `WITH cand AS (
-                 SELECT m.id, m.home_team_id, m.away_team_id
-                   FROM matches m
-                   JOIN seasons s ON s.id = m.season_id AND s.is_current
-                   JOIN competitions c ON c.id = s.competition_id
-                  WHERE m.source_ref LIKE 'synthetic:%'
-                    AND m.scheduled_at = $2
-                    AND lower(c.name) = lower($3)
-               ), mapa AS (
-                 SELECT scm.club_ref, scm.team_id
-                   FROM source_club_map scm
-                   JOIN competitions c2 ON c2.id = scm.competition_id
-                  WHERE scm.source_id = $4 AND lower(c2.name) = lower($3)
-                    AND scm.club_ref IN ($5, $6)
-               ), elegido AS (
-                 SELECT cand.id
-                   FROM cand
-                  WHERE (SELECT count(*) FROM cand) = 1
-                     OR (cand.home_team_id = (SELECT team_id FROM mapa WHERE club_ref = $5)
-                         AND cand.away_team_id = (SELECT team_id FROM mapa WHERE club_ref = $6))
-                  LIMIT 1
-               )
-               UPDATE matches
-                  SET source_ref = $1, updated_at = NOW()
-                WHERE id = (SELECT id FROM elegido)
-                  AND NOT EXISTS (SELECT 1 FROM matches WHERE source_ref = $1)
-               RETURNING id, season_id, home_team_id, away_team_id`,
-              [input.sourceRef, input.scheduledAt, raw.competitionName, raw.sourceId, homeTeamRef, awayTeamRef],
-            );
-            const adoptedHit = adopted.rows[0];
+          // si no, se adopta el placeholder por competición + fecha.
+          if (!resolved) {
+            const adoptedHit = await adoptarPorCompeticionYFecha(input, raw, homeTeamRef, awayTeamRef);
             if (adoptedHit) {
-              await db.query(
-                `UPDATE matches
-                    SET home_score = COALESCE($2, home_score),
-                        away_score = COALESCE($3, away_score),
-                        -- Coherencia del ganador (#326): ver upsertMatch.
-                        win_type = CASE
-                          WHEN COALESCE($2, home_score) IS NOT NULL
-                           AND COALESCE($2, home_score) = COALESCE($3, away_score)
-                           AND win_type IS DISTINCT FROM 'penalties'
-                          THEN NULL ELSE win_type END,
-                        winner_team_id = CASE
-                          WHEN COALESCE($2, home_score) IS NOT NULL
-                           AND COALESCE($2, home_score) = COALESCE($3, away_score)
-                           AND win_type IS DISTINCT FROM 'penalties'
-                          THEN NULL ELSE winner_team_id END,
-                        status     = COALESCE($4, status),
-                        scraped_at = $5,
-                        updated_at = NOW()
-                  WHERE id = $1`,
-                [adoptedHit.id, input.homeScore ?? null, input.awayScore ?? null, input.status ?? null, input.scrapedAt],
-              );
-              log.info(
-                { sourceRef: input.sourceRef, competition: raw.competitionName, scheduledAt: input.scheduledAt },
-                'Placeholder sintético adoptado por competición+fecha (feed de directo)'
-              );
               resolved = true;
               upserted++;
               await registrarDatosDeFeed(raw.sourceId, adoptedHit.season_id, homeTeamRef, adoptedHit.home_team_id, raw.homeTeamAbbr, awayTeamRef, adoptedHit.away_team_id, raw.awayTeamAbbr);

@@ -292,6 +292,42 @@ describe('match.loader (I2)', () => {
     expect(await countMatches(`WHERE source_ref = $1`, ['m-otra-temporada'])).toBe(0);
   });
 
+  test('T-029d temporada nueva: equipos de OTRA temporada + placeholder sin idp → se adopta por competición+fecha', async () => {
+    // OK Liga 31/10/2026: el feed trae el club, que resuelve al equipo (de la
+    // temporada pasada); la temporada de fallback no es la del partido y el
+    // calendario aún no publica el idp. Antes se omitía y nunca había directo.
+    const compId = (await db.query<{ id: string }>(`SELECT id FROM competitions LIMIT 1`)).rows[0]!.id;
+    await db.query(`UPDATE competitions SET name = 'OK Liga Masculina' WHERE id = $1`, [compId]);
+    const viejoHome = await equipoConRef('fep_club_72', 'REUS viejo');
+    const viejoAway = await equipoConRef('fep_club_68', 'CALAFELL viejo');
+    const nuevoHome = await equipoConRef('3711', 'REUS DEPORTIU BRASILIA');
+    const nuevoAway = await equipoConRef('3690', 'CALAFELL LA MENORQUINA');
+    const fecha = '2026-10-31T15:10:00.000Z';
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO matches (season_id, home_team_id, away_team_id, scheduled_at, status, source_ref)
+       VALUES ($1,$2,$3,$4,'scheduled',$5) RETURNING id`,
+      [seasonId, nuevoHome, nuevoAway, fecha, `synthetic:${seasonId}:3711:3690:${fecha}`]);
+
+    // Temporada de fallback distinta (otra competición activa).
+    const otra = await crearTemporada(await crearCompeticion(sportId), { esActual: true });
+    const r = await loadMatches(resultOf([
+      scraped({
+        seasonId: otra, homeTeamRef: 'fep_club_72', awayTeamRef: 'fep_club_68',
+        competitionName: 'OK LIGA MASCULINA', scheduledAt: fecha,
+        sourceRef: 'fep_match_34441', status: 'live', homeScore: 1, awayScore: 0,
+      }),
+    ]), sportId, { requireTeamsInSeason: true });
+
+    expect(r.upserted).toBe(1);
+    const row = (await db.query<{ source_ref: string; status: string; home_score: number; started_at: Date | null }>(
+      `SELECT source_ref, status, home_score, started_at FROM matches WHERE id=$1`, [rows[0]!.id])).rows[0]!;
+    expect(row).toMatchObject({ source_ref: 'fep_match_34441', status: 'live', home_score: 1 });
+    expect(row.started_at).not.toBeNull();
+    // Ni duplicado ni partido con los equipos viejos.
+    expect(await countMatches(`WHERE home_team_id = $1`, [viejoHome])).toBe(0);
+    void viejoAway;
+  });
+
   test('T-029b requireTeamsInSeason: inserta si ambos equipos pertenecen a la temporada', async () => {
     const home = await equipoConRef('t-home', 'Equipo Casa');
     const away = await equipoConRef('t-away', 'Equipo Fuera');
