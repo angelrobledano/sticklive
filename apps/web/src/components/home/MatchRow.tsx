@@ -10,7 +10,7 @@ import { useT } from '@/lib/i18n';
 import { tt } from '@/components/search/translate';
 import { useNow30s } from '@/lib/now-ticker';
 import { finalLabelKey, penaltyText } from '@/lib/match-result';
-import { APP_TZ } from '@/lib/match-time';
+import { APP_TZ, isTimeTbd } from '@/lib/match-time';
 import { clubName } from '@/lib/names';
 
 /**
@@ -170,13 +170,14 @@ function useCenter(match: Match, showDate: boolean): { node: React.ReactNode; te
     );
   } else {
     const time = formatTime(match.startedAt ?? match.scheduledAt, tz, locale);
+    const tbd = !match.startedAt && isTimeTbd(match.scheduledAt);
     const sub = day
       || (display === 'awaiting_start' ? tt(t, 'match_states.awaiting_start', 'Pendiente')
         : display === 'overdue' ? tt(t, 'match_states.no_result', 'Sin resultado') : '');
     text = sub ? `${time}, ${sub}` : time;
     body = (
       <>
-        <span className="font-score text-sm font-semibold leading-none tabular-nums text-slate-700 dark:text-slate-200">{time}</span>
+        <span className={tbd ? `${SUB} text-slate-500 dark:text-slate-400` : 'font-score text-sm font-semibold leading-none tabular-nums text-slate-700 dark:text-slate-200'}>{time}</span>
         {sub && (
           <span className={`${SUB} ${day ? 'font-medium normal-case tracking-normal' : ''} text-slate-500 dark:text-slate-400`}>{sub}</span>
         )}

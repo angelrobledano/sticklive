@@ -139,7 +139,15 @@ export async function upsertMatch(
          THEN NULL ELSE matches.winner_team_id END,
        -- Sin observación de estado ($7 NULL) se conserva el actual: el
        -- calendario no puede deshacer un directo que solo conoce el feed.
-       status       = COALESCE($7::text, matches.status),
+       -- Aplazado que la fuente vuelve a poner en el calendario con OTRA fecha
+       -- futura y sin decir nada del estado: vuelve a programado (si no, se
+       -- quedaba «Aplazado» para siempre aunque ya tuviera día nuevo).
+       status       = COALESCE($7::text, CASE
+         WHEN matches.status = 'postponed'
+          AND EXCLUDED.scheduled_at IS NOT NULL
+          AND EXCLUDED.scheduled_at IS DISTINCT FROM matches.scheduled_at
+          AND EXCLUDED.scheduled_at > NOW()
+         THEN 'scheduled' ELSE matches.status END),
        scheduled_at = COALESCE(EXCLUDED.scheduled_at, matches.scheduled_at),
        -- started_at/finished_at se fijan UNA vez (#189): no se pisan en los
        -- re-scrapes (el loader los sella en la transición a live/finished).

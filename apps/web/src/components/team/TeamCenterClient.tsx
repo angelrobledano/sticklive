@@ -15,7 +15,7 @@ import { TeamStatsStory } from '@/components/team/TeamStatsStory';
 import { SquadTable } from '@/components/team/SquadTable';
 import { useLocale, useT } from '@/lib/i18n';
 import { withLocaleHref } from '@/lib/locale-links';
-import { APP_TZ } from '@/lib/match-time';
+import { APP_TZ, isTimeTbd, timeTbdLabel } from '@/lib/match-time';
 import { isKnockoutSeason, buildKnockoutSummary, knockoutPhaseLabel } from '@/lib/knockout';
 import { KnockoutSeasonSummary } from './KnockoutSeasonSummary';
 import { tt } from '@/components/search/translate';
@@ -111,6 +111,7 @@ export function seasonOptionLabel(s: TeamSeason, t: (key: string) => string): st
 // equipo puede jugar en varias competiciones, así que la TZ es por partido.
 function formatTime(iso: string | null, locale = 'es', tz?: string | null): string {
   if (!iso) return '--:--';
+  if (isTimeTbd(iso)) return timeTbdLabel(locale);
   // Ciclo horario forzado a 23 (0-23): con locale 'en' el defecto es 12h AM/PM,
   // impropio de un producto europeo (#413). Válido en todos los locales.
   return new Date(iso).toLocaleTimeString(locale, {

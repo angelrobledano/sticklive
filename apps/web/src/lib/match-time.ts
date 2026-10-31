@@ -92,3 +92,29 @@ export function classifyMatch(
   if (state === 'finished' || state === 'overdue') return 'past';
   return 'future';
 }
+
+/**
+ * Hora por confirmar. Las federaciones publican a veces solo el día y el
+ * scraper lo guarda como medianoche local: ningún partido empieza a las 00:00
+ * (ni a la 01:00 de Madrid, medianoche en Lisboa), así que se lee como «sin hora».
+ */
+export function isTimeTbd(iso: string | null | undefined, venueTz?: string | null): boolean {
+  if (!iso) return false;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return false;
+  const zones = venueTz ? [venueTz] : [APP_TZ, 'Europe/Lisbon'];
+  return zones.some((tz) => {
+    try {
+      return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: tz }) === '00:00';
+    } catch { return false; }
+  });
+}
+
+const TBD_LABEL: Record<string, string> = {
+  es: 'Por confirmar', ca: 'Per confirmar', en: 'TBC', pt: 'A confirmar', fr: 'À confirmer', it: 'Da confermare',
+};
+
+/** Texto de «hora por confirmar» en el idioma dado. */
+export function timeTbdLabel(locale = 'es'): string {
+  return TBD_LABEL[locale.slice(0, 2)] ?? TBD_LABEL.es!;
+}

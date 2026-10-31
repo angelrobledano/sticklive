@@ -3,7 +3,7 @@
  * Funciones puras, sin React.
  */
 import type { SeasonOverview, SeasonRound } from '@/lib/api/client';
-import { APP_TZ } from '@/lib/match-time';
+import { APP_TZ, isTimeTbd, timeTbdLabel } from '@/lib/match-time';
 import { isKnockoutStage, stageLabel } from '@/lib/stage-label';
 import { playerDisplayName } from '@/lib/names';
 
@@ -15,6 +15,7 @@ import { playerDisplayName } from '@/lib/names';
  */
 export function fmtTime(iso: string | null, tz?: string | null, locale = 'es'): string {
   if (!iso) return '--:--';
+  if (isTimeTbd(iso)) return timeTbdLabel(locale);
   // Ciclo horario forzado a 23 (0-23): con locale 'en' el defecto es 12h AM/PM,
   // impropio de un producto europeo (#413). Válido en todos los locales.
   return new Date(iso).toLocaleTimeString(locale, {

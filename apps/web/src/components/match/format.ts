@@ -2,7 +2,7 @@
  * Helpers de formato (fecha/hora/nombres) y crono de eventos de la ficha de
  * partido. Funciones puras, sin React.
  */
-import { APP_TZ } from '@/lib/match-time';
+import { APP_TZ, isTimeTbd, timeTbdLabel } from '@/lib/match-time';
 
 /**
  * Hora del partido. `tz` es la zona de la competición (columna 042); si viene
@@ -13,6 +13,7 @@ import { APP_TZ } from '@/lib/match-time';
  */
 export function formatTime(iso: string | null, tz?: string | null, locale = 'es'): string {
   if (!iso) return '--:--';
+  if (isTimeTbd(iso)) return timeTbdLabel(locale);
   // Ciclo horario forzado a 23 (0-23): con locale 'en' el defecto es 12h AM/PM,
   // impropio de un producto europeo (#413). Válido en todos los locales.
   return new Date(iso).toLocaleTimeString(locale, {

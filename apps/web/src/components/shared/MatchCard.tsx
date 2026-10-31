@@ -9,7 +9,7 @@ import { useT } from '@/lib/i18n';
 import { tt } from '@/components/search/translate';
 import { useNow30s } from '@/lib/now-ticker';
 import { finalLabelKey, penaltyText } from '@/lib/match-result';
-import { APP_TZ } from '@/lib/match-time';
+import { APP_TZ, isTimeTbd, timeTbdLabel } from '@/lib/match-time';
 import { matchDisplayState, type MatchDisplayState } from '@sports/shared-types';
 
 
@@ -25,6 +25,7 @@ interface MatchCardProps {
  */
 export function formatTime(iso: string | null, tz?: string | null, locale = 'es'): string {
   if (!iso) return '--:--';
+  if (isTimeTbd(iso)) return timeTbdLabel(locale);
   // Ciclo horario forzado a 23 (0-23): con locale 'en' el defecto es 12h AM/PM,
   // impropio de un producto europeo (#413). Válido en todos los locales.
   return new Date(iso).toLocaleTimeString(locale, {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useViewerTz } from '@/hooks/useViewerTz';
+import { isTimeTbd, timeTbdLabel } from '@/lib/match-time';
 import { useMemo, useState } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { TeamShield } from '@/components/shared/TeamShield';
@@ -35,7 +36,7 @@ function CalendarRow({ match, teamId, roundLabel }: { match: TeamMatchSummary; t
 
   const day = date ? date.toLocaleDateString(locale, { day: 'numeric', month: 'short', timeZone: tz }).replace('.', '') : '—';
   const weekday = date ? date.toLocaleDateString(locale, { weekday: 'short', timeZone: tz }).replace('.', '') : '';
-  const hour = date ? date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: tz }) : '';
+  const hour = !date ? '' : isTimeTbd(date.toISOString()) ? timeTbdLabel(locale) : date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: tz });
 
   const side = (team: TeamSummaryLike, score: number | null) => {
     const me = team.id === teamId;
