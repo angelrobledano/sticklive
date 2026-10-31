@@ -138,3 +138,17 @@ describe('directo FPP: Elite Cup 30/10 (7-22 y horas en directo)', () => {
     expect(goneLive([], [c('viejo', 3.5)], new Set(), now)).toEqual([]);
   });
 });
+
+describe('directo FPP real con partidos en juego (31/10, 16:05)', () => {
+  it('marcador del span, no pegado al periodo; en juego y terminado bien leídos', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const html = readFileSync(fileURLToPath(new URL('./__fixtures__/direto-2026-10-31-live.html', import.meta.url)), 'utf8');
+    const items = parseFppDireto(html);
+    const benfica = items.filter((i) => i.homeName.startsWith('SL Benfica') && i.awayName === 'Escola Livre A');
+    expect(benfica.length).toBeGreaterThan(0);
+    for (const b of benfica) expect(b).toMatchObject({ homeScore: 2, awayScore: 0, state: 'live' });
+    const gulpi = items.filter((i) => i.homeName === 'ACD Gulpilhares' && /Sanjoanense/.test(i.awayName));
+    for (const g of gulpi) expect(g).toMatchObject({ homeScore: 0, awayScore: 5, state: 'finished' });
+  });
+});

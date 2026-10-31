@@ -78,7 +78,12 @@ export function parseFppDireto(html: string): FppLiveItem[] {
     const awayName = cleanName($el.find('.team-visitante .team-name').first().text()) || names[names.length - 1] || '';
     if (!homeName || !awayName) return;
 
-    const score = parseScore($el.find('.resultado').first().text());
+    // El marcador va en su propio span («<span class='provisorio sc'>7-2</span>
+    // <br><span class='estado-jogo sc'>2ª P - 4:02</span>»). Leer el texto del
+    // bloque entero los pegaba («7-22ª P») y salía 7-22 (Elite Cup 30-31/10).
+    const scoreText = $el.find('.provisorio').first().text()
+      || $el.find('.resultado').first().clone().find('.estado-jogo').remove().end().text();
+    const score = parseScore(scoreText);
     const stateText = cleanName($el.find('.estado-jogo').first().text());
     const blinking = $el.find('.fa-circle').length > 0;
     // La web enlaza en relativo («jogo/18553», sin barra): se normaliza a «/jogo/18553».
@@ -89,7 +94,10 @@ export function parseFppDireto(html: string): FppLiveItem[] {
       competition, homeName, awayName,
       homeScore: score ? score[0] : null,
       awayScore: score ? score[1] : null,
-      state: classifyState(stateText, blinking),
+      // Con marcador, sin estado y sin el punto rojo: partido acabado (la web
+      // deja el resultado «provisorio» y quita el directo). Sin esto se quedaba
+      // en juego hasta que lo cerraba otro proceso horas después.
+      state: !stateText && !blinking && score ? 'finished' : classifyState(stateText, blinking),
       stateText, blinking, jogoPath: jogo ? `/${jogo}` : null,
       raw: ($.html(el) ?? '').replace(/\s+/g, ' ').slice(0, 2000),
     });
