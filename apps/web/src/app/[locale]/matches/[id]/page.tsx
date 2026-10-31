@@ -175,7 +175,7 @@ export default async function MatchDetailPage(props: Props) {
 
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
-      <JsonLd data={jsonLd} />
+      {jsonLd && <JsonLd data={jsonLd} />}
       <JsonLd data={breadcrumbLd} />
 
       {/* Navegacion de vuelta: el fallback es la competición del partido (#182) */}

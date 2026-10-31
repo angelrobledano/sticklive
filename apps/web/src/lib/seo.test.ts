@@ -409,10 +409,11 @@ describe('matchJsonLd (F3-6)', () => {
     home: { id: 'h1', name: 'Liceo' },
     away: { id: 'a1', name: 'Reus' },
     scheduledAt: '2026-10-12T16:15:00.000Z',
+    venue: { name: 'Pazo dos Deportes de Riazor', city: 'A Coruña' },
   };
 
   it('incluye url, homeTeam, awayTeam y competitor', () => {
-    const ld = matchJsonLd({ ...base, status: 'finished' });
+    const ld = matchJsonLd({ ...base, status: 'finished' })!;
     expect(ld['@type']).toBe('SportsEvent');
     expect(ld['url']).toBe(`${SITE_URL}/es/matches/m1`);
     expect(ld['homeTeam']).toEqual({ '@type': 'SportsTeam', name: 'Liceo', url: `${SITE_URL}/es/teams/h1` });
@@ -422,14 +423,21 @@ describe('matchJsonLd (F3-6)', () => {
 
   it('omite eventStatus en terminado y lo pone en programado/directo', () => {
     expect(matchJsonLd({ ...base, status: 'finished' })).not.toHaveProperty('eventStatus');
-    expect(matchJsonLd({ ...base, status: 'live' })['eventStatus']).toBe('https://schema.org/EventScheduled');
-    expect(matchJsonLd({ ...base, status: 'postponed' })['eventStatus']).toBe('https://schema.org/EventPostponed');
+    expect(matchJsonLd({ ...base, status: 'live' })!['eventStatus']).toBe('https://schema.org/EventScheduled');
+    expect(matchJsonLd({ ...base, status: 'postponed' })!['eventStatus']).toBe('https://schema.org/EventPostponed');
   });
 
-  it('no inventa location si no hay sede', () => {
-    expect(matchJsonLd({ ...base, status: 'scheduled' })).not.toHaveProperty('location');
-    const withVenue = matchJsonLd({ ...base, status: 'scheduled', venue: { name: 'Palau', city: 'Barcelona' } });
-    expect(withVenue['location']).toEqual({ '@type': 'Place', name: 'Palau', address: 'Barcelona' });
+  it('location con la sede real: Place con name y PostalAddress (requisito de Google)', () => {
+    const ld = matchJsonLd({ ...base, status: 'scheduled', venue: { name: 'Palau', city: 'Barcelona' } })!;
+    expect(ld['location']).toEqual({
+      '@type': 'Place', name: 'Palau', address: { '@type': 'PostalAddress', addressLocality: 'Barcelona' },
+    });
+  });
+
+  it('sin sede completa no emite el evento (no se inventa location)', () => {
+    expect(matchJsonLd({ ...base, status: 'scheduled', venue: null })).toBeNull();
+    expect(matchJsonLd({ ...base, status: 'scheduled', venue: { name: 'Palau', city: null } })).toBeNull();
+    expect(matchJsonLd({ ...base, status: 'scheduled', venue: { name: '  ', city: 'Reus' } })).toBeNull();
   });
 });
 
