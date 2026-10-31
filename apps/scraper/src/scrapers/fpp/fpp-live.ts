@@ -18,7 +18,7 @@ import * as Sentry from '@sentry/node';
 import { createLogger } from '@sports/logger';
 import { fppGet } from './fpp-client.js';
 import { FPP_BASE_URL } from './fpp-structure.js';
-import { parseFppDireto, matchItems, type LiveCandidate } from './fpp-live.parser.js';
+import { parseFppDireto, matchItems, implausibleJump, goneLive, type LiveCandidate } from './fpp-live.parser.js';
 import type { FppFichaTarget } from './fpp-ficha.js';
 
 const log = createLogger({ service: 'fpp-live' });
@@ -39,7 +39,8 @@ export interface FppLiveCycle {
 export async function fppLiveCandidates(): Promise<Candidate[]> {
   const { rows } = await db.query<Candidate>(
     `SELECT m.id, m.season_id, c.sport_id, m.source_ref, m.source_url, m.status,
-            m.home_team_id, m.away_team_id, ht.name AS home_name, at.name AS away_name
+            m.home_team_id, m.away_team_id, ht.name AS home_name, at.name AS away_name,
+            m.home_score, m.away_score, m.started_at
        FROM matches m
        JOIN seasons s      ON s.id = m.season_id AND s.is_current
        JOIN competitions c ON c.id = s.competition_id
@@ -82,6 +83,17 @@ export async function runFppLiveScores(): Promise<FppLiveCycle> {
       continue;
     }
     if (item.state === 'scheduled') continue;
+    // Marcador imposible entre dos ciclos (Elite Cup 30/10: 7-3 → 7-22): no se
+    // guarda y se manda el HTML del item a Sentry para ver qué leímos.
+    const prev = { home: cand.home_score ?? null, away: cand.away_score ?? null };
+    if (implausibleJump(prev, { home: item.homeScore, away: item.awayScore })) {
+      log.warn({ match: cand.source_ref, prev, item: { home: item.homeScore, away: item.awayScore } }, 'FPP /Direto: salto de marcador imposible — se ignora');
+      Sentry.captureMessage('FPP /Direto: salto de marcador imposible', {
+        level: 'warning', fingerprint: ['fpp-direto-jump'], tags: { source: 'fpp' },
+        extra: { match: cand.source_ref, prev, item },
+      });
+      continue;
+    }
 
     const status = item.state === 'finished' ? 'finished' : 'live';
     const halftime = item.state === 'halftime';
@@ -106,6 +118,20 @@ export async function runFppLiveScores(): Promise<FppLiveCycle> {
     if (status === 'live') liveRefs.push(cand.source_ref);
     touched.push({ ...cand, source_url: url ?? cand.source_url, status });
   }
+
+  // En juego pero fuera del feed (pasó la medianoche sin «Final»): terminado,
+  // para que no se quede horas «en directo».
+  const gone = goneLive(items, cands, new Set(pairs.filter((p) => p.item.state !== 'unknown').map((p) => p.cand.id)));
+  for (const c of gone) {
+    await db.query(
+      `UPDATE matches SET status = 'finished', live_is_halftime = FALSE,
+              finished_at = COALESCE(finished_at, NOW()), updated_at = NOW()
+        WHERE id = $1 AND status = 'live'`,
+      [c.id],
+    );
+    touched.push({ ...c, status: 'finished' });
+  }
+  if (gone.length > 0) log.info({ matches: gone.map((c) => c.source_ref) }, 'FPP: en juego fuera de /Direto → terminado');
 
   const unmatched = items.length - pairs.length;
   log.info({ candidates: cands.length, items: items.length, matched: pairs.length, unmatched, live: liveRefs.length }, 'FPP directo');

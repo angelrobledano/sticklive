@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><meta http-equiv="Content-Type" content="text/html; charset=gb18030">
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-73287306-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-73287306-2');
+</script>
+
+<script type='text/javascript'>
+  window.smartlook||(function(d) {
+    var o=smartlook=function(){ o.api.push(arguments)},h=d.getElementsByTagName('head')[0];
+    var c=d.createElement('script');o.api=new Array();c.async=true;c.type='text/javascript';
+    c.charset='utf-8';c.src='https://rec.smartlook.com/recorder.js';h.appendChild(c);
+    })(document);
+    smartlook('init', '5cd90e0b4955fda323d2e2d3f1f7445b9114ee07');
+</script>
+
+
+  <meta name="viewport" content="width=min/max-width, initial-scale=1">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <title>FPP HP | Jogos em Direto</title>
+
+    <link rel="icon" href="/img/favicon/cropped-cropped-banner-txt-small-32x32.png" sizes="32x32" />
+    <link rel="icon" href="/img/favicon/cropped-cropped-banner-txt-small-192x192.png" sizes="192x192" />
+    <link rel="apple-touch-icon-precomposed" href="/img/favicon/cropped-cropped-banner-txt-small-180x180.png" />
+    <meta name="msapplication-TileImage" content="/img/favicon/cropped-cropped-banner-txt-small-270x270.png" />
+
+  <!-- Bootstrap core CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">  
+<link href="/vendor/css/styles.css?v=11" rel="stylesheet">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.css">
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/5.3.0/js/bootstrap.bundle.min.js" integrity="sha384-S+4cHBklvY6Uj7mjc4Tp3knXVRj+/MQo6RrcxJNJzrhHGh8oyEV3mOsOHfiIHsOg" crossorigin="anonymous"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body> 
+
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark static-top">
+    <div class="container headers">
+      <a class="navbar-brand" href="https://fpp.pt"><img src="/vendor/images/logowhite.png"></a>
+
+	  <a href="http://fpp.pt">www.fpp.pt</a>
+      
+    </div>
+  </nav>
+    <nav class="navbar sub-menu navbar-expand-lg navbar-dark bg-dark static-top">
+
+            <a href="#" class="navbar-brand font-weight-bold"></a>
+            <button type="button" data-toggle="collapse" data-target="#navbarContent" aria-controls="navbars" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler">
+                <span class="navbar-toggler-icon"><i class='fas fa-bars'></i></span>
+            </button>
+
+        <div id="navbarContent" class="collapse navbar-collapse">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item"><a href="http://hp.fpp.pt/" class="nav-link sub-menu-titulo" style="color:white">Início</a></li>
+                <li class="nav-item dropdown">
+                    <a href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="nav-link dropdown-toggle" style="color: white;">Hóquei em Patins | Competições 2026/27</a>
+                    <ul class="dropdown-menu border-0 shadow">
+                                                
+
+
+                    </ul>
+                </li>
+                <li class="nav-item"><a href="http://hp.fpp.pt/epoca/54" class="nav-link sub-menu-titulo" style="color:white">Época 2025/26</a></li>
+                <li class="nav-item"><a href="http://hp.fpp.pt/epoca/52" class="nav-link sub-menu-titulo" style="color:white">Época 2024/25</a></li>
+                <li class="nav-item"><a href="http://hp.fpp.pt/Historico" class="nav-link sub-menu-titulo" style="color:white">Épocas Anteriores</a></li>
+                
+            </ul>
+        </div>
+
+
+
+
+  </nav>
+
+  <!-- Page Content -->
+  <div class="container main col-md-12  col-lg-8 offset-lg-2">
+    <div class="row">
+      <div class="col-lg-10 offset-lg-1 col-md-12  text-center">
+
+<style>
+    /* Estilo da lista de jogos */
+    .lista-jogos {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .jogo-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 15px;
+        border-bottom: 1px solid #ccc;
+        background-color: #f9f9f9;
+        transition: background-color 0.3s;
+    }
+
+    .jogo-item:hover {
+        background-color: #f1f1f1;
+    }
+
+    .team-logo {
+        width: 40px;
+        height: 40px;
+    }
+
+    .team-name {
+        font-size: 1.1rem;
+        font-weight: bold;
+        margin-bottom: 0px;
+    }
+
+    .resultado {
+        font-size: 1.2rem;
+        color: #333;
+    }
+
+    .jogo-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .team-section {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .estado-jogo {
+        font-size: 0.9rem;
+        color: grey;
+    }
+
+    .link-icons {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .team-visitada {
+    text-align: right;
+    flex-direction: row-reverse;
+    }
+
+    .team-visitante {
+        text-align: left;
+        flex-direction: row;
+    }
+
+    .titulo-competicao{
+        background-color: #555;
+        color: white;
+        display: block;
+        margin-top: 10px;
+        margin-bottom: 0px;
+    }
+    
+    .resultado-info {
+        text-align: center;
+        width: 100px; /* largura para centrar resultado e data/hora */
+    }
+
+    .resultado {
+        font-size: 1.2rem;
+        color: #333;
+        font-weight: bold;
+    }
+
+    .data-hora {
+        font-size: 0.9rem;
+        color: #666;
+        margin-top: 5px;
+    }
+
+    .mobile{
+        display:none;
+    }
+
+    /* Para mobile */
+    @media only screen and (max-width: 600px) {
+        .team-name {
+            font-size: 0.9rem;
+        }
+        .resultado {
+            font-size: 1rem;
+        }
+
+        .col-equipa{
+            text-align: left;
+        }
+
+        .team-logo {
+            width: 30px;
+            height: 30px;
+        }
+
+        .desktop{
+            display:none;
+        }
+
+        .mobile{
+            display: flex;
+        }
+
+        .jogo-item{
+            padding-left: 0px;
+        }
+    }
+
+    .fa-circle {
+        color: #b40000 !important;
+        animation: blink 2s infinite;
+    }
+
+    @keyframes blink {
+        0%, 100% { opacity: 1; }  /* Totalmente visível no início e no final */
+        50% { opacity: 0; }       /* Invisível no meio da animação */
+    }
+</style>
+<div id="principal">
+    <h4 style="margin-top:25px; margin-bottom:25px;">Jogos do Dia</h4>
+
+    <ul class="lista-jogos">
+        <li><h4 class='titulo-competicao'>CN 2ª Divisão Norte</h4></li>                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_133.png" class="team-logo">
+                            <p class="team-name">AA Espinho </p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                18:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_128.png" class="team-logo">
+                            <p class="team-name">AD Valongo &quot;B&quot;</p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/18552"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022961"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_133.png" class="team-logo"> AA Espinho </p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_128.png" class="team-logo"> AD Valongo &quot;B&quot;</p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            18:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/18552"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022961"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+                                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_134.png" class="team-logo">
+                            <p class="team-name">Famalicense AC</p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                18:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_951.png" class="team-logo">
+                            <p class="team-name">OC Barcelos &quot;B&quot;</p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/18554"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022963"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_134.png" class="team-logo"> Famalicense AC</p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_951.png" class="team-logo"> OC Barcelos &quot;B&quot;</p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            18:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/18554"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022963"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+                                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_88.jpg" class="team-logo">
+                            <p class="team-name">HCM/GAVICAR</p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                18:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_127.png" class="team-logo">
+                            <p class="team-name">UD Oliveirense/Simoldes &quot;B&quot;</p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/18557"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022966"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_88.jpg" class="team-logo"> HCM/GAVICAR</p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_127.png" class="team-logo"> UD Oliveirense/Simoldes &quot;B&quot;</p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            18:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/18557"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022966"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+                                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_942.png" class="team-logo">
+                            <p class="team-name">CD Póvoa / AP Motors</p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                18:30                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_179.png" class="team-logo">
+                            <p class="team-name">Termas OC/Multisac</p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/18553"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022962"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_942.png" class="team-logo"> CD Póvoa / AP Motors</p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_179.png" class="team-logo"> Termas OC/Multisac</p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            18:30                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/18553"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022962"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+                                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_132.png" class="team-logo">
+                            <p class="team-name">CH Carvalhos </p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                18:30                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_116.png" class="team-logo">
+                            <p class="team-name">FC Porto &quot;B&quot;</p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/18556"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022965"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_132.png" class="team-logo"> CH Carvalhos </p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_116.png" class="team-logo"> FC Porto &quot;B&quot;</p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            18:30                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/18556"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022965"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+                                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_131.png" class="team-logo">
+                            <p class="team-name">HA Cambra </p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                19:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_75.jpg" class="team-logo">
+                            <p class="team-name">CRPF Lavra</p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/18555"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_131.png" class="team-logo"> HA Cambra </p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_75.jpg" class="team-logo"> CRPF Lavra</p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            19:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/18555"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                            </div>
+                </li>
+                                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_169.png" class="team-logo">
+                            <p class="team-name">ADJ Vila Praia </p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                19:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_130.png" class="team-logo">
+                            <p class="team-name">A Académica C</p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/18558"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022967"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_169.png" class="team-logo"> ADJ Vila Praia </p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_130.png" class="team-logo"> A Académica C</p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            19:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/18558"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022967"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+                <li><h4 class='titulo-competicao'>CN 2ª Divisão Sul</h4></li>                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_144.png" class="team-logo">
+                            <p class="team-name">S. Alenquer B</p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                18:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_121.png" class="team-logo">
+                            <p class="team-name">GRF Murches </p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/18370"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022968"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_144.png" class="team-logo"> S. Alenquer B</p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_121.png" class="team-logo"> GRF Murches </p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            18:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/18370"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022968"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+                                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_198.png" class="team-logo">
+                            <p class="team-name">HCP Grândola </p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                18:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_206.png" class="team-logo">
+                            <p class="team-name">Criar-T / Oleofluxo</p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/18372"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022970"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_198.png" class="team-logo"> HCP Grândola </p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_206.png" class="team-logo"> Criar-T / Oleofluxo</p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            18:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/18372"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022970"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+                                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_143.png" class="team-logo">
+                            <p class="team-name">AACD / Remax mosteiro</p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                18:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_147.png" class="team-logo">
+                            <p class="team-name">AE Física D </p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/18374"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022972"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_143.png" class="team-logo"> AACD / Remax mosteiro</p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_147.png" class="team-logo"> AE Física D </p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            18:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/18374"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022972"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+                                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_137.png" class="team-logo">
+                            <p class="team-name">SC Marinhense </p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                18:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_209.png" class="team-logo">
+                            <p class="team-name">CD Paço de Arcos </p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/18375"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022973"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_137.png" class="team-logo"> SC Marinhense </p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_209.png" class="team-logo"> CD Paço de Arcos </p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            18:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/18375"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022973"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+                                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_893.png" class="team-logo">
+                            <p class="team-name">F. Salesianos/AJ Salesiana</p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                18:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_119.png" class="team-logo">
+                            <p class="team-name">SL Benfica &quot;B&quot;</p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/18376"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022974"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_893.png" class="team-logo"> F. Salesianos/AJ Salesiana</p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_119.png" class="team-logo"> SL Benfica &quot;B&quot;</p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            18:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/18376"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022974"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+                                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_157.png" class="team-logo">
+                            <p class="team-name">Parede FC</p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                21:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_950.png" class="team-logo">
+                            <p class="team-name">HC Turquel </p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/18373"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022971"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_157.png" class="team-logo"> Parede FC</p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_950.png" class="team-logo"> HC Turquel </p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            21:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/18373"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022971"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+                <li><h4 class='titulo-competicao'>CN 3ª Divisão Norte B</h4></li>                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_174.png" class="team-logo">
+                            <p class="team-name">ACD Gulpilhares</p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                18:30                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_171.png" class="team-logo">
+                            <p class="team-name">CA Feira</p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/19506"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_174.png" class="team-logo"> ACD Gulpilhares</p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_171.png" class="team-logo"> CA Feira</p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            18:30                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/19506"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                            </div>
+                </li>
+                <li><h4 class='titulo-competicao'>CN 3ª Divisão Sul A</h4></li>                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_176.png" class="team-logo">
+                            <p class="team-name">Juventude Ouriense </p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                17:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_181.png" class="team-logo">
+                            <p class="team-name">HC Madeira</p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/19944"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_176.png" class="team-logo"> Juventude Ouriense </p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_181.png" class="team-logo"> HC Madeira</p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            17:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/19944"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                            </div>
+                </li>
+                <li><h4 class='titulo-competicao'>CN 3ª Divisão Sul B</h4></li>                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_193.png" class="team-logo">
+                            <p class="team-name">CD Boliqueime</p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                19:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_884.png" class="team-logo">
+                            <p class="team-name">HC Ponta Delgada</p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogo/19329"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_193.png" class="team-logo"> CD Boliqueime</p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_884.png" class="team-logo"> HC Ponta Delgada</p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            19:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogo/19329"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                            </div>
+                </li>
+                <li><h4 class='titulo-competicao'>Elite Cup Feminina</h4></li>                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_174.png" class="team-logo">
+                            <p class="team-name">ACD Gulpilhares</p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                12:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_125.png" class="team-logo">
+                            <p class="team-name">AD Sanjoanense/Delba</p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogoTaca/100893"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022960"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_174.png" class="team-logo"> ACD Gulpilhares</p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_125.png" class="team-logo"> AD Sanjoanense/Delba</p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            12:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogoTaca/100893"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022960"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+                                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_119.png" class="team-logo">
+                            <p class="team-name">SL Benfica </p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                15:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_1068.png" class="team-logo">
+                            <p class="team-name">Escola Livre A</p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogoTaca/100892"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022959"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_119.png" class="team-logo"> SL Benfica </p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_1068.png" class="team-logo"> Escola Livre A</p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            15:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogoTaca/100892"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                                    <a target="_blank" href="https://tv.fpp.pt/live?l=9960895B07BD4723826AA36AD712C8E6022959"><i class="fa fa-tv" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+                <li><h4 class='titulo-competicao'>Elite Cup Masculina</h4></li>                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_119.png" class="team-logo">
+                            <p class="team-name">SL Benfica </p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                18:00                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_951.png" class="team-logo">
+                            <p class="team-name">OC Barcelos SAD </p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogoTaca/100889"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_119.png" class="team-logo"> SL Benfica </p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_951.png" class="team-logo"> OC Barcelos SAD </p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            18:00                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogoTaca/100889"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                            </div>
+                </li>
+                                <li class="jogo-item desktop">
+                    <div class="jogo-info col-11">
+                        <!-- Equipa Visitada -->
+                        <div class="team-section team-visitada col-5" style="text-align: right;">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_127.png" class="team-logo">
+                            <p class="team-name">UD Oliveirense / Simoldes</p>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="resultado-info col-2">
+                            <div class="resultado">
+                                 -                             </div>
+                            <div class="data-hora">
+                                21:30                            </div>
+                        </div>
+
+                        <!-- Equipa Visitante -->
+                        <div class="team-section team-visitante col-5">
+                            <img src="https://plataforma.fpp.pt/Files/CLUBE_116.png" class="team-logo">
+                            <p class="team-name">FC Porto </p>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="link-icons col-1">
+                        <a href="jogoTaca/100890"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                            </div>
+                </li>
+
+
+                <li class="jogo-item mobile">
+                    <!-- Seção de Equipes -->
+                    <div class="col-equipa col-8">
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_127.png" class="team-logo"> UD Oliveirense / Simoldes</p>
+                        <p class="team-name"><img src="https://plataforma.fpp.pt/Files/CLUBE_116.png" class="team-logo"> FC Porto </p>
+                    </div>
+                    <!-- Seção do Resultado -->
+                    <div class="resultado-info col-2">
+                     -                         <div class="data-hora">
+                            21:30                        </div>
+                    </div>
+                    <!-- Ícone da Lupa -->
+                    <div class="link-icons col-2">
+                        <a href="jogoTaca/100890"><i class="fa fa-search" aria-hidden="true"></i></a>
+                        </a>
+                                            </div>
+                </li>
+                    </ul>
+</div>
+
+
+      <p style="margin-top: 20px; text-align:center; width:100%;">Resultados divulgados de acordo com o RGHP</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap core JavaScript -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script src="//rum-static.pingdom.net/pa-6028194a7c174600130000ed.js" async></script>
+
+
+<div class="floating-button" id="back-button" onclick="goBack()" style="display: none;">
+    &#8592; Voltar
+</div>
+
+<script>
+// Obter o domínio atual
+const currentDomain = window.location.hostname;
+
+// Verificar se o referrer pertence ao mesmo domínio
+if (document.referrer && new URL(document.referrer).hostname === currentDomain) {
+    document.getElementById('back-button').style.display = 'block'; // Mostrar o botão
+}
+
+function goBack() {
+    window.history.back();
+}
+
+
+</script>
+</body>
+
+</html>
+
+<script type="text/javascript">
+window.setTimeout(function(){ document.location.reload(true); }, 15000);
+</script>

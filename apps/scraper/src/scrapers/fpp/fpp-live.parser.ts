@@ -31,6 +31,17 @@ export interface FppLiveItem {
   blinking: boolean;
   /** Ruta de la ficha si el item la enlaza (`/jogo/…`, `/jogoTaca/…`). */
   jogoPath: string | null;
+  /** HTML del item (recortado) para diagnosticar marcadores raros. */
+  raw: string;
+}
+
+/**
+ * Marcador «N - N» del bloque de resultado. Sin que el número pegue con una
+ * hora o un minuto («7 - 22:10» no es 7-22): ese texto no da marcador.
+ */
+export function parseScore(text: string): [number, number] | null {
+  const m = /(?<![\d:])(\d{1,2})\s*-\s*(\d{1,2})(?![\d:'’hH])/.exec(text);
+  return m ? [Number(m[1]), Number(m[2])] : null;
 }
 
 function norm(s: string): string {
@@ -67,18 +78,20 @@ export function parseFppDireto(html: string): FppLiveItem[] {
     const awayName = cleanName($el.find('.team-visitante .team-name').first().text()) || names[names.length - 1] || '';
     if (!homeName || !awayName) return;
 
-    const score = /(\d+)\s*-\s*(\d+)/.exec($el.find('.resultado').first().text());
+    const score = parseScore($el.find('.resultado').first().text());
     const stateText = cleanName($el.find('.estado-jogo').first().text());
     const blinking = $el.find('.fa-circle').length > 0;
-    const jogo = $el.find('a[href*="/jogo"]').map((__, a) => $(a).attr('href') ?? '').get()
-      .map((h) => /\/jogo(?:Taca)?\/\d+/i.exec(h)?.[0]).find(Boolean) ?? null;
+    // La web enlaza en relativo («jogo/18553», sin barra): se normaliza a «/jogo/18553».
+    const jogo = $el.find('a[href*="jogo"]').map((__, a) => $(a).attr('href') ?? '').get()
+      .map((h) => /(?:^|\/)(jogo(?:Taca)?\/\d+)/i.exec(h)?.[1]).find(Boolean) ?? null;
 
     out.push({
       competition, homeName, awayName,
-      homeScore: score ? Number(score[1]) : null,
-      awayScore: score ? Number(score[2]) : null,
+      homeScore: score ? score[0] : null,
+      awayScore: score ? score[1] : null,
       state: classifyState(stateText, blinking),
-      stateText, blinking, jogoPath: jogo,
+      stateText, blinking, jogoPath: jogo ? `/${jogo}` : null,
+      raw: ($.html(el) ?? '').replace(/\s+/g, ' ').slice(0, 2000),
     });
   });
   return out;
@@ -102,6 +115,9 @@ export interface LiveCandidate {
   away_team_id: string;
   home_name: string;
   away_name: string;
+  home_score?: number | null;
+  away_score?: number | null;
+  started_at?: Date | string | null;
 }
 
 /** Casa los items del feed con los candidatos: ficha enlazada primero, nombres después. */
@@ -121,3 +137,29 @@ export function matchItems<C extends LiveCandidate>(items: FppLiveItem[], cands:
   return out;
 }
 
+
+/** Goles que puede sumar un marcador entre dos ciclos (~45 s) sin ser un error de lectura. */
+export const MAX_GOALS_PER_CYCLE = 4;
+
+/** ¿El marcador nuevo es un salto imposible respecto al guardado? (7-3 → 7-22). */
+export function implausibleJump(prev: { home: number | null; away: number | null }, next: { home: number | null; away: number | null }): boolean {
+  const d = (a: number | null, b: number | null) => (a == null || b == null ? 0 : b - a);
+  return d(prev.home, next.home) > MAX_GOALS_PER_CYCLE || d(prev.away, next.away) > MAX_GOALS_PER_CYCLE;
+}
+
+/** Horas en juego tras las que un partido que ya no sale en /Direto se da por terminado. */
+export const GONE_AFTER_HOURS = 2.5;
+
+/**
+ * Partidos que tenemos en juego pero que el feed ya no lista (/Direto es «jogos
+ * do dia»: tras medianoche, los de ayer desaparecen sin pasar por «Final») y
+ * llevan más de dos horas y media empezados. Solo con un feed con partidos: un feed
+ * vacío puede ser un fallo de la web.
+ */
+export function goneLive<C extends LiveCandidate>(items: FppLiveItem[], cands: C[], matched: Set<string>, now: Date = new Date()): C[] {
+  if (items.length === 0) return [];
+  return cands.filter((c) => {
+    if (c.status !== 'live' || matched.has(c.id) || !c.started_at) return false;
+    return now.getTime() - new Date(c.started_at).getTime() > GONE_AFTER_HOURS * 3_600_000;
+  });
+}

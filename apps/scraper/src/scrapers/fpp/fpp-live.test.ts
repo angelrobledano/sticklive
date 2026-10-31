@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseFppDireto, classifyState, pairKey } from './fpp-live.parser.js';
-import { matchItems } from './fpp-live.parser.js';
+import { matchItems, parseScore, implausibleJump, goneLive } from './fpp-live.parser.js';
 
 /**
  * ⚠️ FIXTURE SINTÉTICO: reconstruido a partir del CSS de /Direto (23/10/2026,
@@ -98,5 +98,43 @@ describe('matchItems', () => {
 
   it('pairKey ignora acentos, mayúsculas y signos', () => {
     expect(pairKey('HC Fão', 'C.E.N.A.P.')).toBe(pairKey('hc fao', 'CENAP'));
+  });
+});
+
+describe('directo FPP: Elite Cup 30/10 (7-22 y horas en directo)', () => {
+  it('feed real: la ficha se enlaza en relativo («jogo/18553») y se normaliza', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const html = readFileSync(fileURLToPath(new URL('./__fixtures__/direto-2026-10-31.html', import.meta.url)), 'utf8');
+    const items = parseFppDireto(html);
+    expect(items.length).toBeGreaterThan(20);
+    expect(items.filter((i) => i.jogoPath).length).toBeGreaterThan(20);
+    expect(items.every((i) => !i.jogoPath || /^\/jogo(Taca)?\/\d+$/.test(i.jogoPath))).toBe(true);
+  });
+
+  it('el marcador no se lee de una hora pegada', () => {
+    expect(parseScore(' 7 - 3 ')).toEqual([7, 3]);
+    expect(parseScore('7 - 22:10')).toBeNull();
+    expect(parseScore(' - 18:30')).toBeNull();
+    expect(parseScore("2 - 1 22'")).toEqual([2, 1]);
+  });
+
+  it('salto imposible entre ciclos', () => {
+    expect(implausibleJump({ home: 7, away: 3 }, { home: 7, away: 22 })).toBe(true);
+    expect(implausibleJump({ home: 7, away: 3 }, { home: 8, away: 3 })).toBe(false);
+    expect(implausibleJump({ home: null, away: null }, { home: 7, away: 3 })).toBe(false);
+  });
+
+  it('en juego que ya no sale en el feed y empezó hace más de 2,5 h → terminado', () => {
+    const now = new Date('2026-10-31T00:30:00Z');
+    const c = (id: string, startedH: number, status = 'live') => ({
+      id, season_id: 's', sport_id: 'x', source_ref: id, source_url: null, status,
+      home_team_id: 'h', away_team_id: 'a', home_name: 'A', away_name: 'B',
+      started_at: new Date(now.getTime() - startedH * 3_600_000),
+    });
+    const item = parseFppDireto('<ul class="lista-jogos"><li class="jogo-item"><p class="team-name">X</p><p class="team-name">Y</p></li></ul>');
+    const gone = goneLive(item, [c('viejo', 3.5), c('reciente', 1), c('casado', 4), c('prog', 4, 'scheduled')], new Set(['casado']), now);
+    expect(gone.map((g) => g.id)).toEqual(['viejo']);
+    expect(goneLive([], [c('viejo', 3.5)], new Set(), now)).toEqual([]);
   });
 });
