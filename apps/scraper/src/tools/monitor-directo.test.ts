@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compare } from './monitor-directo';
+import { compare } from './monitor-directo.js';
 
 const now = new Date('2026-10-31T17:00:00Z');
 const ours = (o: Record<string, unknown>) => ({
