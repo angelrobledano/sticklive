@@ -36,6 +36,9 @@ metaRouter.get('/sitemap', async (c) => {
       // no tienen ninguno (selecciones autonómicas sin datos, residuos de
       // resolución de entidades) son fichas vacías: siguen accesibles por URL,
       // pero no se declaran.
+      // Search Console 31/10/2026: además, solo equipos que juegan la temporada
+      // EN CURSO. Un equipo de base de hace dos temporadas es una ficha que
+      // Google rastrea y no indexa; sigue accesible y enlazado, sin noindex.
       db.query<{ id: string; updated_at: Date }>(`
         SELECT t.id, t.updated_at
           FROM teams t
@@ -51,6 +54,7 @@ metaRouter.get('/sitemap', async (c) => {
                   JOIN competitions c ON c.id = s.competition_id
                  WHERE s.data_quality = 'ok'
                    AND c.data_quality = 'ok'
+                   AND s.is_current
                 UNION ALL
                 SELECT m.away_team_id
                   FROM matches m
@@ -58,6 +62,7 @@ metaRouter.get('/sitemap', async (c) => {
                   JOIN competitions c ON c.id = s.competition_id
                  WHERE s.data_quality = 'ok'
                    AND c.data_quality = 'ok'
+                   AND s.is_current
               ) sides
              GROUP BY team_id
             HAVING count(*) >= 3
@@ -82,19 +87,21 @@ metaRouter.get('/sitemap', async (c) => {
             HAVING count(DISTINCT ml.match_id) >= 8
           ) eligible ON eligible.player_id = p.id
       `),
-      // F1-4: partidos de los últimos 60 días y de los próximos 14. Los que están
-      // a meses vista solo tienen equipos y hora: entran en el sitemap cuando se
-      // acercan (las fichas viejas siguen enlazadas desde equipos y competición).
+      // F1-4: partidos de los últimos 60 días y de los próximos 7 (eran 14:
+      // Search Console 31/10/2026, «descubierta, no indexada» en masa). Los que
+      // están más lejos solo tienen equipos y hora: entran cuando se acercan.
+      // Orden: primero lo jugado (el LIMIT recortaba los recientes, que son los
+      // que tienen resultado y acta).
       db.query<{ id: string; updated_at: Date; finished_at: Date | null; scheduled_at: Date | null }>(`
         SELECT m.id, m.updated_at, m.finished_at, m.scheduled_at
           FROM matches m
           JOIN seasons s      ON s.id = m.season_id
           JOIN competitions c ON c.id = s.competition_id
          WHERE m.scheduled_at > NOW() - INTERVAL '60 days'
-           AND m.scheduled_at < NOW() + INTERVAL '14 days'
+           AND m.scheduled_at < NOW() + INTERVAL '7 days'
            AND s.data_quality = 'ok'
            AND c.data_quality = 'ok'
-         ORDER BY m.scheduled_at DESC
+         ORDER BY (m.scheduled_at > NOW()), m.scheduled_at DESC
          LIMIT 3000
       `),
       // F4-5: temporadas cerradas y verificadas con URL permanente indexable.

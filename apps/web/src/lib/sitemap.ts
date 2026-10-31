@@ -90,7 +90,7 @@ const ENTITY_META: Record<string, { prefix: string }> = {
 
 /**
  * Separa los partidos en recientes (jugados o en directo: -60 días) y próximos
- * (+14 días). La API ya devuelve solo esa ventana; aquí se reparte para que
+ * (+7 días). La API ya devuelve solo esa ventana; aquí se reparte para que
  * Search Console distinga en su informe cuánto se indexa de cada grupo (F2-3).
  */
 function splitMatches(matches: SitemapIds['matches'] | undefined): {

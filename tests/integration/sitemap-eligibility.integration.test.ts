@@ -119,6 +119,14 @@ describe('GET /meta/sitemap — equipos', () => {
     expect(ids(body.teams)).not.toContain(sinPartidos);
   });
 
+  it('un equipo que no juega la temporada en curso no entra (sigue accesible)', async () => {
+    const sportId = await crearDeporte();
+    const vieja = await crearTemporada(await crearCompeticion(sportId), { esActual: false });
+    const p = await crearPartido({ seasonId: vieja, status: 'finished', horasDesdeInicio: 24 * 400 });
+    await masPartidos({ seasonId: vieja, homeTeamId: p.homeTeamId, awayTeamId: p.awayTeamId }, 3);
+    expect(ids((await sitemap()).teams)).not.toContain(p.homeTeamId);
+  });
+
   it('un equipo cuyos únicos partidos están en una temporada oculta no entra', async () => {
     const { homeTeamId, seasonId } = await crearPartido();
     await db.query(`UPDATE seasons SET data_quality = 'en_revision' WHERE id = $1`, [seasonId]);
@@ -127,18 +135,20 @@ describe('GET /meta/sitemap — equipos', () => {
 });
 
 describe('GET /meta/sitemap — partidos', () => {
-  it('ventana: jugados en los últimos 60 días y próximos 14 días', async () => {
+  it('ventana: jugados en los últimos 60 días y próximos 7 días', async () => {
     const sportId = await crearDeporte();
     const seasonId = await crearTemporada(await crearCompeticion(sportId));
     const reciente = (await crearPartido({ seasonId, status: 'finished', horasDesdeInicio: 24 * 10 })).matchId;
     const viejo = (await crearPartido({ seasonId, status: 'finished', horasDesdeInicio: 24 * 90 })).matchId;
-    const proximo = (await crearPartido({ seasonId, horasDesdeInicio: -24 * 7 })).matchId;
+    const proximo = (await crearPartido({ seasonId, horasDesdeInicio: -24 * 5 })).matchId;
+    const dosSemanas = (await crearPartido({ seasonId, horasDesdeInicio: -24 * 12 })).matchId;
     const lejano = (await crearPartido({ seasonId, horasDesdeInicio: -24 * 60 })).matchId;
 
     const body = ids((await sitemap()).matches);
     expect(body).toEqual(expect.arrayContaining([reciente, proximo]));
     expect(body).not.toContain(viejo);
     expect(body).not.toContain(lejano);
+    expect(body).not.toContain(dosSemanas);
   });
 });
 
