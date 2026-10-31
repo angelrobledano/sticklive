@@ -246,7 +246,39 @@ export function completeBracket(bracket: BracketRound[], declared: SeasonRound[]
     const round = declared.find((d) => d.stage === key)!;
     cols.push({ key, name: round.name, roundNumber: round.number, matches: [], slots: Math.ceil(prev.slots / 2) });
   }
-  return cols;
+  return alignBracket(cols);
+}
+
+/** Equipos que juegan un partido. */
+const teamsOf = (m: SeasonMatch) => [m.homeTeam.id, m.awayTeam.id];
+
+/**
+ * Ordena cada ronda según la siguiente: los dos cruces que alimentan el cruce j
+ * van en las posiciones 2j y 2j+1, para que el cuadro los dibuje unidos
+ * (Elite Cup: semis BEN–SAD y SIM–POR salen de los cuartos 1+4 y 2+3, no de
+ * 1+2 y 3+4 por fecha). Va de la final hacia atrás. Lo que no cuadra (cruce sin
+ * decidir, datos sueltos) queda detrás en su orden original.
+ */
+export function alignBracket(cols: BracketColumn[]): BracketColumn[] {
+  const out = cols.map((c) => ({ ...c, matches: [...c.matches] }));
+  for (let i = out.length - 1; i > 0; i--) {
+    const next = out[i]!.matches;
+    const prev = out[i - 1]!;
+    if (next.length === 0 || prev.matches.length === 0) continue;
+    const pending = [...prev.matches];
+    const ordered: (SeasonMatch | null)[] = [];
+    for (const n of next) {
+      const ts = teamsOf(n);
+      for (const t of ts) {
+        const k = pending.findIndex((m) => matchWinnerId(m) === t);
+        ordered.push(k === -1 ? null : pending.splice(k, 1)[0]!);
+      }
+    }
+    // Huecos sin decidir: se rellenan con lo que queda, en orden.
+    const filled = ordered.map((m) => m ?? pending.shift() ?? null).filter((m): m is SeasonMatch => m !== null);
+    prev.matches = [...filled, ...pending];
+  }
+  return out;
 }
 
 export type SlotFeeder =

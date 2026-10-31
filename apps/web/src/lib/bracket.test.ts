@@ -110,6 +110,20 @@ describe('completeBracket', () => {
     expect(rounds.map((r) => r.slots)).toEqual([4, 2, 1]);
   });
 
+  it('cada semifinal queda junto a los dos cuartos que la alimentan (1+4 y 2+3)', () => {
+    const qf = (id: string, h: string, a: string) =>
+      m(id, h, a, { stage: 'quarters', roundId: 'rq', roundName: '1/4 Final' } as Partial<SeasonMatch>);
+    const sf = (id: string, h: string, a: string) =>
+      m(id, h, a, { stage: 'semis', roundId: 'rs', roundName: '1/2 Final', status: 'scheduled', score: { home: null, away: null }, winnerTeamId: null } as Partial<SeasonMatch>);
+    const rounds = completeBracket(buildBracketRounds([
+      qf('1', 'ben', 'col'), qf('2', 'sim', 'spo'), qf('3', 'por', 'san'), qf('4', 'sad', 'bra'),
+      sf('s1', 'ben', 'sad'), sf('s2', 'sim', 'por'),
+    ]), declared);
+    expect(rounds[0]!.matches.map((x) => x.id)).toEqual(['1', '4', '2', '3']);
+    expect(rounds[1]!.matches.map((x) => x.id)).toEqual(['s1', 's2']);
+    expect(slotFeeders(rounds, 2, 0)!.map((f) => f.kind === 'match' ? f.match.id : f.kind)).toEqual(['s1', 's2']);
+  });
+
   it('sin rondas declaradas no inventa nada', () => {
     const rounds = completeBracket(buildBracketRounds([q('1', 'a', 'b'), q('2', 'c', 'd')]), []);
     expect(rounds.map((r) => [r.key, r.slots])).toEqual([['quarters', 2]]);
