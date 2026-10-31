@@ -331,6 +331,14 @@ export async function getFeedInRange(
   };
 }
 
+/** Partidos de unas competiciones en un rango (portada de federación). Público y cacheado. */
+export async function getCompetitionsMatches(ids: readonly string[], from: string, to: string): Promise<Match[]> {
+  if (ids.length === 0) return [];
+  const qs = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&${feedQuery('following', { leagues: ids.slice(0, 200) })}`;
+  const res = await apiFetch<{ matches: RawLiveMatch[] }>(`/matches/current?${qs}`, { next: { revalidate: 300, tags: ['matches-current'] } });
+  return deduplicateMatches(res.matches.map(normalizeLiveMatch));
+}
+
 /** Partidos de lo que sigue el usuario en la ventana de la home (Mi grada). */
 export async function getFollowingMatches(p: FeedParams): Promise<Match[]> {
   if (!p.teams?.length && !p.leagues?.length) return [];

@@ -21,7 +21,13 @@ export function CompetitionHub({
   competitions,
   federations,
   website,
+  intro,
+  children,
 }: {
+  /** Párrafo con datos de la temporada (SEO). */
+  intro?: string | null;
+  /** Bloques bajo la cabecera (partidos de la federación). */
+  children?: React.ReactNode;
   title: string;
   subtitle?: string | null;
   countryCode?: string | null;
@@ -60,6 +66,8 @@ export function CompetitionHub({
           </>
         )}
       </p>
+      {intro && <p className="px-1 pb-3 text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">{intro}</p>}
+      {children}
       <CountrySectionsView
         sections={sections}
         favorites={favorites}

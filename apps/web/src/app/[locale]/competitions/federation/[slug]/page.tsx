@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getCompetitions, getFederations } from '@/lib/api/client';
+import { getCompetitions, getFederations, getCompetitionsMatches } from '@/lib/api/client';
+import { buildFederationOverview, federationIntro } from '@/lib/federation-overview';
+import { FederationMatches } from '@/components/competition/FederationMatches';
 import { CompetitionHub } from '@/components/competition/CompetitionHub';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { localeAlternates, socialMeta, isSupportedLocale, competitionsListJsonLd, SITE_URL } from '@/lib/seo';
@@ -50,6 +52,12 @@ export default async function FederationHubPage(props: Props) {
   if (!fed) notFound();
   const comps = federationHubCompetitions(all, fed, federations);
   if (comps.length === 0) notFound();
+  // Últimos resultados y próximos partidos: dos semanas a cada lado de hoy.
+  const day = 86_400_000;
+  const now = Date.now();
+  const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
+  const matches = await getCompetitionsMatches(comps.map((c) => c.id), iso(now - 14 * day), iso(now + 14 * day)).catch(() => []);
+  const overview = buildFederationOverview(comps, matches);
 
   return (
     <>
@@ -64,7 +72,10 @@ export default async function FederationHubPage(props: Props) {
         competitions={comps}
         federations={federations}
         website={fed.website}
-      />
+        intro={federationIntro(overview, `${fed.name} (${fed.shortName})`, locale)}
+      >
+        <FederationMatches live={overview.live} upcoming={overview.upcoming} results={overview.results} />
+      </CompetitionHub>
     </>
   );
 }
