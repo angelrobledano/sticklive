@@ -29,4 +29,10 @@ describe('robots.txt → sitemap', () => {
   it('no anuncia /sitemap.xml: con generateSitemaps Next no sirve esa ruta', () => {
     expect(new URL(String(robots().sitemap)).pathname).not.toBe('/sitemap.xml');
   });
+
+  it('deja rastrear los escudos y mantiene el resto del API bloqueado', () => {
+    const rule = [robots().rules].flat()[0]!;
+    expect(rule.allow).toContain('/api/teams/*/logo');
+    expect(rule.disallow).toContain('/api/');
+  });
 });

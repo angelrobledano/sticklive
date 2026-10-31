@@ -6,7 +6,9 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: '/',
+        // Escudos de equipo en Google Imágenes (decisión 31/10/2026). La regla
+        // más larga manda, así que gana a `Disallow: /api/` solo para el logo.
+        allow: ['/', '/api/teams/*/logo'],
         // Páginas privadas/sin valor de búsqueda + JSON de la API (no son
         // páginas; los crawlers que respetan robots no deben indexarlos).
         disallow: ['/*/admin', '/*/login', '/*/settings', '/*/favorites', '/*/premium/', '/api/'],
