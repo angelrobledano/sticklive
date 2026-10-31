@@ -35,6 +35,7 @@ import { sweepStaleLive } from './stale-live-watchdog.js';
 import { MissingLiveTracker } from './missing-live.js';
 import { checkWindow } from './live-window.js';
 import { selectFichaCandidates, type FichaCandidate } from './ficha-candidates.js';
+import { fichaDue, fichaSignature } from './ficha-due.js';
 import { ACTA_POST_STRIKES } from './acta-mode.js';
 import { actaFinalCandidates, finalizeByActa, type EndedByActa } from './acta-final.js';
 import { touchAlive } from './heartbeat-file.js';
@@ -112,9 +113,8 @@ const POLL_INTERVAL  = Number(process.env['POLL_INTERVAL_S']  ?? 45) * 1000;
 const MC_ACTIVE_MS = Number(process.env['MC_ACTIVE_S'] ?? 60) * 1000;
 const MC_IDLE_MS   = Number(process.env['MC_IDLE_S'] ?? 600) * 1000;
 const lastMcAt = new Map<string, number>();
-/** Ficha (acta) de un mismo partido: como mucho cada FICHA_MIN_S. */
-const FICHA_MIN_MS = Number(process.env['FICHA_MIN_S'] ?? 90) * 1000;
-const lastFichaAt = new Map<string, number>();
+/** Última acta pedida por partido y lo que decía el feed entonces (ver fichaDue). */
+const lastFicha = new Map<string, { at: number; sig: string }>();
 const WINDOW_HOURS   = Number(process.env['WINDOW_HOURS']     ?? 2);
 const MAX_RUNTIME_MS = Number(process.env['MAX_RUNTIME_MIN']  ?? 180) * 60 * 1000;
 // Cesión al scheduler (ver live-yield.ts). 0 = no ceder.
@@ -234,11 +234,11 @@ async function runFichasForActiveMatches(seasonIds: string[]): Promise<EndedByAc
   log.info({ count: rows.rows.length, concurrency: FICHA_CONCURRENCY }, 'Procesando fichas para partidos activos/recientes');
 
   await forEachLimited(rows.rows, FICHA_CONCURRENCY, async (match) => {
-    // Ritmo por partido (sidgad bloqueó la IP el 31/10/2026): una ficha por
-    // partido cada FICHA_MIN_MS como mucho, aunque el ciclo sea más corto.
+    // Acta solo con novedades en el feed o cada 5 min (fichaDue): sidgad
+    // bloqueó la IP el 31/10/2026 por exceso de peticiones.
     const t = Date.now();
-    if (t - (lastFichaAt.get(match.id) ?? 0) < FICHA_MIN_MS) return;
-    lastFichaAt.set(match.id, t);
+    if (!fichaDue(match, lastFicha.get(match.id), t)) return;
+    lastFicha.set(match.id, { at: t, sig: fichaSignature(match) });
     const source = sourceForMatchRef(match.source_ref);
     if (!source) {
       // #333: una omisión no debe ser invisible con LOG_LEVEL=info por defecto.

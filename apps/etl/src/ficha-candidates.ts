@@ -31,13 +31,14 @@ export interface FichaCandidate {
   ficha_finished_tries: number;
   home_score: number | null;
   away_score: number | null;
+  live_is_halftime?: boolean | null;
 }
 
 export async function selectFichaCandidates(seasonIds: string[]): Promise<FichaCandidate[]> {
   const res = await db.query<FichaCandidate>(
     `SELECT m.id, m.season_id, m.status, m.source_ref, comp.source_ref AS comp_ref, ht.name AS home_team_name,
             comp.id AS competition_id, comp.acta_mode, comp.acta_post_strikes,
-            m.ficha_fetched_at, m.ficha_finished_tries, m.home_score, m.away_score
+            m.ficha_fetched_at, m.ficha_finished_tries, m.home_score, m.away_score, m.live_is_halftime
      FROM matches m
      JOIN seasons s ON s.id = m.season_id
      JOIN competitions comp ON comp.id = s.competition_id
