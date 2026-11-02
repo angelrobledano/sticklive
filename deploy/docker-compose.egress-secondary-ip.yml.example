@@ -1,0 +1,27 @@
+# ============================================================
+# EJEMPLO — NO ACTIVO. Override para la segunda salida de Hetzner.
+#
+# Solo se usa si SIDGAD ha autorizado la segunda IP y se ha asignado una
+# Floating IPv4 al servidor. Ver docs/egress-sidgad.md.
+#
+#   docker compose -f docker-compose.prod.yml \
+#                  -f deploy/docker-compose.egress-secondary-ip.yml \
+#                  --env-file .env.prod up -d etl
+#
+# Por qué host networking: `localAddress` en Node solo puede elegir una IP que
+# esté en la interfaz del proceso. En un contenedor bridge, la Floating IP del
+# host NO está en su namespace. Con `network_mode: host`, el proceso ve la IP
+# adicional y puede usarla como origen.
+#
+# Consecuencia: `postgres` ya no resuelve por nombre dentro del ETL; se usa
+# 127.0.0.1:5432 (Postgres ya está publicado en loopback en el compose base).
+#
+# ROLLBACK: volver a `docker compose -f docker-compose.prod.yml ... up -d etl`
+# sin este override. No hay cambios permanentes en la red del host.
+# ============================================================
+
+services:
+  etl:
+    network_mode: host
+    environment:
+      DATABASE_URL: postgresql://sticklive_app:${APP_DB_PASSWORD}@127.0.0.1:5432/${POSTGRES_DB:-sports_results}

@@ -11,6 +11,10 @@
  *     con su { baseUrl, portalPrefix, referer } y mantiene su propia sesión
  *     (cookies). Así FEP y World Skate conviven en el mismo proceso sin
  *     pisarse las cookies ni depender de variables de entorno globales.
+ *   - La SALIDA de red no la decide este cliente: la resuelve `egress/`, que
+ *     permite elegir la conexión directa, un Worker de Cloudflare o una segunda
+ *     IP de Hetzner sin tocar la lógica de extracción. Ver
+ *     docs/egress-sidgad.md.
  *   - Se conservan `sidgadGet` / `sidgadPost` / `resetSession` como wrappers
  *     sobre una instancia por defecto construida desde el entorno, para no
  *     romper los scrapers FEP existentes (regresión cero).
@@ -18,14 +22,16 @@
  * Sesión: algunos endpoints (rfep_ls_1.php GET) funcionan sin sesión; los POST
  * (cal, clasif, mc) requieren las cookies que sidgad establece en la primera
  * visita. Estrategia: warm-up automático (GET a {portal}_ls_1.php) antes del
- * primer POST, capturando Set-Cookie y reutilizándolo.
+ * primer POST, capturando Set-Cookie y reutilizándolo. El warm-up está
+ * deduplicado: dos POST concurrentes comparten la misma promesa y no lanzan dos
+ * sesiones.
+ *
+ * Reintentos y clasificación de errores: los aplica `egress/`. Un 403 no se
+ * reintenta y NUNCA cambia de ruta; un 429 respeta Retry-After; los fallos de
+ * DNS/red/timeout sí pueden probar otra ruta previamente autorizada.
  */
 import { createLogger } from '@sports/logger';
-import { sleep } from '../../core/browser.js';
-import { sidgadGuard, SidgadBlockedError } from './sidgad-guard.js';
-
-/** Cookies de sesión por portal, compartidas entre instancias del proceso (una ficha = una instancia: antes, un warm-up por partido y ciclo). */
-const sessionCache = new Map<string, string>();
+import { getSidgadEgress, type SidgadEgress, type EgressResponse, SidgadEgressError } from '../../egress/index.js';
 
 const log = createLogger({ module: 'sidgad-client' });
 
@@ -34,6 +40,7 @@ const USER_AGENT =
   '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 export interface SidgadRequestOptions {
+  /** Total de intentos (1 = sin reintentos). Por defecto, el de la config. */
   retries?: number;
   retryDelayMs?: number;
   timeoutMs?: number;
@@ -46,6 +53,8 @@ export interface SidgadClientConfig {
   portalPrefix: string;
   /** Referer/Origin que espera sidgad, ej: https://www.hockeypatines.fep.es/ */
   referer: string;
+  /** Inyectable en tests; por defecto, el router global de salida. */
+  egress?: Pick<SidgadEgress, 'request'>;
 }
 
 /**
@@ -56,14 +65,19 @@ export class SidgadClient {
   private readonly portalPrefix: string;
   private readonly referer: string;
   private readonly headers: Record<string, string>;
+  private readonly egress: Pick<SidgadEgress, 'request'>;
 
   private sessionCookie = '';
   private sessionInitialized = false;
+  private sessionPromise: Promise<void> | null = null;
+  /** Dedupe de peticiones idénticas en vuelo: evita duplicados y ráfagas. */
+  private readonly inFlight = new Map<string, Promise<EgressResponse>>();
 
   constructor(config: SidgadClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
     this.portalPrefix = config.portalPrefix;
     this.referer = config.referer;
+    this.egress = config.egress ?? getSidgadEgress();
     this.headers = {
       'User-Agent': USER_AGENT,
       Referer: this.referer,
@@ -88,43 +102,45 @@ export class SidgadClient {
   /**
    * Inicializa la sesión haciendo un GET a {portal}_ls_1.php y capturando
    * cualquier Set-Cookie. Se llama automáticamente antes del primer POST.
+   *
+   * La promesa se comparte entre llamadas concurrentes: antes se marcaba
+   * `sessionInitialized = true` ANTES del await, así que dos POST simultáneos
+   * podían salir sin cookie y lanzar dos warm-ups.
    */
   private async ensureSession(): Promise<void> {
     if (this.sessionInitialized) return;
-    this.sessionInitialized = true; // marcar antes de esperar (evita race)
-    const cached = sessionCache.get(this.baseUrl);
-    if (cached !== undefined) { this.sessionCookie = cached; return; }
-    if (sidgadGuard.remaining(new URL(this.baseUrl).host) > 0) return;
+    if (!this.sessionPromise) {
+      this.sessionPromise = this.warmUpSession().finally(() => {
+        this.sessionPromise = null;
+      });
+    }
+    return this.sessionPromise;
+  }
 
+  private async warmUpSession(): Promise<void> {
     try {
       log.debug({ portal: this.portalPrefix }, 'Iniciando sesión sidgad via ls_1.php...');
-      const res = await fetch(`${this.baseUrl}/${this.portalPath('rfep_ls_1.php')}`, {
-        method: 'GET',
-        headers: this.headers,
-      });
+      await this.request('GET', 'rfep_ls_1.php', undefined, { retries: 1 });
 
-      const cookies: string[] = [];
-      res.headers.forEach((value, name) => {
-        if (name.toLowerCase() === 'set-cookie') {
-          const cookiePair = value.split(';')[0]?.trim();
-          if (cookiePair) cookies.push(cookiePair);
-        }
-      });
-
-      sessionCache.set(this.baseUrl, cookies.join('; '));
-      if (cookies.length > 0) {
-        this.sessionCookie = cookies.join('; ');
-        log.debug({ cookies: cookies.length }, 'Cookies de sesión sidgad capturadas');
+      if (this.sessionCookie) {
+        const names = this.sessionCookie
+          .split('; ')
+          .map((pair) => pair.split('=')[0])
+          .filter(Boolean);
+        log.debug({ cookies: names.length }, 'Cookies de sesión sidgad capturadas');
       } else {
         log.debug('sidgad no envió Set-Cookie — los POSTs se harán sin cookie de sesión');
       }
     } catch (err) {
       log.warn({ err }, 'Warm-up de sesión sidgad falló — continuando sin cookies');
+    } finally {
+      this.sessionInitialized = true;
     }
   }
 
   async get(path: string, options: SidgadRequestOptions = {}): Promise<string> {
-    return this.request('GET', path, undefined, options);
+    const response = await this.request('GET', path, undefined, options);
+    return response.body;
   }
 
   async post(
@@ -134,98 +150,125 @@ export class SidgadClient {
   ): Promise<string> {
     await this.ensureSession();
     const body = new URLSearchParams(params).toString();
-    return this.request('POST', path, body || undefined, options);
+    const response = await this.request('POST', path, body || undefined, options);
+    return response.body;
   }
 
   /** Fuerza re-inicialización de sesión (útil tras errores de auth). */
   reset(): void {
-    sessionCache.delete(this.baseUrl);
     this.sessionCookie = '';
     this.sessionInitialized = false;
+    this.sessionPromise = null;
     log.debug({ portal: this.portalPrefix }, 'Sesión sidgad reiniciada');
   }
 
+  /**
+   * Petición lógica. Deduplica peticiones idénticas en vuelo dentro de esta
+   * instancia: si dos partes del scraper piden el mismo endpoint a la vez, sale
+   * UNA petición y ambas reciben la misma respuesta.
+   */
   private async request(
     method: 'GET' | 'POST',
     path: string,
     body: string | undefined,
     options: SidgadRequestOptions
-  ): Promise<string> {
-    const { retries = 3, retryDelayMs = 2000, timeoutMs = 30000 } = options;
+  ): Promise<EgressResponse> {
     const url = path.startsWith('http') ? path : `${this.baseUrl}/${this.portalPath(path)}`;
+    const endpointPath = path.startsWith('http') ? null : this.portalPath(path);
+    const key = `${method} ${url} ${body ?? ''}`;
 
-    const host = new URL(url).host;
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        // Freno por host (sidgad-guard): en pausa por bloqueo, ni se intenta.
-        const paused = sidgadGuard.remaining(host);
-        if (paused > 0) throw new SidgadBlockedError(host, paused);
-        const wait = sidgadGuard.reserve(host);
-        if (wait > 0) await sleep(wait);
-        const headers: Record<string, string> = { ...this.headers };
+    const existing = this.inFlight.get(key);
+    if (existing) return existing;
 
-        if (this.sessionCookie) {
-          headers['Cookie'] = this.sessionCookie;
+    const promise = this.execute(method, url, endpointPath, body, options)
+      .then((response) => {
+        this.applyCookies(response.setCookie);
+        return response;
+      })
+      .catch((error: unknown) => {
+        // Una respuesta de error también puede traer Set-Cookie (p. ej. una
+        // sesión nueva antes de un 403). No perdemos la oportunidad de
+        // renovarla, aunque el error se propague igual.
+        if (error instanceof SidgadEgressError && error.setCookie) {
+          this.applyCookies(error.setCookie);
         }
+        throw error;
+      })
+      .finally(() => {
+        this.inFlight.delete(key);
+      });
 
-        if (method === 'POST' && body) {
-          headers['Content-Type'] = 'application/x-www-form-urlencoded';
-        }
+    this.inFlight.set(key, promise);
+    return promise;
+  }
 
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
+  private async execute(
+    method: 'GET' | 'POST',
+    url: string,
+    endpointPath: string | null,
+    body: string | undefined,
+    options: SidgadRequestOptions
+  ): Promise<EgressResponse> {
+    const response = await this.egress.request({
+      method,
+      url,
+      portal: this.portalPrefix,
+      endpointPath,
+      headers: this.buildHeaders(method, body),
+      ...(body !== undefined ? { body } : {}),
+      ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
+      ...(options.retries !== undefined ? { retries: options.retries } : {}),
+      ...(options.retryDelayMs !== undefined ? { retryBaseMs: options.retryDelayMs } : {}),
+    });
 
-        const response = await fetch(url, {
-          method,
-          headers,
-          body: method === 'POST' ? body : undefined,
-          signal: controller.signal,
-        });
+    log.debug(
+      {
+        url,
+        method,
+        route: response.route,
+        status: response.status,
+        size: response.body.length,
+        latencyMs: response.latencyMs,
+      },
+      'Respuesta sidgad'
+    );
 
-        clearTimeout(timer);
+    return response;
+  }
 
-        if (!response.ok) {
-          // 404 = recurso inexistente (acta sin publicar, endpoint que no aplica).
-          // Reintentar no lo arregla: fallo inmediato.
-          if (response.status === 404) {
-            const err = new Error(`HTTP 404 en ${url}`);
-            log.debug({ url }, 'Recurso inexistente (404) — sin reintentos');
-            throw Object.assign(err, { noRetry: true });
-          }
-          // 403/429: nos están bloqueando. Reintentar lo empeora: pausa del host.
-          if (response.status === 403 || response.status === 429) {
-            const pause = sidgadGuard.blocked(host);
-            log.warn({ url, status: response.status, pauseMin: pause / 60_000 }, 'sidgad bloquea — pausa sin reintentos');
-            throw new SidgadBlockedError(host, pause, response.status);
-          }
-          throw new Error(`HTTP ${response.status} en ${url}`);
-        }
-        sidgadGuard.ok(host);
+  private buildHeaders(method: 'GET' | 'POST', body: string | undefined): Record<string, string> {
+    const headers: Record<string, string> = { ...this.headers };
+    if (this.sessionCookie) headers['Cookie'] = this.sessionCookie;
+    if (method === 'POST' && body) {
+      headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    }
+    return headers;
+  }
 
-        // Actualizar cookies si sidgad envía nuevas
-        response.headers.forEach((value, name) => {
-          if (name.toLowerCase() === 'set-cookie') {
-            const pair = value.split(';')[0]?.trim();
-            if (pair && !this.sessionCookie.includes(pair.split('=')[0]!)) {
-              this.sessionCookie = this.sessionCookie ? `${this.sessionCookie}; ${pair}` : pair;
-            }
-          }
-        });
+  /**
+   * Actualiza la cookie de sesión por NOMBRE: si sidgad renueva PHPSESSID, el
+   * valor viejo no se queda pegado. Nunca se loguean valores de cookies.
+   */
+  private applyCookies(setCookie: string[]): void {
+    if (setCookie.length === 0) return;
 
-        const text = await response.text();
-        log.debug({ url, method, size: text.length }, 'Respuesta sidgad');
-        return text;
-      } catch (err) {
-        const isLast = attempt === retries || (err as { noRetry?: boolean }).noRetry === true;
-        if (!(err as { noRetry?: boolean }).noRetry) {
-          log.warn({ url, attempt, err }, `Error en request sidgad (intento ${attempt}/${retries})`);
-        }
-        if (isLast) throw err;
-        await sleep(retryDelayMs * attempt);
-      }
+    const byName = new Map<string, string>();
+    for (const existing of this.sessionCookie.split('; ')) {
+      if (!existing) continue;
+      const eq = existing.indexOf('=');
+      if (eq <= 0) continue;
+      byName.set(existing.slice(0, eq), existing);
     }
 
-    throw new Error(`SidgadClient.request: no debería llegar aquí (${url})`);
+    for (const raw of setCookie) {
+      const pair = raw.split(';')[0]?.trim();
+      if (!pair) continue;
+      const eq = pair.indexOf('=');
+      if (eq <= 0) continue;
+      byName.set(pair.slice(0, eq), pair);
+    }
+
+    this.sessionCookie = [...byName.values()].join('; ');
   }
 }
 
@@ -264,6 +307,11 @@ export async function sidgadPost(
 /** Reinicia la sesión de la instancia por defecto. */
 export function resetSession(): void {
   defaultClient().reset();
+}
+
+/** Solo para tests: olvida la instancia por defecto. */
+export function resetDefaultSidgadClientForTests(): void {
+  _defaultClient = null;
 }
 
 // ── Constantes de temporadas conocidas ──────────────────────────

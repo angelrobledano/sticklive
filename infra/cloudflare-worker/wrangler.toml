@@ -1,0 +1,23 @@
+# Cloudflare Worker de salida SIDGAD — Stick Live
+#
+# NO despliegues ni actives esta ruta hasta que SIDGAD haya autorizado por
+# escrito el acceso a través de Cloudflare. Ver docs/egress-sidgad.md.
+#
+#   npx wrangler secret put SIDGAD_WORKER_SECRET
+#   npx wrangler deploy
+#
+# El secreto debe coincidir con SIDGAD_EGRESS_WORKER_SECRET del servidor.
+name = "sticklive-sidgad-egress"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[vars]
+SIDGAD_UPSTREAM_ORIGIN = "https://www.server2.sidgad.es"
+SIDGAD_ALLOWED_PORTALS = "rfep,worldskate,fecapa,fmp,fap,fpcv,fnp,fpcyl,fgpatinaxe,fisr"
+SIDGAD_MAX_BODY_BYTES = "65536"
+SIDGAD_CLOCK_SKEW_SECONDS = "300"
+SIDGAD_REQUEST_TIMEOUT_MS = "25000"
+
+# Sin `routes`: se usa la URL `*.workers.dev`. Si algún día se pone un dominio
+# propio, actualizar SIDGAD_EGRESS_WORKER_URL en el servidor.
