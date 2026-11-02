@@ -14,7 +14,9 @@
  * Nunca se declara un partido en juego por reloj.
  */
 import * as cheerio from 'cheerio';
-import { cleanName } from './fpp.parser.js';
+import { cleanName, parseScore } from './fpp.parser.js';
+
+export { parseScore };
 
 export type FppLiveState = 'live' | 'halftime' | 'finished' | 'scheduled' | 'unknown';
 
@@ -35,14 +37,6 @@ export interface FppLiveItem {
   raw: string;
 }
 
-/**
- * Marcador «N - N» del bloque de resultado. Sin que el número pegue con una
- * hora o un minuto («7 - 22:10» no es 7-22): ese texto no da marcador.
- */
-export function parseScore(text: string): [number, number] | null {
-  const m = /(?<![\d:])(\d{1,2})\s*-\s*(\d{1,2})(?![\d:'’hH])/.exec(text);
-  return m ? [Number(m[1]), Number(m[2])] : null;
-}
 
 function norm(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();

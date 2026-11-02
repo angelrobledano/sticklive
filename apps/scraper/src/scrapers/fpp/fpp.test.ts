@@ -192,3 +192,11 @@ describe('logos de competición FPP', () => {
     expect(FPP_COMPETITIONS.find((c) => c.slug === 'campeonato-placard-portugal')?.logo).toBe('fpp-placard.png');
   });
 });
+
+describe('calendario FPP: marcador sin pegarse al periodo', () => {
+  it('lee el span del marcador aunque la celda traiga el periodo', async () => {
+    const { parseScore } = await import('./fpp.parser.js');
+    expect(parseScore('0-4')).toEqual([0, 4]);
+    expect(parseScore('0-42ª P')).toBeNull();
+  });
+});

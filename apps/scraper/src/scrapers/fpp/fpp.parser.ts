@@ -105,7 +105,15 @@ export function parseFppCalendar(html: string): FppCalendarRow[] {
     const homeName = cleanName(home.find('p').first().text());
     const awayName = cleanName(away.find('p').first().text());
 
-    const res = /(\d+)\s*-\s*(\d+)/.exec($tr.find('td.coluna-resultado').text());
+    // Solo el marcador: si la celda trae también el periodo o el minuto (en
+    // juego), leer el texto entero los pegaba («7-2» + «2ª P» → 7-22). Mismo
+    // criterio que el directo (parseScore, fpp-live.parser).
+    const $res = $tr.find('td.coluna-resultado');
+    const resText = $res.find('.provisorio').first().text()
+      || $res.find('p.resultado, .resultado').first().clone().find('.estado-jogo').remove().end().text()
+      || $res.clone().find('.estado-jogo').remove().end().text();
+    const score = parseScore(resText);
+    const res = score ? [null, String(score[0]), String(score[1])] as const : null;
     const jogo = /\/jogo(?:Taca)?\/\d+/i.exec($tr.find('td.coluna-opcoes a').attr('href') ?? '');
     const videoHref = ($tr.find('td.coluna-opcoes a').filter((_, a) => $(a).find('i.fa-tv').length > 0).first().attr('href') ?? '').trim();
 
@@ -160,4 +168,13 @@ export function parseFppStandings(html: string): FppStandingRow[] {
     });
   });
   return out;
+}
+
+/**
+ * Marcador «N - N» del bloque de resultado. Sin que el número pegue con una
+ * hora o un minuto («7 - 22:10» no es 7-22): ese texto no da marcador.
+ */
+export function parseScore(text: string): [number, number] | null {
+  const m = /(?<![\d:])(\d{1,2})\s*-\s*(\d{1,2})(?![\d:'’hHªº])/.exec(text);
+  return m ? [Number(m[1]), Number(m[2])] : null;
 }
