@@ -422,11 +422,9 @@ const WORKER_CONFIG_ERRORS = new Set([
 
 function shouldCountForCircuit(error: SidgadEgressError): boolean {
   const kind: SidgadFailureKind = error.kind;
-  return (
-    kind === 'dns' ||
-    kind === 'network' ||
-    kind === 'timeout' ||
-    kind === 'server' ||
-    kind === 'rate_limited'
-  );
+  // Solo los fallos de TRANSPORTE abren el circuito. Si un 429 o un 5xx lo
+  // abriera, la siguiente petición saltaría al fallback y estaríamos cambiando
+  // de IP ante un rate limit o un error de la fuente: exactamente lo que la
+  // política prohíbe. Esos errores se reintentan/esperan, pero no cambian ruta.
+  return kind === 'dns' || kind === 'network' || kind === 'timeout';
 }

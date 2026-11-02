@@ -177,6 +177,42 @@ describe('SidgadEgress', () => {
     expect(sleeps).toEqual([1000, 2000]);
   });
 
+  it('un 5xx persistente no abre el circuito ni cambia de ruta', async () => {
+    const direct = new FakeTransport(() => raw(503));
+    const fallback = new FakeTransport(() => raw(200));
+    const config = { ...makeConfig('direct', ['cloudflare']), circuitFailureThreshold: 1 };
+    const { egress } = makeEgress({
+      config,
+      transports: { direct, cloudflare: fallback },
+    });
+
+    for (let i = 0; i < 3; i++) {
+      await expect(egress.request(request())).rejects.toMatchObject({ kind: 'server' });
+    }
+
+    expect(fallback.calls).toBe(0);
+    const entry = egress.metrics.snapshot().entries.find((e) => e.route === 'direct')!;
+    expect(entry.circuitOpens).toBe(0);
+  });
+
+  it('un 429 persistente no abre el circuito ni cambia de ruta', async () => {
+    const direct = new FakeTransport(() => raw(429, '', { retryAfter: '0' }));
+    const fallback = new FakeTransport(() => raw(200));
+    const config = { ...makeConfig('direct', ['cloudflare']), circuitFailureThreshold: 1 };
+    const { egress } = makeEgress({
+      config,
+      transports: { direct, cloudflare: fallback },
+    });
+
+    for (let i = 0; i < 3; i++) {
+      await expect(egress.request(request())).rejects.toMatchObject({ kind: 'rate_limited' });
+    }
+
+    expect(fallback.calls).toBe(0);
+    const entry = egress.metrics.snapshot().entries.find((e) => e.route === 'direct')!;
+    expect(entry.circuitOpens).toBe(0);
+  });
+
   it('un 404 no se reintenta ni cambia de ruta', async () => {
     const direct = new FakeTransport(() => raw(404));
     const fallback = new FakeTransport(() => raw(200));

@@ -143,9 +143,12 @@ hay fallback silencioso a una ruta no autorizada.
 | Configuración inválida al arrancar | No | No | Error del despliegue, debe verse |
 | Worker rechaza nuestra firma/config (401/400) | No | Sí, si hay fallback autorizado | La ruta intermedia está mal; el directo puede seguir. Se alerta para corregirla |
 
-Circuit breaker: por `ruta + portal`. Se abre tras 5 fallos consecutivos
-(configurable), falla rápido durante 60 s y deja pasar **una** prueba
-half-open. Un éxito lo cierra y emite alerta de recuperación.
+Circuit breaker: por `ruta + portal`. Se abre tras 5 fallos **de transporte**
+consecutivos (DNS/red/timeout), falla rápido durante 60 s y deja pasar **una**
+prueba half-open. Un éxito lo cierra y emite alerta de recuperación. Un
+403/429/5xx **no** abre el circuito: si lo hiciera, la siguiente petición
+saltaría al fallback y estaríamos cambiando de IP ante un rate limit o un error
+de la fuente.
 
 Deduplicación:
 
