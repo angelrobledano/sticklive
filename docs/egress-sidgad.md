@@ -140,7 +140,8 @@ hay fallback silencioso a una ruta no autorizada.
 | 404 / 4xx | No | No | Error de petición/recurso |
 | TLS inválido | No | No | No es transitorio; hay que investigarlo |
 | Respuesta > 20 MB | No | No | Protección de memoria |
-| Configuración inválida | No | No | Error del despliegue, debe verse |
+| Configuración inválida al arrancar | No | No | Error del despliegue, debe verse |
+| Worker rechaza nuestra firma/config (401/400) | No | Sí, si hay fallback autorizado | La ruta intermedia está mal; el directo puede seguir. Se alerta para corregirla |
 
 Circuit breaker: por `ruta + portal`. Se abre tras 5 fallos consecutivos
 (configurable), falla rápido durante 60 s y deja pasar **una** prueba

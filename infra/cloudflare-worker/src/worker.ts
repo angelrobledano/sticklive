@@ -307,7 +307,9 @@ export function createWorkerHandler(env: WorkerEnv, fetchImpl: FetchImpl = fetch
         outcome: 'ok',
       });
 
-      return new Response(response.body, { status: response.status, headers: responseHeaders });
+      // 204/304 no pueden llevar cuerpo; el resto se transmite en streaming.
+      const responseBody = response.status === 204 || response.status === 304 ? null : response.body;
+      return new Response(responseBody, { status: response.status, headers: responseHeaders });
     } catch (error) {
       const timeout = isTimeout(error);
       logEvent({

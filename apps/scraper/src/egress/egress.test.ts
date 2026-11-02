@@ -280,17 +280,31 @@ describe('SidgadEgress', () => {
     expect(direct.calls + fallback.calls).toBeGreaterThan(callsAfterOpen);
   });
 
-  it('un error de autenticación del Worker es config: no se reintenta ni cambia de ruta', async () => {
+  it('un error de configuración del Worker no se reintenta, pero usa el fallback y alerta', async () => {
     const cloudflare = new FakeTransport(() => raw(401, '', { errorCode: 'unauthorized' }));
-    const fallback = new FakeTransport(() => raw(200));
+    const fallback = new FakeTransport(() => raw(200, 'directo'));
+    const { egress, alerts } = makeEgress({
+      config: makeConfig('cloudflare', ['direct']),
+      transports: { cloudflare, direct: fallback },
+    });
+
+    const response = await egress.request(request());
+    expect(response.route).toBe('direct');
+    expect(response.body).toBe('directo');
+    expect(cloudflare.calls).toBe(1);
+    expect(fallback.calls).toBe(1);
+    expect(alerts.some((a) => a.kind === 'config')).toBe(true);
+  });
+
+  it('un error de configuración sin fallback se propaga', async () => {
+    const cloudflare = new FakeTransport(() => raw(401, '', { errorCode: 'unauthorized' }));
     const { egress } = makeEgress({
-      config: makeConfig('cloudflare', ['secondary-ip']),
-      transports: { cloudflare, 'secondary-ip': fallback },
+      config: makeConfig('cloudflare'),
+      transports: { cloudflare },
     });
 
     await expect(egress.request(request())).rejects.toMatchObject({ kind: 'config' });
     expect(cloudflare.calls).toBe(1);
-    expect(fallback.calls).toBe(0);
   });
 
   it('un timeout del Worker sí es failover-eligible', async () => {

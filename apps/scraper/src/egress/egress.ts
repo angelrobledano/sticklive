@@ -206,14 +206,28 @@ export class SidgadEgress {
           });
         }
 
-        // Nunca hacemos failover de errores de configuración: no es un fallo
-        // de conectividad y ocultarlo dejaría el despliegue mal configurado.
-        if (failure.kind === 'config') throw failure;
+        // Un error de configuración de NUESTRA ruta (p. ej. el Worker rechaza
+        // el secreto) no se reintenta, pero sí puede caer al fallback
+        // autorizado para no tumbar el directo. Se alerta para que se corrija.
+        if (failure.kind === 'config') {
+          this.log.error(
+            { route: route.kind, portal: request.portal, message: failure.message },
+            'Fallo de configuración de la salida SIDGAD — se usará un fallback autorizado si existe'
+          );
+          this.alert({
+            kind: 'config',
+            route: route.kind,
+            portal: request.portal,
+            message: failure.message,
+          });
+        }
 
-        if (!isFailoverEligible(failure)) throw failure;
+        const nextRoute = this.routes[index + 1];
+        const canFailover =
+          isFailoverEligible(failure) || (failure.kind === 'config' && nextRoute !== undefined);
+        if (!canFailover) throw failure;
 
         errors.push(failure);
-        const nextRoute = this.routes[index + 1];
         if (nextRoute) {
           this.metrics.recordFailover(route.kind, request.portal);
           this.log.warn(
