@@ -111,3 +111,14 @@ describe('helpers', () => {
     expect(splitPtName('Platero')).toEqual({ firstName: '', lastName: 'Platero' });
   });
 });
+
+describe('ficha FPP con jugadores repetidos (jogo 19508)', () => {
+  it('se queda con la entrada marcada (5i)/(J) de cada FED', () => {
+    const j = parseFppJogo(readFileSync(join(dir, 'jogo-19508.html'), 'utf8'));
+    const home = j.lineup.filter((l) => l.isHome && l.role === null);
+    expect(home.length).toBe(10);
+    expect(home.filter((l) => l.isStarter).map((l) => l.name).sort())
+      .toEqual(['Afonso Martins', 'David Rocha', 'Miguel Silva', 'Morais', 'Rodrigo']);
+    expect(home.find((l) => l.name === 'Rodrigo Moutinho')?.jerseyNumber).toBe(5);
+  });
+});

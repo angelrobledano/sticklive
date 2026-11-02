@@ -79,6 +79,25 @@ function staffRole(label: string): string {
   return STAFF_ROLE[label.toUpperCase()] ?? 'A';
 }
 
+/**
+ * La FPP a veces lista dos veces al mismo jugador (mismo FED, otro dorsal) y
+ * solo una de las dos lleva "(5i)" o "(J)": esa es la buena. Sin esto, la copia
+ * sin marca pisaba al titular y la alineación salía con 2 de 5 (Carvalhos "B",
+ * 2/11/2026).
+ */
+export function dedupeLineup(lineup: FppLineupEntry[], marked: Set<FppLineupEntry>): FppLineupEntry[] {
+  const keep = new Map<string, FppLineupEntry>();
+  const out: FppLineupEntry[] = [];
+  for (const l of lineup) {
+    if (l.role !== null || !l.fedId) { out.push(l); continue; }
+    const k = `${l.isHome}|${l.fedId}`;
+    const prev = keep.get(k);
+    if (!prev) { keep.set(k, l); out.push(l); continue; }
+    if (marked.has(l) && !marked.has(prev)) { out[out.indexOf(prev)] = l; keep.set(k, l); }
+  }
+  return out;
+}
+
 export function parseFppJogo(html: string): FppJogo {
   const $ = cheerio.load(html);
 
@@ -100,6 +119,7 @@ export function parseFppJogo(html: string): FppJogo {
   }
 
   const lineup: FppLineupEntry[] = [];
+  const marked = new Set<FppLineupEntry>();
   $('#Equipas .team').each((teamIdx, team) => {
     const isHome = teamIdx === 0;
     $(team).find('.player').each((_, el) => {
@@ -107,7 +127,7 @@ export function parseFppJogo(html: string): FppJogo {
       const pm = /^N\.º\s*(\d+)?\s*-\s*(.+?)(?:\s*\(([^)]*)\))?$/.exec(text);
       if (!pm) return;
       const src = $(el).find('img').attr('src') || null;
-      lineup.push({
+      const entry: FppLineupEntry = {
         isHome,
         jerseyNumber: pm[1] ? Number(pm[1]) : null,
         name: cleanName(pm[2]!),
@@ -115,7 +135,9 @@ export function parseFppJogo(html: string): FppJogo {
         photoUrl: src,
         isStarter: (pm[3] ?? '').toLowerCase() === '5i',
         role: null,
-      });
+      };
+      if (pm[3]) marked.add(entry);
+      lineup.push(entry);
     });
     $(team).find('.staff-member').each((_, el) => {
       const text = cleanName($(el).find('p').text());
@@ -130,6 +152,7 @@ export function parseFppJogo(html: string): FppJogo {
   });
 
   return {
+    lineup: dedupeLineup(lineup, marked),
     homeName: names[0] ?? '',
     awayName: names[1] ?? '',
     homeScore: score ? Number(score[1]) : null,
@@ -138,7 +161,6 @@ export function parseFppJogo(html: string): FppJogo {
     awayFouls: fouls ? Number(fouls[2]) : null,
     referees: refs ? cleanName(refs[1]!) || null : null,
     timelineQuery,
-    lineup,
   };
 }
 
