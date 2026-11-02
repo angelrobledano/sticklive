@@ -16,7 +16,8 @@
  * menores en base). Solo se escribe si el apellido de la ficha coincide con
  * el nuestro, para no cruzar personas por un id equivocado.
  *
- * Producción: lo lanza el scheduler a diario (venues + una tanda de jugadores).
+ * Producción: PAUSADO hasta el visto bueno de la RFEP. Fuera del scheduler y
+ * además exige SIDGAD_API_ENABLED=1.
  *   $DC exec etl node dist/apps/etl/src/sync-sidgad-api.js --venues --players=600
  */
 import './instrument.js';
@@ -100,6 +101,12 @@ async function main(): Promise<void> {
   const dryRun = args.includes('--dry-run');
   const playersArg = args.find((a) => a.startsWith('--players'));
   const limit = playersArg?.includes('=') ? Number(playersArg.split('=')[1]) : 600;
+  // Pausado (2/11/2026) hasta que la RFEP dé el visto bueno explícito al uso
+  // de la API: sin SIDGAD_API_ENABLED=1 no sale ninguna petición.
+  if (process.env['SIDGAD_API_ENABLED'] !== '1') {
+    log.info('API de sidgad desactivada (SIDGAD_API_ENABLED != 1) — no se hace ninguna petición');
+    return;
+  }
   const cfg = sidgadApiConfig();
   if (!cfg) {
     log.info('SIDGAD_API_TOKEN no definido — se omite la sincronización con la API de sidgad');
