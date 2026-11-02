@@ -13,6 +13,7 @@
  */
 import { createLogger, type Logger } from '@sports/logger';
 import { CircuitBreaker } from './circuit-breaker.js';
+import { SidgadGuard } from '../scrapers/fep/sidgad-guard.js';
 import { EgressMetrics } from './metrics.js';
 import {
   classifyTransportError,
@@ -63,6 +64,8 @@ export class SidgadEgress {
   private readonly routes: EgressRouteConfig[];
   private readonly transports: Record<EgressRouteKind, EgressTransport>;
   private readonly breakers = new Map<string, CircuitBreaker>();
+  /** Pausa tras 403/429 y espaciado, por ruta y host (ver EgressConfig.pauseOnBlock). */
+  private readonly guard: SidgadGuard;
 
   constructor(deps: SidgadEgressDeps) {
     this.config = deps.config;
@@ -71,6 +74,7 @@ export class SidgadEgress {
     this.random = deps.random ?? Math.random;
     this.log = deps.logger ?? createLogger({ module: 'sidgad-egress' });
     this.metrics = deps.metrics ?? new EgressMetrics();
+    this.guard = new SidgadGuard(this.now);
     this.alert =
       deps.alert ??
       ((alert) => {
@@ -135,10 +139,32 @@ export class SidgadEgress {
         continue;
       }
 
+      // Pausa tras un 403/429 en ESTA ruta: no se insiste ni se cambia de ruta.
+      const guardKey = `${route.kind}:${hostOf(request.url)}`;
+      if (this.config.pauseOnBlock) {
+        const paused = this.guard.remaining(guardKey);
+        if (paused > 0) {
+          throw new SidgadEgressError({
+            kind: 'rate_limited',
+            message: `Salida «${route.kind}» en pausa tras un bloqueo de SIDGAD; quedan ${Math.ceil(paused / 1000)} s.`,
+            route: route.kind,
+            portal: request.portal,
+            url: request.url,
+            retryable: false,
+            failover: false,
+          });
+        }
+      }
+      if (this.config.minGapMs) {
+        const wait = this.guard.reserve(guardKey, this.config.minGapMs);
+        if (wait > 0) await this.sleep(wait);
+      }
+
       this.metrics.recordRequest(route.kind, request.portal);
 
       try {
         const raw = await this.executeWithRetries(route, request);
+        if (this.config.pauseOnBlock) this.guard.ok(guardKey);
         const recovered = breaker.recordSuccess();
         this.metrics.recordSuccess(route.kind, request.portal, raw.latencyMs, recovered, this.now());
 
@@ -187,6 +213,12 @@ export class SidgadEgress {
             failures: this.config.circuitFailureThreshold,
             cooldownMs: this.config.circuitCooldownMs,
           });
+        }
+
+        if (this.config.pauseOnBlock && (failure.kind === 'forbidden' || failure.kind === 'rate_limited')) {
+          const pause = this.guard.blocked(guardKey);
+          this.log.warn({ route: route.kind, portal: request.portal, pauseMin: pause / 60_000 },
+            'SIDGAD bloquea: pausa de la ruta, sin reintentos');
         }
 
         if (failure.kind === 'forbidden') {
@@ -427,4 +459,8 @@ function shouldCountForCircuit(error: SidgadEgressError): boolean {
   // de IP ante un rate limit o un error de la fuente: exactamente lo que la
   // política prohíbe. Esos errores se reintentan/esperan, pero no cambian ruta.
   return kind === 'dns' || kind === 'network' || kind === 'timeout';
+}
+
+function hostOf(url: string): string {
+  try { return new URL(url).host; } catch { return url; }
 }

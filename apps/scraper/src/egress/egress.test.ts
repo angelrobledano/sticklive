@@ -371,4 +371,46 @@ describe('SidgadEgress', () => {
     expect(snapshot.circuits).toHaveLength(1);
     expect(JSON.stringify(snapshot)).not.toContain('a'.repeat(64));
   });
+
+  describe('pausa tras un bloqueo (pauseOnBlock)', () => {
+    it('tras un 403 no vuelve a llamar a esa ruta durante la pausa, y luego sí', async () => {
+      let t = 1_000_000;
+      const cloudflare = new FakeTransport((n) => (n === 1 ? raw(403, '') : raw(200, 'ok')));
+      const { egress } = makeEgress({
+        config: { ...makeConfig('cloudflare'), pauseOnBlock: true },
+        transports: { cloudflare },
+        now: () => t,
+      });
+      await expect(egress.request(request())).rejects.toMatchObject({ kind: 'forbidden' });
+      await expect(egress.request(request())).rejects.toMatchObject({ kind: 'rate_limited' });
+      expect(cloudflare.calls).toBe(1); // en pausa: ni se intenta
+      t += 5 * 60_000;
+      expect((await egress.request(request())).body).toBe('ok');
+      expect(cloudflare.calls).toBe(2);
+    });
+
+    it('un 403 no salta a otra ruta aunque haya respaldo', async () => {
+      const cloudflare = new FakeTransport(() => raw(403, ''));
+      const direct = new FakeTransport(() => raw(200, 'ok'));
+      const { egress } = makeEgress({
+        config: { ...makeConfig('cloudflare', ['direct']), pauseOnBlock: true },
+        transports: { cloudflare, direct },
+      });
+      await expect(egress.request(request())).rejects.toMatchObject({ kind: 'forbidden' });
+      expect(direct.calls).toBe(0);
+    });
+
+    it('espacia las peticiones al mismo host', async () => {
+      const t = 5_000;
+      const direct = new FakeTransport(() => raw(200, 'ok'));
+      const { egress, sleeps } = makeEgress({
+        config: { ...makeConfig('direct'), minGapMs: 400 },
+        transports: { direct },
+        now: () => t,
+      });
+      await egress.request(request());
+      await egress.request(request());
+      expect(sleeps).toContain(400);
+    });
+  });
 });

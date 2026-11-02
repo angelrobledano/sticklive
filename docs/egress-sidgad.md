@@ -168,6 +168,8 @@ Deduplicación:
 | `SIDGAD_EGRESS_MAX_RETRY_AFTER_MS` | `60000` | Tope de `Retry-After` |
 | `SIDGAD_EGRESS_CIRCUIT_FAILURES` | `5` | Fallos para abrir |
 | `SIDGAD_EGRESS_CIRCUIT_COOLDOWN_MS` | `60000` | Enfriamiento |
+| `SIDGAD_EGRESS_PAUSE_ON_BLOCK` | `1` | Pausa de la ruta tras un 403/429: 5 min, se duplica hasta 30. `0` la desactiva |
+| `SIDGAD_EGRESS_MIN_GAP_MS` | `400` | Separación mínima entre peticiones al mismo host por la misma ruta |
 | `SIDGAD_EGRESS_ALERT_THROTTLE_MS` | `600000` | Throttle de alertas Sentry |
 
 ## 3. Cloudflare Worker

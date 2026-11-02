@@ -51,6 +51,14 @@ export interface EgressConfig {
   circuitFailureThreshold: number;
   circuitCooldownMs: number;
   alertThrottleMs: number;
+  /**
+   * Pausa por ruta y host tras un 403/429 (sidgad-guard): 5 min que se
+   * duplican hasta 30. Sin ella, cada ciclo volvía a pedir y a llevarse otro
+   * 403, que es lo que alarga un bloqueo. Ausente o false = sin pausa.
+   */
+  pauseOnBlock?: boolean;
+  /** Separación mínima entre peticiones a un mismo host por la misma ruta (ms). */
+  minGapMs?: number;
 }
 
 export interface EgressRequest {

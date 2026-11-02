@@ -180,6 +180,8 @@ export function loadEgressConfig(env: Env = process.env): EgressConfig {
     circuitFailureThreshold: parsePositiveInt(env, 'SIDGAD_EGRESS_CIRCUIT_FAILURES', 5),
     circuitCooldownMs: parsePositiveInt(env, 'SIDGAD_EGRESS_CIRCUIT_COOLDOWN_MS', 60_000),
     alertThrottleMs: parsePositiveInt(env, 'SIDGAD_EGRESS_ALERT_THROTTLE_MS', 600_000),
+    pauseOnBlock: env['SIDGAD_EGRESS_PAUSE_ON_BLOCK'] !== '0',
+    minGapMs: parsePositiveInt(env, 'SIDGAD_EGRESS_MIN_GAP_MS', 400),
   };
 }
 

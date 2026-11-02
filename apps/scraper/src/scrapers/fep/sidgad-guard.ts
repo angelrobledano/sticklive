@@ -35,11 +35,11 @@ export class SidgadGuard {
   }
 
   /** Cuánto esperar antes de la siguiente petición al host, y reserva el hueco. */
-  reserve(host: string): number {
+  reserve(host: string, gapMs: number = MIN_GAP_MS): number {
     const s = this.state(host);
     const t = this.now();
     const at = Math.max(t, s.nextSlot);
-    s.nextSlot = at + MIN_GAP_MS;
+    s.nextSlot = at + gapMs;
     return at - t;
   }
 
