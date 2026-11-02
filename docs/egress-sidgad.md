@@ -383,11 +383,65 @@ La ruta `secondary-ip` usa `node:https` con `localAddress`; las pruebas
 levantan un servidor HTTP local y comprueban que el servidor ve
 `127.0.0.1` como origen.
 
+### Cambio rápido para un fin de semana (scripts)
+
+Una vez asignada la Floating IP en la consola de Hetzner, en el servidor:
+
+```bash
+cd /opt/sticklive
+
+# 1. Asignar la IP a la interfaz y persistirla con systemd
+sudo ./deploy/setup-floating-ip.sh --ip 203.0.113.10 --apply --verify-egress
+
+# 2. Activar la segunda salida (red de host solo para el ETL)
+sudo ./deploy/enable-secondary-egress.sh --ip 203.0.113.10 --apply
+```
+
+`enable-secondary-egress.sh` guarda el estado anterior en
+`.egress-secondary.state`, hace backup de `.env.prod`, recrea el ETL con
+`deploy/docker-compose.egress-secondary-ip.yml.example` y verifica con
+`--egress-status`.
+
+Rollback:
+
+```bash
+sudo ./deploy/disable-secondary-egress.sh --apply
+```
+
+Vuelve a la red bridge y a la primaria/fallbacks que había antes. La Floating
+IP sigue en el host; el propio rollback imprime cómo quitarla si ya no la usás.
+
 ### Autorización de SIDGAD
 
 Antes de activar la segunda IP, pide por escrito que añadan
 `203.0.113.10` a su allowlist (o que confirmen que no la bloquean). No cambies
 de IP ante un 403: el código no lo hace y no debe hacerse manualmente.
+
+### Proxies comerciales (Decodo, Webshare, etc.)
+
+**No se integran en Stick Live para SIDGAD.** Decodo y Webshare no son
+software que se instala en el VPS: son proveedores de proxies (residenciales,
+datacenter, ISP o móviles). Se contrata un plan y te dan un endpoint
+`host:puerto` con usuario/contraseña o allowlist de IP; el cliente HTTP se
+configura para usarlo.
+
+Usarlos contra SIDGAD tendría tres problemas:
+
+1. **No están autorizados.** RFEP autorizó Cloudflare y una segunda IP de
+   Hetzner, no un pool comercial de IPs rotativas.
+2. **Es exactamente el “no abuses como antes”.** Rotar IPs para esquivar
+   límites o bloqueos es lo que el código evita a propósito: un 403/429/5xx no
+   cambia de ruta.
+3. **Seguridad y coste.** El proveedor ve el tráfico y la cookie de sesión de
+   SIDGAD; además añade una dependencia y un coste recurrente.
+
+Si necesitás un proxy autoalojado para otro uso (no SIDGAD), las opciones
+habituales son Squid, 3proxy o Tinyproxy en un VPS aparte, con autenticación,
+firewall y bind a una IP privada. Nunca como proxy abierto a Internet.
+
+Si SIDGAD autorizara en el futuro un proxy estático concreto (una IP fija, no
+un pool rotativo), habría que añadir un transporte `proxy` a la capa de egress
+y probarlo como una ruta más. No se hace sin esa autorización por escrito.
 
 ## 5. Monitorización
 
