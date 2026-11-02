@@ -16,6 +16,7 @@ Europe → scraper → ETL → PostgreSQL → API Hono (REST+SSE, :3000) → web
   los reales están en los `package.json` de cada workspace).
 - **Arquitectura y decisiones:** [docs/architecture.md](./docs/architecture.md).
 - **Pipeline de datos (scraper/ETL):** [docs/pipeline-datos.md](./docs/pipeline-datos.md).
+- **Salida SIDGAD (redundancia):** [docs/egress-sidgad.md](./docs/egress-sidgad.md). Por defecto, conexión directa; un 403 no cambia de ruta jamás.
 - **Base de datos:** [docs/database.md](./docs/database.md).
 - **Qué sale en Partidos (destacadas, seguidas, catálogo):** [docs/visibilidad-competiciones.md](./docs/visibilidad-competiciones.md). La regla es `feedReason` en `@sports/shared-types`: no la dupliques.
 - **Despliegue y operación:** [docs/DEPLOY.md](./docs/DEPLOY.md), [docs/operations.md](./docs/operations.md).

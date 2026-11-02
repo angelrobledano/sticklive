@@ -6,7 +6,7 @@
 
 | Servicio | Tecnología | Puerto | Papel |
 |---|---|---|---|
-| `apps/scraper` | Node + Playwright/Cheerio | — | Extracción de fuentes (FEP y World Skate, ambas sobre sidgad) |
+| `apps/scraper` | Node + Playwright/Cheerio | — | Extracción de fuentes (FEP y World Skate, ambas sobre sidgad). La salida HTTP es configurable (directa, Cloudflare Worker o segunda IP de Hetzner): ver [egress-sidgad.md](./egress-sidgad.md). |
 | `apps/etl` | Node + TS | — | Carga a BD, crons de directo/calendario/actas, emisor de push, seeds de competiciones |
 | `apps/api` | Hono (Node) | 3000 | REST + SSE, auth (magic link + Google OAuth), favoritos, Web Push, admin, Stripe |
 | `apps/web` | Next.js 16 (App Router) | 3001 | Frontend mobile-first, PWA, i18n propio ×5 idiomas |
@@ -91,6 +91,7 @@ Detalles y comportamiento ante fallos: [operations.md](./operations.md).
 7. **Directo: NOTIFY, no polling por cliente** — un poller por partido (no por cliente) con fan-out; la web mantiene polling de respaldo para redes adversas.
 8. **Producción corre JS compilado** — `scripts/build-server.mjs` empaqueta con esbuild; la imagen no lleva ni `tsx` ni TypeScript y corre como usuario `node`. El servicio `migrate` aplica migraciones antes de arrancar api/etl.
 9. **Auth progresiva** — anónimo por `deviceId` → magic link (Brevo) o Google OAuth al querer sincronizar; favoritos con fusión y tombstones. Tokens hasheados con caducidad.
+10. **Salida SIDGAD configurable y fail-safe** — todo el HTTP de scraping pasa por `apps/scraper/src/egress/`. La ruta directa es la primaria; Cloudflare Worker y segunda IP de Hetzner son alternativas deshabilitadas por defecto y solo se usan con autorización explícita de SIDGAD. Un 403/429/5xx nunca provoca cambio de IP; solo DNS/red/timeout pueden hacer failover. Detalle y runbook: [egress-sidgad.md](./egress-sidgad.md).
 10. **i18n propio** — diccionarios JSON por idioma bajo `app/[locale]/`, sin dependencia externa; rutas y sitemap multiidioma con hreflang.
 11. **La estructura de una competición la publica la fuente** (migración 072) — `Competition → Season → Phase → (Group) → Round → Match`; el "formato" es la secuencia de fases. Orden de evidencia: datos explícitos de la fuente > metadato declarado > regla determinista > fallback avisado. Ninguna capa deduce fases por el nombre de la competición ni por cronología (salvo datos heredados sin re-scrapear, marcados). Diseño en [superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md](./superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md).
 

@@ -14,7 +14,7 @@ Ambas son **la misma plataforma sidgad** servida como instancias distintas: el c
 
 ## Extracción (apps/scraper)
 
-- **Cliente HTTP** (`sidgad-client.ts`): 3 reintentos con backoff lineal (2 s), timeout 30 s, los 404 no se reintentan. `SCRAPER_REQUEST_TIMEOUT_MS`, `SCRAPER_RETRY_DELAY_MS`, `SCRAPER_USER_AGENT` ajustan el comportamiento.
+- **Cliente HTTP** (`sidgad-client.ts`): sesión con cookies, warm-up deduplicado y dedupe de peticiones idénticas en vuelo. La salida de red la resuelve `apps/scraper/src/egress/`: por defecto conexión directa, con alternativas configurables (Cloudflare Worker o segunda IP de Hetzner) que solo se activan con autorización explícita de SIDGAD. Reintentos con backoff exponencial + jitter, circuit breaker por ruta/portal y clasificación de errores (un 403/429/5xx no cambia de ruta). `SCRAPER_REQUEST_TIMEOUT_MS`, `SCRAPER_RETRY_DELAY_MS` y `SIDGAD_EGRESS_*` ajustan el comportamiento. Runbook: [egress-sidgad.md](./egress-sidgad.md).
 - **Scrapers** (registro y entradas en `apps/scraper/src/index.ts`, ejecución individual con `--run-once <nombre>`):
   - `fep-calendar` / `fep-standings` — calendario y clasificación por `idc` (competición en la fuente); soportan grupos y filas de bye (DESCANSO). El calendario conserva la **estructura explícita** de la fuente (`core/sidgad-structure.ts`, común a FEP, World Skate y FECAPA): bloque de fase (`content_fase_X` + título) y cabecera de ronda («JORNADA 5», «2 CUARTOS», «SEMIFINALES», «PARTIDO 1») por fila. No asigna estado por la hora: solo `finished` cuando publica el resultado.
   - `fep-matches` — feed **global** de marcadores (`rfep_mc_1.php`): un POST devuelve todos los partidos en juego/del día de todas las competiciones. Estado solo por señal explícita (clase `scorer_game_playing/final/pending` o el texto del periodo); sin señal, no informa de estado.
@@ -47,6 +47,7 @@ Ambas son **la misma plataforma sidgad** servida como instancias distintas: el c
 ## Errores, retries y trazabilidad
 
 - Un fallo de un partido/acta no tumba el lote (try/catch por ítem); cada pasada registra en `scrape_logs` con estado `success | partial | error` (purga diaria, retención 30 días).
+- **Salida SIDGAD:** DNS/red/timeout se reintentan y pueden probar otra ruta autorizada; 403/401 y 429 **no** cambian de ruta (sería eludir una restricción o un rate limit); los 5xx se reintentan sin cambiar de ruta. El circuit breaker por ruta/portal falla rápido y avisa a Sentry. Las métricas (éxitos, fallos, reintentos, latencia p95, última recuperación) se emiten en el log estructurado como `Resumen de salida SIDGAD`. `--egress-status` muestra la configuración sin hacer red. Detalle: [egress-sidgad.md](./egress-sidgad.md).
 - `statement_timeout` de 15 s en el pool; transacciones en standings y actas.
 - `flock` obligatorio en el scheduler y en ejecuciones manuales: nunca dos pipelines de scraping a la vez.
 - **Alertas** (Sentry; `SENTRY_DSN` obligatorio en producción para que existan):

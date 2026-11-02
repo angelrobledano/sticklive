@@ -116,6 +116,7 @@ La referencia es **`.env.example`** (desarrollo) y **`.env.prod.example`** (prod
 | [docs/ESTADO_PROYECTO.md](docs/ESTADO_PROYECTO.md) | Qué funciona hoy, de punta a punta |
 | [docs/architecture.md](docs/architecture.md) | Arquitectura, flujo de datos, entidades, decisiones |
 | [docs/pipeline-datos.md](docs/pipeline-datos.md) | Scraper + ETL: fuentes, parsing, dedup, resolución de entidades, limitaciones |
+| [docs/egress-sidgad.md](docs/egress-sidgad.md) | Salida SIDGAD: rutas directa/Cloudflare/segunda IP, resiliencia y runbook |
 | [docs/database.md](docs/database.md) | Arquitectura de datos, tablas, constraints, migraciones |
 | [docs/api.md](docs/api.md) | Endpoints REST/SSE reales |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Despliegue en el VPS |

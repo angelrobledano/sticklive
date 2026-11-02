@@ -61,6 +61,22 @@ $DC logs --since 1h etl | grep -i error   # errores de la última hora
 
 Además: `scrape_logs` en BD (trazabilidad por scraper, estado y filas) y Sentry (errores de api/web/etl + alertas del pipeline).
 
+### Salida SIDGAD (redundancia)
+
+La ruta de red hacia SIDGAD es configurable y, por defecto, directa. Para saber
+qué ruta está usando el proceso, cuántas peticiones han fallado y si el circuit
+breaker está abierto:
+
+```bash
+DC="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+$DC logs --since=1h etl | grep -E 'SIDGAD|egress'
+$DC exec etl node dist/apps/scraper/src/index.js --egress-status
+```
+
+Un 403 **no** debe resolverse cambiando de IP: el código no lo hace y la ruta
+alternativa debe estar previamente autorizada por SIDGAD. Runbook completo,
+costes y pasos de activación/rollback: [egress-sidgad.md](./egress-sidgad.md).
+
 - **Access logs de Caddy** (para fail2ban): `/opt/sticklive/logs/caddy/access.log`
   (rotación 10 MB × 5, permisos solo root). Ya **no** aparecen en
   `docker logs caddy`; los logs de runtime (arranque/errores) sí siguen ahí.
