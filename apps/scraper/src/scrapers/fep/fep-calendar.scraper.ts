@@ -203,6 +203,10 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
       ? combineDateAndTime(dateparts, timeStr, this.calendarConfig.timezone ?? DEFAULT_TIMEZONE)
       : undefined;
 
+    // Pabellón (4ª celda): «PALAU D'ESPORTS DE REUS». La ciudad no la da
+    // sidgad; la completa el ETL con la del club local (fillVenueCity).
+    const venueName = cells.eq(3).text().replace(/\s+/g, ' ').trim() || undefined;
+
     // Nombres de equipo (para logging/debug, no los usamos como ref)
     const homeTeamName = $row.find('.nombre_junto_logo').eq(0).text().trim();
     const awayTeamName = $row.find('.nombre_junto_logo').eq(1).text().trim();
@@ -257,6 +261,7 @@ export class FepCalendarScraper extends FepBaseScraper<ScrapedMatch> {
       awayScore,
       status,
       scheduledAt: scheduledAt?.toISOString(),
+      venueName,
       sourceId: SOURCE_ID,
       sourceRef,
       sourceUrl,

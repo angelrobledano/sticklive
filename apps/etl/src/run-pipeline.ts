@@ -27,7 +27,7 @@ import { downloadTeamLogos } from './team-logos.js';
 import { scrapeRunStatus } from './scrape-log-status.js';
 import { acquireEtlLock } from './etl-lock.js';
 import { planSourceStructure, type PhaseKind, type StructureRow, type ScrapedMatch } from '@sports/shared-types';
-import { reconcileSyntheticMatches } from '@sports/db';
+import { reconcileSyntheticMatches, fillVenueCity } from '@sports/db';
 import { applyStructurePlan, assignStructure, declaredKindFromFormat, pruneAfterLoad, type AppliedStructure } from './structure/apply-structure.js';
 
 // Los scrapers viven en apps/scraper — importamos via ruta relativa (ts-node lo resuelve)
@@ -287,6 +287,7 @@ async function runMultiCompetition(
   if (entity === 'calendar') {
     const reconciled = await reconcileSyntheticMatches();
     if (reconciled > 0) log.info({ reconciled }, '🧹 Placeholders sintéticos reconciliados');
+    if (!dryRun) await fillVenueCitySafe();
   }
 
   log.info({ done, skipped, total: plan.length, concurrency: SCRAPE_CONCURRENCY }, '🏁 Multi-competición completado');
@@ -353,6 +354,7 @@ async function mainInner() {
   if (wantsMulti && (entity === 'calendar' || entity === 'standings')) {
     log.info({ entity, dryRun }, '🚀 Iniciando pipeline (multi-competición)');
     await runMultiCompetition(entity, dryRun);
+    if (entity === 'calendar' && !dryRun) await fillVenueCitySafe();
     log.info('🏁 Pipeline completado');
     return;
   }
@@ -592,3 +594,13 @@ async function mainInner() {
 main()
   .catch((err) => { log.error({ err }, 'Error fatal'); Sentry.captureException(err); process.exitCode = 1; })
   .finally(async () => { await Sentry.flush(2000); await closeDb(); });
+
+/** Ciudad del pabellón desde el club local (ver fillVenueCity). Nunca tumba el pipeline. */
+async function fillVenueCitySafe(): Promise<void> {
+  try {
+    const n = await fillVenueCity();
+    if (n > 0) log.info({ partidos: n }, '📍 Ciudad del pabellón completada');
+  } catch (err) {
+    log.warn({ err }, 'No se pudo completar la ciudad del pabellón — sigue');
+  }
+}

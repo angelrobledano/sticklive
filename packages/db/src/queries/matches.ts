@@ -154,6 +154,7 @@ export async function upsertMatch(
        started_at   = COALESCE(matches.started_at,   EXCLUDED.started_at),
        finished_at  = COALESCE(matches.finished_at,  EXCLUDED.finished_at),
        venue_name   = COALESCE(EXCLUDED.venue_name,   matches.venue_name),
+       venue_city   = COALESCE(EXCLUDED.venue_city,   matches.venue_city),
        video_url    = COALESCE(EXCLUDED.video_url,    matches.video_url),
        round_id     = COALESCE(EXCLUDED.round_id,     matches.round_id),
        group_name   = COALESCE(EXCLUDED.group_name,   matches.group_name),
@@ -675,4 +676,40 @@ export async function reconcileSyntheticMatches(seasonId: string | null = null):
 /** B5 — Recalcula `event_coverage` del partido contra su marcador (migración 086). */
 export async function refreshEventCoverage(matchId: string, client: pg.PoolClient | typeof db = db): Promise<void> {
   await client.query(`SELECT refresh_event_coverage($1)`, [matchId]);
+}
+
+/**
+ * Ciudad del pabellón (2/11/2026): Google exige dirección en el marcado de
+ * eventos y sidgad solo da el nombre del pabellón. Se completa con la ciudad
+ * del club local (o del equipo) SOLO cuando el pabellón es su pista de casa:
+ *   · el nombre del pabellón contiene esa ciudad («PALAU D'ESPORTS DE REUS»), o
+ *   · el equipo ha jugado ahí al menos 2 partidos como local esta temporada.
+ * Una sede neutral (final four, copa) no cumple ninguna y se queda sin ciudad.
+ * Solo temporadas en curso y partidos sin ciudad. Devuelve cuántos rellena.
+ */
+export async function fillVenueCity(client: pg.PoolClient | typeof db = db): Promise<number> {
+  const res = await client.query(
+    `WITH cand AS (
+       SELECT m.id, COALESCE(NULLIF(cl.city, ''), NULLIF(t.city, '')) AS city, m.venue_name,
+              m.season_id, m.home_team_id
+         FROM matches m
+         JOIN seasons s ON s.id = m.season_id AND s.is_current
+         JOIN teams t   ON t.id = m.home_team_id
+         LEFT JOIN clubs cl ON cl.id = t.club_id
+        WHERE m.venue_city IS NULL
+          AND NULLIF(btrim(m.venue_name), '') IS NOT NULL
+     )
+     UPDATE matches m SET venue_city = cand.city, updated_at = NOW()
+       FROM cand
+      WHERE m.id = cand.id
+        AND cand.city IS NOT NULL
+        AND (
+          translate(upper(cand.venue_name), 'ÁÀÄÂÉÈËÊÍÌÏÎÓÒÖÔÚÙÜÛÇÑ', 'AAAAEEEEIIIIOOOOUUUUCN') LIKE '%' || translate(upper(cand.city), 'ÁÀÄÂÉÈËÊÍÌÏÎÓÒÖÔÚÙÜÛÇÑ', 'AAAAEEEEIIIIOOOOUUUUCN') || '%'
+          OR (SELECT count(*) FROM matches m2
+               WHERE m2.season_id = cand.season_id
+                 AND m2.home_team_id = cand.home_team_id
+                 AND m2.venue_name = cand.venue_name) >= 2
+        )`,
+  );
+  return res.rowCount ?? 0;
 }
