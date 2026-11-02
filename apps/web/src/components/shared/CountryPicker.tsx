@@ -21,7 +21,7 @@ export function CountryPicker({ variant = 'chip' }: { variant?: 'chip' | 'field'
 
   const cls = variant === 'chip'
     ? 'min-h-[36px] rounded-full border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
-    : 'min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
+    : 'min-h-[44px] max-w-[10.5rem] truncate rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
 
   return (
     <select

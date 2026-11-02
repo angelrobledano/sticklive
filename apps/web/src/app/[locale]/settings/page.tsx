@@ -13,7 +13,7 @@ import {
 } from '@/lib/push';
 import { PREMIUM_ENABLED } from './config';
 import {
-  SettingRow, SettingsBlock, SettingsNav, SegmentedControl, PremiumActiveBadge,
+  SettingRow, SettingsBlock, SettingsNav, SegmentedControl, PremiumActiveBadge, FieldRow, ActionRow,
 } from './ui';
 import { useDeviceId, useNotifConfig, useTheme } from './hooks';
 import { settingsSections } from './sections';
@@ -180,9 +180,6 @@ export default function SettingsPage() {
             }
           >
             <InstallApp />
-            <div className="py-3.5">
-              <p className="text-xs text-slate-500 dark:text-slate-400">{t('settings.footer')}</p>
-            </div>
           </SettingsBlock>
         )}
 
@@ -289,13 +286,7 @@ export default function SettingsPage() {
             </svg>
           }
         >
-          <div className="flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.theme')}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-                {t('settings.theme_desc')}
-              </p>
-            </div>
+          <FieldRow label={t('settings.theme')} description={t('settings.theme_desc')}>
             <SegmentedControl
               label={t('settings.theme')}
               // Sin opción "Sistema": si no hay elección explícita, se muestra
@@ -307,21 +298,18 @@ export default function SettingsPage() {
                 { value: 'dark',  label: t('settings.theme_dark') },
               ]}
             />
-          </div>
+          </FieldRow>
 
           <LanguageRow />
 
-          <div className="flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{tt(t, 'home.country_label', 'País preferido')}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-                {tt(t, 'settings.country_desc', 'Sus competiciones salen primero en la portada. Las demás siguen ahí.')}
-              </p>
-            </div>
+          <FieldRow
+            label={tt(t, 'home.country_label', 'País preferido')}
+            description={tt(t, 'settings.country_desc', 'Sus competiciones salen primero en la portada. Las demás siguen ahí.')}
+          >
             <CountryPicker variant="field" />
-          </div>
+          </FieldRow>
 
-          <p className="py-2.5 text-[11px] text-slate-500 dark:text-slate-400">
+          <p className="py-3 text-xs text-slate-500 dark:text-slate-400">
             {t('settings.choice_saved')}
           </p>
         </SettingsBlock>
@@ -337,48 +325,38 @@ export default function SettingsPage() {
             </svg>
           }
         >
-          <div className="py-3.5 space-y-1.5">
-            <button
-              type="button"
-              onClick={async () => {
-                const opened = await openConsentManager();
-                setConsentError(!opened);
-              }}
-              className="text-sm font-medium text-slate-800 dark:text-slate-200 underline underline-offset-2 hover:text-rink-passion dark:hover:text-rink-accent"
-            >
-              {t('ads.privacy_entry_title')}
-            </button>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t('ads.privacy_entry_desc')}</p>
-            {consentError && (
-              <p role="alert" className="text-xs text-red-600 dark:text-red-400">{t('ads.privacy_error')}</p>
-            )}
-          </div>
-
-          {(tcfState === 'pending' || tcfState === 'unavailable') && (
-            <div className="py-3.5 space-y-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  resetFallbackConsent();
-                  requestFallbackConsent();
-                }}
-                className="text-sm font-medium text-slate-800 dark:text-slate-200 underline underline-offset-2 hover:text-rink-passion dark:hover:text-rink-accent"
-              >
-                {t('consent.title')}
-              </button>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{t('ads.analytics_consent_desc')}</p>
-            </div>
+          <ActionRow
+            label={t('ads.privacy_entry_title')}
+            description={t('ads.privacy_entry_desc')}
+            onClick={async () => {
+              const opened = await openConsentManager();
+              setConsentError(!opened);
+            }}
+          />
+          {consentError && (
+            <p role="alert" className="pb-3 text-xs text-rose-600 dark:text-rose-400">{t('ads.privacy_error')}</p>
           )}
 
-          <div className="py-3.5">
-            <Link
-              href="/privacy"
-              className="text-sm font-medium text-slate-800 dark:text-slate-200 underline underline-offset-2 hover:text-rink-passion dark:hover:text-rink-accent"
-            >
-              {t('settings.privacy_link')}
-            </Link>
-          </div>
+          {(tcfState === 'pending' || tcfState === 'unavailable') && (
+            <ActionRow
+              label={t('consent.title')}
+              description={t('ads.analytics_consent_desc')}
+              onClick={() => {
+                resetFallbackConsent();
+                requestFallbackConsent();
+              }}
+            />
+          )}
+
+          <ActionRow label={t('settings.privacy_link')}>
+            {(content) => (
+              <Link href="/privacy" className="group flex items-center gap-3 py-3.5">{content}</Link>
+            )}
+          </ActionRow>
         </SettingsBlock>
+
+        {/* Versión: pie discreto de la página, no una fila de un bloque. */}
+        <p className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500">{t('settings.footer')}</p>
       </div>
     </div>
   );

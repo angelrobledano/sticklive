@@ -5,32 +5,25 @@ import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useT, SUPPORTED_LOCALES, LOCALE_NAMES, type Locale } from '@/lib/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { useFavorites } from '@/hooks/useFavorites';
+import { FieldRow, SETTINGS_SELECT } from './ui';
 
 // ─── Selector de idioma (fila dentro de "Apariencia") ───
 
 export function LanguageRow() {
   const { locale, setLocale, t } = useT();
   return (
-    <div className="flex items-center gap-3 py-3.5">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('common.language')}</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-          {t('settings.language_desc')}
-        </p>
-      </div>
+    <FieldRow label={t('common.language')} description={t('settings.language_desc')}>
       <select
         value={locale}
         onChange={(e) => setLocale(e.target.value as Locale)}
-        className="min-h-[44px] px-3 rounded-xl border border-slate-200 dark:border-slate-700
-                   bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-200
-                   focus:outline-none focus:ring-2 focus:ring-rink-passion dark:focus:ring-rink-accent cursor-pointer"
+        className={SETTINGS_SELECT}
         aria-label={t('common.language')}
       >
         {SUPPORTED_LOCALES.map((l) => (
           <option key={l} value={l}>{LOCALE_NAMES[l]}</option>
         ))}
       </select>
-    </div>
+    </FieldRow>
   );
 }
 
@@ -132,7 +125,7 @@ export function FavoritesSummary() {
   return (
     <>
       {total === 0 ? (
-        <div className="py-4 space-y-1.5">
+        <div className="pt-3.5 pb-1 space-y-1">
           <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.fav_empty_title')}</p>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
             {t('favorites.onboarding_body')}

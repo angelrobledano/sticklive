@@ -108,6 +108,80 @@ export function SettingsBlock({
   );
 }
 
+// ─── Fila con control a la derecha (tema, idioma, país) ───
+
+/**
+ * Misma anatomía que SettingRow: etiqueta y ayuda a la izquierda, control a la
+ * derecha, en todos los anchos. Antes, tema y país apilaban el control a lo
+ * ancho en móvil e idioma no: tres filas iguales con tres formas distintas.
+ */
+export function FieldRow({ label, description, children }: {
+  label: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-3.5">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug">{label}</p>
+        {description && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{description}</p>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** Estilo común de los desplegables de Ajustes (idioma, país). */
+export const SETTINGS_SELECT =
+  'min-h-[44px] max-w-[10.5rem] truncate pl-3 pr-8 rounded-xl border border-slate-200 dark:border-slate-700 ' +
+  'bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-100 cursor-pointer ' +
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-rink-passion dark:focus-visible:ring-rink-accent';
+
+// ─── Fila de acción (abre algo: enlace o botón) ───
+
+const CHEVRON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"
+       className="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-600 transition-colors
+                  group-hover:text-rink-passion dark:group-hover:text-rink-accent">
+    <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/**
+ * Fila que lleva a otra pantalla o abre un panel, con chevron. Sustituye a los
+ * enlaces subrayados sueltos: en una lista de ajustes todo lo que se toca es
+ * una fila completa, con área táctil de fila.
+ */
+export function ActionRow({ label, description, onClick, children }: {
+  label: string;
+  description?: string;
+  onClick?: () => void;
+  /** Para envolver en un enlace: se pasa el contenido ya montado. */
+  children?: (content: ReactNode) => ReactNode;
+}) {
+  const content = (
+    <>
+      <div className="flex-1 min-w-0 text-left">
+        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug">{label}</p>
+        {description && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{description}</p>
+        )}
+      </div>
+      {CHEVRON}
+    </>
+  );
+  if (children) return <>{children(content)}</>;
+  return (
+    <button type="button" onClick={onClick}
+            className="group flex w-full items-center gap-3 py-3.5 focus:outline-none focus-visible:ring-2
+                       focus-visible:ring-rink-passion/60 dark:focus-visible:ring-rink-accent/60 rounded-lg">
+      {content}
+    </button>
+  );
+}
+
 // ─── Control segmentado (tema) ───
 
 export function SegmentedControl<T extends string>({
@@ -126,7 +200,7 @@ export function SegmentedControl<T extends string>({
     <div
       role="group"
       aria-label={label}
-      className="inline-flex w-full sm:w-auto p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80"
+      className="inline-flex shrink-0 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80"
     >
       {options.map((option) => {
         const active = option.value === value;
@@ -136,7 +210,7 @@ export function SegmentedControl<T extends string>({
             type="button"
             aria-pressed={active}
             onClick={() => onChange(option.value)}
-            className={`flex-1 sm:flex-none min-h-[36px] px-3 rounded-lg text-xs font-semibold
+            className={`min-h-[36px] px-3 rounded-lg text-xs font-semibold
                         transition-colors focus:outline-none focus-visible:ring-2
                         focus-visible:ring-rink-passion/60 dark:focus-visible:ring-rink-accent/60 ${
               active
@@ -185,7 +259,7 @@ export function SettingsNav({ items }: { items: Array<{ id: string; label: strin
                  bg-slate-50/95 dark:bg-[#0b1220]/95 sm:backdrop-blur
                  border-b border-slate-200/70 dark:border-slate-800/70"
     >
-      <ul className="flex flex-wrap gap-1.5 sm:flex-nowrap sm:overflow-x-auto sm:scrollbar-none">
+      <ul className="flex gap-1.5 overflow-x-auto scrollbar-none -mx-4 px-4 [mask-image:linear-gradient(to_right,transparent,#000_16px,#000_calc(100%-24px),transparent)] sm:mx-0 sm:px-0 sm:[mask-image:none]">
         {items.map((item) => {
           const current = active === item.id;
           return (
