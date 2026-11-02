@@ -51,6 +51,7 @@ import {
   sourceForMatchRef, idpFromMatchRef, idcFromCompetitionRef, matchRef, currentSource,
   SOURCES, type SourceDef,
 } from '../../scraper/src/core/sources.js';
+import { logEgressSummary } from '../../scraper/src/egress/index.js';
 // Portugal (FPP): feed /Direto + ficha/timeline de los partidos en juego.
 import { runFppLiveScores, fppLiveCandidates } from '../../scraper/src/scrapers/fpp/fpp-live.js';
 import { processFppFicha, type FppFichaTarget } from '../../scraper/src/scrapers/fpp/fpp-ficha.js';
@@ -777,6 +778,10 @@ async function mainInner(): Promise<'done' | 'yield'> {
         { cycle, upserted, durationMs: Date.now() - cycleStart },
         'Ciclo completado'
       );
+      // Resumen de salida SIDGAD cada ~15 min de directo (20 ciclos de 45 s):
+      // éxitos/fallos/reintentos/latencia por ruta y portal. En debug, cada ciclo.
+      logEgressSummary(log, 'debug');
+      if (cycle % 20 === 0) logEgressSummary(log, 'info');
     } catch (err) {
       log.error({ cycle, err }, 'Error en ciclo — reintentando en siguiente tick');
       Sentry.captureException(err, { tags: { phase: 'cron-cycle' }, extra: { cycle } });
@@ -809,4 +814,9 @@ async function mainInner(): Promise<'done' | 'yield'> {
 main()
   .catch((err) => { log.error({ err }, 'Error fatal'); Sentry.captureException(err); process.exitCode = 1; })
   // flush ANTES de salir: el cron es un proceso corto y si no se pierden los eventos
-  .finally(async () => { await flushPushAnalytics(); await Sentry.flush(2000); await closeDb(); });
+  .finally(async () => {
+    logEgressSummary(log, 'info');
+    await flushPushAnalytics();
+    await Sentry.flush(2000);
+    await closeDb();
+  });

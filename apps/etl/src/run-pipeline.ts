@@ -37,6 +37,7 @@ import { FepMatchesScraper } from '../../scraper/src/scrapers/fep/fep-matches.sc
 import { FepFichaScraper } from '../../scraper/src/scrapers/fep/fep-ficha.scraper.js';
 import { resolveWorldskate } from '../../scraper/src/scrapers/worldskate/run-worldskate.js';
 import { resolveMatchSourceIds, matchRefLikePatterns, sourceForCompetitionRef, type SourceDef } from '../../scraper/src/core/sources.js';
+import { logEgressSummary } from '../../scraper/src/egress/index.js';
 
 const log = createLogger({ service: 'run-pipeline' });
 
@@ -593,7 +594,11 @@ async function mainInner() {
 
 main()
   .catch((err) => { log.error({ err }, 'Error fatal'); Sentry.captureException(err); process.exitCode = 1; })
-  .finally(async () => { await Sentry.flush(2000); await closeDb(); });
+  .finally(async () => {
+    logEgressSummary(log, 'info');
+    await Sentry.flush(2000);
+    await closeDb();
+  });
 
 /** Ciudad del pabellón desde el club local (ver fillVenueCity). Nunca tumba el pipeline. */
 async function fillVenueCitySafe(): Promise<void> {

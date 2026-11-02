@@ -37,6 +37,9 @@ import { runAllWorldskate }      from './scrapers/worldskate/run-worldskate.js';
 import { runAllFpp }             from './scrapers/fpp/run-fpp.js';
 import { runAllFvp }             from './scrapers/fvp/run-fvp.js';
 import { closeBrowser }          from './core/browser.js';
+import {
+  describeCurrentEgressConfig, getSidgadEgress, logEgressSummary,
+} from './egress/index.js';
 
 const log = createLogger({ service: 'scraper' });
 
@@ -232,6 +235,9 @@ Claves disponibles:
   fpp                     Portugal (FPP): ligas y copas activas
   fvp                     Euskadi + Liga Norte (FVP): ligas, copas y actas
 
+Diagnóstico de salida (sin tocar la red):
+  node dist/apps/scraper/src/index.js --egress-status
+
 Este comando ejecuta UNA tarea y sale. La ejecución periódica en producción la
 lleva deploy/etl-scheduler.sh dentro del contenedor 'etl'; aquí había un
 segundo planificador con node-cron que duplicaba ese trabajo, no corría en
@@ -239,6 +245,17 @@ ningún sitio y arrastraba vulnerabilidades. Se eliminó (ver issue #37).
 `;
 
 (async () => {
+  // Diagnóstico sin red: qué salida usaría este proceso y con qué límites.
+  // Útil en el servidor: node dist/apps/scraper/src/index.js --egress-status
+  if (process.argv[2] === '--egress-status') {
+    const egress = getSidgadEgress();
+    console.log(JSON.stringify({
+      config: describeCurrentEgressConfig(),
+      snapshot: egress.snapshot(),
+    }, null, 2));
+    process.exit(0);
+  }
+
   if (!RUN_ONCE || !KEY) {
     console.log(USO);
     process.exit(1);
@@ -248,4 +265,7 @@ ningún sitio y arrastraba vulnerabilidades. Se eliminó (ver issue #37).
 })()
   .catch(err => { log.error({ err }, 'Error fatal'); Sentry.captureException(err); process.exitCode = 1; })
   // flush ANTES de salir: proceso corto; sin esto se pierden los eventos.
-  .finally(async () => { await Sentry.flush(2000); });
+  .finally(async () => {
+    logEgressSummary(log, 'info');
+    await Sentry.flush(2000);
+  });

@@ -18,6 +18,7 @@
 import { FepBaseScraper } from './fep-base-scraper.js';
 import { requireFepSourceId } from '../../core/fep-source.js';
 import { SidgadClient, SIDGAD_LANG } from './sidgad-client.js';
+import { SidgadEgressError } from '../../egress/index.js';
 import { currentSource, eventPrefix, playerPrefix, playerIdFromRef, type SourceDef } from '../../core/sources.js';
 import { db, fixPlayerNameSplit, replaceMatchEvents, replaceMatchLineups, withTransaction, findPlayerIdBySourceRef, addPlayerSourceRef, refreshEventCoverage } from '@sports/db';
 // Los parsers viven en fep-ficha.parser.ts (puros, sin E/S) para poder testearlos
@@ -31,7 +32,9 @@ import {
 // Re-export para no romper a quien ya importaba estos tipos desde el scraper.
 export type { ScrapedMatchEvent, FepEventType };
 
-const SOURCE_ID = requireFepSourceId();
+// Lazy: se valida al construir el scraper, no al importar el módulo. Así los
+// tests pueden inyectar un cliente falso sin depender del entorno de producción.
+const sourceId = (): string => requireFepSourceId();
 
 /** IDCs de competiciones que usan rutas de Playoff/Eliminatorias en sidgad */
 const PLAYOFF_IDCS = ['3481', '3484'];
@@ -56,6 +59,8 @@ export interface FichaScraperConfig {
    * los endpoints `rfep_*` → `{portal}_*`.
    */
   source?: SourceDef;
+  /** Inyectable en tests; por defecto, el cliente SIDGAD real con su sesión. */
+  client?: Pick<SidgadClient, 'post'>;
 }
 
 export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
@@ -66,7 +71,7 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
   /** Fuente del partido (FEP si no se indica otra). */
   private readonly source: SourceDef;
   /** Cliente HTTP del portal de esa fuente: reescribe `rfep_*` → `{portal}_*`. */
-  private readonly client: SidgadClient;
+  private readonly client: Pick<SidgadClient, 'post'>;
   /**
    * Cabecera de directo del último acta leída (null si no tenía). El
    * orquestador del directo usa `ended` como señal explícita de final.
@@ -78,11 +83,11 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
     super({
       scraperKey: source.key === 'fep' ? 'fep_hockey' : `${source.key}_hockey`,
       entityType: 'match_event',
-      sourceId: SOURCE_ID,
+      sourceId: sourceId(),
     });
     this.cfg = config;
     this.source = source;
-    this.client = new SidgadClient(source.client);
+    this.client = config.client ?? new SidgadClient(source.client);
   }
 
   protected async scrape(): Promise<ScrapedMatchEvent[]> {
@@ -125,6 +130,10 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
     }
 
     let html = '';
+    // Un 404 por patrón equivocado es normal (el acta aún no existe). Pero un
+    // 403/429/5xx/red en TODOS los patrones no puede acabar como "éxito con 0":
+    // se propaga para que scrape_logs/Sentry registren la causa real.
+    let hardFailure: SidgadEgressError | null = null;
     for (const candidate of ENDPOINT_CANDIDATES) {
       this.log.info({ idp, idc, endpoint: candidate.path }, 'Intentando endpoint ficha resumen');
       try {
@@ -289,6 +298,9 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
           'Respuesta vacía o error — probando siguiente patrón URL'
         );
       } catch (err) {
+        if (err instanceof SidgadEgressError && err.kind !== 'client') {
+          hardFailure = err;
+        }
         this.log.warn(
           { idp, idc, endpoint: candidate.path, err },
           'Error HTTP en endpoint — probando siguiente patrón URL'
@@ -297,6 +309,18 @@ export class FepFichaScraper extends FepBaseScraper<ScrapedMatchEvent> {
     }
 
     if (!html) {
+      if (hardFailure) {
+        this.log.error(
+          {
+            idp,
+            idc,
+            candidatesTried: ENDPOINT_CANDIDATES.map((c) => c.path),
+            failure: hardFailure.toLogObject(),
+          },
+          'Ficha sin datos por un fallo de transporte/servidor — se propaga en vez de fingir un éxito vacío'
+        );
+        throw hardFailure;
+      }
       this.log.error(
         { idp, idc, candidatesTried: ENDPOINT_CANDIDATES.map((c) => c.path) },
         'Todos los patrones de URL fallaron para la ficha resumen — revisa idc/idp o si la competicion usa un endpoint distinto'
