@@ -27,6 +27,9 @@ export interface StandingsScraperConfig {
 export class FepStandingsScraper extends FepBaseScraper<ScrapedStanding> {
   private standingsConfig: StandingsScraperConfig;
 
+  /** La fuente respondió 404: esta competición no publica clasificación. */
+  noStandings = false;
+
   constructor(config: StandingsScraperConfig) {
     super({
       scraperKey: 'fep_hockey',
@@ -41,9 +44,21 @@ export class FepStandingsScraper extends FepBaseScraper<ScrapedStanding> {
     const endpointPath = `rfep_clasif_idc_${idc}_1.php`;
     this.log.info({ idc, competition: competitionName ?? idc }, 'Scrapeando clasificacion');
     const params = { idc, site_lang: SIDGAD_LANG };
-    const html = this.standingsConfig.source
-      ? await new SidgadClient(this.standingsConfig.source.client).post(endpointPath, params)
-      : await sidgadPost(endpointPath, params);
+    let html: string;
+    try {
+      html = this.standingsConfig.source
+        ? await new SidgadClient(this.standingsConfig.source.client).post(endpointPath, params)
+        : await sidgadPost(endpointPath, params);
+    } catch (err) {
+      // 404: la competición no tiene clasificación (copa, supercopa, fase
+      // final). Es su estado normal, no un fallo: vacío y sin ruido en logs.
+      if (isNotFound(err)) {
+        this.noStandings = true;
+        this.log.info({ idc, competition: competitionName ?? idc }, 'Sin clasificación en la fuente (404) — se omite');
+        return [];
+      }
+      throw err;
+    }
     return this.parseStandings(html, idc);
   }
 
@@ -215,4 +230,11 @@ function resolveLogoUrl(src: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** 404 de sidgad (error del cliente con status o mensaje «HTTP 404»/«devolvió 404»). */
+export function isNotFound(err: unknown): boolean {
+  if (err && typeof err === 'object' && (err as { status?: number }).status === 404) return true;
+  const msg = err instanceof Error ? err.message : String(err);
+  return /\b(HTTP 404|devolvió 404)\b/.test(msg);
 }

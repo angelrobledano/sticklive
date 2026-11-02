@@ -184,7 +184,7 @@ async function processStandings(
   // Rastro del run cuando el loader NO llega a escribir (#329): fallo del
   // scrape o éxito con 0 filas (el "éxito silencioso" que el vigilante debe
   // ver; las copas van como 'skipped' porque es su estado normal).
-  const status = scrapeRunStatus(result.success, result.data.length, expectedEmptyIdcs.has(idc));
+  const status = scrapeRunStatus(result.success, result.data.length, expectedEmptyIdcs.has(idc) || scraper.noStandings);
   if (!dryRun && (status !== 'success' || result.data.length === 0)) {
     await registrarRunSinLoader(result, status, 'standing', idc);
   }
