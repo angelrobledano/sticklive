@@ -38,9 +38,19 @@ if [ -f "$STATE" ]; then
   # shellcheck disable=SC1090
   . "$STATE"
 else
-  echo "AVISO: no existe $STATE; vuelvo a la salida directa por seguridad." >&2
-  PREV_PRIMARY=direct
-  PREV_FALLBACKS=""
+  # Sin estado: preservar la configuración actual. Si ya estaba en
+  # secondary-ip, volver a direct (rollback seguro).
+  CURRENT_PRIMARY=$(grep -E '^SIDGAD_EGRESS_PRIMARY=' .env.prod | tail -n 1 | cut -d= -f2- || true)
+  CURRENT_FALLBACKS=$(grep -E '^SIDGAD_EGRESS_FALLBACKS=' .env.prod | tail -n 1 | cut -d= -f2- || true)
+  if [ "$CURRENT_PRIMARY" = "secondary-ip" ]; then
+    echo "AVISO: no existe $STATE y la primaria actual es secondary-ip; vuelvo a direct." >&2
+    PREV_PRIMARY=direct
+    PREV_FALLBACKS=""
+  else
+    echo "AVISO: no existe $STATE; preservo la configuración actual." >&2
+    PREV_PRIMARY=${CURRENT_PRIMARY:-direct}
+    PREV_FALLBACKS=${CURRENT_FALLBACKS:-}
+  fi
 fi
 PREV_PRIMARY=${PREV_PRIMARY:-direct}
 PREV_FALLBACKS=${PREV_FALLBACKS:-}
