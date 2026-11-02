@@ -264,3 +264,13 @@ export function parseFppTimeline(
   disambiguateEventRefs(events);
   return events;
 }
+
+/** Goles de cada jugador (por ref FPP) según los eventos del timeline. */
+export function fppGoalsByPlayer(events: ReadonlyArray<{ eventType: string; playerSourceRef?: string | null }>): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const e of events) {
+    if (e.eventType !== 'goal' || !e.playerSourceRef) continue;
+    out.set(e.playerSourceRef, (out.get(e.playerSourceRef) ?? 0) + 1);
+  }
+  return out;
+}

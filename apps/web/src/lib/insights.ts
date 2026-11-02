@@ -275,7 +275,35 @@ const PAST: Record<string, Partial<Record<InsightKind, Template>>> = {
 
 export type InsightTense = 'present' | 'past';
 
+/**
+ * Torneos (copa, final four, Elite Cup): ni rachas ni «en casa», que en
+ * eliminatorias a 1-3 partidos no dicen nada, y «torneo» en vez de
+ * «temporada»/«liga» en el resto.
+ */
+export const TOURNAMENT_SKIP: ReadonlySet<InsightKind> = new Set<InsightKind>([
+  'only_unbeaten', 'win_streak', 'losing_streak', 'perfect_home', 'home_win_pct',
+]);
+
+const TOURNAMENT_WORDS: Record<string, [RegExp, string][]> = {
+  es: [[/de la temporada/g, 'del torneo'], [/de esta liga/g, 'del torneo'], [/de la liga/g, 'del torneo'], [/En esta liga/g, 'En este torneo']],
+  ca: [[/de la temporada/g, 'del torneig'], [/d'aquesta lliga/g, 'del torneig'], [/de la lliga/g, 'del torneig'], [/En aquesta lliga/g, 'En aquest torneig']],
+  en: [[/of the season/g, 'of the tournament'], [/in this league/g, 'in this tournament'], [/of this league/g, 'of this tournament'], [/the league/g, 'the tournament']],
+  pt: [[/da época/g, 'do torneio'], [/desta liga/g, 'deste torneio'], [/da liga/g, 'do torneio'], [/Nesta liga/g, 'Neste torneio']],
+  fr: [[/de la saison/g, 'du tournoi'], [/de ce championnat/g, 'du tournoi'], [/du championnat/g, 'du tournoi'], [/Dans ce championnat/g, 'Dans ce tournoi']],
+  it: [[/della stagione/g, 'del torneo'], [/di questo campionato/g, 'del torneo'], [/del campionato/g, 'del torneo'], [/In questo campionato/g, 'In questo torneo']],
+};
+
 export function renderInsight(
+  insight: Insight, data: SeasonInsights, locale: string, tense: InsightTense = 'present',
+  scope: 'league' | 'tournament' = 'league',
+): InsightPart[] {
+  const parts = renderInsightRaw(insight, data, locale, tense);
+  if (scope !== 'tournament') return parts;
+  const rules = TOURNAMENT_WORDS[T[locale] ? locale : 'en'] ?? [];
+  return parts.map((p) => (typeof p === 'string' ? rules.reduce((acc, [re, to]) => acc.replace(re, to), p) : p));
+}
+
+function renderInsightRaw(
   insight: Insight, data: SeasonInsights, locale: string, tense: InsightTense = 'present',
 ): InsightPart[] {
   const lang = T[locale] ? locale : 'en';

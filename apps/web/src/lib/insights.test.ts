@@ -81,3 +81,14 @@ describe('pickDailyInsight', () => {
     expect(pickDailyInsight([], 's1', '2026-10-19')).toBeNull();
   });
 });
+
+describe('insights en torneos', () => {
+  it('«torneo» en vez de «temporada» y fuera las rachas', async () => {
+    const { renderInsight, TOURNAMENT_SKIP } = await import('./insights');
+    const data = { teams: { a: { name: 'SL Benfica' }, b: { name: 'AD Valongo' } }, players: {}, matches: { m: { homeTeamId: 'a', awayTeamId: 'b' } }, insights: [] } as never;
+    const ins = { id: 'x', kind: 'biggest_win', priority: 1, teamIds: [], playerIds: [], matchId: 'm', values: { home: 6, away: 1 } } as never;
+    const text = renderInsight(ins, data, 'es', 'past', 'tournament').map((p) => (typeof p === 'string' ? p : p.text)).join('');
+    expect(text).toBe('La mayor goleada del torneo: SL Benfica 6-1 AD Valongo.');
+    expect(TOURNAMENT_SKIP.has('win_streak')).toBe(true);
+  });
+});

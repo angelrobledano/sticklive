@@ -20,7 +20,7 @@ import { slugifyPlayerName } from '../fep/fep-ficha.parser.js';
 import { fppGet } from './fpp-client.js';
 import { FPP_BASE_URL } from './fpp-structure.js';
 import { FPP_SCRAPER_KEY } from './fpp.scraper.js';
-import { FPP_PLAYER_PREFIX, parseFppJogo, parseFppTimeline, splitPtName, type FppLineupEntry } from './fpp-ficha.parser.js';
+import { FPP_PLAYER_PREFIX, parseFppJogo, parseFppTimeline, splitPtName, fppGoalsByPlayer, type FppLineupEntry } from './fpp-ficha.parser.js';
 
 const log = createLogger({ service: 'fpp-ficha' });
 
@@ -130,6 +130,15 @@ export async function processFppFicha(t: FppFichaTarget): Promise<{ events: numb
   const events = jogo.timelineQuery
     ? parseFppTimeline(await fppGet(`/Views/ajax_jogo.php?${jogo.timelineQuery}`), jogoKey, players)
     : [];
+
+  // Goles por jugador desde el timeline: la ficha de la FPP no los trae en la
+  // alineación y los goleadores de la temporada salen de match_lineups.goals
+  // (Elite Cup 2026/27 sin goleadores, 2/11/2026).
+  const goalsByRef = fppGoalsByPlayer(events);
+  for (const l of lineups) {
+    const n = l.playerSourceRef ? goalsByRef.get(l.playerSourceRef) : undefined;
+    if (n) l.goals = n;
+  }
 
   await withTransaction(async (client) => {
     if (lineups.length > 0) await replaceMatchLineups(t.matchId, lineups, client);

@@ -1,7 +1,7 @@
 ﻿import type { ReactNode } from 'react';
 import type { CompetitionSummary as CompetitionSummaryData } from '@/lib/content-summary';
 import type { SeasonInsights } from '@/lib/api/types';
-import { isRenderable, pickDailyInsight, renderInsight, type InsightPart } from '@/lib/insights';
+import { isRenderable, pickDailyInsight, renderInsight, TOURNAMENT_SKIP, type InsightPart } from '@/lib/insights';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
@@ -180,7 +180,10 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
   const { leader, featured, topScorer, figures, matchday, podium } = data;
   // Con medallero el campeón ya sale en él (oro).
   const champion = podium ? null : data.champion;
-  const facts = insights ? insights.insights.filter((i) => isRenderable(i, insights)) : [];
+  const scope = data.kind === 'tournament' ? 'tournament' : 'league';
+  const facts = insights
+    ? insights.insights.filter((i) => isRenderable(i, insights) && !(scope === 'tournament' && TOURNAMENT_SKIP.has(i.kind)))
+    : [];
   const daily = insights && seed && day ? pickDailyInsight(facts, seed, day) : null;
   const rest = facts.filter((i) => i !== daily);
   const hasDiscipline = Boolean(insights?.discipline && insights.discipline.reds.length > 0);
@@ -330,7 +333,7 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-wider text-rink-passion dark:text-rose-400">{c.didYouKnow}</p>
             <p className="mt-1 text-[15px] font-medium leading-snug text-slate-800 dark:text-slate-100">
-              <Sentence parts={renderInsight(daily, insights, locale, data.status === 'finished' ? 'past' : 'present')} />
+              <Sentence parts={renderInsight(daily, insights, locale, data.status === 'finished' ? 'past' : 'present', scope)} />
             </p>
           </div>
         </div>
@@ -384,7 +387,7 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
           </summary>
           <ul className="mt-2 space-y-1.5 text-slate-700 dark:text-slate-300">
             {rest.map((i) => (
-              <li key={i.id} className="leading-snug"><Sentence parts={renderInsight(i, insights, locale, data.status === 'finished' ? 'past' : 'present')} /></li>
+              <li key={i.id} className="leading-snug"><Sentence parts={renderInsight(i, insights, locale, data.status === 'finished' ? 'past' : 'present', scope)} /></li>
             ))}
           </ul>
         </details>

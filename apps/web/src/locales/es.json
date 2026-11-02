@@ -340,7 +340,7 @@
     "current": "actual",
     "upcoming": "Próximos",
     "live_now": "En directo ahora",
-    "change_season_hint": "Al cambiar la temporada se carga su clasificación.",
+    "change_season_hint": "Al cambiar la temporada se cargan sus partidos y resultados.",
     "prev_week": "Semana anterior",
     "next_week": "Semana siguiente"
   },
