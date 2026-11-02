@@ -295,14 +295,15 @@ export function LineupsTab({ data }: { data: MatchDetail }) {
 
   return (
     <div className="space-y-4">
-      {/* Cinco inicial sobre la pista — visitante arriba, local abajo */}
-      <StartingFiveRink
+      {/* Cinco inicial sobre la pista — visitante arriba, local abajo. Si el
+          acta no marca titulares (actas autonómicas), no se pinta una pista vacía. */}
+      {(starters('home').length > 0 || starters('away').length > 0) && <StartingFiveRink
         home={starters('home')}
         away={starters('away')}
         homeName={data.match.homeTeam?.shortName ?? data.match.homeTeam?.name ?? ''}
         awayName={data.match.awayTeam?.shortName ?? data.match.awayTeam?.name ?? ''}
         matchId={data.match.id}
-      />
+      />}
       {/* Solo renderizar la tarjeta del equipo si tiene jugadores */}
       {teams.filter(({ players }) => players.length > 0).map(({ team, label, players }) => (
         <div key={team.id} className="card p-4">
