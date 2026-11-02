@@ -60,6 +60,7 @@ const SERVICIOS = [
   'apps/etl/src/scrape-health-watch.ts',      // vigilante diario de salud del scraping (I3)
   'apps/etl/src/integrity-check.ts',          // check diario de integridad de datos (#231)
   'apps/etl/src/standings-final.ts',          // clasificación final de temporadas cerradas (C7)
+  'apps/etl/src/sync-sidgad-api.ts',          // pabellones y fichas de jugador (API sidgad)
   'apps/etl/src/audit-integrity-report.ts',   // informe histórico versionado, a mano (#237)
 ];
 

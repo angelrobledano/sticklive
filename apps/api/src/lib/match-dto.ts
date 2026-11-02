@@ -40,6 +40,8 @@ export interface MatchDtoRow {
   finished_at: Date | string | null;
   venue_name: string | null;
   venue_city: string | null;
+  venue_street?: string | null;
+  venue_postal_code?: string | null;
   referee: string | null;
   source_ref: string | null;
   video_url: string | null;
@@ -344,7 +346,13 @@ export function buildMatchDetail(
     penalties:    (row.home_pen != null || row.away_pen != null)
       ? { home: row.home_pen, away: row.away_pen } : null,
     penaltyShootout: row.penalty_shootout ?? null,
-    venue: row.venue_name ? { name: row.venue_name, city: row.venue_city } : null,
+    venue: row.venue_name
+      ? {
+          name: row.venue_name, city: row.venue_city,
+          ...(row.venue_street ? { street: row.venue_street } : {}),
+          ...(row.venue_postal_code ? { postalCode: row.venue_postal_code } : {}),
+        }
+      : null,
     referee:     row.referee,
     sourceRef:   row.source_ref,
     videoUrl:    row.video_url,

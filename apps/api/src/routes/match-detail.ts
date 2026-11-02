@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { db } from '@sports/db';
+import { venueKeySql, db } from '@sports/db';
 import { logger } from '@sports/logger';
 import { isUuid } from '../lib/uuid.js';
 import { captureRouteError } from '../lib/route-error.js';
@@ -39,6 +39,8 @@ matchDetailRouter.get('/:id', async (c) => {
           m.home_goals_reg, m.away_goals_reg, m.home_pen, m.away_pen, m.win_type, m.winner_team_id, m.penalty_shootout,
           m.scheduled_at, m.started_at, m.finished_at,
           m.venue_name, m.venue_city, m.referee, m.source_ref, m.video_url,
+          vn.street       AS venue_street,
+          vn.postal_code  AS venue_postal_code,
           m.live_period, m.live_clock_seconds, m.live_clock_at, m.live_is_halftime,
           ht.id           AS home_team_id,
           COALESCE(ht.display_name, ht.name) AS home_team_name,
@@ -67,6 +69,12 @@ matchDetailRouter.get('/:id', async (c) => {
         LEFT JOIN competitions comp ON comp.id = s.competition_id
         LEFT JOIN rounds r         ON r.id = m.round_id
         LEFT JOIN phases ph        ON ph.id = COALESCE(m.phase_id, r.phase_id)
+        -- Dirección del pabellón (API de sidgad, migración 104), por nombre.
+        LEFT JOIN LATERAL (
+          SELECT v.street, v.postal_code FROM venues v
+           WHERE m.venue_name IS NOT NULL AND v.name_key = ${venueKeySql('m.venue_name')}
+           LIMIT 1
+        ) vn ON TRUE
         WHERE m.id = $1
           AND s.data_quality = 'ok'
           AND comp.data_quality = 'ok'

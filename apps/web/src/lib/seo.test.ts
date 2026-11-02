@@ -434,6 +434,14 @@ describe('matchJsonLd (F3-6)', () => {
     });
   });
 
+  it('dirección del catálogo de pabellones: calle y código postal, aunque falte la ciudad', () => {
+    const ld = matchJsonLd({ ...base, status: 'scheduled', venue: { name: "PALAU D'ESPORTS DE REUS", city: null, street: 'C/ Escornalbou,19', postalCode: '43203' } })!;
+    expect(ld['location']).toEqual({
+      '@type': 'Place', name: "PALAU D'ESPORTS DE REUS",
+      address: { '@type': 'PostalAddress', streetAddress: 'C/ Escornalbou,19', postalCode: '43203' },
+    });
+  });
+
   it('sin sede completa no emite el evento (no se inventa location)', () => {
     expect(matchJsonLd({ ...base, status: 'scheduled', venue: null })).toBeNull();
     expect(matchJsonLd({ ...base, status: 'scheduled', venue: { name: 'Palau', city: null } })).toBeNull();

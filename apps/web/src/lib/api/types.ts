@@ -29,6 +29,9 @@ export interface PenaltyKick {
 export interface MatchVenue {
   name: string;
   city: string | null;
+  /** Dirección del pabellón (API de sidgad, migración 104). */
+  street?: string | null;
+  postalCode?: string | null;
 }
 
 /**

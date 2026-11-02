@@ -145,6 +145,15 @@ while true; do
     $LOCK node dist/apps/etl/src/run-pipeline.js --entity=fichas-pendientes || true
     touch "$ALIVE"   # latido entre fases (#146)
 
+    # Pabellones y una tanda de fichas de jugador desde la API de sidgad
+    # (acceso de la RFEP, uso acotado: ver apps/etl/src/sync-sidgad-api.ts).
+    # Sin SIDGAD_API_TOKEN no hace nada. Va antes de las fotos para que estas
+    # respeten la URL exacta que da la ficha.
+    echo "[scheduler] sync-sidgad-api $(date -u +%T)"
+    $LOCK node dist/apps/etl/src/sync-sidgad-api.js --venues --players="${SIDGAD_API_PLAYERS_PER_DAY:-600}" \
+      || echo "[scheduler] sync-sidgad-api falló (seguimos)"
+    touch "$ALIVE"
+
     # Fotos de jugador: rellena/repara `photo_url`. El scraper ya no la inventa;
     # este verificador comprueba qué fichero existe de verdad en el CDN (patrones
     # `{id}.jpg` y `{id}_{n}.jpg`) y limpia a NULL si no hay ninguna. Va tras las

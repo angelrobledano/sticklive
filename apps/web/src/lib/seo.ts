@@ -503,8 +503,9 @@ export function competitionJsonLd(opts: {
  *
  * Google exige `location` (Place con `name` y `address`) en los eventos y avisa
  * de «falta location» si no está (Search Console, 30/10/2026). Criterio: solo se
- * emite el evento con la sede REAL del partido (pabellón y ciudad que trae la
- * fuente); sin ella devuelve `null` y la página no lleva marcado de evento.
+ * emite el evento con la sede REAL del partido: pabellón con su ciudad, o con
+ * calle y código postal del catálogo oficial de pabellones (API de sidgad);
+ * sin ella devuelve `null` y la página no lleva marcado de evento.
  * Nunca se rellena con la ciudad del equipo local (puede ser pista neutral, un
  * torneo o una final four).
  */
@@ -515,11 +516,14 @@ export function matchJsonLd(opts: {
   away: { id?: string | null; name: string };
   scheduledAt?: string | null;
   status: string;
-  venue?: { name?: string | null; city?: string | null } | null;
+  venue?: { name?: string | null; city?: string | null; street?: string | null; postalCode?: string | null } | null;
 }): Record<string, unknown> | null {
   const venueName = opts.venue?.name?.trim();
   const venueCity = opts.venue?.city?.trim();
-  if (!venueName || !venueCity) return null;
+  const street = opts.venue?.street?.trim();
+  const postalCode = opts.venue?.postalCode?.trim();
+  // Dirección real: ciudad, o calle con código postal del catálogo de pabellones.
+  if (!venueName || !(venueCity || (street && postalCode))) return null;
   const team = (side: { id?: string | null; name: string }) => ({
     '@type': 'SportsTeam',
     name: side.name,
@@ -545,7 +549,12 @@ export function matchJsonLd(opts: {
     location: {
       '@type': 'Place',
       name: venueName,
-      address: { '@type': 'PostalAddress', addressLocality: venueCity },
+      address: {
+        '@type': 'PostalAddress',
+        ...(street ? { streetAddress: street } : {}),
+        ...(postalCode ? { postalCode } : {}),
+        ...(venueCity ? { addressLocality: venueCity } : {}),
+      },
     },
     homeTeam: team(opts.home),
     awayTeam: team(opts.away),
