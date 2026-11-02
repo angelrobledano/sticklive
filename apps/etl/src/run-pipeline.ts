@@ -28,6 +28,7 @@ import { scrapeRunStatus } from './scrape-log-status.js';
 import { acquireEtlLock } from './etl-lock.js';
 import { planSourceStructure, type PhaseKind, type StructureRow, type ScrapedMatch } from '@sports/shared-types';
 import { reconcileSyntheticMatches, fillVenueCity } from '@sports/db';
+import { refreshDue } from './refresh-cadence.js';
 import { applyStructurePlan, assignStructure, declaredKindFromFormat, pruneAfterLoad, type AppliedStructure } from './structure/apply-structure.js';
 
 // Los scrapers viven en apps/scraper — importamos via ruta relativa (ts-node lo resuelve)
@@ -241,8 +242,19 @@ async function runMultiCompetition(
   entity: 'calendar' | 'standings',
   dryRun: boolean,
 ): Promise<void> {
-  const plan = await getActiveScrapePlan(FEP_SCRAPER_KEY);
-  log.info({ count: plan.length, entity, concurrency: SCRAPE_CONCURRENCY }, '🗂️  Modo multi-competición (competition_sources)');
+  const fullPlan = await getActiveScrapePlan(FEP_SCRAPER_KEY);
+  // Ritmo (refresh-cadence): cada hora solo las competiciones con partidos en
+  // las 24 h anteriores o siguientes; el resto cada 6 h; nada de madrugada.
+  const seasonIds = fullPlan.map((i) => i.seasonId).filter((s): s is string => !!s);
+  const near = new Set((await db.query<{ season_id: string }>(
+    `SELECT DISTINCT season_id FROM matches
+      WHERE season_id = ANY($1) AND scheduled_at BETWEEN NOW() - INTERVAL '24 hours' AND NOW() + INTERVAL '24 hours'`,
+    [seasonIds],
+  )).rows.map((r) => r.season_id));
+  const now = new Date();
+  const plan = fullPlan.filter((i) => refreshDue(!!i.seasonId && near.has(i.seasonId), now));
+  log.info({ count: plan.length, total: fullPlan.length, near: near.size, entity, concurrency: SCRAPE_CONCURRENCY },
+    '🗂️  Modo multi-competición (competition_sources)');
 
   let done = 0;
   let skipped = 0;
