@@ -233,7 +233,20 @@ export function CompetitionClient({ data, seasons, competitionId, stats, summary
         id={`competition-panel-${visibleTabs.indexOf(currentTab)}`}
         aria-labelledby={`competition-tab-${visibleTabs.indexOf(currentTab)}`}
       >
-      {currentTab === 'Clasificación' && <StandingsTab standings={data.standings} />}
+      {currentTab === 'Clasificación' && (
+        // Escritorio (auditoría UX, estructural 2): clasificación y jornada a
+        // la vez. En móvil, solo la clasificación, como siempre.
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start lg:gap-6">
+          <StandingsTab standings={data.standings} />
+          {visibleTabs.includes('Jornadas') && (
+            <div className="hidden lg:block">
+              <Suspense fallback={<div className="card h-40 animate-pulse" aria-hidden="true" />}>
+                <GameweeksTab rounds={data.rounds} matches={data.matches} />
+              </Suspense>
+            </div>
+          )}
+        </div>
+      )}
       {currentTab === 'Jornadas'      && (
         <Suspense fallback={<div className="card h-40 animate-pulse" aria-hidden="true" />}>
           <GameweeksTab rounds={data.rounds} matches={data.matches} />

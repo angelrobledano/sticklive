@@ -198,7 +198,7 @@ export default async function CompetitionPage(props: Props) {
   );
 
   return (
-    <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
+    <div data-wide className="px-4 py-4 max-w-2xl lg:max-w-6xl mx-auto space-y-4">
       <JsonLd data={competitionLd} />
       <JsonLd data={breadcrumbLd} />
 
