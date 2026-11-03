@@ -152,7 +152,7 @@ function Tile({ href, label, children }: { href: string | null; label: string; c
   );
   const cls = 'block h-full min-w-0 rounded-lg border border-slate-200 p-3 dark:border-white/[0.06]';
   return (
-    <li className="w-[78%] shrink-0 snap-start sm:w-auto">
+    <li className="min-w-0">
       {href ? (
         <Link href={href} className={`${cls} transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03]`}>{body}</Link>
       ) : (
@@ -241,8 +241,9 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
         </div>
       )}
 
-      <ul className={`-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 scrollbar-none sm:mx-0 sm:grid sm:overflow-visible sm:px-0 sm:pb-0 ${
-        tiles >= 3 ? 'sm:grid-cols-3' : tiles === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}>
+      {/* Móvil: rejilla de 2 en vez de carrusel cortado sin indicador (auditoría UX #9). */}
+      <ul className={`grid grid-cols-2 gap-2 ${
+        tiles >= 3 ? 'sm:grid-cols-3' : tiles === 2 ? 'sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-1'}`}>
         {champion && (
           <Tile href={`/teams/${champion.teamId}`} label={c.champion}>
             <div className="flex items-center gap-2">
