@@ -3,6 +3,8 @@
 *Documento de analítica de producto · listo para ingeniería y producto*
 *Versión 1.0 · 18 de junio de 2026 · Autor: Product Analytics*
 
+> **Nota (03/11/2026):** el inventario de pantallas (§3.1) y el catálogo de eventos (§7) de este documento están desactualizados. La versión vigente, con las pantallas nuevas (hubs de federación y país, clubes, favoritos agrupados), los eventos nuevos y los fallos de medición corregidos, está en [TRACKING_POSTHOG.md](./TRACKING_POSTHOG.md). Este documento sigue valiendo para el porqué: North Star, preguntas de negocio y método.
+
 ---
 
 ## 0. Cómo leer este documento y alineación con el método
