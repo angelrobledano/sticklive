@@ -163,6 +163,9 @@ Paleta sobria de grises azulados (slate) sobre la que el granate de identidad y 
 
 **Character:** Inter aporta neutralidad legible y firme para la interfaz; el monoespaciado potente da a marcadores y estadísticas un aire de marcador deportivo y evita el "baile" de cifras al actualizarse en vivo.
 
+### Tamaño mínimo (auditoría UX 03/11/2026)
+- Texto que informa (metadatos, fechas, nombres secundarios): 11 px como mínimo. Los 10 px quedan para etiquetas en mayúsculas (`label-sm`, `label-xs`) e insignias de tamaño fijo.
+
 ### Hierarchy
 - **Score** (mono, 700, hasta 3rem, `tracking-tighter`, `tabular-nums`): marcador principal en la ficha de partido. En tarjeta de lista baja a ~1.5rem.
 - **Display** (Inter, 700, ~1.125rem): marca "Stick Live", nombres de equipo en la ficha, títulos de bloque.

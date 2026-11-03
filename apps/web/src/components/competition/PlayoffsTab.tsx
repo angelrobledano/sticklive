@@ -154,7 +154,7 @@ export function SeriesCard({ serie, label, isFinal = false }: { serie: PlayoffSe
                         ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-rink-passion'
                         : 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400'
                   }`}>
-              <span className="text-[10px] tabular-nums opacity-60">{i + 1}</span>
+              <span className="text-[11px] tabular-nums opacity-60">{i + 1}</span>
               {played ? (
                 <>
                   <span className={winnerId === g.homeTeam.id ? 'font-bold' : 'opacity-70'}>{homeAbbr}</span>

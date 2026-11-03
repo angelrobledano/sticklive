@@ -225,7 +225,7 @@ function StandingsTable({
                   {row.points}
                 </span>
                 {row.penalizationPoints < 0 && (
-                  <span className="text-[10px] font-bold text-red-600 dark:text-red-400 tabular-nums leading-none">
+                  <span className="text-[11px] font-bold text-red-600 dark:text-red-400 tabular-nums leading-none">
                     {row.penalizationPoints}
                   </span>
                 )}
@@ -260,7 +260,7 @@ function StandingsTable({
           {legend.map((z) => (
             <li key={`${z.kind}|${z.target ?? ''}`} className="flex items-center gap-1">
               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ZONE_STYLE[z.kind].dot}`} aria-hidden="true" />
-              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
                 {/* Sin zonas declaradas se conservan los textos de antes ("Playoffs (1º–8º)"). */}
                 {z.kind === 'promotion_playoff' && !z.target && !rows.some((r) => r.zone)
                   ? t('standings.playoffs_zone')

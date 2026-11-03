@@ -282,7 +282,7 @@ export function MatchHeader({ data, sseStatus, lastUpdateAt = null, serverStale 
             {/* #284: cuándo se actualizó por última vez / posible desfase. */}
             {freshness && (
               <span
-                className={`text-[10px] font-normal normal-case tracking-normal ${
+                className={`text-[11px] font-normal normal-case tracking-normal ${
                   freshness.state === 'down'
                     ? 'text-rose-500'
                     : freshness.state === 'stale'

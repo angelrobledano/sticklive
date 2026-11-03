@@ -261,7 +261,7 @@ export function PremiumBanner({ deviceId }: { deviceId: string }) {
 
         {/* Nota de entorno de pruebas (solo aplica al flujo Redsys) */}
         {PAYMENT_PROVIDER === 'redsys' && (
-          <p className="text-[10px] text-white/40 text-center pt-1">
+          <p className="text-[11px] text-white/40 text-center pt-1">
             {t('settings.premium_sandbox')}
           </p>
         )}

@@ -292,7 +292,7 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
                 {r.competitionShort ?? r.competitionName}
               </p>
               {r.competitionShort && (
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{r.competitionName}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{r.competitionName}</p>
               )}
             </div>
             {cols.map((c) => <Fragment key={c}>{cell(r, c)}</Fragment>)}
@@ -346,7 +346,7 @@ function CareerSection({ career }: { career: PlayerCareer }) {
 
             <Link
               href={competitionPath(season.competitionId, season.competitionSlug, season.seasonId)}
-              className="inline-block max-w-full truncate text-[10px] font-semibold text-slate-500 dark:text-slate-400 hover:text-rink-passion dark:hover:text-rink-passion"
+              className="inline-block max-w-full truncate text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:text-rink-passion dark:hover:text-rink-passion"
             >
               {season.competitionShort ?? season.competitionName}
             </Link>

@@ -291,7 +291,7 @@ function RegionAccordion({
         <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex-1 truncate">
           {region}
         </span>
-        <span className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums">{comps.length}</span>
+        <span className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">{comps.length}</span>
         <ChevronDown open={open} />
       </button>
       {open && (
@@ -426,7 +426,7 @@ function CountryAccordion({
                            group-hover:text-slate-800 dark:group-hover:text-slate-100 transition-colors">
             {label}
           </span>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums font-medium mr-1">
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums font-medium mr-1">
             {total}
           </span>
           <ChevronDown open={open} />
@@ -900,7 +900,7 @@ export function CompetitionsList({
                   <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300 flex-1">
                     {tt(t, 'competitions.international', 'Internacional')}
                   </span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums font-medium">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums font-medium">
                     {tree.international.length}
                   </span>
                 </div>

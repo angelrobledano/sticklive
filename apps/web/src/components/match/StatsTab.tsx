@@ -123,7 +123,7 @@ export function StatsTab({ data }: { data: MatchDetail }) {
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
               {(stats.homeDirectFouls?.total ?? 0) > 0 ? Math.round(((stats.homeDirectFouls?.scored ?? 0) / stats.homeDirectFouls!.total) * 100) : 0}%
             </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 flex-1 text-center px-3">{t('match_detail.direct_fouls_efficiency')}</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 flex-1 text-center px-3">{t('match_detail.direct_fouls_efficiency')}</span>
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
               {(stats.awayDirectFouls?.total ?? 0) > 0 ? Math.round(((stats.awayDirectFouls?.scored ?? 0) / stats.awayDirectFouls!.total) * 100) : 0}%
             </span>
@@ -138,7 +138,7 @@ export function StatsTab({ data }: { data: MatchDetail }) {
           <StatRow label={t('hockey_stats.penalties_scored')} home={stats.homePenalties.scored} away={stats.awayPenalties.scored} max={Math.max(stats.homePenalties.total, stats.awayPenalties.total, 1)} />
           <div className="flex justify-between items-baseline pt-1 border-t border-slate-100 dark:border-slate-800">
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{homePenEfic}%</span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 flex-1 text-center px-3">{t('match_detail.penalties_efficiency')}</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 flex-1 text-center px-3">{t('match_detail.penalties_efficiency')}</span>
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{awayPenEfic}%</span>
           </div>
         </>

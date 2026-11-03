@@ -153,7 +153,7 @@ export function TeamStatsStory({ stats, matches, teamId }: { stats: TeamSeasonSt
           ] as const).map(([v, l, extra]) => (
             <div key={l} className={`rounded-lg bg-slate-50 px-1 py-2 dark:bg-slate-800/60 ${extra}`}>
               <p className="font-score text-lg font-bold tabular-nums text-slate-900 dark:text-slate-50">{v}</p>
-              <p className="text-[10px] leading-tight text-slate-500 dark:text-slate-400">{l}</p>
+              <p className="text-[11px] leading-tight text-slate-500 dark:text-slate-400">{l}</p>
             </div>
           ))}
         </div>
@@ -184,7 +184,7 @@ export function TeamStatsStory({ stats, matches, teamId }: { stats: TeamSeasonSt
           ] as const).map(([v, l]) => (
             <div key={l} className="rounded-lg bg-slate-50 px-1 py-2 dark:bg-slate-800/60">
               <p className="font-score text-base font-bold tabular-nums text-slate-900 dark:text-slate-50">{v}</p>
-              <p className="text-[10px] leading-tight text-slate-500 dark:text-slate-400">{l}</p>
+              <p className="text-[11px] leading-tight text-slate-500 dark:text-slate-400">{l}</p>
             </div>
           ))}
         </div>

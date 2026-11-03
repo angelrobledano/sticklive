@@ -148,7 +148,7 @@ function useCenter(match: Match, showDate: boolean): { node: React.ReactNode; te
       <>
         {scoreLine('text-slate-900 dark:text-slate-50')}
         {pen && (
-          <span className="block text-[10px] font-semibold tabular-nums leading-none text-slate-500 dark:text-slate-400">
+          <span className="block text-[11px] font-semibold tabular-nums leading-none text-slate-500 dark:text-slate-400">
             {t('match_states.penalties_label')} {pen}
           </span>
         )}

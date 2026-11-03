@@ -66,7 +66,7 @@ function CalendarRow({ match, teamId, roundLabel }: { match: TeamMatchSummary; t
           <span className="truncate text-[10px] font-bold uppercase tracking-wide text-rink-passion dark:text-rose-400">{roundLabel}</span>
         )}
         <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">{day}</span>
-        <span className="text-[10px] text-slate-500 dark:text-slate-400">{showScore ? weekday : `${weekday} ${hour}`}</span>
+        <span className="text-[11px] text-slate-500 dark:text-slate-400">{showScore ? weekday : `${weekday} ${hour}`}</span>
       </div>
 
       {/* Quién: local arriba, visitante abajo */}

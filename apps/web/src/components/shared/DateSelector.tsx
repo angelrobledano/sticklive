@@ -135,7 +135,7 @@ function DayChipImpl({ dateKey, selected, outOfRange, marked = false, todayKey, 
                             ${isActive ? 'text-rink-passion' : 'text-slate-700 dark:text-slate-200'}`}>
             {date.getDate()}
           </span>
-          <span className="text-[10px] leading-none mt-0.5 opacity-70">
+          <span className="text-[11px] leading-none mt-0.5 opacity-70">
             {monthAbbr(date, locale)}
           </span>
         </>

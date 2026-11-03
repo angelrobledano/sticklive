@@ -67,20 +67,20 @@ function RinkChip({ p, accent }: { p: RinkPlayer; accent: boolean }) {
         />
         {/* Dorsal en mini-badge, color del equipo */}
         <span className={`absolute -bottom-1 -right-1 min-w-[16px] h-4 px-0.5 rounded-full
-                          flex items-center justify-center font-score text-[10px] font-bold ${
+                          flex items-center justify-center font-score text-[11px] font-bold ${
           accent ? 'bg-rink-passion text-white' : 'bg-white text-slate-800 border border-slate-300'
         }`}>
           {p.jerseyNumber ?? '–'}
         </span>
         {p.isCaptain && (
           <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-700 text-white
-                           text-[10px] font-bold flex items-center justify-center">
+                           text-[11px] font-bold flex items-center justify-center">
             {tt(t, 'match_detail.badge_captain', 'C')}
           </span>
         )}
       </span>
       <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 max-w-[80px] truncate
-                       whitespace-nowrap rounded px-1 py-px text-[10px] font-semibold leading-tight
+                       whitespace-nowrap rounded px-1 py-px text-[11px] font-semibold leading-tight
                        text-white bg-slate-900/65">
         {surname}
       </span>
@@ -208,7 +208,7 @@ function StartingFiveRink({ home, away, homeName, awayName, matchId }: {
         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
           {t('match_detail.starter')}
         </span>
-        <span className="flex items-center gap-3 text-[10px] text-slate-500 dark:text-slate-400">
+        <span className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-full bg-rink-passion inline-block" />{homeName}
           </span>
@@ -322,16 +322,16 @@ export function LineupsTab({ data }: { data: MatchDetail }) {
             ].map(({ code, badge, label: bl, color }) => (
               <div key={code} className="flex items-center gap-1">
                 <span className={`${BADGE_BASE} ${color}`}>{badge}</span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">{bl}</span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">{bl}</span>
               </div>
             ))}
             <div className="flex items-center gap-1">
               <BallIcon size={9} />
-              <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('hockey_stats.goals')}</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">{t('hockey_stats.goals')}</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-[10px]">🅰</span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('hockey_stats.assists')}</span>
+              <span className="text-[11px]">🅰</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">{t('hockey_stats.assists')}</span>
             </div>
           </div>
 
@@ -357,12 +357,12 @@ export function LineupsTab({ data }: { data: MatchDetail }) {
                   )}
                   <span className="flex items-center gap-1 ml-auto shrink-0">
                     {p.goals > 0 && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                         <BallIcon size={8} /> {p.goals}
                       </span>
                     )}
                     {(p.assists ?? 0) > 0 && (
-                      <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                         🅰 {p.assists}
                       </span>
                     )}

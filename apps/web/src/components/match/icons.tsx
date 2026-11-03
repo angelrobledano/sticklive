@@ -20,19 +20,19 @@ export function EventIcon({ type }: { type: MatchEventType | 'accumulated_foul' 
     case 'blue_card':
       return (
         <div className="w-5 h-7 rounded-sm bg-blue-500 flex items-center justify-center shrink-0">
-          <span aria-hidden="true" className="text-white text-[10px] font-extrabold leading-none">A</span>
+          <span aria-hidden="true" className="text-white text-[11px] font-extrabold leading-none">A</span>
         </div>
       );
     case 'red_card':
       return (
         <div className="w-5 h-7 rounded-sm bg-red-600 flex items-center justify-center shrink-0">
-          <span aria-hidden="true" className="text-white text-[10px] font-extrabold leading-none">R</span>
+          <span aria-hidden="true" className="text-white text-[11px] font-extrabold leading-none">R</span>
         </div>
       );
     case 'penalty':
       return (
         <div className="w-7 h-7 rounded-full bg-slate-500 flex items-center justify-center shrink-0">
-          <span aria-hidden="true" className="text-white text-[10px] font-extrabold">P</span>
+          <span aria-hidden="true" className="text-white text-[11px] font-extrabold">P</span>
         </div>
       );
     case 'timeout':

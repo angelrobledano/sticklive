@@ -58,7 +58,7 @@ function Section({ title, count, children }: {
     <section className="mb-3">
       <div className="flex items-center gap-2 px-1 pt-1 pb-1.5">
         <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300 flex-1">{title}</span>
-        <span className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums font-medium">{count}</span>
+        <span className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums font-medium">{count}</span>
       </div>
       <div>{children}</div>
     </section>

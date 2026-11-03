@@ -52,7 +52,7 @@ function LeaderBoard({ title, leaders, valueLabel, extraLabel }: {
               ) : (
                 <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate block">{leaderDisplayName(l)}</span>
               )}
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate block">{clubName(l.teamName ?? l.teamShort ?? '')}</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate block">{clubName(l.teamName ?? l.teamShort ?? '')}</span>
             </div>
             <span className="text-sm font-bold tabular-nums text-slate-900 dark:text-slate-50">{l.value}</span>
             {extraLabel && (

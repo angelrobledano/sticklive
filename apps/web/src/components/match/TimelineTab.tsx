@@ -247,9 +247,9 @@ function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
       <span className={`justify-self-center z-10 px-1 font-mono text-center
                         bg-white dark:bg-slate-900 tabular-nums ${
         sameInstantAsPrev
-          ? 'text-[10px] text-slate-300 dark:text-slate-700'
+          ? 'text-[11px] text-slate-300 dark:text-slate-700'
           : tier === 'low'
-            ? 'text-[10px] text-slate-500 dark:text-slate-400'
+            ? 'text-[11px] text-slate-500 dark:text-slate-400'
             : 'text-[11px] font-semibold text-slate-500 dark:text-slate-400'
       }`}>
         {sameInstantAsPrev ? '·' : fmtEventClock(ev)}

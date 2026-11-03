@@ -42,7 +42,7 @@ export function ClosedSeasonStandings({ rows, locale }: { rows: SeasonStandingRo
                   <Link href={`/teams/${r.teamId}`} className="flex items-center gap-1.5 font-medium text-slate-800 hover:underline dark:text-slate-100">
                     <TeamShield teamId={r.teamId} teamName={r.teamName} size={18} className="shrink-0" />
                     <span className="truncate">{clubName(r.teamName)}</span>
-                    {r.groupName && groups.length > 1 ? <span className="text-[10px] text-slate-400">({c.group} {r.groupName})</span> : null}
+                    {r.groupName && groups.length > 1 ? <span className="text-[11px] text-slate-400">({c.group} {r.groupName})</span> : null}
                   </Link>
                 </td>
                 <td className="px-1.5 py-2 text-right font-score tabular-nums">{r.played}</td>

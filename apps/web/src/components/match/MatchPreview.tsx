@@ -254,7 +254,7 @@ function CrossBars({ data, copy, locale }: { data: MatchPreviewData; copy: Copy;
     <div>
       <div className="mb-2 flex items-end justify-between gap-2">
         <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-300">{copy.cross}</h3>
-        <p className="text-[10px] text-slate-400">{copy.crossHint}</p>
+        <p className="text-[11px] text-slate-400">{copy.crossHint}</p>
       </div>
       <div className="mb-2 flex items-center justify-between text-[11px] font-semibold">
         <span className={`flex items-center gap-1.5 ${SIDE.home.text}`}><span className={`h-2 w-2 rounded-full ${SIDE.home.bar}`} />{clubName(data.home.teamName)}</span>
@@ -340,7 +340,7 @@ function HeadToHead({ data, copy, locale }: { data: MatchPreviewData; copy: Copy
                 <span className="rounded-md bg-slate-100 px-2 py-0.5 font-score text-sm font-bold tabular-nums text-slate-900 dark:bg-slate-800 dark:text-slate-50">
                   {m.homeScore ?? '-'} - {m.awayScore ?? '-'}
                 </span>
-                {m.date && <span className="mt-0.5 text-[10px] text-slate-400">{dateFmt.format(new Date(m.date))}</span>}
+                {m.date && <span className="mt-0.5 text-[11px] text-slate-400">{dateFmt.format(new Date(m.date))}</span>}
               </span>
               <span className="flex min-w-0 items-center gap-1.5">
                 {m.awayTeamId && <TeamShield teamId={m.awayTeamId} teamName={m.awayName} size={18} className="shrink-0" />}
