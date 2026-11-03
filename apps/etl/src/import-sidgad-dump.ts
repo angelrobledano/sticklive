@@ -95,9 +95,22 @@ export async function importPlayers(players: Iterable<DumpPlayer> | AsyncIterabl
 }
 
 export interface MatchStats {
-  inDump: number; inDb: number; venueFilled: number; refereeFilled: number;
+  inDump: number; inDb: number; idCollision: number; venueFilled: number; refereeFilled: number;
   notInDb: Map<string, number>;          // idc → partidos jugados (con acta) que no tenemos
   notFinished: string[]; scoreDiff: string[]; goalsDiff: string[];
+}
+
+const GENERIC = new Set(['CLUB', 'HOCKEY', 'PATI', 'PATIN', 'PATINES', 'PATINATGE', 'HOQUEI', 'DEPORTIVO', 'DEPORTIU',
+  'ESPORTIU', 'SPORT', 'ASSOCIACIO', 'ASOCIACION', 'FUNDACION', 'ESCOLA', 'ESCUELA', 'LIGA', 'UNION', 'SOCIEDAD']);
+function teamWords(v: string): string[] {
+  return v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ')
+    .split(' ').filter((w) => w.length >= 3 && !GENERIC.has(w));
+}
+/** Algún término distintivo en común ("REUS DEPORTIU" ~ "Reus Deportiu Brasilia"). */
+export function sameTeams(ours: string, theirs: string | null): boolean {
+  if (!theirs) return false;
+  const a = new Set(teamWords(ours));
+  return teamWords(theirs).some((w) => a.has(w));
 }
 
 function toInt(v: string | null | undefined): number | null {
@@ -106,13 +119,17 @@ function toInt(v: string | null | undefined): number | null {
 
 export async function importMatches(matches: Iterable<DumpMatch> | AsyncIterable<DumpMatch>, dryRun: boolean): Promise<MatchStats> {
   const { rows } = await db.query<{ id: string; source_ref: string; status: string; home_score: number | null; away_score: number | null;
-    venue_name: string | null; referee: string | null; goals: number }>(
+    venue_name: string | null; referee: string | null; goals: number; home_name: string; away_name: string }>(
     `SELECT m.id, m.source_ref, m.status, m.home_score, m.away_score, m.venue_name, m.referee,
+            ht.name AS home_name, at.name AS away_name,
             (SELECT COUNT(*)::int FROM match_events e WHERE e.match_id = m.id AND e.event_type = 'goal') AS goals
-       FROM matches m WHERE m.source_ref ~ '^fep_match_[0-9]+$'`,
+       FROM matches m
+       JOIN teams ht ON ht.id = m.home_team_id
+       JOIN teams at ON at.id = m.away_team_id
+      WHERE m.source_ref ~ '^fep_match_[0-9]+$'`,
   );
   const ours = new Map(rows.map((r) => [r.source_ref.slice('fep_match_'.length), r]));
-  const st: MatchStats = { inDump: 0, inDb: 0, venueFilled: 0, refereeFilled: 0, notInDb: new Map(), notFinished: [], scoreDiff: [], goalsDiff: [] };
+  const st: MatchStats = { inDump: 0, inDb: 0, idCollision: 0, venueFilled: 0, refereeFilled: 0, notInDb: new Map(), notFinished: [], scoreDiff: [], goalsDiff: [] };
 
   for await (const d of matches) {
     st.inDump++;
@@ -123,6 +140,10 @@ export async function importMatches(matches: Iterable<DumpMatch> | AsyncIterable
       if (played) st.notInDb.set(d.idc, (st.notInDb.get(d.idc) ?? 0) + 1);
       continue;
     }
+    // El mismo número de partido existe en otros portales de sidgad (el
+    // histórico importado de otras fuentes reutiliza `fep_match_{idp}`): sin
+    // equipos que coincidan no es el mismo partido y no se toca.
+    if (!sameTeams(o.home_name, d.home) || !sameTeams(o.away_name, d.away)) { st.idCollision++; continue; }
     st.inDb++;
     const label = `${d.idp} ${d.home ?? '?'} – ${d.away ?? '?'} (${d.date ?? 's/f'})`;
     if (played) {
@@ -161,7 +182,7 @@ export function renderReport(p: PlayerStats | null, m: MatchStats | null, dryRun
       out.push('');
     };
     out.push('## Partidos', '',
-      `En el volcado ${m.inDump}, en nuestra BD ${m.inDb}. Pabellón rellenado en ${m.venueFilled}, árbitros en ${m.refereeFilled}.`, '');
+      `En el volcado ${m.inDump}, en nuestra BD ${m.inDb}, mismo número pero otros equipos (descartados) ${m.idCollision}. Pabellón rellenado en ${m.venueFilled}, árbitros en ${m.refereeFilled}.`, '');
     const missing = [...m.notInDb.entries()].sort((a, b) => b[1] - a[1]);
     out.push(`### Jugados en la fuente que no tenemos (${missing.reduce((s, [, n]) => s + n, 0)}), por competición (idc)`, '');
     for (const [idc, n] of missing) out.push(`- idc ${idc}: ${n}`);
@@ -184,7 +205,7 @@ async function main(): Promise<void> {
     const md = renderReport(p, m, dryRun);
     const reportPath = arg('report');
     if (reportPath) writeFileSync(reportPath, md); else console.log(md);
-    log.info({ players: p && { ...p }, matches: m && { inDump: m.inDump, inDb: m.inDb, venue: m.venueFilled, referee: m.refereeFilled } }, 'Volcado importado');
+    log.info({ players: p && { ...p }, matches: m && { inDump: m.inDump, inDb: m.inDb, collision: m.idCollision, venue: m.venueFilled, referee: m.refereeFilled } }, 'Volcado importado');
   } finally {
     await closeDb();
   }

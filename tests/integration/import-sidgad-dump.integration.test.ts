@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { db, closeDb } from '@sports/db';
 import { limpiar } from './support/db.js';
 import { crearDeporte } from './support/factorias.js';
-import { importPlayers, importMatches, renderReport, niceNationality } from '../../apps/etl/src/import-sidgad-dump.js';
+import { importPlayers, importMatches, renderReport, niceNationality, sameTeams } from '../../apps/etl/src/import-sidgad-dump.js';
 
 beforeEach(async () => { await limpiar(); });
 afterAll(async () => { await closeDb(); });
@@ -52,6 +52,13 @@ describe('import-sidgad-dump', () => {
     expect(st.inDump).toBe(2);
     expect(st.notInDb.get('3568')).toBe(1);
     expect(renderReport(null, st, false)).toContain('idc 3568: 1');
+  });
+
+  it('equipos: mismo club con patrocinador sí, otro club no', () => {
+    expect(sameTeams('Reus Deportiu', 'REUS DEPORTIU BRASILIA')).toBe(true);
+    expect(sameTeams('Girona CH', 'CITYLIFT GIRONA CH')).toBe(true);
+    expect(sameTeams('CP Voltregà', 'C.P. VOLTREGA')).toBe(true);
+    expect(sameTeams('Club Patí Vic', 'H.C. LICEO')).toBe(false);
   });
 
   it('nacionalidad legible', () => {
