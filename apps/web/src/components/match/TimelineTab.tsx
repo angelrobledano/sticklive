@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { track } from '@/lib/analytics';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useT } from '@/lib/i18n';
 import type { MatchDetail } from '@/lib/api/client';
@@ -395,7 +396,8 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
         <div role="group" aria-label={t('match_detail.timeline_detail_aria')}
              className="relative z-10 mb-2 flex justify-end gap-1">
           {(['key', 'all'] as const).map((d) => (
-            <button key={d} type="button" aria-pressed={detail === d} onClick={() => setDetail(d)}
+            <button key={d} type="button" aria-pressed={detail === d}
+                    onClick={() => { setDetail(d); track('timeline_detail_changed', { match_id: data.match.id, detail: d, status: data.match.status }); }}
                     className={`min-h-[36px] rounded-full px-3 text-xs font-semibold transition-colors ${
                       detail === d
                         ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'

@@ -40,3 +40,14 @@ describe('favoriteToggleEvent (#243)', () => {
     expect(favoriteToggleEvent(true, 'team', 't1', 1).event).not.toBe('follow_created');
   });
 });
+
+/** Revisión del plan 03/11/2026: ¿desde dónde se sigue? (estrella, Favoritos, sugeridos). */
+describe('favoriteToggleEvent: source', () => {
+  it('viaja al añadir y al quitar', () => {
+    expect(favoriteToggleEvent(true, 'team', 't1', 1, undefined, 'favorites_suggested').props.source).toBe('favorites_suggested');
+    expect(favoriteToggleEvent(false, 'team', 't1', 0, undefined, 'star').props.source).toBe('star');
+  });
+  it('sin source no se inventa', () => {
+    expect('source' in favoriteToggleEvent(true, 'team', 't1', 1).props).toBe(false);
+  });
+});

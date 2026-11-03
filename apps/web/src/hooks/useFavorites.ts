@@ -23,6 +23,8 @@ type Kind = FavoriteKind;
 export interface FavoriteToggleOptions {
   /** Preset de notificaciones elegido al seguir; viaja como `preset_selected`. */
   preset?: string;
+  /** Desde dónde se sigue; viaja como `source`. */
+  source?: string;
 }
 
 // ── Helpers de localStorage ────────────────────────────────────────────────────
@@ -282,7 +284,7 @@ export function useFavorites() {
     const next = adding ? [...cur, teamId] : cur.filter((id) => id !== teamId);
     writeArr(STORAGE_KEY, next);
     broadcast();
-    const ev = favoriteToggleEvent(adding, 'team', teamId, next.length, opts?.preset);
+    const ev = favoriteToggleEvent(adding, 'team', teamId, next.length, opts?.preset, opts?.source);
     track(ev.event, { ...ev.props });
     setPersonProps({ favorite_teams: next.length });
     void syncPushConfig(); // el emisor de push segmenta por equipos favoritos
@@ -302,7 +304,7 @@ export function useFavorites() {
     const next = adding ? [...cur, competitionId] : cur.filter((id) => id !== competitionId);
     writeArr(LEAGUES_KEY, next);
     broadcast();
-    const ev = favoriteToggleEvent(adding, 'league', competitionId, next.length, opts?.preset);
+    const ev = favoriteToggleEvent(adding, 'league', competitionId, next.length, opts?.preset, opts?.source);
     track(ev.event, { ...ev.props });
     setPersonProps({ favorite_leagues: next.length });
     void syncPushConfig(); // el emisor segmenta por ligas favoritas
@@ -328,7 +330,7 @@ export function useFavorites() {
       localStorage.setItem(FAV_NAMES_KEY, JSON.stringify(names));
     } catch { /* noop */ }
     broadcast();
-    const ev = favoriteToggleEvent(adding, 'player', playerId, next.length, opts?.preset);
+    const ev = favoriteToggleEvent(adding, 'player', playerId, next.length, opts?.preset, opts?.source);
     track(ev.event, { ...ev.props });
     setPersonProps({ favorite_players: next.length });
     void syncPushConfig(); // el emisor segmenta por jugadores favoritos

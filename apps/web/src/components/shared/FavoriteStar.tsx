@@ -54,9 +54,9 @@ export function FavoriteStar({ id, kind, name, className = '', variant = 'icon' 
     // para la misma intención (doble conteo). El preset viaja en el propio
     // evento de favorito; ya no se emite nada desde aquí.
     const preset = wasActive ? undefined : DEFAULT_PRESET;
-    if (kind === 'team') toggle(id, { preset });
-    else if (kind === 'league') toggleLeague(id, { preset });
-    else togglePlayer(id, name, { preset });
+    if (kind === 'team') toggle(id, { preset, source: 'star' });
+    else if (kind === 'league') toggleLeague(id, { preset, source: 'star' });
+    else togglePlayer(id, name, { preset, source: 'star' });
     setToast(t(wasActive ? 'favorites.toast_unfollowed' : 'favorites.toast_following', { name: name ?? '—' }));
 
     // Al EMPEZAR a seguir: preset por defecto 'key_events' (inicio, goles,

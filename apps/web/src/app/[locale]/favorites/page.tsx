@@ -180,17 +180,17 @@ function FavoritesInner() {
     matchCount: filteredTeams.length + filteredLeagues.length,
   });
 
-  const handleToggle = (kind: 'team' | 'league', id: string, name: string) => {
+  const handleToggle = (kind: 'team' | 'league', id: string, name: string, source: string) => {
     const wasActive = kind === 'team' ? isFavorite(id) : isLeagueFavorite(id);
-    if (kind === 'team') toggle(id); else toggleLeague(id);
+    if (kind === 'team') toggle(id, { source }); else toggleLeague(id, { source });
     setToast(t(wasActive ? 'favorites.toast_unfollowed' : 'favorites.toast_following', { name }));
   };
 
-  const Row = ({ id, name, shortName, kind, logoUrl = null }: { id: string; name: string; shortName: string | null; kind: 'team' | 'league'; logoUrl?: string | null }) => {
+  const Row = ({ id, name, shortName, kind, logoUrl = null, source = onboarding ? 'favorites_onboarding' : 'favorites' }: { id: string; name: string; shortName: string | null; kind: 'team' | 'league'; logoUrl?: string | null; source?: string }) => {
     const active = kind === 'team' ? isFavorite(id) : isLeagueFavorite(id);
     return (
       <button
-        onClick={() => handleToggle(kind, id, shortName ?? clubName(name))}
+        onClick={() => handleToggle(kind, id, shortName ?? clubName(name), source)}
         className="w-full flex items-center gap-3 px-4 py-2 min-h-[52px] text-left
                    hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
         aria-pressed={active}
@@ -374,7 +374,7 @@ function FavoritesInner() {
                 </span>
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {suggested.teams.filter((tm) => !favorites.includes(tm.id)).map((tm) => <Row key={tm.id} {...tm} kind="team" />)}
+                {suggested.teams.filter((tm) => !favorites.includes(tm.id)).map((tm) => <Row key={tm.id} {...tm} kind="team" source="favorites_suggested" />)}
               </div>
             </section>
           )}

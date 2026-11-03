@@ -31,6 +31,8 @@
  *  competition_view          competition_id, locale, device_id
  *  team_view                 team_id, locale, device_id
  *  player_view               player_id, locale, device_id        (#242)
+ *  club_view                 club_id | club_slug, locale         (03/11/2026)
+ *  (competition_view lleva competition_slug en las URL legibles)
  *  match_view                match_id, status (scheduled|live|finished),
  *                            previous_status (solo en transiciones)  (#241)
  *  live_match_followed       match_id, season_id, source (open|push)  (#241)
@@ -52,7 +54,8 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { entityViewFromPath, entityIdProp } from '@/lib/analytics-entity';
+import { entityViewFromPath, entityViewProps } from '@/lib/analytics-entity';
+import { SUPPORTED_LOCALES } from '@/lib/locales';
 import { isAnalyticsAllowed, startConsentWatcher, subscribeAnalyticsConsent } from '@/lib/consent-tcf';
 
 startConsentWatcher();
@@ -272,13 +275,17 @@ export function resetIdentity(): void {
 }
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
-const LOCALE_RE = /^\/(es|en|pt|fr|it)(?=\/|$)/;
+const LOCALE_RE = new RegExp(`^/(${SUPPORTED_LOCALES.join('|')})(?=/|$)`);
+/** Fichas servidas por slug: se agregan con las de UUID (`/competitions/:id`). */
+const SLUG_DETAIL_RE = /^\/(competitions|clubs)\/(?!federation\/|country\/)[a-z0-9]+(?:-[a-z0-9]+)*\/?$/;
 
 /** /es/matches/0073f9… → { route: '/matches/:id', locale: 'es' } */
 export function normalizeRoute(pathname: string): { route: string; locale: string | null } {
   const m = pathname.match(LOCALE_RE);
   const locale = m ? m[1]! : null;
-  const route = (pathname.replace(LOCALE_RE, '') || '/').replace(UUID_RE, ':id');
+  const route = (pathname.replace(LOCALE_RE, '') || '/')
+    .replace(UUID_RE, ':id')
+    .replace(SLUG_DETAIL_RE, (_m, kind: string) => `/${kind}/:id`);
   return { route, locale };
 }
 
@@ -335,6 +342,8 @@ export interface FavoriteToggleEvent {
     ref_id: string;
     total_favorites: number;
     preset_selected?: string;
+    /** Superficie: star | favorites | favorites_suggested (revisión 03/11/2026). */
+    source?: string;
   };
 }
 
@@ -355,6 +364,7 @@ export function favoriteToggleEvent(
   refId: string,
   total: number,
   preset?: string,
+  source?: string,
 ): FavoriteToggleEvent {
   return {
     event: adding ? 'favorite_added' : 'favorite_removed',
@@ -364,6 +374,7 @@ export function favoriteToggleEvent(
       total_favorites: total,
       // El preset solo tiene sentido al AÑADIR (al quitar no se eligió ninguno).
       ...(adding && preset ? { preset_selected: preset } : {}),
+      ...(source ? { source } : {}),
     },
   };
 }
@@ -390,10 +401,7 @@ export function AnalyticsPageview() {
       // El pageview normaliza los UUID a `:id`; estas vistas conservan QUÉ
       // competición/equipo se consultó (#171).
       const view = entityViewFromPath(path);
-      if (view) {
-        const idProp = entityIdProp(view.event);
-        ph.capture(view.event, withDevice({ [idProp]: view.id, locale }));
-      }
+      if (view) ph.capture(view.event, withDevice({ ...entityViewProps(view), locale }));
     });
     return true;
   }, []);

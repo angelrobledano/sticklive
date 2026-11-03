@@ -6,6 +6,21 @@ import {
   segmentationProps,
 } from './analytics';
 
+describe('normalizeRoute: slugs y catalán (revisión del plan 03/11/2026)', () => {
+  it('la ficha de competición por slug se agrega con la de UUID', () => {
+    expect(normalizeRoute('/es/competitions/ok-liga-masculina')).toEqual({ route: '/competitions/:id', locale: 'es' });
+  });
+  it('los hubs siguen con su ruta legible', () => {
+    expect(normalizeRoute('/es/competitions/federation/fap').route).toBe('/competitions/federation/fap');
+  });
+  it('clubes', () => {
+    expect(normalizeRoute('/es/clubs/barca').route).toBe('/clubs/:id');
+  });
+  it('catalán como idioma', () => {
+    expect(normalizeRoute('/ca/matches/0073f9aa-1111-4222-8333-444455556666')).toEqual({ route: '/matches/:id', locale: 'ca' });
+  });
+});
+
 describe('normalizeRoute', () => {
   it('normaliza los UUID a :id y extrae el locale', () => {
     expect(normalizeRoute('/es/matches/0073f9aa-1111-4222-8333-444455556666')).toEqual({
