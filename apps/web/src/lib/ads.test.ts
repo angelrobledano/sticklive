@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  adSlotLayout,
   adsEnabled,
   listAdInsertIndex,
   shouldShowInterstitial,
@@ -128,5 +129,16 @@ describe('buildAdsenseConfig', () => {
     expect(buildAdsenseConfig({ interstitial: '0' }).interstitialEnabled).toBe(false);
     expect(buildAdsenseConfig({ interstitial: 'true' }).interstitialEnabled).toBe(false);
     expect(buildAdsenseConfig({}).interstitialEnabled).toBe(false);
+  });
+});
+
+describe('adSlotLayout (auditoría UX #1)', () => {
+  it('las zonas de lista no se expanden a pantalla completa', () => {
+    for (const z of ['home-top', 'home-inline', 'list-inline'] as const) {
+      expect(adSlotLayout(z)).toEqual({ fullWidthResponsive: false });
+    }
+  });
+  it('las zonas de ficha mantienen el formato responsive', () => {
+    expect(adSlotLayout('match-summary')).toEqual({ fullWidthResponsive: true });
   });
 });

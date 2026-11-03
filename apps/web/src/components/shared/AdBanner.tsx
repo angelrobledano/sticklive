@@ -18,12 +18,14 @@
  * interstitial (solo en <AdInterstitial>).
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePremium } from '@/context/PremiumContext';
 import { track } from '@/lib/analytics';
 import {
   adsEnabled,
   adsenseConfig,
+  adSlotLayout,
+  AD_EMPTY_COLLAPSE_MS,
   loadAdsenseScript,
   type AdZone,
 } from '@/lib/ads';
@@ -157,6 +159,20 @@ function AdsenseUnit({ zone, client, slot, className }: {
   const insRef = useRef<HTMLModElement>(null);
   const pushed = useRef(false);
   const impressed = useRef(false);
+  const [empty, setEmpty] = useState(false);
+  const layout = adSlotLayout(zone);
+
+  // Sin creatividad visible a los 3 s (sin relleno, bloqueador, sin
+  // consentimiento): fuera. AdSense no siempre marca `data-ad-status`.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const el = insRef.current;
+      const frame = el?.querySelector('iframe');
+      const filled = el?.getAttribute('data-ad-status') !== 'unfilled' && !!frame && frame.offsetHeight > 0;
+      if (!filled) setEmpty(true);
+    }, AD_EMPTY_COLLAPSE_MS);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Un `push` por unidad, tras montar. El script puede no haber cargado aún:
   // AdSense procesa el array cuando termina de cargar.
@@ -203,6 +219,8 @@ function AdsenseUnit({ zone, client, slot, className }: {
   // con «PUBLICIDAD» en mitad de la lista parece un fallo.
   const reserve = config.height.replace(/^h-/, 'min-h-');
 
+  if (empty) return null;
+
   return (
     <div
       role="complementary"
@@ -224,7 +242,7 @@ function AdsenseUnit({ zone, client, slot, className }: {
         data-ad-client={client}
         data-ad-slot={slot}
         data-ad-format={config.format ?? 'auto'}
-        data-full-width-responsive="true"
+        data-full-width-responsive={layout.fullWidthResponsive ? 'true' : 'false'}
       />
     </div>
   );

@@ -203,3 +203,17 @@ export function loadAdsenseScript(client: string): boolean {
   }
 }
 
+
+/**
+ * Cómo se maqueta cada zona (auditoría UX 03/11/2026, #1). En las listas
+ * (home, jornada) un bloque `full-width-responsive` crecía a 375×375 px en
+ * móvil aunque no hubiera creatividad: hueco blanco antes del primer partido.
+ * Ahí se desactiva (sin recortar: recortar anuncios incumple la política de AdSense). Las fichas mantienen el formato.
+ */
+export function adSlotLayout(zone: AdZone): { fullWidthResponsive: boolean } {
+  const list = zone === 'home-top' || zone === 'home-inline' || zone === 'list-inline';
+  return { fullWidthResponsive: !list };
+}
+
+/** Sin creatividad visible pasado este tiempo, la unidad se colapsa. */
+export const AD_EMPTY_COLLAPSE_MS = 3_000;
