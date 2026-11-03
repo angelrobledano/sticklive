@@ -327,12 +327,12 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
       </ul>
 
       {daily && insights && (
-        <div className="flex gap-3 rounded-lg border-l-4 border-rink-passion bg-rink-passion/[0.06] px-3 py-3 dark:bg-rink-passion/15">
-          <svg aria-hidden="true" viewBox="0 0 24 24" className="mt-0.5 h-5 w-5 shrink-0 text-rink-passion dark:text-rose-400" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <div className="flex gap-3 rounded-lg border-l-4 border-slate-300 bg-slate-50 px-3 py-3 dark:border-slate-600 dark:bg-white/[0.03]">
+          <svg aria-hidden="true" viewBox="0 0 24 24" className="mt-0.5 h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z" />
           </svg>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-rink-passion dark:text-rose-400">{c.didYouKnow}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{c.didYouKnow}</p>
             <p className="mt-1 text-[15px] font-medium leading-snug text-slate-800 dark:text-slate-100">
               <Sentence parts={renderInsight(daily, insights, locale, data.status === 'finished' ? 'past' : 'present', scope)} />
             </p>
@@ -341,7 +341,7 @@ export function CompetitionSummary({ data, locale, insights, seed, day }: {
       )}
 
       {insights?.discipline && insights.discipline.reds.length > 0 && insights.discipline.roundNumber !== null && (
-        <div className="rounded-lg border border-red-200 bg-red-50/70 px-3 py-2.5 dark:border-red-900/40 dark:bg-red-950/20">
+        <div className="rounded-lg border border-slate-200 px-3 py-2.5 dark:border-white/[0.06]">
           <p className="text-[10px] font-bold uppercase tracking-wider text-red-700 dark:text-red-300">
             {c.sentOff} · {c.sentOffRound(insights.discipline.roundNumber)}
           </p>
