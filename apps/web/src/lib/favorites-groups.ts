@@ -66,3 +66,17 @@ export function groupFavoriteLeagues<T extends GroupableLeague>(
 
   return { following, featured, countries };
 }
+
+/**
+ * Liga de la que salen los equipos sugeridos en «¿De qué equipo eres?»
+ * (auditoría UX, estructural 1): la destacada de máxima categoría del país
+ * preferido (OK Liga, Placard, Serie A1) y, si no hay, la primera de tier 1.
+ */
+export function suggestedLeague<T extends {
+  country: string | null; featuredRank: number | null; tier: number | null; season?: { id: string } | null;
+}>(comps: readonly T[], country: string | null): T | null {
+  const top = comps
+    .filter((c) => c.featuredRank != null && c.tier === 1 && c.season?.id)
+    .sort((a, b) => a.featuredRank! - b.featuredRank!);
+  return top.find((c) => c.country === country) ?? top[0] ?? null;
+}

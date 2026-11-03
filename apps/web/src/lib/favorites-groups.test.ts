@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupFavoriteLeagues, type GroupableLeague } from './favorites-groups';
+import { groupFavoriteLeagues, suggestedLeague, type GroupableLeague } from './favorites-groups';
 
 /** Auditoría UX 03/11/2026 #3: Favoritos era una lista alfabética de ~170 ligas. */
 const L = (id: string, o: Partial<GroupableLeague> = {}): GroupableLeague => ({
@@ -38,5 +38,22 @@ describe('groupFavoriteLeagues', () => {
     expect(es.federations.map((f) => f.code)).toEqual(['RFEP', 'FECAPA']);
     expect(es.federations[1]!.leagues.map((l) => l.id)).toEqual(['primera-cat', 'benjami']);
     expect(es.count).toBe(3);
+  });
+});
+
+describe('suggestedLeague (onboarding «¿De qué equipo eres?»)', () => {
+  const c = (id: string, country: string, featuredRank: number | null, tier: number | null) =>
+    ({ id, country, featuredRank, tier, season: { id: `s-${id}` } });
+  const comps = [c('placard', 'PT', 2, 1), c('okliga', 'ES', 1, 1), c('plata', 'ES', 20, 2), c('fem', 'ES', 3, 1)];
+  it('la liga destacada de máxima categoría del país', () => {
+    expect(suggestedLeague(comps, 'PT')?.id).toBe('placard');
+    expect(suggestedLeague(comps, 'ES')?.id).toBe('okliga');
+  });
+  it('sin país o sin liga del país: la primera destacada de tier 1', () => {
+    expect(suggestedLeague(comps, null)?.id).toBe('okliga');
+    expect(suggestedLeague(comps, 'FR')?.id).toBe('okliga');
+  });
+  it('sin temporada no sirve', () => {
+    expect(suggestedLeague([{ ...c('x', 'ES', 1, 1), season: null }], 'ES')).toBeNull();
   });
 });

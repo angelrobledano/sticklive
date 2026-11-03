@@ -14,7 +14,7 @@ import { selectSeasonCandidates, mergeStandingTeams, filterFavorites, type RawSt
 import { getFollowingMatches, type Match } from '@/lib/api/client';
 import { MiGrada } from '@/components/home/MiGrada';
 import { madridTodayKey } from '@/lib/match-time';
-import { groupFavoriteLeagues, type GroupableLeague } from '@/lib/favorites-groups';
+import { groupFavoriteLeagues, suggestedLeague, type GroupableLeague } from '@/lib/favorites-groups';
 import { usePreferredCountry } from '@/hooks/usePreferredCountry';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
@@ -45,6 +45,8 @@ function FavoritesInner() {
   const [query, setQuery] = useState('');
   const [teams, setTeams] = useState<TeamItem[]>([]);
   const [leagues, setLeagues] = useState<LeagueItem[]>([]);
+  const [comps, setComps] = useState<CompItem[]>([]);
+  const [suggested, setSuggested] = useState<{ name: string; teams: TeamItem[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -74,6 +76,7 @@ function FavoritesInner() {
       if (!res.ok) throw new Error(`API ${res.status}`);
       const comps = await res.json();
       const compList = (comps?.competitions ?? []) as CompItem[];
+      setComps(compList);
       setLeagues(compList.map((c) => ({
         id: c.id, name: c.name, shortName: c.shortName, logoUrl: c.logoUrl ?? null,
         country: c.country ?? null, featuredRank: c.featuredRank ?? null, tier: c.tier ?? null,
@@ -104,6 +107,26 @@ function FavoritesInner() {
   useEffect(() => {
     void loadCatalog();
   }, [loadCatalog]);
+
+  // «¿De qué equipo eres?» (auditoría UX, estructural 1): los equipos de la
+  // liga principal del país, para seguir el tuyo de un toque sin buscar.
+  useEffect(() => {
+    const league = suggestedLeague(
+      comps.map((c) => ({ ...c, country: c.country ?? null, featuredRank: c.featuredRank ?? null, tier: c.tier ?? null })),
+      country,
+    );
+    if (!league?.season) { setSuggested(null); return; }
+    let cancelled = false;
+    fetch(`${API_URL}/seasons/${league.season.id}/standings`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((st) => {
+        if (cancelled) return;
+        const rows = (st?.standings ?? []) as RawStandingRow[];
+        setSuggested(rows.length ? { name: clubName(league.name), teams: mergeStandingTeams([rows]) } : null);
+      })
+      .catch(() => { if (!cancelled) setSuggested(null); });
+    return () => { cancelled = true; };
+  }, [comps, country]);
 
   useEffect(() => {
     if (!toast) return;
@@ -209,7 +232,9 @@ function FavoritesInner() {
       )}
 
       <div>
-        <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t('favorites.manage_favs')}</h1>
+        <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+          {onboarding ? tt(t, 'favorites.which_team', '¿De qué equipo eres?') : t('favorites.manage_favs')}
+        </h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1">
           {t('favorites.manage_help')}
         </p>
@@ -331,6 +356,18 @@ function FavoritesInner() {
               {tt(t, 'favorites.search_team_hint', 'Escribe arriba el nombre de tu equipo para seguirlo.')}
             </p>
           </section>
+          {suggested && suggested.teams.some((tm) => !favorites.includes(tm.id)) && (
+            <section className="card overflow-hidden">
+              <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                  {tt(t, 'favorites.suggested_teams', 'Equipos de {league}', { league: suggested.name })}
+                </span>
+              </div>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {suggested.teams.filter((tm) => !favorites.includes(tm.id)).map((tm) => <Row key={tm.id} {...tm} kind="team" />)}
+              </div>
+            </section>
+          )}
           {groups.featured.length > 0 && (
             <section className="card overflow-hidden">
               <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
