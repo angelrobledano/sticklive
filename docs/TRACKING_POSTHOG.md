@@ -172,11 +172,13 @@ La app móvil tiene su propio catálogo (`apps/mobile/src/lib/analytics.ts`: AdM
 
 Paneles en PostHog (proyecto 199175): [Ejecutivo](https://eu.posthog.com/project/199175/dashboard/771080), [Producto](https://eu.posthog.com/project/199175/dashboard/771081), [Operacional](https://eu.posthog.com/project/199175/dashboard/771082) y [Notificaciones · Presets](https://eu.posthog.com/project/199175/dashboard/771051).
 
-**Cambios a hacer en los paneles** tras esta revisión:
+**Añadido el 03/11/2026:**
 
-- *Producto*: añadir el funnel 2 (onboarding), `favorite_added` desglosado por `source`, `timeline_detail_changed` por `detail` en partidos terminados y `home_others_opened` por `auto`.
-- *Producto*: las series de `competition_view` anteriores al 03/11 están infravaloradas. Anotarlo en el panel (anotación del 03/11) y no comparar a través de esa fecha.
-- *Operacional*: añadir un tile «eventos mudos» con los eventos del §4 marcados MUDO y un aviso si alguno de los LIVE baja a 0 en 7 días.
+- *Producto*: [Favoritos por origen](https://eu.posthog.com/project/199175/insights/G30PPPKv), [Onboarding «¿De qué equipo eres?»](https://eu.posthog.com/project/199175/insights/DWwltsoQ), [Búsqueda útil](https://eu.posthog.com/project/199175/insights/h4RAgREt), [Resultados de búsqueda por tipo](https://eu.posthog.com/project/199175/insights/RqeLnCbb), [Vistas de fichas por tipo](https://eu.posthog.com/project/199175/insights/VeKtXRoF), [Competiciones más vistas](https://eu.posthog.com/project/199175/insights/qkvRkyC2), [Cronología: nivel elegido](https://eu.posthog.com/project/199175/insights/3SkamWAc) y [Home: otras competiciones y franja](https://eu.posthog.com/project/199175/insights/pKIXTG4e).
+- *Operacional*: [Eventos clave: esta semana frente a la anterior](https://eu.posthog.com/project/199175/insights/3UqaAC2s). Una fila a 0 que antes tenía datos es instrumentación rota.
+- Anotación de proyecto el 03/11/2026: no comparar `competition_view` a través de esa fecha.
+
+El funnel de activación antiguo (`match_view → favorite_added → push_subscribed → app_installed`) se queda, pero se corta en el paso 3 mientras `push_subscribed` siga mudo (P0 del §9).
 
 ---
 
@@ -204,7 +206,6 @@ La pregunta que más mueve la estrategia sigue siendo: **¿qué tipo y origen de
 |---|---|---|---|
 | **P0** | Verificar el push de extremo a extremo: ¿hay suscripciones? ¿está `POSTHOG_API_KEY` en `.env.prod` del servidor para `api` y `etl`? | `push_subscribed`, `notification_sent` y `notification_opened` no han llegado ni una vez en 60 días. O nadie se suscribe, o la analítica de servidor está apagada. Sin esto no hay CTR ni funnel de re-engagement | En el servidor: `grep -c POSTHOG_API_KEY .env.prod` y `$DC exec postgres psql -U sports_user -d sports_results -c "SELECT (SELECT count(*) FROM push_subscriptions) AS web, (SELECT count(*) FROM push_tokens) AS app"`. Si hay suscripciones y la clave existe, revisar los logs del `etl` al enviar |
 | **P1** | Desplegar los arreglos del 03/11 y añadir la anotación en PostHog | `competition_view` y `club_view` correctos desde ese día | En 24 h, `competition_view` con `competition_slug` presente |
-| **P1** | Actualizar los paneles (§6) | Ver los funnels nuevos | — |
 | **P2** | Medir el onboarding a los 14 días del despliegue | Saber si «¿De qué equipo eres?» aumenta los activados | % de visitas nuevas con ≥1 `favorite_added`, antes y después |
 | **P2** | `onboarding_*` y `locale_changed` mudos: comprobar que se emiten tras el despliegue | Pueden estar bien pero sin uso | Aparición en 7 días |
 | **P3** | Group analytics por competición | Solo si el análisis por competición se vuelve recurrente | — |
