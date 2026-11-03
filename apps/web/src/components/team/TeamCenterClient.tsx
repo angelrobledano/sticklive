@@ -688,7 +688,7 @@ export function TeamCenterClient({ data }: { data: TeamDetailView }) {
       <ClubSection data={data} />
 
       {/* Pestañas */}
-      <div className="flex gap-0 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none">
+      <div className="flex gap-0 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none scroll-fade-x">
         {TABS.map((tab) => (
           <button
             key={tab}

@@ -68,7 +68,7 @@ typography:
     letterSpacing: "0.08em"
   label-xs:
     fontFamily: "var(--font-inter), system-ui, sans-serif"
-    fontSize: "0.5625rem"
+    fontSize: "0.625rem"
     fontWeight: 700
     lineHeight: 1
     letterSpacing: "0.08em"

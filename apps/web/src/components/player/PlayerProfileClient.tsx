@@ -381,7 +381,7 @@ function CareerSection({ career }: { career: PlayerCareer }) {
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{season.seasonName}</span>
               {season.isCurrent && (
-                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-rink-passion/10 text-rink-passion">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-rink-passion/10 text-rink-passion">
                   {t('player.career_current')}
                 </span>
               )}

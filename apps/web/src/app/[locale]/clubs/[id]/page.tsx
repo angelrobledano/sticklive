@@ -91,7 +91,7 @@ function TeamMatchLine({ label, m, locale, next }: { label: string; m: ClubTeamM
             ) : (
               <>
                 {m.result && (
-                  <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded text-[9px] font-black ${RESULT_TONE[m.result]}`}>
+                  <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] font-black ${RESULT_TONE[m.result]}`}>
                     {RESULT_LETTER[locale][m.result]}
                   </span>
                 )}

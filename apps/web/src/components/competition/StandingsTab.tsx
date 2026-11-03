@@ -225,7 +225,7 @@ function StandingsTable({
                   {row.points}
                 </span>
                 {row.penalizationPoints < 0 && (
-                  <span className="text-[9px] font-bold text-red-600 dark:text-red-400 tabular-nums leading-none">
+                  <span className="text-[10px] font-bold text-red-600 dark:text-red-400 tabular-nums leading-none">
                     {row.penalizationPoints}
                   </span>
                 )}

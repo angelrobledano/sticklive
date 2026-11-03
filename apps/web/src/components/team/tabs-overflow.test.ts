@@ -25,6 +25,15 @@ describe('tabs con scroll horizontal interno (#341)', () => {
   });
 });
 
+describe('pestañas que desbordan avisan con un degradado (auditoría UX #8)', () => {
+  it.each(['./TeamCenterClient.tsx', '../competition/CompetitionClient.tsx', '../match/MatchCenterClient.tsx'])('%s', (rel) => {
+    expect(read(rel)).toMatch(/overflow-x-auto scrollbar-none scroll-fade-x/);
+  });
+  it('globals.css define scroll-fade-x', () => {
+    expect(read('../../app/globals.css')).toMatch(/\.scroll-fade-x\s*\{[^}]*mask-image/);
+  });
+});
+
 describe('utilidad scrollbar-none (#365.1)', () => {
   it('globals.css la define para Firefox y WebKit', () => {
     const css = read('../../app/globals.css');

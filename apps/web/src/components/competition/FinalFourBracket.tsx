@@ -55,7 +55,7 @@ function winnerOf(m: SeasonMatch | null): TeamSummary | null {
   return id === m.homeTeam.id ? m.homeTeam : id === m.awayTeam.id ? m.awayTeam : null;
 }
 
-const LABEL_CLS = 'px-2.5 pt-1.5 text-[9px] font-bold uppercase tracking-widest';
+const LABEL_CLS = 'px-2.5 pt-1.5 text-[10px] font-bold uppercase tracking-widest';
 
 /** Tarjeta de un cruce cuyos equipos aún no se conocen (fase por determinar). */
 function PendingCard({ label, teams }: { label: string; teams: (TeamSummary | null)[] }) {

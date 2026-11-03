@@ -44,7 +44,7 @@ export function CompetitionIcon({ country, name, logoUrl }: { country: string | 
     );
   }
   return (
-    <span aria-hidden="true" className={`${ICON_BOX} bg-rink-passion/10 text-[9px] font-black text-rink-passion dark:text-rink-accent`}>
+    <span aria-hidden="true" className={`${ICON_BOX} bg-rink-passion/10 text-[10px] font-black text-rink-passion dark:text-rink-accent`}>
       {(name ?? '·').slice(0, 2).toUpperCase()}
     </span>
   );

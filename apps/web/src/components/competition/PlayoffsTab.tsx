@@ -99,7 +99,7 @@ export function SeriesCard({ serie, label, isFinal = false }: { serie: PlayoffSe
       {/* Rótulo de la columna de cifras: son VICTORIAS de la serie, no un
           marcador de partido (ese malentendido era el problema de claridad). */}
       <div className="px-3 flex justify-end">
-        <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           {t('playoffs.series_wins')}
         </span>
       </div>
@@ -117,7 +117,7 @@ export function SeriesCard({ serie, label, isFinal = false }: { serie: PlayoffSe
             </Link>
             {isChampion && (
               <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rink-passion px-1.5 py-0.5
-                               text-[9px] font-bold uppercase tracking-wider text-white">
+                               text-[10px] font-bold uppercase tracking-wider text-white">
                 <TrophyIcon className="w-3 h-3" />
                 {t('playoffs.champion')}
               </span>
@@ -154,13 +154,13 @@ export function SeriesCard({ serie, label, isFinal = false }: { serie: PlayoffSe
                         ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-rink-passion'
                         : 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400'
                   }`}>
-              <span className="text-[9px] tabular-nums opacity-60">{i + 1}</span>
+              <span className="text-[10px] tabular-nums opacity-60">{i + 1}</span>
               {played ? (
                 <>
                   <span className={winnerId === g.homeTeam.id ? 'font-bold' : 'opacity-70'}>{homeAbbr}</span>
                   <span className="tabular-nums">{g.score.home ?? '-'}-{g.score.away ?? '-'}</span>
                   <span className={winnerId === g.awayTeam.id ? 'font-bold' : 'opacity-70'}>{awayAbbr}</span>
-                  {decidedBy && <span className="text-[9px] font-bold uppercase opacity-80">{decidedBy}</span>}
+                  {decidedBy && <span className="text-[10px] font-bold uppercase opacity-80">{decidedBy}</span>}
                 </>
               ) : (
                 <span>{fmtDate(g.scheduledAt, undefined, locale)}</span>

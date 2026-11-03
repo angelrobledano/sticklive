@@ -189,7 +189,7 @@ function MatchCard({ match }: { match: SeasonMatch }) {
         {/* Grupo de la fase de grupos (WSG): en una misma jornada se mezclan
             grupos, y sin la etiqueta no se distingue a qué grupo pertenece. */}
         {match.groupName && (
-          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             {t('standings.group')} {match.groupName}
           </span>
         )}

@@ -58,7 +58,7 @@ export function KnockoutMatchCard({ m, label, showFinishedLabel = true, highligh
         ${isLive ? 'border-emerald-400/40' : highlight ? 'border-rink-passion/50 ring-1 ring-rink-passion/20' : 'border-slate-200 dark:border-slate-800'}`}
     >
       {label && (
-        <p className="px-2.5 pt-1.5 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+        <p className="px-2.5 pt-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
           {label}
         </p>
       )}
@@ -92,7 +92,7 @@ export function KnockoutMatchCard({ m, label, showFinishedLabel = true, highligh
         {decided && (
           <span
             data-decided={decided}
-            className="rounded bg-rink-passion/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rink-passion dark:bg-rink-passion/20 dark:text-rink-accent"
+            className="rounded bg-rink-passion/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rink-passion dark:bg-rink-passion/20 dark:text-rink-accent"
           >{t(decided === 'penalties' ? 'match_states.penalties_label' : 'match_states.overtime')}</span>
         )}
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isLive ? 'text-emerald-500' : 'text-slate-500 dark:text-slate-400'}`}>
@@ -197,7 +197,7 @@ export function KnockoutBracket({ rounds = [], matches }: { rounds?: SeasonRound
             <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">
               {r.stage && r.stage !== 'placement' ? t(`playoffs.${r.stage}`) : r.name}
             </span>
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               {t('playoffs.tbd')}
             </span>
           </div>

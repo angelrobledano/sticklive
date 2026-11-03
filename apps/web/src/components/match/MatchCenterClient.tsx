@@ -536,7 +536,7 @@ export function MatchCenterClient({ data: initialData, preview }: { data: MatchD
         role="tablist"
         aria-label={tt(t, 'a11y.match_tabs', 'Secciones del partido')}
         onKeyDown={onTabKeyDown}
-        className="flex gap-0 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none"
+        className="flex gap-0 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none scroll-fade-x"
       >
         {visibleTabs.map((tab, i) => (
           <button

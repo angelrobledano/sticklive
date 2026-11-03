@@ -230,7 +230,7 @@ function RecentTiles({ team, copy }: { team: TeamSnapshot; copy: Copy }) {
               <span className={`w-full rounded-md py-0.5 text-center font-score text-[11px] font-bold tabular-nums ${RESULT_BG[r.result as Result] ?? RESULT_BG.D}`}>
                 {r.goalsFor}-{r.goalsAgainst}
               </span>
-              <span className="text-[9px] uppercase tracking-wide text-slate-400">{r.isHome ? copy.shortHome : copy.shortAway}</span>
+              <span className="text-[10px] uppercase tracking-wide text-slate-400">{r.isHome ? copy.shortHome : copy.shortAway}</span>
             </Link>
           </li>
         ))}

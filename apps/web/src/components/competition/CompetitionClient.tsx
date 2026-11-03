@@ -205,7 +205,7 @@ export function CompetitionClient({ data, seasons, competitionId, stats, summary
       <div role="tablist"
            aria-label={tt(t, 'a11y.competition_tabs', 'Secciones de la competición')}
            onKeyDown={onTabKeyDown}
-           className="flex gap-0 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none"
+           className="flex gap-0 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none scroll-fade-x"
            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {visibleTabs.map((tab, i) => (
           <button

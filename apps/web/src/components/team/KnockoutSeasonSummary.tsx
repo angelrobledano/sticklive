@@ -93,7 +93,7 @@ function SeriesRow({ serie, teamId, timezone }: {
                   {my ?? 0} – {opp ?? 0}
                 </span>
                 {serie.decidedBy && (
-                  <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     {serie.decidedBy === 'penalties' ? t('playoffs.pens_short') : t('playoffs.ot_short')}
                   </span>
                 )}
@@ -126,7 +126,7 @@ function SeriesRow({ serie, teamId, timezone }: {
                           ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-rink-passion'
                           : 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400'
                     }`}>
-                <span className="text-[9px] tabular-nums opacity-60">{i + 1}</span>
+                <span className="text-[10px] tabular-nums opacity-60">{i + 1}</span>
                 <span className="tabular-nums">{played ? `${my ?? '-'}–${opp ?? '-'}` : fmtDate(g.scheduledAt, timezone, locale)}</span>
               </Link>
             );

@@ -197,6 +197,13 @@
     display: none;              /* Chrome/Safari/Edge */
   }
 
+  /* Fila con scroll horizontal: el borde derecho se difumina para indicar
+     que hay más (auditoría UX 03/11/2026, #8). */
+  .scroll-fade-x {
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+
   /* Carril de contexto con scroll interno (escritorio): barra fina temática
      en vez de la del navegador, que no pertenece a ningún sistema. */
   .rail-scroll {
