@@ -1,5 +1,6 @@
 'use client';
 
+import { Fragment } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import type { PlayerDetail, PlayerCompStats, PlayerSeasonTotals } from '@/lib/api/client';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
@@ -235,10 +236,19 @@ function StatsGrid({ data }: { data: PlayerDetail }) {
 // #353: rejilla compartida por cabecera y filas. En móvil se ocultan las columnas
 // placeholder (As y FD, siempre "—" por actas pendientes) para que el nombre de
 // la competición siga siendo legible a 320 px; desde sm se muestran las 7.
-const COMP_TABLE_GRID =
-  'grid grid-cols-[minmax(0,1fr)_repeat(5,32px)] ' +
-  'sm:grid-cols-[minmax(0,1fr)_repeat(7,32px)] gap-x-1';
-const MOBILE_HIDDEN_COLS = new Set([2, 5]); // As, FD
+/**
+ * Columnas del desglose por competición (auditoría UX 03/11/2026): solo las que
+ * tienen algún dato. Antes salían AS y FD siempre a guiones («pendiente de
+ * acta») y AZ, RJ y PE vacías ocupaban sitio sin informar.
+ */
+export type CompCol = 'pj' | 'goals' | 'az' | 'rj' | 'pe';
+export function visibleCompColumns(rows: readonly Pick<PlayerCompStats, 'blueCards' | 'redCards' | 'penaltiesTotal'>[]): CompCol[] {
+  const cols: CompCol[] = ['pj', 'goals'];
+  if (rows.some((r) => r.blueCards > 0)) cols.push('az');
+  if (rows.some((r) => r.redCards > 0)) cols.push('rj');
+  if (rows.some((r) => r.penaltiesTotal > 0)) cols.push('pe');
+  return cols;
+}
 
 function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
   const { t } = useT();
@@ -252,95 +262,42 @@ function CompStatsTable({ rows }: { rows: PlayerCompStats[] }) {
     );
   }
 
-  const cols = [
-    t('player.col_pj'), t('player.col_g'), t('player.col_as'),
-    t('player.col_az'), t('player.col_rj'), t('player.col_fd'), t('player.col_pe'),
-  ];
+  const cols = visibleCompColumns(rows);
+  const label: Record<CompCol, string> = {
+    pj: t('player.col_pj'), goals: t('player.col_g'), az: t('player.col_az'), rj: t('player.col_rj'), pe: t('player.col_pe'),
+  };
+  const grid = { display: 'grid', gridTemplateColumns: `minmax(0,1fr) repeat(${cols.length}, 36px)`, columnGap: '0.25rem' };
+  const cell = (r: PlayerCompStats, c: CompCol) => {
+    const base = 'font-mono text-xs text-center tabular-nums';
+    if (c === 'pj') return <span className={`${base} text-slate-700 dark:text-slate-300`}>{r.pj}</span>;
+    if (c === 'goals') return <span className={`${base} font-bold ${r.goals > 0 ? 'text-rink-passion' : 'text-slate-500 dark:text-slate-400'}`}>{r.goals > 0 ? r.goals : '—'}</span>;
+    if (c === 'az') return <span className={`${base} font-semibold ${r.blueCards > 0 ? 'text-blue-500 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>{r.blueCards > 0 ? r.blueCards : '—'}</span>;
+    if (c === 'rj') return <span className={`${base} font-semibold ${r.redCards > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>{r.redCards > 0 ? r.redCards : '—'}</span>;
+    return <span className={`${base} ${r.penaltiesTotal > 0 ? 'font-semibold text-slate-700 dark:text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>{r.penaltiesTotal > 0 ? `${r.penaltiesScored}/${r.penaltiesTotal}` : '—'}</span>;
+  };
 
   return (
     <div className="card overflow-hidden">
-      {/* Cabecera */}
-      <div className={`${COMP_TABLE_GRID} px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800`}>
+      <div style={grid} className="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
         <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('player.competition')}</span>
-        {cols.map((h, i) => (
-          <span key={h} className={`text-[10px] font-bold text-center uppercase tracking-wider ${
-            i >= 5
-              ? 'text-slate-300 dark:text-slate-600'
-              : 'text-slate-500 dark:text-slate-400'
-          } ${MOBILE_HIDDEN_COLS.has(i) ? 'hidden sm:block' : ''}`}>
-            {h}
-          </span>
+        {cols.map((c) => (
+          <span key={c} className="text-[10px] font-bold text-center uppercase tracking-wider text-slate-500 dark:text-slate-400">{label[c]}</span>
         ))}
       </div>
-
-      {/* Filas */}
       <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-        {rows.map((r) => {
-          const penStr = r.penaltiesTotal > 0
-            ? `${r.penaltiesScored}/${r.penaltiesTotal}`
-            : '—';
-
-          return (
-            <div
-              key={r.competitionId}
-              className={`${COMP_TABLE_GRID} px-3 py-3 items-center`}
-            >
-              {/* Competición */}
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate leading-snug">
-                  {r.competitionShort ?? r.competitionName}
-                </p>
-                {r.competitionShort && (
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{r.competitionName}</p>
-                )}
-              </div>
-
-              {/* PJ */}
-              <span className="font-mono text-xs text-center tabular-nums text-slate-700 dark:text-slate-300">{r.pj}</span>
-
-              {/* G */}
-              <span className={`font-mono text-xs text-center tabular-nums font-bold ${
-                r.goals > 0 ? 'text-rink-passion' : 'text-slate-500 dark:text-slate-400'
-              }`}>
-                {r.goals > 0 ? r.goals : '—'}
-              </span>
-
-              {/* As — pendiente de acta (oculta en móvil, #353) */}
-              <span className="hidden sm:block font-mono text-xs text-center tabular-nums text-slate-300 dark:text-slate-700">—</span>
-
-              {/* Az */}
-              <span className={`font-mono text-xs text-center tabular-nums font-semibold ${
-                r.blueCards > 0 ? 'text-blue-500 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'
-              }`}>
-                {r.blueCards > 0 ? r.blueCards : '—'}
-              </span>
-
-              {/* Rj */}
-              <span className={`font-mono text-xs text-center tabular-nums font-semibold ${
-                r.redCards > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'
-              }`}>
-                {r.redCards > 0 ? r.redCards : '—'}
-              </span>
-
-              {/* FD — pendiente de actas (oculta en móvil, #353) */}
-              <span className="hidden sm:block font-mono text-xs text-center tabular-nums text-slate-300 dark:text-slate-700">—</span>
-
-              {/* PE */}
-              <span className={`font-mono text-xs text-center tabular-nums ${
-                r.penaltiesTotal > 0 ? 'text-slate-700 dark:text-slate-300 font-semibold' : 'text-slate-300 dark:text-slate-700'
-              }`}>
-                {penStr}
-              </span>
+        {rows.map((r) => (
+          <div key={r.competitionId} style={grid} className="px-3 py-3 items-center">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate leading-snug">
+                {r.competitionShort ?? r.competitionName}
+              </p>
+              {r.competitionShort && (
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{r.competitionName}</p>
+              )}
             </div>
-          );
-        })}
-      </div>
-
-      {/* Nota sobre columnas pendientes */}
-      <div className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-        <p className="text-[10px] text-slate-500 dark:text-slate-400">
-          {t('player.pending_note')}
-        </p>
+            {cols.map((c) => <Fragment key={c}>{cell(r, c)}</Fragment>)}
+          </div>
+        ))}
       </div>
     </div>
   );
