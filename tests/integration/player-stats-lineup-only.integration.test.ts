@@ -17,7 +17,7 @@ import { crearDeporte, crearCompeticion, crearTemporada, crearPartido } from './
 interface PlayerResponse {
   seasonTotals: { pj: number; goals: number; assists: number };
   statsByCompetition: Array<{ competitionId: string; pj: number; goals: number }>;
-  career: { seasons: Array<{ seasonId: string }> };
+  career: { seasons: Array<{ seasonId: string; totals: { pj: number } }> };
 }
 
 async function get(path: string) {
@@ -90,5 +90,13 @@ describe('ficha de jugador con alineación y sin eventos', () => {
     expect(body!.statsByCompetition).toHaveLength(1);
     expect(body!.statsByCompetition[0]).toMatchObject({ pj: 1, goals: 1 });
     expect(body!.seasonTotals).toMatchObject({ pj: 1, goals: 1 });
+  });
+
+  it('la carrera cuenta los mismos partidos jugados que la temporada (auditoría #4)', async () => {
+    const { playerId } = await jugadorQueJugoSinEventos();
+    const { body } = await get(`/${playerId}`);
+    // Antes la carrera contaba solo partidos con eventos: 0 aquí frente a 1.
+    expect(body!.career.seasons[0]!.totals.pj).toBe(body!.seasonTotals.pj);
+    expect(body!.career.seasons[0]!.totals.pj).toBe(1);
   });
 });

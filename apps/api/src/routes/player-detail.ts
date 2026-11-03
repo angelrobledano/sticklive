@@ -227,7 +227,16 @@ playerDetailRouter.get('/:id', async (c) => {
       JOIN teams t        ON t.id = tp.team_id
       LEFT JOIN LATERAL (
         SELECT
-          COUNT(DISTINCT me.match_id)                          AS pj,
+          -- PJ = partidos con alineación ∪ con evento, igual que pj_real
+          -- (auditoría 03/11/2026 #4: la carrera contaba solo eventos y no
+          -- cuadraba con «Temporada actual»).
+          (SELECT COUNT(*) FROM (
+             SELECT ml.match_id FROM match_lineups ml JOIN matches m2 ON m2.id = ml.match_id
+              WHERE ml.player_id = tp.player_id AND ml.team_id = tp.team_id AND m2.season_id = tp.season_id
+             UNION
+             SELECT me2.match_id FROM match_events me2 JOIN matches m3 ON m3.id = me2.match_id
+              WHERE me2.player_id = tp.player_id AND me2.team_id = tp.team_id AND m3.season_id = tp.season_id
+           ) jugados)                                          AS pj,
           COUNT(*) FILTER (WHERE me.event_type = 'goal')       AS goals,
           COUNT(*) FILTER (WHERE me.event_type = 'blue_card')  AS blue_cards,
           COUNT(*) FILTER (WHERE me.event_type = 'red_card')   AS red_cards,
