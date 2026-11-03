@@ -126,7 +126,7 @@ function OnboardingIcon() {
 }
 
 /**
- * Carril de contexto en escritorio muy ancho (2xl+): "Mi grada" si sigues a
+ * Carril de contexto en escritorio ancho (xl+, antes 2xl): "Mi grada" si sigues a
  * alguien (próximos y últimos resultados, con fecha) o una llamada a explorar
  * competiciones si no. Sin "Próximos": el día vacío ya los muestra.
  */
@@ -141,11 +141,11 @@ function DesktopAside({ matches, favorites, leagues, todayKey, className = '' }:
   const follows = favorites.length > 0 || leagues.length > 0;
   // "Mi grada" mira varios días (próximos y últimos de tus equipos). La home
   // ya no trae la ventana entera, así que se pide aparte y SOLO si el carril
-  // se ve (2xl) y sigues algo: el resto de pantallas no paga esa descarga.
+  // se ve (xl) y sigues algo: el resto de pantallas no paga esa descarga.
   const [wide, setWide] = useState<Match[] | null>(null);
   useEffect(() => {
     if (!follows || wide) return;
-    if (typeof window === 'undefined' || !window.matchMedia('(min-width: 1536px)').matches) return;
+    if (typeof window === 'undefined' || !window.matchMedia('(min-width: 1280px)').matches) return;
     let cancelled = false;
     // Solo lo seguido (scope=following): antes se bajaba la ventana entera (~3 MB).
     getFollowingMatches({ teams: favorites, leagues })
@@ -727,7 +727,7 @@ export function MatchesView({ matches: initialMatches, days = [], hiddenByHour: 
 
       <div className="w-full flex-1 px-3 pt-3 pb-10 sm:px-4 lg:px-6 lg:pt-5">
         <div className="mx-auto grid max-w-[760px] items-start gap-6
-                        2xl:max-w-[1150px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
+                        xl:max-w-[1150px] xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
             {/* Contexto para lectores de pantalla: de qué día son las tarjetas
                 (cada tarjeta es un h3). */}
@@ -744,7 +744,7 @@ export function MatchesView({ matches: initialMatches, days = [], hiddenByHour: 
               </div>
               <div className="pb-3"><CountryPicker /></div>
             </div>
-            {!followsSomething && <FavoritesOnboarding className="2xl:hidden" />}
+            {!followsSomething && <FavoritesOnboarding className="xl:hidden" />}
 
             {selectedLoading || (autoOthers && (othersLoading || !autoOthersTried.has(selectedDate))) ? (
               selectedLoading && failedDay === selectedDate ? (
@@ -807,7 +807,7 @@ export function MatchesView({ matches: initialMatches, days = [], hiddenByHour: 
 
           {/* Carril de contexto — solo en pantallas muy anchas. */}
           <DesktopAside
-            className="hidden 2xl:block"
+            className="hidden xl:block"
             matches={matches}
             favorites={favorites}
             leagues={leagues}

@@ -174,7 +174,7 @@ export default async function MatchDetailPage(props: Props) {
   };
 
   return (
-    <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
+    <div data-wide className="px-4 py-4 max-w-2xl lg:max-w-6xl mx-auto space-y-4">
       {jsonLd && <JsonLd data={jsonLd} />}
       <JsonLd data={breadcrumbLd} />
 
@@ -184,15 +184,20 @@ export default async function MatchDetailPage(props: Props) {
 
       {/* Match Center; en programados la previa va debajo del marcador. En
           directo/finalizado se pinta al final de la ficha. */}
-      <MatchCenterClient
-        data={data}
-        preview={isPreMatch && preview ? <MatchPreview data={preview} locale={locale} /> : null}
-      />
-
-      <MatchChronicle facts={chronicle} locale={locale} teams={chronicleTeams} />
-      <PreviousMeeting match={previousMeeting} locale={locale} />
-
-      {!isPreMatch && preview && <MatchPreview data={preview} locale={locale} variant="post" />}
+      {/* Escritorio (auditoría UX #5): centro del partido a la izquierda y
+          crónica + contexto en un carril a la derecha. En móvil, apilado en
+          el mismo orden de siempre. */}
+      <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6 lg:space-y-0">
+        <MatchCenterClient
+          data={data}
+          preview={isPreMatch && preview ? <MatchPreview data={preview} locale={locale} /> : null}
+        />
+        <aside className="space-y-4">
+          <MatchChronicle facts={chronicle} locale={locale} teams={chronicleTeams} />
+          <PreviousMeeting match={previousMeeting} locale={locale} />
+          {!isPreMatch && preview && <MatchPreview data={preview} locale={locale} variant="post" />}
+        </aside>
+      </div>
     </div>
   );
 }
