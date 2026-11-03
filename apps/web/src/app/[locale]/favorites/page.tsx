@@ -14,14 +14,18 @@ import { selectSeasonCandidates, mergeStandingTeams, filterFavorites, type RawSt
 import { getFollowingMatches, type Match } from '@/lib/api/client';
 import { MiGrada } from '@/components/home/MiGrada';
 import { madridTodayKey } from '@/lib/match-time';
+import { groupFavoriteLeagues, type GroupableLeague } from '@/lib/favorites-groups';
+import { usePreferredCountry } from '@/hooks/usePreferredCountry';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 const SEASON_ID = process.env['NEXT_PUBLIC_SEASON_ID'] ?? '';
 
 interface TeamItem { id: string; name: string; shortName: string | null }
-interface LeagueItem { id: string; name: string; shortName: string | null }
+interface LeagueItem extends GroupableLeague { shortName: string | null; logoUrl: string | null }
 interface CompItem {
   id: string; name: string; shortName: string | null;
+  logoUrl?: string | null; country?: string | null; featuredRank?: number | null; tier?: number | null;
+  federation?: { code: string; name: string; level: string } | null;
   season?: { id: string; isCurrent?: boolean; teamCount?: number } | null;
 }
 
@@ -34,7 +38,8 @@ import { favoritesCatalogState } from './state';
  */
 function FavoritesInner() {
   const { favorites, leagues: favLeagues, players, isFavorite, toggle, isLeagueFavorite, toggleLeague, mounted } = useFavorites();
-  const { t } = useT();
+  const { t, locale } = useT();
+  const { country } = usePreferredCountry();
   const searchParams = useSearchParams();
   const onboarding = searchParams.get('onboarding') === '1';
   const [query, setQuery] = useState('');
@@ -69,7 +74,11 @@ function FavoritesInner() {
       if (!res.ok) throw new Error(`API ${res.status}`);
       const comps = await res.json();
       const compList = (comps?.competitions ?? []) as CompItem[];
-      setLeagues(compList.map((c) => ({ id: c.id, name: c.name, shortName: c.shortName })));
+      setLeagues(compList.map((c) => ({
+        id: c.id, name: c.name, shortName: c.shortName, logoUrl: c.logoUrl ?? null,
+        country: c.country ?? null, featuredRank: c.featuredRank ?? null, tier: c.tier ?? null,
+        federation: c.federation ?? null,
+      })));
 
       // Cargamos los equipos de VARIAS temporadas actuales (las de más equipos)
       // y los agregamos deduplicando. Así una temporada con standings 404 no
@@ -119,6 +128,18 @@ function FavoritesInner() {
 
   const filteredTeams = useMemo(() => filterFavorites(teams, query), [teams, query]);
   const filteredLeagues = useMemo(() => filterFavorites(leagues, query), [leagues, query]);
+  // Sin búsqueda (#3): seguidas, destacadas y el resto por país → federación,
+  // plegado. Los equipos sin búsqueda: solo los que ya sigues.
+  const browsing = query.trim() === '';
+  const groups = useMemo(
+    () => groupFavoriteLeagues(leagues, { followedIds: favLeagues, country }),
+    [leagues, favLeagues, country],
+  );
+  const followedTeams = useMemo(() => teams.filter((tm) => favorites.includes(tm.id)), [teams, favorites]);
+  const regionName = (code: string) => {
+    if (code === 'W') return tt(t, 'favorites.international', 'Internacional');
+    try { return new Intl.DisplayNames([locale], { type: 'region' }).of(code) ?? code; } catch { return code; }
+  };
 
   // #269: onboarding real para quien aún no sigue nada (antes la pantalla solo
   // mostraba "Nada que coincida" con la query vacía). `mounted` evita el
@@ -142,7 +163,7 @@ function FavoritesInner() {
     setToast(t(wasActive ? 'favorites.toast_unfollowed' : 'favorites.toast_following', { name }));
   };
 
-  const Row = ({ id, name, shortName, kind }: { id: string; name: string; shortName: string | null; kind: 'team' | 'league' }) => {
+  const Row = ({ id, name, shortName, kind, logoUrl = null }: { id: string; name: string; shortName: string | null; kind: 'team' | 'league'; logoUrl?: string | null }) => {
     const active = kind === 'team' ? isFavorite(id) : isLeagueFavorite(id);
     return (
       <button
@@ -153,6 +174,9 @@ function FavoritesInner() {
       >
         {kind === 'team' ? (
           <TeamShield teamId={id} teamName={shortName ?? name} size={28} />
+        ) : logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl} alt="" width={28} height={28} loading="lazy" className="w-7 h-7 shrink-0 object-contain" />
         ) : (
           <div className="w-7 h-7 rounded-lg bg-rink-passion/10 flex items-center justify-center shrink-0">
             <span className="text-[10px] font-black text-rink-passion">{(shortName ?? name).slice(0, 2).toUpperCase()}</span>
@@ -282,6 +306,62 @@ function FavoritesInner() {
             {t('favorites.onboarding_cta')}
           </Link>
         </div>
+      ) : browsing ? (
+        <>
+          {groups.following.length > 0 && (
+            <section className="card overflow-hidden">
+              <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{tt(t, 'favorites.following_leagues', 'Ligas que sigues')}</span>
+              </div>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {groups.following.map((l) => <Row key={l.id} {...l} kind="league" />)}
+              </div>
+            </section>
+          )}
+          <section className="card overflow-hidden">
+            <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{t('favorites.teams')}</span>
+              </div>
+            {followedTeams.length > 0 && (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {followedTeams.map((tm) => <Row key={tm.id} {...tm} kind="team" />)}
+              </div>
+            )}
+            <p className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+              {tt(t, 'favorites.search_team_hint', 'Escribe arriba el nombre de tu equipo para seguirlo.')}
+            </p>
+          </section>
+          {groups.featured.length > 0 && (
+            <section className="card overflow-hidden">
+              <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{tt(t, 'favorites.featured_leagues', 'Destacadas')}</span>
+              </div>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {groups.featured.map((l) => <Row key={l.id} {...l} kind="league" />)}
+              </div>
+            </section>
+          )}
+          {groups.countries.map((c) => (
+            <details key={c.country} className="card group overflow-hidden">
+              <summary className="flex min-h-[52px] cursor-pointer list-none items-center justify-between px-4 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                <span>{regionName(c.country)} <span className="font-normal text-slate-500 dark:text-slate-400">· {c.count}</span></span>
+                <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-180">▾</span>
+              </summary>
+              {c.federations.map((f) => (
+                <div key={f.code}>
+                  {f.name && (
+                    <p className="border-t border-slate-100 bg-slate-50 px-4 py-1.5 text-[11px] font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400">
+                      {f.name}
+                    </p>
+                  )}
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {f.leagues.map((l) => <Row key={l.id} {...l} kind="league" />)}
+                  </div>
+                </div>
+              ))}
+            </details>
+          ))}
+        </>
       ) : (
         <>
           {filteredLeagues.length > 0 && (
