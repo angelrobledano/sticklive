@@ -778,9 +778,9 @@
     "not_found_home": "Veure els partits d’avui",
     "not_found_competitions": "Veure competicions",
     "not_found_search": "Cercar un equip",
-    "boundary_badge": "PARTIT ATURAT",
-    "boundary_title": "L'àrbitre ha aturat el partit temporalment",
-    "boundary_body": "S'ha produït un problema de connexió amb el marcador. L'equip tècnic ja hi està treballant — torna-ho a intentar d'aquí a uns segons."
+    "boundary_badge": "ERROR",
+    "boundary_title": "No hem pogut carregar aquesta pàgina",
+    "boundary_body": "Pot ser un error de connexió o una actualització recent. Torna-ho a provar d'aquí a uns segons."
   },
   "offline": {
     "banner": "Sense connexió — mostrant dades desades",

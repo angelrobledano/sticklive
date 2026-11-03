@@ -778,9 +778,9 @@
     "not_found_home": "Ver los partidos de hoy",
     "not_found_competitions": "Ver competiciones",
     "not_found_search": "Buscar un equipo",
-    "boundary_badge": "PARTIDO DETENIDO",
-    "boundary_title": "El árbitro ha detenido el partido temporalmente",
-    "boundary_body": "Se ha producido un problema de conexión con el marcador. El equipo técnico ya está trabajando en ello — inténtalo de nuevo en unos segundos."
+    "boundary_badge": "ERROR",
+    "boundary_title": "No hemos podido cargar esta página",
+    "boundary_body": "Puede ser un fallo de conexión o una actualización reciente. Vuelve a intentarlo en unos segundos."
   },
   "offline": {
     "banner": "Sin conexión — mostrando datos guardados",

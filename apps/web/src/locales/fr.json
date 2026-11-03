@@ -778,9 +778,9 @@
     "not_found_home": "Voir les matchs du jour",
     "not_found_competitions": "Voir les compétitions",
     "not_found_search": "Chercher une équipe",
-    "boundary_badge": "MATCH INTERROMPU",
-    "boundary_title": "L'arbitre a temporairement arrêté le match",
-    "boundary_body": "Un problème de connexion au tableau d'affichage est survenu. L'équipe technique s'en occupe déjà — réessayez dans quelques secondes."
+    "boundary_badge": "ERREUR",
+    "boundary_title": "Impossible de charger cette page",
+    "boundary_body": "Il peut s'agir d'un problème de connexion ou d'une mise à jour récente. Réessaie dans quelques secondes."
   },
   "offline": {
     "banner": "Hors ligne — données enregistrées affichées",

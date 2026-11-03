@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import * as Sentry from '@sentry/nextjs';
 import { useT } from '@/lib/i18n';
 import { tt } from '@/components/search/translate';
+import { isChunkLoadError, shouldAutoReload } from '@/lib/chunk-error';
 // app/error.tsx — Error Boundary global de Next.js 14
 // Se activa cuando un Server Component lanza una excepción no capturada.
 // reset() fuerza un re-render del segmento sin recargar la página.
@@ -83,6 +84,11 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
   // Este boundary no reportaba a Sentry (solo el global-error.tsx lo hacía):
   // los errores del árbol principal quedaban como digest sin traza (#162).
   useEffect(() => {
+    // Tras un despliegue: el chunk ya no existe y recargar lo arregla (#7).
+    if (isChunkLoadError(error) && shouldAutoReload(window.sessionStorage)) {
+      window.location.reload();
+      return;
+    }
     Sentry.captureException(error);
   }, [error]);
 
@@ -99,15 +105,15 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
                         text-rose-700 dark:text-rose-400
                         text-xs font-semibold tracking-wide">
           <WhistleIcon />
-          <span>{tt(t, 'errors.boundary_badge', 'PARTIDO DETENIDO')}</span>
+          <span>{tt(t, 'errors.boundary_badge', 'ERROR')}</span>
         </div>
 
         <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-snug">
-          {tt(t, 'errors.boundary_title', 'El árbitro ha detenido el partido temporalmente')}
+          {tt(t, 'errors.boundary_title', 'No hemos podido cargar esta página')}
         </h1>
 
         <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-          {tt(t, 'errors.boundary_body', 'Se ha producido un problema de conexión con el marcador. El equipo técnico ya está trabajando en ello — inténtalo de nuevo en unos segundos.')}
+          {tt(t, 'errors.boundary_body', 'Puede ser un fallo de conexión o una actualización reciente. Vuelve a intentarlo en unos segundos.')}
         </p>
 
         {/* Digest en desarrollo */}
@@ -141,11 +147,11 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
 
       {/* Enlace home secundario */}
       <a
-        href="/"
+        href="/competitions"
         className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300
                    underline underline-offset-2 transition-colors"
       >
-        {tt(t, 'errors.not_found_home', 'Volver al inicio')}
+        {tt(t, 'errors.not_found_competitions', 'Ver competiciones')}
       </a>
     </div>
   );

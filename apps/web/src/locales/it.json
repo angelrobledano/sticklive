@@ -778,9 +778,9 @@
     "not_found_home": "Vedi le partite di oggi",
     "not_found_competitions": "Vedi competizioni",
     "not_found_search": "Cerca una squadra",
-    "boundary_badge": "PARTITA INTERROTTA",
-    "boundary_title": "L'arbitro ha temporaneamente fermato la partita",
-    "boundary_body": "Si è verificato un problema di connessione con il tabellone. Il team tecnico ci sta già lavorando — riprova tra qualche secondo."
+    "boundary_badge": "ERRORE",
+    "boundary_title": "Non siamo riusciti a caricare questa pagina",
+    "boundary_body": "Può essere un problema di connessione o un aggiornamento recente. Riprova tra qualche secondo."
   },
   "offline": {
     "banner": "Offline — dati salvati visualizzati",

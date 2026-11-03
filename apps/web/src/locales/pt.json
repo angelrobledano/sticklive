@@ -778,9 +778,9 @@
     "not_found_home": "Ver os jogos de hoje",
     "not_found_competitions": "Ver competições",
     "not_found_search": "Procurar uma equipa",
-    "boundary_badge": "JOGO INTERROMPIDO",
-    "boundary_title": "O árbitro interrompeu o jogo temporariamente",
-    "boundary_body": "Houve um problema de ligação com o marcador. A equipa técnica já está a tratar disso — tenta de novo em alguns segundos."
+    "boundary_badge": "ERRO",
+    "boundary_title": "Não conseguimos carregar esta página",
+    "boundary_body": "Pode ser uma falha de ligação ou uma atualização recente. Tenta novamente dentro de alguns segundos."
   },
   "offline": {
     "banner": "Sem ligação — a mostrar dados guardados",
