@@ -125,4 +125,12 @@ describe('MatchesView (home por competición)', () => {
     expect(html).not.toContain('Este día no juegan tus equipos ni las competiciones destacadas');
     expect(html).toContain('aria-busy="true"');
   });
+
+  it('onboarding: una franja antes de los partidos, no una tarjeta entre ellos (auditoría #2)', () => {
+    const html = render([match('mundial', 'Mundial Masculino', 'mundial-masculino-worldskate', '2026-10-16T19:00:00Z')]);
+    const strip = html.indexOf('Sigue a tu equipo');
+    expect(strip).toBeGreaterThan(-1);
+    expect(strip).toBeLessThan(html.indexOf('Mundial Masculino'));
+    expect(html).not.toContain('Marca tus equipos y ligas con la estrella');
+  });
 });

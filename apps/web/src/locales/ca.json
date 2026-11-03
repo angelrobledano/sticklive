@@ -268,6 +268,8 @@
     "onboarding_done": "Fet · Veure partits",
     "onboarding_skip": "Saltar per ara",
     "onboarding_title": "La teva graderia personalitzada",
+    "onboarding_strip": "Segueix el teu equip i veuràs els seus partits aquí dalt",
+    "onboarding_dismiss": "Amagar",
     "onboarding_body": "Marca els teus equips i lligues amb l'estrella per veure els seus partits a dalt i rebre alertes en directe.",
     "onboarding_cta": "Explorar competicions",
     "show_other_matches": "Veure altres {n} partits favorits",

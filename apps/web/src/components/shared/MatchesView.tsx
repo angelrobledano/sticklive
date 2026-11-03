@@ -176,22 +176,39 @@ function DesktopAside({ matches, favorites, leagues, todayKey, className = '' }:
   );
 }
 
-/** Onboarding de favoritos: motivador, nunca antes de los partidos. */
+/**
+ * Onboarding de favoritos (auditoría UX 03/11/2026, #2): una franja de una
+ * línea sobre la jornada, descartable. Antes era una tarjeta entre el primer
+ * bloque y el resto, que con el anuncio dejaba el primer partido a ~1.000 px.
+ */
+const ONBOARDING_DISMISSED_KEY = 'rink-onboarding-dismissed';
+
 function FavoritesOnboarding({ className = '' }: { className?: string }) {
   const { t } = useT();
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    try { if (localStorage.getItem(ONBOARDING_DISMISSED_KEY) === '1') setDismissed(true); } catch { /* noop */ }
+  }, []);
+  if (dismissed) return null;
+  const dismiss = () => {
+    setDismissed(true);
+    try { localStorage.setItem(ONBOARDING_DISMISSED_KEY, '1'); } catch { /* noop */ }
+    track('home_onboarding_dismissed', {});
+  };
   return (
-    <div className={`card flex items-center gap-3 px-3 py-2.5 ${className}`}>
-      <OnboardingIcon />
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-bold text-slate-900 dark:text-slate-50">{t('favorites.onboarding_title')}</p>
-        <p className="mt-0.5 text-xs leading-snug text-slate-500 dark:text-slate-400">
-          {t('favorites.onboarding_body')}
-        </p>
-        <Link href="/competitions"
-              className="inline-flex min-h-[36px] items-center text-xs font-semibold text-rink-passion hover:underline dark:text-rink-accent">
-          {t('favorites.onboarding_cta')} →
-        </Link>
-      </div>
+    <div className={`mb-3 flex items-center gap-2 rounded-xl bg-rink-passion/5 pl-3 dark:bg-rink-accent/10 ${className}`}>
+      <span aria-hidden="true" className="text-rink-passion dark:text-rink-accent">★</span>
+      <Link href="/favorites?onboarding=1"
+            className="flex min-h-[44px] min-w-0 flex-1 items-center text-[13px] font-semibold text-slate-800 hover:underline dark:text-slate-100">
+        {tt(t, 'favorites.onboarding_strip', 'Sigue a tu equipo y verás sus partidos aquí arriba')} →
+      </Link>
+      <button type="button" onClick={dismiss}
+              aria-label={tt(t, 'favorites.onboarding_dismiss', 'Ocultar')}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4" aria-hidden="true">
+          <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+        </svg>
+      </button>
     </div>
   );
 }
@@ -727,6 +744,7 @@ export function MatchesView({ matches: initialMatches, days = [], hiddenByHour: 
               </div>
               <div className="pb-3"><CountryPicker /></div>
             </div>
+            {!followsSomething && <FavoritesOnboarding className="2xl:hidden" />}
 
             {selectedLoading || (autoOthers && (othersLoading || !autoOthersTried.has(selectedDate))) ? (
               selectedLoading && failedDay === selectedDate ? (
@@ -772,7 +790,6 @@ export function MatchesView({ matches: initialMatches, days = [], hiddenByHour: 
                     {/* Publicidad y onboarding, nunca antes del primer partido.
                         Si AdBanner no procede (Premium/sin config) no deja hueco. */}
                     <AdBanner zone="home-top" />
-                    {!followsSomething && <FavoritesOnboarding className="2xl:hidden" />}
                   </>
                 }
               />

@@ -177,6 +177,8 @@
     "onboarding_done": "Fatto · Vedi le partite",
     "onboarding_skip": "Salta per ora",
     "onboarding_title": "La tua tribuna personalizzata",
+    "onboarding_strip": "Segui la tua squadra per vedere qui le sue partite",
+    "onboarding_dismiss": "Nascondi",
     "onboarding_body": "Segna le tue squadre e i campionati con la stella per vedere le loro partite in alto e ricevere avvisi in diretta.",
     "onboarding_cta": "Esplora le competizioni",
     "show_other_matches": "Vedi altre {n} partite preferite",

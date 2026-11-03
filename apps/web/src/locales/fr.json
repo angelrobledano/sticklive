@@ -177,6 +177,8 @@
     "onboarding_done": "Prêt · Voir les matchs",
     "onboarding_skip": "Passer pour l’instant",
     "onboarding_title": "Votre tribune personnalisée",
+    "onboarding_strip": "Suis ton équipe pour voir ses matchs ici en haut",
+    "onboarding_dismiss": "Masquer",
     "onboarding_body": "Marquez vos équipes et ligues avec l’étoile pour voir leurs matchs en haut et recevoir des alertes en direct.",
     "onboarding_cta": "Explorer les compétitions",
     "show_other_matches": "Voir {n} autres matchs favoris",

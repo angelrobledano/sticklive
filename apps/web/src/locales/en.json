@@ -250,6 +250,8 @@
     "onboarding_done": "Done · See matches",
     "onboarding_skip": "Skip for now",
     "onboarding_title": "Your personal stand",
+    "onboarding_strip": "Follow your team to see its matches up here",
+    "onboarding_dismiss": "Hide",
     "onboarding_body": "Star your teams and leagues to see their matches at the top and get live alerts.",
     "onboarding_cta": "Explore competitions",
     "show_other_matches": "See {n} more favorite matches",
