@@ -52,17 +52,6 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
-  {
-    href: '/settings',
-    labelKey: 'navigation.settings',
-    icon: (active: boolean) => (
-      <svg viewBox="0 0 24 24" fill="none" strokeWidth={active ? 2.5 : 1.8}
-           stroke="currentColor" className="w-6 h-6">
-        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-        <circle cx="12" cy="12" r="3" />
-      </svg>
-    ),
-  },
 ];
 
 export function BottomNav() {
@@ -70,8 +59,9 @@ export function BottomNav() {
   const { t } = useT();
 
   // El orden es una decisión de producto: Partidos y Competiciones primero
-  // (el directo y el catálogo), después Buscar (descubrimiento), Favoritos y
-  // Ajustes (#414). El estado activo es por sección, no por coincidencia
+  // (el directo y el catálogo), después Buscar (descubrimiento) y Favoritos
+  // (#414). Ajustes salió de la barra (auditoría UX 03/11/2026: 2,7 % de las
+  // páginas vistas en 30 días): se abre desde la cabecera de Favoritos. El estado activo es por sección, no por coincidencia
   // exacta de ruta: dentro de una liga (/competitions/xyz), de un equipo o de
   // un jugador, la sección activa es Competiciones; los partidos cuelgan de
   // Partidos. La ruta llega prefijada por idioma (/es/...): lo quitamos antes
