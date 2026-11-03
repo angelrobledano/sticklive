@@ -740,6 +740,7 @@
     "retry": "Retry",
     "empty": "No results for “{q}”.",
     "results_count_one": "{n} result",
+    "first_team": "First team",
     "results_count": "{n} results",
     "section_teams": "Teams",
     "section_players": "Players",

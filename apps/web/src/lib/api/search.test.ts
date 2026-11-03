@@ -80,3 +80,27 @@ describe('arrangeSearchResults (30/10/2026: cinco «CD Claret»)', () => {
     expect(out.teams).toHaveLength(1);
   });
 });
+
+describe('arrangeSearchResults: primer equipo del club (auditoría UX)', () => {
+  const tm = (id: string, o: Record<string, unknown>) => ({ id, name: id, shortName: null, logoUrl: null, country: 'ES', clubId: 'liceo', ...o });
+  it('elige el sénior de nivel 1 (masculino antes, como el resto del catálogo)', () => {
+    const out = arrangeSearchResults({
+      query: 'liceo', total: 3, players: [], competitions: [],
+      clubs: [{ id: 'liceo', slug: 'liceo', name: 'HC Liceo', city: null, crestUrl: null, teamCount: 3 }],
+      teams: [
+        tm('juvenil', { ageCategory: 'juvenil', squadLevel: 1, gender: 'male' }),
+        tm('fem', { ageCategory: 'senior', squadLevel: 1, gender: 'female' }),
+        tm('primer', { ageCategory: 'senior', squadLevel: 1, gender: 'male', competitionName: 'OK LIGA' }),
+      ],
+    } as never);
+    expect(out.clubs[0]!.firstTeam?.id).toBe('primer');
+  });
+  it('sin equipo sénior: null', () => {
+    const out = arrangeSearchResults({
+      query: 'x', total: 1, players: [], competitions: [],
+      clubs: [{ id: 'liceo', slug: 'liceo', name: 'HC Liceo', city: null, crestUrl: null, teamCount: 1 }],
+      teams: [tm('juvenil', { ageCategory: 'juvenil' })],
+    } as never);
+    expect(out.clubs[0]!.firstTeam).toBeNull();
+  });
+});

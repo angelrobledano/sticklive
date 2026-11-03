@@ -667,6 +667,7 @@
     "retry": "Riprova",
     "empty": "Nessun risultato per «{q}».",
     "results_count_one": "{n} risultato",
+    "first_team": "Prima squadra",
     "results_count": "{n} risultati",
     "section_teams": "Squadre",
     "section_players": "Giocatori",

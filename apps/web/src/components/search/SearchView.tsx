@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useT } from '@/lib/i18n';
@@ -190,8 +190,8 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
             {arranged && arranged.clubs.length > 0 && (
               <Section title={tt(t, 'search.section_clubs', 'Clubes')} count={arranged.clubs.length}>
                 {arranged.clubs.map((club) => (
+                  <Fragment key={club.id}>
                   <Link
-                    key={club.id}
                     href={`/clubs/${club.slug}`}
                     className={ROW}
                     onClick={() => track('search_result_clicked', { surface: 'search', kind: 'club', ref_id: club.id })}
@@ -209,6 +209,16 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
                     </div>
                     <ChevronRight />
                   </Link>
+                  {club.firstTeam && (
+                    <Link
+                      href={`/teams/${club.firstTeam.id}`}
+                      className="flex min-h-[44px] items-center gap-2 pl-[60px] pr-4 text-xs font-semibold text-rink-passion hover:underline dark:text-rink-accent"
+                      onClick={() => track('search_result_clicked', { surface: 'search', kind: 'team', ref_id: club.firstTeam!.id })}
+                    >
+                      {tt(t, 'search.first_team', 'Primer equipo')}{club.firstTeam.competitionName ? ` · ${clubName(club.firstTeam.competitionName)}` : ''} →
+                    </Link>
+                  )}
+                  </Fragment>
                 ))}
               </Section>
             )}

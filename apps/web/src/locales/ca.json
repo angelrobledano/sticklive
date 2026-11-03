@@ -740,6 +740,7 @@
     "retry": "Reintentar",
     "empty": "No hi ha resultats per a «{q}».",
     "results_count_one": "{n} resultat",
+    "first_team": "Primer equip",
     "results_count": "{n} resultats",
     "section_teams": "Equips",
     "section_players": "Jugadors",

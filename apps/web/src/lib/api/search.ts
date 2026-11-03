@@ -68,13 +68,18 @@ export interface SearchResults {
  * para pintar el escudo cuando el club no tiene uno propio.
  */
 export function arrangeSearchResults(r: SearchResults): {
-  clubs: (SearchClub & { shieldTeamId: string | null })[];
+  clubs: (SearchClub & { shieldTeamId: string | null; firstTeam: SearchTeam | null })[];
   teams: SearchTeam[];
 } {
   const clubs = r.clubs ?? [];
   const listed = new Set(clubs.map((c) => c.id));
+  // Primer equipo (auditoría UX 03/11/2026): sénior de menor nivel, masculino
+  // antes que femenino. Buscar «liceo» lleva directo a su equipo de OK Liga.
+  const firstTeam = (clubId: string): SearchTeam | null => r.teams
+    .filter((t) => t.clubId === clubId && t.ageCategory === 'senior')
+    .sort((a, b) => (a.squadLevel ?? 9) - (b.squadLevel ?? 9) || Number(a.gender !== 'male') - Number(b.gender !== 'male'))[0] ?? null;
   return {
-    clubs: clubs.map((c) => ({ ...c, shieldTeamId: r.teams.find((t) => t.clubId === c.id)?.id ?? null })),
+    clubs: clubs.map((c) => ({ ...c, shieldTeamId: r.teams.find((t) => t.clubId === c.id)?.id ?? null, firstTeam: firstTeam(c.id) })),
     teams: r.teams.filter((t) => !t.clubId || !listed.has(t.clubId)),
   };
 }
