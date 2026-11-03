@@ -447,7 +447,7 @@ export function PlayerProfileClient({ data }: { data: PlayerDetail & { career?: 
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
           <path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        {data.currentTeam ? data.currentTeam.shortName ?? data.currentTeam.name : t('navigation.back')}
+        {data.currentTeam ? data.currentTeam.name : t('navigation.back')}
       </Link>
 
       {/* Cabecera */}

@@ -797,7 +797,9 @@ export function CompetitionsList({
             )}
             <div className="flex items-center justify-between gap-2 px-1 pb-2">
               <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 tabular-nums">
-                {tt(t, 'search.results_count', '{n} resultados', { n: searched.length })}
+                {searched.length === 1
+                  ? tt(t, 'search.results_count_one', '{n} resultado', { n: 1 })
+                  : tt(t, 'search.results_count', '{n} resultados', { n: searched.length })}
               </p>
               {/* Equipos y jugadores viven en el buscador global. */}
               <Link

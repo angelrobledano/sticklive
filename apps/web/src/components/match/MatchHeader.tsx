@@ -29,8 +29,10 @@ function TeamCrest({ team }: {
     <div className="flex flex-col items-center min-w-0">
       <Link href={`/teams/${team.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-w-0">
         <TeamShield teamId={team.id} teamName={team.name} size={64} />
-        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 text-center leading-tight line-clamp-2 max-w-[90px]">
-          {label}
+        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 text-center leading-tight line-clamp-2 max-w-[90px] md:max-w-[160px]">
+          {/* Siglas en móvil estrecho y nombre completo donde cabe (auditoría #15). */}
+          <span className="md:hidden">{label}</span>
+          <span className="hidden md:inline">{team.name}</span>
         </span>
       </Link>
       <FavoriteStar id={team.id} kind="team" name={label} className="-mt-1" />

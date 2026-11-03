@@ -182,7 +182,9 @@ export function SearchView({ initialQuery, results, error }: SearchViewProps) {
         ) : results ? (
           <>
             <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 px-1 pb-2 tabular-nums">
-              {tt(t, 'search.results_count', '{n} resultados', { n: total })}
+              {total === 1
+                  ? tt(t, 'search.results_count_one', '{n} resultado', { n: 1 })
+                  : tt(t, 'search.results_count', '{n} resultados', { n: total })}
             </p>
 
             {arranged && arranged.clubs.length > 0 && (

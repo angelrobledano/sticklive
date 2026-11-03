@@ -11,7 +11,7 @@ import { TeamShield } from '@/components/shared/TeamShield';
 import { clubName } from '@/lib/names';
 
 interface Copy {
-  title: string; titlePost: string; position: string; points: string; form: string; h2h: string; emptyH2h: string; lastFive: string;
+  title: string; titlePost: string; pointOne: string; position: string; points: string; form: string; h2h: string; emptyH2h: string; lastFive: string;
   home: string; away: string;
   observations: string; cross: string;
   shortHome: string; shortAway: string; draws: string; wins: string; goals: string; letters: Record<'W' | 'D' | 'L', string>; crossHint: string;
@@ -21,7 +21,7 @@ interface Copy {
 
 const COPY: Record<string, Copy> = {
   es: {
-    title: 'Previa del partido', titlePost: 'Así llegaban', position: 'Posición', points: 'Puntos', form: 'Forma',
+    title: 'Previa del partido', pointOne: 'punto', titlePost: 'Así llegaban', position: 'Posición', points: 'Puntos', form: 'Forma',
     shortHome: 'casa', shortAway: 'fuera',
     draws: 'Empates', wins: 'Victorias', goals: 'goles', letters: { W: 'V', D: 'E', L: 'D' }, crossHint: 'Resaltado, quien sale mejor en cada dato.',
     h2h: 'Enfrentamientos previos', emptyH2h: 'Sin enfrentamientos previos esta temporada.', lastFive: 'Últimos 5',
@@ -42,7 +42,7 @@ const COPY: Record<string, Copy> = {
     },
   },
   en: {
-    title: 'Match preview', titlePost: 'How they came in', position: 'Position', points: 'Points', form: 'Form',
+    title: 'Match preview', pointOne: 'point', titlePost: 'How they came in', position: 'Position', points: 'Points', form: 'Form',
     shortHome: 'home', shortAway: 'away',
     draws: 'Draws', wins: 'Wins', goals: 'goals', letters: { W: 'W', D: 'D', L: 'L' }, crossHint: 'Highlighted: who comes out better in each stat.',
     h2h: 'Previous meetings', emptyH2h: 'No previous meetings this season.', lastFive: 'Last 5',
@@ -63,7 +63,7 @@ const COPY: Record<string, Copy> = {
     },
   },
   pt: {
-    title: 'Antevisão do jogo', titlePost: 'Como chegavam', position: 'Posição', points: 'Pontos', form: 'Forma',
+    title: 'Antevisão do jogo', pointOne: 'ponto', titlePost: 'Como chegavam', position: 'Posição', points: 'Pontos', form: 'Forma',
     shortHome: 'casa', shortAway: 'fora',
     draws: 'Empates', wins: 'Vitórias', goals: 'golos', letters: { W: 'V', D: 'E', L: 'D' }, crossHint: 'Em destaque, quem sai melhor em cada dado.',
     h2h: 'Confrontos anteriores', emptyH2h: 'Sem confrontos anteriores esta temporada.', lastFive: 'Últimos 5',
@@ -84,7 +84,7 @@ const COPY: Record<string, Copy> = {
     },
   },
   fr: {
-    title: 'Avant-match', titlePost: 'Avant le match', position: 'Position', points: 'Points', form: 'Forme',
+    title: 'Avant-match', pointOne: 'point', titlePost: 'Avant le match', position: 'Position', points: 'Points', form: 'Forme',
     shortHome: 'dom.', shortAway: 'ext.',
     draws: 'Nuls', wins: 'Victoires', goals: 'buts', letters: { W: 'V', D: 'N', L: 'D' }, crossHint: 'En évidence : qui fait mieux sur chaque donnée.',
     h2h: 'Confrontations précédentes', emptyH2h: 'Aucune confrontation cette saison.', lastFive: '5 derniers',
@@ -105,7 +105,7 @@ const COPY: Record<string, Copy> = {
     },
   },
   it: {
-    title: 'Anteprima partita', titlePost: 'Come arrivavano', position: 'Posizione', points: 'Punti', form: 'Forma',
+    title: 'Anteprima partita', pointOne: 'punto', titlePost: 'Come arrivavano', position: 'Posizione', points: 'Punti', form: 'Forma',
     shortHome: 'casa', shortAway: 'fuori',
     draws: 'Pareggi', wins: 'Vittorie', goals: 'gol', letters: { W: 'V', D: 'N', L: 'S' }, crossHint: 'In evidenza chi fa meglio in ogni dato.',
     h2h: 'Precedenti', emptyH2h: 'Nessun precedente in questa stagione.', lastFive: 'Ultime 5',
@@ -128,7 +128,7 @@ const COPY: Record<string, Copy> = {
 };
 
 COPY['ca'] = {
-  title: 'Prèvia del partit', titlePost: 'Com arribaven', position: 'Posició', points: 'Punts', form: 'Forma',
+  title: 'Prèvia del partit', pointOne: 'punt', titlePost: 'Com arribaven', position: 'Posició', points: 'Punts', form: 'Forma',
     shortHome: 'casa', shortAway: 'fora',
   draws: 'Empats', wins: 'Victòries', goals: 'gols', letters: { W: 'V', D: 'E', L: 'D' }, crossHint: 'Destacat, qui surt millor en cada dada.',
   h2h: 'Enfrontaments previs', emptyH2h: 'Sense enfrontaments previs aquesta temporada.', lastFive: 'Últims 5',
@@ -191,7 +191,7 @@ function DuelHeader({ data, copy }: { data: MatchPreviewData; copy: Copy }) {
       {team.position !== null && (
         <p className="flex items-baseline gap-1.5 leading-none">
           <span className="font-score text-3xl font-bold tabular-nums text-slate-900 dark:text-slate-50">{team.position}º</span>
-          {team.points !== null && <span className="text-xs text-slate-500 dark:text-slate-400">{team.points} {copy.points.toLowerCase()}</span>}
+          {team.points !== null && <span className="text-xs text-slate-500 dark:text-slate-400">{team.points} {team.points === 1 ? copy.pointOne : copy.points.toLowerCase()}</span>}
         </p>
       )}
       <FormStrip form={team.form.length > 0 ? team.form : team.recent.map((r) => r.result).reverse()} copy={copy} align={align} />

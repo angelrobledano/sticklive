@@ -664,6 +664,7 @@
     "error": "Impossibile completare la ricerca. Riprova.",
     "retry": "Riprova",
     "empty": "Nessun risultato per «{q}».",
+    "results_count_one": "{n} risultato",
     "results_count": "{n} risultati",
     "section_teams": "Squadre",
     "section_players": "Giocatori",

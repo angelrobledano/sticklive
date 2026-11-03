@@ -737,6 +737,7 @@
     "error": "No se pudo completar la búsqueda. Inténtalo de nuevo.",
     "retry": "Reintentar",
     "empty": "No hay resultados para «{q}».",
+    "results_count_one": "{n} resultado",
     "results_count": "{n} resultados",
     "section_teams": "Equipos",
     "section_players": "Jugadores",

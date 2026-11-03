@@ -664,6 +664,7 @@
     "error": "La recherche n'a pas pu aboutir. Réessayez.",
     "retry": "Réessayer",
     "empty": "Aucun résultat pour « {q} ».",
+    "results_count_one": "{n} résultat",
     "results_count": "{n} résultats",
     "section_teams": "Équipes",
     "section_players": "Joueurs",
