@@ -3,12 +3,12 @@ import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { clubName } from '@/lib/names';
 import { competitionPath } from '@/lib/competition-path';
 
-const COPY: Record<string, { title: string; competition: string }> = {
-  es: { title: 'Rivales', competition: 'Competición' },
-  en: { title: 'Opponents', competition: 'Competition' },
-  pt: { title: 'Adversários', competition: 'Competição' },
-  fr: { title: 'Adversaires', competition: 'Compétition' },
-  it: { title: 'Avversari', competition: 'Competizione' },
+const COPY: Record<string, { title: string; competition: string; show: string; hide: string }> = {
+  es: { title: 'Rivales', competition: 'Competición', show: 'Ver rivales', hide: 'Ocultar' },
+  en: { title: 'Opponents', competition: 'Competition', show: 'Show opponents', hide: 'Hide' },
+  pt: { title: 'Adversários', competition: 'Competição', show: 'Ver adversários', hide: 'Ocultar' },
+  fr: { title: 'Adversaires', competition: 'Compétition', show: 'Voir les adversaires', hide: 'Masquer' },
+  it: { title: 'Avversari', competition: 'Competizione', show: 'Vedi avversari', hide: 'Nascondi' },
 };
 
 /**
@@ -55,10 +55,12 @@ export function TeamOpponents({ data, locale }: { data: TeamDetail; locale: stri
   if (opponents.length === 0 && !competition) return null;
 
   return (
+    // Plegado (auditoría UX 03/11/2026): los enlaces siguen en el HTML para el
+    // enlazado interno, pero la nube de chips ya no ocupa media pantalla.
     <section className="card p-5 space-y-3" aria-labelledby="team-opponents-title">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 id="team-opponents-title" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-          {copy.title}
+          {copy.title}{opponents.length > 0 ? ` (${opponents.length})` : ''}
         </h2>
         {competition && (
           <Link
@@ -71,6 +73,11 @@ export function TeamOpponents({ data, locale }: { data: TeamDetail; locale: stri
       </div>
 
       {opponents.length > 0 && (
+        <details className="group">
+        <summary className="inline-flex min-h-[44px] cursor-pointer list-none items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <span className="group-open:hidden">{copy.show}</span>
+          <span className="hidden group-open:inline">{copy.hide}</span>
+        </summary>
         <ul className="flex flex-wrap gap-2">
           {opponents.map((opponent) => (
             <li key={opponent.id}>
@@ -83,6 +90,7 @@ export function TeamOpponents({ data, locale }: { data: TeamDetail; locale: stri
             </li>
           ))}
         </ul>
+        </details>
       )}
     </section>
   );
