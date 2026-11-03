@@ -192,7 +192,7 @@ export default async function MatchDetailPage(props: Props) {
       <MatchChronicle facts={chronicle} locale={locale} teams={chronicleTeams} />
       <PreviousMeeting match={previousMeeting} locale={locale} />
 
-      {!isPreMatch && preview && <MatchPreview data={preview} locale={locale} />}
+      {!isPreMatch && preview && <MatchPreview data={preview} locale={locale} variant="post" />}
     </div>
   );
 }

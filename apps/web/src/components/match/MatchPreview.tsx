@@ -11,7 +11,7 @@ import { TeamShield } from '@/components/shared/TeamShield';
 import { clubName } from '@/lib/names';
 
 interface Copy {
-  title: string; position: string; points: string; form: string; h2h: string; emptyH2h: string; lastFive: string;
+  title: string; titlePost: string; position: string; points: string; form: string; h2h: string; emptyH2h: string; lastFive: string;
   home: string; away: string;
   observations: string; cross: string;
   shortHome: string; shortAway: string; draws: string; wins: string; goals: string; letters: Record<'W' | 'D' | 'L', string>; crossHint: string;
@@ -21,7 +21,7 @@ interface Copy {
 
 const COPY: Record<string, Copy> = {
   es: {
-    title: 'Previa del partido', position: 'Posición', points: 'Puntos', form: 'Forma',
+    title: 'Previa del partido', titlePost: 'Así llegaban', position: 'Posición', points: 'Puntos', form: 'Forma',
     shortHome: 'casa', shortAway: 'fuera',
     draws: 'Empates', wins: 'Victorias', goals: 'goles', letters: { W: 'V', D: 'E', L: 'D' }, crossHint: 'Resaltado, quien sale mejor en cada dato.',
     h2h: 'Enfrentamientos previos', emptyH2h: 'Sin enfrentamientos previos esta temporada.', lastFive: 'Últimos 5',
@@ -42,7 +42,7 @@ const COPY: Record<string, Copy> = {
     },
   },
   en: {
-    title: 'Match preview', position: 'Position', points: 'Points', form: 'Form',
+    title: 'Match preview', titlePost: 'How they came in', position: 'Position', points: 'Points', form: 'Form',
     shortHome: 'home', shortAway: 'away',
     draws: 'Draws', wins: 'Wins', goals: 'goals', letters: { W: 'W', D: 'D', L: 'L' }, crossHint: 'Highlighted: who comes out better in each stat.',
     h2h: 'Previous meetings', emptyH2h: 'No previous meetings this season.', lastFive: 'Last 5',
@@ -63,7 +63,7 @@ const COPY: Record<string, Copy> = {
     },
   },
   pt: {
-    title: 'Antevisão do jogo', position: 'Posição', points: 'Pontos', form: 'Forma',
+    title: 'Antevisão do jogo', titlePost: 'Como chegavam', position: 'Posição', points: 'Pontos', form: 'Forma',
     shortHome: 'casa', shortAway: 'fora',
     draws: 'Empates', wins: 'Vitórias', goals: 'golos', letters: { W: 'V', D: 'E', L: 'D' }, crossHint: 'Em destaque, quem sai melhor em cada dado.',
     h2h: 'Confrontos anteriores', emptyH2h: 'Sem confrontos anteriores esta temporada.', lastFive: 'Últimos 5',
@@ -84,7 +84,7 @@ const COPY: Record<string, Copy> = {
     },
   },
   fr: {
-    title: 'Avant-match', position: 'Position', points: 'Points', form: 'Forme',
+    title: 'Avant-match', titlePost: 'Avant le match', position: 'Position', points: 'Points', form: 'Forme',
     shortHome: 'dom.', shortAway: 'ext.',
     draws: 'Nuls', wins: 'Victoires', goals: 'buts', letters: { W: 'V', D: 'N', L: 'D' }, crossHint: 'En évidence : qui fait mieux sur chaque donnée.',
     h2h: 'Confrontations précédentes', emptyH2h: 'Aucune confrontation cette saison.', lastFive: '5 derniers',
@@ -105,7 +105,7 @@ const COPY: Record<string, Copy> = {
     },
   },
   it: {
-    title: 'Anteprima partita', position: 'Posizione', points: 'Punti', form: 'Forma',
+    title: 'Anteprima partita', titlePost: 'Come arrivavano', position: 'Posizione', points: 'Punti', form: 'Forma',
     shortHome: 'casa', shortAway: 'fuori',
     draws: 'Pareggi', wins: 'Vittorie', goals: 'gol', letters: { W: 'V', D: 'N', L: 'S' }, crossHint: 'In evidenza chi fa meglio in ogni dato.',
     h2h: 'Precedenti', emptyH2h: 'Nessun precedente in questa stagione.', lastFive: 'Ultime 5',
@@ -128,7 +128,7 @@ const COPY: Record<string, Copy> = {
 };
 
 COPY['ca'] = {
-  title: 'Prèvia del partit', position: 'Posició', points: 'Punts', form: 'Forma',
+  title: 'Prèvia del partit', titlePost: 'Com arribaven', position: 'Posició', points: 'Punts', form: 'Forma',
     shortHome: 'casa', shortAway: 'fora',
   draws: 'Empats', wins: 'Victòries', goals: 'gols', letters: { W: 'V', D: 'E', L: 'D' }, crossHint: 'Destacat, qui surt millor en cada dada.',
   h2h: 'Enfrontaments previs', emptyH2h: 'Sense enfrontaments previs aquesta temporada.', lastFive: 'Últims 5',
@@ -354,7 +354,12 @@ function HeadToHead({ data, copy, locale }: { data: MatchPreviewData; copy: Copy
   );
 }
 
-export function MatchPreview({ data, locale }: { data: MatchPreviewData; locale: string }) {
+/**
+ * `variant="post"` (partido empezado o terminado, auditoría UX #6): la misma
+ * información, plegada y titulada «Así llegaban», para que no se lea como una
+ * previa de algo que ya se jugó.
+ */
+export function MatchPreview({ data, locale, variant = 'pre' }: { data: MatchPreviewData; locale: string; variant?: 'pre' | 'post' }) {
   const copy = COPY[locale] ?? COPY['en']!;
   const hasStanding = data.home.position !== null || data.away.position !== null
     || data.home.form.length > 0 || data.away.form.length > 0
@@ -362,11 +367,11 @@ export function MatchPreview({ data, locale }: { data: MatchPreviewData; locale:
   if (!hasStanding && data.headToHead.length === 0 && data.cross.length === 0) return null;
   const hasRecent = data.home.recent.length > 0 || data.away.recent.length > 0;
 
-  return (
-    <section className="card overflow-hidden" aria-labelledby="match-preview-title">
+  const content = (
+    <section className={variant === 'post' ? '' : 'card overflow-hidden'} aria-labelledby="match-preview-title">
       <div className="bg-gradient-to-b from-rink-passion/10 to-transparent px-4 pb-4 pt-4 dark:from-rink-passion/20">
-        <h2 id="match-preview-title" className="mb-4 text-xs font-bold uppercase tracking-widest text-rink-passion dark:text-rose-400">
-          {copy.title}
+        <h2 id="match-preview-title" className={`${variant === 'post' ? 'sr-only' : ''} mb-4 text-xs font-bold uppercase tracking-widest text-rink-passion dark:text-rose-400`}>
+          {variant === 'post' ? copy.titlePost : copy.title}
         </h2>
         {hasStanding && <DuelHeader data={data} copy={copy} />}
       </div>
@@ -386,4 +391,16 @@ export function MatchPreview({ data, locale }: { data: MatchPreviewData; locale:
       </div>
     </section>
   );
+  if (variant === 'post') {
+    return (
+      <details className="card group overflow-hidden">
+        <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between px-4 text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300">
+          {copy.titlePost}
+          <span aria-hidden="true" className="transition-transform group-open:rotate-180">▾</span>
+        </summary>
+        {content}
+      </details>
+    );
+  }
+  return content;
 }
