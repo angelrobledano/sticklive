@@ -63,8 +63,12 @@ Caché: sin `teams`/`leagues`, pública (igual que antes); con ellos, `private`.
   directo. «Ocultar» lo vuelve a recoger.
 - El chip «En directo» cuenta solo el feed. «Próxima jornada» es el primer día
   con partidos del feed.
-- Día con partidos solo fuera del feed: «Este día no juegan tus equipos ni las
-  competiciones destacadas» + el botón.
+- Día con partidos solo fuera del feed (03/11/2026): no hay estado vacío. Se
+  cargan solas las otras competiciones, con el aviso «Este día no juegan tus
+  equipos ni las destacadas». Si esa carga falla, vuelve el mensaje + el botón.
+- «Otras competiciones» se ordenan por `tier` (migración 105 da nivel al resto
+  del catálogo: 4 Primera Catalana, 5 resto sénior, 6 júnior/juvenil/sub-23,
+  7 resto de base, 8 veteranos, 9 escuelas) y se abren las 3 primeras.
 - Sin filtros nuevos en Partidos: con ~15 competiciones en el feed no aportan.
   El país preferido sigue mandando.
 

@@ -856,6 +856,7 @@
   },
   "home": {
     "no_featured_matches": "Aquest dia no hi juguen els teus equips ni les competicions destacades",
+    "only_others": "Aquest dia no hi juguen els teus equips ni les destacades. Això és el que hi ha:",
     "others_show": "Veure altres competicions ({n})",
     "others_hide": "Amagar altres competicions",
     "country_all": "Tots els països",

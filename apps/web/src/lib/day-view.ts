@@ -236,6 +236,8 @@ export function daysWithMatches(matches: readonly DayViewMatch[], tz: string = A
 
 /** Máxima categoría: tier 1-2 (migración 089). */
 const OPEN_MAX_TIER = 2;
+/** «Otras competiciones» que se abren solas: las primeras por importancia. */
+const OPEN_OTHERS = 3;
 
 /**
  * Bloques que la home abre por defecto (plan 2026-10-25, iteración 3):
@@ -246,13 +248,23 @@ const OPEN_MAX_TIER = 2;
 export function defaultOpenKeys(blocks: readonly {
   key: string;
   country?: string | null;
+  /** false = «otras competiciones» (fuera del feed). */
+  inFeed?: boolean;
   followed: boolean;
   tier: number | null;
   featuredRank: number | null;
   matches: readonly { status: string }[];
 }[], country: string | null = null): Set<string> {
   const open = new Set<string>();
+  let othersOpened = 0;
   for (const b of blocks) {
+    // Fuera del feed el orden ya es por importancia: se abren las primeras
+    // para que la lista no sea una columna de cabeceras cerradas.
+    if (b.inFeed === false && othersOpened < OPEN_OTHERS) {
+      othersOpened++;
+      open.add(b.key);
+      continue;
+    }
     // Con país preferido, la importancia solo abre lo del país y lo mundial:
     // lo de otros países se queda plegado salvo que lo sigas o tenga directo.
     const relevantCountry = !country || countryRank(b.country ?? null, country) < 2;

@@ -856,6 +856,7 @@
   },
   "home": {
     "no_featured_matches": "Ni tes équipes ni les compétitions phares ne jouent ce jour-là",
+    "only_others": "Ni tes équipes ni les compétitions phares ne jouent ce jour-là. Voici les autres matchs :",
     "others_show": "Voir les autres compétitions ({n})",
     "others_hide": "Masquer les autres compétitions",
     "country_all": "Tous les pays",

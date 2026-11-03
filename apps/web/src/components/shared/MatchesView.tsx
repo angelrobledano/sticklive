@@ -255,9 +255,16 @@ function DayCards({ view, followedTeamIds, showDate = false, afterFirst, listAd 
         key: '__others_heading__',
         rows: 0,
         node: (
-          <h3 className="px-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            {other}
-          </h3>
+          <div className="px-1 pt-2">
+            {view.total === 0 && view.myTeams.length === 0 && (
+              <p className="mb-1 text-[13px] font-semibold text-slate-700 dark:text-slate-200">
+                {tt(t, 'home.only_others', 'Este día no juegan tus equipos ni las destacadas. Esto es lo que hay:')}
+              </p>
+            )}
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              {other}
+            </h3>
+          </div>
         ),
       });
     }
@@ -529,14 +536,14 @@ export function MatchesView({ matches: initialMatches, days = [], hiddenByHour: 
   // «Otras competiciones» del día: el resto del catálogo, bajo demanda.
   const [othersDays, setOthersDays] = useState<ReadonlySet<string>>(() => new Set());
   const [othersLoading, setOthersLoading] = useState(false);
-  const showOthers = useCallback((key: string) => {
+  const showOthers = useCallback((key: string, auto = false) => {
     setOthersLoading(true);
     const { from, to } = dayFetchRange(key);
     getMatchesInRange(from, to)
       .then((all) => {
         addMatches(all);
         setOthersDays((s) => new Set(s).add(key));
-        track('home_others_opened', { hidden: hiddenByDay[key] ?? 0 });
+        track('home_others_opened', { hidden: hiddenByDay[key] ?? 0, auto });
       })
       .catch(() => { /* el botón sigue ahí para reintentar */ })
       .finally(() => setOthersLoading(false));
@@ -600,6 +607,17 @@ export function MatchesView({ matches: initialMatches, days = [], hiddenByHour: 
   );
   // Partidos del día fuera del feed: los cargados o, si aún no, los que dijo la API.
   const othersCount = othersDays.has(selectedDate) ? 0 : Math.max(view.hiddenCount, hiddenByDay[selectedDate] ?? 0);
+  // Día sin feed pero con partidos: se enseñan directamente las demás
+  // competiciones en vez de un estado vacío (una vez por día; si el usuario
+  // las oculta, no se vuelven a abrir solas).
+  const [autoOthersTried, setAutoOthersTried] = useState<ReadonlySet<string>>(() => new Set());
+  const feedEmpty = view.total === 0 && view.myTeams.length === 0;
+  const autoOthers = feedEmpty && othersCount > 0 && !othersDays.has(selectedDate);
+  useEffect(() => {
+    if (!autoOthers || othersLoading || !isLoaded(selectedDate) || autoOthersTried.has(selectedDate)) return;
+    setAutoOthersTried((s) => new Set(s).add(selectedDate));
+    showOthers(selectedDate, true);
+  }, [autoOthers, othersLoading, isLoaded, selectedDate, showOthers, autoOthersTried]);
   const isPast = selectedDate < todayKey;
   const dayKeys = useMemo(() => days.filter((d) => d.count > 0).map((d) => d.day), [days]);
 
@@ -710,8 +728,8 @@ export function MatchesView({ matches: initialMatches, days = [], hiddenByHour: 
               <div className="pb-3"><CountryPicker /></div>
             </div>
 
-            {selectedLoading ? (
-              failedDay === selectedDate ? (
+            {selectedLoading || (autoOthers && (othersLoading || !autoOthersTried.has(selectedDate))) ? (
+              selectedLoading && failedDay === selectedDate ? (
                 <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
                   <p className="text-sm text-slate-600 dark:text-slate-300">
                     {tt(t, 'errors.matches_load_title', 'No hemos podido cargar los partidos')}
@@ -759,7 +777,7 @@ export function MatchesView({ matches: initialMatches, days = [], hiddenByHour: 
                 }
               />
             )}
-            {!selectedLoading && (
+            {!selectedLoading && !(feedEmpty && othersDays.has(selectedDate)) && (
               <OthersToggle
                 count={othersCount}
                 open={othersDays.has(selectedDate)}

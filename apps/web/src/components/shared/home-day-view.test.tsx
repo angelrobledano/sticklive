@@ -119,4 +119,10 @@ describe('MatchesView (home por competición)', () => {
     expect(html).not.toContain('Liga Provincial Alevín');
     expect(html).toContain('Ver otras competiciones (1)');
   });
+
+  it('día solo con competiciones fuera del feed: no enseña el estado vacío, carga las demás', () => {
+    const html = render([match('pequena', 'Primera Catalana', 'primera-catalana', '2026-10-16T19:00:00Z')]);
+    expect(html).not.toContain('Este día no juegan tus equipos ni las competiciones destacadas');
+    expect(html).toContain('aria-busy="true"');
+  });
 });

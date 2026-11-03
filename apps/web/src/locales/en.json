@@ -856,6 +856,7 @@
   },
   "home": {
     "no_featured_matches": "No matches from your teams or the featured competitions on this day",
+    "only_others": "Your teams and the featured competitions are not playing this day. Here is what is on:",
     "others_show": "Show other competitions ({n})",
     "others_hide": "Hide other competitions",
     "country_all": "All countries",

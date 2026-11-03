@@ -198,7 +198,9 @@ function AdsenseUnit({ zone, client, slot, className }: {
   // Reserva por `min-height` (anti-CLS) SIN recortar: un bloque responsive puede
   // medir más que la altura reservada, y recortar anuncios (`overflow-hidden` +
   // altura fija) incumple la política de AdSense. El hueco mínimo se mantiene; el
-  // anuncio crece si le hace falta.
+  // anuncio crece si le hace falta. Si AdSense no tiene anuncio
+  // (`data-ad-status="unfilled"`), el contenedor se colapsa: un hueco en blanco
+  // con «PUBLICIDAD» en mitad de la lista parece un fallo.
   const reserve = config.height.replace(/^h-/, 'min-h-');
 
   return (
@@ -210,6 +212,7 @@ function AdsenseUnit({ zone, client, slot, className }: {
       className={`
         relative w-full ${reserve}
         rounded-xl
+        [&:has(ins[data-ad-status=unfilled])]:hidden
         ${className}
       `}
     >

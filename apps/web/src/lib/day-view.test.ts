@@ -262,6 +262,11 @@ describe('defaultOpenKeys', () => {
   it('sin bloques, nada', () => {
     expect(defaultOpenKeys([]).size).toBe(0);
   });
+  it('«otras competiciones»: abre las 3 primeras (ya vienen por importancia) y pliega el resto', () => {
+    const o = (key: string) => ({ ...b(key), inFeed: false });
+    const keys = defaultOpenKeys([b('feed', { featuredRank: 1 }), o('a'), o('b'), o('c'), o('d'), o('e')]);
+    expect([...keys].sort()).toEqual(['a', 'b', 'c', 'feed']);
+  });
 });
 
 /** País preferido (iteración 4): ordena, nunca excluye. Los favoritos mandan. */
