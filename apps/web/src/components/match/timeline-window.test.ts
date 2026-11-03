@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { timelineWindow, TIMELINE_PREVIEW } from './TimelineTab';
+import { timelineWindow, keyEvents, TIMELINE_PREVIEW } from './TimelineTab';
 
 /**
  * #366: el tope de render del timeline se extrajo como función pura para fijar
@@ -48,5 +48,17 @@ describe('timelineWindow', () => {
       visible: [ev(0), ev(1)],
       hiddenCount: 3,
     });
+  });
+});
+
+/** Auditoría UX 03/11/2026 (estructural 3): «Lo importante» sin faltas ni tiempos muertos. */
+describe('keyEvents', () => {
+  const e = (id: string, eventType: string) => ({ id, eventType });
+  it('quita faltas y tiempos muertos y deja lo que cambia el partido', () => {
+    const all = [
+      e('d', 'period_divider'), e('f', 'foul'), e('g', 'goal'), e('t', 'timeout'),
+      e('a', 'accumulated_foul'), e('p', 'penalty'), e('fd', 'direct_foul'), e('r', 'red_card'),
+    ];
+    expect(keyEvents(all).map((x) => x.id)).toEqual(['d', 'g', 'a', 'p', 'fd', 'r']);
   });
 });

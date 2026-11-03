@@ -33,6 +33,16 @@ export function timelineWindow<T>(
 }
 
 /**
+ * «Lo importante» (auditoría UX 03/11/2026, estructural 3): sin faltas
+ * ordinarias ni tiempos muertos. Se quedan goles, penaltis, faltas directas,
+ * tarjetas, divisores de periodo y las faltas acumuladas (10ª y 15ª).
+ */
+const MINOR_EVENTS = new Set(['foul', 'timeout']);
+export function keyEvents<T extends { eventType: string }>(events: readonly T[]): T[] {
+  return events.filter((e) => !MINOR_EVENTS.has(e.eventType));
+}
+
+/**
  * #357: el modelo espejo comunica el equipo por POSICIÓN (local izquierda,
  * visitante derecha), que un lector de pantalla no percibe. Esta función da el
  * nombre explícito del equipo del evento, para filas y anuncios `aria-live`.
@@ -261,6 +271,8 @@ function TimelineRow({ ev, homeName, awayName, sameInstantAsPrev = false }: {
 export function TimelineTab({ data }: { data: MatchDetail }) {
   const { t } = useT();
   const [showAll, setShowAll] = useState(false);
+  // Terminado: por defecto lo importante. En directo, todo (la falta cuenta).
+  const [detail, setDetail] = useState<'key' | 'all'>(data.match.status === 'finished' ? 'key' : 'all');
   const homeTeamId = data.match.homeTeam!.id;
   const homeName = data.match.homeTeam!.shortName ?? data.match.homeTeam!.name;
   const awayName = data.match.awayTeam!.shortName ?? data.match.awayTeam!.name;
@@ -355,7 +367,9 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
 
   // Tope de render (#366): actas largas no necesitan pintar todas las filas de
   // golpe; con "ver todos" el usuario las carga explícitamente.
-  const { visible, hiddenCount } = timelineWindow(timeline, showAll);
+  const shown = detail === 'key' ? keyEvents(timeline) : timeline;
+  const minorCount = timeline.length - keyEvents(timeline).length;
+  const { visible, hiddenCount } = timelineWindow(shown, showAll);
 
   return (
     <div className="card relative px-3 py-2">
@@ -376,6 +390,21 @@ export function TimelineTab({ data }: { data: MatchDetail }) {
                                   dark:bg-amber-950/40 dark:text-amber-300">
           {t('match_detail.partial_acta')}
         </p>
+      )}
+      {minorCount > 0 && (
+        <div role="group" aria-label={t('match_detail.timeline_detail_aria')}
+             className="relative z-10 mb-2 flex justify-end gap-1">
+          {(['key', 'all'] as const).map((d) => (
+            <button key={d} type="button" aria-pressed={detail === d} onClick={() => setDetail(d)}
+                    className={`min-h-[36px] rounded-full px-3 text-xs font-semibold transition-colors ${
+                      detail === d
+                        ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                        : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                    }`}>
+              {d === 'key' ? t('match_detail.timeline_key') : t('match_detail.timeline_all', { n: minorCount })}
+            </button>
+          ))}
+        </div>
       )}
       {/* Eje central del timeline */}
       <div className="absolute left-1/2 top-3 bottom-3 w-px -translate-x-1/2
