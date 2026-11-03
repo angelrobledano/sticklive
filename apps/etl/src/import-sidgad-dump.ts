@@ -8,6 +8,8 @@
  *   --matches=<matches.ndjson.gz>   pabellón y árbitros de los fep_match_{idp}
  *                                   que no los tengan, y validación contra BD
  *   --report=<fichero.md>           informe de validación (por defecto stdout)
+ *   --fix-scores                    corrige marcadores de terminados que no
+ *                                   cuadran con el acta (mismos equipos)
  *   --dry-run                       sin escribir
  *
  * La fecha de nacimiento se guarda y NO se publica.
@@ -117,7 +119,12 @@ function toInt(v: string | null | undefined): number | null {
   return v != null && /^\d+$/.test(v) ? Number(v) : null;
 }
 
-export async function importMatches(matches: Iterable<DumpMatch> | AsyncIterable<DumpMatch>, dryRun: boolean): Promise<MatchStats> {
+/**
+ * `fixScores`: corrige el marcador de los partidos TERMINADOS cuyo marcador no
+ * coincide con el acta oficial (mismos equipos). El archivo histórico v1 trae
+ * ~3.000 marcadores mal (p. ej. Voltregà 0-10 Reus el 7/10/2017, real 2-6).
+ */
+export async function importMatches(matches: Iterable<DumpMatch> | AsyncIterable<DumpMatch>, dryRun: boolean, fixScores = false): Promise<MatchStats> {
   const { rows } = await db.query<{ id: string; source_ref: string; status: string; home_score: number | null; away_score: number | null;
     venue_name: string | null; referee: string | null; goals: number; home_name: string; away_name: string }>(
     `SELECT m.id, m.source_ref, m.status, m.home_score, m.away_score, m.venue_name, m.referee,
@@ -148,7 +155,12 @@ export async function importMatches(matches: Iterable<DumpMatch> | AsyncIterable
     const label = `${d.idp} ${d.home ?? '?'} – ${d.away ?? '?'} (${d.date ?? 's/f'})`;
     if (played) {
       if (o.status !== 'finished') st.notFinished.push(`${label}: fuente ${hs}-${as} terminado, nosotros ${o.status}`);
-      else if (o.home_score !== hs || o.away_score !== as) st.scoreDiff.push(`${label}: fuente ${hs}-${as}, nosotros ${o.home_score}-${o.away_score}`);
+      else if (o.home_score !== hs || o.away_score !== as) {
+        st.scoreDiff.push(`${label}: fuente ${hs}-${as}, nosotros ${o.home_score}-${o.away_score}`);
+        if (fixScores && !dryRun) {
+          await db.query(`UPDATE matches SET home_score = $2, away_score = $3, updated_at = NOW() WHERE id = $1 AND status = 'finished'`, [o.id, hs, as]);
+        }
+      }
       // Goles con evento: solo avisamos si tenemos menos que el acta (actas viejas sin eventos no cuentan).
       if (d.goalEvents && o.goals < d.goalEvents) st.goalsDiff.push(`${label}: acta ${d.goalEvents} goles con autor, nosotros ${o.goals}`);
     }
@@ -201,7 +213,7 @@ async function main(): Promise<void> {
   const playersPath = arg('players'); const matchesPath = arg('matches');
   try {
     const p = playersPath ? await importPlayers(readNdjson<DumpPlayer>(playersPath), dryRun) : null;
-    const m = matchesPath ? await importMatches(readNdjson<DumpMatch>(matchesPath), dryRun) : null;
+    const m = matchesPath ? await importMatches(readNdjson<DumpMatch>(matchesPath), dryRun, args.includes('--fix-scores')) : null;
     const md = renderReport(p, m, dryRun);
     const reportPath = arg('report');
     if (reportPath) writeFileSync(reportPath, md); else console.log(md);
