@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import * as Sentry from '@sentry/nextjs';
 import { useT } from '@/lib/i18n';
 import { tt } from '@/components/search/translate';
+import { LocaleLink } from '@/components/shared/LocaleLink';
 import { isChunkLoadError, shouldAutoReload } from '@/lib/chunk-error';
 // app/error.tsx — Error Boundary global de Next.js 14
 // Se activa cuando un Server Component lanza una excepción no capturada.
@@ -146,13 +147,13 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
       </button>
 
       {/* Enlace home secundario */}
-      <a
+      <LocaleLink
         href="/competitions"
         className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300
                    underline underline-offset-2 transition-colors"
       >
         {tt(t, 'errors.not_found_competitions', 'Ver competiciones')}
-      </a>
+      </LocaleLink>
     </div>
   );
 }
