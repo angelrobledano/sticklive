@@ -732,8 +732,10 @@ export function MatchesView({ matches: initialMatches, days = [], hiddenByHour: 
             {/* Contexto para lectores de pantalla: de qué día son las tarjetas
                 (cada tarjeta es un h3). */}
             <h2 className="sr-only">{longDayLabel(selectedDate, locale, true)}</h2>
+            {/* Sin chips del día, el selector de país va solo y a la izquierda,
+                como un filtro más (04/11/2026). Con chips, a su derecha. */}
             <div className="flex items-start gap-2">
-              <div className="min-w-0 flex-1">
+              <div className={view.liveCount > 0 || view.followingCount > 0 ? 'min-w-0 flex-1' : 'hidden'}>
                 <DayChips
                   liveCount={view.liveCount}
                   followingCount={view.followingCount}
