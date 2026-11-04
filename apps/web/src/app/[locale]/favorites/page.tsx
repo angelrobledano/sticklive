@@ -16,6 +16,11 @@ import { MiGrada } from '@/components/home/MiGrada';
 import { madridTodayKey } from '@/lib/match-time';
 import { groupFavoriteLeagues, suggestedLeague, type GroupableLeague } from '@/lib/favorites-groups';
 import { usePreferredCountry } from '@/hooks/usePreferredCountry';
+import { PushOfferCard } from '@/components/shared/PushOfferCard';
+
+/** «Ahora no» en la oferta de avisos: se vuelve a ofrecer pasados 7 días. */
+const PUSH_OFFER_DISMISSED_KEY = 'rink-push-offer-dismissed-at';
+const PUSH_OFFER_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 const SEASON_ID = process.env['NEXT_PUBLIC_SEASON_ID'] ?? '';
@@ -50,6 +55,18 @@ function FavoritesInner() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // Avisos (04/11/2026): seguir desde Favoritos no ofrecía activarlos nunca.
+  const [pushSnoozed, setPushSnoozed] = useState(true);
+  useEffect(() => {
+    try {
+      const at = Number(localStorage.getItem(PUSH_OFFER_DISMISSED_KEY) ?? 0);
+      setPushSnoozed(!!at && Date.now() - at < PUSH_OFFER_SNOOZE_MS);
+    } catch { setPushSnoozed(false); }
+  }, []);
+  const snoozePush = () => {
+    setPushSnoozed(true);
+    try { localStorage.setItem(PUSH_OFFER_DISMISSED_KEY, String(Date.now())); } catch { /* noop */ }
+  };
 
   // Nº de favoritos elegidos (para medir la activación guiada).
   const favCount = () => {
@@ -249,6 +266,10 @@ function FavoritesInner() {
           {t('favorites.manage_help')}
         </p>
       </div>
+
+      {followsTeamsOrLeagues && !pushSnoozed && (
+        <PushOfferCard source={onboarding ? 'favorites_onboarding' : 'favorites'} onDismiss={snoozePush} onDone={snoozePush} />
+      )}
 
       {!onboarding && followsTeamsOrLeagues && gradaMatches.length > 0 && (
         <MiGrada

@@ -166,7 +166,9 @@
     },
     "push_offer_title": "Turn on notifications",
     "push_offer_desc": "Allow notifications on this device to get the alerts you choose.",
-    "push_offer_cta": "Enable alerts"
+    "push_offer_cta": "Enable alerts",
+    "push_offer_later": "Not now",
+    "push_offer_ios": "On iPhone, alerts work with Stick Live on your home screen. Tap Share, then «Add to Home Screen», open the app from there and turn them on."
   },
   "match_tabs": {
     "standing": "Standings",

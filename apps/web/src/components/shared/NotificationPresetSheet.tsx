@@ -1,13 +1,11 @@
 'use client';
 
+import { PushOfferCard } from '@/components/shared/PushOfferCard';
 import { useEffect, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';
 import { getPreset, setPreset, uiPreset, presetsFor, type NotificationPreset } from '@/lib/notif-prefs';
-import {
-  enablePush, syncPushConfig, notificationPermission, pushSupported,
-  vapidMissing, isIOS, isStandalone, shouldOfferPushActivation,
-} from '@/lib/push';
+import { syncPushConfig } from '@/lib/push';
 
 type Kind = 'team' | 'league' | 'player';
 
@@ -84,8 +82,6 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
 }) {
   const { t } = useT();
   const [selected, setSelected] = useState<NotificationPreset>('key_events');
-  const [offerPush, setOfferPush] = useState(false);
-  const [activating, setActivating] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
   // `onClose` llega como arrow inline desde los padres (nueva identidad en cada
@@ -100,28 +96,6 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
     const raw = uiPreset(getPreset(kind, id));
     setSelected(presetsFor(kind).includes(raw) ? raw : 'key_events');
   }, [open, kind, id]);
-
-  // Al abrir (p. ej. tras el primer follow) decidimos si ofrecer "Activar avisos":
-  // sin decisión de permiso aún, para que el follow cumpla de verdad la promesa
-  // de alertas. El permiso se pide luego con el gesto del botón.
-  useEffect(() => {
-    if (!open) return;
-    setOfferPush(shouldOfferPushActivation({
-      supported: pushSupported(),
-      permission: notificationPermission(),
-      vapidMissing: vapidMissing(),
-      ios: isIOS(),
-      standalone: isStandalone(),
-    }));
-  }, [open]);
-
-  // Pide permiso y suscribe con el gesto del usuario; enablePush ya instrumenta.
-  const activatePush = async () => {
-    setActivating(true);
-    await enablePush();
-    setActivating(false);
-    setOfferPush(false);
-  };
 
   // #359: foco inicial al primer control, trap de Tab y restauración al cerrar
   // (además de Escape y bloqueo del scroll de fondo).
@@ -211,30 +185,7 @@ export function NotificationPresetSheet({ open, kind, id, name, onClose }: {
         )}
 
         {/* Seguir no basta: sin permiso del navegador no llega ningún aviso. */}
-        {offerPush && (
-          <div className="mt-3 flex items-start gap-3 rounded-2xl border border-rink-passion/30 bg-rink-passion/5 p-3">
-            <span className="mt-0.5 text-rink-passion">
-              <PresetIcon preset="complete" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                {t('notif_presets.push_offer_title')}
-              </p>
-              <p className="text-xs mt-0.5 text-slate-500 dark:text-slate-400">
-                {t('notif_presets.push_offer_desc')}
-              </p>
-              <button
-                onClick={activatePush}
-                disabled={activating}
-                className="mt-2 inline-flex items-center gap-2 min-h-[44px] px-3.5 rounded-xl text-xs font-semibold
-                           bg-rink-passion text-white hover:opacity-90 disabled:opacity-50 transition-colors"
-              >
-                {activating && <span className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden="true" />}
-                {t('notif_presets.push_offer_cta')}
-              </button>
-            </div>
-          </div>
-        )}
+        <div className="mt-3"><PushOfferCard source="preset_sheet" /></div>
 
         <div className="space-y-2 mt-3">
           {options.map((p) => {

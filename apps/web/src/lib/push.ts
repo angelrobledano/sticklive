@@ -50,6 +50,19 @@ export function shouldOfferPushActivation(ctx: PushActivationContext): boolean {
   return true;
 }
 
+/**
+ * Qué ofrecer al seguir algo (04/11/2026): `activate` (botón con el gesto del
+ * usuario), `install_ios` (en iPhone el push web solo existe con la app en la
+ * pantalla de inicio: se explica cómo, en vez de esconder la oferta) o `none`.
+ */
+export type PushOfferMode = 'activate' | 'install_ios' | 'none';
+
+export function pushOfferMode(ctx: PushActivationContext): PushOfferMode {
+  if (ctx.vapidMissing) return 'none';
+  if (ctx.ios && !ctx.standalone) return 'install_ios';
+  return shouldOfferPushActivation(ctx) ? 'activate' : 'none';
+}
+
 /** iPhone/iPad (incluye iPadOS que se hace pasar por Mac con pantalla táctil). */
 export function isIOS(): boolean {
   if (typeof navigator === 'undefined') return false;

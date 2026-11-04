@@ -752,6 +752,8 @@
     "push_offer_title": "Attiva le notifiche",
     "push_offer_desc": "Consenti le notifiche su questo dispositivo per ricevere gli avvisi che scegli.",
     "push_offer_cta": "Attiva avvisi",
+    "push_offer_later": "Non ora",
+    "push_offer_ios": "Su iPhone gli avvisi arrivano con Stick Live nella schermata Home. Tocca Condividi e poi «Aggiungi alla schermata Home», apri l'app da lì e attivali.",
     "key_events": {
       "label": "Eventi chiave",
       "desc": "Gol, cartellini, falli diretti, inizio e risultato finale."

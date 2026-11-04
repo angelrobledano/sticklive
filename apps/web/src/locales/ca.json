@@ -166,7 +166,9 @@
     },
     "push_offer_title": "Activa els avisos",
     "push_offer_desc": "Permet les notificacions en aquest dispositiu per rebre els avisos que triïs.",
-    "push_offer_cta": "Activar avisos"
+    "push_offer_cta": "Activar avisos",
+    "push_offer_later": "Ara no",
+    "push_offer_ios": "A l'iPhone els avisos arriben amb Stick Live a la pantalla d'inici. Prem Compartir i després «Afegir a la pantalla d'inici», obre l'app des d'allà i activa'ls."
   },
   "match_tabs": {
     "standing": "Classificació",

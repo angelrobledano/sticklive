@@ -752,6 +752,8 @@
     "push_offer_title": "Activer les notifications",
     "push_offer_desc": "Autorisez les notifications sur cet appareil pour recevoir les alertes de votre choix.",
     "push_offer_cta": "Activer les alertes",
+    "push_offer_later": "Plus tard",
+    "push_offer_ios": "Sur iPhone, les alertes fonctionnent avec Stick Live sur l'écran d'accueil. Touche Partager puis « Sur l'écran d'accueil », ouvre l'app depuis là et active-les.",
     "key_events": {
       "label": "Événements clés",
       "desc": "Buts, cartons, fautes directes, coup d’envoi et résultat final."

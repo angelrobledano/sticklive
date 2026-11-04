@@ -752,6 +752,8 @@
     "push_offer_title": "Ativa os avisos",
     "push_offer_desc": "Permite as notificações neste dispositivo para receberes os avisos que escolheres.",
     "push_offer_cta": "Ativar avisos",
+    "push_offer_later": "Agora não",
+    "push_offer_ios": "No iPhone os avisos chegam com o Stick Live no ecrã principal. Toca em Partilhar e depois em «Adicionar ao ecrã principal», abre a app a partir daí e ativa-os.",
     "key_events": {
       "label": "Eventos-chave",
       "desc": "Golos, cartões, faltas diretas, início e resultado final."

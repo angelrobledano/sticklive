@@ -166,7 +166,9 @@
     },
     "push_offer_title": "Activa los avisos",
     "push_offer_desc": "Permite las notificaciones en este dispositivo para recibir los avisos que elijas.",
-    "push_offer_cta": "Activar avisos"
+    "push_offer_cta": "Activar avisos",
+    "push_offer_later": "Ahora no",
+    "push_offer_ios": "En iPhone los avisos llegan con Stick Live en tu pantalla de inicio. Pulsa Compartir y después «Añadir a pantalla de inicio», abre la app desde ahí y actívalos."
   },
   "match_tabs": {
     "standing": "Clasificación",
