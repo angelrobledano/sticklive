@@ -130,6 +130,8 @@ El usuario es anónimo por `device_id` hasta que inicia sesión (magic link o Go
 | Evento | Estado | Cuándo | Propiedades | Para qué |
 |---|---|---|---|---|
 | `push_subscribed` / `push_unsubscribed` | MUDO | Alta o baja del maestro | `platform`, `reason` | Adopción |
+| `push_offer_shown` | NUEVO (04/11) | Se muestra la oferta de avisos | `source` (preset_sheet, favorites, favorites_onboarding), `mode` (activate, install_ios) | Cuántos ven la oferta y dónde. En iPhone sin instalar, `install_ios` explica cómo instalar |
+| `push_offer_result` | NUEVO (04/11) | Contesta al permiso del navegador | `source`, `result` (granted, denied, error) | Dónde se pierde el alta: si es `denied`, el momento o el texto. Si es `error`, técnico |
 | `notification_toggle` | LIVE (6) | Toggle de un tipo | `key`, `enabled` | |
 | `notification_sent` | MUDO | El ETL entrega un push (servidor) | `notification_type` | **Denominador del CTR** |
 | `notification_opened` | MUDO | Se abre la notificación (SW → API) | `notification_type`, `url` | **CTR** |
@@ -143,6 +145,14 @@ El usuario es anónimo por `device_id` hasta que inicia sesión (magic link o Go
 | `install_banner_dismissed`, `install_ios_steps_shown`, `app_opened_standalone` | LIVE | |
 | `premium_viewed` → `premium_checkout_started` → `premium_purchase_completed` / `_failed` | MUDO (cobro tras flag) | `from_screen`, `plan`, `reason` |
 | `locale_changed`, `theme_changed` | `theme_changed` LIVE (9), `locale_changed` MUDO | `from`, `to` / `dark` |
+
+### 4.6b Distribución por clubes (04/11/2026)
+
+| Evento | Estado | Cuándo | Propiedades | Para qué |
+|---|---|---|---|---|
+| `club_kit_opened` | NUEVO | Abre «¿Llevas la web o las redes del club?» en la ficha de equipo | `team_id` | Interés de clubes |
+| `embed_code_copied` | NUEVO | Copia el código del widget | `team_id` | Clubes que se llevan el widget |
+| `$pageview` con `utm_source=widget` | NUEVO | Llegadas desde el widget en webs de clubes (`utm_campaign` = id del equipo) | `$current_url` | Adquisición por el widget. El widget en sí no lleva analítica: va en webs ajenas sin consentimiento |
 
 ### 4.7 Publicidad
 
@@ -161,10 +171,12 @@ La app móvil tiene su propio catálogo (`apps/mobile/src/lib/analytics.ts`: AdM
 1. **Activación del usuario nuevo**: `$pageview` (primera) → `favorite_added` → `push_subscribed` → `app_installed`. Desglosar `favorite_added` por `source`. Bloqueado en el paso 3 mientras `push_subscribed` esté mudo.
 2. **Onboarding «¿De qué equipo eres?»** *(nuevo)*: franja de la home → `$pageview /favorites?onboarding=1` → `favorite_added` con `source=favorites_suggested` o `favorites_onboarding` → `onboarding_completed`. La alternativa de salida es `home_onboarding_dismissed`.
 3. **Búsqueda útil**: `search_performed` (`has_results=true`) → `search_result_clicked` → vista de entidad (`team_view`/`club_view`/`competition_view`). Fuga: `has_results=false`.
-4. **Re-engagement por push**: `notification_sent` → `notification_opened` → `live_match_followed` (`source=push`). **Bloqueado**: los dos primeros eventos están mudos.
-5. **Login por método**: `login_started` → `login_completed` por `method`.
-6. **Instalación PWA**: `install_banner_shown` → `install_cta_clicked` → `app_install_prompt_result` (accepted) → `app_installed`.
-7. **Premium**: listo para cuando se active el cobro.
+4. **Alta de avisos** *(nuevo, 04/11)*: `push_offer_shown` → `push_offer_result` (`granted`) → `push_subscribed`, desglosado por `source` y `mode`.
+5. **Adquisición por clubes** *(nuevo, 04/11)*: `club_kit_opened` → `embed_code_copied` → `$pageview` con `utm_source=widget` por `utm_campaign`.
+6. **Re-engagement por push**: `notification_sent` → `notification_opened` → `live_match_followed` (`source=push`). **Bloqueado**: los dos primeros eventos están mudos.
+7. **Login por método**: `login_started` → `login_completed` por `method`.
+8. **Instalación PWA**: `install_banner_shown` → `install_cta_clicked` → `app_install_prompt_result` (accepted) → `app_installed`.
+9. **Premium**: listo para cuando se active el cobro.
 
 ---
 
