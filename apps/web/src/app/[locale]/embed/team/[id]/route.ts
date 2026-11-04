@@ -2,6 +2,7 @@ import { getSeasonOverview, getTeamDetail } from '@/lib/api/client';
 import { renderTeamWidget, escapeHtml, type WidgetStanding } from '@/lib/embed/team-widget';
 import { isSupportedLocale } from '@/lib/locales';
 import { SITE_URL } from '@/lib/seo';
+import { clubName } from '@/lib/names';
 
 // Widget incrustable para webs de clubes (04/11/2026):
 //   <iframe src="https://sticklive.eu/es/embed/team/{id}" ...>
@@ -30,7 +31,7 @@ export async function GET(req: Request, props: { params: Promise<{ locale: strin
         const group = overview.standings.find((r) => r.teamId === id)?.groupName ?? null;
         standings = overview.standings
           .filter((r) => group === null || r.groupName === group)
-          .map((r) => ({ teamId: r.teamId, teamName: r.teamName, position: r.position, played: r.played, points: r.points }));
+          .map((r) => ({ teamId: r.teamId, teamName: clubName(r.teamName), position: r.position, played: r.played, points: r.points }));
       } catch { /* sin tabla: el widget sigue con los partidos */ }
     }
     const html = renderTeamWidget({
@@ -39,9 +40,13 @@ export async function GET(req: Request, props: { params: Promise<{ locale: strin
       theme,
       timezone: team.matches.find((m) => m.competitionTimezone)?.competitionTimezone ?? 'Europe/Madrid',
       now: new Date(),
-      team: { id: team.team.id, name: team.team.name },
+      team: { id: team.team.id, name: clubName(team.team.name) },
       competitionName: team.season?.competitionName ?? team.standing?.competitionName ?? null,
-      matches: team.matches,
+      matches: team.matches.map((m) => ({
+        ...m,
+        homeTeam: { ...m.homeTeam, name: clubName(m.homeTeam.name) },
+        awayTeam: { ...m.awayTeam, name: clubName(m.awayTeam.name) },
+      })),
       standings,
     });
     return new Response(html, { headers: HEADERS });

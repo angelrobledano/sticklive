@@ -897,5 +897,15 @@
     "ios_step1": "Tap the Share button (the square with the arrow pointing up).",
     "ios_step2": "Choose “Add to Home Screen” and tap “Add”.",
     "aria": "Install Stick Live"
+  },
+  "club_kit": {
+    "title": "Do you run the club's website or social media?",
+    "image_title": "Latest result image",
+    "image_body": "Ready for Instagram, as a story or a post.",
+    "embed_title": "Scores and standings on your website",
+    "embed_body": "Paste this code on your website. It updates itself with the next match, latest results and standings.",
+    "copy": "Copy code",
+    "copied": "Copied",
+    "preview": "Preview"
   }
 }

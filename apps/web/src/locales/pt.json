@@ -897,5 +897,15 @@
     "ios_step1": "Toca no botão Partilhar (o quadrado com a seta para cima).",
     "ios_step2": "Escolhe «Adicionar ao ecrã principal» e toca em «Adicionar».",
     "aria": "Instalar Stick Live"
+  },
+  "club_kit": {
+    "title": "Geres o site ou as redes do clube?",
+    "image_title": "Imagem do último resultado",
+    "image_body": "Pronta para o Instagram, em formato história ou publicação.",
+    "embed_title": "Resultados e classificação no teu site",
+    "embed_body": "Cola este código no teu site. Atualiza-se sozinho com o próximo jogo, os últimos resultados e a classificação.",
+    "copy": "Copiar código",
+    "copied": "Copiado",
+    "preview": "Ver como fica"
   }
 }

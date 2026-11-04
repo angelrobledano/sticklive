@@ -897,5 +897,15 @@
     "ios_step1": "Toca el botó Compartir (el quadrat amb la fletxa cap amunt).",
     "ios_step2": "Tria «Afegir a la pantalla d'inici» i toca «Afegir».",
     "aria": "Instal·lar Stick Live"
+  },
+  "club_kit": {
+    "title": "Portes la web o les xarxes del club?",
+    "image_title": "Imatge de l'últim resultat",
+    "image_body": "Llesta per a Instagram, en format història o publicació.",
+    "embed_title": "Resultats i classificació a la teva web",
+    "embed_body": "Enganxa aquest codi a la teva web. S'actualitza sol amb el proper partit, els últims resultats i la classificació.",
+    "copy": "Copiar codi",
+    "copied": "Copiat",
+    "preview": "Veure com queda"
   }
 }

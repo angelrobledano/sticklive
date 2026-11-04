@@ -3,10 +3,11 @@ import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { getTeamDetail, isApiNotFound } from '@/lib/api/client';
 import { TeamCenterClient } from '@/components/team/TeamCenterClient';
 import { TeamOpponents } from '@/components/team/TeamOpponents';
+import { ClubKit } from '@/components/team/ClubKit';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
-import { localeAlternates, socialMeta, isSupportedLocale, breadcrumbJsonLd, teamJsonLd, teamMetaTitle, metadataOnError } from '@/lib/seo';
+import { localeAlternates, socialMeta, isSupportedLocale, breadcrumbJsonLd, teamJsonLd, teamMetaTitle, metadataOnError, SITE_URL } from '@/lib/seo';
 import { BREADCRUMB_LABELS } from '@/lib/breadcrumbs';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { clubName, playerDisplayName, teamQualifiedName } from '@/lib/names';
@@ -100,6 +101,14 @@ export default async function TeamDetailPage(props: Props) {
   // propio y verificado al final de la ficha, server-rendered.
   const history = teamHistory(params.id);
 
+  // «Para el club» (04/11/2026): último resultado para la imagen de redes.
+  const lastMatch = [...data.matches]
+    .filter((m) => m.status === 'finished')
+    .sort((a, b) => Date.parse(b.scheduledAt ?? '') - Date.parse(a.scheduledAt ?? ''))[0];
+  const lastFinished = lastMatch
+    ? { id: lastMatch.id, label: `${clubName(lastMatch.homeTeam.name)} ${lastMatch.score.home ?? ''}-${lastMatch.score.away ?? ''} ${clubName(lastMatch.awayTeam.name)}` }
+    : null;
+
   return (
     <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
       <JsonLd data={jsonLd} />
@@ -110,6 +119,8 @@ export default async function TeamDetailPage(props: Props) {
       <TeamCenterClient data={data} />
 
       <TeamOpponents data={data} locale={locale} />
+
+      <ClubKit siteUrl={SITE_URL} teamId={data.team.id} teamName={clubName(data.team.name)} lastMatch={lastFinished} />
 
       {/* #339: la plantilla vive en un tab client-side, así que el HTML inicial
           no enlazaba ninguna ficha de jugador (`grep /players/` = 0). Esta lista

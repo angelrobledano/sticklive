@@ -897,5 +897,15 @@
     "ios_step1": "Tocca il pulsante Condividi (il quadrato con la freccia verso l'alto).",
     "ios_step2": "Scegli «Aggiungi a schermata Home» e tocca «Aggiungi».",
     "aria": "Installa Stick Live"
+  },
+  "club_kit": {
+    "title": "Gestisci il sito o i social del club?",
+    "image_title": "Immagine dell'ultimo risultato",
+    "image_body": "Pronta per Instagram, come storia o post.",
+    "embed_title": "Risultati e classifica sul tuo sito",
+    "embed_body": "Incolla questo codice sul tuo sito. Si aggiorna da solo con la prossima partita, gli ultimi risultati e la classifica.",
+    "copy": "Copia codice",
+    "copied": "Copiato",
+    "preview": "Anteprima"
   }
 }

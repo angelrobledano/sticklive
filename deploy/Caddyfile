@@ -73,6 +73,14 @@ sticklive.eu {
 		-Server
 	}
 
+	# Widget para webs de clubes (04/11/2026): `/{locale}/embed/*` es lo único
+	# que se puede incrustar desde otros dominios. El resto sigue en SAMEORIGIN.
+	@embed path_regexp embed ^/[a-z]{2}/embed/
+	header @embed {
+		-X-Frame-Options
+		Content-Security-Policy-Report-Only "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors *"
+	}
+
 	# ads.txt / app-ads.txt se sirven desde Caddy, no desde Next: Google los
 	# consulta al verificar el sitio y no deben caer en la ventana de reinicio
 	# del contenedor web. Si se cambia el publisher, actualizar ambos sitios.
