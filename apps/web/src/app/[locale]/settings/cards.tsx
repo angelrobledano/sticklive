@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useT, SUPPORTED_LOCALES, LOCALE_NAMES, type Locale } from '@/lib/i18n';
 import { useAuth } from '@/hooks/useAuth';
-import { useFavorites } from '@/hooks/useFavorites';
 import { FieldRow, SETTINGS_SELECT } from './ui';
 
 // ─── Selector de idioma (fila dentro de "Apariencia") ───
@@ -110,66 +109,6 @@ export function AccountCard() {
   );
 }
 
-// ─── Resumen de favoritos (la gestión vive en /favorites) ───
-
-export function FavoritesSummary() {
-  const { favorites, leagues, players, mounted } = useFavorites();
-  const { t } = useT();
-
-  if (!mounted) {
-    return <div className="my-3 h-16 rounded-lg bg-slate-100 dark:bg-slate-800/60 animate-pulse" aria-hidden="true" />;
-  }
-
-  const total = favorites.length + leagues.length + players.length;
-
-  return (
-    <>
-      {total === 0 ? (
-        <div className="pt-3.5 pb-1 space-y-1">
-          <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.fav_empty_title')}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            {t('favorites.onboarding_body')}
-          </p>
-          <Link
-            href="/competitions"
-            className="inline-flex items-center min-h-[44px] text-xs font-semibold text-rink-passion dark:text-rink-accent hover:underline"
-          >
-            {t('favorites.onboarding_cta')}
-          </Link>
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 gap-2 py-4">
-          {[
-            { value: favorites.length, label: t('settings.my_teams') },
-            { value: leagues.length, label: t('settings.my_leagues') },
-            { value: players.length, label: t('settings.my_players') },
-          ].map((stat) => (
-            <div key={stat.label} className="rounded-lg bg-slate-50 dark:bg-slate-800/40 px-3 py-2.5">
-              <p className={`text-lg font-bold tabular-nums leading-none ${
-                stat.value > 0 ? 'text-slate-900 dark:text-slate-50' : 'text-slate-400 dark:text-slate-500'
-              }`}>
-                {stat.value}
-              </p>
-              <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 leading-tight">
-                {stat.label}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <Link href="/favorites" className="flex items-center gap-3 py-3.5 group">
-        <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200">
-          {t('favorites.manage_favs')}
-        </span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-             className="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0 group-hover:text-rink-passion dark:group-hover:text-rink-accent transition-colors">
-          <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </Link>
-    </>
-  );
-}
 
 // ─── Sub-cabecera de sección dentro de un bloque ───
 

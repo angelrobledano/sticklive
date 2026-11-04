@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useT } from '@/lib/i18n';
 
 // ─── Toggle iOS-style ───
@@ -226,65 +227,6 @@ export function SegmentedControl<T extends string>({
   );
 }
 
-// ─── Navegación interna de Ajustes ───
-
-export function SettingsNav({ items }: { items: Array<{ id: string; label: string }> }) {
-  const { t } = useT();
-  const [active, setActive] = useState(items[0]?.id ?? '');
-
-  // Scroll-spy determinista: la sección activa es la última cuyo inicio ya ha
-  // cruzado el borde superior de la ventana (por debajo de la barra sticky).
-  useEffect(() => {
-    const onScroll = () => {
-      let current = items[0]?.id ?? '';
-      for (const item of items) {
-        const el = document.getElementById(item.id);
-        if (el && el.getBoundingClientRect().top <= 120) current = item.id;
-      }
-      setActive(current);
-    };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-    };
-  }, [items]);
-
-  return (
-    <nav
-      aria-label={t('settings.sections_nav')}
-      className="sm:sticky sm:top-0 z-20 -mx-4 px-4 py-2
-                 bg-slate-50/95 dark:bg-[#0b1220]/95 sm:backdrop-blur
-                 border-b border-slate-200/70 dark:border-slate-800/70"
-    >
-      <ul className="flex gap-1.5 overflow-x-auto scrollbar-none -mx-4 px-4 [mask-image:linear-gradient(to_right,transparent,#000_16px,#000_calc(100%-24px),transparent)] sm:mx-0 sm:px-0 sm:[mask-image:none]">
-        {items.map((item) => {
-          const current = active === item.id;
-          return (
-            <li key={item.id} className="shrink-0">
-              <a
-                href={`#${item.id}`}
-                aria-current={current ? 'true' : undefined}
-                onClick={() => setActive(item.id)}
-                className={`inline-flex items-center min-h-[36px] px-3 rounded-full text-xs font-semibold
-                            transition-colors focus:outline-none focus-visible:ring-2
-                            focus-visible:ring-rink-passion/60 dark:focus-visible:ring-rink-accent/60 ${
-                  current
-                    ? 'bg-rink-passion/10 text-rink-passion dark:bg-rink-accent/15 dark:text-rink-accent'
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                {item.label}
-              </a>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
-  );
-}
 
 // ─── Badge "Ya eres Premium" ───
 
@@ -305,3 +247,59 @@ export function PremiumActiveBadge() {
     </div>
   );
 }
+
+// ─── Fila de navegación (título + chevron) ────────────────────────────────────
+
+export function NavRow({ label, href, count, value, disabled = false }: {
+  label: string;
+  href: string;
+  count?: number;
+  /** Texto a la derecha (p. ej. «Activadas»). */
+  value?: string;
+  /** Cuando el push está apagado o bloqueado, la fila deja de ser un enlace. */
+  disabled?: boolean;
+}) {
+  const content = (
+    <>
+      <span className={`flex-1 text-sm font-medium ${
+        disabled
+          ? 'text-slate-400 dark:text-slate-500'
+          : 'text-slate-800 dark:text-slate-200'
+      }`}>
+        {label}
+      </span>
+      {value && <span className="text-xs text-slate-500 dark:text-slate-400">{value}</span>}
+      {typeof count === 'number' && count > 0 && (
+        <span className={`text-xs tabular-nums ${
+          disabled ? 'text-slate-400 dark:text-slate-500' : 'text-slate-500 dark:text-slate-400'
+        }`}>
+          {count}
+        </span>
+      )}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+           className={`w-4 h-4 shrink-0 ${
+             disabled
+               ? 'text-slate-200 dark:text-slate-700'
+               : 'text-slate-300 dark:text-slate-600 group-hover:text-rink-passion dark:group-hover:text-rink-accent'
+           } transition-colors`}>
+        <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </>
+  );
+
+  if (disabled) {
+    return (
+      <div aria-disabled="true" className="flex items-center gap-3 py-3.5">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link href={href} className="flex items-center gap-3 py-3.5 group">
+      {content}
+    </Link>
+  );
+}
+
+

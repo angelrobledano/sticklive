@@ -2,7 +2,7 @@
 
 import { tt } from '@/components/search/translate';
 import { CountryPicker } from '@/components/shared/CountryPicker';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useT } from '@/lib/i18n';
@@ -12,83 +12,23 @@ import {
   notificationPermission, isIOS, isStandalone, vapidMissing,
 } from '@/lib/push';
 import { PREMIUM_ENABLED } from './config';
-import {
-  SettingRow, SettingsBlock, SettingsNav, SegmentedControl, PremiumActiveBadge, FieldRow, ActionRow,
-} from './ui';
+import { SettingsBlock, SegmentedControl, PremiumActiveBadge, FieldRow, ActionRow, NavRow } from './ui';
 import { useDeviceId, useNotifConfig, useTheme } from './hooks';
-import { settingsSections } from './sections';
 import { PremiumBanner } from './PremiumBanner';
-import { AccountCard, FavoritesSummary, LanguageRow, SubHeader } from './cards';
-import { NotificationStatus } from './NotificationStatus';
-import { openConsentManager, getConsentState, subscribeConsent, type TcfState } from '@/lib/consent-tcf';
+import { AccountCard, LanguageRow } from './cards';
+import { openConsentManager } from '@/lib/consent-tcf';
 import { resetFallbackConsent, requestFallbackConsent } from '@/lib/consent-fallback';
-
-// ─── Fila de navegación (título + chevron) ────────────────────────────────────
-
-function NavRow({ label, href, count, disabled = false }: {
-  label: string;
-  href: string;
-  count?: number;
-  /** Cuando el push está apagado o bloqueado, la fila deja de ser un enlace. */
-  disabled?: boolean;
-}) {
-  const content = (
-    <>
-      <span className={`flex-1 text-sm font-medium ${
-        disabled
-          ? 'text-slate-400 dark:text-slate-500'
-          : 'text-slate-800 dark:text-slate-200'
-      }`}>
-        {label}
-      </span>
-      {typeof count === 'number' && count > 0 && (
-        <span className={`text-xs tabular-nums ${
-          disabled ? 'text-slate-400 dark:text-slate-500' : 'text-slate-500 dark:text-slate-400'
-        }`}>
-          {count}
-        </span>
-      )}
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-           className={`w-4 h-4 shrink-0 ${
-             disabled
-               ? 'text-slate-200 dark:text-slate-700'
-               : 'text-slate-300 dark:text-slate-600 group-hover:text-rink-passion dark:group-hover:text-rink-accent'
-           } transition-colors`}>
-        <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </>
-  );
-
-  if (disabled) {
-    return (
-      <div aria-disabled="true" className="flex items-center gap-3 py-3.5">
-        {content}
-      </div>
-    );
-  }
-
-  return (
-    <Link href={href} className="flex items-center gap-3 py-3.5 group">
-      {content}
-    </Link>
-  );
-}
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function SettingsPage() {
   const { t } = useT();
   const theme = useTheme();
-  const { config, set: setNotif, update: updateNotif, mounted: notifMounted } = useNotifConfig();
+  const { config, mounted: notifMounted } = useNotifConfig();
   const { favorites, leagues, players } = useFavorites();
   const { isPremium, mounted: premiumMounted } = usePremium();
   const deviceId = useDeviceId();
-  const [consentError, setConsentError] = useState(false);
-  const [tcfState, setTcfState] = useState<TcfState | null>(null);
-  useEffect(() => {
-    setTcfState(getConsentState());
-    return subscribeConsent(setTcfState);
-  }, []);
+  const [privacyBusy, setPrivacyBusy] = useState(false);
   // La sección "La app" solo tiene sentido mientras la PWA no está instalada.
   // `null` = aún sin comprobar (SSR/primer render): no se pinta para no mostrar
   // el bloque a quien ya la tiene instalada.
@@ -114,10 +54,7 @@ export default function SettingsPage() {
     return () => window.removeEventListener('focus', check);
   }, []);
 
-  const notifDisabled = !config.master || notifBlocked;
-  const showEnableHint = !config.master && !notifBlocked;
 
-  const sections = useMemo(() => settingsSections(t, installed), [t, installed]);
 
   const allMounted = theme.mounted && notifMounted && premiumMounted;
 
@@ -138,159 +75,55 @@ export default function SettingsPage() {
     );
   }
 
+  const totalFavs = favorites.length + leagues.length + players.length;
+  // Privacidad (04/11/2026): el gestor de Google solo cuenta si se ve. Si no
+  // (sin mensaje publicado, bloqueador), se abre el aviso propio. Siempre pasa algo.
+  const openPrivacy = async () => {
+    setPrivacyBusy(true);
+    const opened = await openConsentManager();
+    setPrivacyBusy(false);
+    if (!opened) {
+      resetFallbackConsent();
+      requestFallbackConsent();
+    }
+  };
+  const notifValue = notifBlocked
+    ? tt(t, 'settings.notif_unavailable', 'No disponibles')
+    : config.master && notificationPermission() === 'granted'
+      ? tt(t, 'settings.notif_on', 'Activadas')
+      : tt(t, 'settings.notif_off', 'Desactivadas');
+  const legal = (label: string, href: string) => (
+    <ActionRow label={label}>
+      {(content) => <Link href={href} className="group flex items-center gap-3 py-3.5">{content}</Link>}
+    </ActionRow>
+  );
+
+  // Rediseño (04/11/2026), patrón de FotMob, Flashscore y SofaScore: índice
+  // corto y agrupado, la cuenta arriba, las notificaciones en su pantalla y
+  // la privacidad y lo legal al final.
   return (
     <div className="px-4 pb-8 max-w-2xl mx-auto">
-      {/* Cabecera */}
-      <div className="space-y-1 pt-2 pb-3">
-        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-50">{t('settings.title')}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t('settings.subtitle')}</p>
-      </div>
+      <h1 className="pt-2 pb-4 text-2xl font-extrabold text-slate-900 dark:text-slate-50">{t('settings.title')}</h1>
 
-      <SettingsNav items={sections} />
-
-      <div className="space-y-6 pt-5">
-        {/* ── Banner Premium (oculto mientras la app sea gratis) ───────────── */}
+      <div className="space-y-6">
         {PREMIUM_ENABLED && (
           isPremium ? <PremiumActiveBadge /> : <PremiumBanner deviceId={deviceId} />
         )}
 
-        {/* ── Cuenta ───────────────────────────────────────────────────────── */}
-        <SettingsBlock
-          id="cuenta"
-          title={t('settings.section_account')}
-          icon={
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-              <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-            </svg>
-          }
-        >
-          <AccountCard />
-        </SettingsBlock>
+        <div className="card px-4"><AccountCard /></div>
 
-        {/* ── La app (solo mientras la PWA no esté instalada) ──────────────── */}
-        {installed === false && (
-          <SettingsBlock
-            id="app"
-            title={t('settings.section_app')}
-            icon={
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-                <rect x="7" y="2" width="10" height="20" rx="2" />
-                <path d="M11 18h2" strokeLinecap="round" />
-              </svg>
-            }
-          >
-            <InstallApp />
-          </SettingsBlock>
-        )}
-
-        {/* ── Notificaciones ───────────────────────────────────────────────── */}
-        <SettingsBlock
-          id="notificaciones"
-          title={t('settings.notif_title')}
-          icon={
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-          }
-        >
-          {/* Estado del dispositivo + Activar/Probar */}
-          <NotificationStatus deviceId={deviceId} />
-
-          {/* Si el push no está disponible en este dispositivo, no pintamos
-              controles muertos: solo el estado y cómo resolverlo. */}
-          {!notifBlocked && (
-            <>
-              {/* Switch maestro — control absoluto del sistema */}
-              <SettingRow
-                label={t('settings.master')}
-                description={t('settings.master_desc')}
-                checked={config.master}
-                onChange={() => setNotif('master')}
-              />
-
-              {showEnableHint && (
-                <p className="py-2.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {t('settings.notif_enable_hint')}
-                </p>
-              )}
-
-              {/* Alertas de la jornada (inicio + resumen, toggle único) */}
-              <SubHeader label={t('settings.sec_jornada')} />
-              <SettingRow
-                label={t('settings.jornada_alerts')}
-                description={t('settings.jornada_alerts_desc')}
-                checked={config.globalJornadaStart || config.globalJornadaEnd}
-                onChange={() => {
-                  const on = !(config.globalJornadaStart || config.globalJornadaEnd);
-                  updateNotif({ globalJornadaStart: on, globalJornadaEnd: on });
-                }}
-                disabled={notifDisabled}
-              />
-
-              {/* Notificaciones de mis favoritos (navegación por entidad) */}
-              <SubHeader label={t('settings.sec_favs')} />
-              <NavRow
-                label={t('settings.notif_nav_competitions')}
-                href="/settings/notifications/competitions"
-                count={leagues.length}
-                disabled={notifDisabled}
-              />
-              <NavRow
-                label={t('settings.notif_nav_teams')}
-                href="/settings/notifications/teams"
-                count={favorites.length}
-                disabled={notifDisabled}
-              />
-              <NavRow
-                label={t('settings.notif_nav_players')}
-                href="/settings/notifications/players"
-                count={players.length}
-                disabled={notifDisabled}
-              />
-
-              {/* Descanso */}
-              <SubHeader label={t('settings.sec_rest')} />
-              <SettingRow
-                label={t('settings.quiet')}
-                description={t('settings.quiet_desc')}
-                checked={config.quietNight}
-                onChange={() => setNotif('quietNight')}
-                disabled={notifDisabled}
-              />
-            </>
+        <SettingsBlock title={tt(t, 'settings.section_alerts', 'Avisos y favoritos')} icon={ICON_BELL}>
+          <NavRow label={t('settings.notif_title')} href="/settings/notifications" value={notifValue} />
+          <NavRow label={t('navigation.favorites')} href="/favorites" count={totalFavs} />
+          {installed === false && (
+            <div className="py-1"><InstallApp /></div>
           )}
         </SettingsBlock>
 
-        {/* ── Favoritos (resumen; la gestión vive en /favorites) ───────────── */}
-        <SettingsBlock
-          id="favoritos"
-          title={t('navigation.favorites')}
-          icon={
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" strokeLinejoin="round" />
-            </svg>
-          }
-        >
-          <FavoritesSummary />
-        </SettingsBlock>
-
-        {/* ── Apariencia e idioma ──────────────────────────────────────────── */}
-        <SettingsBlock
-          id="preferencias"
-          title={t('settings.section_preferences')}
-          icon={
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-              <circle cx="12" cy="12" r="4" />
-              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" strokeLinecap="round" />
-            </svg>
-          }
-        >
-          <FieldRow label={t('settings.theme')} description={t('settings.theme_desc')}>
+        <SettingsBlock title={tt(t, 'settings.section_personal', 'Personalización')} icon={ICON_SUN}>
+          <FieldRow label={t('settings.theme')}>
             <SegmentedControl
               label={t('settings.theme')}
-              // Sin opción "Sistema": si no hay elección explícita, se muestra
-              // la que resuelve el SO. Elegir claro/oscuro fija la preferencia.
               value={theme.resolved}
               onChange={theme.set}
               options={[
@@ -299,65 +132,49 @@ export default function SettingsPage() {
               ]}
             />
           </FieldRow>
-
           <LanguageRow />
-
           <FieldRow
             label={tt(t, 'home.country_label', 'País preferido')}
             description={tt(t, 'settings.country_desc', 'Sus competiciones salen primero en la portada. Las demás siguen ahí.')}
           >
             <CountryPicker variant="field" />
           </FieldRow>
-
-          <p className="py-3 text-xs text-slate-500 dark:text-slate-400">
-            {t('settings.choice_saved')}
-          </p>
         </SettingsBlock>
 
-        {/* ── Privacidad ──────────────────────────────────────────────────── */}
-        <SettingsBlock
-          id="privacidad"
-          title={t('settings.section_privacy')}
-          icon={
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-              <rect x="4" y="10" width="16" height="11" rx="2" />
-              <path d="M8 10V7a4 4 0 0 1 8 0v3" strokeLinecap="round" />
-            </svg>
-          }
-        >
+        <SettingsBlock title={tt(t, 'settings.section_legal', 'Privacidad y legal')} icon={ICON_LOCK}>
           <ActionRow
-            label={t('ads.privacy_entry_title')}
-            description={t('ads.privacy_entry_desc')}
-            onClick={async () => {
-              const opened = await openConsentManager();
-              setConsentError(!opened);
-            }}
+            label={tt(t, 'settings.privacy_cookies', 'Privacidad y cookies')}
+            description={privacyBusy
+              ? tt(t, 'common.loading', 'Cargando…')
+              : tt(t, 'settings.privacy_cookies_desc', 'Elige qué analítica y publicidad aceptas')}
+            onClick={openPrivacy}
           />
-          {consentError && (
-            <p role="alert" className="pb-3 text-xs text-rose-600 dark:text-rose-400">{t('ads.privacy_error')}</p>
-          )}
-
-          {(tcfState === 'pending' || tcfState === 'unavailable') && (
-            <ActionRow
-              label={t('consent.title')}
-              description={t('ads.analytics_consent_desc')}
-              onClick={() => {
-                resetFallbackConsent();
-                requestFallbackConsent();
-              }}
-            />
-          )}
-
-          <ActionRow label={t('settings.privacy_link')}>
-            {(content) => (
-              <Link href="/privacy" className="group flex items-center gap-3 py-3.5">{content}</Link>
-            )}
-          </ActionRow>
+          {legal(t('settings.privacy_link'), '/privacy')}
+          {legal(tt(t, 'settings.legal_notice', 'Aviso legal'), '/legal')}
+          {legal(tt(t, 'settings.contact', 'Contacto'), '/contact')}
         </SettingsBlock>
 
-        {/* Versión: pie discreto de la página, no una fila de un bloque. */}
         <p className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500">{t('settings.footer')}</p>
       </div>
     </div>
   );
 }
+
+const ICON_BELL = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+  </svg>
+);
+const ICON_SUN = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" strokeLinecap="round" />
+  </svg>
+);
+const ICON_LOCK = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+    <rect x="4" y="10" width="16" height="11" rx="2" />
+    <path d="M8 10V7a4 4 0 0 1 8 0v3" strokeLinecap="round" />
+  </svg>
+);

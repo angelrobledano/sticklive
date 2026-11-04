@@ -560,6 +560,16 @@
     "logout_confirm": "Se déconnecter sur cet appareil ?",
     "logout_cancel": "Annuler",
     "footer": "Stick Live v1.0.0 · Fait pour les passionnés de hockey",
+    "section_alerts": "Alertes et favoris",
+    "section_personal": "Personnalisation",
+    "section_legal": "Confidentialité et mentions légales",
+    "privacy_cookies": "Confidentialité et cookies",
+    "privacy_cookies_desc": "Choisis les mesures d’audience et la publicité que tu acceptes",
+    "notif_on": "Activées",
+    "notif_off": "Désactivées",
+    "notif_unavailable": "Indisponibles",
+    "legal_notice": "Mentions légales",
+    "contact": "Contact",
     "privacy_link": "Politique de confidentialité"
   },
   "team": {

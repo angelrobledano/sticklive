@@ -653,6 +653,16 @@
     "logout_confirm": "Vols tancar la sessió en aquest dispositiu?",
     "logout_cancel": "Cancel·lar",
     "footer": "Stick Live v1.0.0 · Fet per a apassionats de l'hoquei",
+    "section_alerts": "Avisos i preferits",
+    "section_personal": "Personalització",
+    "section_legal": "Privadesa i legal",
+    "privacy_cookies": "Privadesa i galetes",
+    "privacy_cookies_desc": "Tria quina analítica i publicitat acceptes",
+    "notif_on": "Activades",
+    "notif_off": "Desactivades",
+    "notif_unavailable": "No disponibles",
+    "legal_notice": "Avís legal",
+    "contact": "Contacte",
     "privacy_link": "Política de privadesa"
   },
   "team": {

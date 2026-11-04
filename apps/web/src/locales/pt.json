@@ -560,6 +560,16 @@
     "logout_confirm": "Terminar sessão neste dispositivo?",
     "logout_cancel": "Cancelar",
     "footer": "Stick Live v1.0.0 · Feito para apaixonados do hóquei",
+    "section_alerts": "Avisos e favoritos",
+    "section_personal": "Personalização",
+    "section_legal": "Privacidade e legal",
+    "privacy_cookies": "Privacidade e cookies",
+    "privacy_cookies_desc": "Escolhe que análise e publicidade aceitas",
+    "notif_on": "Ativadas",
+    "notif_off": "Desativadas",
+    "notif_unavailable": "Indisponíveis",
+    "legal_notice": "Aviso legal",
+    "contact": "Contacto",
     "privacy_link": "Política de privacidade"
   },
   "team": {

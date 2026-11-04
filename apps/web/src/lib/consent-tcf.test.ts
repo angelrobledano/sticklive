@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { analyticsAllowedFromTcData, resolveAnalyticsConsent } from './consent-tcf';
+import { analyticsAllowedFromTcData, resolveAnalyticsConsent, openConsentManager } from './consent-tcf';
 import { parseFallbackConsent } from './consent-fallback';
 
 describe('analyticsAllowedFromTcData', () => {
@@ -41,5 +41,32 @@ describe('parseFallbackConsent', () => {
     expect(parseFallbackConsent('pending')).toBe('pending');
     expect(parseFallbackConsent(null)).toBe('pending');
     expect(parseFallbackConsent('otra-cosa')).toBe('pending');
+  });
+});
+
+/**
+ * 04/11/2026: en producción `showRevocationMessage` existe pero Google no tiene
+ * mensaje publicado y no se abre nada. Antes devolvía true igualmente y la fila
+ * de Ajustes «no hacía nada». Ahora solo cuenta como abierto si aparece el diálogo.
+ */
+describe('openConsentManager', () => {
+  const setup = (dialog: boolean) => {
+    const calls: string[] = [];
+    (globalThis as unknown as { window: unknown }).window = {
+      googlefc: { showRevocationMessage: () => calls.push('revocation') },
+    };
+    (globalThis as unknown as { document: unknown }).document = {
+      querySelector: () => (dialog ? {} : null),
+    };
+    return calls;
+  };
+  it('el diálogo aparece: true', async () => {
+    const calls = setup(true);
+    await expect(openConsentManager(500, 300)).resolves.toBe(true);
+    expect(calls).toEqual(['revocation']);
+  });
+  it('Google no muestra nada: false (la fila usa el aviso propio)', async () => {
+    setup(false);
+    await expect(openConsentManager(500, 300)).resolves.toBe(false);
   });
 });

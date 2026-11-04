@@ -229,16 +229,30 @@ export function probeCmpDisplayStatus(): Promise<'visible' | 'hidden' | 'unknown
  * elección. `showRevocationMessage` es la API documentada de Funding Choices.
  * Devuelve false si el CMP no está disponible (bloqueado o aún cargando).
  */
-export async function openConsentManager(timeoutMs = 4_000): Promise<boolean> {
+/** Contenedores del diálogo de Funding Choices (Google CMP). */
+const FC_DIALOG_SELECTOR = '.fc-consent-root, .fc-dialog-container, .fc-dialog-overlay';
+
+/**
+ * Abre el gestor de consentimiento de Google y comprueba que se ve. Devuelve
+ * true solo si aparece el diálogo (04/11/2026: sin mensaje publicado en
+ * AdSense, `showRevocationMessage` no muestra nada y antes se daba por abierto).
+ */
+export async function openConsentManager(timeoutMs = 4_000, dialogTimeoutMs = 2_500): Promise<boolean> {
   if (typeof window === 'undefined') return false;
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const googlefc = window.googlefc;
     if (googlefc?.showRevocationMessage) {
       googlefc.showRevocationMessage();
-      return true;
+      const shownAt = Date.now();
+      while (Date.now() - shownAt < dialogTimeoutMs) {
+        if (document.querySelector(FC_DIALOG_SELECTOR)) return true;
+        await sleep(100);
+      }
+      return false;
     }
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await sleep(200);
   }
   return false;
 }
