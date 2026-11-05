@@ -1,7 +1,7 @@
-import type { SeasonStandingRow } from '@/lib/api/types';
+import type { SeasonStandingRow } from '@sports/core/api';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { TeamShield } from '@/components/shared/TeamShield';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 
 const COPY: Record<string, { title: string; pos: string; team: string; played: string; won: string; drawn: string; lost: string; gf: string; ga: string; points: string; group: string }> = {
   es: { title: 'Clasificación final', pos: 'Pos', team: 'Equipo', played: 'PJ', won: 'G', drawn: 'E', lost: 'P', gf: 'GF', ga: 'GC', points: 'Pts', group: 'Grupo' },

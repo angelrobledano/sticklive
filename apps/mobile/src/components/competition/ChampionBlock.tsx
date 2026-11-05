@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { clubName } from '@/src/lib/names';
+import { clubName } from '@sports/core/names';
 
 interface ChampionTeam {
   id: string;

@@ -7,7 +7,7 @@ import type { SeasonLeader, SeasonStats } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 import { leaderDisplayName } from './format';
 
 const LEADERBOARD_PREVIEW = 5;

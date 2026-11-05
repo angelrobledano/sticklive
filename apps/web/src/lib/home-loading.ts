@@ -3,8 +3,8 @@
  * 23 días × todo el catálogo (~3.400 partidos), se pide solo el día visible y
  * un índice ligero de días con partidos (`/matches/days`). Funciones puras.
  */
-import { addDaysToKey } from '@/lib/match-time';
-import { dateKeyIn } from '@/lib/viewer-tz-core';
+import { addDaysToKey } from '@sports/core/match-time';
+import { dateKeyIn } from '@sports/core/viewer-tz';
 
 /**
  * Rango UTC que cubre el día `dayKey` de Madrid: el API filtra por

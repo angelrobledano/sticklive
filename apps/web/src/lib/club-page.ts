@@ -1,7 +1,7 @@
-import type { ClubDetail } from '@/lib/api/types';
+import type { ClubDetail } from '@sports/core/api';
 import type { Locale } from '@/lib/locales';
 import { SITE_URL } from '@/lib/seo';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 
 /**
  * Textos y structured data de la ficha de club (Plan B1). Lógica pura, testeada

@@ -17,7 +17,7 @@ import {
   type PeriodDividerEvent,
   type TimelineEvent,
 } from '@/src/lib/match-helpers';
-import type { MatchDetailRaw } from '@/src/lib/api/types';
+import type { MatchDetailRaw } from '@sports/core/api';
 
 interface TimelineTabProps {
   events: MatchDetailRaw['events'];

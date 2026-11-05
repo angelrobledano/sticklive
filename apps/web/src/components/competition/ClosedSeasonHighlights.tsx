@@ -1,9 +1,9 @@
-import type { CompetitionSummary } from '@/lib/content-summary';
+import type { CompetitionSummary } from '@sports/core/content-summary';
 import type { InsightPart } from '@/lib/insights';
-import type { Insight, SeasonInsights, SeasonLeader, SeasonStandingRow, SeasonStats } from '@/lib/api/types';
+import type { Insight, SeasonInsights, SeasonLeader, SeasonStandingRow, SeasonStats } from '@sports/core/api';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { TeamShield } from '@/components/shared/TeamShield';
-import { clubName, playerDisplayName, playerNameFromRaw } from '@/lib/names';
+import { clubName, playerDisplayName, playerNameFromRaw } from '@sports/core/names';
 import { isRenderable, renderInsight } from '@/lib/insights';
 
 const COPY: Record<string, {

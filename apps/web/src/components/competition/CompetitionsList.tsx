@@ -7,12 +7,12 @@ import * as Sentry from '@sentry/nextjs';
 import type { CompetitionSummary, Federation } from '@/lib/api/client';
 import { useT } from '@/lib/i18n';
 import { track, searchEventProps } from '@/lib/analytics';
-import { clubName, competitionName } from '@/lib/names';
+import { clubName, competitionName } from '@sports/core/names';
 import { CountryFlag } from '@/components/shared/CountryFlag';
-import { filterCompetitions, normalizeSearchText, orderSearchResults } from '@/components/search/competition-filter';
+import { filterCompetitions, normalizeSearchText, orderSearchResults } from '@sports/core/competition-filter';
 import { tt } from '@/components/search/translate';
 import { useFavorites } from '@/hooks/useFavorites';
-import { currentSeasonYear, hasSeasonYear, orderByImportance } from '@/lib/competition-importance';
+import { currentSeasonYear, hasSeasonYear, orderByImportance } from '@sports/core/competition-importance';
 import {
   buildCompetitionTree, countryHubPath, federationHubPath, filterByCategory, filterByGender, matchFederationGroups,
   type CategoryFilter, type CountrySections, type GenderFilter,

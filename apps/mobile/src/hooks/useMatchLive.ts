@@ -3,7 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import EventSource from 'react-native-sse';
 import { useQueryClient } from '@tanstack/react-query';
 import { API_URL, apiFetch } from '@/src/lib/api/client';
-import type { MatchDetailRaw } from '@/src/lib/api/types';
+import type { MatchDetailRaw } from '@sports/core/api';
 import { qk } from '@/src/hooks/queries';
 import {
   applyStreamPatch,

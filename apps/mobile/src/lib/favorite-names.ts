@@ -12,7 +12,7 @@ import type {
   SeasonStats,
   StandingsResponse,
   TeamDetail,
-} from '@/src/lib/api/types';
+} from '@sports/core/api';
 
 /**
  * Nombre visible de un favorito desde la CACHÉ persistida y queries ya visitadas

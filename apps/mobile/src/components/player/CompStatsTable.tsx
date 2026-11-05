@@ -1,5 +1,5 @@
 import { Text, View } from 'react-native';
-import type { PlayerCompStats } from '@/src/lib/api/types';
+import type { PlayerCompStats } from '@sports/core/api';
 import { useLocale } from '@/src/i18n/LocaleContext';
 
 interface Props {

@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { BRAND } from '@sports/brand';
-import type { MatchSummary } from '@/src/lib/api/types';
-import { clubName } from '@/src/lib/names';
+import type { MatchSummary } from '@sports/core/api';
+import { clubName } from '@sports/core/names';
 import { isEffectivelyLive } from '@/src/lib/time';
 
 export interface FollowedEntities {

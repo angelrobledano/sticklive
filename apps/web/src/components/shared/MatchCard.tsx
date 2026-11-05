@@ -9,7 +9,7 @@ import { useT } from '@/lib/i18n';
 import { tt } from '@/components/search/translate';
 import { useNow30s } from '@/lib/now-ticker';
 import { finalLabelKey, penaltyText } from '@/lib/match-result';
-import { APP_TZ, isTimeTbd, timeTbdLabel } from '@/lib/match-time';
+import { APP_TZ, isTimeTbd, timeTbdLabel } from '@sports/core/match-time';
 import { matchDisplayState, type MatchDisplayState } from '@sports/shared-types';
 
 

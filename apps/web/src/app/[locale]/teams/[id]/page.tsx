@@ -10,7 +10,7 @@ import { redirectOrNotFound } from '@/lib/entity-redirect';
 import { localeAlternates, socialMeta, isSupportedLocale, breadcrumbJsonLd, teamJsonLd, teamMetaTitle, metadataOnError, SITE_URL } from '@/lib/seo';
 import { BREADCRUMB_LABELS } from '@/lib/breadcrumbs';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
-import { clubName, playerDisplayName, teamQualifiedName } from '@/lib/names';
+import { clubName, playerDisplayName, teamQualifiedName } from '@sports/core/names';
 import { teamSectionLabel } from '@/lib/team-section-label';
 import { teamHistory } from '@/lib/team-histories';
 import { competitionPath } from '@/lib/competition-path';

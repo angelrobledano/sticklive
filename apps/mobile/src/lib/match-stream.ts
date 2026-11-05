@@ -1,4 +1,4 @@
-import type { MatchDetailRaw } from './api/types';
+import type { MatchDetailRaw } from '@sports/core/api';
 
 export type Transport = 'sse' | 'poll';
 

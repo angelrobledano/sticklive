@@ -4,7 +4,7 @@ import { MatchCenterClient } from '@/components/match/MatchCenterClient';
 import { MatchPreview } from '@/components/match/MatchPreview';
 import { MatchChronicle } from '@/components/match/MatchChronicle';
 import { PreviousMeeting } from '@/components/match/PreviousMeeting';
-import { buildMatchPreview, buildPreviousMeeting } from '@/lib/content-summary';
+import { buildMatchPreview, buildPreviousMeeting } from '@sports/core/content-summary';
 import { buildMatchChronicle } from '@/lib/match-chronicle';
 import { BackLink } from '@/components/shared/BackLink';
 import { JsonLd } from '@/components/shared/JsonLd';
@@ -19,7 +19,7 @@ import {
   isSupportedLocale,
   metadataOnError,
 } from '@/lib/seo';
-import { teamTitleName } from '@/lib/names';
+import { teamTitleName } from '@sports/core/names';
 import { BREADCRUMB_LABELS } from '@/lib/breadcrumbs';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { competitionPath } from '@/lib/competition-path';

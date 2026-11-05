@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Insight, SeasonInsights } from '@/lib/api/types';
+import type { Insight, SeasonInsights } from '@sports/core/api';
 import { renderInsight, pickDailyInsight, isRenderable } from './insights';
 
 const ins = (id: string, priority: number, extra: Partial<Insight> = {}): Insight => ({

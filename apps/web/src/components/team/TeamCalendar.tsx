@@ -1,14 +1,14 @@
 'use client';
 
 import { useViewerTz } from '@/hooks/useViewerTz';
-import { isTimeTbd, timeTbdLabel } from '@/lib/match-time';
+import { isTimeTbd, timeTbdLabel } from '@sports/core/match-time';
 import { useMemo, useState } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { useT } from '@/lib/i18n';
-import { clubName } from '@/lib/names';
-import type { TeamMatchSummary } from '@/lib/api/types';
-import { calendarCounts, filterTeamMatches, teamResult, type CalendarFilter, type TeamResult } from '@/lib/team-calendar';
+import { clubName } from '@sports/core/names';
+import type { TeamMatchSummary } from '@sports/core/api';
+import { calendarCounts, filterTeamMatches, teamResult, type CalendarFilter, type TeamResult } from '@sports/core/team-calendar';
 
 const RESULT_STYLE: Record<TeamResult, string> = {
   W: 'bg-emerald-600 text-white',

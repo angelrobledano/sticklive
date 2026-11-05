@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import type { TeamMatchSummary, TeamSeasonStats } from '@/src/lib/api/types';
+import type { TeamMatchSummary, TeamSeasonStats } from '@sports/core/api';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { teamStatsStory, type Record3 } from '@/src/lib/team-stats-story';
-import type { TeamResult } from '@/src/lib/team-calendar';
+import type { TeamResult } from '@sports/core/team-calendar';
 
 interface Props {
   stats?: TeamSeasonStats | null;

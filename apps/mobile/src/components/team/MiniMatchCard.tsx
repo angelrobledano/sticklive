@@ -1,11 +1,11 @@
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import type { TeamMatchSummary } from '@/src/lib/api/types';
+import type { TeamMatchSummary } from '@sports/core/api';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { formatDayLabel, formatKickoff, isEffectivelyLive } from '@/src/lib/time';
-import { clubName } from '@/src/lib/names';
-import { teamResult, type TeamResult } from '@/src/lib/team-calendar';
+import { clubName } from '@sports/core/names';
+import { teamResult, type TeamResult } from '@sports/core/team-calendar';
 
 interface Props {
   match: TeamMatchSummary;

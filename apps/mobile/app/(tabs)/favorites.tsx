@@ -13,7 +13,7 @@ import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Ava
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { MiGrada } from '@/src/components/home/MiGrada';
 import { authErrorKey } from '@/src/lib/auth-errors';
-import { clubName } from '@/src/lib/names';
+import { clubName } from '@sports/core/names';
 
 /**
  * Tab de favoritos (Task 3.3). Con sesión la fuente es `GET /auth/favorites`;

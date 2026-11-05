@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 import { OG_BRAND, OgBrandStrip, OgLockup } from '@/lib/og-brand';
 import { getMatchDetail } from '@/lib/api/client';
 import { ogCopy, teamInitials, teamLogoUrlForSatori } from '@/lib/og-image';
-import { teamTitleName } from '@/lib/names';
+import { teamTitleName } from '@sports/core/names';
 
 // Imagen OG dinámica por partido (escudos + marcador) para compartir en
 // WhatsApp/Twitter/etc. Next la sirve en /{locale}/matches/{id}/opengraph-image.

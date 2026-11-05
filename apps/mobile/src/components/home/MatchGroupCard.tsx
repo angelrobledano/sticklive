@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/src/components/shared/Avatar';
 import { CountryFlag } from '@/src/components/shared/CountryFlag';
-import { clubName } from '@/src/lib/names';
+import { clubName } from '@sports/core/names';
 
 interface MatchGroupCardProps {
   title: string;

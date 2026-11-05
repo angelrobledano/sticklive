@@ -10,11 +10,11 @@ import {
   type KnockoutPhaseView,
   type KnockoutSeriesView,
   type KnockoutSummary,
-} from '@/lib/knockout';
+} from '@sports/core/knockout';
 import { fmtDate, fmtTime } from '@/components/competition/format';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TrophyIcon } from '@/components/match/icons';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 import { competitionPath } from '@/lib/competition-path';
 
 /**

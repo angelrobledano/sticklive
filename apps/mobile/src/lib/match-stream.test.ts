@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MatchDetailRaw } from '@/src/lib/api/types';
+import type { MatchDetailRaw } from '@sports/core/api';
 import {
   applyStreamPatch,
   backoffDelay,

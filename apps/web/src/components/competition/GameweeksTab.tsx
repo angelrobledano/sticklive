@@ -10,14 +10,15 @@ import type { SeasonMatch, SeasonRound, TeamSummary } from '@/lib/api/client';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { AdBanner } from '@/components/shared/AdBanner';
 import { adsenseConfig, listAdInsertIndex } from '@/lib/ads';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 import { tt } from '@/components/search/translate';
-import { fmtTime, madridDay, dayPillLabel, roundLabel } from './format';
-import { dayDiff, madridTodayKey } from '@/lib/match-time';
+import { fmtTime, dayPillLabel, roundLabel } from './format';
+import { madridDay } from '@sports/core/phase-keys';
+import { dayDiff, madridTodayKey } from '@sports/core/match-time';
 import {
   selectableRounds, roundSelection, roundSelectionKey, parseRoundSelection,
   matchesOfSelection, defaultRoundSelection, type RoundSelection,
-} from './round-selection';
+} from '@sports/core/round-selection';
 
 /** Config AdSense (env inyectado en build). */
 const ADS = adsenseConfig();

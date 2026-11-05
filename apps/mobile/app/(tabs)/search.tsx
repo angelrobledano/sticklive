@@ -12,7 +12,7 @@ import { SearchSkeleton } from '@/src/components/shared/Skeleton';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { AdBanner } from '@/src/components/ads/AdBanner';
-import { clubName, playerDisplayName } from '@/src/lib/names';
+import { clubName, playerDisplayName } from '@sports/core/names';
 
 /**
  * Tab de búsqueda (Task 2.5): TextInput con debounce de 300 ms → useSearch.

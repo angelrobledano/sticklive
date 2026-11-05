@@ -3,7 +3,7 @@
  * la API para poder testearlo sin red.
  */
 import type { CompetitionSummary, Federation } from '@/lib/api/client';
-import { currentSeasonYear, hasSeasonYear } from '@/lib/competition-importance';
+import { currentSeasonYear, hasSeasonYear } from '@sports/core/competition-importance';
 import { competitionCountry, competitionsUnderFederation, isInternational } from '@/lib/competition-groups';
 
 /** Solo la temporada vigente si la hay; si el hub no tiene ninguna, todo. */

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 import { Avatar } from '@/src/components/shared/Avatar';
-import { clubName, playerDisplayName, playerNameFromRaw } from '@/src/lib/names';
-import type { SeasonLeader, SeasonStats } from '@/src/lib/api/types';
+import { clubName, playerDisplayName, playerNameFromRaw } from '@sports/core/names';
+import type { SeasonLeader, SeasonStats } from '@sports/core/api';
 import { useLocale } from '@/src/i18n/LocaleContext';
 
 const LEADERBOARD_PREVIEW = 5;

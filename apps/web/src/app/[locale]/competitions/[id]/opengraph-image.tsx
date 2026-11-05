@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { OG_BRAND, OgBrandStrip, OgLockup } from '@/lib/og-brand';
 import { getCompetitionSeasons, getSeasonOverview } from '@/lib/api/client';
-import { competitionName } from '@/lib/names';
+import { competitionName } from '@sports/core/names';
 import { fedLabelFromSeason } from '@/components/competition/format';
 import { ogCopy } from '@/lib/og-image';
 

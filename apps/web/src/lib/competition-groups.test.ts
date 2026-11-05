@@ -4,7 +4,7 @@ import {
   buildCompetitionTree, competitionsUnderFederation,
   filterByCategory, filterByGender, isCup, matchFederationGroups,
 } from './competition-groups';
-import { importanceRank } from './competition-importance';
+import { importanceRank } from '@sports/core/competition-importance';
 
 const FED: Record<string, Federation> = {
   WS:   { code: 'World Skate', slug: 'world-skate', name: 'World Skate', shortName: 'World Skate', level: 'world', parentCode: null, country: null, region: null, website: null, displayOrder: 1, competitionCount: 0 },

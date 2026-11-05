@@ -10,8 +10,8 @@ import {
   buildSeries,
   groupByPhase,
   seriesWinnerId,
-} from '@/src/lib/playoff';
-import type { SeasonMatch } from '@/src/lib/api/types';
+} from '@sports/core/playoff';
+import type { SeasonMatch } from '@sports/core/api';
 
 function MicroSeries({
   serie,

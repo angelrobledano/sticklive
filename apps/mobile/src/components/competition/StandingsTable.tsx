@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import type { SeasonStandingRow } from '@/src/lib/api/types';
+import type { SeasonStandingRow } from '@sports/core/api';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { clubName } from '@/src/lib/names';
+import { clubName } from '@sports/core/names';
 import {
   rowZones,
   zoneChangesAfter,

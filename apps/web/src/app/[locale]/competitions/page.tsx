@@ -3,7 +3,7 @@ import { getCompetitions, getFederations, type Federation } from '@/lib/api/clie
 import { CompetitionsList } from '@/components/competition/CompetitionsList';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { localeAlternates, socialMeta, isSupportedLocale, competitionsListJsonLd, SITE_URL } from '@/lib/seo';
-import { competitionName } from '@/lib/names';
+import { competitionName } from '@sports/core/names';
 import { competitionPath } from '@/lib/competition-path';
 
 // #351: listado público; los datos ya se revalidan cada 300 s en

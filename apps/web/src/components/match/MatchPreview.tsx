@@ -4,11 +4,11 @@ import type {
   MatchPreview as MatchPreviewData,
   TeamObservationKind,
   TeamSnapshot,
-} from '@/lib/content-summary';
+} from '@sports/core/content-summary';
 import { duelBar, headToHeadBalance } from '@/lib/preview-duel';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { TeamShield } from '@/components/shared/TeamShield';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 
 interface Copy {
   title: string; titlePost: string; pointOne: string; position: string; points: string; form: string; h2h: string; emptyH2h: string; lastFive: string;

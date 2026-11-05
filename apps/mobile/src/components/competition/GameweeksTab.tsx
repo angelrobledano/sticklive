@@ -13,11 +13,11 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { AdBanner } from '@/src/components/ads/AdBanner';
-import { clubName } from '@/src/lib/names';
+import { clubName } from '@sports/core/names';
 import { formatKickoff, isEffectivelyLive } from '@/src/lib/time';
 import {
   madridTodayKey,
-} from '@/src/lib/day-view';
+} from '@sports/core/day-view';
 import {
   isHorizontalSwipeGesture,
   resolveDaySwipeDelta,
@@ -36,8 +36,8 @@ import {
   type FixturesFilterMode,
   type RoundItem,
   type RoundSelection,
-} from '@/src/lib/round-selection';
-import type { SeasonMatch } from '@/src/lib/api/types';
+} from '@sports/core/round-selection';
+import type { SeasonMatch } from '@sports/core/api';
 
 interface TeamItem {
   id: string;

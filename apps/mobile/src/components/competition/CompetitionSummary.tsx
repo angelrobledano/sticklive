@@ -3,8 +3,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
-import { clubName } from '@/src/lib/names';
-import type { CompetitionSummaryData } from '@/src/lib/content-summary';
+import { clubName } from '@sports/core/names';
+import type { CompetitionSummaryData } from '@sports/core/content-summary';
 
 const COPY: Record<string, {
   live: string;

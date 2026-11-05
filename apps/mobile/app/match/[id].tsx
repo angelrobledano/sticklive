@@ -19,8 +19,8 @@ import { MatchPreview } from '@/src/components/match/MatchPreview';
 import { capture } from '@/src/lib/analytics';
 import { isAdQuietTime } from '@/src/lib/time';
 import { visibleTabsFor, type Tab } from '@/src/lib/match-helpers';
-import { buildMatchPreview } from '@/src/lib/content-summary';
-import { clubName } from '@/src/lib/names';
+import { buildMatchPreview } from '@sports/core/content-summary';
+import { clubName } from '@sports/core/names';
 import { useLocale } from '@/src/i18n/LocaleContext';
 
 export default function MatchScreen() {

@@ -19,8 +19,8 @@
  * Funciones puras y testeadas.
  */
 import type { SeasonMatch, SeasonRound } from '@/lib/api/client';
-import { gameWinnerId } from '@/lib/playoff';
-import { matchPhaseKey, playoffPhaseKey, type PlayoffPhaseKey } from '@/components/competition/format';
+import { gameWinnerId } from '@sports/core/playoff';
+import { matchPhaseKey, playoffPhaseKey, type PlayoffPhaseKey } from '@sports/core/phase-keys';
 
 export interface BracketRound {
   /** Fase canónica si se conoce; `null` = ronda no reconocida (usar `name`). */

@@ -6,7 +6,7 @@ import type {
   MatchSummary,
   StandingsResponse,
   StandingsRow,
-} from '../lib/api/types';
+} from '@sports/core/api';
 import {
   favoritesEnabled,
   fetchCompetitions,

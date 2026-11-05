@@ -1,6 +1,6 @@
 import type { ChronicleFact } from '@/lib/match-chronicle';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
-import { toTitleCase } from '@/lib/names';
+import { toTitleCase } from '@sports/core/names';
 
 interface Copy {
   title: string;

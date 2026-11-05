@@ -5,8 +5,8 @@
  * idioma. Una frase es una lista de trozos: texto o enlace a la ficha que cita,
  * para que el bloque más visible de la página reparta enlazado interno.
  */
-import type { Insight, InsightKind, SeasonInsights } from '@/lib/api/types';
-import { clubName, playerDisplayName } from '@/lib/names';
+import type { Insight, InsightKind, SeasonInsights } from '@sports/core/api';
+import { clubName, playerDisplayName } from '@sports/core/names';
 
 export type InsightPart = string | { href: string; text: string };
 

@@ -6,7 +6,7 @@ import type { CompetitionSummary } from '@/lib/api/client';
 import { useT } from '@/lib/i18n';
 import { tt } from '@/components/search/translate';
 import { CountryFlag } from '@/components/shared/CountryFlag';
-import { competitionName, clubName } from '@/lib/names';
+import { competitionName, clubName } from '@sports/core/names';
 import { competitionPath } from '@/lib/competition-path';
 import { usePreferredCountry } from '@/hooks/usePreferredCountry';
 import {

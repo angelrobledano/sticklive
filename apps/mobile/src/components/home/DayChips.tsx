@@ -2,7 +2,7 @@ import { Pressable, Text, View, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import type { DayFilter } from '@/src/lib/day-view';
+import type { DayFilter } from '@sports/core/day-view';
 
 interface DayChipsProps {
   liveCount: number;

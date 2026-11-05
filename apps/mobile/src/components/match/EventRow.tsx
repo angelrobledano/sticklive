@@ -1,5 +1,5 @@
 import { Text, View } from 'react-native';
-import type { MatchDetailRaw } from '@/src/lib/api/types';
+import type { MatchDetailRaw } from '@sports/core/api';
 import { GoalStickIcon } from '@/src/components/shared/GoalStickIcon';
 
 const ICON: Record<string, string> = {

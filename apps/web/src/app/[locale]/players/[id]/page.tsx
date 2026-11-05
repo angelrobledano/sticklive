@@ -4,13 +4,13 @@ import type { PlayerDetail } from '@/lib/api/client';
 import { PlayerProfileClient } from '@/components/player/PlayerProfileClient';
 import { PlayerFacts } from '@/components/player/PlayerFacts';
 import { PlayerPercentiles } from '@/components/player/PlayerPercentiles';
-import { buildPlayerFacts } from '@/lib/player-facts';
+import { buildPlayerFacts } from '@sports/core/player-facts';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { redirectOrNotFound } from '@/lib/entity-redirect';
 import { localeAlternates, socialMeta, isSupportedLocale, breadcrumbJsonLd, playerJsonLd, playerMetaTitle, metadataOnError } from '@/lib/seo';
 import { BREADCRUMB_LABELS } from '@/lib/breadcrumbs';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
-import { toTitleCase, clubName } from '@/lib/names';
+import { toTitleCase, clubName } from '@sports/core/names';
 
 interface Props {
   params: Promise<{ locale: string; id: string }>;

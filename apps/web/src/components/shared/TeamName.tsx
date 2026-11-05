@@ -1,4 +1,4 @@
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 
 /**
  * Nombre de equipo adaptativo — sistema global de la app:

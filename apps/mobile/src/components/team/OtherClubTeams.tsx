@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import type { ClubTeamSummary } from '@/src/lib/api/types';
+import type { ClubTeamSummary } from '@sports/core/api';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { useLocale } from '@/src/i18n/LocaleContext';
 

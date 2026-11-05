@@ -1,7 +1,7 @@
 # @sports/core — tipos de API y lógica pura compartidos entre web y app
 
 - **Fecha:** 2026-11-05
-- **Estado:** Aprobado (enfoque A), pendiente de plan
+- **Estado:** Implementado
 - **Contexto:** `claude/app-movil-matriz-huecos.md` (proyecto). Es el lote 1 de la puesta al día de la app móvil con la web y bloquea el resto.
 
 ## 1. Problema

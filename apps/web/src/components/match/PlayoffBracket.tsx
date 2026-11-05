@@ -11,7 +11,7 @@ import {
   groupByPhase,
   advancedFrom,
   seriesWinnerId,
-} from '@/lib/playoff';
+} from '@sports/core/playoff';
 import { TrophyIcon } from '@/components/match/icons';
 import { useT } from '@/lib/i18n';
 

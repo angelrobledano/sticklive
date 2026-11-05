@@ -1,6 +1,6 @@
-import type { HeadToHeadMatch } from '@/lib/content-summary';
+import type { HeadToHeadMatch } from '@sports/core/content-summary';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 
 const COPY: Record<string, { title: string; date: string }> = {
   es: { title: 'Último enfrentamiento', date: '' },

@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { getMatchDetail, type LineupPlayer } from '@/lib/api/client';
-import { teamTitleName } from '@/lib/names';
+import { teamTitleName } from '@sports/core/names';
 import { OgLockup } from '@/lib/og-brand';
 import { isSatoriRenderableImage, playerPhotoUrlForSatori } from '@/lib/og-image';
 import { localeLessUrl } from '@/lib/seo';

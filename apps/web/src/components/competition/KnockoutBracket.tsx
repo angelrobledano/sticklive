@@ -9,9 +9,9 @@ import { buildBracketRounds, completeBracket, slotFeeders, type BracketColumn, t
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
 import { fmtDate, fmtTime } from './format';
-import { gameWinnerId } from '@/lib/playoff';
+import { gameWinnerId } from '@sports/core/playoff';
 import { ChampionBlock } from './ChampionBlock';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 
 /**
  * Cuadro de eliminatorias a partido único (formato World Skate: Cuartos → Semis

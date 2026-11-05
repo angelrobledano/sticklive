@@ -17,14 +17,14 @@ import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import { track } from '@/lib/analytics';
-import { madridTodayKey, addDaysToKey, dayDiff } from '@/lib/match-time';
+import { madridTodayKey, addDaysToKey, dayDiff } from '@sports/core/match-time';
 import { useViewerTz } from '@/hooks/useViewerTz';
-import { dateKeyIn, todayKeyIn } from '@/lib/viewer-tz-core';
-import { buildDayView, nextMatchday, daysWithMatches, defaultOpenKeys, type DayFilter, type DayView } from '@/lib/day-view';
+import { dateKeyIn, todayKeyIn } from '@sports/core/viewer-tz';
+import { buildDayView, nextMatchday, daysWithMatches, defaultOpenKeys, type DayFilter, type DayView } from '@sports/core/day-view';
 import { getMatchesInRange, getFeedInRange, getFollowingMatches } from '@/lib/api/client';
 import { dayFetchRange, windowFromDays, nextDayWithMatches, hiddenForDay } from '@/lib/home-loading';
 import { tt } from '@/components/search/translate';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 import { competitionPath } from '@/lib/competition-path';
 
 /** Config AdSense (env inyectado en build). */

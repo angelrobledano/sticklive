@@ -1,6 +1,6 @@
-import type { TeamDetail, TeamMatchSummary, TeamSummary } from '@/lib/api/types';
+import type { TeamDetail, TeamMatchSummary, TeamSummary } from '@sports/core/api';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 import { competitionPath } from '@/lib/competition-path';
 
 const COPY: Record<string, { title: string; competition: string; show: string; hide: string }> = {

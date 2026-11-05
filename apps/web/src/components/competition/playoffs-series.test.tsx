@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReactNode } from 'react';
 import { I18nProvider } from '@/lib/i18n';
 import type { SeasonMatch, TeamSummary } from '@/lib/api/client';
-import { buildSeries } from '@/lib/playoff';
+import { buildSeries } from '@sports/core/playoff';
 import { SeriesCard } from './PlayoffsTab';
 
 vi.mock('next/navigation', () => ({

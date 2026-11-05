@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from '@/src/context/AuthContext';
 import { apiFetch } from '@/src/lib/api/client';
 import { isCountryCode, suggestCountry } from '@/src/lib/country-pref';
-import type { UserPreferencesResponse } from '@/src/lib/api/types';
+import type { UserPreferencesResponse } from '@sports/core/api';
 
 const STORAGE_KEY = 'sticklive.preferred_country';
 export const HOME_COUNTRIES = ['ES', 'PT', 'IT'] as const;

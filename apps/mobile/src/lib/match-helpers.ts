@@ -1,4 +1,4 @@
-import type { MatchDetailRaw } from './api/types';
+import type { MatchDetailRaw } from '@sports/core/api';
 
 const APP_TZ = 'Europe/Madrid';
 const FOUL_THRESHOLDS = [10, 15, 20, 25, 30];

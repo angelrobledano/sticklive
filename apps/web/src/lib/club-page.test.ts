@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CLUB_COPY, clubJsonLd, clubMetaTitle } from './club-page';
 import { SUPPORTED_LOCALES } from './locales';
-import type { ClubDetail } from './api/types';
+import type { ClubDetail } from '@sports/core/api';
 
 const data: ClubDetail = {
   club: { id: 'cl1', slug: 'cp-voltrega', name: 'CP Voltregà', city: 'Sant Hipòlit de Voltregà', country: 'ES', crestUrl: null },

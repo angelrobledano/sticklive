@@ -10,7 +10,7 @@ import {
   labelDate,
   madridTodayKey,
   monthAbbr,
-} from '@/src/lib/day-view';
+} from '@sports/core/day-view';
 
 interface DateSelectorProps {
   selected: string;

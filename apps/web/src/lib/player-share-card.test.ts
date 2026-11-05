@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { playerShareCard } from './player-share-card';
-import type { PlayerDetail, PlayerInsights } from './api/types';
+import type { PlayerDetail, PlayerInsights } from '@sports/core/api';
 
 const detail = (over: Partial<PlayerDetail> = {}): PlayerDetail => ({
   player: {

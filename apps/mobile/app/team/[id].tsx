@@ -7,7 +7,7 @@ import { ErrorState } from '@/src/components/shared/ErrorState';
 import { TeamDetailSkeleton } from '@/src/components/shared/Skeleton';
 import { ShareHeaderButton } from '@/src/components/shared/ShareHeaderButton';
 import { ShareImageModal } from '@/src/components/shared/ShareImageModal';
-import { clubName } from '@/src/lib/names';
+import { clubName } from '@sports/core/names';
 import { TeamHeader } from '@/src/components/team/TeamHeader';
 import { OtherClubTeams } from '@/src/components/team/OtherClubTeams';
 import { TeamCenterClient } from '@/src/components/team/TeamCenterClient';

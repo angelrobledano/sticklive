@@ -7,10 +7,10 @@ import type {
   MatchPreview as MatchPreviewData,
   TeamObservationKind,
   TeamSnapshot,
-} from '@/src/lib/content-summary';
+} from '@sports/core/content-summary';
 import { duelBar, headToHeadBalance } from '@/src/lib/preview-duel';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
-import { clubName } from '@/src/lib/names';
+import { clubName } from '@sports/core/names';
 
 interface Copy {
   title: string;

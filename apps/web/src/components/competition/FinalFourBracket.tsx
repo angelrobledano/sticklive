@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import type { SeasonMatch, TeamSummary } from '@/lib/api/client';
 import { useT } from '@/lib/i18n';
-import { gameWinnerId } from '@/lib/playoff';
+import { gameWinnerId } from '@sports/core/playoff';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { TeamName } from '@/components/shared/TeamName';
 import { KnockoutMatchCard } from './KnockoutBracket';

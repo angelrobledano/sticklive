@@ -6,7 +6,7 @@ import type { Match } from '@/lib/api/client';
 import { MatchRow } from '@/components/home/MatchRow';
 import { MatchGroupCard, FollowStar } from '@/components/home/MatchGroupCard';
 import { useT } from '@/lib/i18n';
-import { selectGradaMatches } from './grada';
+import { selectGradaMatches } from '@sports/core/grada';
 
 interface MiGradaProps {
   /** Partidos ya cargados (`/matches/current`). */

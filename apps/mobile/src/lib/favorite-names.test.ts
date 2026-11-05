@@ -15,7 +15,7 @@ import type {
   CurrentMatchesResponse,
   PlayerDetail,
   TeamDetail,
-} from './api/types';
+} from '@sports/core/api';
 
 const { store } = vi.hoisted(() => ({ store: new Map<string, string>() }));
 vi.mock('@react-native-async-storage/async-storage', () => ({

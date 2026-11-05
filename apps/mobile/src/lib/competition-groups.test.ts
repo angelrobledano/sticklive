@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import type { CompetitionSummary, Federation, FederationRef } from './api/types';
+import type { CompetitionSummary, Federation, FederationRef } from '@sports/core/api';
 import {
   buildCompetitionTree, featuredCompetitions,
   filterByGender, isCup,
 } from './competition-groups';
-import { importanceRank } from './competition-importance';
+import { importanceRank } from '@sports/core/competition-importance';
 
 const FED: Record<string, Federation> = {
   WS:   { code: 'World Skate', slug: 'world-skate', name: 'World Skate', shortName: 'World Skate', level: 'world', parentCode: null, country: null, region: null, website: null, displayOrder: 1, competitionCount: 0 },

@@ -10,8 +10,8 @@ import { CompetitionHeader } from './CompetitionHeader';
 import { StandingsTab } from './StandingsTab';
 import { tt } from '@/components/search/translate';
 import { TeamShield } from '@/components/shared/TeamShield';
-import { clubName } from '@/lib/names';
-import { finalPhaseStarted, knockoutTabLabelKey } from '@/lib/season-phases';
+import { clubName } from '@sports/core/names';
+import { finalPhaseStarted, knockoutTabLabelKey } from '@sports/core/season-phases';
 
 /**
  * Pestañas cargadas bajo demanda: el chunk de jornadas, cuadro y estadísticas

@@ -23,19 +23,19 @@ import { CompetitionsSkeleton } from '@/src/components/shared/Skeleton';
 import { CountryFlag } from '@/src/components/shared/CountryFlag';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { AdBanner } from '@/src/components/ads/AdBanner';
-import { clubName, competitionName } from '@/src/lib/names';
+import { clubName, competitionName } from '@sports/core/names';
 import {
   currentSeasonYear,
   hasSeasonYear,
   orderByImportance,
-} from '@/src/lib/competition-importance';
+} from '@sports/core/competition-importance';
 import {
   countryDisplayName,
   filterCompetitions,
   genderLabel,
   normalizeSearchText,
   orderSearchResults,
-} from '@/src/lib/competition-filter';
+} from '@sports/core/competition-filter';
 import {
   buildCompetitionTree,
   featuredCompetitions,
@@ -45,7 +45,7 @@ import {
   type FederationGroup,
   type GenderFilter,
 } from '@/src/lib/competition-groups';
-import type { CompetitionSummary } from '@/src/lib/api/types';
+import type { CompetitionSummary } from '@sports/core/api';
 
 /** Tipos de selector principal: destacadas, países (ES, PT, IT...), internacional y favoritas */
 type TabKey = 'destacadas' | 'favoritas' | 'international' | string;

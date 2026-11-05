@@ -2,9 +2,9 @@
 
 import { Fragment } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
-import type { PlayerDetail, PlayerCompStats, PlayerCareer } from '@/lib/api/types';
+import type { PlayerDetail, PlayerCompStats, PlayerCareer } from '@sports/core/api';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
-import { toTitleCase } from '@/lib/names';
+import { toTitleCase } from '@sports/core/names';
 import { useT } from '@/lib/i18n';
 import { ShareSheet } from '@/components/shared/ShareSheet';
 import { CountryFlag } from '@/components/shared/CountryFlag';

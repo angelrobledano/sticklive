@@ -4,7 +4,7 @@ import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { clubName } from '@/src/lib/names';
+import { clubName } from '@sports/core/names';
 import { formatDayLabel, formatKickoff, isEffectivelyLive } from '@/src/lib/time';
 import {
   type PlayoffSeries,
@@ -13,10 +13,10 @@ import {
   groupByPhase,
   placementMatches,
   seriesWinnerId,
-} from '@/src/lib/playoff';
+} from '@sports/core/playoff';
 import { PlayoffBracket } from './PlayoffBracket';
 import { ChampionBlock } from './ChampionBlock';
-import type { SeasonMatch } from '@/src/lib/api/types';
+import type { SeasonMatch } from '@sports/core/api';
 
 function SeriesCard({
   serie,

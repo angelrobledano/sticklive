@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import type { TeamDetail, TeamMatchSummary } from '@/src/lib/api/types';
+import type { TeamDetail, TeamMatchSummary } from '@sports/core/api';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
-import { clubName } from '@/src/lib/names';
+import { clubName } from '@sports/core/names';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { seasonOptionLabel, sectionBadgeText } from '@/src/lib/team-section';
 

@@ -1,11 +1,11 @@
 ﻿import type { ReactNode } from 'react';
-import type { CompetitionSummary as CompetitionSummaryData } from '@/lib/content-summary';
-import type { SeasonInsights } from '@/lib/api/types';
+import type { CompetitionSummary as CompetitionSummaryData } from '@sports/core/content-summary';
+import type { SeasonInsights } from '@sports/core/api';
 import { isRenderable, pickDailyInsight, renderInsight, TOURNAMENT_SKIP, type InsightPart } from '@/lib/insights';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
-import { clubName, playerDisplayName } from '@/lib/names';
+import { clubName, playerDisplayName } from '@sports/core/names';
 import { ViewerDateTime } from './ViewerDateTime';
 
 interface Copy {

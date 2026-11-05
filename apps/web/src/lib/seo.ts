@@ -2,7 +2,7 @@ import { isCompetitionSlug } from '@/lib/competition-path';
 import type { Metadata } from 'next';
 import { FALLBACK_LOCALE, SUPPORTED_LOCALES, type Locale } from '@/lib/locales';
 import { isApiNotFound } from '@/lib/api/core';
-import { teamQualifiedName } from '@/lib/names';
+import { teamQualifiedName } from '@sports/core/names';
 
 /** Base pública del sitio — configúrala en producción (sin barra final) */
 export const SITE_URL =

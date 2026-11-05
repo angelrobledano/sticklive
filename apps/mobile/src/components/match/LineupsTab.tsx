@@ -7,8 +7,8 @@ import { EmptyState } from '@/src/components/shared/EmptyState';
 import { StartingFiveRink } from '@/src/components/match/StartingFiveRink';
 import { GoalStickIcon } from '@/src/components/shared/GoalStickIcon';
 import { displayLineupName } from '@/src/lib/match-helpers';
-import { clubName } from '@/src/lib/names';
-import type { MatchDetailRaw } from '@/src/lib/api/types';
+import { clubName } from '@sports/core/names';
+import type { MatchDetailRaw } from '@sports/core/api';
 
 interface LineupsTabProps {
   lineups: MatchDetailRaw['lineups'];

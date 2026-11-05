@@ -34,10 +34,10 @@ import type {
   PlayerInsights,
   TeamRecentResponse,
   ClubDetail,
-} from './types';
+} from '@sports/core/api';
 
 export { isApiNotFound } from './core';
-export * from './types';
+export * from '@sports/core/api';
 
 // ─── Mapeo crudo→DTO ───
 // Las respuestas de listas vienen en snake_case; las normalizamos al DTO camelCase.

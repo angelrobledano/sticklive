@@ -1,4 +1,4 @@
-﻿import type { PlayerInsights, PlayerMetricKind } from '@/lib/api/types';
+﻿import type { PlayerInsights, PlayerMetricKind } from '@sports/core/api';
 
 const COPY: Record<string, {
   title: string;

@@ -44,7 +44,6 @@ export function formatDayShort(iso: string | null, locale: string = 'es'): strin
  * la home la usa como key de sección (la etiqueta humanizada va aparte y puede
  * repetirse/localizarse; la clave es ISO y no colisiona con '__live__').
  */
-export { madridDateKey as formatDayKey } from '@sports/core/match-time';
 
 /**
  * ¿El partido está EN DIRECTO? Solo si la fuente lo da en juego (estado

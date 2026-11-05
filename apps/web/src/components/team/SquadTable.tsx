@@ -4,8 +4,8 @@ import { useMemo, useState } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { useT } from '@/lib/i18n';
-import { playerDisplayName, toTitleCase } from '@/lib/names';
-import type { SquadPlayer } from '@/lib/api/types';
+import { playerDisplayName, toTitleCase } from '@sports/core/names';
+import type { SquadPlayer } from '@sports/core/api';
 
 type Col = 'played' | 'goals' | 'assists' | 'blueCards' | 'redCards' | 'directFouls' | 'penalties';
 

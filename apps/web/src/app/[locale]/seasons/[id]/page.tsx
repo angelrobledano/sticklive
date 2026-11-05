@@ -9,8 +9,8 @@ import {
   type SeasonInsights,
   type SeasonStats,
 } from '@/lib/api/client';
-import type { SeasonOverview } from '@/lib/api/types';
-import { buildCompetitionSummary } from '@/lib/content-summary';
+import type { SeasonOverview } from '@sports/core/api';
+import { buildCompetitionSummary } from '@sports/core/content-summary';
 import { CompetitionSummary } from '@/components/competition/CompetitionSummary';
 import { ClosedSeasonHighlights } from '@/components/competition/ClosedSeasonHighlights';
 import { ClosedSeasonStandings } from '@/components/competition/ClosedSeasonStandings';
@@ -27,7 +27,7 @@ import {
   metadataOnError,
   socialMeta,
 } from '@/lib/seo';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 import { competitionPath } from '@/lib/competition-path';
 
 interface Props {

@@ -1,4 +1,4 @@
-import type { TeamSeason } from '@/src/lib/api/types';
+import type { TeamSeason } from '@sports/core/api';
 
 /** Categorías con etiqueta propia en `age_categories.*` (migración 017). */
 const KNOWN_AGE_CATEGORIES = new Set([

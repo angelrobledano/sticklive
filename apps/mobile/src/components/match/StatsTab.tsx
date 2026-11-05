@@ -4,8 +4,8 @@ import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { calcEfficiency } from '@/src/lib/match-helpers';
-import { clubName } from '@/src/lib/names';
-import type { MatchDetailRaw } from '@/src/lib/api/types';
+import { clubName } from '@sports/core/names';
+import type { MatchDetailRaw } from '@sports/core/api';
 
 interface StatsTabProps {
   data: MatchDetailRaw;

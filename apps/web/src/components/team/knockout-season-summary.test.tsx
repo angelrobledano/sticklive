@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nProvider } from '@/lib/i18n';
 import type { TeamDetail, TeamMatchSummary } from '@/lib/api/client';
 import { KnockoutSeasonSummary } from './KnockoutSeasonSummary';
-import { buildKnockoutSummary } from '@/lib/knockout';
+import { buildKnockoutSummary } from '@sports/core/knockout';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: () => {}, push: () => {}, replace: () => {}, prefetch: () => {} }),

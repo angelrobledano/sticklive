@@ -20,8 +20,8 @@ import type {
   StandingsResponse,
   StandingsRow,
   TeamDetail,
-} from '@/src/lib/api/types';
-import { addDaysToKey } from '@/src/lib/day-view';
+} from '@sports/core/api';
+import { addDaysToKey } from '@sports/core/day-view';
 
 /**
  * Claves de query. Las consume la UI para invalidaciones puntuales

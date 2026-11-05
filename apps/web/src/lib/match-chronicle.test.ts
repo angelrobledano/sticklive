@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { MatchEvent } from '@/lib/api/types';
+import type { MatchEvent } from '@sports/core/api';
 import { buildMatchChronicle } from './match-chronicle';
 
 function goal(overrides: Partial<MatchEvent> = {}): MatchEvent {

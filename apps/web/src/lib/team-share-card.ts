@@ -3,8 +3,8 @@
  * publicación 16:9). Función pura: la ruta de imagen solo pinta lo que sale de
  * aquí, así las reglas (forma, último y próximo partido) se testean sin Satori.
  */
-import type { TeamDetail, TeamMatchSummary } from './api/types';
-import { clubName } from './names';
+import type { TeamDetail, TeamMatchSummary } from '@sports/core/api';
+import { clubName } from '@sports/core/names';
 import { teamSectionLabel } from './team-section-label';
 import { OG_COPY } from './og-image';
 import { isSupportedLocale, type Locale } from './locales';

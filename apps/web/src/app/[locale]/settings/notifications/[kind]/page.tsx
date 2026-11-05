@@ -7,7 +7,7 @@ import { useFavorites, getFavNames } from '@/hooks/useFavorites';
 import { getPreset, setPreset, isPresetEnabled, presetFromToggle, type NotifKind } from '@/lib/notif-prefs';
 import { syncPushConfig } from '@/lib/push';
 import { TeamShield } from '@/components/shared/TeamShield';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 import { useT } from '@/lib/i18n';
 import { BackLink } from '@/components/shared/BackLink';
 

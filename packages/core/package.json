@@ -5,7 +5,6 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./smoke": "./src/smoke.ts",
     "./api": "./src/api.ts",
     "./match-time": "./src/match-time.ts",
     "./viewer-tz": "./src/viewer-tz.ts",

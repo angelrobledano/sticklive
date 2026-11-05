@@ -1,7 +1,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import { DEFAULT_TZ, deviceTimeZone } from '@/lib/viewer-tz-core';
+import { DEFAULT_TZ, deviceTimeZone } from '@sports/core/viewer-tz';
 
 const noopSubscribe = () => () => {};
 

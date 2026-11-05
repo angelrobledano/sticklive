@@ -3,8 +3,8 @@ import { useRouter } from 'expo-router';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { formatKickoff, isEffectivelyLive } from '@/src/lib/time';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
-import { clubName } from '@/src/lib/names';
-import type { MatchSummary } from '@/src/lib/api/types';
+import { clubName } from '@sports/core/names';
+import type { MatchSummary } from '@sports/core/api';
 
 interface MatchRowProps {
   match: MatchSummary;

@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 import { OG_BRAND, OgBrandStrip, OgLockup } from '@/lib/og-brand';
 import { getTeamDetail } from '@/lib/api/client';
 import { ogCopy, teamInitials, teamLogoUrlForSatori } from '@/lib/og-image';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 import { teamSectionLabel } from '@/lib/team-section-label';
 import { isSupportedLocale } from '@/lib/locales';
 

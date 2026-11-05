@@ -2,8 +2,8 @@
  * Contenido de la imagen para compartir el perfil de un jugador. Pura, como
  * team-share-card y match-share-card: la ruta solo pinta lo que sale de aquí.
  */
-import type { PlayerDetail, PlayerInsights } from './api/types';
-import { playerDisplayName, teamTitleName } from './names';
+import type { PlayerDetail, PlayerInsights } from '@sports/core/api';
+import { playerDisplayName, teamTitleName } from '@sports/core/names';
 import { isSupportedLocale, type Locale } from './locales';
 
 export interface PlayerShareStat { label: string; value: string }

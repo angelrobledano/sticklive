@@ -8,8 +8,8 @@ import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { PenaltyShootout } from '@/src/components/match/PenaltyShootout';
 import { GoalStickIcon } from '@/src/components/shared/GoalStickIcon';
-import { clubName } from '@/src/lib/names';
-import { deviceTimeZone, localTimeDiffers } from '@/src/lib/viewer-tz';
+import { clubName } from '@sports/core/names';
+import { deviceTimeZone, localTimeDiffers } from '@sports/core/viewer-tz';
 import {
   eventSurname,
   finalLabelKey,
@@ -19,7 +19,7 @@ import {
   foulBonusState,
   penaltyText,
 } from '@/src/lib/match-helpers';
-import type { MatchDetailRaw } from '@/src/lib/api/types';
+import type { MatchDetailRaw } from '@sports/core/api';
 
 interface MatchHeaderProps {
   data: MatchDetailRaw;

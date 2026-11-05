@@ -3,9 +3,9 @@
 import { useMemo, useState } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useT } from '@/lib/i18n';
-import type { TeamMatchSummary, TeamSeasonStats } from '@/lib/api/types';
+import type { TeamMatchSummary, TeamSeasonStats } from '@sports/core/api';
 import { teamStatsStory, type Record3 } from '@/lib/team-stats-story';
-import type { TeamResult } from '@/lib/team-calendar';
+import type { TeamResult } from '@sports/core/team-calendar';
 
 const RESULT_BG: Record<TeamResult, string> = {
   W: 'bg-emerald-600', D: 'bg-slate-400 dark:bg-slate-500', L: 'bg-rink-passion',

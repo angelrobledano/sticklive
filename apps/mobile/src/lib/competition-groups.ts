@@ -6,8 +6,8 @@
  * Todo sale de los datos (`federation`, `tier`, `featuredRank`, migración 089),
  * nada de listas de slugs ni de países hardcodeados en el front.
  */
-import type { CompetitionSummary, Federation, FederationRef } from './api/types';
-import { orderByImportance } from './competition-importance';
+import type { CompetitionSummary, Federation, FederationRef } from '@sports/core/api';
+import { orderByImportance } from '@sports/core/competition-importance';
 
 export type GenderFilter = 'all' | 'male' | 'female';
 

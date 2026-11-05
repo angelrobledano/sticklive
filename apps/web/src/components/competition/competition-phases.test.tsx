@@ -5,11 +5,11 @@ import { I18nProvider } from '@/lib/i18n';
 import type { KnockoutStage, SeasonMatch, SeasonPhase, SeasonRound, TeamSummary } from '@/lib/api/client';
 import { PlayoffsTab } from './PlayoffsTab';
 import { FinalFourBracket } from './FinalFourBracket';
-import { groupByPhase, placementMatches } from '@/lib/playoff';
+import { groupByPhase, placementMatches } from '@sports/core/playoff';
 import { buildBracketRounds } from '@/lib/bracket';
-import { buildKnockoutSummary } from '@/lib/knockout';
+import { buildKnockoutSummary } from '@sports/core/knockout';
 import { nearestMatchDay, pickDefaultFilter } from './GameweeksTab';
-import { knockoutPhaseViews } from '@/lib/season-phases';
+import { knockoutPhaseViews } from '@sports/core/season-phases';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: () => {}, push: () => {}, replace: () => {}, prefetch: () => {} }),

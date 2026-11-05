@@ -6,7 +6,7 @@ import {
   squadLevelLetter,
   staffDisplayName,
 } from './team-section';
-import type { TeamSeason } from '@/src/lib/api/types';
+import type { TeamSeason } from '@sports/core/api';
 
 const t = (k: string) => k;
 

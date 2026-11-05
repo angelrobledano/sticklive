@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useT } from '@/lib/i18n';
 import { track, searchEventProps } from '@/lib/analytics';
-import { clubName, competitionName, playerDisplayName } from '@/lib/names';
+import { clubName, competitionName, playerDisplayName } from '@sports/core/names';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { CountryFlag } from '@/components/shared/CountryFlag';

@@ -2,10 +2,10 @@
  * Contenido de la imagen para compartir el resultado de un partido (historia
  * 9:16 y publicación 16:9). Pura, como team-share-card: la ruta solo pinta.
  */
-import type { MatchDetail, MatchEvent } from './api/types';
-import { teamTitleName } from './names';
+import type { MatchDetail, MatchEvent } from '@sports/core/api';
+import { teamTitleName } from '@sports/core/names';
 import { eventSurname } from '@/components/match/format';
-import { matchRoundLabel } from './stage-label';
+import { matchRoundLabel } from '@sports/core/stage-label';
 import { serverT } from './server-t';
 import { OG_COPY } from './og-image';
 import { isSupportedLocale, type Locale } from './locales';

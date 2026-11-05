@@ -1,10 +1,10 @@
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import type { TeamDetail } from '@/src/lib/api/types';
-import { knockoutPhaseLabel, type KnockoutSummary } from '@/src/lib/knockout';
+import type { TeamDetail } from '@sports/core/api';
+import { knockoutPhaseLabel, type KnockoutSummary } from '@sports/core/knockout';
 import { MiniMatchCard } from './MiniMatchCard';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { clubName } from '@/src/lib/names';
+import { clubName } from '@sports/core/names';
 
 interface Props {
   data: TeamDetail;

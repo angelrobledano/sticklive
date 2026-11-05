@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import es from '@/locales/es.json';
-import { matchRoundLabel, roundNameLabel, stageLabel, type MatchRoundInfo } from './stage-label';
+import { matchRoundLabel, roundNameLabel, stageLabel, type MatchRoundInfo } from '@sports/core/stage-label';
 
 /** `t` real sobre el diccionario de `es`: una clave que falte se ve aquí. */
 function t(key: string, vars?: Record<string, string | number>): string {

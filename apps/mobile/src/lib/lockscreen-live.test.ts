@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { MatchSummary } from './api/types';
+import type { MatchSummary } from '@sports/core/api';
 import {
   buildLockScreenNotification,
   getFollowedLiveMatches,

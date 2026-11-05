@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { goalMinute, matchShareCard, shareSiteHost } from './match-share-card';
-import type { MatchDetail, MatchEvent } from './api/types';
+import type { MatchDetail, MatchEvent } from '@sports/core/api';
 
 const goal = (id: string, home: boolean, last: string, extra: Partial<MatchEvent> = {}): MatchEvent => ({
   id, eventType: 'goal', minute: null, period: 1, teamId: null, isHomeTeam: home, detail: null,

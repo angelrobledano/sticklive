@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import type { TeamDetail } from '@/src/lib/api/types';
-import { buildKnockoutSummary, isKnockoutSeason } from '@/src/lib/knockout';
+import type { TeamDetail } from '@sports/core/api';
+import { buildKnockoutSummary, isKnockoutSeason } from '@sports/core/knockout';
 import { KnockoutSeasonSummary } from './KnockoutSeasonSummary';
 import { MiniMatchCard } from './MiniMatchCard';
 import { useLocale } from '@/src/i18n/LocaleContext';

@@ -10,7 +10,7 @@
  * varias de ellas. El fetch vive en la página.
  */
 
-import { normalizeSearchText } from '@/lib/search-text';
+import { normalizeSearchText } from '@sports/core/search-text';
 
 /** Temporada de referencia tal como la devuelve `GET /competitions`. */
 export interface FavoriteSeasonRef {

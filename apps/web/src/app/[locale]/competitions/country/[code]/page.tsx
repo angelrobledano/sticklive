@@ -4,7 +4,7 @@ import { getCompetitions, getFederations, type Federation } from '@/lib/api/clie
 import { CompetitionHub } from '@/components/competition/CompetitionHub';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { localeAlternates, socialMeta, isSupportedLocale, competitionsListJsonLd, SITE_URL } from '@/lib/seo';
-import { competitionName } from '@/lib/names';
+import { competitionName } from '@sports/core/names';
 import { countryHubCompetitions } from '@/lib/competition-hubs';
 import { countryHubPath } from '@/lib/competition-groups';
 import { competitionPath } from '@/lib/competition-path';

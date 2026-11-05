@@ -3,14 +3,12 @@
  * Funciones puras, sin React.
  */
 import type { SeasonOverview, SeasonRound } from '@/lib/api/client';
-import { APP_TZ, isTimeTbd, timeTbdLabel } from '@/lib/match-time';
-import { isKnockoutStage, stageLabel } from '@/lib/stage-label';
-import { playerDisplayName } from '@/lib/names';
+import { APP_TZ, isTimeTbd, timeTbdLabel } from '@sports/core/match-time';
+import { isKnockoutStage, stageLabel } from '@sports/core/stage-label';
+import { playerDisplayName } from '@sports/core/names';
 import { playoffPhaseKey } from '@sports/core/phase-keys';
 
 // Claves de fase y clave de día: viven en core, aquí se reexportan para no tocar a los llamantes.
-export { matchPhaseKey, playoffPhaseKey, madridDay } from '@sports/core/phase-keys';
-export type { PlayoffPhaseKey } from '@sports/core/phase-keys';
 
 /**
  * Hora/fecha de un partido en la zona de SU competición (columna 042). Cae a

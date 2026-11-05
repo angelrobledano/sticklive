@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import type { TeamDetail } from '@/src/lib/api/types';
+import type { TeamDetail } from '@sports/core/api';
 import { SummaryTab } from './SummaryTab';
 import { CalendarTab } from './CalendarTab';
 import { SquadTab } from './SquadTab';

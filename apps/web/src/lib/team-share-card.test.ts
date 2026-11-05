@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { teamShareCard, shareImageQuery } from './team-share-card';
-import type { TeamDetail, TeamMatchSummary } from './api/types';
+import type { TeamDetail, TeamMatchSummary } from '@sports/core/api';
 
 /**
  * Contenido de la imagen para compartir la ficha de un equipo: lo que se

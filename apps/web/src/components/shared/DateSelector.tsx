@@ -1,10 +1,10 @@
 'use client';
 
 import { useViewerTz } from '@/hooks/useViewerTz';
-import { todayKeyIn } from '@/lib/viewer-tz-core';
+import { todayKeyIn } from '@sports/core/viewer-tz';
 import { memo, useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import { useT } from '@/lib/i18n';
-import { addDaysToKey, dayDiff } from '@/lib/match-time';
+import { addDaysToKey, dayDiff } from '@sports/core/match-time';
 import { computeDateWindow } from '@/lib/date-window';
 import { tt } from '@/components/search/translate';
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useViewerTz } from '@/hooks/useViewerTz';
-import { localTimeDiffers } from '@/lib/viewer-tz-core';
+import { localTimeDiffers } from '@sports/core/viewer-tz';
 import { useState, useEffect } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { useT } from '@/lib/i18n';
@@ -11,11 +11,11 @@ import { TeamShield } from '@/components/shared/TeamShield';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ShareSheet } from '@/components/shared/ShareSheet';
 import { finalLabelKey, penaltyText } from '@/lib/match-result';
-import { teamTitleName } from '@/lib/names';
+import { teamTitleName } from '@sports/core/names';
 import { formatTime, formatDate, eventSurname, fmtEventClock } from './format';
 import { freshnessState, connectionState, CONNECTION_LABEL, type ConnectionState } from './timeline-model';
 import { BallIcon } from './icons';
-import { matchRoundLabel } from '@/lib/stage-label';
+import { matchRoundLabel } from '@sports/core/stage-label';
 import { competitionPath } from '@/lib/competition-path';
 
 function TeamCrest({ team }: {

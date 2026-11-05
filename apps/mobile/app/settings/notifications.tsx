@@ -10,7 +10,7 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 import { useFavoriteName, useFavorites, useLocalFavorites, type FavoriteKind } from '@/src/hooks/favorites';
 import { PUSH_PREFS_QUERY_KEY } from '@/src/hooks/useLockScreenLiveMatches';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
-import { clubName } from '@/src/lib/names';
+import { clubName } from '@sports/core/names';
 import { getDeviceId } from '@/src/lib/device';
 import {
   getSavedPushToken,

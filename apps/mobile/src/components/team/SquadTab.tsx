@@ -1,9 +1,9 @@
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import type { TeamDetail } from '@/src/lib/api/types';
+import type { TeamDetail } from '@sports/core/api';
 import { Avatar, playerPhotoUri } from '@/src/components/shared/Avatar';
-import { playerDisplayName } from '@/src/lib/names';
+import { playerDisplayName } from '@sports/core/names';
 import { STAFF_ROLE_LABELS, staffDisplayName } from '@/src/lib/team-section';
 import { goalsWord } from '@/src/lib/squad-helpers';
 import { useLocale } from '@/src/i18n/LocaleContext';

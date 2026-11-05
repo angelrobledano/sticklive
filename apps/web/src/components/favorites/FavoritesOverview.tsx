@@ -5,7 +5,7 @@ import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { TeamShield } from '@/components/shared/TeamShield';
 import { useT } from '@/lib/i18n';
 import { tt } from '@/components/search/translate';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 import { competitionPath } from '@/lib/competition-path';
 import { favoriteTeamCards, type CardMatch, type FavoriteTeamCard } from '@/lib/favorites-view';
 

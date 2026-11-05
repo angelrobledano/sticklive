@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { OG_BRAND, OgBrandStrip, OgLockup } from '@/lib/og-brand';
 import { getPlayerDetail } from '@/lib/api/client';
-import { toTitleCase, clubName } from '@/lib/names';
+import { toTitleCase, clubName } from '@sports/core/names';
 import { ogCopy, playerPhotoUrlForSatori } from '@/lib/og-image';
 
 // Imagen OG dinámica por jugador (#278): foto + nombre + equipo/temporada.

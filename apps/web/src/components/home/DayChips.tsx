@@ -1,6 +1,6 @@
 'use client';
 
-import type { DayFilter } from '@/lib/day-view';
+import type { DayFilter } from '@sports/core/day-view';
 import { useT } from '@/lib/i18n';
 import { tt } from '@/components/search/translate';
 

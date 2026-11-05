@@ -1,4 +1,4 @@
-import type { PlayerFact } from '@/lib/player-facts';
+import type { PlayerFact } from '@sports/core/player-facts';
 
 const COPY: Record<string, {
   title: string;

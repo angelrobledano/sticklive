@@ -3,7 +3,7 @@
  * es de cada equipo y quién sale mejor (en faltas, tarjetas o minutos por gol,
  * menos es mejor). Y el balance de los precedentes. Puro y testeable.
  */
-import type { CrossMetric, CrossMetricKey, HeadToHeadMatch } from './content-summary';
+import type { CrossMetric, CrossMetricKey, HeadToHeadMatch } from '@sports/core/content-summary';
 
 /** Métricas en las que el valor más bajo es el bueno. */
 const LOWER_IS_BETTER = new Set<CrossMetricKey>(['minutes_goal', 'fouls', 'cards']);

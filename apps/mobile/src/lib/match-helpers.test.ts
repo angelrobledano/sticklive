@@ -18,7 +18,7 @@ import {
   halfPositions,
   placeRinkPlayers,
 } from './match-helpers';
-import type { MatchDetailRaw, MatchStats } from './api/types';
+import type { MatchDetailRaw, MatchStats } from '@sports/core/api';
 
 describe('match-helpers', () => {
   describe('name formatting', () => {

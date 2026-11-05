@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { teamStatsStory } from './team-stats-story';
-import type { TeamMatchSummary, TeamSeasonStats } from './api/types';
+import type { TeamMatchSummary, TeamSeasonStats } from '@sports/core/api';
 
 const T = 'me';
 let n = 0;

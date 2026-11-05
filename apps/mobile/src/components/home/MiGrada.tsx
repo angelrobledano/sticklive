@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import type { MatchSummary } from '@/src/lib/api/types';
+import type { MatchSummary } from '@sports/core/api';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { clubName } from '@/src/lib/names';
+import { clubName } from '@sports/core/names';
 import { formatDayShort, formatKickoff } from '@/src/lib/time';
 import { madridDateKey } from '@sports/core/match-time';
-import { selectGradaMatches } from '@/src/lib/grada';
+import { selectGradaMatches } from '@sports/core/grada';
 
 interface Props {
   matches: MatchSummary[];

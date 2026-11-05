@@ -10,8 +10,8 @@ import { useT } from '@/lib/i18n';
 import { tt } from '@/components/search/translate';
 import { useNow30s } from '@/lib/now-ticker';
 import { finalLabelKey, penaltyText } from '@/lib/match-result';
-import { APP_TZ, isTimeTbd } from '@/lib/match-time';
-import { clubName } from '@/lib/names';
+import { APP_TZ, isTimeTbd } from '@sports/core/match-time';
+import { clubName } from '@sports/core/names';
 
 /**
  * Fila compacta de partido para las tarjetas de la home (spec 2026-10-16,

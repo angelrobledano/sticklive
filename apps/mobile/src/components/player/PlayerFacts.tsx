@@ -1,5 +1,5 @@
 import { Text, View } from 'react-native';
-import type { PlayerFact } from '@/src/lib/player-facts';
+import type { PlayerFact } from '@sports/core/player-facts';
 
 const COPY: Record<
   string,

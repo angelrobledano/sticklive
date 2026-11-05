@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getFeedInRange, getMatchDays } from '@/lib/api/client';
-import { madridTodayKey } from '@/lib/match-time';
+import { madridTodayKey } from '@sports/core/match-time';
 import { dayFetchRange } from '@/lib/home-loading';
 import { MatchesView, HomeLoadError } from '@/components/shared/MatchesView';
 import { localeAlternates, isSupportedLocale } from '@/lib/seo';

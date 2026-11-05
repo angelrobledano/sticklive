@@ -9,7 +9,7 @@
  *
  * Cada liga sale una sola vez. Función pura: la página solo pinta.
  */
-import { importanceRank } from '@/lib/competition-importance';
+import { importanceRank } from '@sports/core/competition-importance';
 
 export interface GroupableLeague {
   id: string;

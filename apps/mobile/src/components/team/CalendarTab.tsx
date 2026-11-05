@@ -1,18 +1,18 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import type { TeamDetail, TeamMatchSummary } from '@/src/lib/api/types';
-import { buildKnockoutSummary, isKnockoutSeason, knockoutPhaseLabel } from '@/src/lib/knockout';
+import type { TeamDetail, TeamMatchSummary } from '@sports/core/api';
+import { buildKnockoutSummary, isKnockoutSeason, knockoutPhaseLabel } from '@sports/core/knockout';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { clubName } from '@/src/lib/names';
+import { clubName } from '@sports/core/names';
 import {
   calendarCounts,
   filterTeamMatches,
   teamResult,
   type CalendarFilter,
   type TeamResult,
-} from '@/src/lib/team-calendar';
+} from '@sports/core/team-calendar';
 
 interface Props {
   data: TeamDetail;

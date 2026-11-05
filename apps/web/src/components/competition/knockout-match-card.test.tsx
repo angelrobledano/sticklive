@@ -4,7 +4,7 @@ import { I18nProvider } from '@/lib/i18n';
 import es from '@/locales/es.json';
 import type { SeasonMatch } from '@/lib/api/client';
 import { KnockoutBracket, KnockoutMatchCard } from './KnockoutBracket';
-import { gameWinnerId } from '@/lib/playoff';
+import { gameWinnerId } from '@sports/core/playoff';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: () => {}, push: () => {}, replace: () => {}, prefetch: () => {} }),

@@ -10,7 +10,7 @@
  * Lógica pura y testeada, compartida por el listado y los hubs.
  */
 import type { CompetitionSummary, Federation, FederationRef } from '@/lib/api/client';
-import { orderByImportance } from '@/lib/competition-importance';
+import { orderByImportance } from '@sports/core/competition-importance';
 
 export type GenderFilter = 'all' | 'male' | 'female';
 

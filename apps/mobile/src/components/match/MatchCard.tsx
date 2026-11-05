@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { formatKickoff, isEffectivelyLive } from '@/src/lib/time';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
-import type { MatchSummary } from '@/src/lib/api/types';
+import type { MatchSummary } from '@sports/core/api';
 
 export function MatchCard({ match }: { match: MatchSummary }) {
   const router = useRouter();

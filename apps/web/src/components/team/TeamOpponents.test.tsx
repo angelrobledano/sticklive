@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nProvider } from '@/lib/i18n';
-import type { TeamDetail, TeamMatchSummary } from '@/lib/api/types';
+import type { TeamDetail, TeamMatchSummary } from '@sports/core/api';
 import { TeamOpponents, teamOpponents } from './TeamOpponents';
 
 vi.mock('next/navigation', () => ({

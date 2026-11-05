@@ -2,7 +2,7 @@ import { getSeasonOverview, getTeamDetail } from '@/lib/api/client';
 import { renderTeamWidget, escapeHtml, type WidgetStanding } from '@/lib/embed/team-widget';
 import { isSupportedLocale } from '@/lib/locales';
 import { SITE_URL } from '@/lib/seo';
-import { clubName } from '@/lib/names';
+import { clubName } from '@sports/core/names';
 
 // Widget incrustable para webs de clubes (04/11/2026):
 //   <iframe src="https://sticklive.eu/es/embed/team/{id}" ...>

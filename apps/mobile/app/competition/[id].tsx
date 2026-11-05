@@ -17,14 +17,14 @@ import { EmptyState } from '@/src/components/shared/EmptyState';
 import { CompetitionDetailSkeleton } from '@/src/components/shared/Skeleton';
 import { ShareHeaderButton } from '@/src/components/shared/ShareHeaderButton';
 import { AdBanner } from '@/src/components/ads/AdBanner';
-import { clubName } from '@/src/lib/names';
+import { clubName } from '@sports/core/names';
 import {
   type MainTab,
   competitionTeamsForIndex,
   competitionVisibleTabs,
   knockoutTabLabelKey,
-} from '@/src/lib/season-phases';
-import { buildCompetitionSummary } from '@/src/lib/content-summary';
+} from '@sports/core/season-phases';
+import { buildCompetitionSummary } from '@sports/core/content-summary';
 import { CompetitionSummary } from '@/src/components/competition/CompetitionSummary';
 import { GameweeksTab } from '@/src/components/competition/GameweeksTab';
 import { PlayoffsTab } from '@/src/components/competition/PlayoffsTab';
@@ -32,7 +32,7 @@ import { StatsLeadersTab } from '@/src/components/competition/StatsLeadersTab';
 import { StandingsTable } from '@/src/components/competition/StandingsTable';
 import type {
   SeasonStandingRow,
-} from '@/src/lib/api/types';
+} from '@sports/core/api';
 
 export default function CompetitionScreen() {
   const insets = useSafeAreaInsets();

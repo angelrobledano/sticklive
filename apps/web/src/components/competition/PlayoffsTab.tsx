@@ -10,9 +10,9 @@ import { TeamName as AdaptiveTeamName } from '@/components/shared/TeamName';
 import { PlayoffBracket } from '@/components/match/PlayoffBracket';
 import { TrophyIcon } from '@/components/match/icons';
 import { KnockoutBracket, KnockoutMatchCard } from './KnockoutBracket';
-import { knockoutPhaseViews, type KnockoutPhaseView } from '@/lib/season-phases';
+import { knockoutPhaseViews, type KnockoutPhaseView } from '@sports/core/season-phases';
 import { FinalFourBracket } from './FinalFourBracket';
-import { buildSeries, gameWinnerId, groupByPhase, placementMatches, seriesWinnerId, type PlayoffSeries } from '@/lib/playoff';
+import { buildSeries, gameWinnerId, groupByPhase, placementMatches, seriesWinnerId, type PlayoffSeries } from '@sports/core/playoff';
 import { fmtDate, fmtTime } from './format';
 
 const PLAYOFF_PHASES = ['Cuartos', 'Semis', 'Final'] as const;

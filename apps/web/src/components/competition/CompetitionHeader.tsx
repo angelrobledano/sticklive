@@ -9,7 +9,7 @@ import { ShareButton } from '@/components/shared/ShareButton';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
 import { fedLabelFromSeason } from './format';
-import { competitionName } from '@/lib/names';
+import { competitionName } from '@sports/core/names';
 import { SeasonNoteLine } from './SeasonNote';
 
 export function CompetitionHeader({ data, seasons, competitionId }: {

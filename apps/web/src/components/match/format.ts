@@ -2,7 +2,7 @@
  * Helpers de formato (fecha/hora/nombres) y crono de eventos de la ficha de
  * partido. Funciones puras, sin React.
  */
-import { APP_TZ, isTimeTbd, timeTbdLabel } from '@/lib/match-time';
+import { APP_TZ, isTimeTbd, timeTbdLabel } from '@sports/core/match-time';
 
 /**
  * Hora del partido. `tz` es la zona de la competición (columna 042); si viene
