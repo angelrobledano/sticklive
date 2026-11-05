@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { competitionName, clubName, playerDisplayName, teamTitleName, teamQualifiedName } from './names';
+import {
+  competitionName,
+  clubName,
+  playerDisplayName,
+  teamTitleName,
+  teamQualifiedName,
+  teamDisplayName,
+} from './names';
 
 describe('competitionName', () => {
   it('elige el idioma activo cuando existe', () => {
@@ -94,5 +101,31 @@ describe('teamTitleName (#338)', () => {
   it('devuelve cadena vacía si no hay nada', () => {
     expect(teamTitleName(null, null)).toBe('');
     expect(teamTitleName(undefined, undefined)).toBe('');
+  });
+});
+
+// Casos que venían de los tests de la app móvil.
+describe('clubName (casos de la app)', () => {
+  it('trata VIC como palabra y no como sigla (Vic, la ciudad)', () => {
+    expect(clubName('CLUB PATI VIC')).toBe('Club Pati Vic');
+    expect(clubName('CP VIC')).toBe('CP Vic');
+  });
+
+  it('devuelve cadena vacía ante un nombre vacío', () => {
+    expect(clubName('')).toBe('');
+  });
+});
+
+describe('teamDisplayName (alias deprecado de teamTitleName)', () => {
+  it('es el mismo comportamiento que teamTitleName', () => {
+    expect(teamDisplayName).toBe(teamTitleName);
+  });
+
+  it('prefiere el nombre completo sobre un shortName críptico', () => {
+    expect(teamDisplayName('CLUB PATIN ALCOBENDAS', 'CPA')).toBe('Club Patin Alcobendas');
+    expect(teamDisplayName('', 'CPA')).toBe('CPA');
+    expect(teamDisplayName(null, 'CEV')).toBe('CEV');
+    expect(teamDisplayName('   ', 'CEV')).toBe('CEV');
+    expect(teamDisplayName(null, undefined)).toBe('');
   });
 });

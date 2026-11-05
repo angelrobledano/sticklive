@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { filterTeamMatches, teamResult, calendarCounts } from './team-calendar';
-import type { TeamMatchSummary } from './api/types';
+import type { TeamMatchSummary } from './api';
 
 const T = 'me';
 let n = 0;
 const m = (home: boolean, status: string, my: number | null, opp: number | null, extra: Partial<TeamMatchSummary> = {}): TeamMatchSummary => ({
-  id: `m${++n}`, status: status as never, scheduledAt: '2026-10-01T18:00:00Z', startedAt: null, finishedAt: null,
+  id: `m${++n}`, status, scheduledAt: '2026-10-01T18:00:00Z', startedAt: null, finishedAt: null,
   score: home ? { home: my, away: opp } : { home: opp, away: my }, venue: null,
-  homeTeam: { id: home ? T : 'x', name: home ? 'ME' : 'X', shortName: null, logoUrl: null },
-  awayTeam: { id: home ? 'x' : T, name: home ? 'X' : 'ME', shortName: null, logoUrl: null },
+  homeTeam: { id: home ? T : 'x', name: home ? 'ME' : 'X' } as never,
+  awayTeam: { id: home ? 'x' : T, name: home ? 'X' : 'ME' } as never,
   ...extra,
 });
 

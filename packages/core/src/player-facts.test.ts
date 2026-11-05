@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { PlayerDetail } from '@/lib/api/types';
+import type { PlayerDetail } from './api';
 import { buildPlayerFacts } from './player-facts';
 
 function detail(overrides: Partial<PlayerDetail['seasonTotals']> = {}): PlayerDetail {
@@ -23,5 +23,20 @@ describe('buildPlayerFacts', () => {
 
   it('no publica nada con muestra pequeña', () => {
     expect(buildPlayerFacts(detail({ pj: 4 }))).toEqual([]);
+  });
+});
+
+describe('buildPlayerFacts (caso de la app)', () => {
+  it('calcula todos los hechos con los umbrales cumplidos', () => {
+    const facts = buildPlayerFacts(
+      detail({ pj: 10, goals: 15, assists: 8, blueCards: 2, redCards: 0, penaltiesTotal: 5, penaltiesScored: 4 }),
+    );
+    expect(facts).toEqual([
+      { kind: 'goals_per_match', value: 1.5, extra: 15 },
+      { kind: 'assists_per_match', value: 0.8, extra: 8 },
+      { kind: 'participation', value: 2.3, extra: 23 },
+      { kind: 'penalty_pct', value: 80, extra: 5 },
+      { kind: 'discipline', value: 2, extra: 0 },
+    ]);
   });
 });

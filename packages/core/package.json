@@ -13,7 +13,10 @@
     "./playoff": "./src/playoff.ts",
     "./stage-label": "./src/stage-label.ts",
     "./search-text": "./src/search-text.ts",
-    "./phase-keys": "./src/phase-keys.ts"
+    "./phase-keys": "./src/phase-keys.ts",
+    "./names": "./src/names.ts",
+    "./player-facts": "./src/player-facts.ts",
+    "./team-calendar": "./src/team-calendar.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
