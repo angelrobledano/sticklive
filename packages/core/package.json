@@ -16,7 +16,8 @@
     "./phase-keys": "./src/phase-keys.ts",
     "./names": "./src/names.ts",
     "./player-facts": "./src/player-facts.ts",
-    "./team-calendar": "./src/team-calendar.ts"
+    "./team-calendar": "./src/team-calendar.ts",
+    "./grada": "./src/grada.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
