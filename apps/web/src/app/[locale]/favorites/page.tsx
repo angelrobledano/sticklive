@@ -17,6 +17,8 @@ import { madridTodayKey } from '@/lib/match-time';
 import { groupFavoriteLeagues, suggestedLeague, type GroupableLeague } from '@/lib/favorites-groups';
 import { usePreferredCountry } from '@/hooks/usePreferredCountry';
 import { PushOfferCard } from '@/components/shared/PushOfferCard';
+import { FavoritesOverview } from '@/components/favorites/FavoritesOverview';
+import { getFavNames } from '@/hooks/useFavorites';
 
 /** «Ahora no» en la oferta de avisos: se vuelve a ofrecer pasados 7 días. */
 const PUSH_OFFER_DISMISSED_KEY = 'rink-push-offer-dismissed-at';
@@ -26,10 +28,10 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 const SEASON_ID = process.env['NEXT_PUBLIC_SEASON_ID'] ?? '';
 
 interface TeamItem { id: string; name: string; shortName: string | null }
-interface LeagueItem extends GroupableLeague { shortName: string | null; logoUrl: string | null }
+interface LeagueItem extends GroupableLeague { shortName: string | null; logoUrl: string | null; slug?: string | null }
 interface CompItem {
   id: string; name: string; shortName: string | null;
-  logoUrl?: string | null; country?: string | null; featuredRank?: number | null; tier?: number | null;
+  logoUrl?: string | null; slug?: string | null; country?: string | null; featuredRank?: number | null; tier?: number | null;
   federation?: { code: string; name: string; level: string } | null;
   season?: { id: string; isCurrent?: boolean; teamCount?: number } | null;
 }
@@ -95,7 +97,7 @@ function FavoritesInner() {
       const compList = (comps?.competitions ?? []) as CompItem[];
       setComps(compList);
       setLeagues(compList.map((c) => ({
-        id: c.id, name: c.name, shortName: c.shortName, logoUrl: c.logoUrl ?? null,
+        id: c.id, name: c.name, shortName: c.shortName, logoUrl: c.logoUrl ?? null, slug: c.slug ?? null,
         country: c.country ?? null, featuredRank: c.featuredRank ?? null, tier: c.tier ?? null,
         federation: c.federation ?? null,
       })));
@@ -185,6 +187,21 @@ function FavoritesInner() {
   // mostraba "Nada que coincida" con la query vacía). `mounted` evita el
   // parpadeo de hidratación mientras el hook lee localStorage.
   const hasAnyFavorites = favorites.length > 0 || favLeagues.length > 0 || players.length > 0;
+  // «Lo que sigo» (05/11/2026, patrón FotMob/Flashscore): con favoritos, la
+  // pantalla enseña lo que sigues; buscar y marcar pasa a «Editar».
+  const editing = onboarding || searchParams.get('edit') === '1';
+  const viewMode = mounted && hasAnyFavorites && !editing;
+  const cardMatches = useMemo(() => gradaMatches.flatMap((m) => (m.homeTeam && m.awayTeam ? [{
+    id: m.id, status: m.status, scheduledAt: m.scheduledAt, score: m.score,
+    homeTeam: { id: m.homeTeam.id, name: m.homeTeam.name }, awayTeam: { id: m.awayTeam.id, name: m.awayTeam.name },
+  }] : [])), [gradaMatches]);
+  const teamNames = useMemo(() => Object.fromEntries(teams.map((tm) => [tm.id, tm.name])), [teams]);
+  const followedLeagues = useMemo(() => leagues.filter((l) => favLeagues.includes(l.id)), [leagues, favLeagues]);
+  const followedPlayers = useMemo(() => {
+    if (!mounted) return [];
+    const names = getFavNames();
+    return players.map((id) => ({ id, name: names[id] ?? '' }));
+  }, [players, mounted]);
   const noMatches = filteredTeams.length === 0 && filteredLeagues.length === 0;
 
   // #344: precedencia de estados (error > vacío). Ver favoritosCatalogState.
@@ -259,19 +276,35 @@ function FavoritesInner() {
       )}
 
       <div>
-        <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-          {onboarding ? tt(t, 'favorites.which_team', '¿De qué equipo eres?') : t('favorites.manage_favs')}
-        </h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1">
-          {t('favorites.manage_help')}
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            {onboarding ? tt(t, 'favorites.which_team', '¿De qué equipo eres?')
+              : viewMode ? t('navigation.favorites') : t('favorites.manage_favs')}
+          </h1>
+          {!onboarding && mounted && hasAnyFavorites && (
+            <Link href={viewMode ? '/favorites?edit=1' : '/favorites'}
+                  className="inline-flex min-h-[44px] shrink-0 items-center rounded-full px-3 text-sm font-semibold text-rink-passion hover:bg-rink-passion/5 dark:text-rink-accent">
+              {viewMode ? tt(t, 'favorites.edit', 'Editar') : tt(t, 'favorites.done', 'Listo')}
+            </Link>
+          )}
+        </div>
+        {!viewMode && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1">
+            {t('favorites.manage_help')}
+          </p>
+        )}
       </div>
 
       {followsTeamsOrLeagues && !pushSnoozed && (
         <PushOfferCard source={onboarding ? 'favorites_onboarding' : 'favorites'} onDismiss={snoozePush} onDone={snoozePush} />
       )}
 
-      {!onboarding && followsTeamsOrLeagues && gradaMatches.length > 0 && (
+      {viewMode && (
+        <FavoritesOverview teamIds={favorites} matches={cardMatches} teamNames={teamNames}
+                           leagues={followedLeagues} players={followedPlayers} editHref="/favorites?edit=1" />
+      )}
+
+      {viewMode && favLeagues.length > 0 && gradaMatches.length > 0 && (
         <MiGrada
           matches={gradaMatches}
           teamIds={favorites}
@@ -281,6 +314,7 @@ function FavoritesInner() {
         />
       )}
 
+      {!viewMode && (<>
       {/* Buscador — X propia (la nativa de type=search está oculta en la app) */}
       <div className="relative">
         <input
@@ -461,6 +495,8 @@ function FavoritesInner() {
           )}
         </>
       )}
+
+      </>)}
 
       {mounted && toast && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60]
