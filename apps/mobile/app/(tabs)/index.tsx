@@ -19,6 +19,7 @@ import { MatchGroupCard } from '@/src/components/home/MatchGroupCard';
 import { MatchRow } from '@/src/components/home/MatchRow';
 import { DateSelector } from '@/src/components/home/DateSelector';
 import { DayChips } from '@/src/components/home/DayChips';
+import { CountryPicker } from '@/src/components/home/CountryPicker';
 import { AdBanner } from '@/src/components/ads/AdBanner';
 import { NativeFeedAd } from '@/src/components/ads/NativeFeedAd';
 import { insertNativeAdPositions } from '@/src/lib/ads/nativeFeed';
@@ -296,12 +297,22 @@ export default function LiveScreen() {
       {/* Contenedor del feed con soporte para deslizar horizontalmente y cambiar de día */}
       <View className="flex-1" {...panResponder.panHandlers}>
         {/* Filtros de jornada (En directo / Siguiendo) */}
-        <DayChips
-          liveCount={dayView.liveCount}
-          followingCount={dayView.followingCount}
-          filter={dayView.filter}
-          onChange={setFilter}
-        />
+        {/* Chips del día y selector de país (como la web: sin chips, el país va solo a la izquierda) */}
+        <View className="flex-row items-center">
+          {dayView.liveCount > 0 || dayView.followingCount > 0 ? (
+            <View className="min-w-0 flex-1">
+              <DayChips
+                liveCount={dayView.liveCount}
+                followingCount={dayView.followingCount}
+                filter={dayView.filter}
+                onChange={setFilter}
+              />
+            </View>
+          ) : null}
+          <View className={dayView.liveCount > 0 || dayView.followingCount > 0 ? 'pr-3' : 'px-3 py-2'}>
+            <CountryPicker />
+          </View>
+        </View>
 
         {/* Lista de partidos de la jornada agrupados por competición */}
         <FlatList

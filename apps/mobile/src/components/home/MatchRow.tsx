@@ -1,148 +1,211 @@
+import { memo, useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
-import { formatKickoff, isEffectivelyLive } from '@/src/lib/time';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { clubName } from '@sports/core/names';
+import { deviceTimeZone } from '@sports/core/viewer-tz';
+import { formatTime } from '@/src/lib/match-helpers';
+import { hasWatchLink, rowCenter } from '@/src/lib/match-row';
 import type { MatchSummary } from '@sports/core/api';
 
 interface MatchRowProps {
   match: MatchSummary;
+  /** Línea pequeña encima con la competición (tarjeta Siguiendo). */
   showCompetition?: boolean;
+  /** Texto de esa línea; por defecto el nombre de la competición. */
+  caption?: string | null;
+  /** Equipos seguidos: su lado lleva estrella. */
+  followedTeamIds?: ReadonlySet<string>;
+  /** Fecha corta bajo la hora o el resultado (Mi grada). */
+  showDate?: boolean;
 }
 
-export function MatchRow({ match, showCompetition = false }: MatchRowProps) {
+/** «sáb 17» en el idioma y la zona dados, sin puntos ni comas (como la web). */
+function shortDay(iso: string | null, locale: string, tz: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return '';
+  try {
+    return new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', timeZone: tz })
+      .format(d).replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
+  } catch {
+    return '';
+  }
+}
+
+/** Reloj de 30 s solo para programados (pendiente vs. sin resultado), como useNow30s de la web. */
+function useNow30s(active: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, [active]);
+  return now;
+}
+
+const SUB = 'text-[10px] font-semibold uppercase tracking-wide';
+
+function TeamSide({ id, name, logoUrl, side, followed }: {
+  id: string; name: string; logoUrl?: string | null; side: 'home' | 'away'; followed: boolean;
+}) {
+  const isHome = side === 'home';
+  return (
+    <View className={`flex-1 flex-row items-center gap-2 ${isHome ? 'pr-2' : 'flex-row-reverse pl-2'}`}>
+      <Avatar uri={teamLogoUri(id, 64)} fallbackUri={logoUrl} name={name} size={24} />
+      {followed ? <Ionicons name="star" size={11} color={BRAND.granate} /> : null}
+      <Text
+        className={`flex-1 text-sm font-medium text-slate-800 dark:text-slate-100 ${isHome ? '' : 'text-right'}`}
+        numberOfLines={2}
+      >
+        {name}
+      </Text>
+    </View>
+  );
+}
+
+function MatchRowImpl({ match, showCompetition = false, caption, followedTeamIds, showDate = false }: MatchRowProps) {
   const router = useRouter();
-  const { t } = useLocale();
+  const { t, tv, locale } = useLocale();
+  const tz = useMemo(() => deviceTimeZone(), []);
 
-  const live = isEffectivelyLive(match.status, match.scheduledAt);
-  const isFinished = match.status === 'finished';
-  const showScore = live || isFinished;
-
+  const now = useNow30s(match.status === 'scheduled');
+  const center = rowCenter(match, now);
+  const { score } = match;
   const homeName = clubName(match.homeTeam.name) || match.homeTeam.shortName || match.homeTeam.name;
   const awayName = clubName(match.awayTeam.name) || match.awayTeam.shortName || match.awayTeam.name;
+  const day = showDate ? shortDay(match.scheduledAt ?? match.startedAt, locale, tz) : '';
+  const watch = hasWatchLink(match);
+  const topLine = caption !== undefined ? caption : showCompetition ? match.competitionName ?? null : null;
 
-  const stateLabel = live
-    ? `${t('match_states.live')}, ${match.score.home ?? 0} a ${match.score.away ?? 0}`
-    : isFinished
-    ? `${t('match_states.final')}, ${match.score.home ?? 0} a ${match.score.away ?? 0}`
-    : `${formatKickoff(match.scheduledAt)}`;
+  const scoreText = (cls: string) => (
+    <Text className={`font-mono text-base font-extrabold tabular-nums ${cls}`}>
+      {score.home ?? 0} – {score.away ?? 0}
+    </Text>
+  );
 
-  const a11yLabel = `${homeName} contra ${awayName}, ${stateLabel}${
-    showCompetition && match.competitionName ? `, ${match.competitionName}` : ''
-  }`;
+  let body: React.ReactNode;
+  let text: string;
+  if (center.kind === 'live') {
+    const state = center.halftime ? t('match_states.half_time') : t('match_states.live');
+    text = `${score.home ?? 0}–${score.away ?? 0}, ${state}`;
+    const hf = match.fouls?.home ?? null;
+    const af = match.fouls?.away ?? null;
+    const showFouls = !center.halftime && (hf != null || af != null);
+    const bonus = (hf ?? 0) >= 10 || (af ?? 0) >= 10;
+    const warning = [9, 14].includes(hf ?? 0) || [9, 14].includes(af ?? 0);
+    body = (
+      <>
+        {scoreText(center.halftime ? 'text-amber-600 dark:text-amber-400' : 'text-live-deep dark:text-live')}
+        {center.halftime ? (
+          <Text className={`${SUB} text-amber-600 dark:text-amber-400`}>{state}</Text>
+        ) : (
+          <View className="flex-row items-center gap-1">
+            <View className="h-1.5 w-1.5 rounded-full bg-live" />
+            <Text className={`${SUB} text-live-deep dark:text-live`}>{state}</Text>
+          </View>
+        )}
+        {/* Extra de la app: faltas en directo con aviso de falta directa */}
+        {showFouls ? (
+          <View className="flex-row items-center gap-1">
+          <Text
+            className={`font-mono text-[10px] tabular-nums ${
+              bonus ? 'font-extrabold text-rose-600 dark:text-rose-400'
+                : warning ? 'font-bold text-amber-600 dark:text-amber-400'
+                : 'font-bold text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            F: {hf ?? 0} - {af ?? 0}
+          </Text>
+          {bonus ? (
+            <View className="rounded bg-rose-100 px-1 dark:bg-rose-950/70">
+              <Text className="text-[8px] font-black uppercase text-rose-700 dark:text-rose-300">Directa</Text>
+            </View>
+          ) : null}
+          </View>
+        ) : null}
+      </>
+    );
+  } else if (center.kind === 'finished') {
+    const fin = t(center.finalKey);
+    const sub = day ? `${fin} · ${day}` : fin;
+    text = `${score.home ?? '-'}–${score.away ?? '-'}, ${sub}${center.penalties ? `, ${t('match_states.penalties_label')} ${center.penalties}` : ''}`;
+    body = (
+      <>
+        {scoreText('text-slate-900 dark:text-slate-50')}
+        {center.penalties ? (
+          <Text className="text-[11px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
+            {t('match_states.penalties_label')} {center.penalties}
+          </Text>
+        ) : null}
+        <Text className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{sub}</Text>
+      </>
+    );
+  } else if (center.kind === 'postponed' || center.kind === 'cancelled') {
+    const state = t(center.kind === 'postponed' ? 'match_states.postponed' : 'match_states.cancelled');
+    text = day ? `${state}, ${day}` : state;
+    body = (
+      <>
+        <Text className={`${SUB} text-[11px] ${center.kind === 'postponed' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}`}>
+          {state}
+        </Text>
+        {day ? <Text className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{day}</Text> : null}
+      </>
+    );
+  } else {
+    const time = formatTime(match.startedAt ?? match.scheduledAt, tz, locale);
+    const sub = day || (center.hint ? t(center.hint) : '');
+    text = sub ? `${time}, ${sub}` : time;
+    body = (
+      <>
+        <Text
+          className={center.tbd
+            ? `${SUB} text-slate-500 dark:text-slate-400`
+            : 'font-mono text-sm font-semibold tabular-nums text-slate-700 dark:text-slate-200'}
+        >
+          {time}
+        </Text>
+        {sub ? <Text className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{sub}</Text> : null}
+      </>
+    );
+  }
+
+  if (watch) text += `, ${t(match.status === 'finished' ? 'match.has_video' : 'match.watch_live')}`;
 
   return (
     <Pressable
       onPress={() => router.push(`/match/${match.id}`)}
       accessibilityRole="button"
-      accessibilityLabel={a11yLabel}
-      accessibilityHint={t('a11y.open_match_detail') || 'Abre el detalle del partido'}
-      className="px-3.5 py-3 active:bg-slate-50 dark:active:bg-slate-800/60"
+      accessibilityLabel={`${tv('a11y.view_match', { home: homeName, away: awayName })}, ${text}${topLine ? `, ${topLine}` : ''}`}
+      className="px-3.5 py-2.5 active:bg-slate-50 dark:active:bg-slate-800/60"
     >
-      {showCompetition && match.competitionName ? (
+      {topLine ? (
         <Text
           numberOfLines={1}
-          className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400"
+          className="mb-1 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
         >
-          {match.competitionName}
+          {topLine}
         </Text>
       ) : null}
 
-      <View className="flex-row items-center justify-between">
-        {/* Local: Escudo + Nombre */}
-        <View className="flex-1 flex-row items-center gap-2.5 pr-2">
-          <Avatar
-            uri={teamLogoUri(match.homeTeam.id, 64)}
-            fallbackUri={match.homeTeam.logoUrl}
-            name={homeName}
-            size={24}
-          />
-          <Text
-            className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-100"
-            numberOfLines={2}
-          >
-            {homeName}
-          </Text>
+      <View className="min-h-[36px] flex-row items-center">
+        <TeamSide id={match.homeTeam.id} name={homeName} logoUrl={match.homeTeam.logoUrl} side="home"
+                  followed={!!followedTeamIds?.has(match.homeTeam.id)} />
+        <View className="min-w-[64px] items-center justify-center gap-1 px-1">
+          {body}
+          {watch ? (
+            <Ionicons name="tv-outline" size={13} color={match.status === 'live' ? BRAND.granate : '#94a3b8'} />
+          ) : null}
         </View>
-
-        {/* Centro: Marcador o Kickoff */}
-        <View className="items-center px-1 min-w-[76px]">
-          {showScore ? (
-            <View className="items-center">
-              <Text className="font-mono text-base font-extrabold tabular-nums text-slate-900 dark:text-slate-50">
-                {match.score.home ?? 0} - {match.score.away ?? 0}
-              </Text>
-              {live ? (
-                <>
-                  <View className="mt-0.5 flex-row items-center gap-1 rounded-full bg-live-deep px-1.5 py-0.2">
-                    <View className="h-1.5 w-1.5 rounded-full bg-white" />
-                    <Text className="text-[9px] font-black uppercase text-white">
-                      {t('match_states.live')}
-                    </Text>
-                  </View>
-                  {match.fouls && (match.fouls.home != null || match.fouls.away != null) ? (() => {
-                    const hf = match.fouls.home ?? 0;
-                    const af = match.fouls.away ?? 0;
-                    const hasBonus = hf >= 10 || af >= 10;
-                    const hasWarning = hf === 9 || af === 9 || hf === 14 || af === 14;
-
-                    return (
-                      <View className="mt-0.5 flex-row items-center gap-1">
-                        <Text
-                          className={`font-mono text-[10px] tabular-nums ${
-                            hasBonus
-                              ? 'text-rose-600 dark:text-rose-400 font-extrabold'
-                              : hasWarning
-                              ? 'text-amber-600 dark:text-amber-400 font-bold'
-                              : 'text-slate-500 dark:text-slate-400 font-bold'
-                          }`}
-                          accessibilityLabel={`Faltas: ${hf} a ${af}${hasBonus ? ', en bonus de falta directa' : ''}`}
-                        >
-                          F: {hf} - {af}
-                        </Text>
-                        {hasBonus ? (
-                          <View className="rounded bg-rose-100 px-1 py-0.2 dark:bg-rose-950/70">
-                            <Text className="text-[8px] font-black uppercase text-rose-700 dark:text-rose-300">
-                              Directa
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    );
-                  })() : null}
-                </>
-              ) : (
-                <Text className="text-[10px] font-semibold text-slate-400 dark:text-slate-400">
-                  {t('match_states.final')}
-                </Text>
-              )}
-            </View>
-          ) : (
-            <View className="rounded-lg bg-slate-100 px-2.5 py-1 dark:bg-slate-800">
-              <Text className="font-mono text-xs font-bold tabular-nums text-slate-700 dark:text-slate-200">
-                {formatKickoff(match.scheduledAt)}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Visitante: Nombre + Escudo */}
-        <View className="flex-1 flex-row items-center justify-end gap-2.5 pl-2">
-          <Text
-            className="flex-1 text-right text-sm font-medium text-slate-800 dark:text-slate-100"
-            numberOfLines={2}
-          >
-            {awayName}
-          </Text>
-          <Avatar
-            uri={teamLogoUri(match.awayTeam.id, 64)}
-            fallbackUri={match.awayTeam.logoUrl}
-            name={awayName}
-            size={24}
-          />
-        </View>
+        <TeamSide id={match.awayTeam.id} name={awayName} logoUrl={match.awayTeam.logoUrl} side="away"
+                  followed={!!followedTeamIds?.has(match.awayTeam.id)} />
       </View>
     </Pressable>
   );
 }
+
+/** Memoizada: al refrescar el directo solo se repinta la fila que cambia. */
+export const MatchRow = memo(MatchRowImpl);

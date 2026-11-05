@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/src/components/shared/Avatar';
 import { CountryFlag } from '@/src/components/shared/CountryFlag';
 import { clubName } from '@sports/core/names';
+import { useLocale } from '@/src/i18n/LocaleContext';
 
 interface MatchGroupCardProps {
   title: string;
@@ -18,6 +19,8 @@ interface MatchGroupCardProps {
   defaultOpen?: boolean;
   isOpen?: boolean;
   onToggleOpen?: () => void;
+  /** Icono propio (p. ej. estrella en Mi grada); manda sobre logo y bandera. */
+  icon?: ReactNode;
   children: ReactNode;
 }
 
@@ -33,9 +36,11 @@ export function MatchGroupCard({
   defaultOpen = true,
   isOpen: controlledOpen,
   onToggleOpen,
+  icon,
   children,
 }: MatchGroupCardProps) {
   const router = useRouter();
+  const { t, tv } = useLocale();
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
 
   const isControlled = controlledOpen !== undefined;
@@ -50,6 +55,7 @@ export function MatchGroupCard({
   };
 
   const displayTitle = clubName(title) || title;
+  const countText = `${count} ${count === 1 ? t('common.match_lc') : t('common.matches_lc')}`;
 
   const handleHeaderPress = () => {
     if (competitionId) {
@@ -66,12 +72,14 @@ export function MatchGroupCard({
         <Pressable
           onPress={handleHeaderPress}
           accessibilityRole={competitionId ? 'button' : 'header'}
-          accessibilityLabel={`${displayTitle}, ${count} ${count === 1 ? 'partido' : 'partidos'}${liveCount > 0 ? `, ${liveCount} en directo` : ''}`}
-          accessibilityHint={competitionId ? 'Abre la competición' : undefined}
+          accessibilityLabel={`${displayTitle}, ${countText}${liveCount > 0 ? `, ${tv('home.live_in_block', { n: liveCount })}` : ''}`}
+          
           className="flex-1 flex-row items-center gap-2 active:opacity-70"
         >
           {/* Icono: Logo competición -> Bandera de país -> Globo internacional -> Iniciales */}
-          {logoUrl ? (
+          {icon ? (
+            icon
+          ) : logoUrl ? (
             <Avatar uri={logoUrl} name={displayTitle} size={20} variant="competition" />
           ) : country === 'W' ? (
             <View className="h-5 w-5 items-center justify-center rounded-full bg-sky-50 dark:bg-sky-950/50">
@@ -89,34 +97,32 @@ export function MatchGroupCard({
           >
             {displayTitle}
           </Text>
-          {followed ? <Ionicons name="star" size={13} color="#991b1b" /> : null}
+          {followed ? (
+            <Ionicons name="star" size={13} color="#991b1b" accessibilityLabel={t('favorites.following')} />
+          ) : null}
           {competitionId ? <Ionicons name="chevron-forward" size={13} color="#94a3b8" /> : null}
         </Pressable>
 
         <View className="flex-row items-center gap-1.5 pl-2">
-          {/* Indicador de directos en el bloque */}
+          {/* Directos del bloque: plegado se dice «N en directo», como la web */}
           {liveCount > 0 ? (
             <View className="flex-row items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 dark:bg-emerald-950/50">
               <View className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               <Text className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                {liveCount}
+                {open ? liveCount : tv('home.live_in_block', { n: liveCount })}
               </Text>
             </View>
           ) : null}
 
           {/* Recuento total de partidos */}
-          <View className="rounded-full bg-slate-200/70 px-2 py-0.5 dark:bg-slate-700">
-            <Text className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
-              {count}
-            </Text>
-          </View>
+          <Text className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">{countText}</Text>
 
           {collapsible ? (
             <Pressable
               onPress={toggle}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               accessibilityRole="button"
-              accessibilityLabel={open ? 'Plegar grupo de partidos' : 'Desplegar grupo de partidos'}
+              accessibilityLabel={tv(open ? 'home.collapse' : 'home.expand', { name: displayTitle })}
               accessibilityState={{ expanded: open }}
               className="p-1 active:opacity-60"
             >

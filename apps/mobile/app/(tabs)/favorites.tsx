@@ -166,7 +166,7 @@ export default function FavoritesScreen() {
         ) : (
           <>
             {favs && (favs.teams.length > 0 || favs.leagues.length > 0) && currentMatchesQuery.data ? (
-              <View className="px-4 mt-4">
+              <View className="mt-4">
                 <MiGrada
                   matches={currentMatchesQuery.data}
                   teamIds={favs.teams}
