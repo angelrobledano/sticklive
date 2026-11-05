@@ -9,6 +9,7 @@ import { FollowButton } from '@/src/components/favorite/FollowButton';
 import { PenaltyShootout } from '@/src/components/match/PenaltyShootout';
 import { GoalStickIcon } from '@/src/components/shared/GoalStickIcon';
 import { clubName } from '@sports/core/names';
+import { matchRoundLabel } from '@sports/core/stage-label';
 import { deviceTimeZone, localTimeDiffers } from '@sports/core/viewer-tz';
 import {
   eventSurname,
@@ -39,8 +40,12 @@ export function MatchHeader({
   onReconnect,
 }: MatchHeaderProps) {
   const router = useRouter();
-  const { t, locale } = useLocale();
+  const { t, tv, locale } = useLocale();
   const { match, stats, events } = data;
+  // Fase en que se juega («Semifinal», «Fase de grupos · Grupo A · Jornada 2»), como la web.
+  const roundText = matchRoundLabel(match.round, tv);
+  const periodPrefix = (p: number | null | undefined) =>
+    p === 1 ? `${t('match_detail.p1_short')} ` : p === 2 ? `${t('match_detail.p2_short')} ` : p && p > 2 ? `${t('match_detail.ot_short')} ` : '';
   const ht = match.homeTeam;
   const at = match.awayTeam;
 
@@ -128,6 +133,9 @@ export function MatchHeader({
               {match.competitionName}
             </Text>
           )}
+          {roundText ? (
+            <Text className="mt-0.5 text-xs font-semibold text-slate-700 dark:text-slate-200">{roundText}</Text>
+          ) : null}
         </View>
       ) : null}
 
@@ -225,7 +233,11 @@ export function MatchHeader({
         {/* Marcador */}
         <View className="items-center px-3 min-w-[110px]">
           {showScore ? (
-            <View className="flex-row items-center">
+            <View
+              className={`flex-row items-center ${isLive && !connected ? 'opacity-40' : ''}`}
+              accessibilityLiveRegion="polite"
+              accessibilityLabel={`${homeName} ${match.score.home ?? 0} - ${match.score.away ?? 0} ${awayName}`}
+            >
               <Text className="font-mono text-4xl font-extrabold tabular-nums text-slate-900 dark:text-slate-50">
                 {match.score.home ?? 0}
               </Text>
@@ -246,6 +258,17 @@ export function MatchHeader({
               ) : null}
             </View>
           )}
+
+          {match.status === 'postponed' ? (
+            <Text className="mt-1 text-xs font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+              {t('match_states.postponed')}
+            </Text>
+          ) : null}
+          {match.status === 'cancelled' ? (
+            <Text className="mt-1 text-xs font-bold uppercase tracking-wide text-rose-600 dark:text-rose-400">
+              {t('match_states.cancelled')}
+            </Text>
+          ) : null}
 
           {isFinished && penaltyText(match.penalties) ? (
             <Text className="mt-1 text-xs font-semibold tabular-nums text-slate-500 dark:text-slate-400">
@@ -302,7 +325,7 @@ export function MatchHeader({
                       {eventSurname(e.player!)}
                     </Text>
                     <Text className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums">
-                      {fmtEventClock(e)}
+                      {periodPrefix(e.period)}{fmtEventClock(e)}
                     </Text>
                     {e.eventType === 'goal' ? (
                       <GoalStickIcon variant="inline" size={13} />
@@ -335,7 +358,7 @@ export function MatchHeader({
                       {eventSurname(e.player!)}
                     </Text>
                     <Text className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums">
-                      {fmtEventClock(e)}
+                      {periodPrefix(e.period)}{fmtEventClock(e)}
                     </Text>
                   </View>
                 ))}

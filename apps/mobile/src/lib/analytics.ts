@@ -39,6 +39,8 @@ const POSTHOG_HOST = process.env['EXPO_PUBLIC_POSTHOG_HOST'] || 'https://eu.i.po
  *  servidor y el SW web — para que el CTR por tipo agrupe ambas plataformas. */
 export interface AnalyticsEventProps {
   match_opened: { match_id: string };
+  /** Compartir alineación (paridad de nombre con la web, LineupsTab). */
+  lineup_shared: { match_id: string; outcome: 'shared' | 'dismissed' | 'failed' };
   live_tab_viewed: Record<string, never>;
   favorite_added: { kind: FavoriteKind };
   favorite_removed: { kind: FavoriteKind };

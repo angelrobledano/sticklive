@@ -230,6 +230,7 @@ export default function MatchScreen() {
 
           {activeTab === 'Alineaciones' && (
             <LineupsTab
+              matchId={m.id}
               lineups={current.lineups}
               homeTeam={m.homeTeam}
               awayTeam={m.awayTeam}

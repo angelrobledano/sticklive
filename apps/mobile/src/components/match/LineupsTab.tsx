@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Share, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
@@ -9,16 +10,33 @@ import { GoalStickIcon } from '@/src/components/shared/GoalStickIcon';
 import { displayLineupName } from '@/src/lib/match-helpers';
 import { clubName } from '@sports/core/names';
 import type { MatchDetailRaw } from '@sports/core/api';
+import { capture } from '@/src/lib/analytics';
 
 interface LineupsTabProps {
+  /** Para compartir la alineación como imagen (la genera la web: /matches/{id}/lineup-image). */
+  matchId?: string;
   lineups: MatchDetailRaw['lineups'];
   homeTeam: MatchDetailRaw['match']['homeTeam'];
   awayTeam: MatchDetailRaw['match']['awayTeam'];
 }
 
-export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
+export function LineupsTab({ matchId, lineups, homeTeam, awayTeam }: LineupsTabProps) {
   const router = useRouter();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const badgeStarter = t('match_detail.badge_starter');
+  const badgeCaptain = t('match_detail.badge_captain');
+  const badgeGoalkeeper = t('match_detail.badge_goalkeeper');
+
+  const shareLineup = async () => {
+    if (!matchId) return;
+    const url = `https://sticklive.eu/${locale}/matches/${matchId}/lineup-image`;
+    try {
+      const res = await Share.share({ message: `${t('match_detail.share_lineup')} | Stick Live\n${url}`, url, title: 'Stick Live' });
+      capture('lineup_shared', { match_id: matchId, outcome: res.action === Share.dismissedAction ? 'dismissed' : 'shared' });
+    } catch {
+      capture('lineup_shared', { match_id: matchId, outcome: 'failed' });
+    }
+  };
 
   const homeLabel = clubName(homeTeam.name) || homeTeam.shortName || homeTeam.name;
   const awayLabel = clubName(awayTeam.name) || awayTeam.shortName || awayTeam.name;
@@ -106,20 +124,20 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
               className="rounded px-1.5 py-0.5 items-center justify-center min-w-[22px]"
               style={{ backgroundColor: BRAND.granate }}
             >
-              <Text className="text-[10px] font-bold text-white leading-none">5i</Text>
+              <Text className="text-[10px] font-bold text-white leading-none">{badgeStarter}</Text>
             </View>
           ) : null}
 
           {p.isCaptain ? (
             <View className="rounded bg-slate-700 px-1.5 py-0.5 items-center justify-center min-w-[22px] dark:bg-slate-600">
-              <Text className="text-[10px] font-bold text-white leading-none">C</Text>
+              <Text className="text-[10px] font-bold text-white leading-none">{badgeCaptain}</Text>
             </View>
           ) : null}
 
           {p.isGoalkeeper ? (
             <View className="rounded bg-slate-200 px-1.5 py-0.5 items-center justify-center min-w-[22px] dark:bg-slate-700">
               <Text className="text-[10px] font-bold text-slate-700 dark:text-slate-200 leading-none">
-                POR
+                {badgeGoalkeeper}
               </Text>
             </View>
           ) : null}
@@ -152,6 +170,19 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
           homeName={homeLabel}
           awayName={awayLabel}
         />
+      ) : null}
+
+      {/* Compartir la alineación como imagen (paridad con el botón de la pista en la web) */}
+      {matchId ? (
+        <Pressable
+          onPress={() => void shareLineup()}
+          accessibilityRole="button"
+          accessibilityLabel={t('match_detail.share_lineup')}
+          className="mb-3 min-h-[44px] flex-row items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white active:opacity-70 dark:border-slate-700 dark:bg-slate-900"
+        >
+          <Ionicons name="share-social-outline" size={16} color="#64748b" />
+          <Text className="text-xs font-semibold text-slate-600 dark:text-slate-300">{t('match_detail.share_lineup')}</Text>
+        </Pressable>
       ) : null}
 
       {/* 2. Listado completo de ambos equipos */}
@@ -188,7 +219,7 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
                 className="rounded px-1 py-0.5"
                 style={{ backgroundColor: BRAND.granate }}
               >
-                <Text className="text-[9px] font-bold text-white">5i</Text>
+                <Text className="text-[9px] font-bold text-white">{badgeStarter}</Text>
               </View>
               <Text className="text-[10px] text-slate-500 dark:text-slate-400">
                 {t('match_detail.starter')}
@@ -197,7 +228,7 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
 
             <View className="flex-row items-center gap-1">
               <View className="rounded bg-slate-700 px-1 py-0.5 dark:bg-slate-600">
-                <Text className="text-[9px] font-bold text-white">C</Text>
+                <Text className="text-[9px] font-bold text-white">{badgeCaptain}</Text>
               </View>
               <Text className="text-[10px] text-slate-500 dark:text-slate-400">
                 {t('match_detail.captain')}
@@ -206,7 +237,7 @@ export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {
 
             <View className="flex-row items-center gap-1">
               <View className="rounded bg-slate-200 px-1 py-0.5 dark:bg-slate-700">
-                <Text className="text-[9px] font-bold text-slate-700 dark:text-slate-200">POR</Text>
+                <Text className="text-[9px] font-bold text-slate-700 dark:text-slate-200">{badgeGoalkeeper}</Text>
               </View>
               <Text className="text-[10px] text-slate-500 dark:text-slate-400">
                 {t('match_detail.goalkeeper')}
