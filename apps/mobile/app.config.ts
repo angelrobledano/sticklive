@@ -1,5 +1,15 @@
 import { BRAND } from '@sports/brand';
 
+// App Links de Android: las mismas rutas que el AASA de iOS, con y sin locale.
+// pathPrefix '/match' cubre también '/matches'. Nunca /admin
+const LINK_LOCALES = ['es', 'ca', 'en', 'pt', 'fr', 'it'];
+const LINK_SECTIONS = ['/match', '/team', '/players', '/competition', '/favorites', '/search'];
+const APP_LINK_PREFIXES = [
+  '/login',
+  ...LINK_SECTIONS,
+  ...LINK_LOCALES.flatMap((l) => LINK_SECTIONS.map((p) => `/${l}${p}`)),
+];
+
 export default {
   expo: {
     name: 'Stick Live',
@@ -39,28 +49,11 @@ export default {
         {
           action: 'VIEW',
           autoVerify: true,
-          data: [
-            {
-              scheme: 'https',
-              host: 'sticklive.eu',
-              pathPrefix: '/login',
-            },
-            {
-              scheme: 'https',
-              host: 'sticklive.eu',
-              pathPrefix: '/match',
-            },
-            {
-              scheme: 'https',
-              host: 'sticklive.eu',
-              pathPrefix: '/competition',
-            },
-            {
-              scheme: 'https',
-              host: 'sticklive.eu',
-              pathPrefix: '/team',
-            },
-          ],
+          data: APP_LINK_PREFIXES.map((pathPrefix) => ({
+            scheme: 'https',
+            host: 'sticklive.eu',
+            pathPrefix,
+          })),
           category: ['BROWSABLE', 'DEFAULT'],
         },
       ],

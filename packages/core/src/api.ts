@@ -1020,6 +1020,8 @@ export type SeasonOverviewMatch = SeasonMatch;
 export type SeasonOverviewStandingRow = SeasonStandingRow;
 
 export interface CompetitionSeasonsResponse {
+  /** Identidad canónica, la ruta admite id o slug. */
+  competition?: { id: string; slug: string | null };
   seasons: {
     id: string;
     name: string;

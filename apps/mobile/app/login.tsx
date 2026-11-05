@@ -60,7 +60,7 @@ export default function LoginScreen() {
       if (router.canGoBack()) {
         router.back();
       } else {
-        router.replace('/(tabs)/settings');
+        router.replace('/settings');
       }
     }
   }, [session, router]);

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
@@ -12,6 +12,7 @@ import { SearchSkeleton } from '@/src/components/shared/Skeleton';
 import { ErrorState } from '@/src/components/shared/ErrorState';
 import { Avatar, playerPhotoUri, teamLogoUri } from '@/src/components/shared/Avatar';
 import { AdBanner } from '@/src/components/ads/AdBanner';
+import { SettingsGearButton } from '@/src/components/layout/SettingsGearButton';
 import { clubName, playerDisplayName } from '@sports/core/names';
 
 /**
@@ -26,7 +27,14 @@ export default function SearchScreen() {
   const { t } = useLocale();
   const insets = useSafeAreaInsets();
   const { colorScheme } = useColorScheme();
-  const [q, setQ] = useState('');
+  // Un enlace /search?q= de la web llega con la consulta ya escrita
+  const { q: qParam } = useLocalSearchParams<{ q?: string }>();
+  const [q, setQ] = useState(typeof qParam === 'string' ? qParam : '');
+  const [seenParam, setSeenParam] = useState(qParam);
+  if (qParam !== seenParam) {
+    setSeenParam(qParam);
+    if (typeof qParam === 'string') setQ(qParam);
+  }
   const debounced = useDebounced(q, SEARCH_DEBOUNCE_MS);
   const search = useSearch(debounced);
 
@@ -41,9 +49,9 @@ export default function SearchScreen() {
       {/* Cabecera integrada de búsqueda para aprovechar al máximo el espacio vertical */}
       <View
         style={{ paddingTop: Math.max(insets.top, 12) }}
-        className="border-b border-slate-200 bg-white px-3 pb-2.5 dark:border-slate-800 dark:bg-slate-900"
+        className="flex-row items-center border-b border-slate-200 bg-white pl-3 pb-2.5 dark:border-slate-800 dark:bg-slate-900"
       >
-        <View className="flex-row items-center rounded-xl bg-slate-100 px-3 py-1 dark:bg-slate-800">
+        <View className="flex-1 flex-row items-center rounded-xl bg-slate-100 px-3 py-1 dark:bg-slate-800">
           <Ionicons
             name="search-outline"
             size={20}
@@ -74,6 +82,7 @@ export default function SearchScreen() {
             </Pressable>
           ) : null}
         </View>
+        <SettingsGearButton color={colorScheme === 'dark' ? '#cbd5e1' : '#475569'} />
       </View>
 
       {tooShort ? (

@@ -27,7 +27,7 @@ export default function AuthCallbackScreen() {
       if (error) {
         setLastAuthError(error);
         if (active) {
-          router.replace('/(tabs)/settings');
+          router.replace('/settings');
         }
         return;
       }
@@ -37,13 +37,13 @@ export default function AuthCallbackScreen() {
       }
 
       if (active) {
-        router.replace('/(tabs)/settings');
+        router.replace('/settings');
       }
     }
 
     // Si ya hay una sesión activa, volvemos a ajustes directamente
     if (session) {
-      router.replace('/(tabs)/settings');
+      router.replace('/settings');
       return;
     }
 

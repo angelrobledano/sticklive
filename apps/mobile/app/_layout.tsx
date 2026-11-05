@@ -18,6 +18,7 @@ import { markPushInteraction } from '@/src/lib/ads/session-context';
 import { useAppOpenAd } from '@/src/hooks/ads/useAppOpenAd';
 import { NOTIFICATION_CHANNELS, registerNotificationChannels } from '@/src/lib/push';
 import { LockScreenLiveTracker } from '@/src/components/shared/LockScreenLiveTracker';
+import { webPathToAppPath } from '@/src/lib/deep-links';
 
 // Sentry (Task 5.1): init a nivel de módulo, ANTES de renderizar nada, y SOLO
 // si hay DSN (en desarrollo sin DSN no se inicializa y no hay overhead). El
@@ -99,8 +100,9 @@ function useNotificationDeepLink() {
           | null
           | undefined) ?? {};
       const urlPath = payload.urlPath;
+      // La ruta puede venir con forma web (/es/matches/<id>): se traduce antes
       if (typeof urlPath === 'string' && urlPath.startsWith('/')) {
-        router.push(urlPath as never);
+        router.push(webPathToAppPath(urlPath) as never);
       }
       // Analítica (Task 5.1): apertura de una NOTIFICACIÓN. El emisor (ETL)
       // pone `type` en data; un deep link sin type (p. ej. un enlace manual)
@@ -187,6 +189,7 @@ function RootNavigator() {
         <Stack.Screen name="team/[id]" options={{ title: '' }} />
         <Stack.Screen name="player/[id]" options={{ title: '' }} />
         <Stack.Screen name="competition/[id]" options={{ title: '' }} />
+        <Stack.Screen name="settings/index" options={{ title: t('nav.settings') }} />
         <Stack.Screen name="settings/notifications" options={{ title: t('settings.notif_title') }} />
         <Stack.Screen name="settings/premium" options={{ title: t('premium.title') }} />
         <Stack.Screen name="settings/ads-privacy" options={{ title: t('ads.privacy_title') }} />

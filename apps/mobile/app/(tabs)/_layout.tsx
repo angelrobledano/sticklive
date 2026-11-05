@@ -4,14 +4,15 @@ import { useColorScheme } from 'nativewind';
 import { BRAND } from '@sports/brand';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { BrandHeaderTitle } from '@/src/components/layout/AppHeader';
+import { SettingsGearButton } from '@/src/components/layout/SettingsGearButton';
 
 const ICONS = {
   index: 'radio-outline',
   competitions: 'trophy-outline',
   search: 'search-outline',
   favorites: 'star-outline',
-  settings: 'settings-outline',
 } as const;
+
 
 export default function TabsLayout() {
   const { t } = useLocale();
@@ -26,6 +27,7 @@ export default function TabsLayout() {
         headerTitleStyle: { fontWeight: '700', fontSize: 18 },
         headerShadowVisible: false,
         headerTitleAlign: 'left',
+        headerRight: ({ tintColor }) => <SettingsGearButton color={tintColor} />,
         tabBarActiveTintColor: colorScheme === 'dark' ? BRAND.accent : BRAND.granate,
       }}
     >
@@ -45,12 +47,6 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="standings"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
         name="search"
         options={{
           title: t('nav.search'),
@@ -63,13 +59,6 @@ export default function TabsLayout() {
         options={{
           title: t('nav.favorites'),
           tabBarIcon: ({ color, size }) => <Ionicons name={ICONS.favorites} color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: t('nav.settings'),
-          tabBarIcon: ({ color, size }) => <Ionicons name={ICONS.settings} color={color} size={size} />,
         }}
       />
     </Tabs>

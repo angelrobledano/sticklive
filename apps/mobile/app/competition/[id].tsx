@@ -36,10 +36,20 @@ import type {
 
 export default function CompetitionScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ id: string; seasonId?: string }>();
-  const competitionId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const params = useLocalSearchParams<{ id: string; seasonId?: string; season?: string }>();
+  const routeKey = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
   const { t } = useLocale();
+
+  // Temporadas disponibles. La API acepta id o slug y devuelve el id canónico,
+  // así un enlace web con slug resuelve a UUID para metadatos, seguir y compartir
+  const seasonsQuery = useCompetitionSeasons(routeKey);
+  const seasons = seasonsQuery.data?.seasons ?? [];
+  const competitionId = seasonsQuery.data?.competition?.id ?? routeKey;
+  // Con slug no se sigue hasta tener el UUID, el favorito se guarda por id
+  const hasCanonicalId =
+    Boolean(seasonsQuery.data?.competition?.id) ||
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(routeKey ?? '');
 
   // Metadatos básicos de la competición
   const competitionsQuery = useCompetitions();
@@ -48,12 +58,8 @@ export default function CompetitionScreen() {
     [competitionsQuery.data, competitionId],
   );
 
-  // Temporadas disponibles
-  const seasonsQuery = useCompetitionSeasons(competitionId);
-  const seasons = seasonsQuery.data?.seasons ?? [];
-
   // Temporada seleccionada
-  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(params.seasonId ?? null);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(params.seasonId ?? params.season ?? null);
   const activeSeasonId =
     selectedSeasonId ??
     competitionMeta?.season?.id ??
@@ -227,7 +233,7 @@ export default function CompetitionScreen() {
                 ) : null}
               </View>
             </View>
-            {competitionId ? <FollowButton kind="league" refId={competitionId} name={compTitle} /> : null}
+            {competitionId && hasCanonicalId ? <FollowButton kind="league" refId={competitionId} name={compTitle} /> : null}
           </View>
 
           {/* Selector de temporada si hay varias */}
