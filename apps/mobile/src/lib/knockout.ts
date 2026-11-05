@@ -1,4 +1,5 @@
 import { gameWinnerId } from './playoff';
+import { matchPhaseKey, playoffPhaseKey, type PlayoffPhaseKey } from '@sports/core/phase-keys';
 import { STAGE_ORDER, type KnockoutStage } from '@sports/shared-types';
 
 export interface KnockoutMatchInput {
@@ -18,7 +19,9 @@ export interface KnockoutMatchInput {
   winType?: 'regular' | 'overtime' | 'penalties' | null;
 }
 
-export type KnockoutPhaseKey = 'round_of_16' | 'quarters' | 'semis' | 'final' | 'third_place';
+export type KnockoutPhaseKey = PlayoffPhaseKey;
+
+export { matchPhaseKey, playoffPhaseKey };
 
 export interface KnockoutSeriesView {
   games: KnockoutMatchInput[];
@@ -62,32 +65,6 @@ export function isKnockoutSeason(
     matches.length > 0 &&
     matches.every((m) => m.roundType === 'playoff' || m.roundType === 'cup')
   );
-}
-
-export function playoffPhaseKey(name: string | null, roundNumber: number | null): KnockoutPhaseKey | null {
-  const n = (name ?? '').toLowerCase();
-  if (/octavos|1\s*\/\s*8|round\s*of\s*16|eighth/.test(n)) return 'round_of_16';
-  if (/cuartos|quarter/.test(n)) return 'quarters';
-  if (/semi/.test(n)) return 'semis';
-  if (/3.*4|tercer|bronce|small\s*final|3º|3rd|third/.test(n)) return 'third_place';
-  if (/final/.test(n)) return 'final';
-  if (roundNumber != null) {
-    if (roundNumber >= 3) return 'final';
-    if (roundNumber === 2) return 'semis';
-    if (roundNumber === 1) return 'quarters';
-  }
-  return null;
-}
-
-const PHASE_KEYS = new Set<KnockoutPhaseKey>(['round_of_16', 'quarters', 'semis', 'final', 'third_place']);
-
-export function matchPhaseKey(m: {
-  stage?: string | null;
-  roundName?: string | null;
-  roundNumber?: number | null;
-}): KnockoutPhaseKey | null {
-  if (m.stage) return PHASE_KEYS.has(m.stage as KnockoutPhaseKey) ? (m.stage as KnockoutPhaseKey) : null;
-  return playoffPhaseKey(m.roundName ?? null, m.roundNumber ?? null);
 }
 
 export function knockoutPhaseLabel(

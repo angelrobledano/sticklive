@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { roundLabel, playoffPhaseKey, playoffPhaseLabel } from './format';
+import { roundLabel, playoffPhaseLabel } from './format';
 import type { SeasonRound } from '@/lib/api/client';
 
 /**
@@ -52,42 +52,6 @@ describe('roundLabel', () => {
   it('colocación: el nombre de la fuente («Puestos 5º-8º»)', () => {
     expect(roundLabel(ronda({ number: 74, name: 'Puestos 5º-8º', roundType: 'playoff', stage: 'placement' }), fakeT))
       .toBe('Puestos 5º-8º');
-  });
-});
-
-describe('playoffPhaseKey', () => {
-  it('reconoce las fases por el nombre, en español y en inglés', () => {
-    expect(playoffPhaseKey('Cuartos de final', null)).toBe('quarters');
-    expect(playoffPhaseKey('Quarterfinals', null)).toBe('quarters');
-    expect(playoffPhaseKey('Semifinal', null)).toBe('semis');
-    expect(playoffPhaseKey('Final', null)).toBe('final');
-    expect(playoffPhaseKey('3º y 4º puesto', null)).toBe('third_place');
-  });
-
-  it('cae al número de ronda si el nombre no da pista (igual que groupByPhase)', () => {
-    expect(playoffPhaseKey(null, 1)).toBe('quarters');
-    expect(playoffPhaseKey(null, 2)).toBe('semis');
-    expect(playoffPhaseKey(null, 3)).toBe('final');
-  });
-
-  it('devuelve null para un nombre propio no traducible', () => {
-    // "Final" NO debe colar aquí: se comprueba una copa con nombre propio.
-    expect(playoffPhaseKey('Copa del Rey', null)).toBeNull();
-    expect(playoffPhaseKey('Supercopa', null)).toBeNull();
-  });
-
-  it('el orden de las reglas evita que "Semifinal" caiga en "final"', () => {
-    // "Semifinal" contiene "final"; la regla de semi va antes.
-    expect(playoffPhaseKey('Semifinal 1', null)).toBe('semis');
-  });
-
-  it('reconoce octavos y NO los confunde con la final', () => {
-    // "Octavos de final" contiene "final": antes se clasificaba como 'final'.
-    expect(playoffPhaseKey('Octavos de final', null)).toBe('round_of_16');
-    expect(playoffPhaseKey('Round of 16', null)).toBe('round_of_16');
-    expect(playoffPhaseKey('1/8 de final', null)).toBe('round_of_16');
-    // Y la gran final sigue siendo la final.
-    expect(playoffPhaseKey('Final', null)).toBe('final');
   });
 });
 

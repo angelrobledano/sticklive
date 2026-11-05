@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import type { SeasonMatch, TeamSummary } from '@/lib/api/client';
-import { buildSeries, gameWinnerId, seriesWinnerId, type PlayoffSeries } from './playoff';
+import type { SeasonMatch, TeamSummary } from './api';
+import {
+  advancedFrom,
+  buildSeries,
+  gameWinnerId,
+  groupByPhase,
+  placementMatches,
+  seriesWinnerId,
+  type PlayoffSeries,
+} from './playoff';
 
 /**
  * Lógica de series de playoff: ganador por partido (penaltis/prórroga mandan
@@ -116,5 +124,68 @@ describe('buildSeries — recuento de victorias', () => {
     expect(series).toHaveLength(1);
     expect(series[0]!.winsA).toBe(2);
     expect(series[0]!.winsB).toBe(3);
+  });
+});
+
+describe('playoff (casos de la app)', () => {
+  const tm = (id: string, name = id): TeamSummary => ({ id, name, shortName: name, logoUrl: null });
+
+  it('gameWinnerId resuelve un empate por la tanda de penaltis', () => {
+    const g = game({ score: { home: 2, away: 2 }, penalties: { home: 3, away: 1 }, homeTeam: tm('A'), awayTeam: tm('B') });
+    expect(gameWinnerId(g)).toBe('A');
+  });
+
+  it('gameWinnerId devuelve null con empate sin tanda o sin marcador', () => {
+    expect(gameWinnerId(game({ score: { home: 2, away: 2 }, penalties: null }))).toBeNull();
+    expect(gameWinnerId(game({ score: { home: null, away: null } }))).toBeNull();
+  });
+
+  it('buildSeries agrupa partidos de ida y vuelta entre dos equipos', () => {
+    const A = tm('A');
+    const B = tm('B');
+    const series = buildSeries([
+      game({ id: 'g1', scheduledAt: '2026-05-10T18:00:00Z', score: { home: 4, away: 1 }, homeTeam: A, awayTeam: B }),
+      game({ id: 'g2', scheduledAt: '2026-05-12T18:00:00Z', score: { home: 3, away: 2 }, homeTeam: B, awayTeam: A }),
+      game({ id: 'g3', scheduledAt: '2026-05-15T18:00:00Z', score: { home: 5, away: 2 }, homeTeam: A, awayTeam: B }),
+    ]);
+    expect(series).toHaveLength(1);
+    expect(series[0]!.winsA).toBe(2);
+    expect(series[0]!.winsB).toBe(1);
+    expect(seriesWinnerId(series[0]!)).toBe('A');
+  });
+
+  it('groupByPhase reparte por stage y placementMatches aísla la colocación', () => {
+    const qf = game({ id: 'q1', stage: 'quarters' });
+    const sf = game({ id: 's1', stage: 'semis' });
+    const f = game({ id: 'f1', stage: 'final' });
+    const pl = game({ id: 'p1', stage: 'placement' });
+    const grouped = groupByPhase([qf, sf, f, pl]);
+    expect(grouped.Cuartos).toHaveLength(1);
+    expect(grouped.Semis).toHaveLength(1);
+    expect(grouped.Final).toHaveLength(1);
+    expect(placementMatches([qf, sf, f, pl]).map((m) => m.id)).toEqual(['p1']);
+  });
+
+  it('Final Four sin stage (3 partidos con la misma ronda): dos semis y la final por fecha', () => {
+    const mk = (id: string, at: string) => game({
+      id, stage: null, roundNumber: 4, roundName: 'FINAL', scheduledAt: at,
+    });
+    // Desordenados a propósito: el reparto va por fecha, no por posición.
+    const grouped = groupByPhase([
+      mk('f1', '2025-09-21T10:15:00Z'),
+      mk('s1', '2025-09-20T14:15:00Z'),
+      mk('s2', '2025-09-20T16:45:00Z'),
+    ]);
+    expect(grouped.Cuartos).toHaveLength(0);
+    expect(grouped.Semis.map((m) => m.id)).toEqual(['s1', 's2']);
+    expect(grouped.Final.map((m) => m.id)).toEqual(['f1']);
+  });
+
+  it('advancedFrom devuelve los equipos presentes en la fase siguiente', () => {
+    const sf = buildSeries([game({ homeTeam: tm('A'), awayTeam: tm('C') })]);
+    const advanced = advancedFrom(sf);
+    expect(advanced.has('A')).toBe(true);
+    expect(advanced.has('C')).toBe(true);
+    expect(advanced.has('B')).toBe(false);
   });
 });

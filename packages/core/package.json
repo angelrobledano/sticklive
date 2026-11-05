@@ -8,7 +8,12 @@
     "./smoke": "./src/smoke.ts",
     "./api": "./src/api.ts",
     "./match-time": "./src/match-time.ts",
-    "./viewer-tz": "./src/viewer-tz.ts"
+    "./viewer-tz": "./src/viewer-tz.ts",
+    "./competition-importance": "./src/competition-importance.ts",
+    "./playoff": "./src/playoff.ts",
+    "./stage-label": "./src/stage-label.ts",
+    "./search-text": "./src/search-text.ts",
+    "./phase-keys": "./src/phase-keys.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

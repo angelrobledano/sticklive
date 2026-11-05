@@ -3,7 +3,6 @@ import {
   filterCompetitions,
   genderLabel,
   groupCompetitionsForIndex,
-  normalizeSearchText,
   orderSearchResults,
 } from './competition-filter';
 import type { CompetitionSummary } from './api/types';
@@ -31,13 +30,6 @@ function createComp(name: string, over: Partial<CompetitionSummary> = {}): Compe
 const countryName = (code: string | null) => (code === 'ES' ? 'España' : code === 'PT' ? 'Portugal' : '');
 
 describe('competition-filter helpers', () => {
-  describe('normalizeSearchText', () => {
-    it('pasa a minúsculas y quita acentos', () => {
-      expect(normalizeSearchText('Primera División')).toBe('primera division');
-      expect(normalizeSearchText('Copa del Rey')).toBe('copa del rey');
-    });
-  });
-
   describe('filterCompetitions', () => {
     it('filtra por nombre ignorando mayúsculas y acentos', () => {
       const comps = [

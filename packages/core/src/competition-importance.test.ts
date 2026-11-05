@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { currentSeasonYear, hasSeasonYear, importanceRank, orderByImportance } from './competition-importance';
-import type { CompetitionSummary } from '@/lib/api/client';
+import type { CompetitionSummary } from './api';
 
 function comp(slug: string, over: Partial<CompetitionSummary> = {}): CompetitionSummary {
   return {
@@ -136,5 +136,37 @@ describe('orderByImportance', () => {
     const copia = [...entrada];
     orderByImportance(entrada, 'es');
     expect(entrada).toEqual(copia);
+  });
+});
+
+describe('competition-importance (casos de la app)', () => {
+  it('currentSeasonYear ignora «Histórico» aunque lleve un año en el nombre', () => {
+    const histor = (slug: string, name: string) =>
+      comp(slug, { season: { id: `s-${slug}`, name, isCurrent: true, teamCount: 14, matchCount: 26 } });
+    expect(currentSeasonYear([
+      histor('l1', '2025/26'),
+      histor('l2', '2026/27'),
+      histor('l3', 'Histórico 2030'),
+    ])).toBe(2026);
+  });
+
+  it('hasSeasonYear compara con el año indicado', () => {
+    const c = comp('l1');
+    expect(hasSeasonYear(c, 2026)).toBe(true);
+    expect(hasSeasonYear(c, 2025)).toBe(false);
+  });
+
+  it('orderByImportance prioriza featuredRank, luego tier, y lo desconocido al final', () => {
+    const sorted = orderByImportance([
+      { name: 'Desconocida', slug: 'desconocida' },
+      { name: 'Liga Tier 2', slug: 'tier-2', tier: 2 },
+      { name: 'Copa Destacada', slug: 'copa-x', featuredRank: 1 },
+      { name: 'Liga Tier 1', slug: 'tier-1', tier: 1 },
+    ], 'es');
+    expect(sorted.map((s) => s.name)).toEqual(['Copa Destacada', 'Liga Tier 1', 'Liga Tier 2', 'Desconocida']);
+  });
+
+  it('el slug por sí solo ya no clasifica (la importancia viene de la BD)', () => {
+    expect(importanceRank({ slug: 'mundial-masculino-worldskate' })).toBe(1000);
   });
 });

@@ -1,5 +1,8 @@
 import type { CompetitionSummary } from './api/types';
 import { importanceRank, orderByImportance } from './competition-importance';
+import { normalizeSearchText } from '@sports/core/search-text';
+
+export { normalizeSearchText };
 
 export const COUNTRY_ORDER = ['ES', 'PT', 'IT', 'FR', 'AR', 'AN'];
 
@@ -35,13 +38,6 @@ export function genderLabel(gender: string | null, t: (k: string) => string): st
   if (gender === 'male') return t('common.male');
   if (gender === 'female') return t('common.female');
   return '';
-}
-
-export function normalizeSearchText(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
 }
 
 function nameVariants(c: CompetitionSummary): string[] {
@@ -99,7 +95,7 @@ export function orderSearchResults(
   return [...comps].sort((a, b) => {
     const byRelevance = matchRelevance(a, normalizedQuery) - matchRelevance(b, normalizedQuery);
     if (byRelevance !== 0) return byRelevance;
-    const byImportance = importanceRank(a.slug) - importanceRank(b.slug);
+    const byImportance = importanceRank(a) - importanceRank(b);
     return byImportance !== 0 ? byImportance : a.name.localeCompare(b.name, locale);
   });
 }
