@@ -1,6 +1,6 @@
 # App: Partidos y ficha de partido a la altura de la web móvil (lote 3)
 
-Estado: en curso
+Estado: Implementado
 
 ## Huecos encontrados
 
