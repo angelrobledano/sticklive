@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { MatchDetail } from '@/src/lib/api/types';
+import type { MatchDetailRaw } from '@/src/lib/api/types';
 import {
   applyStreamPatch,
   backoffDelay,
   type MatchState,
 } from './match-stream';
 
-// Fixture mínimo con TODOS los campos del MatchDetail real (espejo de MatchDto,
+// Fixture mínimo con TODOS los campos del MatchDetailRaw real (espejo de MatchDto,
 // apps/api/src/lib/match-dto.ts:135-166).
-const EMPTY_STATS: MatchDetail['stats'] = {
+const EMPTY_STATS: MatchDetailRaw['stats'] = {
   homeFouls: 0,
   awayFouls: 0,
   homeGoals: 0,
@@ -27,14 +27,14 @@ const EMPTY_STATS: MatchDetail['stats'] = {
   awayPenalties: { total: 0, scored: 0 },
 };
 
-const team = (id: string): MatchDetail['match']['homeTeam'] => ({
+const team = (id: string): MatchDetailRaw['match']['homeTeam'] => ({
   id,
   name: `Equipo ${id}`,
   shortName: id.toUpperCase(),
   logoUrl: null,
 });
 
-const event = (id: string, minute: number | null): MatchDetail['events'][number] => ({
+const event = (id: string, minute: number | null): MatchDetailRaw['events'][number] => ({
   id,
   eventType: 'goal',
   minute,
@@ -47,8 +47,8 @@ const event = (id: string, minute: number | null): MatchDetail['events'][number]
 });
 
 function mkDetail(
-  over: { score?: { home: number | null; away: number | null }; events?: MatchDetail['events'] } = {},
-): MatchDetail {
+  over: { score?: { home: number | null; away: number | null }; events?: MatchDetailRaw['events'] } = {},
+): MatchDetailRaw {
   return {
     match: {
       id: 'm1',
@@ -74,8 +74,6 @@ function mkDetail(
       sourceRef: null,
       videoUrl: null,
       live: null,
-      homeTeamId: 'h',
-      awayTeamId: 'a',
       homeTeam: team('h'),
       awayTeam: team('a'),
     },

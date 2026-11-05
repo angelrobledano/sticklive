@@ -5,10 +5,10 @@ import { useLocale } from '@/src/i18n/LocaleContext';
 import { EmptyState } from '@/src/components/shared/EmptyState';
 import { calcEfficiency } from '@/src/lib/match-helpers';
 import { clubName } from '@/src/lib/names';
-import type { MatchDetail } from '@/src/lib/api/types';
+import type { MatchDetailRaw } from '@/src/lib/api/types';
 
 interface StatsTabProps {
-  data: MatchDetail;
+  data: MatchDetailRaw;
 }
 
 interface StatRowProps {

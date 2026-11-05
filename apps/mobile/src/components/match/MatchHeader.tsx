@@ -19,10 +19,10 @@ import {
   foulBonusState,
   penaltyText,
 } from '@/src/lib/match-helpers';
-import type { MatchDetail } from '@/src/lib/api/types';
+import type { MatchDetailRaw } from '@/src/lib/api/types';
 
 interface MatchHeaderProps {
-  data: MatchDetail;
+  data: MatchDetailRaw;
   liveStale?: boolean;
   staleSeconds?: number;
   connected?: boolean;

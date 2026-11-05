@@ -1,9 +1,9 @@
-import type { MatchDetail } from './api/types';
+import type { MatchDetailRaw } from './api/types';
 
 export type Transport = 'sse' | 'poll';
 
 export interface MatchState {
-  detail: MatchDetail | null;
+  detail: MatchDetailRaw | null;
   connected: boolean;
   transport: Transport;
   /** Desfase del stream: el hub avisó con `event: stale` (poll del servidor caído, #284). */
@@ -24,8 +24,8 @@ export interface MatchState {
  * interno falla (y `stale: false` al recuperar, seguido del fanout normal).
  */
 export type StreamPatch =
-  | { kind: 'snapshot'; detail: MatchDetail }
-  | { kind: 'update'; detail: MatchDetail }
+  | { kind: 'snapshot'; detail: MatchDetailRaw }
+  | { kind: 'update'; detail: MatchDetailRaw }
   | { kind: 'transport'; transport: Transport }
   | { kind: 'stale'; staleAt: number }
   | { kind: 'disconnected' };

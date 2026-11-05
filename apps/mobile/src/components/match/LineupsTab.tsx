@@ -8,12 +8,12 @@ import { StartingFiveRink } from '@/src/components/match/StartingFiveRink';
 import { GoalStickIcon } from '@/src/components/shared/GoalStickIcon';
 import { displayLineupName } from '@/src/lib/match-helpers';
 import { clubName } from '@/src/lib/names';
-import type { MatchDetail } from '@/src/lib/api/types';
+import type { MatchDetailRaw } from '@/src/lib/api/types';
 
 interface LineupsTabProps {
-  lineups: MatchDetail['lineups'];
-  homeTeam: MatchDetail['match']['homeTeam'];
-  awayTeam: MatchDetail['match']['awayTeam'];
+  lineups: MatchDetailRaw['lineups'];
+  homeTeam: MatchDetailRaw['match']['homeTeam'];
+  awayTeam: MatchDetailRaw['match']['awayTeam'];
 }
 
 export function LineupsTab({ lineups, homeTeam, awayTeam }: LineupsTabProps) {

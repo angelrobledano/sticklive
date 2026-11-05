@@ -143,3 +143,4 @@ Al cerrar:
 - api / TeamSeasonInfo.competitionFormat y phases: web CompetitionFormat y SeasonPhase[], app string y forma reducida → elegido web porque es más preciso y la app compila con ello.
 - api / ZoneKind: web importa de lib/standings-zones-view, app tiene copia propia → elegido copia local no exportada en core/api porque core no puede importar de las apps. Idéntica en ambas. Se unificará con el módulo de zonas.
 - api / CompetitionSeasonsResponse: sin equivalente en web → conservado el de la app con forma inline igual que CompetitionSeason.
+- api / MatchDetail.match.homeTeamId y awayTeamId: web obligatorios (los deriva client.ts:419 de homeTeam.id), app sin ellos porque match-dto.ts no los envía → elegido mantener MatchDetail de la web y exportar MatchDetailRaw (@deprecated) con esos dos campos opcionales, que usa la app en hook, cliente, match-helpers y match-stream. Un MatchDetail es asignable a MatchDetailRaw pero no al revés.

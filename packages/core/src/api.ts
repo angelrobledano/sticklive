@@ -241,6 +241,12 @@ export interface MatchDetail {
   updatedAt?: string;
 }
 
+/** @deprecated forma cruda del detalle que consume la app. La web normaliza en client.ts */
+export type MatchDetailRaw = Omit<MatchDetail, 'match'> & {
+  match: Omit<MatchDetail['match'], 'homeTeamId' | 'awayTeamId'> &
+    Partial<Pick<MatchDetail['match'], 'homeTeamId' | 'awayTeamId'>>;
+};
+
 // ─── Competitions ───
 
 export type FederationLevel = 'world' | 'continental' | 'national' | 'regional';

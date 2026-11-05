@@ -18,7 +18,7 @@ import {
   halfPositions,
   placeRinkPlayers,
 } from './match-helpers';
-import type { MatchDetail, MatchStats } from './api/types';
+import type { MatchDetailRaw, MatchStats } from './api/types';
 
 describe('match-helpers', () => {
   describe('name formatting', () => {
@@ -201,7 +201,7 @@ describe('match-helpers', () => {
     };
 
     it('returns only Resumen when scheduled without lineups or stats', () => {
-      const data: MatchDetail = {
+      const data: MatchDetailRaw = {
         match: {
           id: '1',
           seasonId: 's1',
@@ -226,8 +226,6 @@ describe('match-helpers', () => {
           sourceRef: null,
           videoUrl: null,
           live: null,
-          homeTeamId: 'h1',
-          awayTeamId: 'a1',
           homeTeam: { id: 'h1', name: 'Home', shortName: 'H', logoUrl: null },
           awayTeam: { id: 'a1', name: 'Away', shortName: 'A', logoUrl: null },
         },
@@ -239,7 +237,7 @@ describe('match-helpers', () => {
     });
 
     it('includes Alineaciones when lineups are present', () => {
-      const data: MatchDetail = {
+      const data: MatchDetailRaw = {
         match: { status: 'scheduled' } as any,
         events: [],
         stats: dummyStats,
@@ -252,7 +250,7 @@ describe('match-helpers', () => {
     });
 
     it('includes Estadísticas when match has started and has stats or events', () => {
-      const data: MatchDetail = {
+      const data: MatchDetailRaw = {
         match: { status: 'live' } as any,
         events: [{ id: '1' } as any],
         stats: { ...dummyStats, homeGoals: 1 },

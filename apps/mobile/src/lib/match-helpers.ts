@@ -1,4 +1,4 @@
-import type { MatchDetail } from './api/types';
+import type { MatchDetailRaw } from './api/types';
 
 const APP_TZ = 'Europe/Madrid';
 const FOUL_THRESHOLDS = [10, 15, 20, 25, 30];
@@ -127,7 +127,7 @@ export function timelineWindow<T>(
 }
 
 export type TimelineEvent =
-  | MatchDetail['events'][number]
+  | MatchDetailRaw['events'][number]
   | AccumulatedFoulEvent
   | PeriodDividerEvent;
 
@@ -154,7 +154,7 @@ export function injectPeriodDividers(events: TimelineEvent[]): TimelineEvent[] {
 }
 
 export function injectAccumulatedFouls(
-  events: MatchDetail['events'],
+  events: MatchDetailRaw['events'],
   homeTeamId: string
 ): TimelineEvent[] {
   const result: TimelineEvent[] = [];
@@ -213,8 +213,8 @@ export function clockRemainingSeconds(clock: string | null | undefined): number 
 }
 
 export function compareTimelineEvents(
-  a: Pick<MatchDetail['events'][number], 'period' | 'minute' | 'clock'>,
-  b: Pick<MatchDetail['events'][number], 'period' | 'minute' | 'clock'>
+  a: Pick<MatchDetailRaw['events'][number], 'period' | 'minute' | 'clock'>,
+  b: Pick<MatchDetailRaw['events'][number], 'period' | 'minute' | 'clock'>
 ): number {
   const pa = a.period ?? 0;
   const pb = b.period ?? 0;
@@ -318,7 +318,7 @@ export function placeRinkPlayers(players: RinkPlayer[], isAway: boolean): Placed
   return out;
 }
 
-export function visibleTabsFor(data: MatchDetail): Tab[] {
+export function visibleTabsFor(data: MatchDetailRaw): Tab[] {
   const isStarted = data.match.status === 'live' || data.match.status === 'finished';
   const hasLineups =
     (data.lineups?.home?.length ?? 0) > 0 || (data.lineups?.away?.length ?? 0) > 0;

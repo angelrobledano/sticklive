@@ -1,5 +1,5 @@
 import { Text, View } from 'react-native';
-import type { MatchDetail } from '@/src/lib/api/types';
+import type { MatchDetailRaw } from '@/src/lib/api/types';
 import { GoalStickIcon } from '@/src/components/shared/GoalStickIcon';
 
 const ICON: Record<string, string> = {
@@ -10,7 +10,7 @@ const ICON: Record<string, string> = {
   period_end: '⏸',
 };
 
-export function EventRow({ event }: { event: MatchDetail['events'][number] }) {
+export function EventRow({ event }: { event: MatchDetailRaw['events'][number] }) {
   const home = event.isHomeTeam;
   const isGoal = event.eventType === 'goal';
 

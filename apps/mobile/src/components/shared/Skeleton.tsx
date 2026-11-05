@@ -74,7 +74,7 @@ export function SkeletonCard({
 }
 
 /**
- * Skeleton completo para la pantalla de detalle de partido (MatchDetail).
+ * Skeleton completo para la pantalla de detalle de partido (MatchDetailRaw).
  * Mantiene la estructura de la cabecera, marcador, pestañas y timeline.
  */
 export function MatchDetailSkeleton() {

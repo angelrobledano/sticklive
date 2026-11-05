@@ -17,10 +17,10 @@ import {
   type PeriodDividerEvent,
   type TimelineEvent,
 } from '@/src/lib/match-helpers';
-import type { MatchDetail } from '@/src/lib/api/types';
+import type { MatchDetailRaw } from '@/src/lib/api/types';
 
 interface TimelineTabProps {
-  events: MatchDetail['events'];
+  events: MatchDetailRaw['events'];
   homeTeamId: string;
   homeTeamName: string;
   awayTeamName: string;

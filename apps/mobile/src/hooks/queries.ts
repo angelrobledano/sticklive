@@ -10,7 +10,7 @@ import type {
   FavoritesResponse,
   Federation,
   FederationsResponse,
-  MatchDetail,
+  MatchDetailRaw,
   MatchSummary,
   PlayerDetail,
   PremiumStatus,
@@ -259,7 +259,7 @@ export function useCurrentMatches() {
 export function useMatchDetail(id: string) {
   return useQuery({
     queryKey: qk.match(id),
-    queryFn: () => apiFetch<MatchDetail>(`/matches/${id}`),
+    queryFn: () => apiFetch<MatchDetailRaw>(`/matches/${id}`),
     staleTime: 5_000,
   });
 }

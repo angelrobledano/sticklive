@@ -3,7 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import EventSource from 'react-native-sse';
 import { useQueryClient } from '@tanstack/react-query';
 import { API_URL, apiFetch } from '@/src/lib/api/client';
-import type { MatchDetail } from '@/src/lib/api/types';
+import type { MatchDetailRaw } from '@/src/lib/api/types';
 import { qk } from '@/src/hooks/queries';
 import {
   applyStreamPatch,
@@ -99,7 +99,7 @@ export function useMatchLive(matchId: string, token: string | null | undefined) 
         // mapper compartido de REST y SSE). Un fallo aquí no es silencioso en
         // producto: la primera carga fallida la pinta el ErrorState de la
         // query (app/match/[id].tsx); los siguientes polls reintentan solos.
-        const detail = await apiFetch<MatchDetail>(`/matches/${matchId}`, { token: token ?? undefined });
+        const detail = await apiFetch<MatchDetailRaw>(`/matches/${matchId}`, { token: token ?? undefined });
         dispatch({ kind: 'snapshot', detail });
       } catch {
         // El poll reintenta en el siguiente tick; ver comentario de arriba.
@@ -122,7 +122,7 @@ export function useMatchLive(matchId: string, token: string | null | undefined) 
     // estándar: usa XHR por debajo).
     const es = new EventSource<StreamEventName>(`${API_URL}/matches/${matchId}/stream`, { headers });
 
-    const onData = (patchDetail: MatchDetail) => {
+    const onData = (patchDetail: MatchDetailRaw) => {
       failures.current = 0;
       // El stream comparte caché con useMatchDetail: la ficha se pinta igual
       // venga del REST (frío) o del SSE (caliente).
@@ -132,7 +132,7 @@ export function useMatchLive(matchId: string, token: string | null | undefined) 
 
     es.addEventListener('snapshot', (ev) => {
       try {
-        const detail = JSON.parse(ev.data as string) as MatchDetail;
+        const detail = JSON.parse(ev.data as string) as MatchDetailRaw;
         if (detail) onData(detail);
       } catch {
         // Payload malformado: no tumbar la pantalla; el siguiente update corrige.
@@ -140,7 +140,7 @@ export function useMatchLive(matchId: string, token: string | null | undefined) 
     });
     es.addEventListener('update', (ev) => {
       try {
-        const detail = JSON.parse(ev.data as string) as MatchDetail;
+        const detail = JSON.parse(ev.data as string) as MatchDetailRaw;
         if (detail) onData(detail);
       } catch {
         // Ídem.
