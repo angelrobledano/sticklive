@@ -100,7 +100,7 @@ export function groupByPhase(matches: SeasonMatch[]): Record<PlayoffPhase, Seaso
   // con la misma ronda, así que roundNumber no distingue nada. Por fecha, los
   // dos primeros son semifinales y el último la final. Solo se infiere si de
   // verdad parece un Final Four: sin stage, misma ronda (y no la 0 de
-  // colocación) y 4 equipos distintos en los dos primeros partidos. Así una
+  // colocación) y 4 equipos distintos en los dos primeros partidos, con la final entre dos de ellos. Así una
   // serie al mejor de 3 entre los mismos equipos, o 2 cuartos más una
   // colocación, siguen el reparto normal por roundNumber.
   if (playoffMatches.length === 3 && playoffMatches.every((m) => !m.stage)) {
@@ -115,7 +115,11 @@ export function groupByPhase(matches: SeasonMatch[]): Record<PlayoffPhase, Seaso
       sorted[0]!.homeTeam.id, sorted[0]!.awayTeam.id,
       sorted[1]!.homeTeam.id, sorted[1]!.awayTeam.id,
     ]);
-    if (sameRound && rn !== 0 && firstTwoTeams.size === 4) {
+    // La final enfrenta a dos semifinalistas: si el tercer partido trae equipos
+    // nuevos no es un Final Four (p. ej. 3 cuartos con 6 equipos).
+    const finalFromSemis = firstTwoTeams.has(sorted[2]!.homeTeam.id)
+      && firstTwoTeams.has(sorted[2]!.awayTeam.id);
+    if (sameRound && rn !== 0 && firstTwoTeams.size === 4 && finalFromSemis) {
       buckets.Semis.push(sorted[0]!, sorted[1]!);
       buckets.Final.push(sorted[2]!);
       return buckets;

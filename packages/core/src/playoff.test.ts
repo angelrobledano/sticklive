@@ -182,6 +182,19 @@ describe('playoff (casos de la app)', () => {
     expect(grouped.Final.map((m) => m.id)).toEqual(['f1']);
   });
 
+  it('3 cuartos sin stage con 6 equipos distintos no se toman por un Final Four', () => {
+    const mk = (id: string, at: string, home: string, away: string) => game({
+      id, stage: null, roundNumber: 2, scheduledAt: at, homeTeam: tm(home), awayTeam: tm(away),
+    });
+    const grouped = groupByPhase([
+      mk('q1', '2026-05-10T18:00:00Z', 'A', 'B'),
+      mk('q2', '2026-05-10T20:00:00Z', 'C', 'D'),
+      mk('q3', '2026-05-11T18:00:00Z', 'E', 'F'),
+    ]);
+    expect(grouped.Final).toHaveLength(0);
+    expect(grouped.Semis.map((m) => m.id)).not.toEqual(['q1', 'q2']);
+  });
+
   it('tres partidos de una serie al mejor de 3 entre los mismos equipos (ronda 3) siguen yendo a Final', () => {
     const A = tm('A');
     const B = tm('B');
