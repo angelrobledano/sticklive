@@ -63,6 +63,11 @@ describe('matchPhaseKey', () => {
 });
 
 describe('madridDay', () => {
+  it('devuelve null con una fecha inválida en vez de lanzar RangeError', () => {
+    expect(madridDay('no-es-fecha')).toBeNull();
+    expect(madridDay('2026-13-45T99:00:00Z', 'Europe/Lisbon')).toBeNull();
+  });
+
   it('devuelve la clave de día en Madrid por defecto', () => {
     // 23:30 UTC del 20 jun es ya 21 jun en Madrid (verano, UTC+2).
     expect(madridDay('2026-06-20T23:30:00Z')).toBe('2026-06-21');

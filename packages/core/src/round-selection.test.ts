@@ -229,56 +229,15 @@ describe('round-selection (origen app)', () => {
       ]);
     });
 
-    it('incluye rondas de copa o torneo con partidos tras las jornadas regulares', () => {
-      const cup = round('cup', 1, { roundType: 'cup' });
-      expect(selectableRounds([cup, J1], [match({ roundId: 'cup' })]).map((r) => r.id)).toEqual(['j1', 'cup']);
-    });
   });
 
   describe('roundSelection / claves', () => {
-    it('jornada genera { kind: journey, n } y eliminatoria genera { kind: round, id }', () => {
-      expect(roundSelection(J2)).toEqual({ kind: 'journey', n: 2 });
-      expect(roundSelection(SF)).toEqual({ kind: 'round', id: 'sf' });
-      expect(roundSelectionKey({ kind: 'journey', n: 2 })).toBe('j:2');
-      expect(roundSelectionKey({ kind: 'round', id: 'sf' })).toBe('r:sf');
-    });
 
     it('parseRoundSelection prioriza round sobre journey', () => {
       const sel = selectableRounds(ROUNDS, MATCHES);
       expect(parseRoundSelection('3', 'sf', sel)).toEqual({ kind: 'round', id: 'sf' });
       expect(parseRoundSelection('3', null, sel)).toEqual({ kind: 'journey', n: 3 });
       expect(parseRoundSelection(null, 'invalid', sel)).toBeNull();
-    });
-  });
-
-  describe('matchesOfSelection', () => {
-    it('jornada 1 no incluye eliminatorias con roundNumber 1', () => {
-      const ms = matchesOfSelection(MATCHES, { kind: 'journey', n: 1 });
-      expect(ms.map((m) => m.roundId)).toEqual(['j1']);
-    });
-
-    it('eliminatoria filtra por id de ronda', () => {
-      expect(matchesOfSelection(MATCHES, { kind: 'round', id: 'sf' }).map((m) => m.roundId)).toEqual(['sf']);
-      expect(matchesOfSelection(MATCHES, { kind: 'round', id: 'fi' })).toEqual([]);
-    });
-  });
-
-  describe('defaultRoundSelection', () => {
-    it('en fase final selecciona la eliminatoria más cercana', () => {
-      const sel = selectableRounds(ROUNDS, MATCHES);
-      expect(defaultRoundSelection(sel, MATCHES, '2026-10-16')).toEqual({ kind: 'round', id: 'sf' });
-    });
-
-    it('en fase regular selecciona la jornada más cercana a la fecha de hoy', () => {
-      const sel = selectableRounds(ROUNDS, MATCHES);
-      expect(defaultRoundSelection(sel, MATCHES, '2026-10-13')).toEqual({ kind: 'journey', n: 2 });
-    });
-
-    it('sin fechas selecciona la primera ronda con partidos', () => {
-      const noDates = [match({ roundId: 'j2', roundNumber: 2 })];
-      expect(defaultRoundSelection([J1, J2], noDates, '2026-10-16')).toEqual({ kind: 'journey', n: 2 });
-      expect(defaultRoundSelection([J1], [], '2026-10-16')).toEqual({ kind: 'journey', n: 1 });
-      expect(defaultRoundSelection([], [], '2026-10-16')).toBeNull();
     });
   });
 

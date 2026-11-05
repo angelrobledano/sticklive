@@ -7,9 +7,11 @@ import { APP_TZ } from './match-time';
 /** YYYY-MM-DD en la TZ de la competición (default Madrid): clave de día estable. */
 export function madridDay(iso: string | null, tz?: string | null): string | null {
   if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: tz || APP_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(new Date(iso));
+  }).format(d);
 }
 
 /**
