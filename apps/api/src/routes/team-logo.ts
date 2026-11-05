@@ -5,6 +5,7 @@ import { db } from '@sports/db';
 import { setBounded } from '../lib/bounded-cache.js';
 import { isUuid } from '../lib/uuid.js';
 import { lookupImageUrl } from '../lib/image-url.js';
+import { isSidgadMediaHidden, isSidgadUrl } from '../lib/sidgad-media.js';
 import {
   imageResponse,
   renderNormalizedLogo,
@@ -61,6 +62,18 @@ teamLogoRouter.get('/:id/logo', async (c) => {
   const contentType = format === 'png' ? 'image/png' : 'image/webp';
   const cached = logoCache.get(key);
   if (cached) return imageResponse(cached, contentType);
+
+  // SIDGAD_MEDIA_HIDDEN=1: el escudo de SIDGAD no se sirve ni desde el volumen
+  // (lo descargamos de ahí). 404 y el cliente pinta su genérico.
+  if (isSidgadMediaHidden()) {
+    const original = await lookupImageUrl(async () => {
+      const r = await db.query<{ logo_url: string | null }>(
+        `SELECT logo_url FROM teams WHERE id = $1`, [id]
+      );
+      return r.rows[0]?.logo_url ?? null;
+    });
+    if (!original || isSidgadUrl(original)) return c.notFound();
+  }
 
   // 1) Fichero local del volumen.
   let source: Buffer | null = null;

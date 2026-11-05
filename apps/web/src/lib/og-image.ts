@@ -74,7 +74,7 @@ export function playerPhotoUrlForSatori(
   width = SATORI_PHOTO_WIDTH,
 ): string {
   const base = apiBase.replace(/\/+$/, '');
-  return `${base}/players/${encodeURIComponent(playerId)}/photo?w=${width}&format=png`;
+  return `${base}/players/${encodeURIComponent(playerId)}/photo?w=${width}&format=png&v=2`;
 }
 
 /** ¿Satori puede decodificar este `Content-Type`? Solo PNG y JPEG. */
@@ -89,7 +89,7 @@ export const SATORI_LOGO_WIDTH = 256;
 /** URL del escudo en PNG, lista para Satori. */
 export function teamLogoUrlForSatori(apiBase: string, teamId: string): string {
   const base = apiBase.replace(/\/+$/, '');
-  return `${base}/teams/${encodeURIComponent(teamId)}/logo?w=${SATORI_LOGO_WIDTH}&format=png`;
+  return `${base}/teams/${encodeURIComponent(teamId)}/logo?w=${SATORI_LOGO_WIDTH}&format=png&v=2`;
 }
 
 /** Iniciales para el fallback cuando no hay escudo (nunca un círculo vacío). */

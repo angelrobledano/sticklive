@@ -14,7 +14,7 @@ describe('playerPhotoUrlForSatori', () => {
     const url = playerPhotoUrlForSatori('https://sticklive.eu/api/', 'p1');
 
     expect(url).toBe(
-      `https://sticklive.eu/api/players/p1/photo?w=${SATORI_PHOTO_WIDTH}&format=png`,
+      `https://sticklive.eu/api/players/p1/photo?w=${SATORI_PHOTO_WIDTH}&format=png&v=2`,
     );
   });
 });
@@ -30,7 +30,7 @@ describe('ogCopy (F3-5)', () => {
 describe('teamLogoUrlForSatori (F3-1)', () => {
   it('pide el escudo en PNG al ancho de la tarjeta', () => {
     expect(teamLogoUrlForSatori('https://sticklive.eu/api/', 't1')).toBe(
-      `https://sticklive.eu/api/teams/t1/logo?w=${SATORI_LOGO_WIDTH}&format=png`,
+      `https://sticklive.eu/api/teams/t1/logo?w=${SATORI_LOGO_WIDTH}&format=png&v=2`,
     );
   });
 });

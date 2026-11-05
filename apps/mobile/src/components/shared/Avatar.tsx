@@ -12,11 +12,11 @@ import { API_URL } from '@/src/lib/api/client';
  * nativo de Android e iOS (evita fallos de decodificación WebP en Fresco).
  */
 export const teamLogoUri = (teamId: string, width = 64) =>
-  `${API_URL}/teams/${teamId}/logo?w=${width}&format=png`;
+  `${API_URL}/teams/${teamId}/logo?w=${width}&format=png&v=2`;
 
 /** Foto del jugador vía proxy del API (apps/api/src/routes/player-photo.ts). */
 export const playerPhotoUri = (playerId: string, width = 64) =>
-  `${API_URL}/players/${playerId}/photo?w=${width}&format=png`;
+  `${API_URL}/players/${playerId}/photo?w=${width}&format=png&v=2`;
 
 export const initials = (name?: string | null): string => {
   if (!name || typeof name !== 'string') return '?';

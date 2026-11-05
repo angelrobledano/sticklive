@@ -41,10 +41,29 @@ import { stripeRouter } from './routes/payments-stripe.js';
 import { statusRouter } from './routes/payments-status.js';
 import { adsConfigRouter } from './routes/ads-config.js';
 
+import { isSidgadMediaHidden, stripSidgadImages } from './lib/sidgad-media.js';
+
 const app = new Hono();
 
 // Middleware de logging HTTP
 app.use('*', honoLogger());
+
+// SIDGAD_MEDIA_HIDDEN=1: sin permiso de SIDGAD, sus escudos y fotos no salen en
+// el JSON (URL a null) y web y app pintan el genérico. Va fuera de todo para
+// cubrir también las respuestas que salen de caché.
+app.use('*', async (c, next) => {
+  await next();
+  if (!isSidgadMediaHidden()) return;
+  if (!(c.res.headers.get('content-type') ?? '').includes('application/json')) return;
+  let body: unknown;
+  try { body = await c.res.clone().json(); } catch { return; }
+  const { value, changed } = stripSidgadImages(body);
+  if (!changed) return;
+  const headers = new Headers(c.res.headers);
+  headers.delete('content-length');
+  headers.delete('etag');
+  c.res = new Response(JSON.stringify(value), { status: c.res.status, headers });
+});
 
 // CORS — la web (puerto 3001 en dev, dominio propio en prod) consume la API
 // desde el navegador con cabeceras propias (Authorization, X-Admin-Token).

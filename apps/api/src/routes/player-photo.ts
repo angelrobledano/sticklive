@@ -3,6 +3,7 @@ import { db } from '@sports/db';
 import { setBounded } from '../lib/bounded-cache.js';
 import { isUuid } from '../lib/uuid.js';
 import { lookupImageUrl } from '../lib/image-url.js';
+import { isSidgadMediaHidden, isSidgadUrl } from '../lib/sidgad-media.js';
 import {
   imageResponse,
   renderResizedImage,
@@ -49,6 +50,7 @@ playerPhotoRouter.get('/:id/photo', async (c) => {
     return r.rows[0]?.photo_url ?? null;
   });
   if (!url) return c.notFound();
+  if (isSidgadMediaHidden() && isSidgadUrl(url)) return c.notFound();
 
   try {
     const res = await fetch(url, {

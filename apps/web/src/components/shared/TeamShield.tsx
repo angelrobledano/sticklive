@@ -82,11 +82,11 @@ function TeamShieldImpl({
 
   const isTeam = imgState === 'team';
   const src = isTeam
-    ? `${API_URL}/teams/${teamId}/logo?w=96`
+    ? `${API_URL}/teams/${teamId}/logo?w=96&v=2`
     : '/escudos/default-team.png';
   // 2× para retina; la API redondea al preset soportado más cercano por arriba.
   const srcSet = isTeam
-    ? LOGO_WIDTHS.map((w) => `${API_URL}/teams/${teamId}/logo?w=${w} ${w}w`).join(', ')
+    ? LOGO_WIDTHS.map((w) => `${API_URL}/teams/${teamId}/logo?w=${w}&v=2 ${w}w`).join(', ')
     : undefined;
 
   // Sin padding: el margen uniforme ya viene horneado en el escudo normalizado.
