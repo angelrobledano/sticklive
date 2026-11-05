@@ -18,7 +18,9 @@
     "./player-facts": "./src/player-facts.ts",
     "./team-calendar": "./src/team-calendar.ts",
     "./grada": "./src/grada.ts",
-    "./day-view": "./src/day-view.ts"
+    "./day-view": "./src/day-view.ts",
+    "./season-phases": "./src/season-phases.ts",
+    "./knockout": "./src/knockout.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
