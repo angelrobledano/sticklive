@@ -167,18 +167,48 @@ describe('playoff (casos de la app)', () => {
   });
 
   it('Final Four sin stage (3 partidos con la misma ronda): dos semis y la final por fecha', () => {
-    const mk = (id: string, at: string) => game({
+    const mk = (id: string, at: string, home: string, away: string) => game({
       id, stage: null, roundNumber: 4, roundName: 'FINAL', scheduledAt: at,
+      homeTeam: tm(home), awayTeam: tm(away),
     });
     // Desordenados a propósito: el reparto va por fecha, no por posición.
     const grouped = groupByPhase([
-      mk('f1', '2025-09-21T10:15:00Z'),
-      mk('s1', '2025-09-20T14:15:00Z'),
-      mk('s2', '2025-09-20T16:45:00Z'),
+      mk('f1', '2025-09-21T10:15:00Z', 'B', 'C'),
+      mk('s1', '2025-09-20T14:15:00Z', 'A', 'B'),
+      mk('s2', '2025-09-20T16:45:00Z', 'C', 'D'),
     ]);
     expect(grouped.Cuartos).toHaveLength(0);
     expect(grouped.Semis.map((m) => m.id)).toEqual(['s1', 's2']);
     expect(grouped.Final.map((m) => m.id)).toEqual(['f1']);
+  });
+
+  it('tres partidos de una serie al mejor de 3 entre los mismos equipos (ronda 3) siguen yendo a Final', () => {
+    const A = tm('A');
+    const B = tm('B');
+    const mk = (id: string, at: string) => game({
+      id, stage: null, roundNumber: 3, scheduledAt: at, homeTeam: A, awayTeam: B,
+    });
+    const grouped = groupByPhase([
+      mk('g1', '2026-05-10T18:00:00Z'),
+      mk('g2', '2026-05-12T18:00:00Z'),
+      mk('g3', '2026-05-15T18:00:00Z'),
+    ]);
+    expect(grouped.Semis).toHaveLength(0);
+    expect(grouped.Final.map((m) => m.id)).toEqual(['g1', 'g2', 'g3']);
+  });
+
+  it('2 cuartos heredados más 1 partido de colocación (ronda 0): la colocación sigue fuera del cuadro', () => {
+    const q1 = game({ id: 'q1', stage: null, roundNumber: 1, scheduledAt: '2026-05-10T18:00:00Z',
+      homeTeam: tm('A'), awayTeam: tm('B') });
+    const q2 = game({ id: 'q2', stage: null, roundNumber: 1, scheduledAt: '2026-05-11T18:00:00Z',
+      homeTeam: tm('C'), awayTeam: tm('D') });
+    const pl = game({ id: 'p1', stage: null, roundNumber: 0, scheduledAt: '2026-05-12T18:00:00Z',
+      homeTeam: tm('E'), awayTeam: tm('F') });
+    const grouped = groupByPhase([q1, q2, pl]);
+    expect(grouped.Cuartos.map((m) => m.id)).toEqual(['q1', 'q2']);
+    expect(grouped.Semis).toHaveLength(0);
+    expect(grouped.Final).toHaveLength(0);
+    expect(placementMatches([q1, q2, pl]).map((m) => m.id)).toEqual(['p1']);
   });
 
   it('advancedFrom devuelve los equipos presentes en la fase siguiente', () => {

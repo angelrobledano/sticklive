@@ -166,6 +166,20 @@ describe('competition-importance (casos de la app)', () => {
     expect(sorted.map((s) => s.name)).toEqual(['Copa Destacada', 'Liga Tier 1', 'Liga Tier 2', 'Desconocida']);
   });
 
+  it('orderByImportance desempata por nombre con el mismo featuredRank o tier', () => {
+    const porRank = orderByImportance([
+      { name: 'Zeta', slug: 'z', featuredRank: 3 },
+      { name: 'Alfa', slug: 'a', featuredRank: 3 },
+    ], 'es');
+    expect(porRank.map((c) => c.name)).toEqual(['Alfa', 'Zeta']);
+    const porTier = orderByImportance([
+      { name: 'Zeta', slug: 'z', tier: 2 },
+      { name: 'Alfa', slug: 'a', tier: 2 },
+      { name: 'Primera', slug: 'p', tier: 1 },
+    ], 'es');
+    expect(porTier.map((c) => c.name)).toEqual(['Primera', 'Alfa', 'Zeta']);
+  });
+
   it('el slug por sí solo ya no clasifica (la importancia viene de la BD)', () => {
     expect(importanceRank({ slug: 'mundial-masculino-worldskate' })).toBe(1000);
   });
