@@ -16,10 +16,12 @@ import { AdBanner } from '@/src/components/ads/AdBanner';
 import { clubName } from '@/src/lib/names';
 import { formatKickoff, isEffectivelyLive } from '@/src/lib/time';
 import {
-  isHorizontalSwipeGesture,
   madridTodayKey,
-  resolveDaySwipeDelta,
 } from '@/src/lib/day-view';
+import {
+  isHorizontalSwipeGesture,
+  resolveDaySwipeDelta,
+} from '@/src/lib/day-swipe';
 import {
   dateNeighbor,
   dayPillLabel,

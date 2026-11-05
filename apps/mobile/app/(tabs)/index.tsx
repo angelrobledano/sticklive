@@ -34,15 +34,17 @@ import {
   hiddenForDay,
   daysWithMatches,
   defaultOpenKeys,
-  extractGestureStartX,
   getRelativeKey,
-  isHorizontalSwipeGesture,
-  isOutsideEdgeGuard,
   madridTodayKey,
   nextMatchday,
-  resolveDaySwipeDelta,
   type DayFilter,
 } from '@/src/lib/day-view';
+import {
+  extractGestureStartX,
+  isHorizontalSwipeGesture,
+  isOutsideEdgeGuard,
+  resolveDaySwipeDelta,
+} from '@/src/lib/day-swipe';
 import { usePreferredCountry } from '@/src/hooks/usePreferredCountry';
 import { deviceTimeZone } from '@/src/lib/viewer-tz';
 import type { MatchSummary } from '@/src/lib/api/types';
