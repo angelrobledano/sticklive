@@ -17,8 +17,8 @@
     "@sports/brand": "*",
     "@sports/core": "*",
     "@sports/shared-types": "*",
-    "next": "^16.2.10",
-    "posthog-js": "^1.396.6",
+    "next": "^16.4.4",
+    "posthog-js": "^1.444.2",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
   },
