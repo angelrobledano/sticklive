@@ -1,4 +1,4 @@
-import type { MatchEvent, MatchStats } from '@sports/core/api';
+import type { MatchEvent, MatchStats } from './api';
 
 /**
  * Crónica de datos de un partido terminado (C3, ampliada).

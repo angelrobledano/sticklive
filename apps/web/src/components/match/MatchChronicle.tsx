@@ -1,4 +1,4 @@
-import type { ChronicleFact } from '@/lib/match-chronicle';
+import type { ChronicleFact } from '@sports/core/match-chronicle';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
 import { toTitleCase } from '@sports/core/names';
 

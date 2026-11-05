@@ -22,7 +22,8 @@
     "./knockout": "./src/knockout.ts",
     "./round-selection": "./src/round-selection.ts",
     "./competition-filter": "./src/competition-filter.ts",
-    "./content-summary": "./src/content-summary.ts"
+    "./content-summary": "./src/content-summary.ts",
+    "./match-chronicle": "./src/match-chronicle.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
