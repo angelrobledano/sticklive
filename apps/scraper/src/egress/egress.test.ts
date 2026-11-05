@@ -112,6 +112,18 @@ describe('SidgadEgress', () => {
     expect(entry).toMatchObject({ route: 'direct', requests: 1, successes: 1, failures: 0 });
   });
 
+  it('con SIDGAD_PAUSED=1 no sale ninguna petición', async () => {
+    const direct = new FakeTransport(() => raw(200, 'hola'));
+    const { egress } = makeEgress({ transports: { direct } });
+    process.env['SIDGAD_PAUSED'] = '1';
+    try {
+      await expect(egress.request(request())).rejects.toMatchObject({ kind: 'paused' });
+      expect(direct.calls).toBe(0);
+    } finally {
+      delete process.env['SIDGAD_PAUSED'];
+    }
+  });
+
   it('un 403 no se reintenta y no prueba el fallback', async () => {
     const direct = new FakeTransport(() => raw(403));
     const fallback = new FakeTransport(() => raw(200));

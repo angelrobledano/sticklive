@@ -41,6 +41,15 @@ if ! command -v flock >/dev/null 2>&1; then
 fi
 LOCK="flock -n $ETL_LOCK"
 
+# Pausa de emergencia de SIDGAD (SIDGAD_PAUSED=1 en .env.prod): se saltan
+# World Skate, calendario, clasificación, escudos, actas pendientes, fotos y
+# clasificación final, que van todos contra sidgad. FPP y FVP siguen. El
+# cliente sidgad también lo respeta, como red de seguridad.
+case "${SIDGAD_PAUSED:-0}" in
+  1|true|yes|on) SIDGAD_OFF=1; echo "[scheduler] SIDGAD pausado: solo FPP y FVP" ;;
+  *) SIDGAD_OFF=0 ;;
+esac
+
 LAST_HOUR=""
 LAST_FPP=""
 LAST_FVP=""
@@ -69,9 +78,11 @@ while true; do
   # Es barato (un POST por competición) y `resolveWorldskate` devuelve vacío si
   # no hay competiciones activas, así que fuera de torneo esto es una consulta
   # a la BD y poco más.
-  echo "[scheduler] worldskate $(date -u +%T)"
-  $LOCK node dist/apps/scraper/src/index.js --run-once worldskate \
-    || echo "[scheduler] worldskate saltado o falló (seguimos)"
+  if [ "$SIDGAD_OFF" -eq 0 ]; then
+    echo "[scheduler] worldskate $(date -u +%T)"
+    $LOCK node dist/apps/scraper/src/index.js --run-once worldskate \
+      || echo "[scheduler] worldskate saltado o falló (seguimos)"
+  fi
   touch "$ALIVE"   # latido entre fases (#146)
 
   # ── Cada 15 min: Portugal (FPP) ─────────────────────────
@@ -120,7 +131,7 @@ while true; do
   touch "$ALIVE"   # latido tras el directo (cron-live además late por dentro cada ciclo, #146)
 
   # ── Cada hora: calendario + clasificación ──────────────────
-  if [ "$NOW_HOUR" != "$LAST_HOUR" ]; then
+  if [ "$SIDGAD_OFF" -eq 0 ] && [ "$NOW_HOUR" != "$LAST_HOUR" ]; then
     LAST_HOUR=$NOW_HOUR
     echo "[scheduler] calendario+standings $(date -u +%T)"
     $LOCK node dist/apps/etl/src/run-pipeline.js --entity=calendar   || true
@@ -141,6 +152,7 @@ while true; do
   # ── Diario a las 06 UTC: actas pendientes + purga de logs ──
   if [ "$NOW_DAY" != "$LAST_DAY" ] && [ "$HOUR_UTC" = "06" ]; then
     LAST_DAY=$NOW_DAY
+    if [ "$SIDGAD_OFF" -eq 0 ]; then
     echo "[scheduler] fichas-pendientes $(date -u +%T)"
     $LOCK node dist/apps/etl/src/run-pipeline.js --entity=fichas-pendientes || true
     touch "$ALIVE"   # latido entre fases (#146)
@@ -157,6 +169,7 @@ while true; do
     node dist/apps/etl/src/update-player-photos.js \
       || echo "[scheduler] update-player-photos falló (seguimos)"
     touch "$ALIVE"
+    fi
 
     # scrape_logs crece ~1.000 filas/día y no lo lee nadie. Se conservan 30
     # días (SCRAPE_LOGS_RETENTION_DAYS). Va sin lock: borra por lotes y no
@@ -186,9 +199,11 @@ while true; do
     # partidos pendientes que no cuadran y avisa a Sentry si siguen sin cuadrar.
     # Con lock: escribe clasificaciones. Va antes del integrity-check para que
     # este vea ya la tabla buena.
-    echo "[scheduler] standings-final $(date -u +%T)"
-    $LOCK node dist/apps/etl/src/standings-final.js \
-      || echo "[scheduler] standings-final saltado o falló (seguimos)"
+    if [ "$SIDGAD_OFF" -eq 0 ]; then
+      echo "[scheduler] standings-final $(date -u +%T)"
+      $LOCK node dist/apps/etl/src/standings-final.js \
+        || echo "[scheduler] standings-final saltado o falló (seguimos)"
+    fi
     touch "$ALIVE"
 
     # Chequeo de integridad de datos (#231): ventana de temporadas, coherencia

@@ -53,6 +53,7 @@ import {
 } from '../../scraper/src/core/sources.js';
 import { logEgressSummary } from '../../scraper/src/egress/index.js';
 // Portugal (FPP): feed /Direto + ficha/timeline de los partidos en juego.
+import { isSidgadPaused } from '../../scraper/src/egress/pause.js';
 import { runFppLiveScores, fppLiveCandidates } from '../../scraper/src/scrapers/fpp/fpp-live.js';
 import { processFppFicha, type FppFichaTarget } from '../../scraper/src/scrapers/fpp/fpp-ficha.js';
 // Euskadi + Liga Norte (FVP): feed de marcadores + acta (eventos y crono) de los partidos en juego.
@@ -589,14 +590,18 @@ async function runOneCycle(seasonIds: string[]): Promise<number> {
   let upserted = 0;
   // Partidos que los feeds en vivo dan EN JUEGO en este ciclo (guarda del final por acta).
   const playingNow = new Set<string>();
-  try {
+  // SIDGAD_PAUSED=1: ni marcadores sidgad, ni World Skate, ni sus actas.
+  // FPP y FVP siguen igual.
+  const sidgadPaused = isSidgadPaused();
+  if (sidgadPaused) log.info('SIDGAD pausado (SIDGAD_PAUSED=1): solo FPP y FVP en este ciclo');
+  if (!sidgadPaused) try {
     upserted = await runFepScores(seasonIds, playingNow);
   } catch (err) {
     // Que la FEP falle no debe impedir que se refresquen las actas del resto.
     log.warn({ err }, 'marcadores FEP fallaron — el ciclo sigue con las fichas');
   }
 
-  try {
+  if (!sidgadPaused) try {
     await runWorldskateScores(playingNow);
   } catch (err) {
     log.warn({ err }, 'marcadores World Skate fallaron — el ciclo sigue');
@@ -627,7 +632,7 @@ async function runOneCycle(seasonIds: string[]): Promise<number> {
   const prevPhase   = pushEnabled ? await snapshotExtraPhases(seasonIds) : new Map();
   const prevResults = pushEnabled ? await snapshotResults(seasonIds)     : new Map();
   let endedByActa: EndedByActa[] = [];
-  try {
+  if (!sidgadPaused) try {
     endedByActa = await runFichasForActiveMatches(seasonIds);
   } catch (err) {
     log.warn({ err }, 'runFichasForActiveMatches fallo — ciclo de scores sigue OK');

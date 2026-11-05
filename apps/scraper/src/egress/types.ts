@@ -19,7 +19,8 @@ export type SidgadFailureKind =
   | 'server'
   | 'client'
   | 'response_too_large'
-  | 'config';
+  | 'config'
+  | 'paused';
 
 export interface EgressRouteConfig {
   kind: EgressRouteKind;

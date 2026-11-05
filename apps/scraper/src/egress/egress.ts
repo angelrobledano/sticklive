@@ -11,6 +11,7 @@
  *     conectividad; cambiar de IP no lo arregla y añade carga).
  *   · No reintenta 404 ni errores de configuración.
  */
+import { isSidgadPaused } from './pause.js';
 import { createLogger, type Logger } from '@sports/logger';
 import { CircuitBreaker } from './circuit-breaker.js';
 import { SidgadGuard } from '../scrapers/fep/sidgad-guard.js';
@@ -109,6 +110,17 @@ export class SidgadEgress {
   }
 
   async request(request: EgressRequest): Promise<EgressResponse> {
+    if (isSidgadPaused()) {
+      throw new SidgadEgressError({
+        kind: 'paused',
+        message: 'Salida a SIDGAD pausada a mano (SIDGAD_PAUSED=1).',
+        route: this.routes[0]?.kind ?? 'direct',
+        portal: request.portal,
+        url: request.url,
+        retryable: false,
+        failover: false,
+      });
+    }
     const errors: SidgadEgressError[] = [];
 
     for (let index = 0; index < this.routes.length; index++) {
