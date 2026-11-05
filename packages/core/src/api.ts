@@ -93,8 +93,10 @@ export interface Match {
   fouls?: MatchScore | null;
 }
 
-/** @deprecated usar Match */
-export type MatchSummary = Match;
+type RawOnlyMissing = 'homeTeamId' | 'awayTeamId' | 'finishedAt' | 'sourceRef';
+
+/** @deprecated forma cruda de /matches que consume la app. La web usa Match normalizado en client.ts */
+export type MatchSummary = Omit<Match, RawOnlyMissing> & Partial<Pick<Match, RawOnlyMissing>>;
 
 // ─── Health ───
 
@@ -1005,60 +1007,11 @@ export interface AdsConfig {
   nativeFeed: { enabled: boolean; everyNItems: number };
 }
 
-export interface SeasonOverviewMatch {
-  id: string;
-  status: DomainMatchStatus;
-  competitionTimezone: string | null;
-  scheduledAt: string | null;
-  startedAt: string | null;
-  finishedAt: string | null;
-  score: { home: number | null; away: number | null };
-  winnerTeamId: string | null;
-  winType: string | null;
-  penalties: { home: number; away: number } | null;
-  venueName: string | null;
-  roundId: string | null;
-  groupName: string | null;
-  phaseId: string | null;
-  stage: string | null;
-  seriesGame: number | null;
-  roundNumber: number | null;
-  roundName: string | null;
-  roundType: string | null;
-  homeTeam: {
-    id: string;
-    name: string;
-    shortName: string | null;
-    logoUrl: string | null;
-  };
-  awayTeam: {
-    id: string;
-    name: string;
-    shortName: string | null;
-    logoUrl: string | null;
-  };
-}
+/** @deprecated usar SeasonMatch */
+export type SeasonOverviewMatch = SeasonMatch;
 
-export interface SeasonOverviewStandingRow {
-  id: string;
-  teamId: string;
-  teamName: string;
-  teamShortName: string | null;
-  teamLogoUrl: string | null;
-  groupName: string | null;
-  position: number | null;
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDiff: number;
-  points: number;
-  form?: string[];
-  penalizationPoints?: number;
-  zone?: { kind: ZoneKind; target: string | null } | null;
-}
+/** @deprecated usar SeasonStandingRow */
+export type SeasonOverviewStandingRow = SeasonStandingRow;
 
 export interface CompetitionSeasonsResponse {
   seasons: {
