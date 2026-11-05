@@ -19,8 +19,8 @@
     "@sports/brand": "*",
     "@sports/db": "*",
     "@sports/logger": "*",
-    "hono": "^4.12.27",
-    "nodemailer": "^10.0.10",
+    "hono": "^4.13.16",
+    "nodemailer": "^10.3.1",
     "sharp": "^0.35.4",
     "stripe": "^22.3.0",
     "web-push": "^3.6.7"
