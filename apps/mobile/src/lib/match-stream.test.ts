@@ -74,6 +74,8 @@ function mkDetail(
       sourceRef: null,
       videoUrl: null,
       live: null,
+      homeTeamId: 'h',
+      awayTeamId: 'a',
       homeTeam: team('h'),
       awayTeam: team('a'),
     },

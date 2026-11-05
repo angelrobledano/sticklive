@@ -7,9 +7,9 @@ import {
   placementMatches,
   seriesWinnerId,
 } from './playoff';
-import type { SeasonOverviewMatch } from './api/types';
+import type { SeasonMatch } from './api/types';
 
-function createMatch(partial: Partial<SeasonOverviewMatch>): SeasonOverviewMatch {
+function createMatch(partial: Partial<SeasonMatch>): SeasonMatch {
   return {
     id: 'm1',
     status: 'finished',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SeasonOverviewMatch } from '@/src/lib/api/types';
+import type { SeasonMatch } from '@/src/lib/api/types';
 import {
   defaultRoundSelection,
   isKnockoutRound,
@@ -24,7 +24,7 @@ const ko = (id: string, number: number, stage: RoundItem['stage'], name: string 
   round(id, number, { roundType: 'playoff', stage, name });
 
 let n = 0;
-function match(over: Partial<SeasonOverviewMatch> = {}): SeasonOverviewMatch {
+function match(over: Partial<SeasonMatch> = {}): SeasonMatch {
   return {
     id: `m${++n}`,
     status: 'scheduled',

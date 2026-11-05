@@ -1,7 +1,7 @@
 import type {
   KnockoutStage,
   SeasonOverview,
-  SeasonOverviewMatch,
+  SeasonMatch,
   SeasonPhase,
   SeasonStats,
 } from '@/src/lib/api/types';
@@ -10,14 +10,14 @@ export type KnockoutLayout = 'series' | 'final_four' | 'bracket';
 
 export interface KnockoutPhaseView {
   phase: SeasonPhase;
-  matches: SeasonOverviewMatch[];
+  matches: SeasonMatch[];
   rounds: SeasonOverview['rounds'];
   layout: KnockoutLayout;
 }
 
 const FINAL_FOUR_STAGES = new Set<KnockoutStage>(['semis', 'final', 'third_place']);
 
-export function knockoutLayout(phase: SeasonPhase, matches: SeasonOverviewMatch[]): KnockoutLayout {
+export function knockoutLayout(phase: SeasonPhase, matches: SeasonMatch[]): KnockoutLayout {
   if (matches.some((m) => (m.seriesGame ?? 0) >= 3)) return 'series';
   const stages = phase.stages.filter((s) => s !== 'placement');
   if (stages.includes('semis') && stages.every((s) => FINAL_FOUR_STAGES.has(s))) return 'final_four';
@@ -27,7 +27,7 @@ export function knockoutLayout(phase: SeasonPhase, matches: SeasonOverviewMatch[
 export function knockoutPhaseViews(
   phases: SeasonPhase[] | undefined,
   rounds: SeasonOverview['rounds'],
-  matches: SeasonOverviewMatch[],
+  matches: SeasonMatch[],
 ): KnockoutPhaseView[] | null {
   if (!phases || phases.length === 0) return null;
   const knockout = phases.filter((p) => p.kind === 'knockout');
@@ -74,7 +74,7 @@ export function knockoutPhaseViews(
  * Sí cuando hay partidos eliminatorios y, o bien alguno ya se ha jugado o se está jugando,
  * o bien la liga/fase de grupos está cerrada (todo terminado o cancelado).
  */
-export function finalPhaseStarted(matches: Pick<SeasonOverviewMatch, 'roundType' | 'status'>[]): boolean {
+export function finalPhaseStarted(matches: Pick<SeasonMatch, 'roundType' | 'status'>[]): boolean {
   const knockout = matches.filter((m) => m.roundType === 'playoff');
   if (knockout.length === 0) return false;
   if (knockout.some((m) => m.status === 'live' || m.status === 'finished')) return true;
@@ -90,7 +90,7 @@ export function knockoutTabLabelKey(
   format: string | null | undefined,
   phases: SeasonPhase[] | undefined,
   rounds: SeasonOverview['rounds'],
-  matches: SeasonOverviewMatch[],
+  matches: SeasonMatch[],
 ): string {
   if (format === 'final_four') return 'playoffs.final_four';
   const views = knockoutPhaseViews(phases, rounds, matches);

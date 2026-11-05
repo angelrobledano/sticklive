@@ -31,7 +31,7 @@ import { PlayoffsTab } from '@/src/components/competition/PlayoffsTab';
 import { StatsLeadersTab } from '@/src/components/competition/StatsLeadersTab';
 import { StandingsTable } from '@/src/components/competition/StandingsTable';
 import type {
-  SeasonOverviewStandingRow,
+  SeasonStandingRow,
 } from '@/src/lib/api/types';
 
 export default function CompetitionScreen() {
@@ -111,7 +111,7 @@ export default function CompetitionScreen() {
   const standings = overview?.standings;
   const standingsByGroup = useMemo(() => {
     if (!standings || standings.length === 0) return [];
-    const groupsMap = new Map<string, SeasonOverviewStandingRow[]>();
+    const groupsMap = new Map<string, SeasonStandingRow[]>();
     for (const row of standings) {
       const grp = row.groupName ?? '';
       if (!groupsMap.has(grp)) groupsMap.set(grp, []);

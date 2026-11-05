@@ -1,7 +1,7 @@
 import type {
   SeasonLeader,
   SeasonOverview,
-  SeasonOverviewMatch,
+  SeasonMatch,
   SeasonStats,
   TeamRecentMatch,
   TeamSeasonStats,
@@ -89,7 +89,7 @@ export interface MatchPreview {
   cross: CrossMetric[];
 }
 
-function matchDate(m: SeasonOverviewMatch): string | null {
+function matchDate(m: SeasonMatch): string | null {
   return m.finishedAt ?? m.scheduledAt;
 }
 
@@ -345,17 +345,17 @@ function leaderName(l: SeasonLeader): string {
     : playerNameFromRaw(l.playerName);
 }
 
-function lastFinished(matches: SeasonOverviewMatch[]): SeasonOverviewMatch | null {
+function lastFinished(matches: SeasonMatch[]): SeasonMatch | null {
   const done = matches
     .filter((m) => m.status === 'finished')
     .sort((a, b) => String(a.scheduledAt ?? '').localeCompare(String(b.scheduledAt ?? '')));
   return done[done.length - 1] ?? null;
 }
 
-function buildPodium(matches: SeasonOverviewMatch[]): CompetitionSummaryData['podium'] {
-  const isFinal = (m: SeasonOverviewMatch) =>
+function buildPodium(matches: SeasonMatch[]): CompetitionSummaryData['podium'] {
+  const isFinal = (m: SeasonMatch) =>
     m.stage === 'final' || (!m.stage && /^final$/i.test((m.roundName ?? '').trim()));
-  const isThird = (m: SeasonOverviewMatch) =>
+  const isThird = (m: SeasonMatch) =>
     m.stage === 'third_place' || (!m.stage && /3.*4|tercer|third|bronce/i.test(m.roundName ?? ''));
 
   const final = lastFinished(matches.filter(isFinal));
@@ -366,7 +366,7 @@ function buildPodium(matches: SeasonOverviewMatch[]): CompetitionSummaryData['po
   const thirdWinner = gameWinnerId(third);
   if (!finalWinner || !thirdWinner) return null;
 
-  const byId = (m: SeasonOverviewMatch, id: string) => {
+  const byId = (m: SeasonMatch, id: string) => {
     if (m.homeTeam.id === id) return m.homeTeam;
     if (m.awayTeam.id === id) return m.awayTeam;
     return null;
@@ -420,7 +420,7 @@ export function buildCompetitionSummary(
     .sort((a, b) => String(a.scheduledAt).localeCompare(String(b.scheduledAt)));
   const windowEnd = upcoming[0] ? new Date(upcoming[0].scheduledAt!).getTime() + 7 * 86_400_000 : 0;
   const nextRoundMatches = upcoming.filter((m) => new Date(m.scheduledAt!).getTime() <= windowEnd);
-  const rank = (m: SeasonOverviewMatch) => {
+  const rank = (m: SeasonMatch) => {
     const h = position.get(m.homeTeam.id);
     const a = position.get(m.awayTeam.id);
     return h != null && a != null ? h + a : Number.MAX_SAFE_INTEGER;

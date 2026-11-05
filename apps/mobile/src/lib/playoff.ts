@@ -1,12 +1,12 @@
-import type { SeasonOverviewMatch } from '@/src/lib/api/types';
+import type { SeasonMatch } from '@/src/lib/api/types';
 
 export type PlayoffPhase = 'Cuartos' | 'Semis' | 'Final';
 export const PLAYOFF_PHASES: PlayoffPhase[] = ['Cuartos', 'Semis', 'Final'];
 
 export interface PlayoffSeries {
-  games: SeasonOverviewMatch[];
-  teamA: SeasonOverviewMatch['homeTeam'];
-  teamB: SeasonOverviewMatch['awayTeam'];
+  games: SeasonMatch[];
+  teamA: SeasonMatch['homeTeam'];
+  teamB: SeasonMatch['awayTeam'];
   winsA: number;
   winsB: number;
 }
@@ -33,8 +33,8 @@ export function gameWinnerId(g: {
 }
 
 /** Agrupa los partidos de una fase por eliminatoria (pareja de equipos). */
-export function buildSeries(games: SeasonOverviewMatch[]): PlayoffSeries[] {
-  const map = new Map<string, SeasonOverviewMatch[]>();
+export function buildSeries(games: SeasonMatch[]): PlayoffSeries[] {
+  const map = new Map<string, SeasonMatch[]>();
   for (const g of games) {
     const key = [g.homeTeam.id, g.awayTeam.id].sort().join('|');
     if (!map.has(key)) map.set(key, []);
@@ -83,8 +83,8 @@ const STAGE_BUCKET: Partial<Record<string, PlayoffPhase>> = {
  * fuente (`stage`); sin ella (temporadas heredadas), el roundNumber legado
  * (1=QF, 2=SF, 3=F, 0=colocación).
  */
-export function groupByPhase(matches: SeasonOverviewMatch[]): Record<PlayoffPhase, SeasonOverviewMatch[]> {
-  const buckets: Record<PlayoffPhase, SeasonOverviewMatch[]> = { Cuartos: [], Semis: [], Final: [] };
+export function groupByPhase(matches: SeasonMatch[]): Record<PlayoffPhase, SeasonMatch[]> {
+  const buckets: Record<PlayoffPhase, SeasonMatch[]> = { Cuartos: [], Semis: [], Final: [] };
   const playoffMatches = matches.filter((m) => m.roundType === 'playoff');
 
   // Si no hay stages explícitos, verificar si es un formato Final Four (2 semifinales y 1 final entre 4 equipos)
@@ -126,7 +126,7 @@ export function groupByPhase(matches: SeasonOverviewMatch[]): Record<PlayoffPhas
 /**
  * Serie de colocación 9º–10º (roundNumber derivado = 0 o stage = placement).
  */
-export function placementMatches(matches: SeasonOverviewMatch[]): SeasonOverviewMatch[] {
+export function placementMatches(matches: SeasonMatch[]): SeasonMatch[] {
   return matches.filter(
     (m) => m.roundType === 'playoff' && (m.stage ? m.stage === 'placement' : m.roundNumber === 0),
   );

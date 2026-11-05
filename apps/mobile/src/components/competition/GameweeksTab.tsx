@@ -35,7 +35,7 @@ import {
   type RoundItem,
   type RoundSelection,
 } from '@/src/lib/round-selection';
-import type { SeasonOverviewMatch } from '@/src/lib/api/types';
+import type { SeasonMatch } from '@/src/lib/api/types';
 
 interface TeamItem {
   id: string;
@@ -46,7 +46,7 @@ interface TeamItem {
 
 interface GameweeksTabProps {
   rounds: RoundItem[];
-  matches: SeasonOverviewMatch[];
+  matches: SeasonMatch[];
 }
 
 export function GameweeksTab({ rounds, matches }: GameweeksTabProps) {

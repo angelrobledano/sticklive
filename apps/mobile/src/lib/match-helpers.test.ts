@@ -226,6 +226,8 @@ describe('match-helpers', () => {
           sourceRef: null,
           videoUrl: null,
           live: null,
+          homeTeamId: 'h1',
+          awayTeamId: 'a1',
           homeTeam: { id: 'h1', name: 'Home', shortName: 'H', logoUrl: null },
           awayTeam: { id: 'a1', name: 'Away', shortName: 'A', logoUrl: null },
         },

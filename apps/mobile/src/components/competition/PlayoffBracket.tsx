@@ -11,7 +11,7 @@ import {
   groupByPhase,
   seriesWinnerId,
 } from '@/src/lib/playoff';
-import type { SeasonOverviewMatch } from '@/src/lib/api/types';
+import type { SeasonMatch } from '@/src/lib/api/types';
 
 function MicroSeries({
   serie,
@@ -73,7 +73,7 @@ function MicroSeries({
   );
 }
 
-export function PlayoffBracket({ matches }: { matches: SeasonOverviewMatch[] }) {
+export function PlayoffBracket({ matches }: { matches: SeasonMatch[] }) {
   const { t } = useLocale();
   const phases = useMemo(() => {
     const byPhase = groupByPhase(matches);

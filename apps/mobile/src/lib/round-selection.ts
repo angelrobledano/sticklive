@@ -1,4 +1,4 @@
-import type { KnockoutStage, SeasonOverviewMatch } from './api/types';
+import type { KnockoutStage, SeasonMatch } from './api/types';
 import { dayDiff } from './day-view';
 
 export type RoundSelection =
@@ -59,7 +59,7 @@ export function madridDay(iso: string | null, tz?: string | null): string | null
 }
 
 /** Primer día (Madrid / TZ de la competición) con partidos de cada ronda. */
-function firstDayByRound(matches: SeasonOverviewMatch[]): Map<string, string> {
+function firstDayByRound(matches: SeasonMatch[]): Map<string, string> {
   const out = new Map<string, string>();
   for (const m of matches) {
     if (!m.roundId) continue;
@@ -76,7 +76,7 @@ function firstDayByRound(matches: SeasonOverviewMatch[]): Map<string, string> {
  * partidos y por último las eliminatorias, por la fecha de su primer partido
  * y, sin fecha (cruces aún por determinar), por fase.
  */
-export function selectableRounds(rounds: RoundItem[], matches: SeasonOverviewMatch[]): RoundItem[] {
+export function selectableRounds(rounds: RoundItem[], matches: SeasonMatch[]): RoundItem[] {
   const hasMatches = (r: RoundItem) => matches.some((m) => m.roundId === r.id);
   const regular = rounds.filter((r) => r.roundType === 'regular').sort((a, b) => a.number - b.number);
   const other = rounds
@@ -124,16 +124,16 @@ export function parseRoundSelection(
 
 /** Partidos correspondientes a una selección de ronda. */
 export function matchesOfSelection(
-  matches: SeasonOverviewMatch[],
+  matches: SeasonMatch[],
   sel: RoundSelection,
-): SeasonOverviewMatch[] {
+): SeasonMatch[] {
   if (sel.kind === 'round') return matches.filter((m) => m.roundId === sel.id);
   return matches.filter((m) => m.roundType !== 'playoff' && (m.roundNumber ?? null) === sel.n);
 }
 
 /** Selección a la que pertenece un partido, si su ronda está en el selector. */
 function selectionOfMatch(
-  m: SeasonOverviewMatch,
+  m: SeasonMatch,
   selectable: RoundItem[],
 ): { sel: RoundSelection; idx: number } | null {
   const idx =
@@ -150,7 +150,7 @@ function selectionOfMatch(
  */
 export function defaultRoundSelection(
   selectable: RoundItem[],
-  matches: SeasonOverviewMatch[],
+  matches: SeasonMatch[],
   todayKey: string,
 ): RoundSelection | null {
   let best: { sel: RoundSelection; rank: number; done: boolean; idx: number } | null = null;
@@ -228,14 +228,14 @@ export interface NearestDay {
   journey: number | null;
 }
 
-function isJornadaMatch(m: SeasonOverviewMatch): boolean {
+function isJornadaMatch(m: SeasonMatch): boolean {
   return m.roundType !== 'playoff';
 }
 
-export function nearestMatchDay(matches: SeasonOverviewMatch[], todayKey: string): NearestDay | null {
-  let best: { day: string; m: SeasonOverviewMatch } | null = null;
+export function nearestMatchDay(matches: SeasonMatch[], todayKey: string): NearestDay | null {
+  let best: { day: string; m: SeasonMatch } | null = null;
   let bestRank = Infinity;
-  let bestJornada: SeasonOverviewMatch | null = null;
+  let bestJornada: SeasonMatch | null = null;
   let bestJornadaRank = Infinity;
 
   for (const m of matches) {

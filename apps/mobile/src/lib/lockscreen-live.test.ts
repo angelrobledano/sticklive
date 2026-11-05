@@ -30,6 +30,10 @@ const makeMatch = (overrides?: Partial<MatchSummary>): MatchSummary => ({
   penalties: null,
   scheduledAt: new Date().toISOString(),
   startedAt: new Date().toISOString(),
+  finishedAt: null,
+  homeTeamId: 'team-barca',
+  awayTeamId: 'team-liceo',
+  sourceRef: null,
   venue: { name: 'Palau Blaugrana', city: 'Barcelona' },
   score: { home: 3, away: 2 },
   homeTeam: { id: 'team-barca', name: 'Barça', shortName: 'BAR', logoUrl: null },
@@ -139,7 +143,7 @@ describe('lockscreen-live', () => {
     it('indica Descanso en el título si el partido está en el descanso', () => {
       const match = makeMatch({
         isHalftime: true,
-        status: 'halftime',
+        status: 'live',
       });
 
       const notification = buildLockScreenNotification(match);

@@ -1,4 +1,4 @@
-import type { MatchEvent, MatchStats, MatchStatus } from '@/lib/api/types';
+import type { MatchEvent, MatchStats } from '@/lib/api/types';
 
 /**
  * Crónica de datos de un partido terminado (C3, ampliada).
@@ -40,7 +40,7 @@ export interface ChronicleFact {
 }
 
 export interface ChronicleInput {
-  status: MatchStatus;
+  status: string;
   score: { home: number | null; away: number | null };
   homeTeamId: string;
   awayTeamId: string;

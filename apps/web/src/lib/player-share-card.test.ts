@@ -10,6 +10,7 @@ const detail = (over: Partial<PlayerDetail> = {}): PlayerDetail => ({
   currentTeam: { id: 't1', name: 'FC BARCELONA', shortName: 'BARÇA', logoUrl: null, jerseyNumber: 9, seasonId: 's1' },
   seasonTotals: { pj: 10, goals: 14, assists: 6, blueCards: 2, redCards: 0, penaltiesTotal: 5, penaltiesScored: 4 },
   statsByCompetition: [],
+  career: { seasons: [], totals: { pj: 0, goals: 0, blueCards: 0, redCards: 0, penaltiesTotal: 0, penaltiesScored: 0 } },
   ...over,
 });
 

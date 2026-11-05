@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import type { SeasonOverviewStandingRow } from '@/src/lib/api/types';
+import type { SeasonStandingRow } from '@/src/lib/api/types';
 import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { clubName } from '@/src/lib/names';
@@ -15,7 +15,7 @@ import {
 } from '@/src/lib/standings-zones-view';
 
 interface Props {
-  rows: SeasonOverviewStandingRow[];
+  rows: SeasonStandingRow[];
   legacyZones?: boolean;
 }
 

@@ -16,7 +16,7 @@ import {
 } from '@/src/lib/playoff';
 import { PlayoffBracket } from './PlayoffBracket';
 import { ChampionBlock } from './ChampionBlock';
-import type { SeasonOverviewMatch } from '@/src/lib/api/types';
+import type { SeasonMatch } from '@/src/lib/api/types';
 
 function SeriesCard({
   serie,
@@ -251,7 +251,7 @@ function SeriesCard({
   );
 }
 
-export function PlayoffsTab({ matches }: { matches: SeasonOverviewMatch[] }) {
+export function PlayoffsTab({ matches }: { matches: SeasonMatch[] }) {
   const { t } = useLocale();
 
   const phases = useMemo(() => {

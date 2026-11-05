@@ -13,7 +13,7 @@ describe('buildCompetitionSummary', () => {
       competitionId: 'c1',
       competitionName: 'OK Liga Masculina',
       competitionSlug: 'ok-liga-masculina',
-      competitionShortName: 'OK Liga',
+      competitionShort: 'OK Liga',
       competitionLogoUrl: null,
       competitionOrganizer: 'FEP',
       competitionScope: 'national',
@@ -39,6 +39,8 @@ describe('buildCompetitionSummary', () => {
         goalsAgainst: 40,
         goalDiff: 80,
         points: 73,
+        form: [],
+        penalizationPoints: 0,
       },
       {
         id: 'st2',
@@ -56,6 +58,8 @@ describe('buildCompetitionSummary', () => {
         goalsAgainst: 55,
         goalDiff: 35,
         points: 57,
+        form: [],
+        penalizationPoints: 0,
       },
     ],
     rounds: [

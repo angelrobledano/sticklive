@@ -6,9 +6,9 @@ import {
   knockoutLayout,
   knockoutTabLabelKey,
 } from './season-phases';
-import type { SeasonOverview, SeasonOverviewMatch, SeasonPhase } from './api/types';
+import type { SeasonOverview, SeasonMatch, SeasonPhase } from './api/types';
 
-function createMatch(partial: Partial<SeasonOverviewMatch>): SeasonOverviewMatch {
+function createMatch(partial: Partial<SeasonMatch>): SeasonMatch {
   return {
     id: 'm1',
     status: 'finished',
@@ -136,6 +136,8 @@ describe('season-phases helpers', () => {
       goalsAgainst: 1,
       goalDiff: 2,
       points: 3,
+      form: [],
+      penalizationPoints: 0,
     };
 
     it('orders Clasificación first when league is ongoing and playoffs have not started', () => {
@@ -192,6 +194,8 @@ describe('season-phases helpers', () => {
             goalsAgainst: 0,
             goalDiff: 0,
             points: 0,
+            form: [],
+            penalizationPoints: 0,
           },
         ],
         matches: [

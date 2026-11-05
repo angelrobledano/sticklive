@@ -8,6 +8,7 @@ function detail(overrides: Partial<PlayerDetail['seasonTotals']> = {}): PlayerDe
     currentTeam: null,
     seasonTotals: { pj: 10, goals: 6, assists: 4, blueCards: 2, redCards: 0, penaltiesTotal: 4, penaltiesScored: 3, ...overrides },
     statsByCompetition: [],
+    career: { seasons: [], totals: { pj: 0, goals: 0, blueCards: 0, redCards: 0, penaltiesTotal: 0, penaltiesScored: 0 } },
   };
 }
 

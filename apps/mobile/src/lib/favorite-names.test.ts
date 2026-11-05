@@ -57,7 +57,10 @@ describe('favorite-names', () => {
   it('resuelve nombre de equipo desde la query de team', () => {
     const qc = newClient();
     qc.setQueryData<Partial<TeamDetail>>(qk.team('t-liceo'), {
-      team: { id: 't-liceo', name: 'Deportivo Liceo', shortName: 'Liceo', gender: 'M', sectionSuffix: null },
+      team: {
+        id: 't-liceo', name: 'Deportivo Liceo', shortName: 'Liceo', gender: 'M', sectionSuffix: '',
+        city: null, country: 'ES', logoUrl: null, websiteUrl: null, club: null,
+      },
     });
 
     const resolved = resolveFavoriteName(qc, 'team', 't-liceo');
@@ -106,6 +109,8 @@ describe('favorite-names', () => {
         nationality: 'ES',
         isGoalkeeper: false,
         photoUrl: null,
+        birthDate: null,
+        sourceRef: null,
       },
     });
 

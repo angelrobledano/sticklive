@@ -12,12 +12,15 @@ describe('buildPlayerFacts', () => {
       isGoalkeeper: false,
       photoUrl: null,
       birthDate: '1994-01-11',
+      sourceRef: null,
     },
     currentTeam: {
       id: 't1',
       name: 'Barça',
       shortName: 'FCB',
+      logoUrl: null,
       jerseyNumber: 8,
+      seasonId: 's1',
     },
     seasonTotals: {
       pj: 10,
@@ -28,7 +31,7 @@ describe('buildPlayerFacts', () => {
       penaltiesTotal: 5,
       penaltiesScored: 4,
     },
-    career: { seasons: [], totals: { pj: 10, goals: 15 } },
+    career: { seasons: [], totals: { pj: 10, goals: 15, blueCards: 2, redCards: 0, penaltiesTotal: 5, penaltiesScored: 4 } },
     statsByCompetition: [],
   };
 

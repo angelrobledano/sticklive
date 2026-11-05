@@ -119,3 +119,27 @@ Al cerrar:
 ## Apéndice A — Decisiones de fusión
 
 (Se rellena en la fase 2.)
+
+- api / CompetitionSummary.season: web objeto inline con campos opcionales, app CompetitionSeasonSummary con name string y fechas obligatorias → elegido el de la web, extraído como CompetitionSeasonSummary porque competitions.ts:187-207 devuelve también firstMatchAt, matchday y champion y el nombre puede ser null.
+- api / CompetitionSummary.scope y nameI18n y dataQuality: web unión literal y campos opcionales, app string y obligatorios → elegido web porque es el tipo más estricto en scope y el más tolerante con payloads antiguos.
+- api / SeasonPhase.kind: web 'groups', app 'group' → elegido 'groups' porque season-structure.ts:230 y la columna de BD usan 'groups'. El valor 'group' de la app nunca existe en la respuesta.
+- api / SeasonPhase.stagesInferred y fromSource: web opcionales, app obligatorios → elegido opcionales porque los payloads antiguos no los traen.
+- api / SeasonOverview.season.competitionShort: web competitionShort, app competitionShortName → elegido competitionShort porque season-overview.ts:238 devuelve ese nombre. La app declaraba un campo que no existe. Solo lo usaba un fixture de test, corregido.
+- api / SeasonOverview.season.slug y competitionSlug: web opcionales, app obligatorios → elegido opcionales porque web los trata como ausentes en payloads antiguos y la app no los lee sin comprobar.
+- api / SeasonOverview.matches y standings: web SeasonMatch y SeasonStandingRow, app SeasonOverviewMatch y SeasonOverviewStandingRow → elegidos los de la web porque el tipo del envoltorio es único. La app pasa a usar SeasonMatch y SeasonStandingRow en sus funciones y fixtures (form y penalizationPoints pasan a obligatorios en filas de clasificación). SeasonOverviewMatch y SeasonOverviewStandingRow se mantienen exportados en core sin consumidores y quedan para retirar.
+- api / MatchSummary: app interfaz propia, web Match → elegido type MatchSummary = Match (@deprecated) con Match.fouls opcional añadido porque live.ts:114 lo devuelve. Match exige homeTeamId, awayTeamId, finishedAt y sourceRef, que el cliente web deriva en client.ts:122/166/419 y la API cruda de /matches/current no envía. Los fixtures de la app los incluyen ahora.
+- api / Match.homeTeam y awayTeam: web opcionales, app obligatorios → elegido obligatorios porque live.ts y match-dto.ts los devuelven siempre y la web compila sin cambios con ello.
+- api / MatchDetail.match.status: web MatchStatus estrecho vía Match, app string → elegido el MatchStatus de dominio de shared-types porque match-dto.ts:335 devuelve el estado de BD sin coaccionar, así que puede ser halftime, overtime o penalty_shootout. match-chronicle.ts de la web pasa a aceptar string en status, ya que solo compara con 'finished'.
+- api / MatchDetail.updatedAt: web ausente, app opcional → elegido opcional porque match-stream.ts:140-143 lo añade en SSE.
+- api / MatchStats.*: web campos opcionales, app obligatorios → elegido web (opcionales) porque cubre payloads antiguos y la app compila con ello.
+- api / PlayerDetail.career: web ausente (tipo local en PlayerProfileClient), app inline parcial → elegido PlayerCareer completo, obligatorio, con la forma de apps/api/src/lib/player-career.ts porque player-detail.ts:332 siempre lo devuelve. Se eliminan los tipos locales de PlayerProfileClient, que además declaraban assists en los totales que la API no envía.
+- api / PlayerDetail.player y currentTeam: web sourceRef, birthDate, logoUrl y seasonId obligatorios, app opcionales o ausentes → elegido web porque player-detail.ts:319-337 los devuelve todos. Los fixtures de la app los incluyen.
+- api / PlayerCompStats.assists: web obligatorio, app ausente → elegido web porque player-detail.ts lo devuelve en cada fila.
+- api / TeamDetail.team.sectionSuffix: web ausente, app string | null → elegido string opcional porque team-section.ts:61 devuelve siempre string y los consumidores web lo tipan así.
+- api / TeamDetail.clubTeams: web ausente, app opcional → elegido opcional porque team-detail.ts:667 lo devuelve y payloads antiguos no.
+- api / TeamDetail.team.city, country, logoUrl, websiteUrl, club: web obligatorios, app opcionales → elegido web porque team-detail.ts:572-586 los devuelve todos. El fixture de la app los incluye.
+- api / TeamMatchSummary.phaseId, stage, seriesGame: web ausentes, app opcionales → elegido opcionales porque team-detail.ts:629 los devuelve.
+- api / TeamMatchSummary.startedAt, finishedAt y venue: web obligatorios, app opcionales → elegido web porque serializeMatch los devuelve siempre.
+- api / TeamSeasonInfo.competitionFormat y phases: web CompetitionFormat y SeasonPhase[], app string y forma reducida → elegido web porque es más preciso y la app compila con ello.
+- api / ZoneKind: web importa de lib/standings-zones-view, app tiene copia propia → elegido copia local no exportada en core/api porque core no puede importar de las apps. Idéntica en ambas. Se unificará con el módulo de zonas.
+- api / CompetitionSeasonsResponse: sin equivalente en web → conservado el de la app con forma inline igual que CompetitionSeason.

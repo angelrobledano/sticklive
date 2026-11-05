@@ -2,7 +2,7 @@
 
 import { Fragment } from 'react';
 import { LocaleLink as Link } from '@/components/shared/LocaleLink';
-import type { PlayerDetail, PlayerCompStats, PlayerSeasonTotals } from '@/lib/api/client';
+import type { PlayerDetail, PlayerCompStats, PlayerCareer } from '@/lib/api/types';
 import { PlayerAvatar } from '@/components/shared/PlayerAvatar';
 import { toTitleCase } from '@/lib/names';
 import { useT } from '@/lib/i18n';
@@ -11,48 +11,6 @@ import { CountryFlag } from '@/components/shared/CountryFlag';
 import { FavoriteStar } from '@/components/shared/FavoriteStar';
 import { ManageNotificationsButton } from '@/components/shared/ManageNotificationsButton';
 import { competitionPath } from '@/lib/competition-path';
-
-// ─── Trayectoria / carrera (#217) ─────────────────────────────────────────────
-//
-// `GET /players/:id` devuelve `career` con las temporadas agrupadas (equipos +
-// totales). El tipo vive aquí porque el DTO compartido (`lib/api/types.ts`) aún
-// no lo incluye; el campo es opcional para no romper respuestas antiguas.
-
-export interface PlayerCareerTeam {
-  competitionId: string;
-  competitionName: string;
-  competitionShort: string | null;
-  teamId: string;
-  teamName: string;
-  teamShortName: string | null;
-  teamLogoUrl: string | null;
-  jerseyNumber: number | null;
-  pj: number;
-  goals: number;
-  blueCards: number;
-  redCards: number;
-  penaltiesTotal: number;
-  penaltiesScored: number;
-}
-
-export interface PlayerCareerSeason {
-  seasonId: string;
-  seasonName: string;
-  isCurrent: boolean;
-  startDate: string | null;
-  competitionId: string;
-  /** Slug para la URL legible (Plan A). Opcional: API antigua. */
-  competitionSlug?: string | null;
-  competitionName: string;
-  competitionShort: string | null;
-  totals: PlayerSeasonTotals;
-  teams: PlayerCareerTeam[];
-}
-
-export interface PlayerCareer {
-  seasons: PlayerCareerSeason[];
-  totals: PlayerSeasonTotals;
-}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -391,7 +349,7 @@ function CareerSection({ career }: { career: PlayerCareer }) {
 
 // ─── Vista completa ───────────────────────────────────────────────────────────
 
-export function PlayerProfileClient({ data }: { data: PlayerDetail & { career?: PlayerCareer | null } }) {
+export function PlayerProfileClient({ data }: { data: PlayerDetail }) {
   const { t } = useT();
 
   return (
