@@ -46,11 +46,11 @@ const nextConfig = {
   poweredByHeader: false,
   // Metadata bloqueante para rastreadores (ver `HTML_LIMITED_BOTS`).
   htmlLimitedBots: HTML_LIMITED_BOTS,
-  // `@sports/shared-types` y `@sports/brand` exportan TS fuente
-  // (`main: ./src/index.ts`); Next debe transpilarlos al importarlos desde la
+  // `@sports/shared-types`, `@sports/brand` y `@sports/core` exportan TS fuente
+  // (`main: ./src/index.ts` / `exports` a `./src/*.ts`); Next debe transpilarlos al importarlos desde la
   // web (#191, STALE_LIVE_HOURS). Sin transpile, el bundle externalizaría la
   // dependencia y en runtime no habría TS que ejecutar.
-  transpilePackages: ['@sports/shared-types', '@sports/brand'],
+  transpilePackages: ['@sports/shared-types', '@sports/brand', '@sports/core'],
   env: {
     NEXT_PUBLIC_API_URL:   process.env.NEXT_PUBLIC_API_URL   ?? 'http://localhost:3000',
     NEXT_PUBLIC_SEASON_ID: process.env.NEXT_PUBLIC_SEASON_ID ?? 'e6ab9d19-cc4b-4095-a9ce-4407a4000737',

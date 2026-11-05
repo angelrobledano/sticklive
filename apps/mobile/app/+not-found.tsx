@@ -1,5 +1,6 @@
 import { Link, Stack } from 'expo-router';
 import { Text, View } from 'react-native';
+import { CORE_SMOKE } from '@sports/core/smoke';
 import { useLocale } from '@/src/i18n/LocaleContext';
 
 /**
@@ -7,6 +8,7 @@ import { useLocale } from '@/src/i18n/LocaleContext';
  * Evita pantallas de error rojas o pantallas 404 feas de Expo Router.
  */
 export default function NotFoundScreen() {
+  void CORE_SMOKE; // temporal (Task 1): comprueba que Metro resuelve @sports/core. Se quita en la Task 10.
   const { t } = useLocale();
 
   return (
