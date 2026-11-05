@@ -181,6 +181,33 @@ playerDetailRouter.get('/:id', async (c) => {
            AND s.data_quality = 'ok'
            AND c.data_quality = 'ok'
          GROUP BY c.id
+      ),
+      -- Goles por partido = MAYOR entre el acta (match_lineups.goals) y los
+      -- eventos con jugador, nunca la suma (05/11/2026: la FAP da los goles en
+      -- la alineación y los eventos sin jugador; la ficha salía a 0 y los
+      -- goleadores de la competición, que leen el acta, 9).
+      goles AS (
+        SELECT COALESCE(l.competition_id, ev.competition_id) AS competition_id,
+               SUM(GREATEST(COALESCE(l.goals, 0), COALESCE(ev.goals, 0)))::int AS goals
+          FROM (
+            SELECT ml.match_id, s.competition_id, SUM(ml.goals) AS goals
+              FROM match_lineups ml
+              JOIN matches m   ON m.id = ml.match_id
+              JOIN seasons s   ON s.id = m.season_id
+              JOIN actividad a ON a.competition_id = s.competition_id AND s.start_date = a.inicio
+             WHERE ml.player_id = $1 AND s.data_quality = 'ok'
+             GROUP BY ml.match_id, s.competition_id
+          ) l
+          FULL JOIN (
+            SELECT me.match_id, s.competition_id, COUNT(*) AS goals
+              FROM match_events me
+              JOIN matches m   ON m.id = me.match_id
+              JOIN seasons s   ON s.id = m.season_id
+              JOIN actividad a ON a.competition_id = s.competition_id AND s.start_date = a.inicio
+             WHERE me.player_id = $1 AND me.event_type = 'goal' AND s.data_quality = 'ok'
+             GROUP BY me.match_id, s.competition_id
+          ) ev ON ev.match_id = l.match_id
+         GROUP BY 1
       )
       SELECT
         c.id                AS competition_id,
@@ -188,7 +215,7 @@ playerDetailRouter.get('/:id', async (c) => {
         c.short_name        AS competition_short,
         COALESCE(p.pj, '0')                AS pj,
         COALESCE(p.assists, '0')           AS assists,
-        COALESCE(e.goals, 0)               AS goals,
+        COALESCE(g.goals, 0)               AS goals,
         COALESCE(e.blue_cards, 0)          AS blue_cards,
         COALESCE(e.red_cards, 0)           AS red_cards,
         COALESCE(e.penalties_total, 0)     AS penalties_total,
@@ -196,6 +223,7 @@ playerDetailRouter.get('/:id', async (c) => {
       FROM competitions c
       LEFT JOIN pj_real p ON p.competition_id = c.id
       LEFT JOIN eventos e ON e.competition_id = c.id
+      LEFT JOIN goles g   ON g.competition_id = c.id
      WHERE p.competition_id IS NOT NULL OR e.competition_id IS NOT NULL
      ORDER BY goals DESC, pj DESC
     `, [id]),
@@ -237,7 +265,17 @@ playerDetailRouter.get('/:id', async (c) => {
              SELECT me2.match_id FROM match_events me2 JOIN matches m3 ON m3.id = me2.match_id
               WHERE me2.player_id = tp.player_id AND me2.team_id = tp.team_id AND m3.season_id = tp.season_id
            ) jugados)                                          AS pj,
-          COUNT(*) FILTER (WHERE me.event_type = 'goal')       AS goals,
+          -- Goles: acta o eventos, el mayor por partido (ver CTE goles arriba).
+          (SELECT COALESCE(SUM(GREATEST(COALESCE(l.g, 0), COALESCE(e2.n, 0))), 0) FROM (
+             SELECT ml.match_id, SUM(ml.goals) AS g FROM match_lineups ml JOIN matches m2 ON m2.id = ml.match_id
+              WHERE ml.player_id = tp.player_id AND ml.team_id = tp.team_id AND m2.season_id = tp.season_id
+              GROUP BY ml.match_id
+           ) l FULL JOIN (
+             SELECT me2.match_id, COUNT(*) AS n FROM match_events me2 JOIN matches m3 ON m3.id = me2.match_id
+              WHERE me2.player_id = tp.player_id AND me2.team_id = tp.team_id AND m3.season_id = tp.season_id
+                AND me2.event_type = 'goal'
+              GROUP BY me2.match_id
+           ) e2 ON e2.match_id = l.match_id)                   AS goals,
           COUNT(*) FILTER (WHERE me.event_type = 'blue_card')  AS blue_cards,
           COUNT(*) FILTER (WHERE me.event_type = 'red_card')   AS red_cards,
           COUNT(*) FILTER (WHERE me.event_type = 'penalty')    AS penalties_total,

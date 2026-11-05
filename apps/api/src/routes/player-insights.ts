@@ -92,15 +92,34 @@ playerInsightsRouter.get('/:id/insights', async (c) => {
          WHERE m.season_id = $1 AND m.status = 'finished'
            AND me.player_id IS NOT NULL
          GROUP BY me.player_id
+      ), goles AS (
+        -- Por partido, el mayor entre el acta y los eventos con jugador, nunca
+        -- la suma (05/11/2026: la FAP da los goles solo en la alineación).
+        SELECT COALESCE(l.player_id, ev.player_id) AS player_id,
+               SUM(GREATEST(COALESCE(l.g, 0), COALESCE(ev.n, 0)))::int AS goals
+          FROM (
+            SELECT ml.player_id, ml.match_id, SUM(ml.goals) AS g
+              FROM match_lineups ml JOIN matches m ON m.id = ml.match_id
+             WHERE m.season_id = $1 AND m.status = 'finished' AND ml.player_id IS NOT NULL AND ml.role IS NULL
+             GROUP BY ml.player_id, ml.match_id
+          ) l
+          FULL JOIN (
+            SELECT me.player_id, me.match_id, COUNT(*) AS n
+              FROM match_events me JOIN matches m ON m.id = me.match_id
+             WHERE m.season_id = $1 AND m.status = 'finished' AND me.player_id IS NOT NULL AND me.event_type = 'goal'
+             GROUP BY me.player_id, me.match_id
+          ) ev ON ev.player_id = l.player_id AND ev.match_id = l.match_id
+         GROUP BY 1
       )
       SELECT p.player_id, p.pj::text,
-             COALESCE(e.goals, 0)::text           AS goals,
+             COALESCE(g.goals, 0)::text           AS goals,
              COALESCE(a.assists, 0)::text         AS assists,
              COALESCE(e.penalties_total, 0)::text AS penalties_total,
              COALESCE(e.penalties_scored, 0)::text AS penalties_scored
         FROM pj p
         LEFT JOIN asistencias a ON a.player_id = p.player_id
         LEFT JOIN eventos e     ON e.player_id = p.player_id
+        LEFT JOIN goles g       ON g.player_id = p.player_id
        WHERE p.pj >= 5
     `, [season.id]);
 
@@ -131,19 +150,31 @@ playerInsightsRouter.get('/:id/insights', async (c) => {
          ORDER BY COUNT(*) DESC
          LIMIT 1`, [playerId, season.id]),
       db.query<{ match_id: string; goals: number }>(`
-        SELECT me.match_id, COUNT(*) FILTER (WHERE me.event_type = 'goal')::int AS goals
-          FROM match_events me JOIN matches m ON m.id = me.match_id
-         WHERE me.player_id = $1 AND m.season_id = $2 AND m.status = 'finished'
-         GROUP BY me.match_id`, [playerId, season.id]),
+        SELECT COALESCE(l.match_id, ev.match_id) AS match_id,
+               GREATEST(COALESCE(l.g, 0), COALESCE(ev.n, 0))::int AS goals
+          FROM (
+            SELECT ml.match_id, SUM(ml.goals) AS g
+              FROM match_lineups ml JOIN matches m ON m.id = ml.match_id
+             WHERE ml.player_id = $1 AND m.season_id = $2 AND m.status = 'finished'
+             GROUP BY ml.match_id
+          ) l
+          FULL JOIN (
+            SELECT me.match_id, COUNT(*) FILTER (WHERE me.event_type = 'goal') AS n
+              FROM match_events me JOIN matches m ON m.id = me.match_id
+             WHERE me.player_id = $1 AND m.season_id = $2 AND m.status = 'finished'
+             GROUP BY me.match_id
+          ) ev ON ev.match_id = l.match_id`, [playerId, season.id]),
     ]);
 
     const teamId = teamRes.rows[0]?.team_id ?? null;
     const teamGoalsRes = teamId
       ? await db.query<{ goals: number }>(`
-          SELECT COUNT(*)::int AS goals
-            FROM match_events me JOIN matches m ON m.id = me.match_id
-           WHERE me.team_id = $1 AND m.season_id = $2 AND m.status = 'finished'
-             AND me.event_type = 'goal'`, [teamId, season.id])
+          -- Goles del equipo = su marcador en los partidos terminados. Los
+          -- eventos de algunas fuentes (FAP) llegan sin equipo y daban 0.
+          SELECT COALESCE(SUM(CASE WHEN m.home_team_id = $1 THEN m.home_score ELSE m.away_score END), 0)::int AS goals
+            FROM matches m
+           WHERE m.season_id = $2 AND m.status = 'finished'
+             AND (m.home_team_id = $1 OR m.away_team_id = $1)`, [teamId, season.id])
       : { rows: [] as Array<{ goals: number }> };
 
     const playerRow = peers.find((p) => p.playerId === playerId);

@@ -378,7 +378,7 @@ teamDetailRouter.get('/:id', async (c) => {
             )               AS is_goalkeeper,
             p.photo_url,
             tp.jersey_number,
-            COUNT(DISTINCT me.id) FILTER (WHERE me.event_type = 'goal'      AND mx.id IS NOT NULL) AS goals,
+            gl.goals,
             COUNT(DISTINCT me.id) FILTER (WHERE me.event_type = 'blue_card' AND mx.id IS NOT NULL) AS blue_cards,
             COUNT(DISTINCT me.id) FILTER (WHERE me.event_type = 'red_card'  AND mx.id IS NOT NULL) AS red_cards,
             COUNT(DISTINCT me.id) FILTER (WHERE me.event_type = 'penalty'   AND mx.id IS NOT NULL) AS penalties,
@@ -398,6 +398,25 @@ teamDetailRouter.get('/:id', async (c) => {
                AND m2.status = 'finished'
                AND ((ml.is_home AND m2.home_team_id = tp.team_id) OR (NOT ml.is_home AND m2.away_team_id = tp.team_id))
           ) la ON TRUE
+          -- Goles por partido = el mayor entre el acta (match_lineups.goals) y
+          -- los eventos con jugador, nunca la suma (05/11/2026: la FAP da los
+          -- goles en la alineación y los eventos sin jugador).
+          LEFT JOIN LATERAL (
+            SELECT COALESCE(SUM(GREATEST(COALESCE(l.g, 0), COALESCE(e.n, 0))), 0)::int AS goals
+              FROM (
+                SELECT ml.match_id, SUM(ml.goals) AS g
+                  FROM match_lineups ml JOIN matches m3 ON m3.id = ml.match_id
+                 WHERE ml.player_id = p.id AND m3.season_id = ANY($1)
+                   AND ((ml.is_home AND m3.home_team_id = tp.team_id) OR (NOT ml.is_home AND m3.away_team_id = tp.team_id))
+                 GROUP BY ml.match_id
+              ) l
+              FULL JOIN (
+                SELECT me3.match_id, COUNT(*) AS n
+                  FROM match_events me3 JOIN matches m4 ON m4.id = me3.match_id
+                 WHERE me3.player_id = p.id AND me3.team_id = tp.team_id AND me3.event_type = 'goal' AND m4.season_id = ANY($1)
+                 GROUP BY me3.match_id
+              ) e ON e.match_id = l.match_id
+          ) gl ON TRUE
           -- Un ÚNICO LEFT JOIN a los eventos relevantes. Antes había cuatro
           -- joins (goal/blue/red/penalty) con su propio EXISTS a matches:
           -- cuatro pasadas por jugador y por evento. La temporada se filtra
@@ -410,7 +429,7 @@ teamDetailRouter.get('/:id', async (c) => {
           WHERE tp.team_id = $2
             AND tp.season_id = ANY($1)
             AND tp.is_active = TRUE
-          GROUP BY p.id, p.first_name, p.last_name, p.photo_url, tp.jersey_number, la.played, la.assists
+          GROUP BY p.id, p.first_name, p.last_name, p.photo_url, tp.jersey_number, la.played, la.assists, gl.goals
           ORDER BY
             is_goalkeeper DESC,          -- porteros primero (ahora sí: dato real)
             tp.jersey_number NULLS LAST,

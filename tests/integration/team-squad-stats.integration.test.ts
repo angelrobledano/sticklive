@@ -48,4 +48,28 @@ describe('GET /teams/:id — plantilla con PJ y asistencias', () => {
     expect(g).toMatchObject({ played: 2, goals: 3, assists: 3, blueCards: 1, redCards: 0, penalties: 1, directFouls: 1 });
     expect(s).toMatchObject({ played: 1, goals: 0, assists: 0 });
   });
+
+  // 05/11/2026: la FAP da los goles en el acta (match_lineups.goals) y los
+  // eventos llegan sin jugador. La plantilla debe contarlos como la tabla de
+  // goleadores, sin sumar dos veces el mismo gol si también hay evento.
+  it('goles del acta cuando no hay eventos con jugador, sin doble conteo', async () => {
+    const sportId = await crearDeporte();
+    const season = await crearTemporada(await crearCompeticion(sportId));
+    await db.query(`UPDATE seasons SET start_date = '2026-09-01', is_current = TRUE WHERE id = $1`, [season]);
+    const [me, rival] = [await crearEquipo(sportId, 'ME'), await crearEquipo(sportId, 'RIVAL')];
+    await db.query(`INSERT INTO season_teams (season_id, team_id) VALUES ($1,$2),($1,$3)`, [season, me, rival]);
+    const pid = (await db.query<{ id: string }>(
+      `INSERT INTO players (sport_id, first_name, last_name, slug) VALUES ($1,'L','FONTAN','fontan') RETURNING id`, [sportId])).rows[0]!.id;
+    await db.query(`INSERT INTO team_players (season_id, team_id, player_id) VALUES ($1,$2,$3)`, [season, me, pid]);
+    const partido = async (ref: string) => (await db.query<{ id: string; scheduled_at: Date }>(
+      `INSERT INTO matches (season_id, home_team_id, away_team_id, home_score, away_score, status, scheduled_at, source_ref)
+       VALUES ($1,$2,$3,9,2,'finished','2026-10-01T18:00:00Z',$4) RETURNING id, scheduled_at`, [season, me, rival, ref])).rows[0]!;
+    const [m1, m2] = [await partido('x1'), await partido('x2')];
+    await db.query(`INSERT INTO match_lineups (match_id, is_home, player_name, player_id, goals) VALUES ($1,TRUE,'F',$3,7),($2,TRUE,'F',$3,1)`, [m1.id, m2.id, pid]);
+    // m2: el mismo gol también como evento con jugador.
+    await db.query(`INSERT INTO match_events (match_id, match_date, team_id, player_id, event_type, source_ref) VALUES ($1,$2::date,$3,$4,'goal','e1')`,
+      [m2.id, m2.scheduled_at, me, pid]);
+    const body = await (await teamDetailRouter.request(`/${me}`)).json() as { squad: Array<Record<string, unknown>> };
+    expect(body.squad.find((p) => p['playerId'] === pid)).toMatchObject({ played: 2, goals: 8 });
+  });
 });

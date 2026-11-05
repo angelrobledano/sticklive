@@ -17,7 +17,7 @@ import { crearDeporte, crearCompeticion, crearTemporada, crearPartido } from './
 interface PlayerResponse {
   seasonTotals: { pj: number; goals: number; assists: number };
   statsByCompetition: Array<{ competitionId: string; pj: number; goals: number }>;
-  career: { seasons: Array<{ seasonId: string; totals: { pj: number } }> };
+  career: { seasons: Array<{ seasonId: string; totals: { pj: number; goals: number } }> };
 }
 
 async function get(path: string) {
@@ -98,5 +98,33 @@ describe('ficha de jugador con alineación y sin eventos', () => {
     // Antes la carrera contaba solo partidos con eventos: 0 aquí frente a 1.
     expect(body!.career.seasons[0]!.totals.pj).toBe(body!.seasonTotals.pj);
     expect(body!.career.seasons[0]!.totals.pj).toBe(1);
+  });
+
+  /**
+   * 05/11/2026 (Lucas Fontán, Andalucía Infantil): la FAP da los goles en la
+   * alineación del acta y los eventos de gol llegan sin jugador. Los goleadores
+   * de la competición (match_lineups) le daban 9 y su ficha (match_events) 0.
+   */
+  it('goles del acta sin eventos con jugador: la ficha los cuenta', async () => {
+    const { playerId, matchId } = await jugadorQueJugoSinEventos();
+    await db.query(`UPDATE match_lineups SET goals = 7 WHERE match_id = $1 AND player_id = $2`, [matchId, playerId]);
+    const { body } = await get(`/${playerId}`);
+    expect(body!.statsByCompetition[0]).toMatchObject({ pj: 1, goals: 7 });
+    expect(body!.seasonTotals.goals).toBe(7);
+    expect(body!.career.seasons[0]!.totals.goals).toBe(7);
+  });
+
+  it('acta y evento del mismo gol no se suman dos veces', async () => {
+    const { playerId, matchId, homeTeamId } = await jugadorQueJugoSinEventos();
+    await db.query(`UPDATE match_lineups SET goals = 1 WHERE match_id = $1 AND player_id = $2`, [matchId, playerId]);
+    await db.query(
+      `INSERT INTO match_events (match_id, team_id, player_id, event_type, minute, period, match_date)
+       VALUES ($1, $2, $3, 'goal', 5, 1,
+               (SELECT COALESCE(scheduled_at::date, finished_at::date, DATE '1900-01-01') FROM matches WHERE id = $1))`,
+      [matchId, homeTeamId, playerId]
+    );
+    const { body } = await get(`/${playerId}`);
+    expect(body!.statsByCompetition[0]!.goals).toBe(1);
+    expect(body!.career.seasons[0]!.totals.goals).toBe(1);
   });
 });
