@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type {
@@ -14,6 +15,10 @@ import { clubName } from '@sports/core/names';
 
 interface Copy {
   title: string;
+  titlePost: string;
+  pointOne: string;
+  shortHome: string;
+  shortAway: string;
   position: string;
   points: string;
   form: string;
@@ -36,6 +41,10 @@ interface Copy {
 const COPY: Record<string, Copy> = {
   es: {
     title: 'Previa del partido',
+    titlePost: 'Así llegaban',
+    pointOne: 'punto',
+    shortHome: 'casa',
+    shortAway: 'fuera',
     position: 'Posición',
     points: 'Puntos',
     form: 'Forma',
@@ -72,6 +81,10 @@ const COPY: Record<string, Copy> = {
   },
   ca: {
     title: 'Prèvia del partit',
+    titlePost: 'Com arribaven',
+    pointOne: 'punt',
+    shortHome: 'casa',
+    shortAway: 'fora',
     position: 'Posició',
     points: 'Punts',
     form: 'Forma',
@@ -108,6 +121,10 @@ const COPY: Record<string, Copy> = {
   },
   en: {
     title: 'Match preview',
+    titlePost: 'How they came in',
+    pointOne: 'point',
+    shortHome: 'home',
+    shortAway: 'away',
     position: 'Position',
     points: 'Points',
     form: 'Form',
@@ -144,6 +161,10 @@ const COPY: Record<string, Copy> = {
   },
   fr: {
     title: 'Avant-match',
+    titlePost: 'Avant le match',
+    pointOne: 'point',
+    shortHome: 'dom.',
+    shortAway: 'ext.',
     position: 'Position',
     points: 'Points',
     form: 'Forme',
@@ -180,6 +201,10 @@ const COPY: Record<string, Copy> = {
   },
   pt: {
     title: 'Antevisão do jogo',
+    titlePost: 'Como chegavam',
+    pointOne: 'ponto',
+    shortHome: 'casa',
+    shortAway: 'fora',
     position: 'Posição',
     points: 'Pontos',
     form: 'Forma',
@@ -216,6 +241,10 @@ const COPY: Record<string, Copy> = {
   },
   it: {
     title: 'Presentazione della partita',
+    titlePost: 'Come arrivavano',
+    pointOne: 'punto',
+    shortHome: 'casa',
+    shortAway: 'fuori',
     position: 'Posizione',
     points: 'Punti',
     form: 'Forma',
@@ -267,6 +296,8 @@ function DuelSide({
   label: string;
   copy: Copy;
 }) {
+  // Sin clasificación (copas), la forma sale de los últimos resultados, como en la web.
+  const form = team.form.length > 0 ? team.form : team.recent.map((r) => r.result).reverse();
   return (
     <View className="flex-1 items-center">
       <Avatar
@@ -290,15 +321,15 @@ function DuelSide({
         ) : null}
         {team.points != null ? (
           <Text className="font-mono text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
-            {team.points} {copy.points.toLowerCase()}
+            {team.points} {team.points === 1 ? copy.pointOne : copy.points.toLowerCase()}
           </Text>
         ) : null}
       </View>
 
       {/* Forma reciente */}
-      {team.form.length > 0 ? (
-        <View className="mt-2 flex-row gap-1">
-          {team.form.map((res, i) => (
+      {form.length > 0 ? (
+        <View className="mt-2 flex-row gap-1" accessibilityLabel={copy.form}>
+          {form.map((res, i) => (
             <View
               key={i}
               className={`h-4 w-4 items-center justify-center rounded-sm ${
@@ -395,57 +426,116 @@ function CrossMetricRow({
   );
 }
 
+const RESULT_TILE: Record<string, string> = {
+  W: 'bg-emerald-600',
+  D: 'bg-slate-400 dark:bg-slate-500',
+  L: 'bg-rink-passion',
+};
+
+/** Últimos 5 en fichas (marcador sobre el color del resultado) y sus observaciones. */
+function RecentTiles({ team, copy }: { team: TeamSnapshot; copy: Copy }) {
+  const router = useRouter();
+  if (team.recent.length === 0 && team.observations.length === 0) return null;
+  return (
+    <View>
+      <View className="mb-1.5 flex-row items-center gap-2">
+        <Avatar uri={teamLogoUri(team.teamId, 32)} name={team.teamName} size={16} />
+        <Text numberOfLines={1} className="flex-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+          {clubName(team.teamName)}
+        </Text>
+      </View>
+      {team.recent.length > 0 ? (
+        <View className="flex-row gap-1.5">
+          {[...team.recent].reverse().map((r) => (
+            <Pressable
+              key={r.id}
+              onPress={() => router.push(`/match/${r.id}`)}
+              accessibilityRole="button"
+              accessibilityLabel={`${r.isHome ? copy.home : copy.away} · ${clubName(r.opponentName)} ${r.goalsFor}-${r.goalsAgainst}`}
+              className="flex-1 items-center gap-1 rounded-lg bg-slate-50 px-1 py-1.5 active:opacity-70 dark:bg-slate-800/60"
+            >
+              <Avatar uri={teamLogoUri(r.opponentId, 32)} fallbackUri={r.opponentLogoUrl} name={r.opponentName} size={18} />
+              <View className={`w-full rounded-md py-0.5 ${RESULT_TILE[r.result] ?? RESULT_TILE.D}`}>
+                <Text className="text-center font-mono text-[11px] font-bold tabular-nums text-white">
+                  {r.goalsFor}-{r.goalsAgainst}
+                </Text>
+              </View>
+              <Text className="text-[10px] uppercase tracking-wide text-slate-400">
+                {r.isHome ? copy.shortHome : copy.shortAway}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+      {team.observations.length > 0 ? (
+        <View className="mt-2 flex-row flex-wrap gap-1.5">
+          {team.observations.map((obs) => (
+            <ObservationChip key={obs.kind} obs={obs} copy={copy} />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * `variant="post"` (partido empezado o terminado): la misma información,
+ * plegada y titulada «Así llegaban», como en la web.
+ */
 export function MatchPreview({
   data,
   locale = 'es',
+  variant = 'pre',
 }: {
   data: MatchPreviewData;
   locale?: string;
+  variant?: 'pre' | 'post';
 }) {
   const router = useRouter();
   const copy = COPY[locale] ?? COPY['es']!;
+  const [open, setOpen] = useState(false);
 
   const balance = useMemo(
     () => headToHeadBalance(data.headToHead, data.home.teamId),
     [data.headToHead, data.home.teamId],
   );
+  const dateFmt = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+      return null;
+    }
+  }, [locale]);
 
   const totalH2H = balance.homeWins + balance.draws + balance.awayWins;
+  const hasStanding = data.home.position !== null || data.away.position !== null
+    || data.home.form.length > 0 || data.away.form.length > 0
+    || data.home.recent.length > 0 || data.away.recent.length > 0;
+  if (!hasStanding && data.headToHead.length === 0 && data.cross.length === 0) return null;
+  const hasRecent = data.home.recent.length > 0 || data.away.recent.length > 0
+    || data.home.observations.length > 0 || data.away.observations.length > 0;
 
-  const hasRecent = data.home.observations.length > 0 || data.away.observations.length > 0;
-
-  return (
-    <View className="mx-3 my-3 overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-5">
-      {/* Título de sección */}
-      <View className="flex-row items-center justify-between border-b border-slate-100 pb-2 dark:border-slate-800">
-        <Text className="text-[10px] font-bold uppercase tracking-widest text-rink-passion dark:text-rose-400">
-          {copy.title}
-        </Text>
-      </View>
-
+  const body = (
+    <>
       {/* Cabecera de duelo */}
-      <View className="flex-row items-start justify-between">
-        <DuelSide team={data.home} label={copy.home} copy={copy} />
-        <View className="items-center justify-center pt-3">
-          <Text className="font-mono text-sm font-black text-slate-300 dark:text-slate-600">VS</Text>
+      {hasStanding ? (
+        <View className="flex-row items-start justify-between">
+          <DuelSide team={data.home} label={copy.home} copy={copy} />
+          <View className="items-center justify-center pt-3">
+            <Text className="font-mono text-sm font-black text-slate-300 dark:text-slate-600">VS</Text>
+          </View>
+          <DuelSide team={data.away} label={copy.away} copy={copy} />
         </View>
-        <DuelSide team={data.away} label={copy.away} copy={copy} />
-      </View>
+      ) : null}
 
-      {/* Cómo llega cada equipo */}
+      {/* Cómo llega cada equipo: últimos 5 y observaciones */}
       {hasRecent ? (
-        <View className="space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <View className="gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
           <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             {copy.observations}
           </Text>
-          <View className="space-y-2">
-            {data.home.observations.map((obs, i) => (
-              <ObservationChip key={`home-${i}`} obs={obs} copy={copy} />
-            ))}
-            {data.away.observations.map((obs, i) => (
-              <ObservationChip key={`away-${i}`} obs={obs} copy={copy} />
-            ))}
-          </View>
+          <RecentTiles team={data.home} copy={copy} />
+          <RecentTiles team={data.away} copy={copy} />
         </View>
       ) : null}
 
@@ -467,68 +557,102 @@ export function MatchPreview({
       ) : null}
 
       {/* Enfrentamientos previos (H2H) */}
-      {data.headToHead.length > 0 ? (
-        <View className="space-y-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
-          <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            {copy.h2h}
-          </Text>
+      <View className="space-y-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          {copy.h2h}
+        </Text>
+        {data.headToHead.length === 0 ? (
+          <Text className="text-xs text-slate-500 dark:text-slate-400">{copy.emptyH2h}</Text>
+        ) : null}
 
-          {/* Balance general */}
-          {totalH2H > 0 ? (
-            <View className="items-center py-1">
-              <View className="flex-row items-center justify-around w-full mb-1">
-                <Text className="font-mono text-base font-bold text-rink-passion dark:text-rose-400">
-                  {balance.homeWins} {copy.wins.toLowerCase()}
-                </Text>
-                <Text className="font-mono text-sm font-semibold text-slate-400">
-                  {balance.draws} {copy.draws.toLowerCase()}
-                </Text>
-                <Text className="font-mono text-base font-bold text-slate-700 dark:text-slate-300">
-                  {balance.awayWins} {copy.wins.toLowerCase()}
-                </Text>
-              </View>
-              <Text className="font-mono text-[11px] tabular-nums text-slate-400">
-                {balance.homeGoals} - {balance.awayGoals} {copy.goals}
+        {totalH2H > 0 ? (
+          <View className="items-center py-1">
+            <View className="flex-row items-center justify-around w-full mb-1">
+              <Text className="font-mono text-base font-bold text-rink-passion dark:text-rose-400">
+                {balance.homeWins} {copy.wins.toLowerCase()}
+              </Text>
+              <Text className="font-mono text-sm font-semibold text-slate-400">
+                {balance.draws} {copy.draws.toLowerCase()}
+              </Text>
+              <Text className="font-mono text-base font-bold text-slate-700 dark:text-slate-300">
+                {balance.awayWins} {copy.wins.toLowerCase()}
               </Text>
             </View>
-          ) : null}
+            <Text className="font-mono text-[11px] tabular-nums text-slate-400">
+              {balance.homeGoals} - {balance.awayGoals} {copy.goals}
+            </Text>
+          </View>
+        ) : null}
 
-          {/* Partidos individuales H2H */}
-          <View className="divide-y divide-slate-100 dark:divide-slate-800/60">
-            {data.headToHead.map((m) => (
-              <Pressable
-                key={m.id}
-                onPress={() => router.push(`/match/${m.id}`)}
-                className="flex-row items-center justify-between py-2 active:opacity-70"
-              >
-                <View className="flex-1 flex-row items-center justify-end gap-1.5 pr-2">
-                  <Text numberOfLines={1} className="text-xs text-slate-700 dark:text-slate-300">
-                    {clubName(m.homeName)}
-                  </Text>
-                  {m.homeTeamId ? (
-                    <Avatar uri={teamLogoUri(m.homeTeamId, 32)} name={m.homeName} size={16} />
-                  ) : null}
-                </View>
+        <View className="divide-y divide-slate-100 dark:divide-slate-800/60">
+          {data.headToHead.map((m) => (
+            <Pressable
+              key={m.id}
+              onPress={() => router.push(`/match/${m.id}`)}
+              className="flex-row items-center justify-between py-2 active:opacity-70"
+            >
+              <View className="flex-1 flex-row items-center justify-end gap-1.5 pr-2">
+                <Text numberOfLines={1} className="text-xs text-slate-700 dark:text-slate-300">
+                  {clubName(m.homeName)}
+                </Text>
+                {m.homeTeamId ? (
+                  <Avatar uri={teamLogoUri(m.homeTeamId, 32)} name={m.homeName} size={16} />
+                ) : null}
+              </View>
 
+              <View className="items-center">
                 <View className="rounded-md bg-slate-100 px-2 py-0.5 dark:bg-slate-800">
                   <Text className="font-mono text-xs font-bold tabular-nums text-slate-900 dark:text-slate-50">
                     {m.homeScore ?? '-'} – {m.awayScore ?? '-'}
                   </Text>
                 </View>
+                {m.date && dateFmt ? (
+                  <Text className="mt-0.5 text-[10px] text-slate-400">{dateFmt.format(new Date(m.date))}</Text>
+                ) : null}
+              </View>
 
-                <View className="flex-1 flex-row items-center gap-1.5 pl-2">
-                  {m.awayTeamId ? (
-                    <Avatar uri={teamLogoUri(m.awayTeamId, 32)} name={m.awayName} size={16} />
-                  ) : null}
-                  <Text numberOfLines={1} className="text-xs text-slate-700 dark:text-slate-300">
-                    {clubName(m.awayName)}
-                  </Text>
-                </View>
-              </Pressable>
-            ))}
-          </View>
+              <View className="flex-1 flex-row items-center gap-1.5 pl-2">
+                {m.awayTeamId ? (
+                  <Avatar uri={teamLogoUri(m.awayTeamId, 32)} name={m.awayName} size={16} />
+                ) : null}
+                <Text numberOfLines={1} className="text-xs text-slate-700 dark:text-slate-300">
+                  {clubName(m.awayName)}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
         </View>
-      ) : null}
+      </View>
+    </>
+  );
+
+  if (variant === 'post') {
+    return (
+      <View className="mx-3 my-3 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
+        <Pressable
+          onPress={() => setOpen((v) => !v)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: open }}
+          className="min-h-[44px] flex-row items-center justify-between px-4 active:opacity-70"
+        >
+          <Text className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300">
+            {copy.titlePost}
+          </Text>
+          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#64748b" />
+        </Pressable>
+        {open ? <View className="space-y-5 px-4 pb-4">{body}</View> : null}
+      </View>
+    );
+  }
+
+  return (
+    <View className="mx-3 my-3 overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-5">
+      <View className="flex-row items-center justify-between border-b border-slate-100 pb-2 dark:border-slate-800">
+        <Text className="text-[10px] font-bold uppercase tracking-widest text-rink-passion dark:text-rose-400">
+          {copy.title}
+        </Text>
+      </View>
+      {body}
     </View>
   );
 }

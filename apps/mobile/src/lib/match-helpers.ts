@@ -1,4 +1,5 @@
 import type { MatchDetailRaw } from '@sports/core/api';
+import { isTimeTbd, timeTbdLabel } from '@sports/core/match-time';
 
 const APP_TZ = 'Europe/Madrid';
 const FOUL_THRESHOLDS = [10, 15, 20, 25, 30];
@@ -57,6 +58,7 @@ export function fmtEventClock(ev: { clock?: string | null; minute: number | null
 
 export function formatTime(iso: string | null, tz?: string | null, locale = 'es'): string {
   if (!iso) return '--:--';
+  if (isTimeTbd(iso)) return timeTbdLabel(locale);
   return new Date(iso).toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',

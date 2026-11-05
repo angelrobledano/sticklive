@@ -421,7 +421,8 @@
     "referee_short": "Ref.",
     "badge_starter": "5i",
     "badge_captain": "C",
-    "badge_goalkeeper": "GK"
+    "badge_goalkeeper": "GK",
+    "previous_meeting": "Previous meeting"
   },
   "playoffs": {
     "round_of_16": "Round of 16",
@@ -926,5 +927,21 @@
     "copy": "Copy code",
     "copied": "Copied",
     "preview": "Preview"
+  },
+  "match_chronicle": {
+    "title": "Match facts",
+    "comeback": "{team} came from behind at half-time to win.",
+    "turnaround": "{team} came from behind to lead the match.",
+    "late_goal": "{team} scored in the last five minutes ({minute}').",
+    "clean_sheet": "{team} kept a clean sheet.",
+    "hat_trick": "Hat-trick: {player}.",
+    "shootout": "{team} won the penalty shootout {home}-{away} after {rounds} rounds; only {scored} of {attempts} attempts were scored.",
+    "opening_goal": "First goal in the {minute}th minute: {player} ({teamName}).",
+    "period_goals": "{homeTeam} scored {homeFirst} in the first half and {homeSecond} in the second half · {awayTeam} scored {awayFirst} in the first half and {awaySecond} in the second half.",
+    "late_equalizer": "{team} equalised at {score} in the {minute}th minute ({player}).",
+    "direct_foul": "{player} ({teamName}) scored from a direct free hit in the {minute}th minute.",
+    "goal_flurry": "{team} scored {n} goals in {span} minutes ({from}th and {to}th).",
+    "fouls": "Fouls: {homeTeam} {home} · {awayTeam} {away}.",
+    "timeouts": "Timeouts: {homeTeam} {home} · {awayTeam} {away}."
   }
 }

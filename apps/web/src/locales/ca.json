@@ -439,7 +439,8 @@
     "referee_short": "Àrb.",
     "badge_starter": "5i",
     "badge_captain": "C",
-    "badge_goalkeeper": "P"
+    "badge_goalkeeper": "P",
+    "previous_meeting": "Últim enfrontament"
   },
   "playoffs": {
     "round_of_16": "Vuitens",
@@ -926,5 +927,21 @@
     "copy": "Copiar codi",
     "copied": "Copiat",
     "preview": "Veure com queda"
+  },
+  "match_chronicle": {
+    "title": "Crònica de dades",
+    "comeback": "{team}: perdia al descans i va guanyar al final.",
+    "turnaround": "{team} va remuntar un partit que anava perdent.",
+    "late_goal": "{team} va marcar en els darrers cinc minuts ({minute}').",
+    "clean_sheet": "{team} va deixar la porteria a zero.",
+    "hat_trick": "Hat-trick de {player}.",
+    "shootout": "{team} va guanyar la tanda de penals {home}-{away} després de {rounds} rondes, només {scored} de {attempts} llançaments van acabar en gol.",
+    "opening_goal": "Primer gol al {minute}': {player} ({teamName}).",
+    "period_goals": "{homeTeam} va marcar {homeFirst} a la primera part i {homeSecond} a la segona part · {awayTeam} va marcar {awayFirst} a la primera part i {awaySecond} a la segona part.",
+    "late_equalizer": "{team} va empatar a {score} al {minute}' ({player}).",
+    "direct_foul": "{player} ({teamName}) va marcar de falta directa al {minute}'.",
+    "goal_flurry": "{team} va marcar {n} gols en {span} minuts ({from}' i {to}').",
+    "fouls": "Faltes: {homeTeam} {home} · {awayTeam} {away}.",
+    "timeouts": "Temps morts: {homeTeam} {home} · {awayTeam} {away}."
   }
 }

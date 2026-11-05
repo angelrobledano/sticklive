@@ -58,6 +58,11 @@ describe('match-helpers', () => {
       expect(time).toMatch(/\d{2}:\d{2}/);
     });
 
+    it('formatTime dice «Por confirmar» si la fuente solo dio el día (medianoche local), como la web', () => {
+      expect(formatTime('2026-10-21T22:00:00Z', 'Europe/Madrid', 'es')).toBe('Por confirmar');
+      expect(formatTime('2026-10-21T22:00:00Z', null, 'en')).toBe('TBC');
+    });
+
     it('formatDate formats ISO string in timezone', () => {
       const iso = '2026-10-21T18:45:00Z';
       const date = formatDate(iso, 'Europe/Madrid', 'es');

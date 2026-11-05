@@ -22,3 +22,11 @@ export function resolveKey(dict: Record<string, unknown>, key: string): string {
   }
   return typeof node === 'string' ? node : key;
 }
+
+/** Sustituye `{var}` por su valor (paridad con `t(key, vars)` de la web). */
+export function interpolate(template: string, vars?: Record<string, string | number>): string {
+  if (!vars) return template;
+  return template.replace(/\{(\w+)\}/g, (whole, name: string) =>
+    Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : whole,
+  );
+}

@@ -346,7 +346,8 @@
     "referee_short": "Arb.",
     "badge_starter": "5i",
     "badge_captain": "C",
-    "badge_goalkeeper": "P"
+    "badge_goalkeeper": "P",
+    "previous_meeting": "Ultimo precedente"
   },
   "playoffs": {
     "round_of_16": "Ottavi",
@@ -926,5 +927,21 @@
     "copy": "Copia codice",
     "copied": "Copiato",
     "preview": "Anteprima"
+  },
+  "match_chronicle": {
+    "title": "Fatti della partita",
+    "comeback": "{team} ha rimontato dopo essere andato sotto all’intervallo.",
+    "turnaround": "{team} ha rimontato una partita che stava perdendo.",
+    "late_goal": "{team} ha segnato negli ultimi cinque minuti ({minute}').",
+    "clean_sheet": "{team} non ha subito gol.",
+    "hat_trick": "Tripletta di {player}.",
+    "shootout": "{team} ha vinto ai rigori {home}-{away} dopo {rounds} serie; solo {scored} tiri su {attempts} sono entrati.",
+    "opening_goal": "Primo gol al minuto {minute}: {player} ({teamName}).",
+    "period_goals": "{homeTeam} ha segnato {homeFirst} nel primo tempo e {homeSecond} nel secondo · {awayTeam} ha segnato {awayFirst} nel primo tempo e {awaySecond} nel secondo.",
+    "late_equalizer": "{team} ha pareggiato sul {score} al minuto {minute} ({player}).",
+    "direct_foul": "{player} ({teamName}) ha segnato su tiro diretto al minuto {minute}.",
+    "goal_flurry": "{team} ha segnato {n} gol in {span} minuti ({from}° e {to}°).",
+    "fouls": "Falli: {homeTeam} {home} · {awayTeam} {away}.",
+    "timeouts": "Time-out: {homeTeam} {home} · {awayTeam} {away}."
   }
 }

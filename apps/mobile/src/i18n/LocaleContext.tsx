@@ -1,11 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { dictionaries, LOCALES, resolveKey, type Locale } from './locales';
+import { dictionaries, interpolate, LOCALES, resolveKey, type Locale } from './locales';
 
 interface LocaleCtx {
   locale: Locale;
   setLocale: (l: Locale) => void;
   t: (key: string) => string;
+  /** `t` con variables: `tv('home.live_in_block', { n: 2 })` → «2 en directo». */
+  tv: (key: string, vars?: Record<string, string | number>) => string;
 }
 
 const Ctx = createContext<LocaleCtx | null>(null);
@@ -31,7 +33,12 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     [locale],
   );
 
-  const value = useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t]);
+  const tv = useCallback(
+    (key: string, vars?: Record<string, string | number>) => interpolate(resolveKey(dictionaries[locale], key), vars),
+    [locale],
+  );
+
+  const value = useMemo(() => ({ locale, setLocale, t, tv }), [locale, setLocale, t, tv]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

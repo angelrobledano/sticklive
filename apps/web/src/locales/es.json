@@ -439,7 +439,8 @@
     "referee_short": "Árb.",
     "badge_starter": "5i",
     "badge_captain": "C",
-    "badge_goalkeeper": "P"
+    "badge_goalkeeper": "P",
+    "previous_meeting": "Último enfrentamiento"
   },
   "playoffs": {
     "round_of_16": "Octavos",
@@ -926,5 +927,21 @@
     "copy": "Copiar código",
     "copied": "Copiado",
     "preview": "Ver cómo queda"
+  },
+  "match_chronicle": {
+    "title": "Crónica de datos",
+    "comeback": "{team}: perdía al descanso y ganó al final.",
+    "turnaround": "{team} remontó un partido que iba perdiendo.",
+    "late_goal": "{team} marcó en los últimos cinco minutos ({minute}').",
+    "clean_sheet": "{team} dejó la portería a cero.",
+    "hat_trick": "Hat-trick de {player}.",
+    "shootout": "{team} ganó la tanda de penaltis {home}-{away} tras {rounds} rondas; solo {scored} de {attempts} lanzamientos acabaron en gol.",
+    "opening_goal": "Primer gol en el {minute}': {player} ({teamName}).",
+    "period_goals": "{homeTeam} marcó {homeFirst} en la primera parte y {homeSecond} en la segunda parte · {awayTeam} marcó {awayFirst} en la primera parte y {awaySecond} en la segunda parte.",
+    "late_equalizer": "{team} empató a {score} en el {minute}' ({player}).",
+    "direct_foul": "{player} ({teamName}) marcó de falta directa en el {minute}'.",
+    "goal_flurry": "{team} marcó {n} goles en {span} minutos ({from}' y {to}').",
+    "fouls": "Faltas: {homeTeam} {home} · {awayTeam} {away}.",
+    "timeouts": "Tiempos muertos: {homeTeam} {home} · {awayTeam} {away}."
   }
 }

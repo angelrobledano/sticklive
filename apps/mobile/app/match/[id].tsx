@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Animated, Easing, RefreshControl, ScrollView, View } from 'react-native';
 import { Stack, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useMatchDetail, useSeasonOverview, useTeam } from '@/src/hooks/queries';
+import { useMatchDetail, useSeasonOverview, useTeam, useTeamRecent } from '@/src/hooks/queries';
 import { useMatchLive } from '@/src/hooks/useMatchLive';
 import { useInterstitialOnLeave } from '@/src/hooks/ads/useInterstitialOnLeave';
 import { ErrorState } from '@/src/components/shared/ErrorState';
@@ -16,10 +16,13 @@ import { TimelineTab } from '@/src/components/match/TimelineTab';
 import { LineupsTab } from '@/src/components/match/LineupsTab';
 import { StatsTab } from '@/src/components/match/StatsTab';
 import { MatchPreview } from '@/src/components/match/MatchPreview';
+import { MatchChronicle } from '@/src/components/match/MatchChronicle';
+import { PreviousMeeting } from '@/src/components/match/PreviousMeeting';
 import { capture } from '@/src/lib/analytics';
 import { isAdQuietTime } from '@/src/lib/time';
 import { visibleTabsFor, type Tab } from '@/src/lib/match-helpers';
-import { buildMatchPreview } from '@sports/core/content-summary';
+import { buildMatchPreview, buildPreviousMeeting } from '@sports/core/content-summary';
+import { buildMatchChronicle } from '@sports/core/match-chronicle';
 import { clubName } from '@sports/core/names';
 import { useLocale } from '@/src/i18n/LocaleContext';
 
@@ -63,6 +66,8 @@ export default function MatchScreen() {
   const seasonOverviewQuery = useSeasonOverview(rawMatch?.seasonId);
   const homeTeamQuery = useTeam(rawMatch?.homeTeam.id ?? '', rawMatch?.seasonId);
   const awayTeamQuery = useTeam(rawMatch?.awayTeam.id ?? '', rawMatch?.seasonId);
+  const homeRecentQuery = useTeamRecent(rawMatch?.homeTeam.id);
+  const awayRecentQuery = useTeamRecent(rawMatch?.awayTeam.id);
   const [shareImageModalOpen, setShareImageModalOpen] = useState(false);
 
   const preview = useMemo(() => {
@@ -82,6 +87,8 @@ export default function MatchScreen() {
         {
           homeStats: homeTeamQuery.data?.stats,
           awayStats: awayTeamQuery.data?.stats,
+          homeRecent: homeRecentQuery.data?.matches,
+          awayRecent: awayRecentQuery.data?.matches,
         },
       );
     } catch {
@@ -92,9 +99,46 @@ export default function MatchScreen() {
     seasonOverviewQuery.data,
     homeTeamQuery.data,
     awayTeamQuery.data,
+    homeRecentQuery.data,
+    awayRecentQuery.data,
     homeLabel,
     awayLabel,
   ]);
+
+  // Último enfrentamiento (solo terminados), del mismo overview que la previa.
+  const previousMeeting = useMemo(() => {
+    if (!rawMatch || rawMatch.status !== 'finished' || !seasonOverviewQuery.data) return null;
+    if (!rawMatch.homeTeam.id || !rawMatch.awayTeam.id) return null;
+    try {
+      return buildPreviousMeeting(seasonOverviewQuery.data, {
+        matchId: rawMatch.id,
+        homeTeamId: rawMatch.homeTeam.id,
+        awayTeamId: rawMatch.awayTeam.id,
+        date: rawMatch.finishedAt ?? rawMatch.scheduledAt,
+      });
+    } catch {
+      return null;
+    }
+  }, [rawMatch, seasonOverviewQuery.data]);
+
+  // Crónica de datos del acta (remontada, hat-trick…), paridad con la web.
+  const chronicle = useMemo(() => {
+    if (!current || !rawMatch) return [];
+    return buildMatchChronicle({
+      status: rawMatch.status,
+      score: rawMatch.score,
+      homeTeamId: rawMatch.homeTeam.id,
+      awayTeamId: rawMatch.awayTeam.id,
+      winType: rawMatch.winType,
+      events: current.events,
+      stats: current.stats,
+      penaltyShootout: rawMatch.penaltyShootout,
+    });
+  }, [current, rawMatch]);
+  const chronicleTeams = useMemo<Record<string, string>>(
+    () => (rawMatch ? { [rawMatch.homeTeam.id]: homeLabel, [rawMatch.awayTeam.id]: awayLabel } : {}),
+    [rawMatch, homeLabel, awayLabel],
+  );
 
   const handleShare = () => {
     if (!rawMatch) return;
@@ -195,8 +239,10 @@ export default function MatchScreen() {
           {activeTab === 'Estadísticas' && <StatsTab data={current} />}
         </AnimatedTabContent>
 
-        {/* En directo/finalizado la previa y balance H2H van al final */}
-        {!isScheduled && preview ? <MatchPreview data={preview} locale={locale} /> : null}
+        {/* Crónica y último enfrentamiento (terminados); la previa, plegada como «Así llegaban» */}
+        <MatchChronicle facts={chronicle} teams={chronicleTeams} />
+        <PreviousMeeting match={previousMeeting} />
+        {!isScheduled && preview ? <MatchPreview data={preview} locale={locale} variant="post" /> : null}
 
         {/* Banner publicitario si está fuera de quiet time */}
         {!isAdQuietTime(m.status, m.scheduledAt) ? (

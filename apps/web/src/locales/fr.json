@@ -346,7 +346,8 @@
     "referee_short": "Arb.",
     "badge_starter": "5i",
     "badge_captain": "C",
-    "badge_goalkeeper": "G"
+    "badge_goalkeeper": "G",
+    "previous_meeting": "Dernière confrontation"
   },
   "playoffs": {
     "round_of_16": "Huitièmes",
@@ -926,5 +927,21 @@
     "copy": "Copier le code",
     "copied": "Copié",
     "preview": "Aperçu"
+  },
+  "match_chronicle": {
+    "title": "Faits du match",
+    "comeback": "{team} a renversé le match après avoir été mené à la mi-temps.",
+    "turnaround": "{team} a renversé un match qu’il perdait.",
+    "late_goal": "{team} a marqué dans les cinq dernières minutes ({minute}').",
+    "clean_sheet": "{team} n’a encaissé aucun but.",
+    "hat_trick": "Triplé de {player}.",
+    "shootout": "{team} a gagné la séance de tirs au but {home}-{away} après {rounds} tours ; seuls {scored} tirs sur {attempts} ont été marqués.",
+    "opening_goal": "Premier but à la {minute}e minute : {player} ({teamName}).",
+    "period_goals": "{homeTeam} a marqué {homeFirst} en première période et {homeSecond} en seconde · {awayTeam} a marqué {awayFirst} en première période et {awaySecond} en seconde.",
+    "late_equalizer": "{team} a égalisé à {score} à la {minute}e minute ({player}).",
+    "direct_foul": "{player} ({teamName}) a marqué sur coup franc direct à la {minute}e minute.",
+    "goal_flurry": "{team} a marqué {n} buts en {span} minutes ({from}e et {to}e).",
+    "fouls": "Fautes : {homeTeam} {home} · {awayTeam} {away}.",
+    "timeouts": "Temps morts : {homeTeam} {home} · {awayTeam} {away}."
   }
 }

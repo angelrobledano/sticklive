@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LOCALES, dictionaries, resolveKey } from './locales';
+import { LOCALES, dictionaries, interpolate, resolveKey } from './locales';
 
 describe('locales', () => {
   it('carga los 6 idiomas de la web', () => {
@@ -20,5 +20,11 @@ describe('locales', () => {
   it('resuelve claves anidadas y hace fallback a la clave si no existe', () => {
     expect(resolveKey(dictionaries.es, 'match_states.final')).toBe('Final');
     expect(resolveKey(dictionaries.es, 'no.existe')).toBe('no.existe');
+  });
+
+  it('interpola variables {n} en todas sus apariciones y deja las desconocidas', () => {
+    expect(interpolate('{n} en directo', { n: 3 })).toBe('3 en directo');
+    expect(interpolate('{a}-{a} {b}', { a: 1 })).toBe('1-1 {b}');
+    expect(interpolate('sin variables')).toBe('sin variables');
   });
 });

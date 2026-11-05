@@ -20,6 +20,7 @@ import type {
   StandingsResponse,
   StandingsRow,
   TeamDetail,
+  TeamRecentResponse,
 } from '@sports/core/api';
 import { addDaysToKey } from '@sports/core/day-view';
 
@@ -46,6 +47,7 @@ export const qk = {
   favorites: ['favorites'] as const,
   team: (id: string, seasonId?: string) => seasonId ? (['teams', id, seasonId] as const) : (['teams', id] as const),
   player: (id: string) => ['players', id] as const,
+  teamRecent: (id: string) => ['teams', id, 'recent'] as const,
   premium: ['premium'] as const,
   adsConfig: ['adsConfig'] as const,
 };
@@ -322,6 +324,16 @@ export function useTeam(id: string, seasonId?: string) {
     queryFn: () => apiFetch<TeamDetail>(`/teams/${id}${query}`),
     enabled: Boolean(id),
     staleTime: 5 * 60_000,
+  });
+}
+
+/** Últimos resultados de un equipo (previa del partido, mismo endpoint que la web). */
+export function useTeamRecent(id: string | undefined, limit = 5) {
+  return useQuery({
+    queryKey: qk.teamRecent(id ?? ''),
+    queryFn: () => apiFetch<TeamRecentResponse>(`/teams/${id}/recent?limit=${limit}`),
+    enabled: Boolean(id),
+    staleTime: 2 * 60_000,
   });
 }
 
