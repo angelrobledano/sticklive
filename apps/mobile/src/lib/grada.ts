@@ -1,4 +1,5 @@
 import type { MatchSummary } from './api/types';
+import { madridDateKey } from '@sports/core/match-time';
 
 export interface GradaInput {
   /** Ids de equipos seguidos. */
@@ -19,21 +20,6 @@ export interface GradaSelection {
 }
 
 const DEFAULT_LIMIT = 4;
-
-/** Convierte una fecha ISO a la clave YYYY-MM-DD en Europe/Madrid. */
-export function madridDateKey(iso: string | null | undefined): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return null;
-  // Intl format en Europe/Madrid
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Madrid',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  return formatter.format(d);
-}
 
 function timeOf(m: MatchSummary): number {
   const iso = m.scheduledAt;

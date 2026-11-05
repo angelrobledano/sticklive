@@ -6,7 +6,8 @@ import { Avatar, teamLogoUri } from '@/src/components/shared/Avatar';
 import { useLocale } from '@/src/i18n/LocaleContext';
 import { clubName } from '@/src/lib/names';
 import { formatDayShort, formatKickoff } from '@/src/lib/time';
-import { madridDateKey, selectGradaMatches } from '@/src/lib/grada';
+import { madridDateKey } from '@sports/core/match-time';
+import { selectGradaMatches } from '@/src/lib/grada';
 
 interface Props {
   matches: MatchSummary[];
@@ -18,7 +19,7 @@ export function MiGrada({ matches, teamIds, leagueIds }: Props) {
   const router = useRouter();
   const { t, locale } = useLocale();
 
-  const todayKey = useMemo(() => madridDateKey(new Date().toISOString()) ?? '', []);
+  const todayKey = useMemo(() => madridDateKey(new Date().toISOString()), []);
 
   const { upcoming, results } = useMemo(
     () => selectGradaMatches(matches, { teamIds, leagueIds, todayKey, limit: 4 }),

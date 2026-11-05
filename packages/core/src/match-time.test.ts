@@ -5,8 +5,11 @@ import {
   addDaysToKey,
   dayDiff,
   classifyMatch,
+  isTimeTbd,
+  timeTbdLabel,
 } from './match-time';
 
+// Origen web (apps/web/src/lib/match-time.test.ts)
 /**
  * Cobertura de la lógica horaria que provocó el bug de producción (la home
  * agrupaba en Madrid pero anclaba "hoy" en la hora del runtime). Estos casos
@@ -81,5 +84,48 @@ describe('classifyMatch', () => {
 
   it('aplazado/cancelado no son "jugados" → futuro', () => {
     expect(classifyMatch({ status: 'postponed', scheduledAt: '2026-06-16T18:00:00Z', startedAt: null }, now)).toBe('future');
+  });
+});
+
+// Origen web (apps/web/src/lib/match-time-tbd.test.ts). El caso de formatTime
+// (componente MatchCard) sigue en apps/web, aquí solo la parte pura.
+describe('hora por confirmar', () => {
+  it('medianoche en Madrid o en Lisboa = sin hora, una hora real no', () => {
+    expect(isTimeTbd('2026-11-06T23:00:00Z')).toBe(true); // 00:00 Madrid (invierno)
+    expect(isTimeTbd('2026-11-07T00:00:00Z')).toBe(true); // 00:00 Lisboa
+    expect(isTimeTbd('2026-11-07T17:00:00Z')).toBe(false);
+    expect(isTimeTbd(null)).toBe(false);
+  });
+
+  it('con la zona de la sede solo cuenta su medianoche', () => {
+    expect(isTimeTbd('2026-11-07T00:00:00Z', 'Europe/Madrid')).toBe(false);
+  });
+
+  it('timeTbdLabel localiza el texto y cae a español', () => {
+    expect(timeTbdLabel('pt')).toBe('A confirmar');
+    expect(timeTbdLabel('en-GB')).toBe('TBC');
+    expect(timeTbdLabel()).toBe('Por confirmar');
+    expect(timeTbdLabel('xx')).toBe('Por confirmar');
+  });
+});
+
+// Origen app (apps/mobile/src/lib/time.test.ts, casos de formatDayKey). La app
+// usaba formatDayKey con la misma regla que madridDateKey.
+describe('madridDateKey (casos de formatDayKey de la app)', () => {
+  it('pinta YYYY-MM-DD en Europe/Madrid', () => {
+    expect(madridDateKey('2026-10-03T17:00:00.000Z')).toBe('2026-10-03');
+  });
+
+  it('cruza el día según Madrid (22:30 UTC de octubre = 00:30 del día siguiente)', () => {
+    expect(madridDateKey('2026-10-03T22:30:00.000Z')).toBe('2026-10-04');
+  });
+
+  it('sin fecha o inválida → ""', () => {
+    expect(madridDateKey(null)).toBe('');
+    expect(madridDateKey('no-fecha')).toBe('');
+  });
+
+  it('con TZ de runtime UTC sigue anclando en Madrid (medianoche local de verano)', () => {
+    expect(madridDateKey('2026-06-30T22:00:00.000Z')).toBe('2026-07-01');
   });
 });

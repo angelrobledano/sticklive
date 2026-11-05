@@ -1,13 +1,12 @@
 import { matchDisplayState } from '@sports/shared-types';
-
-const MADRID = 'Europe/Madrid';
+import { APP_TZ } from '@sports/core/match-time';
 
 export function formatKickoff(iso: string | null): string {
   if (!iso) return '--:--';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '--:--'; // paridad con la web (match-time.ts)
   return new Intl.DateTimeFormat('es-ES', {
-    hour: '2-digit', minute: '2-digit', timeZone: MADRID, hour12: false,
+    hour: '2-digit', minute: '2-digit', timeZone: APP_TZ, hour12: false,
   }).format(d);
 }
 
@@ -26,7 +25,7 @@ export function formatDayLabel(iso: string | null, locale: string = 'es'): strin
   if (Number.isNaN(d.getTime())) return ''; // paridad con la web (match-time.ts)
   const tag = LOCALE_TAGS[locale] ?? locale;
   return new Intl.DateTimeFormat(tag, {
-    weekday: 'long', day: 'numeric', month: 'short', timeZone: MADRID,
+    weekday: 'long', day: 'numeric', month: 'short', timeZone: APP_TZ,
   }).format(d);
 }
 
@@ -36,7 +35,7 @@ export function formatDayShort(iso: string | null, locale: string = 'es'): strin
   if (Number.isNaN(d.getTime())) return '';
   const tag = LOCALE_TAGS[locale] ?? locale;
   return new Intl.DateTimeFormat(tag, {
-    weekday: 'short', day: 'numeric', month: 'short', timeZone: MADRID,
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: APP_TZ,
   }).format(d);
 }
 
@@ -45,14 +44,7 @@ export function formatDayShort(iso: string | null, locale: string = 'es'): strin
  * la home la usa como key de sección (la etiqueta humanizada va aparte y puede
  * repetirse/localizarse; la clave es ISO y no colisiona con '__live__').
  */
-export function formatDayKey(iso: string | null): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return new Intl.DateTimeFormat('en-CA', {
-    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: MADRID,
-  }).format(d);
-}
+export { madridDateKey as formatDayKey } from '@sports/core/match-time';
 
 /**
  * ¿El partido está EN DIRECTO? Solo si la fuente lo da en juego (estado

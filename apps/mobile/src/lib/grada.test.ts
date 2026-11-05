@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { isUpcomingMatch, madridDateKey, selectGradaMatches } from './grada';
+import { madridDateKey } from '@sports/core/match-time';
+import { isUpcomingMatch, selectGradaMatches } from './grada';
 import type { MatchSummary } from './api/types';
 
 describe('grada', () => {
