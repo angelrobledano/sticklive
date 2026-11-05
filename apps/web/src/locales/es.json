@@ -95,11 +95,6 @@
     "search": "Buscar",
     "favorites": "Favoritos"
   },
-  "locale_hint": {
-    "body": "Parece que prefieres {lang}",
-    "cta": "Ver en {lang}",
-    "dismiss": "Cerrar"
-  },
   "notif_presets": {
     "title": "¿Qué quieres recibir?",
     "close": "Cerrar",

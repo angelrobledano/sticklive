@@ -15,7 +15,6 @@ import { AdsenseScript } from '@/components/shared/AdsenseScript';
 import { AdInterstitial } from '@/components/shared/AdInterstitial';
 import { FallbackConsentBanner } from '@/components/shared/FallbackConsentBanner';
 import { InstallBanner } from '@/components/shared/InstallBanner';
-import { LocaleHint } from '@/components/layout/LocaleHint';
 import { JsonLd } from '@/components/shared/JsonLd';
 import { SUPPORTED_LOCALES, isSupportedLocale, type Locale } from '@/lib/locales';
 import { localeAlternates, socialMeta, siteJsonLd, SITE_URL } from '@/lib/seo';
@@ -200,7 +199,6 @@ export default async function RootLayout({ children, params }: Props) {
           <InstallBanner />
 
           {/* Aviso "ver en tu idioma" si el navegador no coincide (#277) */}
-          <LocaleHint />
           </I18nProvider>
         </PremiumProvider>
       </body>
