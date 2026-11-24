@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { SUPPORTED_LOCALES } from '@/lib/locales';
 import { SITE_URL } from '@/lib/seo';
 import { sitemapEntries, sitemapLanguages, sitemapSectionIds } from '@/lib/sitemap';
-import { fetchSitemapIdsStrict } from '@/lib/sitemap-source';
+import { fetchSitemapIdsStrict, SitemapSourceError } from '@/lib/sitemap-source';
 
 /**
  * Sitemap por secciones/trozos (#169): evita que un solo fichero supere el
@@ -14,10 +14,19 @@ import { fetchSitemapIdsStrict } from '@/lib/sitemap-source';
  * y es la URL que anuncia `robots.ts`.
  */
 export async function generateSitemaps(): Promise<Array<{ id: string }>> {
-  // F1-8: durante el build también se usa la fuente estricta. Antes, si la API
-  // estaba arrancando, `fetchSitemapIds()` devolvía vacío y el build publicaba
-  // solo `core`: las secciones de equipos/partidos desaparecían en silencio.
-  return sitemapSectionIds(await fetchSitemapIdsStrict()).map((id) => ({ id }));
+  // La protección F1-8 vive en RUNTIME (el índice y las secciones responden
+  // 503 si la API falla; ver sitemap-index.xml/route.ts). Aquí, en cambio,
+  // corremos en el BUILD: la imagen se construye sola en CI, sin API, y si
+  // esta llamada lanzara (F1-8 original), ningún build de imagen sería
+  // posible. Así que ante un fallo de la fuente publicamos solo `core` — como
+  // antes de F1-8 — y dejamos que el runtime estricto decida lo demás
+  // cuando la API esté viva.
+  try {
+    return sitemapSectionIds(await fetchSitemapIdsStrict()).map((id) => ({ id }));
+  } catch (err) {
+    if (!(err instanceof SitemapSourceError)) throw err;
+    return [{ id: 'core' }];
+  }
 }
 
 /**

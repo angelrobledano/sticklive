@@ -88,7 +88,8 @@ describe('PATCH /admin/clubs/:id', () => {
       method: 'PATCH', headers: ADMIN, body: JSON.stringify({ canonicalName: 'HC Palau', slug: 'hc-palau' }),
     });
     expect(res.status).toBe(200);
-    expect((await res.json()).club).toMatchObject({ slug: 'hc-palau', canonicalName: 'HC Palau' });
+    const body = (await res.json()) as { club: { slug: string; canonicalName: string } };
+    expect(body.club).toMatchObject({ slug: 'hc-palau', canonicalName: 'HC Palau' });
 
     const viejo = await getClub('generali-hc-palau');
     expect(viejo.status).toBe(200);

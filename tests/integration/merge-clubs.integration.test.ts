@@ -56,7 +56,8 @@ describe('mergeClubs', () => {
     for (const slug of ['generali-hc-palau-fecapa-club-271', 'palau-viejo']) {
       const res = await clubDetailRouter.request(`/${slug}`);
       expect(res.status).toBe(200);
-      expect((await res.json()).club.slug).toBe('generali-hc-palau');
+      const body = (await res.json()) as { club: { slug: string } };
+      expect(body.club.slug).toBe('generali-hc-palau');
     }
   });
 
@@ -75,7 +76,8 @@ describe('POST /admin/clubs/:id/merge', () => {
       method: 'POST', headers: ADMIN, body: JSON.stringify({ into: 'igualada-hc' }),
     });
     expect(res.status).toBe(200);
-    expect((await res.json()).teamsMoved).toBe(1);
+    const body = (await res.json()) as { teamsMoved: number };
+    expect(body.teamsMoved).toBe(1);
     expect((await db.query('SELECT count(*)::int AS n FROM teams WHERE club_id = $1', [buena])).rows[0].n).toBe(1);
   });
 
