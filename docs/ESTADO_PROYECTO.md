@@ -1,5 +1,7 @@
 # Stick Live — Estado del proyecto
 
+> ⚠️ **Proyecto cerrado (noviembre de 2026).** El servicio en producción (sticklive.eu) está fuera de servicio desde noviembre de 2026: la RFEP publicó un aviso reservándose expresamente los derechos de reutilización de sus datos (bases de datos, actas, fotografías) y el proyecto no disponía de una licencia federativa que lo respaldara. El código se publica en open source (MIT) en https://github.com/angelrobledano/sticklive, que es ahora la referencia del proyecto. **Este documento se conserva congelado como fotografía del estado al cierre y no debe actualizarse.**
+
 *Actualizado: 27 de septiembre de 2026 — EN PRODUCCIÓN: https://sticklive.eu*
 
 > **Octubre 2026 (rama `feat/fases-y-directo-explicito`, pendiente de despliegue):** el directo pasa a depender solo de la señal explícita de la fuente (fuera el "en vivo por reloj" de API, web y app) y las competiciones se modelan como **fases** que publica la fuente (liga, grupos, eliminatoria, colocación; migración 072 aditiva). Diseño en [superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md](./superpowers/specs/2026-10-08-fases-y-directo-explicito-design.md); despliegue y re-scrape de temporadas heredadas en [runbook-fases-y-directo.md](./runbook-fases-y-directo.md).

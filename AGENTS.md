@@ -6,11 +6,19 @@ un módulo), esas tienen prioridad para ese ámbito.
 
 ## Referencia rápida del proyecto
 
-**Stick Live** es una plataforma de resultados de hockey sobre patines en directo
-(producción: https://sticklive.eu). Monorepo Turborepo:
-`apps/{scraper,etl,api,web,mobile}` + `packages/{db,shared-types,analytics,logger}`. Fuentes: sidgad/FEP y World Skate
+**Stick Live** es una plataforma de resultados de hockey sobre patines en directo.
+**Proyecto cerrado (noviembre de 2026): la producción `sticklive.eu` está fuera de
+servicio.** La RFEP publicó un aviso reservándose los derechos de reutilización de
+sus datos, y sin licencia federativa continuar era un riesgo jurídico
+desproporcionado. El código vive como open source (MIT) en
+https://github.com/angelrobledano/sticklive, que pasa a ser la referencia del
+proyecto. **No añadas scraping nuevo contra RFEP/World Skate sin autorización
+explícita de los titulares**; si tocas el scraper, es para adaptarlo a otras
+fuentes, nunca para evadir la decisión.
+Monorepo Turborepo:
+`apps/{scraper,etl,api,web,mobile}` + `packages/{db,shared-types,analytics,logger}`. Fuentes históricas: sidgad/FEP y World Skate
 Europe → scraper → ETL → PostgreSQL → API Hono (REST+SSE, :3000) → web Next.js 16
-(:3001). 53 migraciones SQL idempotentes en `packages/db/migrations`.
+(:3001). 105 migraciones SQL idempotentes en `packages/db/migrations`.
 
 - **Comandos y arranque local:** [README.md](./README.md) (no inventes comandos;
   los reales están en los `package.json` de cada workspace).

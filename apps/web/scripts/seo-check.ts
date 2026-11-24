@@ -6,8 +6,9 @@
  * tiene title/canonical en el `<head>`, declara un canonical ajeno o lleva
  * `noindex`. Después comprueba una muestra de OG: 200, PNG y < 2 s.
  *
- * No escribe nada. Se ejecuta en el workflow `seo-check.yml` (diario) y a mano:
- *   npx tsx apps/web/scripts/seo-check.ts --base=https://sticklive.eu
+ * No escribe nada. Se ejecuta a mano contra el dominio que toque (el workflow
+ * diario `seo-check.yml` se retiró cuando se cerró sticklive.eu):
+ *   npx tsx apps/web/scripts/seo-check.ts --base=https://tu-dominio.example
  */
 import {
   GOOGLEBOT_SMARTPHONE_UA,

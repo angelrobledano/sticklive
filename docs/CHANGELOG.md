@@ -4,6 +4,14 @@ Historial de hitos de producto y plataforma. El estado vivo está en [ESTADO_PRO
 
 ---
 
+## Noviembre 2026 — Cierre del servicio y liberación del código
+
+- **El proyecto se cierra.** La RFEP publicó un aviso reservándose expresamente los derechos de reutilización de sus datos (bases de datos, actas, fotografías, escudos) y sin autorizar la extracción automatizada. Sin licencia federativa que avalara el proyecto ni ingresos que la costearan, continuar suponía un riesgo jurídico desproporcionado para un proyecto personal. `sticklive.eu` queda fuera de servicio.
+- **El código se libera open source (MIT) en github.com/angelrobledano/sticklive**, que pasa a ser la referencia del proyecto. El repo no incluye datos: solo código.
+- El README se reescribe para público externo en **español, portugués e italiano**, con capturas del producto, y se retira el workflow diario de SEO (`seo-check.yml`) que apuntaba al dominio en producción.
+
+---
+
 ## Octubre 2026 — Tandas de penaltis completas y cuadro con campeón
 
 - El directo vuelve a pedir el acta de un partido terminado mientras su tanda de penaltis siga empatada. Antes, si el acta se capturaba con la tanda a medias y los goles ya cuadraban, nadie la volvía a pedir (ITA–CHI del Mundial quedó 1-1 en la tanda cuando acabó 1-2).
