@@ -27,7 +27,7 @@ I dati provenivano dalla **FEP (via SIDGAD)** e dalla **World Skate Europe**, co
 
 ## Screenshot
 
-Prodotto reale, non mockup (screenshot dell'app Android pubblicata su Google Play):
+Screenshot reali dell'app Android del progetto (l'app non è mai stata pubblicata su Google Play, ma il prodotto era questo):
 
 | In diretto — il punteggio si muove da solo | Scheda partita — goal, carte ed eventi minuto per minuto |
 |:---:|:---:|
